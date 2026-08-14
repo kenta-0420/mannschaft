@@ -196,8 +196,9 @@ public class SurveyVisibilityResolver
      * <ul>
      *   <li>{@code ALWAYS} → <b>配信母集団</b>（{@code survey_targets} 名簿 /
      *       {@code include_supporters} トグル準拠の組織配信母集団）</li>
-     *   <li>{@code AFTER_CLOSE} → <b>スコープ所属</b>（組織スコープのみ先読みが要る。
-     *       TEAM スコープは snapshot で判定できるためクエリ不要）</li>
+     *   <li>{@code AFTER_CLOSE} → <b>上位条件の名簿のみ</b>。所属判定は TEAM / ORGANIZATION とも
+     *       snapshot で答えられるため<b>追加クエリは 0 本</b>
+     *       （ORG は {@link #additionalDescendantScopes} で snapshot 側に解決させる）</li>
      * </ul>
      *
      * <p>対象行が無ければクエリを発行しない（他の値のみの一覧に本ゲートのコストを乗せない）。
@@ -213,7 +214,6 @@ public class SurveyVisibilityResolver
         Set<Long> bypassCandidateIds = new HashSet<>();
         Set<Long> targetedIds = new HashSet<>();
         Set<OrgAudienceKey> orgAudienceKeys = new HashSet<>();
-        Set<Long> orgAffiliationIds = new HashSet<>();
         for (SurveyVisibilityProjection row : rows) {
             if (row == null || row.id() == null) {
                 continue;
@@ -228,11 +228,9 @@ public class SurveyVisibilityResolver
                             row.scopeId(), Boolean.TRUE.equals(row.includeSupporters())));
                 }
             } else if (v == ResultsVisibility.AFTER_CLOSE) {
+                // 所属軸は snapshot（下向き再帰・バルク 1 本）で判定するため先読み不要。
+                // 必要なのは上位条件の名簿照会だけである。
                 bypassCandidateIds.add(row.id());
-                // 所属軸は distribution_mode / include_supporters を一切参照しない（Issue #2774 訂正）。
-                if ("ORGANIZATION".equals(row.scopeType()) && row.scopeId() != null) {
-                    orgAffiliationIds.add(row.scopeId());
-                }
             }
         }
         if (bypassCandidateIds.isEmpty()) {
@@ -256,13 +254,7 @@ public class SurveyVisibilityResolver
                 inAudience.add(key);
             }
         }
-        Set<Long> affiliatedOrgIds = new HashSet<>();
-        for (Long orgId : orgAffiliationIds) {
-            if (organizationMembershipService.isUserInOrgDistributionUniverse(orgId, viewerUserId)) {
-                affiliatedOrgIds.add(orgId);
-            }
-        }
-        return new AudienceContext(targetedSurveyIds, resultViewerIds, inAudience, affiliatedOrgIds);
+        return new AudienceContext(targetedSurveyIds, resultViewerIds, inAudience);
     }
 
     /**
@@ -325,11 +317,14 @@ public class SurveyVisibilityResolver
      *       （{@link StandardVisibility#SCOPE_AFFILIATED} と同一述語。応援者を除外しない）。
      *       snapshot で判定できるため追加クエリは不要。</li>
      *   <li><b>ORGANIZATION スコープ</b>:
-     *       {@code OrganizationMembershipService#isUserInOrgDistributionUniverse}
+     *       {@link UserScopeRoleSnapshot#isDescendantMemberOf}
      *       — 「組織直属 ∪ 配下 ACTIVE チーム」の下向き再帰<b>所属軸</b>（G7 により SUPPORTER を一律含む）。
-     *       {@code isInOrgDistributionAudience}（配信トグル準拠）とは<b>別物</b>なので取り違えないこと。
+     *       ロール閾値を見る {@code hasDescendantRoleOrAbove} や、配信トグル準拠の
+     *       {@code isInOrgDistributionAudience} とは<b>別物</b>なので取り違えないこと。
      *       Issue #2780 / #2785 / #2786 で {@code user_roles} ∪ {@code memberships} の
-     *       和集合へ是正済みであり、{@code memberships} 専属の一般メンバーも正しく拾う。</li>
+     *       和集合へ是正済みであり、{@code memberships} 専属の一般メンバーも正しく拾う。
+     *       対象 ORG は {@link #additionalDescendantScopes} で申告し、
+     *       組織が何件混ざってもバルククエリ 1 本で解決される（追加クエリ 0 本）。</li>
      * </ul>
      *
      * <p>設計書 §「結果閲覧権限の判定」の上位条件（優先順 2 = ADMIN+ ／ 優先順 3 = 結果閲覧者名簿）は
@@ -351,10 +346,47 @@ public class SurveyVisibilityResolver
         if (isPrivilegedViewer(row, snapshot, context)) {
             return true;
         }
+        ScopeKey scope = new ScopeKey(row.scopeType(), row.scopeId());
         if ("ORGANIZATION".equals(row.scopeType())) {
-            return context.affiliatedOrgIds().contains(row.scopeId());
+            return snapshot.isDescendantMemberOf(scope);
         }
-        return snapshot.isMemberOf(new ScopeKey(row.scopeType(), row.scopeId()));
+        return snapshot.isMemberOf(scope);
+    }
+
+    /**
+     * {@code AFTER_CLOSE} の組織スコープ行を、snapshot の下向き再帰解決対象として申告する
+     * （Issue #2782 の回避・追加クエリ 0 本化）。
+     *
+     * <p>当初は組織ごとに {@code OrganizationMembershipService#isUserInOrgDistributionUniverse} を
+     * 呼んでいたが、これは行数比例ではないものの<b>組織数に比例</b>し、
+     * 「追加軸はバッチ 1 回で先読みする」という基盤の契約に反していた。
+     * snapshot の下向き再帰は<b>複数 ORG 根を 1 本の再帰 CTE でまとめて</b>解決するため、
+     * 別組織のアンケートが何件混ざっても SQL は増えない。</p>
+     *
+     * <p>両者は同一の意味論である（いずれも「対象組織を根とする再帰ツリーの
+     * 直属 ∪ 配下 ACTIVE チーム」への所属を、{@code user_roles} ∪ {@code memberships} の
+     * 和集合で判定する所属軸。SUPPORTER を除外しない）。同値であることは実 DB のテストで
+     * 両述語を突き合わせて実証している。</p>
+     *
+     * <p>申告しても判定レベルは {@link StandardVisibility#CUSTOM} のままで変わらない
+     * （{@link #adjustLevel} には触れていない）。変わるのは snapshot に下向き再帰の所属が
+     * 載るかどうかだけである。</p>
+     */
+    @Override
+    protected Set<ScopeKey> additionalDescendantScopes(List<SurveyVisibilityProjection> rows) {
+        if (rows == null || rows.isEmpty()) {
+            return Set.of();
+        }
+        Set<ScopeKey> scopes = new HashSet<>();
+        for (SurveyVisibilityProjection row : rows) {
+            if (row != null
+                    && row.resultsVisibility() == ResultsVisibility.AFTER_CLOSE
+                    && "ORGANIZATION".equals(row.scopeType())
+                    && row.scopeId() != null) {
+                scopes.add(new ScopeKey(row.scopeType(), row.scopeId()));
+            }
+        }
+        return scopes;
     }
 
     /**
@@ -399,19 +431,21 @@ public class SurveyVisibilityResolver
      * {@link #visibleByAdditionalAxis} の javadoc 参照）。
      * {@code resultViewerSurveyIds} のみ上位条件として両者が共用する。</p>
      *
+     * <p>{@code AFTER_CLOSE} の<b>所属</b>判定はここには載らない。snapshot の下向き再帰
+     * （{@link UserScopeRoleSnapshot#isDescendantMemberOf}）で答えられ、そちらは
+     * 組織が何件混ざっても<b>バルククエリ 1 本</b>で解決されるためである（Issue #2782 の回避）。</p>
+     *
      * @param targetedSurveyIds     閲覧者が配信対象名簿に載っている survey_id（ALWAYS 用）
      * @param resultViewerSurveyIds 閲覧者が結果閲覧者名簿に載っている survey_id（上位条件・共用）
      * @param inOrgAudience         閲覧者が<b>配信母集団</b>に含まれる (組織, トグル) の組（ALWAYS 用）
-     * @param affiliatedOrgIds      閲覧者が<b>所属</b>する組織ツリーの根 organization_id（AFTER_CLOSE 用）
      */
     private record AudienceContext(
             Set<Long> targetedSurveyIds,
             Set<Long> resultViewerSurveyIds,
-            Set<OrgAudienceKey> inOrgAudience,
-            Set<Long> affiliatedOrgIds) {
+            Set<OrgAudienceKey> inOrgAudience) {
 
         private static final AudienceContext EMPTY =
-                new AudienceContext(Set.of(), Set.of(), Set.of(), Set.of());
+                new AudienceContext(Set.of(), Set.of(), Set.of());
     }
 
     /**

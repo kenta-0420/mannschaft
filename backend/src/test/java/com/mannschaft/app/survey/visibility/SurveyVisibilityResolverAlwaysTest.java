@@ -727,6 +727,63 @@ class SurveyVisibilityResolverAlwaysTest {
      * 3 引数版だけを stub すると snapshot が null になり NPE で落ちる
      * （＝昇格が snapshot 取得<b>前</b>に効いていることの裏返しでもある）。</p>
      */
+    /**
+     * Issue #2774 / #2782 — {@code AFTER_CLOSE} の所属判定を snapshot 経由へ移した効果を固定する。
+     *
+     * <p>当初の実装は組織ごとに {@code OrganizationMembershipService} の単発 EXISTS を撃っており、
+     * 行数比例ではないものの<b>組織数に比例</b>して SQL が増えていた。
+     * snapshot の下向き再帰は複数 ORG 根を 1 本の再帰 CTE でまとめて解決するため、
+     * 別組織のアンケートが何件混ざっても所属照会は増えない。</p>
+     */
+    @Nested
+    @DisplayName("AC-8: AFTER_CLOSE の所属照会は組織数に比例しない（N+1 にしない）")
+    class AfterCloseAffiliationBatching {
+
+        private static final Long ORG_A = 700L;
+        private static final Long ORG_B = 800L;
+        private static final Long ORG_C = 900L;
+
+        private SurveyVisibilityProjection afterCloseOrgRow(Long id, Long orgId) {
+            return new SurveyVisibilityProjection(
+                    id, "ORGANIZATION", orgId, AUTHOR_ID, SurveyStatus.CLOSED,
+                    ResultsVisibility.AFTER_CLOSE, null, false, DistributionMode.ALL);
+        }
+
+        @Test
+        @DisplayName("AC-8: 3組織のアンケートを渡しても組織別の所属照会は0回（snapshot 1本に集約）")
+        void ac8_affiliationLookupDoesNotScaleWithOrganizationCount() {
+            when(surveyRepository.findVisibilityProjectionsByIdIn(any())).thenReturn(List.of(
+                    afterCloseOrgRow(201L, ORG_A),
+                    afterCloseOrgRow(202L, ORG_B),
+                    afterCloseOrgRow(203L, ORG_C)));
+            // ORG_A の配下にのみ所属する viewer。
+            stubSnapshot(VIEWER_ID, new UserScopeRoleSnapshot(false,
+                    Map.of(), Map.of(), Set.of(), Set.of(), Set.of(ORG_A)));
+
+            Set<Long> visible = resolver.filterAccessible(List.of(201L, 202L, 203L), VIEWER_ID);
+
+            // 判定の正しさ: 所属している組織のアンケートだけが可視。
+            assertThat(visible)
+                    .as("AC-8: 一括化しても所属判定の結果は同じであること")
+                    .containsExactly(201L);
+
+            // 本数の固定: 組織ごとの単発照会は 1 度も発行されない。
+            org.mockito.Mockito.verify(organizationMembershipService,
+                    org.mockito.Mockito.never())
+                    .isUserInOrgDistributionUniverse(org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.any());
+            org.mockito.Mockito.verify(organizationMembershipService,
+                    org.mockito.Mockito.never())
+                    .isInOrgDistributionAudience(org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.anyBoolean());
+            // snapshot 構築は組織数に関わらずバッチ 1 回。
+            org.mockito.Mockito.verify(membershipBatchQueryService,
+                    org.mockito.Mockito.times(1))
+                    .snapshotForUser(eq(VIEWER_ID), anySet(), anySet(), anySet());
+        }
+    }
+
     private void stubSnapshot(Long userId, UserScopeRoleSnapshot snapshot) {
         if (userId == null) {
             when(membershipBatchQueryService.snapshotForUser(any(), anySet(), anySet()))

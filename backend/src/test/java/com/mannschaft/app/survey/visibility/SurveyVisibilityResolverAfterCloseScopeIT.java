@@ -1,7 +1,10 @@
 package com.mannschaft.app.survey.visibility;
 
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.visibility.ScopeKey;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
@@ -19,6 +22,10 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -59,6 +66,12 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
 
     @Autowired
     private ContentVisibilityChecker checker;
+
+    @Autowired
+    private OrganizationMembershipService organizationMembershipService;
+
+    @Autowired
+    private MembershipBatchQueryService membershipBatchQueryService;
 
     @PersistenceContext
     private EntityManager em;
@@ -539,6 +552,88 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
         assertThat(checker.canView(ReferenceType.SURVEY, viewersOnlyId, insiderUserId)).isTrue();
         assertThat(checker.canView(ReferenceType.SURVEY, viewersOnlyId, descendantUserId)).isFalse();
         assertThat(checker.canView(ReferenceType.SURVEY, viewersOnlyId, outsiderUserId)).isFalse();
+    }
+
+    // =========================================================================
+    // 受け入れ条件 AC-8: 所属述語を snapshot 経由へ置き換えた際の同値性と SQL 本数
+    // =========================================================================
+
+    /**
+     * AC-8【同値性の実証】: 組織スコープの所属判定に用いる 2 つの述語が、実 DB 上で
+     * <b>すべての被験者について同一の結果</b>を返すことを突き合わせる。
+     *
+     * <ul>
+     *   <li>{@code OrganizationMembershipService#isUserInOrgDistributionUniverse}
+     *       — 当初の実装。組織ごとに単発 EXISTS を撃つ（組織数に比例）</li>
+     *   <li>{@link com.mannschaft.app.common.visibility.UserScopeRoleSnapshot#isDescendantMemberOf}
+     *       — 置き換え後。複数 ORG 根を 1 本の再帰 CTE でまとめて解決する</li>
+     * </ul>
+     *
+     * <p>置き換えの前提は「両者が同じ所属軸である」ことなので、推論ではなく実測で固定する。
+     * 期待される絶対値も併せて固定し、双方が等しく壊れた場合の偽 green を防ぐ。</p>
+     */
+    @Test
+    @DisplayName("AC-8 組織の所属判定は 2 述語で完全に一致する（同値性の実証）")
+    void ac8_descendantMembershipPredicatesAgree() {
+        ScopeKey orgScope = new ScopeKey("ORGANIZATION", rootOrgId);
+        // 配下組織チームの一般メンバー / 応援者は所属、圏外・退会済みは非所属。
+        Map<Long, Boolean> expected = new LinkedHashMap<>();
+        expected.put(descendantUserId, true);
+        expected.put(supporterUserId, true);
+        expected.put(outsiderUserId, false);
+        expected.put(leftUserId, false);
+
+        for (Map.Entry<Long, Boolean> e : expected.entrySet()) {
+            Long userId = e.getKey();
+            boolean viaService =
+                    organizationMembershipService.isUserInOrgDistributionUniverse(rootOrgId, userId);
+            boolean viaSnapshot = membershipBatchQueryService
+                    .snapshotForUser(userId, Set.of(), Set.of(), Set.of(orgScope))
+                    .isDescendantMemberOf(orgScope);
+
+            assertThat(viaService)
+                    .as("service 述語の絶対値 userId=%s", userId)
+                    .isEqualTo(e.getValue());
+            assertThat(viaSnapshot)
+                    .as("snapshot 述語の絶対値 userId=%s", userId)
+                    .isEqualTo(e.getValue());
+            assertThat(viaSnapshot)
+                    .as("2 述語の一致 userId=%s", userId)
+                    .isEqualTo(viaService);
+        }
+    }
+
+    /**
+     * AC-8【N+1】: 別組織のアンケートを複数まとめて {@code filterAccessible} に渡しても、
+     * 組織数に比例した所属照会が発生しない。
+     *
+     * <p>置き換え前は組織ごとに単発 EXISTS を撃っていたため、組織数に比例して SQL が増えていた
+     * （Issue #2782）。snapshot 経由では複数 ORG 根が 1 本の再帰 CTE にまとまるため、
+     * 組織が増えても所属照会の本数は変わらない。</p>
+     *
+     * <p>ここでは「本数」を直接数える代わりに、<b>複数組織が混在しても判定が正しいこと</b>を
+     * 固定する（本数そのものは Mockito でリポジトリ呼び出しを数える単体テスト側で担保する）。</p>
+     */
+    @Test
+    @DisplayName("AC-8 別組織のアンケートを混在させても締切後の可視判定が正しい")
+    void ac8_multipleOrganizationsInOneBatch() {
+        Long otherOrgId = insertOrganization("2774 別組織", null);
+        Long otherTeamId = insertTeam("2774 別チーム");
+        insertTeamOrgMembership(otherTeamId, otherOrgId);
+
+        Long rootSurveyId = insertOrganizationSurvey("2774-batch-root", rootOrgId, "CLOSED",
+                "AFTER_CLOSE", null);
+        Long otherSurveyId = insertOrganizationSurvey("2774-batch-other", otherOrgId, "CLOSED",
+                "AFTER_CLOSE", null);
+        em.flush();
+        em.clear();
+
+        // descendantUser は rootOrg 配下にのみ所属する。
+        Set<Long> visible = checker.filterAccessible(
+                ReferenceType.SURVEY, List.of(rootSurveyId, otherSurveyId), descendantUserId);
+
+        assertThat(visible).containsExactly(rootSurveyId);
+        assertThat(visible).doesNotContain(otherSurveyId);
     }
 
     // =========================================================================
