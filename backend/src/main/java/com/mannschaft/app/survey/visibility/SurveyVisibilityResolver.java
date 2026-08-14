@@ -42,7 +42,9 @@ import java.util.Set;
  *   <li>{@link ResultsVisibility#AFTER_RESPONSE} → {@link StandardVisibility#CUSTOM}
  *       （回答済みユーザーのみ可視。判定は {@link SurveyResponseRepository}）</li>
  *   <li>{@link ResultsVisibility#AFTER_CLOSE} → {@link StandardVisibility#CUSTOM}
- *       （締切後のみ可視。{@code expiresAt} 未設定は fail-closed）</li>
+ *       （<b>締切後かつ配信母集団に属する場合のみ</b>可視。{@code expiresAt} 未設定は fail-closed。
+ *       時間条件は {@link #evaluateAfterClose}、所属条件は {@link #visibleByAdditionalAxis} が担い
+ *       AND で合成される。所属の述語は {@code ALWAYS} と共通（Issue #2774））</li>
  *   <li>{@link ResultsVisibility#VIEWERS_ONLY} → {@link StandardVisibility#CUSTOM}
  *       （限定リスト {@code survey_result_viewers} に登録済みのみ可視）</li>
  *   <li>{@link ResultsVisibility#ALWAYS} → {@link StandardVisibility#SCOPE_AFFILIATED}
@@ -187,8 +189,9 @@ public class SurveyVisibilityResolver
      * <p>行ごとに {@code existsBySurveyIdAndUserId} を呼ぶと、{@code filterAccessible} に
      * N 件渡されたとき N 本の SQL が飛び（N+1）、設計書
      * {@code F00_content_visibility_resolver.md} §9 のバッチ SQL 本数上限・性能目標に反する。
-     * 名簿照会が必要なのは「{@code ALWAYS} かつ {@code ALL} 以外」の行だけなので、
-     * その ID を集めて 1 本の {@code WHERE survey_id IN (:ids) AND user_id = :userId} で引く。</p>
+     * 名簿照会が必要なのは「配信母集団の照合を要する値（{@link #requiresAudienceCheck}）かつ
+     * {@code ALL} 配信以外」の行だけなので、その ID を集めて
+     * 1 本の {@code WHERE survey_id IN (:ids) AND user_id = :userId} で引く。</p>
      *
      * <p>対象行が無ければクエリを発行しない（{@code ALL} 配信のみの一覧に本ゲートのコストを乗せない）。
      * 未認証（{@code viewerUserId == null}）も同様にクエリ不要で、判定側が fail-closed する。</p>
@@ -199,31 +202,31 @@ public class SurveyVisibilityResolver
     protected Object prepareAdditionalAxisContext(
             List<SurveyVisibilityProjection> rows, Long viewerUserId) {
         if (viewerUserId == null || rows == null || rows.isEmpty()) {
-            return AlwaysAudienceContext.EMPTY;
+            return AudienceContext.EMPTY;
         }
-        Set<Long> alwaysIds = new HashSet<>();
+        Set<Long> audienceIds = new HashSet<>();
         Set<Long> targetedIds = new HashSet<>();
         Set<OrgAudienceKey> orgAudienceKeys = new HashSet<>();
         for (SurveyVisibilityProjection row : rows) {
-            if (row == null || row.id() == null || row.resultsVisibility() != ResultsVisibility.ALWAYS) {
+            if (row == null || row.id() == null || !requiresAudienceCheck(row)) {
                 continue;
             }
-            alwaysIds.add(row.id());
-            if (row.distributionMode() != DistributionMode.ALL) {
+            audienceIds.add(row.id());
+            if (requiresTargetRoster(row)) {
                 targetedIds.add(row.id());
             } else if ("ORGANIZATION".equals(row.scopeType()) && row.scopeId() != null) {
                 orgAudienceKeys.add(new OrgAudienceKey(
                         row.scopeId(), Boolean.TRUE.equals(row.includeSupporters())));
             }
         }
-        if (alwaysIds.isEmpty()) {
-            // ALWAYS の行が無ければ SQL を一切増やさない（他 4 値の経路は従来どおり）。
-            return AlwaysAudienceContext.EMPTY;
+        if (audienceIds.isEmpty()) {
+            // 母集団照合を要する行が無ければ SQL を一切増やさない（他の値の経路は従来どおり）。
+            return AudienceContext.EMPTY;
         }
 
-        // 結果閲覧者名簿（上位条件）は ALWAYS 全行に対して 1 本。
+        // 結果閲覧者名簿（上位条件）は母集団照合を要する全行に対して 1 本。
         Set<Long> resultViewerIds = Set.copyOf(
-                surveyResultViewerRepository.findResultViewerSurveyIds(alwaysIds, viewerUserId));
+                surveyResultViewerRepository.findResultViewerSurveyIds(audienceIds, viewerUserId));
         // 配信対象名簿は TARGETED 行がある場合のみ 1 本。
         Set<Long> targetedSurveyIds = targetedIds.isEmpty()
                 ? Set.of()
@@ -237,26 +240,66 @@ public class SurveyVisibilityResolver
                 inAudience.add(key);
             }
         }
-        return new AlwaysAudienceContext(targetedSurveyIds, resultViewerIds, inAudience);
+        return new AudienceContext(targetedSurveyIds, resultViewerIds, inAudience);
+    }
+
+    /**
+     * AFTER_CLOSE の所属軸 — 締切という時間条件に<b>配信母集団の照合を AND で合成</b>する（Issue #2774）。
+     *
+     * <p>{@link ResultsVisibility#AFTER_CLOSE} は {@link StandardVisibility#CUSTOM} へ流れるため、
+     * scope 軸（{@code SCOPE_AFFILIATED} 等）の評価を経ない。その結果、判定が
+     * {@link #evaluateAfterClose} の時間条件だけで確定し、<b>閲覧者がどのスコープに居るかを
+     * 一度も参照しない</b>状態になっていた。同じ CUSTOM 経路でも {@code AFTER_RESPONSE} は
+     * 回答履歴を、{@code VIEWERS_ONLY} は結果閲覧者名簿を照合しており、時間条件だけの値が
+     * 所属確認を持たない点が非対称であった。{@code surveys.results_visibility} の DB 既定値が
+     * この値であるため、明示設定していないアンケートがすべて該当する。</p>
+     *
+     * <p><b>不変条件</b>: 締切を過ぎていることは可視の<b>必要条件であって十分条件ではない</b>。
+     * 判定述語は {@code ALWAYS} と<b>完全に同一</b>の {@link #isInDistributionAudience} を再利用し、
+     * 独自述語は新設しない（独自述語は配信母集団と乖離して情報漏洩源になるため）。
+     * これにより組織配下の所属判定は {@code OrganizationMembershipService} 経由で
+     * {@code user_roles} ∪ {@code memberships} の和集合（Issue #2780 / #2785 / #2786 の是正）に
+     * 自動的に追随する。</p>
+     *
+     * <p>本フックは {@code visibleByLevel} の結果と AND 合成されるため、時間条件を緩める方向には
+     * 決して働かない。SystemAdmin 高速パス・DRAFT の作成者スキップ・§11.6 親 ORG 連鎖ガードは
+     * いずれも本フックより手前で確定するため覆らない。公開済アンケートの作成者は
+     * {@code SurveyResultService#validateResultAccess} の作成者高速パスで Resolver 自体を通らない。</p>
+     *
+     * <p>{@code AFTER_CLOSE} 以外の値は素通しする（{@code ALWAYS} は従来どおり
+     * {@link #evaluateAlways} 内で同じ述語を評価しており、二重適用にはならない）。</p>
+     */
+    @Override
+    protected boolean visibleByAdditionalAxis(
+            SurveyVisibilityProjection row, Long viewerUserId, UserScopeRoleSnapshot snapshot,
+            StandardVisibility level, Object additionalAxisContext) {
+        if (row == null || row.resultsVisibility() != ResultsVisibility.AFTER_CLOSE) {
+            return true;
+        }
+        return isInDistributionAudience(row, viewerUserId, snapshot,
+                additionalAxisContext instanceof AudienceContext ctx ? ctx : AudienceContext.EMPTY);
     }
 
     /** 組織配信母集団の判定キー（同一組織・同一トグルの行はまとめて 1 回だけ判定する）。 */
     private record OrgAudienceKey(Long orgId, boolean includeSupporters) {}
 
     /**
-     * ALWAYS の判定に必要な情報（バッチ 1 回分・すべて先読み済み）。
+     * 配信母集団の照合に必要な情報（バッチ 1 回分・すべて先読み済み）。
+     *
+     * <p>{@code ALWAYS}（{@link #evaluateAlways}）と {@code AFTER_CLOSE}
+     * （{@link #visibleByAdditionalAxis}）が同一の述語で共用する。</p>
      *
      * @param targetedSurveyIds     閲覧者が配信対象名簿に載っている survey_id
      * @param resultViewerSurveyIds 閲覧者が結果閲覧者名簿に載っている survey_id
      * @param inOrgAudience         閲覧者が配信母集団に含まれる (組織, トグル) の組
      */
-    private record AlwaysAudienceContext(
+    private record AudienceContext(
             Set<Long> targetedSurveyIds,
             Set<Long> resultViewerSurveyIds,
             Set<OrgAudienceKey> inOrgAudience) {
 
-        private static final AlwaysAudienceContext EMPTY =
-                new AlwaysAudienceContext(Set.of(), Set.of(), Set.of());
+        private static final AudienceContext EMPTY =
+                new AudienceContext(Set.of(), Set.of(), Set.of());
     }
 
     /**
@@ -283,7 +326,22 @@ public class SurveyVisibilityResolver
      */
     private boolean evaluateAlways(
             SurveyVisibilityProjection row, Long viewerUserId,
-            UserScopeRoleSnapshot snapshot, AlwaysAudienceContext context) {
+            UserScopeRoleSnapshot snapshot, AudienceContext context) {
+        return isInDistributionAudience(row, viewerUserId, snapshot, context);
+    }
+
+    /**
+     * 閲覧者が当該アンケートの<b>配信母集団</b>に含まれるか（{@code ALWAYS} と {@code AFTER_CLOSE} で共用）。
+     *
+     * <p>この 1 メソッドが「配信母集団の照合」の唯一の実装であり、値ごとに述語を書き分けない。
+     * 書き分けると片方だけが是正から取り残されて漏洩源になるためである
+     * （実際 Issue #2774 は {@code AFTER_CLOSE} だけが照合を持たないことで生じた）。</p>
+     *
+     * @param context {@link #prepareAdditionalAxisContext} で先読み済み（本メソッドは DB を触らない）
+     */
+    private boolean isInDistributionAudience(
+            SurveyVisibilityProjection row, Long viewerUserId,
+            UserScopeRoleSnapshot snapshot, AudienceContext context) {
         if (viewerUserId == null || row.id() == null) {
             return false;
         }
@@ -319,9 +377,22 @@ public class SurveyVisibilityResolver
         return snapshot.hasRoleOrAbove(new ScopeKey(row.scopeType(), row.scopeId()), "ADMIN");
     }
 
-    /** 名簿照会が必要な行か（ALWAYS かつ ALL 配信以外）。 */
+    /**
+     * 配信母集団の照合を要する値か。
+     *
+     * <p>{@code ALWAYS}（PR #2771）に加え、{@code AFTER_CLOSE}（Issue #2774）が該当する。
+     * {@code ADMINS_ONLY} はロール閾値軸、{@code VIEWERS_ONLY} は結果閲覧者名簿という別軸であり、
+     * {@code AFTER_RESPONSE} は回答履歴の存在が名簿通過の証跡となるため、いずれも対象外である
+     * （値の意味論どおり・既存の判定を一切変えない）。</p>
+     */
+    private static boolean requiresAudienceCheck(SurveyVisibilityProjection row) {
+        ResultsVisibility v = row.resultsVisibility();
+        return v == ResultsVisibility.ALWAYS || v == ResultsVisibility.AFTER_CLOSE;
+    }
+
+    /** 名簿照会が必要な行か（母集団照合を要する値かつ ALL 配信以外）。 */
     private static boolean requiresTargetRoster(SurveyVisibilityProjection row) {
-        return row.resultsVisibility() == ResultsVisibility.ALWAYS
+        return requiresAudienceCheck(row)
                 && row.distributionMode() != DistributionMode.ALL;
     }
 
@@ -358,9 +429,9 @@ public class SurveyVisibilityResolver
             case AFTER_CLOSE -> evaluateAfterClose(row);
             case VIEWERS_ONLY -> evaluateViewersOnly(row, viewerUserId);
             case ALWAYS -> evaluateAlways(row, viewerUserId, snapshot,
-                    additionalAxisContext instanceof AlwaysAudienceContext ctx
+                    additionalAxisContext instanceof AudienceContext ctx
                             ? ctx
-                            : AlwaysAudienceContext.EMPTY);
+                            : AudienceContext.EMPTY);
             // ADMINS_ONLY は CUSTOM ではないため本来到達しない
             // （Mapper で StandardVisibility へ正規化済）。万一到達した場合は fail-closed。
             case ADMINS_ONLY -> false;
@@ -384,13 +455,18 @@ public class SurveyVisibilityResolver
     }
 
     /**
-     * AFTER_CLOSE — 締切後のみ可視。
+     * AFTER_CLOSE の<b>時間条件のみ</b>を評価する（締切を過ぎているか）。
      *
      * <p>{@link SurveyStatus#CLOSED} は管理者が明示的に締め切った状態のため、
      * expiresAt の有無にかかわらず AFTER_CLOSE 条件を満足したものとみなす。</p>
      *
      * <p>PUBLISHED 状態での時刻ベース判定: {@code expiresAt == null}（締切未設定）は
      * fail-closed（軍議裁可済 2026-05-04）。判定は {@code now > expiresAt}（境界では未公開のまま）。</p>
+     *
+     * <p><b>これは可視の必要条件にすぎない</b>（Issue #2774）。閲覧者がアンケートのスコープ
+     * ＝配信母集団に属するかは {@link #visibleByAdditionalAxis} が AND で合成する。
+     * 本メソッドが閲覧者の識別子を取らないのは、時間条件と所属条件を別々の軸として
+     * 直交させているためであり、所属確認を省いてよいという意味ではない。</p>
      */
     private boolean evaluateAfterClose(SurveyVisibilityProjection row) {
         // 明示的に締め切られた → AFTER_CLOSE 条件満足
