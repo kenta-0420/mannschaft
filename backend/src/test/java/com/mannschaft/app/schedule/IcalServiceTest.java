@@ -122,8 +122,8 @@ class IcalServiceTest {
             // given
             UserIcalTokenEntity existing = createActiveToken();
             given(icalTokenRepository.findByUserId(USER_ID)).willReturn(Optional.of(existing));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // when
             var result = icalService.getOrCreateToken(USER_ID);
@@ -141,8 +141,8 @@ class IcalServiceTest {
                     .willReturn(Optional.empty())  // 初回: 未発行
                     .willReturn(Optional.of(createActiveToken()));  // insert後
 
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // when
             var result = icalService.getOrCreateToken(USER_ID);
@@ -168,8 +168,8 @@ class IcalServiceTest {
             given(icalTokenRepository.findByUserId(USER_ID))
                     .willReturn(Optional.of(createActiveToken()))
                     .willReturn(Optional.of(createActiveToken()));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // when
             icalService.regenerateToken(USER_ID);
@@ -384,8 +384,8 @@ class IcalServiceTest {
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
                     eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
                     .willReturn(List.of(createScheduleForFeed()));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             String result = icalService.generateIcalFeed(TOKEN, null, null);
 

@@ -91,6 +91,8 @@
       "title": "Horario de hoy",
       "loading": "Cargando…",
       "empty": "Sin horario para hoy",
+      "load_failed": "Error al cargar el horario. Vuelve a cargar la página.",
+      "notes_load_failed": "Error al cargar las notas. Se muestra solo el horario.",
       "tag_personal": "Personal",
       "tag_team": "Equipo",
       "memo_label": "Nota",

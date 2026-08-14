@@ -212,10 +212,11 @@ public class InviteService {
         // ブロックチェック
         checkNotBlocked(userId, scopeId, scopeType);
 
-        // 重複参加チェック
+        // 重複参加チェック（CMP-027: user_roles ∪ memberships の在籍で判定。
+        // ORG 側も exists 版へ揃え、memberships 専属の素メンバーの再参加を正しく検出する）
         boolean alreadyJoined = "TEAM".equals(scopeType)
                 ? userRoleRepository.existsByUserIdAndTeamId(userId, scopeId)
-                : userRoleRepository.findByUserIdAndOrganizationId(userId, scopeId).isPresent();
+                : userRoleRepository.existsByUserIdAndOrganizationId(userId, scopeId);
         if (alreadyJoined) {
             throw new BusinessException(TeamErrorCode.TEAM_003);
         }

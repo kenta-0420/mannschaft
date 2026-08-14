@@ -310,6 +310,42 @@ export default {
         "expired": "已过期",
         "lifted": "已解除"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "取消费减免",
+      "pageDescription": "减免应由您收取的取消费",
+      "unknownUser": "未知用户",
+      "loadMore": "查看更多",
+      "reasonTooLong": "减免理由请控制在{max}个字符以内",
+      "columns": {
+        "listing": "招募",
+        "user": "对象用户",
+        "feeAmount": "取消费",
+        "status": "状态",
+        "cancelledAt": "取消时间"
+      },
+      "status": {
+        "pending": "未支付",
+        "failed": "支付失败",
+        "uncollectible": "无法回收",
+        "paid": "已支付",
+        "waived": "已减免",
+        "notRequired": "不适用"
+      },
+      "waiveButton": "减免",
+      "reasonLabel": "减免理由",
+      "reasonPlaceholder": "请输入减免理由（必填）",
+      "reasonRequired": "减免理由为必填项",
+      "confirmDialog": {
+        "title": "取消费减免",
+        "message": "将取消 {amount} 日元的取消费请求。此操作无法撤销。\n如果该用户还有其他未支付的取消费，报名限制将不会解除。",
+        "confirmButton": "减免",
+        "cancelButton": "返回"
+      },
+      "emptyMessage": "没有可减免的取消费记录",
+      "loadError": "获取列表失败",
+      "waiveSuccess": "已减免取消费",
+      "waiveError": "减免失败"
     }
   }
 }

@@ -183,6 +183,17 @@ public interface UserRepository extends JpaRepository<UserEntity, Long> {
     Optional<String> findLocaleById(@org.springframework.data.repository.query.Param("userId") Long userId);
 
     /**
+     * 複数ユーザーの locale をまとめて取得する（{@link UserLocaleCache#getLocales} の bulk 版・N+1 防止用）。
+     *
+     * @param userIds 対象ユーザーID群
+     * @return {@code [userId(Long), locale(String)]} の配列リスト（未存在・論理削除済みは含まれない）
+     */
+    @org.springframework.data.jpa.repository.Query(
+            "SELECT u.id, u.locale FROM UserEntity u WHERE u.id IN :userIds AND u.deletedAt IS NULL")
+    List<Object[]> findLocalesByIdIn(
+            @org.springframework.data.repository.query.Param("userIds") Collection<Long> userIds);
+
+    /**
      * userId に対応する timezone 文字列のみを取得する（F09.17 フリークエンシーキャップ
      * の週境界をユーザーローカル時刻で評価するために使用する）。
      *

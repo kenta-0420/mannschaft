@@ -8,7 +8,6 @@ import com.mannschaft.app.payment.entity.TeamAccessRequirementEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
 import com.mannschaft.app.payment.repository.OrganizationAccessRequirementRepository;
 import com.mannschaft.app.payment.repository.TeamAccessRequirementRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,16 +39,14 @@ public class PaymentRequirementService {
     public List<PaymentRequirementResponse> getPaymentRequirements(Long userId) {
         List<PaymentRequirementResponse> requirements = new ArrayList<>();
 
-        // ユーザーの所属チーム一覧を取得し、各チームの access_requirements を確認
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        for (UserRoleEntity role : teamRoles) {
-            requirements.addAll(getTeamPaymentRequirements(userId, role.getTeamId()));
+        // ユーザーの所属チーム一覧（CMP-027: user_roles ∪ memberships の在籍チーム）ごとに access_requirements を確認
+        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
+            requirements.addAll(getTeamPaymentRequirements(userId, teamId));
         }
 
-        // ユーザーの所属組織一覧を取得し、各組織の access_requirements を確認
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        for (UserRoleEntity role : orgRoles) {
-            requirements.addAll(getOrganizationPaymentRequirements(userId, role.getOrganizationId()));
+        // ユーザーの所属組織一覧（CMP-027: user_roles ∪ memberships の在籍組織）ごとに access_requirements を確認
+        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
+            requirements.addAll(getOrganizationPaymentRequirements(userId, orgId));
         }
 
         // NOTE: content_payment_gates の未払い確認はコンテンツ種別ごとの統合が必要なため、

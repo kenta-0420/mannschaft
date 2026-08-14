@@ -119,13 +119,12 @@ class PaymentScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, memberOrgAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, payableMemberOrgAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
         // MemberPaymentService#verifyBeneficiaryMembership（AC-6）の ORGANIZATION 分岐は
-        // hasRoleOrAbove(..,"ORGANIZATION","MEMBER") と isInOrgDistributionAudience の OR で判定するが、
-        // 前者は roles.name="MEMBER" 行が存在しないと必ず false（roleRepository.findByName が空）、
-        // 後者は user_roles テーブルのみを見る（memberships は見ない）ため、memberships への
-        // insertMembership だけでは「受益者としての手動記録」が USER_NOT_MEMBER（PAYMENT_027・400）で
-        // 弾かれる。PaymentBeneficiaryMemberOnlyIntegrationTest（orgMemberUserId 周り）と同じ金型で
-        // insertUserRole も併せて張る必要がある。
-        MembershipTestHelper.insertUserRole(em, payableMemberOrgAId, "MEMBER", null, orgAId);
+        // hasRoleOrAbove(..,"ORGANIZATION","MEMBER") と isInOrgDistributionAudience の OR で判定する。
+        // 前者は AccessControlService.resolveEffectiveRole が memberships.role_kind を統合し、
+        // priority を roleRepository.findByName("MEMBER") から採るため、roles に "MEMBER" 行が要る。
+        // CMP-027 で insertUserRole の MEMBER/SUPPORTER を禁じた代わりに MembershipTestHelper.insertMembership が
+        // roles 行を冪等 seed するようになったので、上の insertMembership(payableMemberOrgAId, ...) だけで
+        // hasRoleOrAbove(ORG,MEMBER) が true になり、受益者判定が通る（user_roles への MEMBER 二重張りは不要）。
         // outsiderId はどこにも所属させない。
 
         itemOrgAId = paymentItemRepository.save(PaymentItemEntity.builder()

@@ -467,9 +467,9 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                             "統合テスト説明",                // description
                             false,                          // isAnonymous
                             false,                          // allowMultipleSubmissions
-                            "AFTER_RESPONSE",               // resultsVisibility (ResultsVisibility enum)
-                            "ALL",                          // distributionMode (DistributionMode enum)
-                            "CREATOR_AND_ADMIN",            // unrespondedVisibility
+                            com.mannschaft.app.survey.ResultsVisibility.AFTER_RESPONSE,               // resultsVisibility (ResultsVisibility enum)
+                            com.mannschaft.app.survey.DistributionMode.ALL,                          // distributionMode (DistributionMode enum)
+                            com.mannschaft.app.survey.UnrespondedVisibility.CREATOR_AND_ADMIN,            // unrespondedVisibility
                             false,                          // autoPostToTimeline
                             null,                           // seriesId
                             null,                           // remindBeforeHours
@@ -477,7 +477,7 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                             null,                           // expiresAt
                             List.of(                        // questions (最低1件必要)
                                     new com.mannschaft.app.survey.dto.CreateQuestionRequest(
-                                            "SINGLE_CHOICE",
+                                            com.mannschaft.app.survey.QuestionType.SINGLE_CHOICE,
                                             "参加しますか？",
                                             true, 0, null, null, null, null, null,
                                             List.of(
@@ -531,9 +531,9 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                             "startsAt/expiresAt 往復検証",         // description
                             false,                                // isAnonymous
                             false,                                // allowMultipleSubmissions
-                            "AFTER_RESPONSE",                     // resultsVisibility
-                            "ALL",                                // distributionMode
-                            "CREATOR_AND_ADMIN",                  // unrespondedVisibility
+                            com.mannschaft.app.survey.ResultsVisibility.AFTER_RESPONSE,                     // resultsVisibility
+                            com.mannschaft.app.survey.DistributionMode.ALL,                                // distributionMode
+                            com.mannschaft.app.survey.UnrespondedVisibility.CREATOR_AND_ADMIN,                  // unrespondedVisibility
                             false,                                // autoPostToTimeline
                             null,                                 // seriesId
                             null,                                 // remindBeforeHours
@@ -541,7 +541,7 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
                             null,                                 // expiresAt（後で raw 差し替え）
                             List.of(
                                     new com.mannschaft.app.survey.dto.CreateQuestionRequest(
-                                            "SINGLE_CHOICE",
+                                            com.mannschaft.app.survey.QuestionType.SINGLE_CHOICE,
                                             "参加しますか？",
                                             true, 0, null, null, null, null, null,
                                             List.of(
@@ -1253,6 +1253,46 @@ class ScheduleMaterializeIntegrationTest extends AbstractMySqlIntegrationTest {
             assertThat(after.getAttemptCount())
                     .as("1回失敗で attempt_count が 1 になること")
                     .isEqualTo(1);
+        }
+
+        /**
+         * AC-25 — カラム長を超える失敗理由でも<b>実 DB へ</b>例外なく保存でき、status が遷移する。
+         *
+         * <p>切り詰めが無いと {@code Data truncation: Data too long for column 'last_error'} で
+         * UPDATE 自体が落ち、attempt_count も status も進まない（失敗の記録すら残らない）。
+         * 境界値そのものは {@code ScheduleScheduledTaskEntityLastErrorTest} が固定し、
+         * ここでは「実カラムに本当に入る」ことを実 MySQL で担保する（二段構え）。</p>
+         */
+        @Test
+        @DisplayName("AC-25: カラム長超のエラーでも例外なく保存され PENDING→FAILED が進む")
+        void oversizedLastErrorIsPersistedWithoutDataTruncation() {
+            LocalDateTime pastTime = LocalDateTime.now().minusMinutes(1);
+            ScheduleScheduledTaskEntity task = persistTask(
+                    SCHEDULE_ID + 500, ScheduledTaskType.SURVEY, pastTime, "{\"bad\": \"payload\"}");
+            UUID taskId = task.getId();
+
+            String hugeError = "com.example.BoomException: " + "X".repeat(5_000);
+
+            TransactionTemplate tx = new TransactionTemplate(txManager);
+            tx.executeWithoutResult(status -> {
+                ScheduleScheduledTaskEntity target =
+                        scheduledTaskRepository.findById(taskId).orElseThrow();
+                target.markFailed(hugeError);
+                scheduledTaskRepository.saveAndFlush(target);
+            });
+
+            ScheduleScheduledTaskEntity after = scheduledTaskRepository.findById(taskId).orElseThrow();
+            assertThat(after.getStatus())
+                    .as("AC-25: 桁あふれで UPDATE が落ちず status が遷移すること")
+                    .isEqualTo(ScheduledTaskStatus.FAILED);
+            assertThat(after.getLastError())
+                    .as("AC-25: 実カラム（VARCHAR(1000)）に収まっていること")
+                    .isNotNull()
+                    .hasSizeLessThanOrEqualTo(1000)
+                    .endsWith("...[truncated]");
+            assertThat(after.getLastError())
+                    .as("AC-25: 切り詰めても先頭の診断情報（例外クラス名）は残ること")
+                    .startsWith("com.example.BoomException: ");
         }
     }
 }

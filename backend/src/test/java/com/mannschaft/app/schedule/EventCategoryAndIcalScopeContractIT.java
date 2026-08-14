@@ -127,14 +127,12 @@ class EventCategoryAndIcalScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminTeamBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminTeamBId, "ADMIN", teamBId, null);
         MembershipTestHelper.insertMembership(em, memberTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberTeamAId, "MEMBER", teamAId, null);
 
         MembershipTestHelper.insertMembership(em, adminOrgAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminOrgAId, "ADMIN", null, orgAId);
         MembershipTestHelper.insertMembership(em, adminOrgBId, ScopeType.ORGANIZATION, orgBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminOrgBId, "ADMIN", null, orgBId);
         MembershipTestHelper.insertMembership(em, memberOrgAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberOrgAId, "MEMBER", null, orgAId);
         // outsiderId はどこにも所属させない。
 
         teamCategoryAId = categoryRepository.save(ScheduleEventCategoryEntity.builder()

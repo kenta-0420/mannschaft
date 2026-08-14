@@ -10,7 +10,6 @@ import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
-import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.ResultsVisibility;
 import com.mannschaft.app.survey.SurveyErrorCode;
 import com.mannschaft.app.survey.SurveyMapper;
@@ -73,6 +72,8 @@ public class SurveyService {
     private final NotificationHelper notificationHelper;
     private final ApplicationEventPublisher eventPublisher;
     private final OrganizationMembershipService organizationMembershipService;
+    /** 結果閲覧可否の唯一の判定点（結果取得 API の 403 と共用。Issue #2779）。 */
+    private final SurveyResultAccessGuard resultAccessGuard;
 
     /**
      * アンケート一覧をページング取得する。
@@ -164,10 +165,11 @@ public class SurveyService {
         // 軍議③ F00 漏洩根治: 本体詳細もスコープ所属者のみ。非所属は存在露見前に COMMON_002(403) で弾く
         // （findSurveyOrThrow の前に置くことで、他スコープの surveyId 有無を漏らさない）。
         // DRAFT はメンバーに従来どおり見せる（status ガードは足さない）。手本: CirculationService.getDocument。
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembershipOrDescendant(
-                SecurityUtils.getCurrentUserId(), scopeId, scopeType, true);
+                currentUserId, scopeId, scopeType, true);
         SurveyEntity entity = findSurveyOrThrow(scopeType, scopeId, surveyId);
-        return toDetailResponse(entity);
+        return toDetailResponse(entity, currentUserId);
     }
 
     /**
@@ -175,11 +177,19 @@ public class SurveyService {
      *
      * <p>作成/複製（作成者自身・SecurityContext 不在のバッチ materialize 含む）と、
      * ガード付き HTTP GET 経路（{@link #getSurveyDetail}）が共用する。認可は呼び出し側で行う。</p>
+     *
+     * <p>Issue #2779: {@code viewerCanViewResults} は結果取得 API が 403 を投げるのと
+     * 同じ判定点（{@link SurveyResultAccessGuard}）から得る。作成者本人は高速パスで
+     * 短絡されるため、作成/複製の経路では追加のクエリが発行されない。</p>
+     *
+     * @param entity 対象アンケート
+     * @param userId 閲覧者ユーザーID（{@code null} 可 = SecurityContext 不在）
      */
-    private SurveyDetailResponse toDetailResponse(SurveyEntity entity) {
+    private SurveyDetailResponse toDetailResponse(SurveyEntity entity, Long userId) {
         SurveyResponse surveyResponse = surveyMapper.toSurveyResponse(entity);
         List<QuestionResponse> questions = buildQuestionResponses(entity.getId());
-        return new SurveyDetailResponse(surveyResponse, questions);
+        boolean viewerCanViewResults = resultAccessGuard.canViewResults(entity, userId);
+        return SurveyDetailResponse.of(surveyResponse, questions, viewerCanViewResults);
     }
 
     /**
@@ -206,22 +216,14 @@ public class SurveyService {
 
         String remindJson = serializeRemindHours(request.getRemindBeforeHours());
 
-        // enum 文字列フィールドは save 前にまとめて検証する（不正値は 400・DB へ半端に書かない）。
-        // 同梱設問の questionType も含めて先に弾くことで、save 後に IllegalArgumentException で
-        // 500 に落ちる（=半端な survey が残る）退行を防ぐ。
-        ResultsVisibility resultsVisibility =
-                parseEnumOrThrow(ResultsVisibility.class, request.getResultsVisibility(), "resultsVisibility");
-        DistributionMode distributionMode =
-                parseEnumOrThrow(DistributionMode.class, request.getDistributionMode(), "distributionMode");
+        // enum 項目は DTO が enum 型で受けるため（#2617-1）、未知値は Jackson の束縛段階で
+        // 400 として弾かれ、ここに到達する時点で正当値であることが保証される。
+        // Service 側での再パースは不要（二重の正本を作らない）。
+        ResultsVisibility resultsVisibility = request.getResultsVisibility();
+        DistributionMode distributionMode = request.getDistributionMode();
         UnrespondedVisibility unrespondedVisibility = request.getUnrespondedVisibility() != null
-                ? parseEnumOrThrow(UnrespondedVisibility.class, request.getUnrespondedVisibility(),
-                        "unrespondedVisibility")
+                ? request.getUnrespondedVisibility()
                 : UnrespondedVisibility.CREATOR_AND_ADMIN;
-        if (request.getQuestions() != null) {
-            for (CreateQuestionRequest q : request.getQuestions()) {
-                parseEnumOrThrow(QuestionType.class, q.getQuestionType(), "questionType");
-            }
-        }
 
         SurveyEntity entity = SurveyEntity.builder()
                 .scopeType(scopeType)
@@ -270,7 +272,7 @@ public class SurveyService {
         eventPublisher.publishEvent(new SurveyCreatedEvent(saved.getId(), scopeType, scopeId, saved.getTitle()));
 
         // 作成直後の詳細は非ガードマッパで返す（作成者自身・SecurityContext 不在のバッチ経路でも安全）。
-        return toDetailResponse(saved);
+        return toDetailResponse(saved, userId);
     }
 
     /**
@@ -301,8 +303,7 @@ public class SurveyService {
                     request.getAllowMultipleSubmissions() != null
                             ? request.getAllowMultipleSubmissions() : entity.getAllowMultipleSubmissions(),
                     request.getResultsVisibility() != null
-                            ? parseEnumOrThrow(ResultsVisibility.class, request.getResultsVisibility(),
-                                    "resultsVisibility")
+                            ? request.getResultsVisibility()
                             : entity.getResultsVisibility(),
                     request.getAutoPostToTimeline() != null
                             ? request.getAutoPostToTimeline() : entity.getAutoPostToTimeline(),
@@ -311,9 +312,7 @@ public class SurveyService {
             );
         }
         if (request.getUnrespondedVisibility() != null) {
-            entity.updateUnrespondedVisibility(
-                    parseEnumOrThrow(UnrespondedVisibility.class, request.getUnrespondedVisibility(),
-                            "unrespondedVisibility"));
+            entity.updateUnrespondedVisibility(request.getUnrespondedVisibility());
         }
         if (request.getStartsAt() != null || request.getExpiresAt() != null) {
             validateTimeRange(
@@ -429,7 +428,7 @@ public class SurveyService {
 
         SurveyQuestionEntity question = SurveyQuestionEntity.builder()
                 .surveyId(surveyId)
-                .questionType(parseEnumOrThrow(QuestionType.class, request.getQuestionType(), "questionType"))
+                .questionType(request.getQuestionType())
                 .questionText(request.getQuestionText())
                 .isRequired(request.getIsRequired())
                 .displayOrder(request.getDisplayOrder() != null ? request.getDisplayOrder() : 0)
@@ -707,7 +706,7 @@ public class SurveyService {
 
         log.info("アンケート複製: source={}, new={}, by={}", surveyId, savedNew.getId(), currentUserId);
         // 複製直後の詳細も非ガードマッパで返す（getSurveyDetail のガードを経由しない）。
-        return toDetailResponse(savedNew);
+        return toDetailResponse(savedNew, currentUserId);
     }
 
     /**
@@ -792,7 +791,7 @@ public class SurveyService {
             CreateQuestionRequest qReq = questionRequests.get(i);
             SurveyQuestionEntity question = SurveyQuestionEntity.builder()
                     .surveyId(surveyId)
-                    .questionType(parseEnumOrThrow(QuestionType.class, qReq.getQuestionType(), "questionType"))
+                    .questionType(qReq.getQuestionType())
                     .questionText(qReq.getQuestionText())
                     .isRequired(qReq.getIsRequired())
                     .displayOrder(qReq.getDisplayOrder() != null ? qReq.getDisplayOrder() : i)

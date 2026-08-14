@@ -19,7 +19,6 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.repository.NotificationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -189,14 +188,14 @@ class DashboardServiceTest {
                 .willReturn(new PageImpl<>(List.of()));
         given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
     }
 
     private void stubScopeCoverage() {
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
     }
 
     // ========================================
@@ -269,7 +268,7 @@ class DashboardServiceTest {
                     .willReturn(new PageImpl<>(List.of()));
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
             given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
@@ -310,7 +309,7 @@ class DashboardServiceTest {
                     .willReturn(new PageImpl<>(List.of()));
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
             TodoEntity overdueTodo = TodoEntity.builder()
@@ -371,7 +370,7 @@ class DashboardServiceTest {
                     .willReturn(new PageImpl<>(List.of(notification)));
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
             given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
@@ -402,16 +401,11 @@ class DashboardServiceTest {
             given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
-            // 3チーム + 2組織に所属
-            UserRoleEntity teamRole1 = UserRoleEntity.builder().userId(USER_ID).teamId(10L).roleId(1L).build();
-            UserRoleEntity teamRole2 = UserRoleEntity.builder().userId(USER_ID).teamId(11L).roleId(1L).build();
-            UserRoleEntity teamRole3 = UserRoleEntity.builder().userId(USER_ID).teamId(12L).roleId(1L).build();
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole1, teamRole2, teamRole3));
-            UserRoleEntity orgRole1 = UserRoleEntity.builder().userId(USER_ID).organizationId(20L).roleId(1L).build();
-            UserRoleEntity orgRole2 = UserRoleEntity.builder().userId(USER_ID).organizationId(21L).roleId(1L).build();
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID))
-                    .willReturn(List.of(orgRole1, orgRole2));
+            // 3チーム + 2組織に所属（CMP-027: 在籍列挙は teamId/orgId を返す）
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(10L, 11L, 12L));
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+                    .willReturn(List.of(20L, 21L));
 
             // When
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "CRITICAL");

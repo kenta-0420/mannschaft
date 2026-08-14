@@ -1,20 +1,35 @@
-export type SurveyStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED'
+import type { components } from '~/types/generated'
+
+export type SurveyStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED'
 export type QuestionType = 'SINGLE_CHOICE' | 'MULTIPLE_CHOICE' | 'TEXT' | 'RATING' | 'DATE'
 /**
- * 結果公開設定。
+ * 結果公開設定（FE ドメイン名）。
  *
- * - `CREATOR_ONLY`: 作成者のみ閲覧可
- * - `RESPONDENTS`: 回答者のみ閲覧可
- * - `ALL_MEMBERS`: スコープ内の全メンバーが閲覧可
- * - `AFTER_CLOSE`: アンケートが締め切り（CLOSED）された後にスコープ内の全員が閲覧可
+ * - `CREATOR_ONLY`: 作成者・管理者のみ閲覧可
+ * - `RESPONDENTS`: 回答した人だけが閲覧可
+ * - `ALL_MEMBERS`: 締切前も含め、配信対象スコープの所属者が中間集計を閲覧可
+ * - `AFTER_CLOSE`: 締め切り（CLOSED）後にスコープ所属者が閲覧可
+ * - `VIEWERS_ONLY`: `survey_result_viewers` の名簿で指定された閲覧者のみ閲覧可
  *
- * NOTE: Backend `ResultsVisibility` enum は別の 4 値
- * (`AFTER_RESPONSE` / `AFTER_CLOSE` / `ADMINS_ONLY` / `VIEWERS_ONLY`) を持つ。
- * 名称統一は別軍議案件 (`project_visibility_enum_unification_pending`) で扱うため、
- * 本フロント側の型は設計書 §権限判定 (docs/features/F05.4_survey_vote.md L1377〜) の
- * 命名を踏襲しつつ、AFTER_CLOSE のみ Backend と共通の値として追加している。
+ * Backend `ResultsVisibility` enum とは **1:1 に対応する**（Issue #2617-1,2）。
+ * かつて FE 4 値 → BE 4 値の写像に 2 対 1 の畳み込み（`ALL_MEMBERS`/`CREATOR_ONLY` → `ADMINS_ONLY`、
+ * `VIEWERS_ONLY`/`ADMINS_ONLY` → `CREATOR_ONLY`）があり、読み込んで更新すると値が化ける
+ * 往復損失を起こしていた。BE に `ALWAYS` が実装された（Issue #2635）ため写像を全単射に直した。
+ *
+ * | FE             | BE               |
+ * |----------------|------------------|
+ * | `CREATOR_ONLY` | `ADMINS_ONLY`    |
+ * | `RESPONDENTS`  | `AFTER_RESPONSE` |
+ * | `ALL_MEMBERS`  | `ALWAYS`         |
+ * | `AFTER_CLOSE`  | `AFTER_CLOSE`    |
+ * | `VIEWERS_ONLY` | `VIEWERS_ONLY`   |
  */
-export type ResultsVisibility = 'CREATOR_ONLY' | 'RESPONDENTS' | 'ALL_MEMBERS' | 'AFTER_CLOSE'
+export type ResultsVisibility =
+  | 'CREATOR_ONLY'
+  | 'RESPONDENTS'
+  | 'ALL_MEMBERS'
+  | 'AFTER_CLOSE'
+  | 'VIEWERS_ONLY'
 export type UnrespondedVisibility = 'HIDDEN' | 'CREATOR_AND_ADMIN' | 'ALL_MEMBERS'
 /** 配信モード。BE `DistributionMode` enum と同値。 */
 export type DistributionMode = 'ALL' | 'TARGETED'
@@ -31,11 +46,12 @@ export interface SurveyContentDto {
 export interface SurveyPolicyDto {
   isAnonymous: boolean
   allowMultipleSubmissions: boolean
-  resultsVisibility: string
-  unrespondedVisibility: string
+  /** FE ドメイン値。BE 値は useSurveyApi の翻訳層で {@link ResultsVisibility} へ写してある。 */
+  resultsVisibility: ResultsVisibility
+  unrespondedVisibility: UnrespondedVisibility
 }
 export interface SurveyDistributionDto {
-  distributionMode: string | null
+  distributionMode: DistributionMode | null
   autoPostToTimeline: boolean | null
   seriesId: string | null
   remindBeforeHours: string | null
@@ -90,6 +106,16 @@ export interface SurveyDetailResponse {
   data: SurveyResponse & {
     questions: SurveyQuestion[]
     hasResponded?: boolean
+    /**
+     * この閲覧者がアンケート結果を閲覧できるか（Issue #2779）。
+     *
+     * Backend の結果取得 API が 403 を投げるのと同じ判定点から得ているため、
+     * `true` なら結果取得は必ず 200、`false` なら必ず 403 になる。
+     * これが入るまで詳細画面は結果取得を 1 回余分に叩いて 403 で判定していた。
+     *
+     * optionality は生成型（`app/types/generated/index.ts`）に合わせて任意にしてある。
+     */
+    viewerCanViewResults?: boolean
   }
 }
 
@@ -235,19 +261,46 @@ export interface SurveyQuestionWire {
 }
 
 /**
+ * BE `ResultsVisibility` enum の値。生成型（`docs/openapi.json` 由来）が正準。
+ * FE 側の {@link ResultsVisibility} とは名前が異なるだけで 1:1 に対応する。
+ */
+export type BeResultsVisibility = NonNullable<
+  components['schemas']['SurveyPolicyDto']['resultsVisibility']
+>
+
+/**
  * BE survey の生形。
- * policy.resultsVisibility のみ BE enum 値（AFTER_RESPONSE 等）で来るため、
- * {@link SurveyResponse} の policy を string で受けられるよう緩める。
+ * policy.resultsVisibility だけが BE enum 値（`AFTER_RESPONSE` 等）で来るため、
+ * その 1 キーを {@link BeResultsVisibility} に差し替えて受ける。
  */
 export type SurveyResponseWire = Omit<SurveyResponse, 'policy'> & {
-  policy: Omit<SurveyPolicyDto, 'resultsVisibility'> & { resultsVisibility: string }
+  policy: Omit<SurveyPolicyDto, 'resultsVisibility'> & {
+    resultsVisibility: BeResultsVisibility
+  }
 }
 
-/** BE 詳細レスポンス全体（survey と questions が data 配下で分離）。 */
+/**
+ * BE 詳細レスポンス全体。
+ *
+ * Issue #2635 で `SurveyDetailResponse` がフラット化され、`data.survey` の入れ子が消えて
+ * `SurveyResponse` の 9 フィールドが `data` 直下に並び `questions` が加わった。
+ * 対象は作成 POST・詳細 GET・複製 POST の 3 経路（一覧・更新・公開・締切・延長は
+ * 従来どおりフラットな `SurveyResponse`）。
+ */
 export interface SurveyDetailWire {
-  data: {
-    survey: SurveyResponseWire
+  data: SurveyResponseWire & {
     questions: SurveyQuestionWire[]
+    /**
+     * この閲覧者が結果を閲覧できるか（Issue #2779）。
+     *
+     * FE 側の型（{@link SurveyDetailResponse}）では生成型に合わせて任意にしてあるが、
+     * **wire 形（＝ BE が実際に返す形）では必須**にしている。BE は必ず設定する契約であり、
+     * E2E のモックがこの項目を落とすと「BE が返さない応答」という**本番で起こりえない状態**を
+     * 作ってしまうためである（フィクスチャが実在しない状態を模すと、死んだ判定が永久に緑になる）。
+     *
+     * 画面側はこの値が欠けた応答を fail-closed（不可視）として扱う。
+     */
+    viewerCanViewResults: boolean
   }
 }
 

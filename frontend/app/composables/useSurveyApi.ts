@@ -6,9 +6,11 @@ import type {
   RemindRespondentsResponse,
   QuestionType,
   ResultsVisibility,
+  BeResultsVisibility,
   SurveyQuestion,
   BeQuestionType,
   SurveyQuestionWire,
+  SurveyResponseWire,
   SurveyDetailWire,
   SurveyResponseRowWire,
   MyResponseWire,
@@ -45,16 +47,40 @@ function mapQuestionTypeToFe(be: BeQuestionType): QuestionType {
 }
 
 /**
- * FE QuestionType → BE 値（TEXT→FREE_TEXT / RATING→SCALE、他は恒等）。
- * 'DATE' は BE に対応値が無いが将来用にそのまま返す。
- * テスト用ビルダ（_helpers.ts）で FE 値を wire 形へ寄せるために export する。
+ * BE の QuestionType enum に対応値がある設問種別か。
+ *
+ * 'DATE' だけが対応値を持たない。SurveyQuestionEditor は 'DATE' を選択肢から外しているが、
+ * **選択肢から外れる前に localStorage へ保存された下書き**を復元すると 'DATE' が復活しうる。
+ * その経路を呼び出し側（SurveyCreateDialog の validate）で弾くための述語。
  */
-export function mapQuestionTypeToBe(fe: QuestionType): string {
+export function isQuestionTypeSupportedByBackend(fe: QuestionType): boolean {
+  return fe !== 'DATE'
+}
+
+/**
+ * FE QuestionType → BE 値（TEXT→FREE_TEXT / RATING→SCALE、他は恒等）。
+ * テスト用ビルダ（_helpers.ts）で FE 値を wire 形へ寄せるために export する。
+ *
+ * 'DATE' は BE に対応値が無いため **黙って別の種別へ寄せず、例外を投げる**。
+ *
+ * かつて 'DATE' を 'FREE_TEXT' に寄せていたが、これは対処療法だった。旧下書きを復元すると
+ * 日付設問が「自由記述」として**正常に保存されてしまい**、ユーザーは種別が書き換わったことに
+ * 気づけない（それ以前は BE が 400 で弾いたので「保存できなかった」と分かった）。
+ * 黙って別物にするより、できないと正直に伝えるほうがよい。
+ * 通常は {@link isQuestionTypeSupportedByBackend} で事前に弾かれるため、この例外は
+ * 「検証を通さずに送信経路へ入った」ことを示す最後の番人である。
+ */
+export function mapQuestionTypeToBe(fe: QuestionType): BeQuestionType {
   switch (fe) {
     case 'TEXT':
       return 'FREE_TEXT'
     case 'RATING':
       return 'SCALE'
+    case 'DATE':
+      throw new Error(
+        'QuestionType "DATE" は Backend の QuestionType enum に対応値が無いため送信できない。' +
+          ' 送信前に isQuestionTypeSupportedByBackend で弾くこと。',
+      )
     default:
       return fe
   }
@@ -62,45 +88,50 @@ export function mapQuestionTypeToBe(fe: QuestionType): string {
 
 /**
  * FE ResultsVisibility → BE `ResultsVisibility` enum 値。
- * {@link mapResultsVisibilityToFe} の逆写像。
+ * {@link mapResultsVisibilityToFe} の逆写像で、**全単射**（1:1）である。
  *
- * BE の enum は `AFTER_RESPONSE / AFTER_CLOSE / ADMINS_ONLY / VIEWERS_ONLY` の 4 値しか無く、
- * FE の `ALL_MEMBERS`（締切前から全員閲覧可）に対応する値は存在しない。そのため作成ダイアログの
- * 選択肢からは `ALL_MEMBERS` を外し、BE が表現できる `AFTER_CLOSE` を提示している。
- * ここで `ALL_MEMBERS` を受けるのは localStorage に残った旧下書きの復元経路のみで、
- * その場合は「未知値は最も閉じた値に倒す」既存方針（mapResultsVisibilityToFe 参照）に従い
- * `ADMINS_ONLY` にフォールバックする（意図より広く公開して漏洩を作らないため）。
+ * Issue #2635 で BE に `ALWAYS`（PUBLISHED 以降、締切前も含めて配信対象スコープの所属者が
+ * 中間集計を閲覧できる）が実装されたため、FE の `ALL_MEMBERS` を `ADMINS_ONLY` へ潰していた
+ * 旧写像を `ALWAYS` へ改めた。あわせて `VIEWERS_ONLY` も自分自身へ写す。
+ *
+ * これで「読み込む→更新する」の往復で値が化けなくなった（Issue #2617-2）。
+ * 旧実装では `VIEWERS_ONLY` を読むと `CREATOR_ONLY` になり、そのまま更新すると
+ * `ADMINS_ONLY` として保存され、名簿指定の公開範囲が黙って失われていた。
  */
-export function mapResultsVisibilityToBe(fe: ResultsVisibility): string {
+export function mapResultsVisibilityToBe(fe: ResultsVisibility): BeResultsVisibility {
   switch (fe) {
     case 'RESPONDENTS':
       return 'AFTER_RESPONSE'
     case 'AFTER_CLOSE':
       return 'AFTER_CLOSE'
-    case 'CREATOR_ONLY':
     case 'ALL_MEMBERS':
+      return 'ALWAYS'
+    case 'VIEWERS_ONLY':
+      return 'VIEWERS_ONLY'
+    case 'CREATOR_ONLY':
       return 'ADMINS_ONLY'
   }
 }
 
 /**
- * BE resultsVisibility → FE ResultsVisibility。
- * AFTER_RESPONSE→RESPONDENTS / AFTER_CLOSE→AFTER_CLOSE /
- * ADMINS_ONLY・VIEWERS_ONLY→CREATOR_ONLY。既に FE 値ならそのまま返す（防御）。
+ * BE resultsVisibility → FE ResultsVisibility。{@link mapResultsVisibilityToBe} の逆写像。
+ *
+ * BE 5 値と FE 5 値が 1:1 に対応するため畳み込みは無い。
+ * 型に無い値（BE に新しい enum が増えたが FE が追随していない場合）だけは、
+ * 意図より広く公開して漏洩を作らないよう最も閉じた `CREATOR_ONLY` に倒す。
  */
-function mapResultsVisibilityToFe(be: string): ResultsVisibility {
+function mapResultsVisibilityToFe(be: BeResultsVisibility): ResultsVisibility {
   switch (be) {
     case 'AFTER_RESPONSE':
       return 'RESPONDENTS'
     case 'AFTER_CLOSE':
       return 'AFTER_CLOSE'
-    case 'ADMINS_ONLY':
+    case 'ALWAYS':
+      return 'ALL_MEMBERS'
     case 'VIEWERS_ONLY':
+      return 'VIEWERS_ONLY'
+    case 'ADMINS_ONLY':
       return 'CREATOR_ONLY'
-    case 'CREATOR_ONLY':
-    case 'RESPONDENTS':
-    case 'ALL_MEMBERS':
-      return be
     default:
       // 未知値は最も閉じた CREATOR_ONLY に倒す（漏洩を作らない）
       return 'CREATOR_ONLY'
@@ -152,9 +183,9 @@ export function toWireCreateBody(body: CreateSurveyRequest): WireCreateSurvey {
     ...(body.teamBreakdownEnabled !== undefined
       ? { teamBreakdownEnabled: body.teamBreakdownEnabled }
       : {}),
-    ...(body.resultsVisibility
-      ? { resultsVisibility: mapResultsVisibilityToBe(body.resultsVisibility) }
-      : {}),
+    // BE 必須（openapi の required）。未指定は最も閉じた CREATOR_ONLY 相当に倒す
+    // （既定で広く公開して漏洩を作らない）。
+    resultsVisibility: mapResultsVisibilityToBe(body.resultsVisibility ?? 'CREATOR_ONLY'),
     ...(body.unrespondedVisibility ? { unrespondedVisibility: body.unrespondedVisibility } : {}),
     // BE は @NotBlank。対象者を絞り込む UI がまだ無いため常に全員配信。
     distributionMode: body.distributionMode ?? 'ALL',
@@ -207,19 +238,46 @@ function adaptQuestion(w: SurveyQuestionWire): SurveyQuestion {
   }
 }
 
-/** BE 詳細（survey/questions 分離）→ FE 詳細（フラット展開 + hasResponded 付与）。 */
+/**
+ * BE survey（フラット）→ FE survey。policy.resultsVisibility のみ FE 値へ写す。
+ *
+ * 一覧・詳細・作成・更新のすべてがこの 1 箇所を通るようにしてある。
+ * 経路ごとに翻訳するかしないかが割れると、画面によって `AFTER_RESPONSE` の生値が
+ * 素通しされ、FE 値で分岐している判定（pages/surveys/[surveyId].vue の canViewResults 等）が
+ * 黙って default に落ちる。
+ */
+function adaptSurvey(wire: SurveyResponseWire): SurveyResponse {
+  return {
+    ...wire,
+    policy: {
+      ...wire.policy,
+      resultsVisibility: mapResultsVisibilityToFe(wire.policy.resultsVisibility),
+    },
+  }
+}
+
+/**
+ * BE 詳細 → FE 詳細（hasResponded 付与）。
+ *
+ * Issue #2635 で BE の `SurveyDetailResponse` がフラット化され、`data.survey` の入れ子が
+ * 消えた。旧実装は `wire.survey.policy` を読んでいたため、TypeError で詳細画面が落ちていた。
+ *
+ * Issue #2779: `viewerCanViewResults` は**明示的に写す**。`adaptSurvey` の戻り値型
+ * （{@link SurveyResponse}）はこの項目を持たないため、スプレッド任せにすると
+ * 「型には現れないが実行時には残っている」undeclared passthrough になる。
+ * 画面の可視性判定が依存する値をその状態に置くと、将来 `adaptSurvey` が
+ * フィールドを組み立て直した瞬間に**黙って落ちて全員不可視**になる。
+ */
 function adaptDetail(
   wire: SurveyDetailWire['data'],
   hasResponded: boolean,
 ): SurveyDetailResponse['data'] {
+  const { questions, viewerCanViewResults, ...survey } = wire
   return {
-    ...wire.survey,
-    policy: {
-      ...wire.survey.policy,
-      resultsVisibility: mapResultsVisibilityToFe(wire.survey.policy.resultsVisibility),
-    },
-    questions: wire.questions.map(adaptQuestion),
+    ...adaptSurvey(survey),
+    questions: (questions ?? []).map(adaptQuestion),
     hasResponded,
+    viewerCanViewResults,
   }
 }
 
@@ -334,10 +392,12 @@ export function useSurveyApi() {
   ) {
     const resolvedParams = typeof params === 'string' ? { status: params } : params || {}
     const qs = buildQuery(resolvedParams)
-    return api<{
-      data: SurveyResponse[]
+    // 一覧は従来どおりフラットな SurveyResponse の配列。enum だけ FE 値へ写す。
+    const raw = await api<{
+      data: SurveyResponseWire[]
       meta: { page: number; size: number; totalElements: number; totalPages: number }
     }>(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys?${qs}`)
+    return { ...raw, data: (raw.data ?? []).map(adaptSurvey) }
   }
 
   async function getSurveyStats(scopeType: string, scopeId: string) {
@@ -349,7 +409,7 @@ export function useSurveyApi() {
     scopeId: string,
     surveyId: number,
   ): Promise<SurveyDetailResponse> {
-    // 実 BE は survey/questions を分離した入れ子・enum 生値で返すため wire 型で受ける。
+    // 実 BE はフラットな詳細形・enum 生値で返すため wire 型で受ける。
     const raw = await api<SurveyDetailWire>(
       `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}`,
     )
@@ -371,12 +431,20 @@ export function useSurveyApi() {
    * FE ドメイン形（{@link CreateSurveyRequest}）を受け取り、{@link toWireCreateBody} で
    * BE の `CreateSurveyRequest` 形へ翻訳してから送信する。呼び出し側は BE の enum 値や
    * フィールド名（displayOrder / FREE_TEXT 等）を意識しなくてよい。
+   *
+   * 作成 POST のレスポンスは詳細 GET と同じフラットな `SurveyDetailResponse`（Issue #2635）。
+   * 作成直後に回答は存在しないため hasResponded は false。
    */
-  async function createSurvey(scopeType: string, scopeId: string, body: CreateSurveyRequest) {
-    return api<{ data: SurveyResponse }>(`/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys`, {
-      method: 'POST',
-      body: toWireCreateBody(body),
-    })
+  async function createSurvey(
+    scopeType: string,
+    scopeId: string,
+    body: CreateSurveyRequest,
+  ): Promise<SurveyDetailResponse> {
+    const raw = await api<SurveyDetailWire>(
+      `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys`,
+      { method: 'POST', body: toWireCreateBody(body) },
+    )
+    return { data: adaptDetail(raw.data, false) }
   }
 
   /**
@@ -389,11 +457,13 @@ export function useSurveyApi() {
     scopeId: string,
     surveyId: number,
     body: UpdateSurveyRequest,
-  ) {
-    return api<{ data: SurveyResponse }>(
+  ): Promise<{ data: SurveyResponse }> {
+    // 更新はフラットな SurveyResponse を返す（詳細のようなフラット化の影響は受けない）。
+    const raw = await api<{ data: SurveyResponseWire }>(
       `/api/v1/${toPathSegment(scopeType)}/${scopeId}/surveys/${surveyId}`,
       { method: 'PATCH', body: toWireUpdateBody(body) },
     )
+    return { data: adaptSurvey(raw.data) }
   }
 
   async function deleteSurvey(scopeType: string, scopeId: string, surveyId: number) {

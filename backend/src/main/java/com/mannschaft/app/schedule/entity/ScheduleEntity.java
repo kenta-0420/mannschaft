@@ -181,6 +181,16 @@ public class ScheduleEntity extends BaseEntity {
 
     private Long createdBy;
 
+    /**
+     * F03.16 予定コメントスレッドの開閉フラグ。
+     * FALSE = 新規投稿・返信・編集を拒否（既存コメントの閲覧は可）。既定 TRUE（開いている）。
+     * DDL 側の NOT NULL DEFAULT TRUE と対で追加（片方だけ足すと ddl-auto 検証で齟齬が出る）。
+     * @Builder.Default 必須（NULL 挿入バグ回避）。
+     */
+    @Column(name = "comments_enabled", nullable = false)
+    @Builder.Default
+    private Boolean commentsEnabled = true;
+
     private LocalDateTime deletedAt;
 
     /**
@@ -188,6 +198,13 @@ public class ScheduleEntity extends BaseEntity {
      */
     public void setExternalRef(String externalRef) {
         this.externalRef = externalRef;
+    }
+
+    /**
+     * F03.16 予定コメントスレッドの開閉フラグを更新する（{@code PATCH .../comments/settings}）。
+     */
+    public void setCommentsEnabled(Boolean commentsEnabled) {
+        this.commentsEnabled = commentsEnabled;
     }
 
     /**

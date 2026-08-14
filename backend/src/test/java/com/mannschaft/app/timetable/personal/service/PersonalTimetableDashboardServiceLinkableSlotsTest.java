@@ -129,7 +129,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
                 .willReturn(List.of(slot1, slot2));
         given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(1L))
                 .willReturn(List.of(period(1, "1限")));
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
         List<TimetableWeekSlotInfo> result = service.listAllWeekSlots(USER_ID, TODAY);
 
@@ -156,7 +156,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
                 .willReturn(List.of(emptySlot, nullSlot, validSlot));
         given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(1L))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
         List<TimetableWeekSlotInfo> result = service.listAllWeekSlots(USER_ID, TODAY);
 
@@ -180,7 +180,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
                 .willReturn(List.of(slot1, slot2));
         given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(1L))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
         List<TimetableWeekSlotInfo> result = service.listAllWeekSlots(USER_ID, TODAY);
 
@@ -196,7 +196,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
         given(personalTimetableRepository.findByUserIdAndStatusAndDeletedAtIsNull(
                 eq(USER_ID), eq(PersonalTimetableStatus.ACTIVE)))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
         List<TimetableWeekSlotInfo> result = service.listAllWeekSlots(USER_ID, TODAY);
 
@@ -221,7 +221,7 @@ class PersonalTimetableDashboardServiceLinkableSlotsTest {
         given(personalTimetableRepository.findByUserIdAndStatusAndDeletedAtIsNull(
                 eq(USER_ID), eq(PersonalTimetableStatus.ACTIVE)))
                 .willReturn(List.of(expired));
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
         List<TimetableWeekSlotInfo> result = service.listAllWeekSlots(USER_ID, TODAY);
 

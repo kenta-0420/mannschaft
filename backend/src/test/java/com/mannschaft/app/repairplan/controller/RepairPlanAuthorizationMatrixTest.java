@@ -122,7 +122,6 @@ class RepairPlanAuthorizationMatrixTest extends AbstractRepairPlanPhase5Integrat
 
         // MEMBER ユーザー設定
         MembershipTestHelper.insertMembership(em, memberUserId, ScopeType.ORGANIZATION, ORG_ID, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberUserId, "MEMBER", null, ORG_ID);
 
         insertOrganization(ORG_ID, "認可マトリクステスト組合");
 

@@ -1,5 +1,5 @@
 import { test, expect, type Route } from '@playwright/test'
-import type { CreateSurveyRequest, SurveyResponse } from '../../../app/types/survey'
+import type { CreateSurveyRequest, SurveyResponseWire } from '../../../app/types/survey'
 import {
   type BuildSurveyOptions,
   buildQuestion,
@@ -41,7 +41,7 @@ const PUBLISHED_SURVEY_ID = 2001
 // ---------------------------------------------------------------------------
 
 /** 「テストアンケート」作成リクエストを受けたときに返す survey */
-function buildCreatedSurvey(): SurveyResponse {
+function buildCreatedSurvey(): SurveyResponseWire {
   return buildSurvey({
     id: NEW_SURVEY_ID,
     title: 'テストアンケート',
@@ -75,7 +75,7 @@ const PUBLISHED_OPTION_BLUE_ID = 9002
  * ALL_MEMBERS にすると displayMode が常に 'results' となり、回答送信フロー
  * （未回答→response→送信→results）の検証ができなくなる。</p>
  */
-function buildPublishedSurvey(overrides: BuildSurveyOptions = {}): SurveyResponse {
+function buildPublishedSurvey(overrides: BuildSurveyOptions = {}): SurveyResponseWire {
   return buildSurvey({
     id: PUBLISHED_SURVEY_ID,
     title: '春の好みアンケート',
@@ -181,7 +181,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
 
     // 動的に切り替わる一覧データ。作成完了後に refresh() で再取得されたとき
     // 1件返したいので、配列を let で持つ。
-    let currentSurveys: SurveyResponse[] = []
+    let currentSurveys: SurveyResponseWire[] = []
     const created = buildCreatedSurvey()
 
     // _helpers.mockSurveyApi の onCreate を使うと作成 POST に 201 を返してくれる。
@@ -190,7 +190,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
       surveys: [], // ※ 後で page.route を上書きするので初期値のみ意味あり
       detailById: {},
       resultsById: {},
-      onCreate: (body): SurveyResponse => {
+      onCreate: (body): SurveyResponseWire => {
         // body には CreateSurveyRequest 相当が入る
         const req = body as CreateSurveyRequest
         const merged = buildCreatedSurvey()
@@ -303,6 +303,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
     let currentDetail = buildSurveyDetail(
       buildPublishedSurvey({ hasResponded: false }),
       [question],
+      true,
     )
     const results = buildPublishedResults()
 
@@ -389,6 +390,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
           responseCount: 1,
         }),
         [question],
+        true,
       )
       responded = true
       await route.fulfill({

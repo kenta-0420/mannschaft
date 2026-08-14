@@ -350,6 +350,39 @@ public class OrganizationMembershipService {
     }
 
     /**
+     * 複数組織について「指定ユーザーがトグル準拠の<b>配信母集団</b>に含まれる組織」を
+     * <b>1 クエリ</b>で解決する（Issue #2782・{@link #isInOrgDistributionAudience} のバルク版）。
+     *
+     * <p>{@link #isInOrgDistributionAudience(Long, Long, boolean)} を組織ごとに呼ぶと
+     * <b>組織の種類数に比例</b>して再帰 EXISTS が発行され、F00 可視性基盤の
+     * 「追加軸はバッチ 1 本で先読みする」契約と SQL 本数上限（7 本）を破る。本メソッドは
+     * 再帰 CTE に根 ID を伝播させる先例（{@code findDescendantMembershipRolesByOrgRoots}）と
+     * 同じ作法で、複数根を 1 本にまとめる。</p>
+     *
+     * <p><b>母集団の意味論は単発版と 1 対 1 同一</b>である（純 SUPPORTER 除外は MEMBER 優先・
+     * 除外の走査範囲は各根の部分木に閉じる）。同値であることは実 DB のテストで単発版と
+     * 突き合わせて実証している（{@code SurveyVisibilityResolverAlwaysAudienceBatchIT} の AC-3）。</p>
+     *
+     * <p><b>トグルは呼び出し側で束ねること</b>: {@code includeSupporters} が異なると母集団の定義が
+     * 変わるため、1 回の呼び出しで混在させられない。トグルは 2 値なので、呼び出し側が
+     * {@code (組織, トグル)} をトグルでグループ化すれば発行 SQL は最大 2 本に収まる。</p>
+     *
+     * @param orgIds            母集団の根となる組織 ID 集合（空なら SQL を発行せず空集合を返す）
+     * @param userId            判定対象ユーザー ID（null なら空集合）
+     * @param includeSupporters コンテンツの配信トグル（true=配下 SUPPORTER 含む / false=純 SUPPORTER 除外）
+     * @return 指定ユーザーが配信母集団に含まれる組織 ID の集合（{@code orgIds} の部分集合）
+     */
+    public java.util.Set<Long> resolveOrgDistributionAudienceRoots(
+            java.util.Set<Long> orgIds, Long userId, boolean includeSupporters) {
+        if (userId == null || orgIds == null || orgIds.isEmpty()) {
+            // 空 IN () を避け、対象が無いリクエストでは SQL を一切発行しない。
+            return java.util.Set.of();
+        }
+        return java.util.Set.copyOf(userRoleRepository.findOrgDistributionAudienceRoots(
+                orgIds, userId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH));
+    }
+
+    /**
      * 組織配信母集団を「ユーザーID → 所属配下チーム（複数）」の対応で返す
      * （出欠のチーム別内訳 by_team・組織→参加チーム配信 案C フェーズB 公開ラッパー）。
      *

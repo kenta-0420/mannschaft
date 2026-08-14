@@ -152,10 +152,7 @@ class ScheduleAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
         for (Long userId : List.of(memberId, delegateId, adminId)) {
             MembershipTestHelper.insertMembership(em, userId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
             MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
-            MembershipTestHelper.insertUserRole(em, userId, "MEMBER", null, orgId);
         }
-        MembershipTestHelper.insertUserRole(em, memberId, "MEMBER", teamId, null);
-        MembershipTestHelper.insertUserRole(em, delegateId, "MEMBER", teamId, null);
         MembershipTestHelper.insertUserRole(em, adminId, "ADMIN", teamId, null);
         // outsiderId はどこにも所属させない。
         em.flush();

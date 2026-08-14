@@ -222,11 +222,8 @@ public class PersonalTimetableDashboardService {
      * 所属チーム ID 一覧を取得する（teamId が NULL でないもの）。
      */
     private List<Long> listJoinedTeamIds(Long userId) {
-        return userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId).stream()
-                .map(ur -> ur.getTeamId())
-                .filter(java.util.Objects::nonNull)
-                .distinct()
-                .toList();
+        // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
+        return userRoleRepository.findTeamIdsByUserId(userId);
     }
 
     private DashboardTimetableTodayResponse.TimetableTodayItem buildPersonalItem(

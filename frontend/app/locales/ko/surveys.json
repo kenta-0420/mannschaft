@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "초안",
       "PUBLISHED": "응답 중",
-      "CLOSED": "마감"
+      "CLOSED": "마감",
+      "ARCHIVED": "보관됨"
     },
     "questionType": {
       "SINGLE_CHOICE": "단일 선택",
@@ -66,7 +67,8 @@
         "questionsRequired": "문항을 1개 이상 추가하세요",
         "questionTextRequired": "문항{index}의 내용을 입력하세요",
         "optionsTooFew": "문항{index}의 선택지는 2개 이상 필요합니다",
-        "optionEmpty": "문항{index}에 빈 선택지가 있습니다"
+        "optionEmpty": "문항{index}에 빈 선택지가 있습니다",
+        "questionTypeUnsupported": "질문 {index}: 날짜 설문은 현재 지원되지 않습니다. 종류를 다시 선택해 주세요."
       },
       "questionEditor": {
         "empty": "문항이 없습니다",
@@ -180,6 +182,18 @@
       "optionCount": "{count}건 ({percentage}%)",
       "noOptionData": "데이터가 없습니다.",
       "noQuestionData": "집계할 문항이 없습니다."
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "응답자가 적어 집계 결과를 숨기고 있습니다",
+        "description": "익명 설문에서는 응답 직후 집계 변화로 개인의 응답이 추측될 수 있습니다. 응답자가 {threshold}명 이상이 되면 집계 결과를 표시합니다. (현재 {count}명)"
+      },
+      "respondCta": "이 설문에 응답하기",
+      "editResponseCta": "응답 수정하기",
+      "forbidden": {
+        "title": "이 설문의 결과를 볼 권한이 없습니다",
+        "description": "이 설문은 배포 대상이 한정되어 있으며 회원님은 대상에 포함되어 있지 않습니다. 문의사항이 있으면 작성자에게 연락해 주세요."
+      }
     }
   }
 }

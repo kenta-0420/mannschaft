@@ -999,6 +999,74 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: NOTIFICATION_006/007（既読/未読の二重操作）は"
+                + "個別マッピングで 409 Conflict になる（従来は Severity.INFO で 200 が返っていた）")
+        void resolveHttpStatus_NOTIFICATION_006_007_409() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.notification.NotificationErrorCode.ALREADY_READ))
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.notification.NotificationErrorCode.ALREADY_UNREAD))
+                    .isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: AUTH_016（2FA設定不在での状態遷移違反）は"
+                + "個別マッピングで 409 Conflict になる（従来は Severity.ERROR で 500 が返っていた）")
+        void resolveHttpStatus_AUTH_016_409() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.auth.AuthErrorCode.AUTH_016);
+
+            assertThat(result).isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: CONFIRMABLE_NOTIFICATION_SEND_FAILED は"
+                + "Severity 是正（ERROR→WARN）により 400 BadRequest になる（従来は 500 が返っていた）")
+        void resolveHttpStatus_CONFIRMABLE_NOTIFICATION_SEND_FAILED_400() {
+            var errorCode = com.mannschaft.app.notification.confirmable.error
+                    .ConfirmableNotificationErrorCode.SEND_FAILED;
+
+            assertThat(errorCode.getSeverity()).isEqualTo(ErrorCode.Severity.WARN);
+            assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: CORKBOARD_004/005（ボード/カード数上限超過）は"
+                + "個別マッピングで 409 Conflict になる（兄弟 CORKBOARD_013 と同じ流儀に揃える）")
+        void resolveHttpStatus_CORKBOARD_004_005_409() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.corkboard.CorkboardErrorCode.BOARD_LIMIT_EXCEEDED))
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.corkboard.CorkboardErrorCode.CARD_LIMIT_EXCEEDED))
+                    .isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: RECEIPT_004（キューアイテム不在）は"
+                + "個別マッピングで 404 NotFound になる")
+        void resolveHttpStatus_RECEIPT_004_404() {
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.receipt.ReceiptErrorCode.QUEUE_ITEM_NOT_FOUND);
+
+            assertThat(result).isEqualTo(HttpStatus.NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("ErrorCode写像是正 最終ロット: STORAGE_003（外部ストレージ削除失敗）は"
+                + "Severity 是正（WARN→ERROR）により 500 InternalServerError になる"
+                + "（兄弟 STORAGE_001/002/004 と同じ外部障害の流儀に揃える）")
+        void resolveHttpStatus_STORAGE_003_500() {
+            var errorCode = com.mannschaft.app.common.storage.StorageErrorCode.DELETE_FAILED;
+
+            assertThat(errorCode.getSeverity()).isEqualTo(ErrorCode.Severity.ERROR);
+            assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                    .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+        @Test
         @DisplayName("F03.4 バグ#5: 臨時休業の日付・時刻範囲不正も入力不正なので 400 BadRequest になる")
         void resolveHttpStatus_INVALID_CLOSURE_RANGES_400() {
             assertThat(globalExceptionHandler.resolveHttpStatus(
@@ -1268,7 +1336,16 @@ class GlobalExceptionHandlerTest {
                 com.mannschaft.app.safetycheck.SafetyCheckErrorCode.INVALID_RESPONSE_STATUS,
                 com.mannschaft.app.safetycheck.SafetyCheckErrorCode.INVALID_SCOPE_TYPE,
                 com.mannschaft.app.safetycheck.SafetyCheckErrorCode.BULK_RESPOND_LIMIT_EXCEEDED,
-                com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.CATEGORY_SCOPE_MISMATCH,
+                // ScheduleEventCategoryErrorCode.CATEGORY_SCOPE_MISMATCH（EVTCAT_010）はここに
+                // 含めない（400を要求しない）。Codexによる独立検分で指摘・殿が実コードで裏取りして
+                // 確定した理由: throw元 ScheduleEventCategoryService#validateCategoryScope
+                // （ScheduleEventCategoryService.java:296-301）は「実在するが他チーム/他組織の
+                // categoryId」に対して投げられる。兄弟の CATEGORY_NOT_FOUND（EVTCAT_001、
+                // getById＝ScheduleEventCategoryService.java:139-143）は不在のcategoryIdに対し
+                // 404を返すため、CATEGORY_SCOPE_MISMATCHを400のままにすると「404=不在／400=実在す
+                // るがスコープ外」という応答差から実在IDを連番探索で列挙できる存在オラクルになる。
+                // docs/security/README.md の越境404方針（越境はNOT_FOUNDに畳み不在と区別不能にする）
+                // に従い、GlobalExceptionHandler側でEVTCAT_001と同一の404へ畳んでいる。
                 com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.ANNUAL_COPY_SAME_YEAR,
                 com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode.ACADEMIC_YEAR_DATE_MISMATCH,
                 com.mannschaft.app.shift.ShiftErrorCode.INVALID_DATE_RANGE,

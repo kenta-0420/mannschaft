@@ -66,9 +66,11 @@ public class OrgFanoutRecipientSource implements FanoutRecipientSource {
         long organizationId = Long.parseLong(scopeRef);
         // 直属 ∪ 配下 ACTIVE チームの現役メンバーを user_id 昇順・キーセットで 1 チャンク供給する。
         // 母集団条件（ACTIVE・未削除・応援者トグル・配下チーム展開）は repo クエリに閉じ込める。
+        // chunk は UNION 各枝の打ち切り件数。外側のページサイズと同じ値を渡す
+        // （各枝から chunk 件ずつ取れば和集合の先頭 chunk 件は必ずその中に含まれる）。
         return userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
                 organizationId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH, cursorSubjectId,
-                PageRequest.of(0, limit));
+                limit, PageRequest.of(0, limit));
     }
 
     /**
@@ -89,7 +91,7 @@ public class OrgFanoutRecipientSource implements FanoutRecipientSource {
         long organizationId = Long.parseLong(scopeRef);
         return userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
                 organizationId, includeSupporters, MAX_ORG_DESCENDANT_DEPTH, cursorSubjectId,
-                shardIndex, shardCount, PageRequest.of(0, limit));
+                limit, shardIndex, shardCount, PageRequest.of(0, limit));
     }
 
     /**

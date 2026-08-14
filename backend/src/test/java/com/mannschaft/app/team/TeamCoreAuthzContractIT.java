@@ -108,7 +108,6 @@ class TeamCoreAuthzContractIT extends AbstractMySqlIntegrationTest {
 
         // memberA はチームAの一般メンバー（ADMIN 権限なし）。
         // transfer-ownership の正当系で「譲渡先がスコープに所属している」条件も満たす。
-        MembershipTestHelper.insertUserRole(em, memberAId, "MEMBER", teamAId, null);
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
 
         // 可視性ラダーの正常系（非 PUBLIC でもメンバーなら 200）を固定するため
