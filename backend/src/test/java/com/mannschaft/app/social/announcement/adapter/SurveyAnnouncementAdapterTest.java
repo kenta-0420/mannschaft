@@ -348,6 +348,6 @@ class SurveyAnnouncementAdapterTest {
                 .stats(new SurveyResponse.SurveyStatsDto(0, 0))
                 .audit(new SurveyResponse.SurveyAuditDto(1L, USER_ID, now, now))
                 .build();
-        return SurveyDetailResponse.of(surveyResponse, Collections.emptyList());
+        return SurveyDetailResponse.of(surveyResponse, Collections.emptyList(), true);
     }
 }

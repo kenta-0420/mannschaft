@@ -98,6 +98,10 @@ class SurveyServiceTest {
     @Mock
     private OrganizationMembershipService organizationMembershipService;
 
+    /** 結果閲覧可否の判定点（Issue #2779）。本テストは応答形のみを見るため既定の false で足りる。 */
+    @Mock
+    private com.mannschaft.app.survey.service.SurveyResultAccessGuard resultAccessGuard;
+
     @InjectMocks
     private SurveyService surveyService;
 

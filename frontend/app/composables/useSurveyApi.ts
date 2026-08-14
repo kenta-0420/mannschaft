@@ -261,16 +261,23 @@ function adaptSurvey(wire: SurveyResponseWire): SurveyResponse {
  *
  * Issue #2635 で BE の `SurveyDetailResponse` がフラット化され、`data.survey` の入れ子が
  * 消えた。旧実装は `wire.survey.policy` を読んでいたため、TypeError で詳細画面が落ちていた。
+ *
+ * Issue #2779: `viewerCanViewResults` は**明示的に写す**。`adaptSurvey` の戻り値型
+ * （{@link SurveyResponse}）はこの項目を持たないため、スプレッド任せにすると
+ * 「型には現れないが実行時には残っている」undeclared passthrough になる。
+ * 画面の可視性判定が依存する値をその状態に置くと、将来 `adaptSurvey` が
+ * フィールドを組み立て直した瞬間に**黙って落ちて全員不可視**になる。
  */
 function adaptDetail(
   wire: SurveyDetailWire['data'],
   hasResponded: boolean,
 ): SurveyDetailResponse['data'] {
-  const { questions, ...survey } = wire
+  const { questions, viewerCanViewResults, ...survey } = wire
   return {
     ...adaptSurvey(survey),
     questions: (questions ?? []).map(adaptQuestion),
     hasResponded,
+    viewerCanViewResults,
   }
 }
 

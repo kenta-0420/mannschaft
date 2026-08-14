@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { SurveyDetailResponse, SurveyResultSummary } from '~/types/survey'
+import type { SurveyDetailResponse } from '~/types/survey'
 import type { BulletinThreadResponse } from '~/types/bulletin'
 import type { QuestionDraft } from '~/components/survey/SurveyQuestionEditor.vue'
 import SurveyRespondentsList from '~/components/survey/SurveyRespondentsList.vue'
@@ -24,7 +24,7 @@ const scopeType = (rawScope === 'TEAM' || rawScope === 'ORGANIZATION'
 const scopeId = String(route.query.scopeId ?? '')
 
 const { t } = useI18n()
-const { getSurvey, getResults, publishSurvey, closeSurvey, deleteSurvey, addQuestion } =
+const { getSurvey, publishSurvey, closeSurvey, deleteSurvey, addQuestion } =
   useSurveyApi()
 const { getSurveyThread } = useSurveyBulletinThread()
 const { error: showError, success: showSuccess } = useNotification()
@@ -183,52 +183,36 @@ const hasResponded = computed(
 )
 
 /**
- * サーバーが結果閲覧を許すか。
+ * サーバーが結果閲覧を拒否するか。
  *
  * `canViewResults` は `ALL_MEMBERS` を無条件に真とする FE の楽観判定だが、BE は `ALWAYS` の
  * 閲覧範囲を配信母集団に限定している（設計書 L107-112）。`TARGETED` の名簿外や
  * `includeSupporters=false` で除外された SUPPORTER には、結果パネルと回答導線が出るのに
- * BE が拒否する「押せるのに必ず失敗する導線」が出ていた。
+ * BE が拒否する「押せるのに必ず失敗する導線」が出てしまう。
  *
- * 詳細応答には「この閲覧者が配信対象か」を示す項目が無いため（openapi.json の
- * SurveyDetailResponse を確認済み）、**結果取得の 403 をサーバーの判定として扱う**。
- */
-type ResultsAccess = 'unknown' | 'allowed' | 'forbidden'
-const resultsAccess = ref<ResultsAccess>('unknown')
-/** 結果閲覧可否の問い合わせ中（初期表示で結果パネルを一瞬見せないため loading に含める） */
-const probingResultsAccess = ref(false)
-/**
- * 権限確認で得た集計結果。SurveyResultsPanel へ渡して**二重取得を避ける**。
+ * Issue #2779: 以前は結果取得を1回余分に叩き 403 かどうかで判定していた（403 プローブ）。
+ * 現在は詳細応答の `viewerCanViewResults` を見る。この値は BE が 403 を投げるのと
+ * **同じ判定点**から得ているため、プローブと結果が一致する。
  *
- * 捨ててしまうと、結果を閲覧できる全ユーザーの全表示で高コストな集計と転送が
- * 必ず 2 回走る（プローブ＋パネルの mount）。
- * 内容が古くなる場面（回答送信後・回答フォームへ移動）では null に戻し、
- * パネルに取り直させる。
+ * **フラグが欠けている応答は fail-closed（不可視）に倒す。** `true` のときだけ可視とし、
+ * `false` も `undefined` も `null` も拒否として扱う。
+ *
+ * かつては「明示的な `false` のときだけ拒否」という寛容な判定にしていたが、それが正しかったのは
+ * **403 プローブという裏付けがあった時代**である。プローブは実際に結果取得を叩いて 403 を見ていたので、
+ * フラグが無くても判断材料そのものは存在した。プローブを撤去した今、フラグが欠けた応答には
+ * **判断材料が一つも無い**。材料が無いまま許可へ倒せば、配信対象外の利用者にも結果パネルと
+ * 回答導線が出て「押せるのに必ず失敗する導線」が復活する。
+ *
+ * このリポジトリの可視性は fail-closed が原則であり、`viewerCanViewResults` は BE が必ず設定する
+ * 契約になった。よって欠けている応答は異常であり、異常時に許可へ倒すのは誤りである。
+ * ただし過度に神経質な表示（エラー扱い・再試行導線）にはせず、単に見せないだけに留める。
  */
-const probedResults = ref<SurveyResultSummary[] | null>(null)
+const resultsForbidden = computed(
+  () => (survey.value as SurveyDetailResponse['data'] | null)?.viewerCanViewResults !== true,
+)
 
-async function probeResultsAccess() {
-  probingResultsAccess.value = true
-  try {
-    const res = await getResults(surveyId)
-    probedResults.value = res.data ?? []
-    resultsAccess.value = 'allowed'
-  } catch (e) {
-    const err = e as { statusCode?: number; response?: { status?: number } }
-    const status = err.statusCode ?? err.response?.status
-    // 403 のときだけ「権限が無い」と断定する。通信エラー等で過剰に塞がないため、
-    // それ以外は allowed として扱い、結果パネル側の再試行 UI に委ねる
-    // （このとき probedResults は null のままなのでパネルが自分で取りに行く）。
-    probedResults.value = null
-    resultsAccess.value = status === 403 ? 'forbidden' : 'allowed'
-  } finally {
-    probingResultsAccess.value = false
-  }
-}
-
-/** 回答フォームへ移る。集計は古くなるためプローブ結果を捨てる。 */
+/** 回答フォームへ移る。 */
 function goToResponseForm() {
-  probedResults.value = null
   responseRequested.value = true
 }
 
@@ -260,7 +244,7 @@ const displayMode = computed<SurveyDisplayMode>(() => {
     hasResponded: hasResponded.value,
     allowMultipleSubmissions: s.policy?.allowMultipleSubmissions ?? false,
     responseRequested: responseRequested.value,
-    resultsForbidden: resultsAccess.value === 'forbidden',
+    resultsForbidden: resultsForbidden.value,
   })
 })
 
@@ -360,8 +344,6 @@ function onDelete() {
 async function onSubmitted() {
   // 回答送信成功 → 結果画面へ戻し、詳細を再取得して表示モードを更新
   responseRequested.value = false
-  // 回答で集計が変わったのでプローブ結果は捨て、パネルに取り直させる
-  probedResults.value = null
   await fetchDetail()
 }
 
@@ -374,18 +356,13 @@ onMounted(async () => {
       bulletinThread.value = thread
     }),
   ])
-  // 詳細と権限が揃ってから、結果を出す可能性がある場合だけサーバーの判定を仰ぐ。
-  // （FE の楽観判定で結果パネル・回答導線を出してしまわないため）
-  if (canViewResults.value) {
-    await probeResultsAccess()
-  }
 })
 </script>
 
 <template>
   <div class="mx-auto max-w-3xl p-4" data-testid="survey-detail-page">
     <!-- ローディング -->
-    <PageLoading v-if="loading || probingResultsAccess" />
+    <PageLoading v-if="loading" />
 
     <!-- 取得失敗 -->
     <div
@@ -560,7 +537,7 @@ onMounted(async () => {
             @click="goToResponseForm"
           />
         </div>
-        <SurveyResultsPanel :survey-id="survey.id" :initial-results="probedResults" />
+        <SurveyResultsPanel :survey-id="survey.id" />
       </div>
 
       <!-- 匿名＋リアルタイム＋少数回答のプライバシーガード（設計書 §6）。

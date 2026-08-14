@@ -53535,6 +53535,11 @@ export interface components {
             stats?: components["schemas"]["SurveyStatsDto"];
             /** @enum {string} */
             status?: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
+            /**
+             * @description この閲覧者がアンケート結果を閲覧できるか。true なら結果取得 API は 200、false なら 403 を返す（結果取得の 403 プローブは不要）
+             * @example true
+             */
+            viewerCanViewResults?: boolean;
         };
         SurveyDistributionDto: {
             autoPostToTimeline?: boolean;

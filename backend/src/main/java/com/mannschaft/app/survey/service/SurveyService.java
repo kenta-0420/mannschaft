@@ -72,6 +72,8 @@ public class SurveyService {
     private final NotificationHelper notificationHelper;
     private final ApplicationEventPublisher eventPublisher;
     private final OrganizationMembershipService organizationMembershipService;
+    /** 結果閲覧可否の唯一の判定点（結果取得 API の 403 と共用。Issue #2779）。 */
+    private final SurveyResultAccessGuard resultAccessGuard;
 
     /**
      * アンケート一覧をページング取得する。
@@ -163,10 +165,11 @@ public class SurveyService {
         // 軍議③ F00 漏洩根治: 本体詳細もスコープ所属者のみ。非所属は存在露見前に COMMON_002(403) で弾く
         // （findSurveyOrThrow の前に置くことで、他スコープの surveyId 有無を漏らさない）。
         // DRAFT はメンバーに従来どおり見せる（status ガードは足さない）。手本: CirculationService.getDocument。
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         accessControlService.checkMembershipOrDescendant(
-                SecurityUtils.getCurrentUserId(), scopeId, scopeType, true);
+                currentUserId, scopeId, scopeType, true);
         SurveyEntity entity = findSurveyOrThrow(scopeType, scopeId, surveyId);
-        return toDetailResponse(entity);
+        return toDetailResponse(entity, currentUserId);
     }
 
     /**
@@ -174,11 +177,19 @@ public class SurveyService {
      *
      * <p>作成/複製（作成者自身・SecurityContext 不在のバッチ materialize 含む）と、
      * ガード付き HTTP GET 経路（{@link #getSurveyDetail}）が共用する。認可は呼び出し側で行う。</p>
+     *
+     * <p>Issue #2779: {@code viewerCanViewResults} は結果取得 API が 403 を投げるのと
+     * 同じ判定点（{@link SurveyResultAccessGuard}）から得る。作成者本人は高速パスで
+     * 短絡されるため、作成/複製の経路では追加のクエリが発行されない。</p>
+     *
+     * @param entity 対象アンケート
+     * @param userId 閲覧者ユーザーID（{@code null} 可 = SecurityContext 不在）
      */
-    private SurveyDetailResponse toDetailResponse(SurveyEntity entity) {
+    private SurveyDetailResponse toDetailResponse(SurveyEntity entity, Long userId) {
         SurveyResponse surveyResponse = surveyMapper.toSurveyResponse(entity);
         List<QuestionResponse> questions = buildQuestionResponses(entity.getId());
-        return SurveyDetailResponse.of(surveyResponse, questions);
+        boolean viewerCanViewResults = resultAccessGuard.canViewResults(entity, userId);
+        return SurveyDetailResponse.of(surveyResponse, questions, viewerCanViewResults);
     }
 
     /**
@@ -261,7 +272,7 @@ public class SurveyService {
         eventPublisher.publishEvent(new SurveyCreatedEvent(saved.getId(), scopeType, scopeId, saved.getTitle()));
 
         // 作成直後の詳細は非ガードマッパで返す（作成者自身・SecurityContext 不在のバッチ経路でも安全）。
-        return toDetailResponse(saved);
+        return toDetailResponse(saved, userId);
     }
 
     /**
@@ -695,7 +706,7 @@ public class SurveyService {
 
         log.info("アンケート複製: source={}, new={}, by={}", surveyId, savedNew.getId(), currentUserId);
         // 複製直後の詳細も非ガードマッパで返す（getSurveyDetail のガードを経由しない）。
-        return toDetailResponse(savedNew);
+        return toDetailResponse(savedNew, currentUserId);
     }
 
     /**

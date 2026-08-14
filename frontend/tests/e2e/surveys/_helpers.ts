@@ -356,15 +356,23 @@ export function buildQuestion(opts: BuildQuestionOptions): SurveyQuestionWire {
  * `SurveyResponse` の 9 フィールドが `data` 直下に並び `questions` が加わった。
  * fulfill 用 body もその形に組み立てる（旧・入れ子のままだと翻訳層が `wire.survey` を読めず
  * 詳細画面が TypeError で落ちる、という本番と同じ壊れ方をテストが再現できない）。
+ *
+ * Issue #2779: `viewerCanViewResults` は**省略可能にしていない**。既定値を持たせると
+ * 「テストが何を意図していたのか」が読めなくなるうえ、新しいモックが黙って値を落としても
+ * 気付けなくなる。**閲覧可なら `true`、配信対象外なら `false` を各テストが明示すること。**
+ *
+ * @param viewerCanViewResults この閲覧者が結果を閲覧できるか（BE が必ず設定する項目）
  */
 export function buildSurveyDetail(
   survey: SurveyResponseWire,
   questions: SurveyQuestionWire[],
+  viewerCanViewResults: boolean,
 ): SurveyDetailWire {
   return {
     data: {
       ...survey,
       questions,
+      viewerCanViewResults,
     },
   }
 }
