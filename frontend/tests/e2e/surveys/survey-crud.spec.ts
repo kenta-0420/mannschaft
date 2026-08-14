@@ -303,6 +303,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
     let currentDetail = buildSurveyDetail(
       buildPublishedSurvey({ hasResponded: false }),
       [question],
+      true,
     )
     const results = buildPublishedResults()
 
@@ -389,6 +390,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
           responseCount: 1,
         }),
         [question],
+        true,
       )
       responded = true
       await route.fulfill({

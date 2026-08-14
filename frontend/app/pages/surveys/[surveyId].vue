@@ -194,11 +194,21 @@ const hasResponded = computed(
  * 現在は詳細応答の `viewerCanViewResults` を見る。この値は BE が 403 を投げるのと
  * **同じ判定点**から得ているため、プローブと結果が一致する。
  *
- * 値が入っていない応答（フィールド未対応の BE）では拒否と断定しない。
- * 通信状況や契約のずれで過剰に画面を塞がないため、明示的な `false` のときだけ拒否とする。
+ * **フラグが欠けている応答は fail-closed（不可視）に倒す。** `true` のときだけ可視とし、
+ * `false` も `undefined` も `null` も拒否として扱う。
+ *
+ * かつては「明示的な `false` のときだけ拒否」という寛容な判定にしていたが、それが正しかったのは
+ * **403 プローブという裏付けがあった時代**である。プローブは実際に結果取得を叩いて 403 を見ていたので、
+ * フラグが無くても判断材料そのものは存在した。プローブを撤去した今、フラグが欠けた応答には
+ * **判断材料が一つも無い**。材料が無いまま許可へ倒せば、配信対象外の利用者にも結果パネルと
+ * 回答導線が出て「押せるのに必ず失敗する導線」が復活する。
+ *
+ * このリポジトリの可視性は fail-closed が原則であり、`viewerCanViewResults` は BE が必ず設定する
+ * 契約になった。よって欠けている応答は異常であり、異常時に許可へ倒すのは誤りである。
+ * ただし過度に神経質な表示（エラー扱い・再試行導線）にはせず、単に見せないだけに留める。
  */
 const resultsForbidden = computed(
-  () => (survey.value as SurveyDetailResponse['data'] | null)?.viewerCanViewResults === false,
+  () => (survey.value as SurveyDetailResponse['data'] | null)?.viewerCanViewResults !== true,
 )
 
 /** 回答フォームへ移る。 */
