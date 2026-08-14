@@ -421,27 +421,43 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      *
      * <p>{@code :includeSupporters = true} のときは SUPPORTER 除外を行わず、展開対象を全員返す。</p>
      *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2785 乙層）</b>: {@code V60.010} 以後、一般メンバーの在籍行は
+     * {@code memberships} にしか無い。候補集合を派生表 {@code cand} で
+     * {@code user_roles} ∪ {@code memberships}（{@code left_at IS NULL} の在籍行）へ広げた上で、
+     * 上記の純 SUPPORTER 除外規約・生存ユーザー条件を従来どおり後段に適用する。
+     * 重複排除は {@code UNION}（{@code UNION ALL} ではない）で行うため、両系統に行を持つ者も 1 件に畳まれる。
+     * {@code memberships} 枝には必ず {@code scope_type} の等値条件を含める
+     * （{@code scope_id} 単独索引が無く、落とすと索引が効かないため）。</p>
+     *
      * @param organizationId   組織 ID
      * @param includeSupporters true=応援者も含める / false=応援者を除外する
      * @return 配信対象ユーザー ID リスト（重複なし・在籍中のアクティブユーザーのみ）
      */
     @Query(value =
-            "SELECT DISTINCT ur.user_id FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
+            "SELECT DISTINCT cand.user_id FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE ur.organization_id = :organizationId " +
+            "      OR ur.team_id IN ( " +
+            "        SELECT tom.team_id FROM team_org_memberships tom " +
+            "        WHERE tom.organization_id = :organizationId AND tom.status = 'ACTIVE' " +
+            "      ) " +
+            "  UNION " +
+            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "    WHERE ms0.left_at IS NULL " +
+            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id = :organizationId) " +
+            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "              WHERE tom1.organization_id = :organizationId AND tom1.status = 'ACTIVE' " +
+            "            )) ) " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
             "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    ur.organization_id = :organizationId " +
-            "    OR ur.team_id IN ( " +
-            "      SELECT tom.team_id FROM team_org_memberships tom " +
-            "      WHERE tom.organization_id = :organizationId AND tom.status = 'ACTIVE' " +
-            "    ) " +
-            "  ) " +
             "  AND ( " +
             "    :includeSupporters = TRUE " +
             "    OR NOT ( " +
             "      EXISTS ( " +
             "        SELECT 1 FROM memberships ms " +
-            "        WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "        WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
             "          AND ( " +
             "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id = :organizationId) " +
             "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
@@ -452,7 +468,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      ) " +
             "      AND NOT EXISTS ( " +
             "        SELECT 1 FROM memberships ms2 " +
-            "        WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "        WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
             "          AND ( " +
             "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id = :organizationId) " +
             "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
@@ -504,6 +520,12 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * DISTINCT、離脱チーム(status!=ACTIVE)除外、離脱済み(left_at!=NULL)所属の除外対象外、
      * MEMBER 優先ルールはすべて 1 段版と同一。</p>
      *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2785 乙層）</b>: {@code V60.010} 以後、一般メンバーの在籍行は
+     * {@code memberships} にしか無い。候補集合を派生表 {@code cand} で
+     * {@code user_roles} ∪ {@code memberships}（{@code left_at IS NULL} の在籍行）へ広げた上で、
+     * 純 SUPPORTER 除外規約・生存ユーザー条件・{@code maxDepth} 打ち切りは従来どおり適用する。
+     * 配信母集団 6 本はこの候補集合定義を完全に共有し、COUNT と実配信の母集団が食い違わないようにする。</p>
+     *
      * @param organizationId    配信元となる組織 ID（org_tree の根）
      * @param includeSupporters true=応援者も含める / false=応援者を除外する
      * @param maxDepth          再帰展開の最大深さ（サイクル防止上限・通常 32）
@@ -518,22 +540,30 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT ur.user_id FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
+            "SELECT DISTINCT cand.user_id FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE ur.organization_id IN (SELECT id FROM org_tree) " +
+            "      OR ur.team_id IN ( " +
+            "        SELECT tom.team_id FROM team_org_memberships tom " +
+            "        WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "      ) " +
+            "  UNION " +
+            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "    WHERE ms0.left_at IS NULL " +
+            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "              WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
+            "            )) ) " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
             "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    ur.organization_id IN (SELECT id FROM org_tree) " +
-            "    OR ur.team_id IN ( " +
-            "      SELECT tom.team_id FROM team_org_memberships tom " +
-            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "    ) " +
-            "  ) " +
             "  AND ( " +
             "    :includeSupporters = TRUE " +
             "    OR NOT ( " +
             "      EXISTS ( " +
             "        SELECT 1 FROM memberships ms " +
-            "        WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "        WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
             "          AND ( " +
             "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
@@ -544,7 +574,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      ) " +
             "      AND NOT EXISTS ( " +
             "        SELECT 1 FROM memberships ms2 " +
-            "        WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "        WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
             "          AND ( " +
             "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
@@ -568,8 +598,14 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * <p>母集団条件（org_tree 再帰展開・user_roles ∪ team_org_memberships(ACTIVE) の配信対象判定・
      * users.deleted_at IS NULL AND status='ACTIVE'・includeSupporters による純 SUPPORTER 除外の 2 段 NOT EXISTS）は
      * 1 つも変更・削除せず、旧クエリの WHERE をそのまま継承する（Wave-1 で母集団ドリフトが検分差し戻しになった
-     * 教訓・殿裁定）。差分は末尾の {@code ur.user_id > :cursor} カーソル条件と {@code ORDER BY ur.user_id ASC}
+     * 教訓・殿裁定）。差分は末尾の {@code cand.user_id > :cursor} カーソル条件と {@code ORDER BY uid ASC}
      * のみで、{@code LIMIT} は {@link Pageable}（{@code PageRequest.of(0, chunk)}）から供給する。</p>
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2785 乙層）</b>: 候補集合を派生表 {@code cand} で
+     * {@code user_roles} ∪ {@code memberships}（{@code left_at IS NULL}）へ広げ、後段の除外サブクエリ・
+     * カーソル条件・{@code ORDER BY} はすべて {@code cand.user_id} を参照する。
+     * <b>カーソル条件は派生表の外側に置く</b>こと（内側の片枝だけに置くとページ境界で行が飛ぶ）。
+     * {@code cand} は {@code UNION} で重複排除済みのため、両系統に行を持つ者もページ内で重複しない。</p>
      *
      * <p>{@code CAST(... AS SIGNED)} で戻り値を確実に {@code Long} にマップする
      * （{@link com.mannschaft.app.membership.repository.MembershipRepository#findActiveUserIdsByScopeKeyset}
@@ -592,22 +628,30 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT CAST(ur.user_id AS SIGNED) AS uid FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
+            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE ur.organization_id IN (SELECT id FROM org_tree) " +
+            "      OR ur.team_id IN ( " +
+            "        SELECT tom.team_id FROM team_org_memberships tom " +
+            "        WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "      ) " +
+            "  UNION " +
+            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "    WHERE ms0.left_at IS NULL " +
+            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "              WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
+            "            )) ) " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
             "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    ur.organization_id IN (SELECT id FROM org_tree) " +
-            "    OR ur.team_id IN ( " +
-            "      SELECT tom.team_id FROM team_org_memberships tom " +
-            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "    ) " +
-            "  ) " +
             "  AND ( " +
             "    :includeSupporters = TRUE " +
             "    OR NOT ( " +
             "      EXISTS ( " +
             "        SELECT 1 FROM memberships ms " +
-            "        WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "        WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
             "          AND ( " +
             "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
@@ -618,7 +662,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      ) " +
             "      AND NOT EXISTS ( " +
             "        SELECT 1 FROM memberships ms2 " +
-            "        WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "        WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
             "          AND ( " +
             "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
@@ -629,7 +673,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      ) " +
             "    ) " +
             "  ) " +
-            "  AND ur.user_id > :cursor " +
+            "  AND cand.user_id > :cursor " +
             "ORDER BY uid ASC",
             nativeQuery = true)
     List<Long> findDistributionUserIdsForOrganizationRecursiveKeyset(
@@ -644,14 +688,17 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * （通知 fan-out ワーカー並列化・CMP-001⑤）。
      *
      * <p>母集団条件・CTE・SUPPORTER 除外・keyset カーソル・{@code ORDER BY uid ASC} は本家キーセット版と
-     * <b>完全一致</b>させ、差分は末尾の {@code AND MOD(ur.user_id, :shardCount) = :shardIndex} 述語ただ 1 行のみ。
+     * <b>完全一致</b>させ、差分は末尾の {@code AND MOD(cand.user_id, :shardCount) = :shardIndex} 述語ただ 1 行のみ。
      * これにより各シャードが {@code user_id % shardCount == shardIndex} の互いに素な部分集合だけを担当し、
      * 全シャードの和集合が母集団と過不足なく一致する。呼び出し側は {@code shardCount > 1} のときのみ本メソッドを使い、
      * {@code shardCount == 1}（従来経路）は {@link #findDistributionUserIdsForOrganizationRecursiveKeyset} を使う
      * （非シャードと完全一致）。</p>
      *
-     * <p><b>インデックス影響</b>: {@code MOD(ur.user_id, N)} は関数適用のため user_id インデックスの range scan には
-     * 効かない（keyset 側 {@code ur.user_id > :cursor} と {@code ORDER BY} が走査順を担保し、MOD は結果行のフィルタに留まる）。
+     * <b>MOD も候補集合の派生表 {@code cand} を参照させる</b>こと（ここだけ {@code ur} が残ると
+     * {@code memberships} 専属メンバーが全シャードから漏れる）。
+     *
+     * <p><b>インデックス影響</b>: {@code MOD(cand.user_id, N)} は関数適用のため user_id インデックスの range scan には
+     * 効かない（keyset 側 {@code cand.user_id > :cursor} と {@code ORDER BY} が走査順を担保し、MOD は結果行のフィルタに留まる）。
      * 50 万規模でもチャンク境界の keyset 走査が支配的でありシャードフィルタの追加コストは限定的。</p>
      *
      * @param shardIndex 担当シャード番号（0..shardCount-1）
@@ -666,22 +713,30 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT CAST(ur.user_id AS SIGNED) AS uid FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
+            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE ur.organization_id IN (SELECT id FROM org_tree) " +
+            "      OR ur.team_id IN ( " +
+            "        SELECT tom.team_id FROM team_org_memberships tom " +
+            "        WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "      ) " +
+            "  UNION " +
+            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "    WHERE ms0.left_at IS NULL " +
+            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "              WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
+            "            )) ) " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
             "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    ur.organization_id IN (SELECT id FROM org_tree) " +
-            "    OR ur.team_id IN ( " +
-            "      SELECT tom.team_id FROM team_org_memberships tom " +
-            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "    ) " +
-            "  ) " +
             "  AND ( " +
             "    :includeSupporters = TRUE " +
             "    OR NOT ( " +
             "      EXISTS ( " +
             "        SELECT 1 FROM memberships ms " +
-            "        WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "        WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
             "          AND ( " +
             "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
@@ -692,7 +747,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      ) " +
             "      AND NOT EXISTS ( " +
             "        SELECT 1 FROM memberships ms2 " +
-            "        WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "        WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
             "          AND ( " +
             "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
@@ -703,8 +758,8 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      ) " +
             "    ) " +
             "  ) " +
-            "  AND ur.user_id > :cursor " +
-            "  AND MOD(ur.user_id, :shardCount) = :shardIndex " +
+            "  AND cand.user_id > :cursor " +
+            "  AND MOD(cand.user_id, :shardCount) = :shardIndex " +
             "ORDER BY uid ASC",
             nativeQuery = true)
     List<Long> findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
@@ -720,8 +775,9 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * 組織スコープ配信の<strong>母集団総数</strong>を返す（enqueue の自動シャード数算出用・CMP-001⑤）。
      *
      * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} の {@code SELECT} を
-     * {@code COUNT(DISTINCT ur.user_id)} に置換したもの。CTE・母集団条件・SUPPORTER 除外規約は
-     * 一切変更せず完全一致させる（カウントと実配信の母集団を厳密に一致させるため）。native の集計列は
+     * {@code COUNT(DISTINCT cand.user_id)} に置換したもの。CTE・候補集合の派生表 {@code cand}・母集団条件・
+     * SUPPORTER 除外規約は一切変更せず完全一致させる（カウントと実配信の母集団を厳密に一致させるため。
+     * ここだけ候補集合が狭いと自動シャード数が過小に見積もられ配信漏れになる）。native の集計列は
      * {@code Long} で受ける（BIGINT→Long。{@code COUNT(*)>0} を boolean で受けない規約に整合）。</p>
      *
      * @param organizationId    配信元となる組織 ID（org_tree の根）
@@ -738,22 +794,30 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT COUNT(DISTINCT ur.user_id) FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
+            "SELECT COUNT(DISTINCT cand.user_id) FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE ur.organization_id IN (SELECT id FROM org_tree) " +
+            "      OR ur.team_id IN ( " +
+            "        SELECT tom.team_id FROM team_org_memberships tom " +
+            "        WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "      ) " +
+            "  UNION " +
+            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "    WHERE ms0.left_at IS NULL " +
+            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "              WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
+            "            )) ) " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
             "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    ur.organization_id IN (SELECT id FROM org_tree) " +
-            "    OR ur.team_id IN ( " +
-            "      SELECT tom.team_id FROM team_org_memberships tom " +
-            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "    ) " +
-            "  ) " +
             "  AND ( " +
             "    :includeSupporters = TRUE " +
             "    OR NOT ( " +
             "      EXISTS ( " +
             "        SELECT 1 FROM memberships ms " +
-            "        WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "        WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
             "          AND ( " +
             "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
@@ -764,7 +828,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      ) " +
             "      AND NOT EXISTS ( " +
             "        SELECT 1 FROM memberships ms2 " +
-            "        WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "        WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
             "          AND ( " +
             "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
@@ -803,6 +867,19 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * <p>SUPPORTER 除外・退会除外・離脱チーム(status!=ACTIVE)除外・MEMBER 優先のセマンティクスは
      * {@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} と完全一致。</p>
      *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2785 乙層）・枝ごとに振り分ける</b>: 本メソッドは他の 5 本と違い
+     * {@code team_id = NULL} 枝と {@code team_id} 枝の {@code UNION ALL} 構造を持つため、候補集合を単純に
+     * 差し替えると {@code team_id} の紐づけが壊れる。そこで枝ごとに候補集合を組む:</p>
+     * <ul>
+     *   <li>{@code team_id = NULL} 枝: {@code user_roles} の組織直属行 ∪ {@code memberships} の
+     *       {@code ORGANIZATION} スコープ在籍行</li>
+     *   <li>{@code team_id} 枝: {@code user_roles} のチーム行 ∪ {@code memberships} の {@code TEAM}
+     *       スコープ在籍行（後者は {@code scope_id} が {@code team_id} を担う）</li>
+     * </ul>
+     * <p>各枝内の重複排除は {@code UNION}（{@code ALL} ではない）で行うため、両系統に同一チームの行を持つ者も
+     * 1 行に畳まれる。枝をまたぐ {@code UNION ALL} は御裁可A（全チーム計上）のため従来どおり温存する。
+     * {@code memberships} 枝には必ず {@code scope_type} の等値条件を含める。</p>
+     *
      * @param organizationId    配信元となる組織 ID（org_tree の根）
      * @param includeSupporters true=応援者も含める / false=応援者を除外する
      * @param maxDepth          再帰展開の最大深さ（サイクル防止上限・通常 32）
@@ -819,19 +896,26 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             ") " +
             "SELECT user_id, team_id FROM ( " +
             // 組織直属メンバー → team_id = NULL バケット
-            "  SELECT DISTINCT ur.user_id AS user_id, CAST(NULL AS SIGNED) AS team_id " +
-            "  FROM user_roles ur " +
-            "  JOIN users u ON u.id = ur.user_id " +
+            // 候補集合は user_roles の組織直属行 ∪ memberships の ORGANIZATION スコープ在籍行（#2785 乙層）
+            "  SELECT DISTINCT cand.user_id AS user_id, CAST(NULL AS SIGNED) AS team_id " +
+            "  FROM ( " +
+            "    SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "      WHERE ur.organization_id IN (SELECT id FROM org_tree) " +
+            "    UNION " +
+            "    SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "      WHERE ms0.left_at IS NULL AND ms0.scope_type = 'ORGANIZATION' " +
+            "        AND ms0.scope_id IN (SELECT id FROM org_tree) " +
+            "  ) cand " +
+            "  JOIN users u ON u.id = cand.user_id " +
             "  WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "    AND ur.organization_id IN (SELECT id FROM org_tree) " +
             "    AND ( :includeSupporters = TRUE OR NOT ( " +
-            "      EXISTS ( SELECT 1 FROM memberships ms WHERE ms.user_id = ur.user_id " +
+            "      EXISTS ( SELECT 1 FROM memberships ms WHERE ms.user_id = cand.user_id " +
             "        AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' AND ( " +
             "          (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
             "          OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
             "            SELECT tom.team_id FROM team_org_memberships tom " +
             "            WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE')) ) ) " +
-            "      AND NOT EXISTS ( SELECT 1 FROM memberships ms2 WHERE ms2.user_id = ur.user_id " +
+            "      AND NOT EXISTS ( SELECT 1 FROM memberships ms2 WHERE ms2.user_id = cand.user_id " +
             "        AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' AND ( " +
             "          (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
             "          OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
@@ -840,21 +924,31 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "    ) ) " +
             "  UNION ALL " +
             // 配下参加チーム(ACTIVE)のメンバー → 所属チームごとに 1 行（重複計上あり）
-            "  SELECT DISTINCT ur.user_id AS user_id, ur.team_id AS team_id " +
-            "  FROM user_roles ur " +
-            "  JOIN users u ON u.id = ur.user_id " +
+            // 候補集合は user_roles のチーム行 ∪ memberships の TEAM スコープ在籍行（#2785 乙層）。
+            // team_id は memberships 枝では scope_id が担う（枝ごとに正しいチームへ振り分ける）。
+            "  SELECT DISTINCT cand.user_id AS user_id, cand.team_id AS team_id " +
+            "  FROM ( " +
+            "    SELECT ur.user_id AS user_id, ur.team_id AS team_id FROM user_roles ur " +
+            "      WHERE ur.team_id IN ( " +
+            "        SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "        WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE') " +
+            "    UNION " +
+            "    SELECT ms5.user_id AS user_id, ms5.scope_id AS team_id FROM memberships ms5 " +
+            "      WHERE ms5.left_at IS NULL AND ms5.scope_type = 'TEAM' " +
+            "        AND ms5.scope_id IN ( " +
+            "          SELECT tom6.team_id FROM team_org_memberships tom6 " +
+            "          WHERE tom6.organization_id IN (SELECT id FROM org_tree) AND tom6.status = 'ACTIVE') " +
+            "  ) cand " +
+            "  JOIN users u ON u.id = cand.user_id " +
             "  WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "    AND ur.team_id IN ( " +
-            "      SELECT tom3.team_id FROM team_org_memberships tom3 " +
-            "      WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE') " +
             "    AND ( :includeSupporters = TRUE OR NOT ( " +
-            "      EXISTS ( SELECT 1 FROM memberships ms3 WHERE ms3.user_id = ur.user_id " +
+            "      EXISTS ( SELECT 1 FROM memberships ms3 WHERE ms3.user_id = cand.user_id " +
             "        AND ms3.left_at IS NULL AND ms3.role_kind = 'SUPPORTER' AND ( " +
             "          (ms3.scope_type = 'ORGANIZATION' AND ms3.scope_id IN (SELECT id FROM org_tree)) " +
             "          OR (ms3.scope_type = 'TEAM' AND ms3.scope_id IN ( " +
             "            SELECT tom4.team_id FROM team_org_memberships tom4 " +
             "            WHERE tom4.organization_id IN (SELECT id FROM org_tree) AND tom4.status = 'ACTIVE')) ) ) " +
-            "      AND NOT EXISTS ( SELECT 1 FROM memberships ms4 WHERE ms4.user_id = ur.user_id " +
+            "      AND NOT EXISTS ( SELECT 1 FROM memberships ms4 WHERE ms4.user_id = cand.user_id " +
             "        AND ms4.left_at IS NULL AND ms4.role_kind = 'MEMBER' AND ( " +
             "          (ms4.scope_type = 'ORGANIZATION' AND ms4.scope_id IN (SELECT id FROM org_tree)) " +
             "          OR (ms4.scope_type = 'TEAM' AND ms4.scope_id IN ( " +
