@@ -323,9 +323,9 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
         linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
 
         // 2 系統を混在させる（memberships 専属 3 名 / user_roles 専属 3 名 / 両系統 1 名）
-        membershipOnlyMember(ScopeType.ORGANIZATION, rootOrg);
-        membershipOnlyMember(ScopeType.ORGANIZATION, leafOrg);
-        membershipOnlyMember(ScopeType.TEAM, leafTeam);
+        Long ms1 = membershipOnlyMember(ScopeType.ORGANIZATION, rootOrg);
+        Long ms2 = membershipOnlyMember(ScopeType.ORGANIZATION, leafOrg);
+        Long ms3 = membershipOnlyMember(ScopeType.TEAM, leafTeam);
 
         Long ur1 = persistActiveUser();
         grantOrgRole(ur1, midOrg);
@@ -341,6 +341,12 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
 
         for (boolean includeSupporters : new boolean[]{false, true}) {
             Set<Long> expected = bulk(rootOrg, includeSupporters, MAX_DEPTH);
+
+            // 6 本が「揃って取りこぼしている」状態で一致しても意味がないため、
+            // 照合の基準そのものが memberships 専属メンバーを含むことを先に固定する。
+            assertThat(expected)
+                    .as("照合の基準となる母集団が memberships 専属メンバーを含むこと")
+                    .contains(ms1, ms2, ms3, ur1, ur2, ur3, both);
 
             assertThat(keysetAll(rootOrg, includeSupporters, MAX_DEPTH, 3))
                     .as("keyset 版（fan-out 本番経路）の母集団が一括版と一致すること")
@@ -370,8 +376,8 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
         Long team = 610_020L;
         linkTeamToOrg(team, org, TeamOrgMembershipEntity.Status.ACTIVE);
 
-        membershipOnlyMember(ScopeType.ORGANIZATION, org);
-        membershipOnlyMember(ScopeType.TEAM, team);
+        Long msOrg = membershipOnlyMember(ScopeType.ORGANIZATION, org);
+        Long msTeam = membershipOnlyMember(ScopeType.TEAM, team);
         Long ur1 = persistActiveUser();
         grantOrgRole(ur1, org);
         Long ur2 = persistActiveUser();
@@ -379,9 +385,13 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
         flushClear();
 
         for (boolean includeSupporters : new boolean[]{false, true}) {
+            Set<Long> expected = bulk(org, includeSupporters, MAX_DEPTH);
+            assertThat(expected)
+                    .as("照合の基準となる母集団が memberships 専属メンバーを含むこと")
+                    .contains(msOrg, msTeam, ur1, ur2);
             assertThat(userRoleRepository.findDistributionUserIdsForOrganization(org, includeSupporters))
                     .as("1 段版だけが memberships を見落とすと、非再帰経路の配信だけ静かに欠ける")
-                    .containsExactlyInAnyOrderElementsOf(bulk(org, includeSupporters, MAX_DEPTH));
+                    .containsExactlyInAnyOrderElementsOf(expected);
         }
     }
 
@@ -444,9 +454,10 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
         Long leafTeam = 610_040L;
         linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
 
+        Set<Long> membershipOnly = new LinkedHashSet<>();
         for (int i = 0; i < 6; i++) {
-            membershipOnlyMember(i % 2 == 0 ? ScopeType.ORGANIZATION : ScopeType.TEAM,
-                    i % 2 == 0 ? leafOrg : leafTeam);
+            membershipOnly.add(membershipOnlyMember(i % 2 == 0 ? ScopeType.ORGANIZATION : ScopeType.TEAM,
+                    i % 2 == 0 ? leafOrg : leafTeam));
             Long urOnly = persistActiveUser();
             grantOrgRole(urOnly, leafOrg);
         }
@@ -454,6 +465,9 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
 
         final int shardCount = 4;
         Set<Long> expected = bulk(rootOrg, false, MAX_DEPTH);
+        assertThat(expected)
+                .as("シャード和の照合基準そのものが memberships 専属メンバーを含むこと")
+                .containsAll(membershipOnly);
 
         List<Long> concatenated = new ArrayList<>();
         for (int shardIndex = 0; shardIndex < shardCount; shardIndex++) {
