@@ -195,7 +195,9 @@ public class SurveyVisibilityResolver
      * <p><b>先読みする軸は 2 つあり、対象行が異なる</b>（{@link #visibleByAdditionalAxis} 参照）:</p>
      * <ul>
      *   <li>{@code ALWAYS} → <b>配信母集団</b>（{@code survey_targets} 名簿 /
-     *       {@code include_supporters} トグル準拠の組織配信母集団）</li>
+     *       {@code include_supporters} トグル準拠の組織配信母集団）。組織母集団は
+     *       <b>トグルごとにバルク 1 本</b>で引くため、別組織の行が何件混ざっても
+     *       SQL は増えない（最大 2 本。Issue #2782）</li>
      *   <li>{@code AFTER_CLOSE} → <b>上位条件の名簿のみ</b>。所属判定は TEAM / ORGANIZATION とも
      *       snapshot で答えられるため<b>追加クエリは 0 本</b>
      *       （ORG は {@link #additionalDescendantScopes} で snapshot 側に解決させる）</li>
@@ -245,16 +247,9 @@ public class SurveyVisibilityResolver
         Set<Long> targetedSurveyIds = targetedIds.isEmpty()
                 ? Set.of()
                 : Set.copyOf(surveyTargetRepository.findTargetedSurveyIds(targetedIds, viewerUserId));
-        // 組織の判定はいずれも「行数」ではなく「組織の種類数」に比例する（通常は 1 種）。
-        // 全件取得ではなく単発 EXISTS の軽い述語を使う。
-        Set<OrgAudienceKey> inAudience = new HashSet<>();
-        for (OrgAudienceKey key : orgAudienceKeys) {
-            if (organizationMembershipService.isInOrgDistributionAudience(
-                    key.orgId(), viewerUserId, key.includeSupporters())) {
-                inAudience.add(key);
-            }
-        }
-        return new AudienceContext(targetedSurveyIds, resultViewerIds, inAudience);
+        // 組織の配信母集団は「組織数」ではなく「トグルの種類数」に比例させる（最大 2 本）。
+        return new AudienceContext(targetedSurveyIds, resultViewerIds,
+                resolveOrgAudience(orgAudienceKeys, viewerUserId));
     }
 
     /**
@@ -419,6 +414,52 @@ public class SurveyVisibilityResolver
         return isScopeAdmin(row, snapshot) || context.resultViewerSurveyIds().contains(row.id());
     }
 
+    /**
+     * 組織スコープの配信母集団を、<b>トグルごとにバルク 1 本</b>で解決する（Issue #2782）。
+     *
+     * <p>従来は {@code OrganizationMembershipService#isInOrgDistributionAudience} を
+     * {@code (組織, トグル)} の組ごとに呼んでおり、別組織のアンケートを {@code filterAccessible} に
+     * まとめて渡すと<b>組織の種類数に比例</b>して再帰 EXISTS が飛んでいた。これは基盤
+     * {@link AbstractContentVisibilityResolver#prepareAdditionalAxisContext} の
+     * 「判定ループに入る前に必要な集合をバッチで引く」契約に反する。</p>
+     *
+     * <p><b>⚠️ なぜ {@code AFTER_CLOSE} と同じ手（snapshot への集約）が使えないのか</b> —
+     * {@code AFTER_CLOSE} は「スコープ所属者全員」なので、所属軸である
+     * {@link UserScopeRoleSnapshot#isDescendantMemberOf} へそのまま寄せられ追加クエリ 0 本になった
+     * （{@link #additionalDescendantScopes}）。しかし {@code ALWAYS} は<b>配信母集団</b>であり、
+     * {@code include_supporters = FALSE} のとき<b>純 SUPPORTER を除外</b>しなければならない。
+     * snapshot の所属軸は G7 により SUPPORTER を一律含むため、この区別を表現できない。
+     * 寄せると母集団の意味論が壊れ、配信されていない応援者に中間集計が見える（漏洩）。
+     * よって<b>意味論を保ったまま複数 ORG 根をバルク化する</b>という別の解を採る。</p>
+     *
+     * <p>トグルは 2 値なので、実在するトグルの種類数（最大 2）だけ SQL を発行する。
+     * 組織が何件混ざっても本数は変わらない。組織スコープの {@code ALWAYS} 行が無ければ 0 本。</p>
+     */
+    private Set<OrgAudienceKey> resolveOrgAudience(
+            Set<OrgAudienceKey> orgAudienceKeys, Long viewerUserId) {
+        if (orgAudienceKeys.isEmpty()) {
+            return Set.of();
+        }
+        // トグルごとに組織 ID を束ね、束ね単位で 1 本ずつ引く（母集団の定義がトグルで変わるため）。
+        Set<OrgAudienceKey> inAudience = new HashSet<>();
+        for (boolean includeSupporters : new boolean[] {false, true}) {
+            Set<Long> orgIds = new HashSet<>();
+            for (OrgAudienceKey key : orgAudienceKeys) {
+                if (key.includeSupporters() == includeSupporters) {
+                    orgIds.add(key.orgId());
+                }
+            }
+            if (orgIds.isEmpty()) {
+                continue;
+            }
+            for (Long orgId : organizationMembershipService.resolveOrgDistributionAudienceRoots(
+                    orgIds, viewerUserId, includeSupporters)) {
+                inAudience.add(new OrgAudienceKey(orgId, includeSupporters));
+            }
+        }
+        return inAudience;
+    }
+
     /** 組織配信母集団の判定キー（同一組織・同一トグルの行はまとめて 1 回だけ判定する）。 */
     private record OrgAudienceKey(Long orgId, boolean includeSupporters) {}
 
@@ -457,9 +498,12 @@ public class SurveyVisibilityResolver
      * <ul>
      *   <li><b>TARGETED</b>: {@code survey_targets} 名簿（回答時の関所と同じ述語の一括版）。</li>
      *   <li><b>ALL × ORGANIZATION</b>:
-     *       {@code OrganizationMembershipService#isInOrgDistributionAudience}
+     *       {@code OrganizationMembershipService#resolveOrgDistributionAudienceRoots}
      *       — 配信母集団と同一（{@code include_supporters} トグル準拠・配下 ACTIVE チーム再帰）。
-     *       これにより下向き再帰の有無も応援者の要否も自動的に整合する。</li>
+     *       これにより下向き再帰の有無も応援者の要否も自動的に整合する。
+     *       単発版 {@code isInOrgDistributionAudience} と意味論は 1 対 1 同一で、
+     *       違いは「組織ごとに 1 本」から「トグルごとに 1 本」へバルク化した点のみである
+     *       （Issue #2782。{@link #resolveOrgAudience} 参照）。</li>
      *   <li><b>ALL × TEAM</b>: 当該チームへの直接所属（{@code SCOPE_AFFILIATED} と同一述語）。
      *       TEAM の母集団は配下展開もトグルも持たないため従来挙動を変えない。</li>
      * </ul>
