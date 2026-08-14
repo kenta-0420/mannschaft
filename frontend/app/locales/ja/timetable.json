@@ -91,6 +91,7 @@
       "title": "今日の時間割",
       "loading": "読み込み中…",
       "empty": "今日の時間割はありません",
+      "load_failed": "時間割の取得に失敗しました。再読み込みしてください",
       "tag_personal": "個人",
       "tag_team": "チーム",
       "memo_label": "メモ",

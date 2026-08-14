@@ -91,6 +91,7 @@
       "title": "Heutiger Stundenplan",
       "loading": "Wird geladen…",
       "empty": "Kein Stundenplan für heute",
+      "load_failed": "Stundenplan konnte nicht geladen werden. Bitte neu laden.",
       "tag_personal": "Persönlich",
       "tag_team": "Team",
       "memo_label": "Notiz",

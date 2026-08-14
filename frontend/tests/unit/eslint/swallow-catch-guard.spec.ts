@@ -60,6 +60,17 @@ describe('エラー握りつぶし禁止ガード', () => {
       '複数プロパティがすべて空': 'foo().catch(() => ({ data: [], meta: null }))',
       'ブロック本体で包んだ空値': 'foo().catch(() => { return { data: [] } })',
       'try/catch で return { data: [] }': 'function f() { try { g() } catch { return { data: [] } } }',
+
+      // --- 差し戻し分: 返り値そのものを型アサーションで包む迂回 ---
+      '外側 as で包んだ空オブジェクト返却': 'foo().catch(() => ({ data: [] } as ApiResponse))',
+      '外側 as（ブロック本体）': 'foo().catch(() => { return { data: [] } as ApiResponse })',
+      '外側 as（try/catch）': 'function f() { try { g() } catch { return { data: [] } as ApiResponse } }',
+      '多重の包み': 'foo().catch(() => (({ data: [] } as A) as B))',
+      'satisfies で包む': 'foo().catch(() => ({ data: [] } satisfies ApiResponse))',
+      '非null表明で包む': 'foo().catch(() => ({ data: [] } as ApiResponse)!)',
+      '外側 as で包んだ空配列そのもの': 'foo().catch(() => ([] as string[]))',
+      '外側 as で包んだ空配列（try/catch）': 'function f() { try { g() } catch { return [] as string[] } }',
+      '外側 as で包んだ null': 'foo().catch(() => (null as unknown as ApiResponse))',
     }
 
     for (const [name, code] of Object.entries(detected)) {
@@ -88,6 +99,14 @@ describe('エラー握りつぶし禁止ガード', () => {
       // 通常のオブジェクト初期化を巻き込まない
       '通常の変数初期化': 'const state = { data: [] }',
       '関数の通常 return': 'function f() { return { data: [] } }',
+
+      // --- 差し戻し分: 型アサーションで包んでも過剰検出しないこと ---
+      '外側 as だが実のある値': 'foo().catch(() => ({ data: [1] } as ApiResponse))',
+      '外側 as だがエラーを保持': 'foo().catch(e => ({ data: [], error: e } as ApiResponse))',
+      '外側 as だがスプレッド': 'foo().catch(() => ({ ...base, data: [] } as ApiResponse))',
+      '外側 as だが空値を含まない': 'foo().catch(() => ({ ok: false } as ApiResponse))',
+      '通常の変数初期化を as で包む': 'const state = { data: [] } as ApiResponse',
+      '.then を as で包む': 'foo().then(() => ({ data: [] } as ApiResponse))',
     }
 
     for (const [name, code] of Object.entries(allowed)) {

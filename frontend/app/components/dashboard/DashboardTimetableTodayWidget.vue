@@ -22,6 +22,8 @@ const data = ref<DashboardTimetableToday | null>(null)
 const notesBySlot = ref<Map<string, TimetableSlotUserNote>>(new Map())
 const expandedSlots = ref<Set<string>>(new Set())
 const loading = ref(true)
+/** 取得失敗フラグ。失敗を「今日の予定なし」に偽装しないため、空表示と区別する（Issue #2770） */
+const loadError = ref(false)
 
 const editorVisible = ref(false)
 const editorSlot = ref<{ kind: TimetableSlotKind, id: number, date?: string | null } | null>(null)
@@ -43,10 +45,12 @@ function hasAnyNote(note: TimetableSlotUserNote | undefined): boolean {
 
 async function load() {
   loading.value = true
+  loadError.value = false
   try {
     const [today, notes] = await Promise.all([
       api.dashboardToday(),
-      api.todayNotes().catch(() => [] as TimetableSlotUserNote[]),
+      // メモ取得の失敗を空配列に偽装せず、失敗として表面化させる（Issue #2770）
+      api.todayNotes(),
     ])
     data.value = today
     const map = new Map<string, TimetableSlotUserNote>()
@@ -64,6 +68,8 @@ async function load() {
     expandedSlots.value = autoExpand
   }
   catch {
+    // 取得失敗は「予定なし」と区別してユーザーに伝える（0件表示への偽装を避ける）
+    loadError.value = true
     data.value = null
     notesBySlot.value = new Map()
     expandedSlots.value = new Set()
@@ -104,7 +110,10 @@ onMounted(load)
     refreshable
     @refresh="load"
   >
-    <p v-if="!data || data.items.length === 0" class="text-sm text-gray-500">
+    <p v-if="loadError" class="text-sm text-red-600 dark:text-red-400">
+      {{ t('personalTimetable.dashboard.load_failed') }}
+    </p>
+    <p v-else-if="!data || data.items.length === 0" class="text-sm text-gray-500">
       {{ t('personalTimetable.dashboard.empty') }}
     </p>
     <ul v-else class="space-y-2">

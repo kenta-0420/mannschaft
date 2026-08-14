@@ -91,6 +91,7 @@
       "title": "今日课程表",
       "loading": "加载中…",
       "empty": "今天没有课程",
+      "load_failed": "获取课程表失败，请重新加载",
       "tag_personal": "个人",
       "tag_team": "团队",
       "memo_label": "备注",
