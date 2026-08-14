@@ -1,6 +1,9 @@
 package com.mannschaft.app.organization;
 
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
@@ -101,7 +104,7 @@ class OrganizationChildrenCursorPagingContractIT extends AbstractMySqlIntegratio
         @DisplayName("AC-2_メンバーには自分が所属するPRIVATEな子組織が返る（過剰に隠さない）")
         void AC_2_メンバーにはPRIVATE子が返る() throws Exception {
             Long privateChild = insertOrganization("CHILDPAGE非公開子_所属あり", "PRIVATE", parentOrgId);
-            insertUserRole(memberUserId, "MEMBER", privateChild);
+            MembershipTestHelper.insertMembership(em, memberUserId, ScopeType.ORGANIZATION, privateChild, RoleKind.MEMBER);
             em.flush();
             em.clear();
 
@@ -309,17 +312,4 @@ class OrganizationChildrenCursorPagingContractIT extends AbstractMySqlIntegratio
                 .getSingleResult();
     }
 
-    /** user_roles へ直接 1 行 seed する（{@code MembershipTestHelper} と同等だが本 IT はチーム軸不要のため直書き）。 */
-    private void insertUserRole(Long userId, String roleName, Long organizationId) {
-        Long roleId = ((Number) em.createNativeQuery("SELECT id FROM roles WHERE name = :name")
-                .setParameter("name", roleName)
-                .getSingleResult()).longValue();
-        em.createNativeQuery(
-                        "INSERT INTO user_roles (user_id, role_id, organization_id, created_at, updated_at) "
-                                + "VALUES (:userId, :roleId, :orgId, NOW(), NOW())")
-                .setParameter("userId", userId)
-                .setParameter("roleId", roleId)
-                .setParameter("orgId", organizationId)
-                .executeUpdate();
-    }
 }

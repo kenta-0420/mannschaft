@@ -26,7 +26,6 @@ import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.dto.WidgetVisibilityRowDto;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -137,8 +136,8 @@ public class DashboardService {
         List<ScheduleEntity> personalSchedules = scheduleRepository
                 .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, now, weekLater);
         // 所属チームのスケジュールも取得（N+1 解消: チーム ID を IN 句で一括取得）
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        List<Long> teamIds = teamRoles.stream().map(UserRoleEntity::getTeamId).toList();
+        // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
+        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
         List<ScheduleEntity> teamSchedules = teamIds.isEmpty()
                 ? List.of()
                 : scheduleRepository.findByTeamIdInAndStartAtBetween(teamIds, now, weekLater);
@@ -485,14 +484,13 @@ public class DashboardService {
                 .findByScope(AnnouncementScopeType.TEAM, teamId, allowedVisibilities, null, 10);
 
         // F02.8: 親組織の告知フィードを取得（target_team_ids フィルタ付き）
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        // 多重 org ロール行に対する防御的な feedId 重複排除。
-        // 現状は user_roles の UNIQUE(user_id, scope_key) により 1 ユーザー 1 組織 1 行だが、
-        // 将来この制約が緩んで同一組織に複数ロール行を持つと flatMap で同一 feed が重複しうる。
-        // インボックス（AnnouncementInboxAdapter の feedById.putIfAbsent）と同等に feedId で先勝ち dedup する。
-        List<AnnouncementFeedEntity> orgAnnouncementFeeds = new ArrayList<>(orgRoles.stream()
-                .flatMap(role -> announcementFeedQueryRepository
-                        .findByOrgScopeForTeamDashboard(role.getOrganizationId(), allowedVisibilities, 20).stream())
+        // CMP-027: user_roles ∪ memberships の在籍組織 ID（素メンバー/応援者を取りこぼさない）
+        List<Long> feedOrgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        // 多重 org ロール行に対する防御的な feedId 重複排除（findOrganizationIdsByUserId は既に DISTINCT だが
+        // インボックス（AnnouncementInboxAdapter の feedById.putIfAbsent）と同等に feedId で先勝ち dedup する）。
+        List<AnnouncementFeedEntity> orgAnnouncementFeeds = new ArrayList<>(feedOrgIds.stream()
+                .flatMap(orgId -> announcementFeedQueryRepository
+                        .findByOrgScopeForTeamDashboard(orgId, allowedVisibilities, 20).stream())
                 .filter(feed -> isTargetedToTeam(feed, teamId))
                 .collect(java.util.stream.Collectors.toMap(
                         AnnouncementFeedEntity::getId,
@@ -754,9 +752,10 @@ public class DashboardService {
      */
     private ScopeCoverageResponse buildScopeCoverage(Long userId) {
         // チーム所属 + 組織所属の合計をスコープ数とする
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        int totalScopes = teamRoles.size() + orgRoles.size();
+        // CMP-027: user_roles ∪ memberships の在籍スコープ数（素メンバー/応援者を取りこぼさない）
+        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        int totalScopes = teamIds.size() + orgIds.size();
         int displayedScopes = Math.min(totalScopes, MAX_DISPLAY_SCOPES);
         boolean hasHiddenScopes = totalScopes > MAX_DISPLAY_SCOPES;
 

@@ -130,19 +130,15 @@ class ScheduleKeepConvertContractIT extends AbstractMySqlIntegrationTest {
         otherPersonalUserId = insertUser("keepconv-other-personal@example.com");
 
         MembershipTestHelper.insertMembership(em, memberId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberId, "MEMBER", teamId, null);
 
         MembershipTestHelper.insertMembership(em, adminId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminId, "ADMIN", teamId, null);
 
         MembershipTestHelper.insertMembership(em, otherMemberId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, otherMemberId, "MEMBER", teamId, null);
 
         MembershipTestHelper.insertMembership(em, supporterId, ScopeType.TEAM, teamId, RoleKind.SUPPORTER);
-        MembershipTestHelper.insertUserRole(em, supporterId, "SUPPORTER", teamId, null);
 
         MembershipTestHelper.insertMembership(em, otherTeamMemberId, ScopeType.TEAM, otherTeamId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, otherTeamMemberId, "MEMBER", otherTeamId, null);
 
         em.flush();
         em.clear();

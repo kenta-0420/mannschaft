@@ -162,8 +162,8 @@ class DashboardScheduleAggregationTest {
                     .atStartOfDay();
             LocalDateTime monthEnd = todayStart.plusMonths(1);
 
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
             // 最大範囲（todayStart〜monthEnd）の取得をスタブ。
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
                     eq(USER_ID), eq(todayStart), eq(monthEnd))).willReturn(List.of());
@@ -207,8 +207,8 @@ class DashboardScheduleAggregationTest {
             LocalDateTime weekEnd = todayStart.plusDays(7);
             LocalDateTime monthEnd = todayStart.plusMonths(1);
 
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
 
             // 個人スケジュール（最大範囲 monthEnd で 1 回取得される想定）:
             //  - today 内: 1件
@@ -260,7 +260,7 @@ class DashboardScheduleAggregationTest {
                 .willReturn(List.of());
         given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any()))

@@ -81,9 +81,7 @@ class ScheduleKeepLifecycleEventContractIT extends AbstractMySqlIntegrationTest 
             userId = insertUser("keeplifecycle-" + suffix + "@example.com");
 
             MembershipTestHelper.insertMembership(em, userId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
-            MembershipTestHelper.insertUserRole(em, userId, "MEMBER", teamId, null);
             MembershipTestHelper.insertMembership(em, userId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
-            MembershipTestHelper.insertUserRole(em, userId, "MEMBER", null, orgId);
             em.flush();
         });
         em.clear();

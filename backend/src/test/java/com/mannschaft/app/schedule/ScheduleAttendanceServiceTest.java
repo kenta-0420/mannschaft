@@ -946,8 +946,8 @@ class ScheduleAttendanceServiceTest {
         @DisplayName("個人出席統計_出欠なし_出席率0を返す")
         void 個人出席統計_出欠なし_出席率0を返す() {
             // given
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // when
             AttendanceStatsResponse result = attendanceService.getMyAttendanceStats(USER_ID, START, END);
