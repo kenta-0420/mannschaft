@@ -3,7 +3,7 @@ package com.mannschaft.app.survey;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.survey.entity.SurveyEntity;
-import com.mannschaft.app.survey.service.SurveyResultAccessPolicy;
+import com.mannschaft.app.survey.service.SurveyResultAccessGuard;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,7 +21,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
- * 試練（#2779）— {@link SurveyResultAccessPolicy} の単体テスト。
+ * 試練（#2779）— {@link SurveyResultAccessGuard} の単体テスト。
  *
  * <p>結果閲覧可否の判定は 403 を投げる経路（{@code SurveyResultService#validateResultAccess}）と
  * 詳細応答の {@code viewerCanViewResults} の<b>両方が同じ 1 箇所</b>を使うことで一致する。
@@ -32,8 +32,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
  * <p>担保する受け入れ条件: <b>AC-1 / AC-2 / AC-4 / AC-8 / AC-10</b>。</p>
  */
 @ExtendWith(MockitoExtension.class)
-@DisplayName("SurveyResultAccessPolicy 単体テスト（#2779）")
-class SurveyResultAccessPolicyTest {
+@DisplayName("SurveyResultAccessGuard 単体テスト（#2779）")
+class SurveyResultAccessGuardTest {
 
     private static final Long SURVEY_ID = 100L;
     private static final Long CREATOR_ID = 10L;
@@ -43,7 +43,7 @@ class SurveyResultAccessPolicyTest {
     private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
-    private SurveyResultAccessPolicy policy;
+    private SurveyResultAccessGuard policy;
 
     /** AC-1 — 可視性基盤が許可すれば true。 */
     @Test

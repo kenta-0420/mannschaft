@@ -66,7 +66,7 @@ public class SurveyResultService {
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
     /** 結果閲覧可否の唯一の判定点（詳細応答の viewerCanViewResults と共用）。 */
-    private final SurveyResultAccessPolicy resultAccessPolicy;
+    private final SurveyResultAccessGuard resultAccessGuard;
     private final OrganizationMembershipService organizationMembershipService;
     private final MediaUrlResolver mediaUrlResolver;
 
@@ -93,17 +93,17 @@ public class SurveyResultService {
      * status × {@code ResultsVisibility} 合成を一元処理する。</p>
      *
      * <p>Issue #2779: その 2 段（作成者高速パス → 可視性基盤への委譲）を
-     * {@link SurveyResultAccessPolicy} へ抽出した。アンケート詳細応答の
+     * {@link SurveyResultAccessGuard} へ抽出した。アンケート詳細応答の
      * {@code viewerCanViewResults} も同じメソッドを呼ぶため、
      * <b>「見られる」と応答したのに 403</b>（またはその逆）が構造的に起こらない。</p>
      */
     private void validateResultAccess(SurveyEntity survey, Long userId) {
         // Issue #2779: 「作成者高速パス → ContentVisibilityChecker 委譲」の 2 段は
-        // SurveyResultAccessPolicy に抽出済み。詳細応答の viewerCanViewResults も
+        // SurveyResultAccessGuard に抽出済み。詳細応答の viewerCanViewResults も
         // 同じメソッドを呼ぶため、応答と実際の 403 が構造的に食い違わない。
         // canView=false の場合は既存と同じ SurveyErrorCode.RESULT_ACCESS_DENIED で返す
         // （根治治療: 既存挙動と同じ ErrorCode を投げ、上位 API 契約を保つ）。
-        if (!resultAccessPolicy.canViewResults(survey, userId)) {
+        if (!resultAccessGuard.canViewResults(survey, userId)) {
             throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
         }
     }

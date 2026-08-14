@@ -95,8 +95,8 @@ class SurveyResultServiceTest {
     @org.junit.jupiter.api.BeforeEach
     void injectRealResultAccessPolicy() {
         org.springframework.test.util.ReflectionTestUtils.setField(
-                surveyResultService, "resultAccessPolicy",
-                new com.mannschaft.app.survey.service.SurveyResultAccessPolicy(contentVisibilityChecker));
+                surveyResultService, "resultAccessGuard",
+                new com.mannschaft.app.survey.service.SurveyResultAccessGuard(contentVisibilityChecker));
     }
 
     private static final Long SURVEY_ID = 100L;

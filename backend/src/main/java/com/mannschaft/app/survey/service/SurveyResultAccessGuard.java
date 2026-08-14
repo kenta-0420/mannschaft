@@ -27,10 +27,19 @@ import org.springframework.stereotype.Component;
  * </ol>
  *
  * <p>未認証（{@code userId == null}）・実体不在は fail-closed で {@code false} を返す。</p>
+ *
+ * <p><b>命名について</b>: 末尾の {@code AccessGuard} は飾りではない。
+ * {@code AuthzControllerGuardArchTest} は Controller から深さ 2 までの呼び出しを辿って
+ * 「認可シグナル」（{@code AccessControlService} / {@code ContentVisibilityChecker} /
+ * {@code *AccessGuard} / {@code *AccessService} への呼び出し）を探す番人である。
+ * 本クラスは結果閲覧の<b>認可判断そのもの</b>を担うため、番人が認可点として正しく認識できる
+ * 名前を与えている（同パッケージの {@code SurveyAccessGuard} と同じ作法）。
+ * 認可点でない名前にすると、{@code ContentVisibilityChecker} の呼び出しが深さ 3 に沈み、
+ * 実際には守られている EP を番人が「認可シグナル無し」と誤検出する。</p>
  */
 @Component
 @RequiredArgsConstructor
-public class SurveyResultAccessPolicy {
+public class SurveyResultAccessGuard {
 
     private final ContentVisibilityChecker contentVisibilityChecker;
 

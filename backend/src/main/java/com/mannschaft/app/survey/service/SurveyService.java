@@ -73,7 +73,7 @@ public class SurveyService {
     private final ApplicationEventPublisher eventPublisher;
     private final OrganizationMembershipService organizationMembershipService;
     /** 結果閲覧可否の唯一の判定点（結果取得 API の 403 と共用。Issue #2779）。 */
-    private final SurveyResultAccessPolicy resultAccessPolicy;
+    private final SurveyResultAccessGuard resultAccessGuard;
 
     /**
      * アンケート一覧をページング取得する。
@@ -179,7 +179,7 @@ public class SurveyService {
      * ガード付き HTTP GET 経路（{@link #getSurveyDetail}）が共用する。認可は呼び出し側で行う。</p>
      *
      * <p>Issue #2779: {@code viewerCanViewResults} は結果取得 API が 403 を投げるのと
-     * 同じ判定点（{@link SurveyResultAccessPolicy}）から得る。作成者本人は高速パスで
+     * 同じ判定点（{@link SurveyResultAccessGuard}）から得る。作成者本人は高速パスで
      * 短絡されるため、作成/複製の経路では追加のクエリが発行されない。</p>
      *
      * @param entity 対象アンケート
@@ -188,7 +188,7 @@ public class SurveyService {
     private SurveyDetailResponse toDetailResponse(SurveyEntity entity, Long userId) {
         SurveyResponse surveyResponse = surveyMapper.toSurveyResponse(entity);
         List<QuestionResponse> questions = buildQuestionResponses(entity.getId());
-        boolean viewerCanViewResults = resultAccessPolicy.canViewResults(entity, userId);
+        boolean viewerCanViewResults = resultAccessGuard.canViewResults(entity, userId);
         return SurveyDetailResponse.of(surveyResponse, questions, viewerCanViewResults);
     }
 

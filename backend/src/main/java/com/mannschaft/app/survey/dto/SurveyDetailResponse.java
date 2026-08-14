@@ -34,7 +34,7 @@ public class SurveyDetailResponse {
      *
      * <p>Issue #2779: これが無かった頃、フロントエンドは結果取得 API を 1 回余分に叩き
      * 403 が返るかどうかで可否を判定していた。値は結果取得 API が 403 を投げるのと
-     * <b>同じ判定点</b>（{@code SurveyResultAccessPolicy}）から得ているため、
+     * <b>同じ判定点</b>（{@code SurveyResultAccessGuard}）から得ているため、
      * {@code true} なら結果取得は必ず 200、{@code false} なら必ず 403 になる。</p>
      */
     @io.swagger.v3.oas.annotations.media.Schema(
