@@ -307,7 +307,8 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     const teamLink = page.getByText('FC東京U-18').first()
     await teamLink.click()
-    await page.waitForURL(/\/teams\/\d+/, { timeout: 20_000 })
+    // URL 識別子は slug に一本化済み（TEAM-NAV-003 と同じ理由）
+    await page.waitForURL(/\/teams\/[^/?#]+/, { timeout: 20_000 })
     await waitForHydration(page)
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     // チームホームページのコンテンツ（見出し or ナビゲーション）が存在する
@@ -321,7 +322,8 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     const teamLink = page.getByText('FC東京U-18').first()
     await teamLink.click()
-    await page.waitForURL(/\/teams\/\d+/, { timeout: 20_000 })
+    // URL 識別子は slug に一本化済み（TEAM-NAV-003 と同じ理由）
+    await page.waitForURL(/\/teams\/[^/?#]+/, { timeout: 20_000 })
     const teamUrl = page.url()
     // メンバー一覧ページ (/teams/[id]/member-profiles) へ遷移
     await page.goto(`${teamUrl}/member-profiles`)
@@ -339,7 +341,8 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
     await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
     const teamLink = page.getByText('FC東京U-18').first()
     await teamLink.click()
-    await page.waitForURL(/\/teams\/\d+/, { timeout: 20_000 })
+    // URL 識別子は slug に一本化済み（TEAM-NAV-003 と同じ理由）
+    await page.waitForURL(/\/teams\/[^/?#]+/, { timeout: 20_000 })
     const teamUrl = page.url()
     await waitForHydration(page)
     // 並列実行時にバックエンドが高負荷で 500 を返す場合があるため最大1回リトライする
