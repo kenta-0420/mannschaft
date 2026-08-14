@@ -177,11 +177,13 @@ public class DataExportService {
         DataExportEntity entity = dataExportRepository.findTopByUserIdOrderByCreatedAtDesc(userId)
                 .orElseThrow(() -> new BusinessException(GdprErrorCode.GDPR_003));
 
+        // 「まだ出来ていない」は不在ではなく状態競合（409）。
         if (!"COMPLETED".equals(entity.getStatus()) || entity.getS3Key() == null) {
-            throw new BusinessException(GdprErrorCode.GDPR_003);
+            throw new BusinessException(GdprErrorCode.GDPR_009);
         }
+        // 「かつて存在したが期限で失効した」は 410 GONE（再取得しても復活しないことを伝える）。
         if (entity.getExpiresAt().isBefore(LocalDateTime.now())) {
-            throw new BusinessException(GdprErrorCode.GDPR_003);
+            throw new BusinessException(GdprErrorCode.GDPR_010);
         }
 
         return storageService.generateDownloadUrl(entity.getS3Key(), Duration.ofHours(1));
