@@ -154,7 +154,9 @@
     "no_chat": "没有聊天空间",
     "visibility_saved": "已更改公开设置",
     "visibility_failed": "更改公开设置失败",
-    "load_failed": "获取联络空间失败"
+    "load_failed": "获取联络空间失败",
+    "divisions_load_failed": "获取分组列表失败",
+    "permissions_load_failed": "获取权限信息失败，部分操作可能受限"
   },
   "submission": {
     "title": "文件提交受理",

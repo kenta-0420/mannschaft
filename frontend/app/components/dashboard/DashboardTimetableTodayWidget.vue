@@ -22,6 +22,14 @@ const data = ref<DashboardTimetableToday | null>(null)
 const notesBySlot = ref<Map<string, TimetableSlotUserNote>>(new Map())
 const expandedSlots = ref<Set<string>>(new Set())
 const loading = ref(true)
+/**
+ * 時間割（主）の取得失敗フラグ。失敗を「今日の予定なし」に偽装しないため、空表示と区別する（Issue #2770）。
+ * メモ（従）の失敗とは粒度を分ける — 「どちらか失敗＝全部失敗」にすると、
+ * 取得できている時間割まで捨てて利用者に嘘をつくことになる。
+ */
+const timetableError = ref(false)
+/** メモ（従）の取得失敗フラグ。時間割の表示は妨げず、メモ欄に限定して表面化させる。 */
+const notesError = ref(false)
 
 const editorVisible = ref(false)
 const editorSlot = ref<{ kind: TimetableSlotKind, id: number, date?: string | null } | null>(null)
@@ -43,30 +51,47 @@ function hasAnyNote(note: TimetableSlotUserNote | undefined): boolean {
 
 async function load() {
   loading.value = true
+  timetableError.value = false
+  notesError.value = false
   try {
-    const [today, notes] = await Promise.all([
+    // 時間割（主）とメモ（従）は失敗を独立に扱う。
+    // Promise.all でまとめると「どちらか1つでも失敗＝全部失敗」に粒度が粗くなり、
+    // メモだけが落ちたときに取得できている時間割まで捨ててしまう（Issue #2770）。
+    const [todayResult, notesResult] = await Promise.allSettled([
       api.dashboardToday(),
-      api.todayNotes().catch(() => [] as TimetableSlotUserNote[]),
+      api.todayNotes(),
     ])
-    data.value = today
-    const map = new Map<string, TimetableSlotUserNote>()
-    const autoExpand = new Set<string>()
-    for (const n of notes) {
-      const key = slotKey(n.slot_kind, n.slot_id)
-      map.set(key, n)
-      // メモのある行は既定で展開しておく（ダッシュボードでひと目で内容を把握させる）
-      if (n.preparation || n.items_to_bring || n.free_memo
-        || (n.custom_fields && n.custom_fields.some(f => f.value))) {
-        autoExpand.add(key)
-      }
+
+    if (todayResult.status === 'fulfilled') {
+      data.value = todayResult.value
     }
-    notesBySlot.value = map
-    expandedSlots.value = autoExpand
-  }
-  catch {
-    data.value = null
-    notesBySlot.value = new Map()
-    expandedSlots.value = new Set()
+    else {
+      // 取得失敗は「予定なし」と区別してユーザーに伝える（0件表示への偽装を避ける）
+      timetableError.value = true
+      data.value = null
+    }
+
+    if (notesResult.status === 'fulfilled') {
+      const map = new Map<string, TimetableSlotUserNote>()
+      const autoExpand = new Set<string>()
+      for (const n of notesResult.value) {
+        const key = slotKey(n.slot_kind, n.slot_id)
+        map.set(key, n)
+        // メモのある行は既定で展開しておく（ダッシュボードでひと目で内容を把握させる）
+        if (n.preparation || n.items_to_bring || n.free_memo
+          || (n.custom_fields && n.custom_fields.some(f => f.value))) {
+          autoExpand.add(key)
+        }
+      }
+      notesBySlot.value = map
+      expandedSlots.value = autoExpand
+    }
+    else {
+      // メモの失敗は「メモ無し」に偽装せず、メモ欄に限定して表面化させる
+      notesError.value = true
+      notesBySlot.value = new Map()
+      expandedSlots.value = new Set()
+    }
   }
   finally {
     loading.value = false
@@ -104,7 +129,20 @@ onMounted(load)
     refreshable
     @refresh="load"
   >
-    <p v-if="!data || data.items.length === 0" class="text-sm text-gray-500">
+    <!--
+      メモ（従）だけが失敗した場合。時間割は表示したまま、メモ欄の欠落だけを控えめに知らせる。
+      時間割（主）も失敗しているときは出さない — 「時間割のみ表示しています」が嘘になるうえ、
+      その場面で利用者に必要な情報は「時間割の取得に失敗した」の一点だけである。
+      なお検出は両方について引き続き行っており、ここで抑えているのは表示だけ。
+    -->
+    <p v-if="notesError && !timetableError" class="mb-2 text-xs text-amber-700 dark:text-amber-400">
+      {{ t('personalTimetable.dashboard.notes_load_failed') }}
+    </p>
+
+    <p v-if="timetableError" class="text-sm text-red-600 dark:text-red-400">
+      {{ t('personalTimetable.dashboard.load_failed') }}
+    </p>
+    <p v-else-if="!data || data.items.length === 0" class="text-sm text-gray-500">
       {{ t('personalTimetable.dashboard.empty') }}
     </p>
     <ul v-else class="space-y-2">
