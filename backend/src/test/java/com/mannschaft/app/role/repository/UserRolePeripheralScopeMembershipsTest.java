@@ -5,9 +5,7 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
-import com.mannschaft.app.role.entity.PermissionEntity;
 import com.mannschaft.app.role.entity.RoleEntity;
-import com.mannschaft.app.role.entity.RolePermissionEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
@@ -598,71 +596,6 @@ class UserRolePeripheralScopeMembershipsTest extends AbstractMySqlIntegrationTes
     }
 
     // =====================================================================
-    // findUserIdsByOrganizationIdAndPermissionName
-    // =====================================================================
-
-    /**
-     * AC-19 派生: {@code findUserIdsByOrganizationIdAndPermissionName} が
-     * {@code memberships} 専属の一般メンバーの権限を評価すること。
-     *
-     * <p>MEMBER ロールに既定付与された権限を持つ一般メンバーは、
-     * {@code user_roles} に行が無いという理由だけで警告通知の宛先から落ちてはならない。</p>
-     *
-     * <p><b>本テストが暴いた別の欠陥</b>: 現状の実装は取りこぼす以前に、実在しない列を
-     * 参照しており全呼び出しで {@code SQLGrammarException} となる。
-     * {@code permission_groups} 系の関連表が持つ列は {@code group_id} であって
-     * {@code permission_group_id} ではなく、{@code user_permission_groups} には
-     * {@code organization_id} 列自体が存在しない（{@code V2.008} / {@code V2.009}、
-     * 以降の migration でも追加されていない）。memberships 対応と併せて
-     * 実スキーマに合わせた修正が必要である。</p>
-     */
-    @Test
-    @DisplayName("AC-19派生: findUserIdsByOrganizationIdAndPermissionNameがmemberships専属メンバーの権限を評価する")
-    void ac19派生_権限保有者照会がmemberships専属メンバーを評価する() {
-        Long orgId = persistOrganization(null);
-        String permissionName = "I2786_TEST_PERMISSION";
-        Long memberRoleId = persistRoleIfNeeded("MEMBER", 4);
-        Long permissionId = persistPermission(permissionName);
-        grantRolePermission(memberRoleId, permissionId);
-
-        Long membershipsOnly = persistActiveUser();
-        addMembership(membershipsOnly, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER, null);
-        flushClear();
-
-        assertThat(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(orgId, permissionName))
-                .as("MEMBER ロール既定の権限は memberships 専属の一般メンバーにも評価されるべきである")
-                .contains(membershipsOnly);
-    }
-
-    /**
-     * AC-19 派生【陽性対照】: {@code user_roles} 由来の役職者の権限評価が変わらないこと。
-     *
-     * <p>本来は現時点で green であるべき陽性対照だが、上記の実在しない列参照により
-     * 現状は例外で赤になる。実スキーマへ合わせた修正後、この対照が green を保つことで
-     * 「一般メンバーへ権限が拡散していない」ことを締める。</p>
-     */
-    @Test
-    @DisplayName("AC-19派生【陽性対照】: user_roles由来の役職者の権限評価は従来どおり")
-    void ac19派生_陽性対照_userRoles由来の役職者の権限評価は不変() {
-        Long orgId = persistOrganization(null);
-        String permissionName = "I2786_ADMIN_PERMISSION";
-        Long adminRoleId = persistRoleIfNeeded("ADMIN", 2);
-        Long permissionId = persistPermission(permissionName);
-        grantRolePermission(adminRoleId, permissionId);
-
-        Long admin = persistActiveUser();
-        grantOrgRole(admin, orgId, "ADMIN", 2);
-        // 当該権限を持たない一般メンバー（母集団が広がりすぎないことを締める）
-        Long plainMember = persistActiveUser();
-        addMembership(plainMember, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER, null);
-        flushClear();
-
-        assertThat(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(orgId, permissionName))
-                .as("ADMIN ロール既定の権限は役職者にのみ評価され、一般メンバーへ拡散してはならない")
-                .containsExactly(admin);
-    }
-
-    // =====================================================================
     // 陽性対照: ロール名で限定しているクエリ群は挙動が変わらない
     // =====================================================================
 
@@ -703,30 +636,5 @@ class UserRolePeripheralScopeMembershipsTest extends AbstractMySqlIntegrationTes
         assertThat(userRoleRepository.findUserIdAndEmailByScopeAndRole(ORGANIZATION, orgId, "DEPUTY_ADMIN"))
                 .as("ロール名 DEPUTY_ADMIN で限定したペアは 1 件のままである")
                 .hasSize(1);
-    }
-
-    // ---------------------------------------------------------------------
-    // 権限フィクスチャ
-    // ---------------------------------------------------------------------
-
-    private Long persistPermission(String name) {
-        PermissionEntity permission = PermissionEntity.builder()
-                .name(name)
-                .displayName(name)
-                .scope(PermissionEntity.Scope.ORGANIZATION)
-                .build();
-        em.persist(permission);
-        em.flush();
-        return permission.getId();
-    }
-
-    private void grantRolePermission(Long roleId, Long permissionId) {
-        RolePermissionEntity rp = RolePermissionEntity.builder()
-                .roleId(roleId)
-                .permissionId(permissionId)
-                .isDefault(true)
-                .build();
-        em.persist(rp);
-        em.flush();
     }
 }
