@@ -81,6 +81,8 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
      * {@code ALWAYS}（配信母集団軸）を区別する（Issue #2774 の検分指摘）。</p>
      */
     private Long supporterUserId;
+    /** アンケートのスコープであるチームの ADMIN（設計書の優先順 2「ADMIN+ は常にフルアクセス」）。 */
+    private Long scopeAdminUserId;
 
     private Long rootOrgId;
     private Long childOrgId;
@@ -95,6 +97,7 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
         descendantUserId = insertUser("sv2774.descendant@example.com", "配下", "三郎");
         sysAdminUserId = insertUser("sv2774.sysadmin@example.com", "管理", "者");
         supporterUserId = insertUser("sv2774.supporter@example.com", "応援", "四郎");
+        scopeAdminUserId = insertUser("sv2774.scopeadmin@example.com", "幹部", "五郎");
 
         rootOrgId = insertOrganization("2774 根組織", null);
         childOrgId = insertOrganization("2774 配下組織", rootOrgId);
@@ -114,6 +117,7 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
                 RoleKind.SUPPORTER);
 
         MembershipTestHelper.insertUserRole(em, sysAdminUserId, "SYSTEM_ADMIN", null, null);
+        MembershipTestHelper.insertUserRole(em, scopeAdminUserId, "ADMIN", teamId, null);
 
         em.flush();
         em.clear();
@@ -430,6 +434,111 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
         assertThat(checker.canView(ReferenceType.SURVEY, targetedId, outsiderUserId)).isFalse();
         assertThat(checker.canView(ReferenceType.SURVEY, allId, outsiderUserId)).isFalse();
         assertThat(checker.canView(ReferenceType.SURVEY, targetedId, null)).isFalse();
+    }
+
+    // =========================================================================
+    // 受け入れ条件 AC-7: 上位条件（優先順 2 / 3）は results_visibility を無視して閲覧できる
+    //
+    // 設計書 docs/features/F05.4_survey_vote.md §「結果閲覧権限の判定」は
+    //   1. 作成者 / 2. ADMIN+ / 3. survey_result_viewers 登録者
+    // を「上位条件に該当すれば results_visibility を無視して閲覧可能」と定めている。
+    // したがって AFTER_CLOSE の 2 つの軸（時間条件・所属条件）の両方を貫通しなければならない。
+    // 片方だけを迂回させても AND 合成で打ち消されるため、実効性が無い。
+    // =========================================================================
+
+    /**
+     * AC-7: 締切<b>前</b>の {@code AFTER_CLOSE} アンケートを、結果閲覧者名簿の登録者は閲覧できる。
+     *
+     * <p>優先順 3 は「{@code results_visibility} に関わらず閲覧可能」であるから、
+     * 時間条件で締め出してはならない。</p>
+     */
+    @Test
+    @DisplayName("AC-7 結果閲覧者名簿の登録者は締切前の AFTER_CLOSE を閲覧できる")
+    void ac7_resultViewerCanViewBeforeClose() {
+        Long surveyId = insertTeamSurvey("2774-viewer-before-close", "PUBLISHED", "AFTER_CLOSE",
+                LocalDateTime.now().plusHours(1));
+        insertResultViewer(surveyId, insiderUserId);
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, insiderUserId)).isTrue();
+    }
+
+    /**
+     * AC-7: 締切<b>前</b>の {@code AFTER_CLOSE} アンケートを、当該スコープの ADMIN+ は閲覧できる（優先順 2）。
+     */
+    @Test
+    @DisplayName("AC-7 当該スコープの ADMIN+ は締切前の AFTER_CLOSE を閲覧できる")
+    void ac7_scopeAdminCanViewBeforeClose() {
+        Long surveyId = insertTeamSurvey("2774-admin-before-close", "PUBLISHED", "AFTER_CLOSE",
+                LocalDateTime.now().plusHours(1));
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, scopeAdminUserId)).isTrue();
+    }
+
+    /**
+     * AC-7【陽性対照】: 上位条件に該当しない一般所属メンバーは、締切前は閲覧できない。
+     *
+     * <p>上位条件の迂回が「締切前を誰にでも開ける」退行になっていないことを固定する。</p>
+     */
+    @Test
+    @DisplayName("AC-7【陽性対照】上位条件に該当しない一般メンバーは締切前を閲覧できない")
+    void ac7_plainMemberCannotViewBeforeClose() {
+        Long surveyId = insertTeamSurvey("2774-plain-before-close", "PUBLISHED", "AFTER_CLOSE",
+                LocalDateTime.now().plusHours(1));
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, insiderUserId)).isFalse();
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, outsiderUserId)).isFalse();
+    }
+
+    /**
+     * AC-7【境界】: {@code DRAFT}（未公開）は上位条件に該当する者でも閲覧できない。
+     *
+     * <p>上位条件は {@code results_visibility} を無視するが、<b>status 軸の fail-closed は無視しない</b>。
+     * ここを緩めると未公開アンケートが漏れるため、境界として固定する。</p>
+     */
+    @Test
+    @DisplayName("AC-7【境界】DRAFT は ADMIN+ / 結果閲覧者でも閲覧できない")
+    void ac7_draftInvisibleEvenForPrivilegedViewers() {
+        Long surveyId = insertTeamSurvey("2774-draft-privileged", "DRAFT", "AFTER_CLOSE", null);
+        insertResultViewer(surveyId, insiderUserId);
+        em.flush();
+        em.clear();
+
+        // 作成者は sysAdmin に固定されているため、下記はいずれも作成者ではない。
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, insiderUserId)).isFalse();
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, scopeAdminUserId)).isFalse();
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, outsiderUserId)).isFalse();
+    }
+
+    /**
+     * AC-7【陽性対照】: {@code ADMINS_ONLY} / {@code VIEWERS_ONLY} の既存挙動が壊れていない。
+     *
+     * <p>上位条件の迂回は {@code AFTER_CLOSE} の 2 軸に閉じており、他の値の意味論
+     * （ロール閾値軸・名簿軸）へは波及しないことを固定する。</p>
+     */
+    @Test
+    @DisplayName("AC-7【陽性対照】ADMINS_ONLY / VIEWERS_ONLY の既存挙動は不変")
+    void ac7_adminsOnlyAndViewersOnlyUnchanged() {
+        Long adminsOnlyId = insertTeamSurvey("2774-admins-only", "PUBLISHED", "ADMINS_ONLY", null);
+        Long viewersOnlyId = insertTeamSurvey("2774-viewers-only-2", "PUBLISHED", "VIEWERS_ONLY", null);
+        insertResultViewer(viewersOnlyId, insiderUserId);
+        em.flush();
+        em.clear();
+
+        // ADMINS_ONLY: ロール閾値軸。ADMIN は可視、一般メンバー・非所属は不可視。
+        assertThat(checker.canView(ReferenceType.SURVEY, adminsOnlyId, scopeAdminUserId)).isTrue();
+        assertThat(checker.canView(ReferenceType.SURVEY, adminsOnlyId, insiderUserId)).isFalse();
+        assertThat(checker.canView(ReferenceType.SURVEY, adminsOnlyId, outsiderUserId)).isFalse();
+
+        // VIEWERS_ONLY: 名簿軸。登録者のみ可視（一般メンバー・非所属は不可視）。
+        assertThat(checker.canView(ReferenceType.SURVEY, viewersOnlyId, insiderUserId)).isTrue();
+        assertThat(checker.canView(ReferenceType.SURVEY, viewersOnlyId, descendantUserId)).isFalse();
+        assertThat(checker.canView(ReferenceType.SURVEY, viewersOnlyId, outsiderUserId)).isFalse();
     }
 
     // =========================================================================

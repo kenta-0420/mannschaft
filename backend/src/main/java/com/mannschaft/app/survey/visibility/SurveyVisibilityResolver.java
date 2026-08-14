@@ -332,11 +332,10 @@ public class SurveyVisibilityResolver
      *       和集合へ是正済みであり、{@code memberships} 専属の一般メンバーも正しく拾う。</li>
      * </ul>
      *
-     * <p>設計書 §「結果閲覧権限の判定」の優先順位に従い、<b>当該スコープの ADMIN+（優先順 2）と
-     * 結果閲覧者名簿の登録者（優先順 3）は所属軸に関わらず通す</b>
-     * （これらは {@code results_visibility} を無視して閲覧できる上位条件であり、
-     * 締める方向の回帰を作らないため）。ただし本フックは時間条件と AND 合成されるため、
-     * 上位条件であっても<b>締切前に見えるようにはならない</b>。</p>
+     * <p>設計書 §「結果閲覧権限の判定」の上位条件（優先順 2 = ADMIN+ ／ 優先順 3 = 結果閲覧者名簿）は
+     * {@link #isPrivilegedViewer} で所属軸を貫通する。時間軸の貫通は {@link #evaluateCustom} 側で
+     * 行っており、<b>両方を貫通して初めて</b>「{@code results_visibility} を無視して閲覧可能」という
+     * 仕様が成立する（片方だけでは AND 合成で打ち消される）。</p>
      *
      * <p>スコープ不明・未認証は fail-closed（false）。
      * {@code context} は {@link #prepareAdditionalAxisContext} で先読み済みで、本メソッドは DB を触らない。</p>
@@ -348,14 +347,44 @@ public class SurveyVisibilityResolver
                 || row.scopeType() == null || row.scopeId() == null) {
             return false;
         }
-        // 上位条件（results_visibility を無視して常に閲覧可。優先順 2 / 3）。
-        if (isScopeAdmin(row, snapshot) || context.resultViewerSurveyIds().contains(row.id())) {
+        // 上位条件は所属軸も貫通する（優先順 2/3。時間軸は evaluateCustom 側で貫通させている）。
+        if (isPrivilegedViewer(row, snapshot, context)) {
             return true;
         }
         if ("ORGANIZATION".equals(row.scopeType())) {
             return context.affiliatedOrgIds().contains(row.scopeId());
         }
         return snapshot.isMemberOf(new ScopeKey(row.scopeType(), row.scopeId()));
+    }
+
+    /**
+     * 設計書 §「結果閲覧権限の判定」の<b>上位条件</b>に該当する閲覧者か
+     * （優先順 2 = 当該スコープの ADMIN+ ／ 優先順 3 = {@code survey_result_viewers} 登録者）。
+     *
+     * <p>仕様上これらは「<b>{@code results_visibility} を無視して</b>閲覧可能」と定められている。
+     * 優先順 1（作成者）は {@code SurveyResultService#validateResultAccess} の高速パスで
+     * Resolver 自体を通らないため、ここでは扱わない。</p>
+     *
+     * <p><b>⚠️ 呼び出し箇所が 2 つあるのは冗長ではない。</b>{@code AFTER_CLOSE} の判定は
+     * <b>時間軸</b>（{@link #evaluateCustom} → {@link #evaluateAfterClose}）と
+     * <b>所属軸</b>（{@link #visibleByAdditionalAxis} → {@link #isScopeAffiliated}）の
+     * <b>AND 合成</b>であるため、片方だけを迂回させても他方に打ち消されて実効性が無い。
+     * 「{@code results_visibility} を無視する」を成立させるには<b>両方の軸を貫通</b>する必要がある。
+     * どちらか一方を消すと上位条件が黙って効かなくなるので消さないこと。</p>
+     *
+     * <p><b>status 軸は貫通しない。</b>{@code DRAFT}（未公開）・{@code ARCHIVED} は基底クラスの
+     * status ガードが本メソッドより手前で fail-closed するため、上位条件に該当する者でも不可視である
+     * （未公開アンケートを漏らさないための境界）。</p>
+     *
+     * <p>参照するのは当該スコープへの直接ロールと当該アンケートの名簿のみのため、
+     * 他スコープ・他テナントの ADMIN は通らない。</p>
+     */
+    private static boolean isPrivilegedViewer(
+            SurveyVisibilityProjection row, UserScopeRoleSnapshot snapshot, AudienceContext context) {
+        if (row.id() == null) {
+            return false;
+        }
+        return isScopeAdmin(row, snapshot) || context.resultViewerSurveyIds().contains(row.id());
     }
 
     /** 組織配信母集団の判定キー（同一組織・同一トグルの行はまとめて 1 回だけ判定する）。 */
@@ -429,8 +458,8 @@ public class SurveyVisibilityResolver
         if (viewerUserId == null || row.id() == null) {
             return false;
         }
-        // 上位条件（results_visibility を無視して常に閲覧可）。
-        if (isScopeAdmin(row, snapshot) || context.resultViewerSurveyIds().contains(row.id())) {
+        // 上位条件（results_visibility を無視して常に閲覧可。優先順 2 / 3）。
+        if (isPrivilegedViewer(row, snapshot, context)) {
             return true;
         }
         // TARGETED（および distribution_mode 欠損）は名簿がそのまま母集団。
@@ -503,7 +532,14 @@ public class SurveyVisibilityResolver
         }
         return switch (v) {
             case AFTER_RESPONSE -> evaluateAfterResponse(row, viewerUserId);
-            case AFTER_CLOSE -> evaluateAfterClose(row);
+            // AFTER_CLOSE は「時間条件 ∨ 上位条件」。上位条件（優先順 2/3）は results_visibility を
+            // 無視して閲覧できる規定のため、時間条件で締め出してはならない（Issue #2774）。
+            // 所属条件は visibleByAdditionalAxis 側で AND 合成される。
+            case AFTER_CLOSE -> evaluateAfterClose(row)
+                    || isPrivilegedViewer(row, snapshot,
+                            additionalAxisContext instanceof AudienceContext c
+                                    ? c
+                                    : AudienceContext.EMPTY);
             case VIEWERS_ONLY -> evaluateViewersOnly(row, viewerUserId);
             case ALWAYS -> evaluateAlways(row, viewerUserId, snapshot,
                     additionalAxisContext instanceof AudienceContext ctx
@@ -540,8 +576,10 @@ public class SurveyVisibilityResolver
      * <p>PUBLISHED 状態での時刻ベース判定: {@code expiresAt == null}（締切未設定）は
      * fail-closed（軍議裁可済 2026-05-04）。判定は {@code now > expiresAt}（境界では未公開のまま）。</p>
      *
-     * <p><b>これは可視の必要条件にすぎない</b>（Issue #2774）。閲覧者がアンケートの
+     * <p><b>これは時間軸だけの判定である</b>（Issue #2774）。閲覧者がアンケートの
      * スコープに所属するかは {@link #visibleByAdditionalAxis} が AND で合成する。
+     * また上位条件（{@link #isPrivilegedViewer}）は本メソッドの結果に OR で合成され、
+     * 時間軸を貫通する（呼び出し元 {@link #evaluateCustom} を参照）。
      * 本メソッドが閲覧者の識別子を取らないのは、時間条件と所属条件を別々の軸として
      * 直交させているためであり、所属確認を省いてよいという意味ではない。</p>
      */
