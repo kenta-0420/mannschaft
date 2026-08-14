@@ -275,7 +275,7 @@ ALTER TABLE schedule_scheduled_tasks
 
 -- ===== match/tournament ドメイン =====
 ALTER TABLE matches
-    MODIFY COLUMN organization_id       BIGINT UNSIGNED NULL     COMMENT '組織スコープ（単独チーム試合は NULL・FK なし）',
+    MODIFY COLUMN organization_id       BIGINT UNSIGNED NULL     COMMENT 'テナント（organization ドメインへの ID 参照・原則1/7・FK なし）',
     MODIFY COLUMN team_id               BIGINT UNSIGNED NOT NULL COMMENT '記録/ホーム主体チーム（team ドメイン ID 参照・FK なし）',
     MODIFY COLUMN tournament_fixture_id BIGINT UNSIGNED NULL     COMMENT '大会 fixture リンク（tournament ドメインへの BIGINT ID 参照・NULL=単独試合・FK なし）',
     MODIFY COLUMN schedule_id           BIGINT UNSIGNED NULL     COMMENT 'カレンダー連携（F03.1・schedules への BIGINT ID 参照・FK なし）',

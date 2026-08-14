@@ -106,7 +106,7 @@ public class MatchEventService {
     @Transactional
     public MatchEventEntity record(UUID matchId, Long organizationId, Long teamId,
                                    Long actorUserId, EventCommand command) {
-        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId, teamId);
+        MatchEntity match = getMatchOrThrow(matchId, organizationId, teamId);
         matchAccessService.assertCanRecordTimeline(actorUserId, match);
 
         validateEventType(match, command.getEventType());
@@ -160,7 +160,7 @@ public class MatchEventService {
     @Transactional
     public MatchEventEntity update(UUID matchId, UUID eventId, Long organizationId, Long teamId,
                                    Long actorUserId, EventCommand command) {
-        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId, teamId);
+        MatchEntity match = getMatchOrThrow(matchId, organizationId, teamId);
         MatchEventEntity event = getEventInMatchOrThrow(matchId, eventId);
         matchAccessService.assertCanRecordTimeline(actorUserId, match);
 
@@ -212,7 +212,7 @@ public class MatchEventService {
     @Transactional
     public void delete(UUID matchId, UUID eventId, Long organizationId, Long teamId,
                        Long actorUserId) {
-        MatchEntity match = matchService.getMatchOrThrow(matchId, organizationId, teamId);
+        MatchEntity match = getMatchOrThrow(matchId, organizationId, teamId);
         MatchEventEntity event = getEventInMatchOrThrow(matchId, eventId);
         matchAccessService.assertCanRecordTimeline(actorUserId, match);
 
@@ -233,6 +233,13 @@ public class MatchEventService {
      * 不一致（別 match のイベント ID 指定）は 404 で統一し存在を漏らさない（03 §C.4・親子不一致 404）。
      * これにより推測 ID による越境（IDOR）を遮断する。</p>
      */
+    private MatchEntity getMatchOrThrow(UUID matchId, Long organizationId, Long teamId) {
+        if (teamId == null) {
+            return matchService.getMatchOrThrow(matchId, organizationId);
+        }
+        return matchService.getMatchOrThrow(matchId, organizationId, teamId);
+    }
+
     private MatchEventEntity getEventInMatchOrThrow(UUID matchId, UUID eventId) {
         MatchEventEntity event = matchEventRepository.findById(eventId)
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_002));
