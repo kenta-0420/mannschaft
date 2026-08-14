@@ -640,19 +640,29 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * {@code ORDER BY} はすべて {@code cand.user_id} を参照する。
      * {@code cand} は {@code UNION} で重複排除済みのため、両系統に行を持つ者もページ内で重複しない。</p>
      *
-     * <p><b>カーソル条件は「両枝の内側」にも置く — 冗長に見えるが消してはならない（#2785 検分差し戻し）</b>:
-     * {@code UNION} を含む派生表は重複排除のためマージ不能でマテリアライズされる。カーソル条件を外側だけに
-     * 置くと、<b>各ページで候補集合を丸ごと再構築・再重複排除してからカーソルで絞る</b>ことになり、
-     * その費用がページ数に比例して積み上がる（50 万規模の fan-out が実質的な反復全件走査へ退行する）。
-     * そこで {@code ur.user_id > :cursor} / {@code ms0.user_id > :cursor} を両枝の内側にも適用し、
-     * 各枝が {@code (organization_id, user_id)} / {@code (team_id, user_id)} /
-     * {@code (scope_type, scope_id, left_at, user_id)} の索引レンジで絞られるようにする。
-     * これによりマテリアライズされる中間結果が「カーソル以降」に限定される。</p>
+     * <p><b>各枝に {@code ORDER BY user_id ASC LIMIT :chunk} を付ける — 削ると走査量が二次に増える
+     * （#2785 検分差し戻し）</b>: {@code UNION} を含む派生表は重複排除のためマージ不能でマテリアライズされる。
+     * カーソル条件を枝内へ押し込むだけでは、派生表は毎ページ「カーソルより後の<b>残存母集団全体</b>」を
+     * 重複排除してマテリアライズし、外側の {@code LIMIT} はその後にしか効かない。走査量はページ k で
+     * 概ね {@code N - k×chunk}、全 {@code N/chunk} ページの合計で <b>{@code N²/(2×chunk)}</b> となる
+     * （N=50 万・chunk=1000 で約 1.25 億行）。そこで各枝を {@code chunk} 件で打ち切り、
+     * 1 ページあたりのマテリアライズ量を {@code chunk} 程度に抑える。</p>
      *
-     * <p><b>両枝に等しく置くのは安全である</b>: 同一列に対する同一の絞り込みであり外側の条件と論理的に等価で、
-     * {@code UNION} の重複排除は行を減らす方向にしか働かないため母集団は変わらない。
-     * 危険なのは<b>片枝だけ</b>に置くことで、その場合ページ境界で行が飛ぶ（AC-13 が番人）。
-     * 外側の {@code cand.user_id > :cursor} も保険として残してある。</p>
+     * <p><b>これで結果が厳密に正しい理由</b>: 求めたいのは「和集合を昇順に並べた先頭 {@code chunk} 件」である。
+     * 和集合の k 番目に小さい要素は<b>必ずいずれかの枝の先頭 k 件の中に存在する</b>
+     * （そうでなければ、その枝にその要素より小さい要素が k 個以上あることになり、和集合での順位が
+     * k より後ろになって矛盾する）。よって各枝から {@code chunk} 件ずつ取れば和集合の先頭 {@code chunk} 件は
+     * 必ずその中に含まれ、{@code UNION} の重複排除は行を減らす方向にしか働かないため、
+     * マージ後に外側で改めて昇順先頭 {@code chunk} 件を取れば<b>取りこぼしも重複も生じない</b>。
+     * 枝内は {@code SELECT DISTINCT} とし、{@code LIMIT} の枠を同一ユーザーの重複行に食わせない。</p>
+     *
+     * <p><b>母集団条件も枝内へ入れてある（生存ユーザー・純 SUPPORTER 除外）</b>: これらを外側に残すと、
+     * 枝の {@code LIMIT} が「絞られる前の行」を数えてしまい、先頭 {@code chunk} 件が全滅したページで
+     * <b>空が返る</b>。呼び出し側のキーセットループは空で終了するため、以降の受信者が静かに配信漏れになる。
+     * 枝内に入れておけば、空が返るのは真に候補が尽きたときだけである。</p>
+     *
+     * <p>母集団の<b>定義</b>（候補集合・除外条件）は 6 本で完全一致のままである。
+     * {@code LIMIT} はページ供給量の制御であって母集団の定義ではない。</p>
      *
      * <p>{@code CAST(... AS SIGNED)} で戻り値を確実に {@code Long} にマップする
      * （{@link com.mannschaft.app.membership.repository.MembershipRepository#findActiveUserIdsByScopeKeyset}
@@ -676,53 +686,59 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
             "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
-            // カーソル条件は両枝の内側にも置く（外側だけだと候補集合を毎ページ丸ごと再構築する）
-            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
-            "    WHERE ur.user_id > :cursor " +
-            "      AND ( ur.organization_id IN (SELECT id FROM org_tree) " +
-            "            OR ur.team_id IN ( " +
-            "              SELECT tom.team_id FROM team_org_memberships tom " +
-            "              WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "            ) ) " +
+            // 各枝が「カーソル以降の自枝の先頭 chunk 件」だけを返す。母集団条件（生存ユーザー・
+            // 純 SUPPORTER 除外）も枝内へ入れる。外側に残すと枝の LIMIT が「絞られる前の行」を
+            // 数えてしまい、全滅したページで空が返って呼び出し側のループが早期終了する（配信漏れ）。
+            "  ( SELECT DISTINCT ur.user_id AS user_id FROM user_roles ur " +
+            "      JOIN users u ON u.id = ur.user_id " +
+            "      WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "        AND ur.user_id > :cursor " +
+            "        AND ( ur.organization_id IN (SELECT id FROM org_tree) " +
+            "              OR ur.team_id IN ( " +
+            "                SELECT tom.team_id FROM team_org_memberships tom " +
+            "                WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "              ) ) " +
+            "        AND ( :includeSupporters = TRUE OR NOT ( " +
+            "          EXISTS ( SELECT 1 FROM memberships ms WHERE ms.user_id = ur.user_id " +
+            "            AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' AND ( " +
+            "              (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
+            "              OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "                SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "                WHERE tom2.organization_id IN (SELECT id FROM org_tree) AND tom2.status = 'ACTIVE')) ) ) " +
+            "          AND NOT EXISTS ( SELECT 1 FROM memberships ms2 WHERE ms2.user_id = ur.user_id " +
+            "            AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' AND ( " +
+            "              (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
+            "              OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
+            "                SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "                WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE')) ) ) " +
+            "        ) ) " +
+            "      ORDER BY user_id ASC LIMIT :chunk ) " +
             "  UNION " +
-            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
-            "    WHERE ms0.left_at IS NULL AND ms0.user_id > :cursor " +
-            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
-            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
-            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
-            "              WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
-            "            )) ) " +
+            "  ( SELECT DISTINCT ms0.user_id AS user_id FROM memberships ms0 " +
+            "      JOIN users u2 ON u2.id = ms0.user_id " +
+            "      WHERE u2.deleted_at IS NULL AND u2.status = 'ACTIVE' " +
+            "        AND ms0.left_at IS NULL AND ms0.user_id > :cursor " +
+            "        AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
+            "              OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "                SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "                WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
+            "              )) ) " +
+            "        AND ( :includeSupporters = TRUE OR NOT ( " +
+            "          EXISTS ( SELECT 1 FROM memberships ms3 WHERE ms3.user_id = ms0.user_id " +
+            "            AND ms3.left_at IS NULL AND ms3.role_kind = 'SUPPORTER' AND ( " +
+            "              (ms3.scope_type = 'ORGANIZATION' AND ms3.scope_id IN (SELECT id FROM org_tree)) " +
+            "              OR (ms3.scope_type = 'TEAM' AND ms3.scope_id IN ( " +
+            "                SELECT tom4.team_id FROM team_org_memberships tom4 " +
+            "                WHERE tom4.organization_id IN (SELECT id FROM org_tree) AND tom4.status = 'ACTIVE')) ) ) " +
+            "          AND NOT EXISTS ( SELECT 1 FROM memberships ms4 WHERE ms4.user_id = ms0.user_id " +
+            "            AND ms4.left_at IS NULL AND ms4.role_kind = 'MEMBER' AND ( " +
+            "              (ms4.scope_type = 'ORGANIZATION' AND ms4.scope_id IN (SELECT id FROM org_tree)) " +
+            "              OR (ms4.scope_type = 'TEAM' AND ms4.scope_id IN ( " +
+            "                SELECT tom5.team_id FROM team_org_memberships tom5 " +
+            "                WHERE tom5.organization_id IN (SELECT id FROM org_tree) AND tom5.status = 'ACTIVE')) ) ) " +
+            "        ) ) " +
+            "      ORDER BY user_id ASC LIMIT :chunk ) " +
             ") cand " +
-            "JOIN users u ON u.id = cand.user_id " +
-            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    :includeSupporters = TRUE " +
-            "    OR NOT ( " +
-            "      EXISTS ( " +
-            "        SELECT 1 FROM memberships ms " +
-            "        WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
-            "          AND ( " +
-            "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
-            "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
-            "              SELECT tom2.team_id FROM team_org_memberships tom2 " +
-            "              WHERE tom2.organization_id IN (SELECT id FROM org_tree) AND tom2.status = 'ACTIVE' " +
-            "            )) " +
-            "          ) " +
-            "      ) " +
-            "      AND NOT EXISTS ( " +
-            "        SELECT 1 FROM memberships ms2 " +
-            "        WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
-            "          AND ( " +
-            "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
-            "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
-            "              SELECT tom3.team_id FROM team_org_memberships tom3 " +
-            "              WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE' " +
-            "            )) " +
-            "          ) " +
-            "      ) " +
-            "    ) " +
-            "  ) " +
-            "  AND cand.user_id > :cursor " +
             "ORDER BY uid ASC",
             nativeQuery = true)
     List<Long> findDistributionUserIdsForOrganizationRecursiveKeyset(
@@ -730,6 +746,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("includeSupporters") boolean includeSupporters,
             @Param("maxDepth") int maxDepth,
             @Param("cursor") long cursor,
+            @Param("chunk") int chunk,
             Pageable pageable);
 
     /**
@@ -746,13 +763,17 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * <b>MOD も候補集合の派生表 {@code cand} を参照させる</b>こと（ここだけ {@code ur} が残ると
      * {@code memberships} 専属メンバーが全シャードから漏れる）。
      *
-     * <p><b>カーソル条件・シャード述語は「両枝の内側」にも置く — 冗長に見えるが消してはならない
-     * （#2785 検分差し戻し）</b>: 本家キーセット版と同じ理由で、{@code UNION} 派生表は毎ページ
-     * マテリアライズされる。外側だけに置くと候補集合を丸ごと再構築してから絞ることになり、費用が
-     * ページ数に比例して積み上がる。そこで {@code user_id > :cursor} と
-     * {@code MOD(user_id, :shardCount) = :shardIndex} を両枝の内側にも適用し、マテリアライズされる
-     * 中間結果を「カーソル以降かつ当該シャード分」に限定する。両枝に等しく置く限り母集団は変わらない
-     * （片枝だけに置くとページ境界で行が飛ぶ。AC-13 / AC-14 が番人）。</p>
+     * <p><b>カーソル・シャード述語・母集団条件を枝内へ置き、各枝を {@code ORDER BY ... LIMIT :chunk} で
+     * 打ち切る — 削ると走査量が二次に増える（#2785 検分差し戻し）</b>: 本家キーセット版と同一の理由・
+     * 同一の正しさの根拠による（和集合の先頭 k 件は必ずいずれかの枝の先頭 k 件に含まれる）。
+     * {@code MOD(user_id, :shardCount) = :shardIndex} も枝内に置き、マテリアライズされる中間結果を
+     * 「カーソル以降かつ当該シャード分の先頭 {@code chunk} 件」に限定する。</p>
+     *
+     * <p><b>ページが {@code chunk} 件に満たないことがある</b>: シャードで間引かれるため、枝内 {@code LIMIT}
+     * が {@code chunk} 件に届かないページが生じうる。ただし<b>カーソルが進む限り欠落は起きない</b>
+     * （残りは次ページで拾う）。呼び出し側（{@code OrgFanoutRecipientSource} 経由のワーカー）の
+     * キーセットループは<b>空ページで終了する</b>規約であり、「{@code chunk} 未満で終了」ではないため、
+     * この挙動と矛盾しない。母集団条件を枝内に入れてあるので、空が返るのは真に候補が尽きたときだけである。</p>
      *
      * <p><b>インデックス影響</b>: {@code MOD(user_id, N)} は関数適用のため user_id インデックスの range scan には
      * 効かない（{@code user_id > :cursor} と {@code ORDER BY} が走査順を担保し、MOD は結果行のフィルタに留まる）。
@@ -772,56 +793,60 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
             "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
-            // カーソル条件・シャード述語は両枝の内側にも置く（外側だけだと候補集合を毎ページ丸ごと再構築する）
-            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
-            "    WHERE ur.user_id > :cursor " +
-            "      AND MOD(ur.user_id, :shardCount) = :shardIndex " +
-            "      AND ( ur.organization_id IN (SELECT id FROM org_tree) " +
-            "            OR ur.team_id IN ( " +
-            "              SELECT tom.team_id FROM team_org_memberships tom " +
-            "              WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "            ) ) " +
+            // 非シャード版と同型。カーソル・シャード述語・母集団条件をすべて枝内に置いた上で
+            // 各枝が「自枝の先頭 chunk 件」だけを返す（外側に残すと枝の LIMIT が絞られる前の行を数える）。
+            "  ( SELECT DISTINCT ur.user_id AS user_id FROM user_roles ur " +
+            "      JOIN users u ON u.id = ur.user_id " +
+            "      WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "        AND ur.user_id > :cursor " +
+            "        AND MOD(ur.user_id, :shardCount) = :shardIndex " +
+            "        AND ( ur.organization_id IN (SELECT id FROM org_tree) " +
+            "              OR ur.team_id IN ( " +
+            "                SELECT tom.team_id FROM team_org_memberships tom " +
+            "                WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "              ) ) " +
+            "        AND ( :includeSupporters = TRUE OR NOT ( " +
+            "          EXISTS ( SELECT 1 FROM memberships ms WHERE ms.user_id = ur.user_id " +
+            "            AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' AND ( " +
+            "              (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
+            "              OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "                SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "                WHERE tom2.organization_id IN (SELECT id FROM org_tree) AND tom2.status = 'ACTIVE')) ) ) " +
+            "          AND NOT EXISTS ( SELECT 1 FROM memberships ms2 WHERE ms2.user_id = ur.user_id " +
+            "            AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' AND ( " +
+            "              (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
+            "              OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
+            "                SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "                WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE')) ) ) " +
+            "        ) ) " +
+            "      ORDER BY user_id ASC LIMIT :chunk ) " +
             "  UNION " +
-            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
-            "    WHERE ms0.left_at IS NULL AND ms0.user_id > :cursor " +
-            "      AND MOD(ms0.user_id, :shardCount) = :shardIndex " +
-            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
-            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
-            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
-            "              WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
-            "            )) ) " +
+            "  ( SELECT DISTINCT ms0.user_id AS user_id FROM memberships ms0 " +
+            "      JOIN users u2 ON u2.id = ms0.user_id " +
+            "      WHERE u2.deleted_at IS NULL AND u2.status = 'ACTIVE' " +
+            "        AND ms0.left_at IS NULL AND ms0.user_id > :cursor " +
+            "        AND MOD(ms0.user_id, :shardCount) = :shardIndex " +
+            "        AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
+            "              OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "                SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "                WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
+            "              )) ) " +
+            "        AND ( :includeSupporters = TRUE OR NOT ( " +
+            "          EXISTS ( SELECT 1 FROM memberships ms3 WHERE ms3.user_id = ms0.user_id " +
+            "            AND ms3.left_at IS NULL AND ms3.role_kind = 'SUPPORTER' AND ( " +
+            "              (ms3.scope_type = 'ORGANIZATION' AND ms3.scope_id IN (SELECT id FROM org_tree)) " +
+            "              OR (ms3.scope_type = 'TEAM' AND ms3.scope_id IN ( " +
+            "                SELECT tom4.team_id FROM team_org_memberships tom4 " +
+            "                WHERE tom4.organization_id IN (SELECT id FROM org_tree) AND tom4.status = 'ACTIVE')) ) ) " +
+            "          AND NOT EXISTS ( SELECT 1 FROM memberships ms4 WHERE ms4.user_id = ms0.user_id " +
+            "            AND ms4.left_at IS NULL AND ms4.role_kind = 'MEMBER' AND ( " +
+            "              (ms4.scope_type = 'ORGANIZATION' AND ms4.scope_id IN (SELECT id FROM org_tree)) " +
+            "              OR (ms4.scope_type = 'TEAM' AND ms4.scope_id IN ( " +
+            "                SELECT tom5.team_id FROM team_org_memberships tom5 " +
+            "                WHERE tom5.organization_id IN (SELECT id FROM org_tree) AND tom5.status = 'ACTIVE')) ) ) " +
+            "        ) ) " +
+            "      ORDER BY user_id ASC LIMIT :chunk ) " +
             ") cand " +
-            "JOIN users u ON u.id = cand.user_id " +
-            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    :includeSupporters = TRUE " +
-            "    OR NOT ( " +
-            "      EXISTS ( " +
-            "        SELECT 1 FROM memberships ms " +
-            "        WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
-            "          AND ( " +
-            "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
-            "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
-            "              SELECT tom2.team_id FROM team_org_memberships tom2 " +
-            "              WHERE tom2.organization_id IN (SELECT id FROM org_tree) AND tom2.status = 'ACTIVE' " +
-            "            )) " +
-            "          ) " +
-            "      ) " +
-            "      AND NOT EXISTS ( " +
-            "        SELECT 1 FROM memberships ms2 " +
-            "        WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
-            "          AND ( " +
-            "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
-            "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
-            "              SELECT tom3.team_id FROM team_org_memberships tom3 " +
-            "              WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE' " +
-            "            )) " +
-            "          ) " +
-            "      ) " +
-            "    ) " +
-            "  ) " +
-            "  AND cand.user_id > :cursor " +
-            "  AND MOD(cand.user_id, :shardCount) = :shardIndex " +
             "ORDER BY uid ASC",
             nativeQuery = true)
     List<Long> findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
@@ -829,6 +854,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("includeSupporters") boolean includeSupporters,
             @Param("maxDepth") int maxDepth,
             @Param("cursor") long cursor,
+            @Param("chunk") int chunk,
             @Param("shardIndex") int shardIndex,
             @Param("shardCount") int shardCount,
             Pageable pageable);

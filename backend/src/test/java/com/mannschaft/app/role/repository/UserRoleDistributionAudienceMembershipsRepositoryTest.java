@@ -224,7 +224,7 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
         long cursor = 0L;
         while (true) {
             List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                    orgId, includeSupporters, maxDepth, cursor, PageRequest.of(0, chunk));
+                    orgId, includeSupporters, maxDepth, cursor, chunk, PageRequest.of(0, chunk));
             if (page.isEmpty()) {
                 return acc;
             }
@@ -240,7 +240,8 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
             long cursor = 0L;
             while (true) {
                 List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
-                        orgId, includeSupporters, maxDepth, cursor, shardIndex, shardCount, PageRequest.of(0, chunk));
+                        orgId, includeSupporters, maxDepth, cursor, chunk, shardIndex, shardCount,
+                        PageRequest.of(0, chunk));
                 if (page.isEmpty()) {
                     break;
                 }
@@ -438,6 +439,46 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
         assertThat(paged).containsExactlyElementsOf(expected.stream().sorted().toList());
     }
 
+    /**
+     * AC-13【枝内 LIMIT の番人】: 候補が<b>片方の枝に偏り</b>、その枝だけで chunk を大きく超える構成でも
+     * keyset 版が欠落なく全件を返す。
+     *
+     * <p>各枝を {@code ORDER BY user_id ASC LIMIT :chunk} で打ち切る実装は、
+     * 「和集合の先頭 k 件は必ずいずれかの枝の先頭 k 件に含まれる」ことに依拠している。
+     * 偏りがあると枝の打ち切りが効く場面が増えるため、ここを踏まないと退行を見逃す。
+     * {@code user_roles} 専属を連続 12 名、{@code memberships} 専属を末尾に 4 名置き、chunk=3 で手繰る。</p>
+     */
+    @Test
+    @DisplayName("AC-13: 候補が片方の枝に偏りchunkを超えてもkeyset版は欠落なく全件返す")
+    void ac13_枝に偏った候補でも欠落しない() {
+        Long rootOrg = persistOrganization(null);
+        Long leafOrg = persistOrganization(rootOrg);
+        Long leafTeam = 610_035L;
+        linkTeamToOrg(leafTeam, leafOrg, TeamOrgMembershipEntity.Status.ACTIVE);
+
+        Set<Long> expected = new LinkedHashSet<>();
+        // user_roles 専属を連続 12 名（chunk=3 の 4 ページ分を 1 枝が占める）
+        for (int i = 0; i < 12; i++) {
+            Long urOnly = persistActiveUser();
+            grantOrgRole(urOnly, leafOrg);
+            expected.add(urOnly);
+        }
+        // memberships 専属を末尾に 4 名（user_id が後ろに来る）
+        for (int i = 0; i < 4; i++) {
+            expected.add(membershipOnlyMember(
+                    i % 2 == 0 ? ScopeType.ORGANIZATION : ScopeType.TEAM,
+                    i % 2 == 0 ? leafOrg : leafTeam));
+        }
+        flushClear();
+
+        List<Long> paged = keysetAll(rootOrg, false, MAX_DEPTH, 3);
+
+        assertThat(paged).as("偏った枝で打ち切っても重複しない").doesNotHaveDuplicates();
+        assertThat(paged).as("偏った枝で打ち切っても行が飛ばない").containsExactlyInAnyOrderElementsOf(expected);
+        assertThat(paged).as("keyset ページングは user_id 昇順が前提").isSorted();
+        assertThat(paged).containsExactlyElementsOf(expected.stream().sorted().toList());
+    }
+
     // ---------------------------------------------------------------------
     // AC-14: シャード版の全シャードの和
     // ---------------------------------------------------------------------
@@ -474,7 +515,7 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
             long cursor = 0L;
             while (true) {
                 List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
-                        rootOrg, false, MAX_DEPTH, cursor, shardIndex, shardCount, PageRequest.of(0, 3));
+                        rootOrg, false, MAX_DEPTH, cursor, 3, shardIndex, shardCount, PageRequest.of(0, 3));
                 if (page.isEmpty()) {
                     break;
                 }
