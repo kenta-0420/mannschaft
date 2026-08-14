@@ -166,6 +166,50 @@
       }
     },
     "google_sync_notice": "已连接 Google 日历。在 Google 中所做的更改将在您下次在此处保存时被 Mannschaft 的数据替换。",
+    "comment": {
+      "title": "评论",
+      "placeholder": "对此日程发表评论…",
+      "submit": "发布",
+      "cancel": "取消",
+      "save": "保存",
+      "reply": "回复",
+      "replyTo": "回复 {name}",
+      "showReplies": "显示其他 {count} 条回复",
+      "empty": "还没有评论",
+      "loadMore": "加载更多",
+      "edit": "编辑",
+      "edited": "（已编辑）",
+      "delete": "删除",
+      "deleteConfirm": "要删除这条评论吗？",
+      "deleted": "此评论已被删除",
+      "deletedAuthor": "已注销的用户",
+      "closed": "此日程的评论已关闭",
+      "cancelled": "无法对已取消的日程发表评论",
+      "updateSuccess": "评论已更新",
+      "deleteSuccess": "评论已删除",
+      "postSuccess": "评论已发布",
+      "settings": {
+        "enable": "允许评论",
+        "disable": "关闭评论",
+        "updateSuccess": "评论设置已更新"
+      },
+      "mention": {
+        "hint": "可以提及成员",
+        "empty": "没有匹配的成员"
+      },
+      "count": "{count} 条评论",
+      "error": {
+        "bodyRequired": "请输入评论内容",
+        "bodyTooLong": "评论不能超过 2000 个字符",
+        "maxDepth": "无法对该回复继续回复",
+        "closed": "评论已关闭",
+        "forbidden": "您没有执行此操作的权限",
+        "tooManyMentions": "最多只能提及 20 人",
+        "rateLimited": "发布过于频繁，请稍后再试",
+        "generic": "操作失败",
+        "notFound": "未找到该评论"
+      }
+    },
     "todo_load_error": {
       "summary": "TODO 加载失败",
       "detail": "无法在日历上显示 TODO。日程仍然显示。请稍后重新加载。"

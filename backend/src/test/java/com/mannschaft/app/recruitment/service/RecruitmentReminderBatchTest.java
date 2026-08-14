@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -44,6 +45,11 @@ class RecruitmentReminderBatchTest {
     private RecruitmentParticipantRepository participantRepository;
     @Mock
     private NotificationHelper notificationHelper;
+    // Issue #2715 ロットA: 通知本文の i18n 化で追加した依存。
+    @Mock
+    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock
+    private org.springframework.context.MessageSource messageSource;
 
     @InjectMocks
     private RecruitmentReminderBatch batch;
@@ -71,11 +77,42 @@ class RecruitmentReminderBatchTest {
         given(listingRepository.findById(10L)).willReturn(Optional.of(listing));
         given(participantRepository.findById(100L)).willReturn(Optional.of(participant));
         given(reminderRepository.save(any())).willReturn(null);
+        given(userLocaleCache.getLocale(5L)).willReturn("ja");
+        given(messageSource.getMessage(any(), any(), any(), any()))
+                .willAnswer(invocation -> invocation.getArgument(2));
 
         batch.reminderBatch();
 
         verify(notificationHelper).notify(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         verify(reminderRepository).save(any());
+    }
+
+    @Test
+    @DisplayName("正常系: 受信者localeに従って通知の件名・本文が切り替わる（Issue #2715）")
+    void reminderBatch_localeAware_buildsMessageInRecipientLocale() throws Exception {
+        RecruitmentReminderEntity reminder = buildReminder(1L, 10L, 100L);
+        RecruitmentListingEntity listing = buildListing(10L);
+        RecruitmentParticipantEntity participant = buildParticipant(100L, 5L);
+
+        given(reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(any()))
+                .willReturn(List.of(reminder));
+        given(listingRepository.findById(10L)).willReturn(Optional.of(listing));
+        given(participantRepository.findById(100L)).willReturn(Optional.of(participant));
+        given(reminderRepository.save(any())).willReturn(null);
+        given(userLocaleCache.getLocale(5L)).willReturn("en");
+        given(messageSource.getMessage(eq("notification.recruitment.reminder.title"), any(), any(),
+                eq(java.util.Locale.forLanguageTag("en"))))
+                .willReturn("Reminder: Test Listing");
+        given(messageSource.getMessage(eq("notification.recruitment.reminder.body"), any(), any(),
+                eq(java.util.Locale.forLanguageTag("en"))))
+                .willReturn("Test Listing starts in 24 hours.");
+
+        batch.reminderBatch();
+
+        verify(notificationHelper).notify(
+                eq(5L), eq("RECRUITMENT_REMINDER"),
+                eq("Reminder: Test Listing"), eq("Test Listing starts in 24 hours."),
+                any(), any(), any(), any(), any(), any());
     }
 
     @Test

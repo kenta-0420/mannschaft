@@ -77,8 +77,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>{@code BULLETIN_020}（ARCHIVE_FOLDER_SCOPE_MISMATCH）→ <b>409</b></li>
  *   <li>認可拒否は {@code CommonErrorCode.COMMON_002} が <b>403</b> で明示登録</li>
  * </ul>
- * <p>{@code BULLETIN_012}（PARENT_REPLY_MISMATCH）は {@code Severity.ERROR} かつ未登録のため
- * 500 に落ちる既知の欠陥があるが、別 PR で是正中のため本テストでは一切依存しない。</p>
+ * <p>{@code BULLETIN_012}（PARENT_REPLY_MISMATCH）は {@code Severity.WARN} かつ
+ * {@code ERROR_CODE_STATUS_MAP} 未登録（既定どおり 400）が正しい状態であり、本テストでは
+ * 一切依存しない（GlobalExceptionHandlerTest#badRequestCases が別途保証）。</p>
  *
  * <p><b>対象外</b>: 親スコープを URL に持たない Global 系 EP
  * （{@code GlobalBulletin*Controller} / {@code BulletinReactionController} /

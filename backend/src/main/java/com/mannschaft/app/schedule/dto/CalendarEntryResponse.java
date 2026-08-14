@@ -13,6 +13,16 @@ import java.time.LocalDateTime;
 public class CalendarEntryResponse {
 
     Long               id;
+
+    /**
+     * 親 {@code schedules} 行の ID（設計書 §1.5 / AC-07(b)）。
+     *
+     * <p>本エントリが実体としてスケジュール行そのものである場合は {@code id} と同値になる。
+     * reflection 等 UUID 主キードメイン由来のエントリ（{@code id=null}）では常に {@code null}。
+     * 将来 F03.8 イベント（{@code events.schedule_id} が NULL 許容）がカレンダーに合流した際、
+     * 親スケジュール不在のイベントを FE が判別してコメント欄を非表示にするための専用フィールド。</p>
+     */
+    Long               scheduleId;
     CalendarContentDto content;  // title, eventType, status
     CalendarTimeDto    time;     // startAt, endAt, allDay
     CalendarScopeDto   scope;    // scopeType, scopeId, scopeName, scopeIconUrl

@@ -1,4 +1,5 @@
 import { useRecruitmentApplications } from './recruitment/useRecruitmentApplications'
+import { useRecruitmentCancellationFee } from './recruitment/useRecruitmentCancellationFee'
 import { useRecruitmentCrud } from './recruitment/useRecruitmentCrud'
 import { useRecruitmentMatching } from './recruitment/useRecruitmentMatching'
 
@@ -16,6 +17,7 @@ export function useRecruitmentApi() {
   const crud = useRecruitmentCrud()
   const applications = useRecruitmentApplications()
   const matching = useRecruitmentMatching()
+  const cancellationFee = useRecruitmentCancellationFee()
 
   return {
     // ----- CRUD・カタログ系 (useRecruitmentCrud) -----
@@ -62,5 +64,8 @@ export function useRecruitmentApi() {
     getScopePenalties: matching.getScopePenalties,
     liftPenalty: matching.liftPenalty,
     getMyPenalties: matching.getMyPenalties,
+    // ----- F03.11.1 キャンセル料の免除 (useRecruitmentCancellationFee) -----
+    listCancellationRecords: cancellationFee.listCancellationRecords,
+    waiveCancellationFee: cancellationFee.waiveCancellationFee,
   }
 }

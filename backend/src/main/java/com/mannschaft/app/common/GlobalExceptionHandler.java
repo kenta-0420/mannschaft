@@ -92,6 +92,21 @@ public class GlobalExceptionHandler {
             //  - SCHEDULE_KEEP_006/007/009 状態遷移違反 → 409（設計書 §5.3・§7）
             //  - SCHEDULE_KEEP_008 revert が出欠回答に阻まれる → 409
             //  - SCHEDULE_KEEP_010 スコープあたりの件数上限超過 → 409
+            // F03.16 予定コメントスレッド: 400 以外を返すコードを宣言どおりの status に上書きする
+            // （設計書 §4 のエラー表。登録漏れは Severity.WARN の既定 400 に静かに落ちる）。
+            //  - SCHEDULE_COMMENT_002 予定不在・個人予定・閲覧権限なしを畳んで 404（存在秘匿・§2.2/§4.5）
+            //  - SCHEDULE_COMMENT_003 コメント不在・越境・削除済み → 404（IDOR 経路の遮断・§4.1）
+            //  - SCHEDULE_COMMENT_004/009/010/011 認可拒否 → 403
+            //  - SCHEDULE_COMMENT_005 writable() が false（スレッド閉／予定中止）→ 409（§5.2）
+            //  - SCHEDULE_COMMENT_012 レート制限 → 429（§10.2）
+            Map.entry("SCHEDULE_COMMENT_002", HttpStatus.NOT_FOUND),
+            Map.entry("SCHEDULE_COMMENT_003", HttpStatus.NOT_FOUND),
+            Map.entry("SCHEDULE_COMMENT_004", HttpStatus.FORBIDDEN),
+            Map.entry("SCHEDULE_COMMENT_005", HttpStatus.CONFLICT),
+            Map.entry("SCHEDULE_COMMENT_009", HttpStatus.FORBIDDEN),
+            Map.entry("SCHEDULE_COMMENT_010", HttpStatus.FORBIDDEN),
+            Map.entry("SCHEDULE_COMMENT_011", HttpStatus.FORBIDDEN),
+            Map.entry("SCHEDULE_COMMENT_012", HttpStatus.TOO_MANY_REQUESTS),
             Map.entry("SCHEDULE_KEEP_001", HttpStatus.NOT_FOUND),
             Map.entry("SCHEDULE_KEEP_005", HttpStatus.FORBIDDEN),
             Map.entry("SCHEDULE_KEEP_006", HttpStatus.CONFLICT),
@@ -2140,7 +2155,12 @@ public class GlobalExceptionHandler {
             Map.entry("SAFETY_011", HttpStatus.CONFLICT),                // REMIND_TOO_FREQUENT（クールダウン未経過）
 
             // F09.8 コルクボード（CorkboardErrorCode）の残り未登録分。
-            Map.entry("CORKBOARD_002", HttpStatus.NOT_FOUND),            // CARD_NOT_FOUND
+            // CORKBOARD_002（CARD_NOT_FOUND）はロットHで一度404に登録したが、設計書
+            // docs/features/F09.8.1_corkboard_pin_dashboard.md §エラーコード表（L162）が
+            // 明示的に「400 | CORKBOARD_002 | カードが見つからない（論理削除済み含む）」と規定しており、
+            // 既存の契約テスト MyCorkboardPinControllerIT#カード不在_400（L221-235）もこれに
+            // 準拠している（ボード不在=CORKBOARD_001 の 404 とは意図的に区別）。
+            // 設計書・既存契約が優先するため404登録を撤回し、Severity.WARN既定の400に戻す。
             Map.entry("CORKBOARD_003", HttpStatus.NOT_FOUND),            // GROUP_NOT_FOUND
             Map.entry("CORKBOARD_006", HttpStatus.CONFLICT),             // CARD_ALREADY_IN_GROUP
             Map.entry("CORKBOARD_007", HttpStatus.NOT_FOUND),            // CARD_NOT_IN_GROUP（findByCardAndGroup の解決失敗）
@@ -2170,7 +2190,17 @@ public class GlobalExceptionHandler {
             // F03.10 年間行事計画（ScheduleEventCategoryErrorCode、コード文字列は EVTCAT_xxx）。
             Map.entry("EVTCAT_001", HttpStatus.NOT_FOUND),               // CATEGORY_NOT_FOUND
             Map.entry("EVTCAT_002", HttpStatus.CONFLICT),                // DUPLICATE_CATEGORY_NAME
-            Map.entry("EVTCAT_010", HttpStatus.NOT_FOUND),               // CATEGORY_SCOPE_MISMATCH（越境は存在秘匿）
+            // EVTCAT_010（CATEGORY_SCOPE_MISMATCH）は一度400へ撤回したが、これは誤りだった
+            // （Codexによる独立検分で指摘・殿が実コードで裏取りして確定）。
+            // getById（ScheduleEventCategoryService.java:139-143）は不在のcategoryIdに対し
+            // EVTCAT_001（CATEGORY_NOT_FOUND）を投げ404を返す。一方 validateCategoryScope
+            // （同ファイル296-301行）は「実在するが他チーム/他組織のcategoryId」に対し
+            // CATEGORY_SCOPE_MISMATCH を投げる。ここを400のままにすると「404=不在」
+            // 「400=実在するがスコープ外」という応答の違いから、IDを連番で試すだけで
+            // 実在するcategoryIdを列挙できる存在オラクルになる。docs/security/README.md の
+            // 越境404方針（越境はNOT_FOUNDに畳んで不在と区別不能にする）にも反する。
+            // 兄弟のEVTCAT_001と同一の404に畳み、存在の有無を判別不能にする。
+            Map.entry("EVTCAT_010", HttpStatus.NOT_FOUND),               // CATEGORY_SCOPE_MISMATCH（越境は存在秘匿。EVTCAT_001と同一応答に畳む）
             Map.entry("EVTCAT_021", HttpStatus.NOT_FOUND),               // ANNUAL_COPY_SOURCE_NOT_FOUND
             Map.entry("EVTCAT_022", HttpStatus.CONFLICT),                // ANNUAL_COPY_CONFLICT
 
@@ -2190,7 +2220,12 @@ public class GlobalExceptionHandler {
             Map.entry("ADMIN_006", HttpStatus.NOT_FOUND),                // BATCH_JOB_LOG_NOT_FOUND
 
             // F05.1 掲示板（BulletinErrorCode）の残り未登録分。
-            Map.entry("BULLETIN_012", HttpStatus.CONFLICT),              // PARENT_REPLY_MISMATCH（兄弟 BULLETIN_020 と同流儀）
+            // BULLETIN_012（PARENT_REPLY_MISMATCH）はロットHで一度 409 に登録したが、
+            // throw元（BulletinReplyService#createReply/updateReply等）はクライアントが送った
+            // parentId が同一スレッド内に存在しない/一致しないという入力不備であり、状態競合ではない。
+            // 番人 GlobalExceptionHandlerTest$ClientErrorMustNotBe500#badRequestCases が
+            // 400 固定として明示的に列挙しているとおりが正しいため、409 登録を撤回し
+            // Severity.WARN の既定（400）に戻す。
             Map.entry("BULLETIN_025", HttpStatus.NOT_FOUND),             // ATTACHMENT_TARGET_NOT_FOUND
 
             // 会員台帳カスタムフィールド（MemberInfoErrorCode）の残り未登録分。
@@ -2209,7 +2244,11 @@ public class GlobalExceptionHandler {
             Map.entry("CONFIRMABLE_NOTIFICATION_ALREADY_CANCELLED", HttpStatus.CONFLICT),
             Map.entry("CONFIRMABLE_NOTIFICATION_ALREADY_CONFIRMED", HttpStatus.CONFLICT),
             Map.entry("CONFIRMABLE_NOTIFICATION_INVALID_TOKEN", HttpStatus.NOT_FOUND), // 確認トークンの秘匿
-            // CONFIRMABLE_NOTIFICATION_SEND_FAILED は外部送信失敗（Severity.ERROR 既定の 500）のため変更なし。
+            // CONFIRMABLE_NOTIFICATION_SEND_FAILED は全数調査で再判定: throw元2箇所（受信者リスト空・
+            // 受信者数上限超過）とも純粋なクライアント入力検証であり外部送信失敗ではなかった。
+            // ConfirmableNotificationErrorCode 側の Severity を ERROR→WARN に是正し、既定の 400 に揃える
+            // （STATUS_MAP への 4xx 追加ではなく定義側の誤分類を直す。GlobalExceptionHandler#resolveHttpStatus
+            //  javadoc の是正手順どおり）。
 
             // F04.6 グローバル検索（SearchErrorCode）の残り未登録分。
             Map.entry("SEARCH_003", HttpStatus.NOT_FOUND),               // SAVED_QUERY_NOT_FOUND
@@ -2267,13 +2306,39 @@ public class GlobalExceptionHandler {
             Map.entry("MENTION_001", HttpStatus.NOT_FOUND),
 
             // F09.17 メッセージ型キャンペーン（AdCampaignErrorCode）の残り未登録分。
-            Map.entry("AD_REPORT_RATE_LIMITED", HttpStatus.TOO_MANY_REQUESTS)
+            Map.entry("AD_REPORT_RATE_LIMITED", HttpStatus.TOO_MANY_REQUESTS),
             // AD_PREFERENCES_BLOCKED_LIMIT は上限超過のため変更なし（既定 400 のまま）。
             // 備品ランキング機能 ERANK_001（RANKING_NOT_READY）は登録しない。javadoc は 503 を明記するが、
             // ErrorCodeHttpStatusDeclarationGuardTest.DECLARATION_EXCEPTIONS に既存の判断が記録済み:
             // 5xx 登録は GlobalExceptionHandler の error_reports 記録 + Slack エスカレーション経路に乗るため、
             // 「初回バッチ未実行」という平常状態を障害として通知してよいかは別途運用判断が必要（暫定・要再判断）。
             // 本ロットではこの既存の意図的な保留を尊重し、変更しない。
+
+            // ErrorCode ステータス写像 是正戦役 最終ロット（残8件）: 489件全数調査で確定した誤りを是正する。
+            //  - NOTIFICATION_006/007（既読/未読の二重操作）は Severity.INFO のため
+            //    未登録だと 200 で返っていた。例外を投げているのに成功扱いになる実害があり、
+            //    兄弟の SUBSCRIPTION_ALREADY_EXISTS（NOTIFICATION_005）と同じ状態競合として 409 に揃える。
+            Map.entry("NOTIFICATION_006", HttpStatus.CONFLICT),
+            Map.entry("NOTIFICATION_007", HttpStatus.CONFLICT),
+            //  - AUTH_016（2FA設定が存在しないのに2FA操作を呼んだ状態遷移違反）は Severity.ERROR
+            //    のため未登録だと 500（サーバ障害）扱いだった。兄弟の AUTH_025/AUTH_030/AUTH_032 と
+            //    同じ状態競合系のため 409 へ明示登録する（Severity は敢えて変更しない。ERROR のまま
+            //    残すと「TOTPセットアップ失敗」という名前の別の真の外部障害用途と混在しており、
+            //    Severity 側の是正は別途要判断のため今回は STATUS_MAP 側のみ是正する）。
+            Map.entry("AUTH_016", HttpStatus.CONFLICT),
+            //  - CORKBOARD_004/005（ボード/カード数上限超過）は兄弟の CORKBOARD_013
+            //    （PIN_LIMIT_EXCEEDED、上記で既に409登録済み）と同一のロジック構造なのに
+            //    この2件だけ未登録で400のまま孤立していた。409 に揃える。
+            Map.entry("CORKBOARD_004", HttpStatus.CONFLICT),
+            Map.entry("CORKBOARD_005", HttpStatus.CONFLICT),
+            //  - RECEIPT_004（キューアイテムが見つからない）は ID+スコープ一本クエリの単純な
+            //    not-found。同型の TEAM_001/ORG_001/TIMELINE_001/ADMIN_FB_001 と同様に 404 へ揃える。
+            Map.entry("RECEIPT_004", HttpStatus.NOT_FOUND)
+            //  - CONFIRMABLE_NOTIFICATION_SEND_FAILED は STATUS_MAP ではなく
+            //    ConfirmableNotificationErrorCode 側の Severity を ERROR→WARN に是正した
+            //    （根本原因が定義側の誤分類のため、対処療法である STATUS_MAP 登録はしない）。
+            //  - STORAGE_003（DELETE_FAILED）も同様に StorageErrorCode 側の Severity を WARN→ERROR に
+            //    是正した（兄弟の STORAGE_001/002/004 と同じ外部ストレージ障害のため）。
     );
 
     /**

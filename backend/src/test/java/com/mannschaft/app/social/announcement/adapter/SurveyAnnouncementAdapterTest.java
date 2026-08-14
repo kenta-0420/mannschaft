@@ -172,10 +172,10 @@ class SurveyAnnouncementAdapterTest {
             // "ALL_MEMBERS" 等）を渡したら IllegalArgumentException で必ず落ちる
             // （SurveyService.parseEnumOrThrow が SURVEY_024 を投げる経路をモック無しで補完）。
             verify(surveyService).createSurvey(anyString(), anyLong(), anyLong(), captor.capture());
-            String resultsVisibility = captor.getValue().getResultsVisibility();
-            assertThatCode(() -> ResultsVisibility.valueOf(resultsVisibility))
+            ResultsVisibility resultsVisibility = captor.getValue().getResultsVisibility();
+            assertThatCode(() -> ResultsVisibility.valueOf(resultsVisibility.name()))
                     .doesNotThrowAnyException();
-            assertThat(resultsVisibility).isEqualTo(ResultsVisibility.AFTER_RESPONSE.name());
+            assertThat(resultsVisibility).isEqualTo(ResultsVisibility.AFTER_RESPONSE);
         }
 
         @Test
@@ -197,7 +197,10 @@ class SurveyAnnouncementAdapterTest {
 
             // then: resultsVisibility に "PUBLIC"（target_role）が漏れていない
             verify(surveyService).createSurvey(anyString(), anyLong(), anyLong(), captor.capture());
-            assertThat(captor.getValue().getResultsVisibility()).isNotEqualTo("PUBLIC");
+            // enum 型化（#2617-1）後は target_role のような非 enum 値はそもそも持ちえないため、
+            // 「PUBLIC が漏れていない」ことを既定値との一致で確認する。
+            assertThat(captor.getValue().getResultsVisibility())
+                    .isEqualTo(ResultsVisibility.AFTER_RESPONSE);
         }
 
         @Test
@@ -222,7 +225,7 @@ class SurveyAnnouncementAdapterTest {
             List<CreateQuestionRequest> questions = captor.getValue().getQuestions();
             assertThat(questions).hasSize(1);
             CreateQuestionRequest defaultQuestion = questions.get(0);
-            assertThat(defaultQuestion.getQuestionType()).isEqualTo(QuestionType.FREE_TEXT.name());
+            assertThat(defaultQuestion.getQuestionType()).isEqualTo(QuestionType.FREE_TEXT);
             assertThat(defaultQuestion.getIsRequired()).isFalse();
             assertThat(defaultQuestion.getQuestionText()).isNotBlank();
         }
@@ -333,15 +336,18 @@ class SurveyAnnouncementAdapterTest {
     private SurveyDetailResponse buildSurveyDetailResponse(Long id) {
         LocalDateTime now = LocalDateTime.now();
         SurveyResponse surveyResponse = SurveyResponse.builder()
-                .id(id).status("OPEN")
+                .id(id).status(com.mannschaft.app.survey.SurveyStatus.PUBLISHED)
                 .scope(new SurveyResponse.SurveyScopeDto("TEAM", SCOPE_ID))
                 .content(new SurveyResponse.SurveyContentDto("テストアンケート", "説明"))
-                .policy(new SurveyResponse.SurveyPolicyDto(false, false, "ALL_MEMBERS", "CREATOR_AND_ADMIN"))
-                .distribution(new SurveyResponse.SurveyDistributionDto("ALL", false, null, null, 0, false))
+                .policy(new SurveyResponse.SurveyPolicyDto(false, false,
+                        ResultsVisibility.AFTER_RESPONSE,
+                        com.mannschaft.app.survey.UnrespondedVisibility.CREATOR_AND_ADMIN))
+                .distribution(new SurveyResponse.SurveyDistributionDto(
+                        com.mannschaft.app.survey.DistributionMode.ALL, false, null, null, 0, false))
                 .schedule(new SurveyResponse.SurveyScheduleDto(null, CLOSES_AT, null, null))
                 .stats(new SurveyResponse.SurveyStatsDto(0, 0))
                 .audit(new SurveyResponse.SurveyAuditDto(1L, USER_ID, now, now))
                 .build();
-        return new SurveyDetailResponse(surveyResponse, Collections.emptyList());
+        return SurveyDetailResponse.of(surveyResponse, Collections.emptyList());
     }
 }

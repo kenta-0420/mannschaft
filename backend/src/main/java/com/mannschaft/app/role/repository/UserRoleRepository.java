@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -18,6 +19,39 @@ import java.util.Set;
  * ユーザー−ロール割当リポジトリ。
  */
 public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> {
+
+    /**
+     * F03.16 §4.5.0 段1 — <b>1 スコープ × 複数ユーザー</b>の権限ロール一括解決（TEAM）。
+     *
+     * <p>候補ユーザー ID の {@code IN} 句で 1 回だけ引く。候補者ごとに
+     * {@code AccessControlService#resolveEffectiveRoleName} を呼ぶと候補者数に比例して
+     * SQL が増え、AC-39（5 人と 20 人で段1の SQL 発行数が同一）を満たせない。</p>
+     *
+     * <p>{@code roles} を JOIN して {@code name} まで一度に返すのは、呼び出し側で
+     * {@code roleRepository.findById} を追加発行させないためである（ロール数に比例した
+     * SQL が段1に混ざると「候補者数に依存しない」という保証が読みづらくなる）。
+     * 強弱比較は {@code RolePriority} でメモリ上行う。</p>
+     *
+     * @param teamId  チーム ID
+     * @param userIds 候補ユーザー ID 集合（空で呼ばないこと。{@code IN ()} になる）
+     * @return ユーザー ID とロール名の射影
+     */
+    @Query("SELECT ur.userId AS userId, r.name AS roleName "
+            + "FROM UserRoleEntity ur, com.mannschaft.app.role.entity.RoleEntity r "
+            + "WHERE r.id = ur.roleId AND ur.teamId = :teamId AND ur.userId IN :userIds")
+    List<com.mannschaft.app.common.visibility.ScopeUserRoleProjection> findScopeRolesByTeamIdAndUserIdIn(
+            @Param("teamId") Long teamId, @Param("userIds") Collection<Long> userIds);
+
+    /**
+     * F03.16 §4.5.0 段1 — <b>1 スコープ × 複数ユーザー</b>の権限ロール一括解決（ORGANIZATION）。
+     *
+     * @see #findScopeRolesByTeamIdAndUserIdIn(Long, Collection)
+     */
+    @Query("SELECT ur.userId AS userId, r.name AS roleName "
+            + "FROM UserRoleEntity ur, com.mannschaft.app.role.entity.RoleEntity r "
+            + "WHERE r.id = ur.roleId AND ur.organizationId = :organizationId AND ur.userId IN :userIds")
+    List<com.mannschaft.app.common.visibility.ScopeUserRoleProjection> findScopeRolesByOrganizationIdAndUserIdIn(
+            @Param("organizationId") Long organizationId, @Param("userIds") Collection<Long> userIds);
 
     Optional<UserRoleEntity> findByUserIdAndTeamId(Long userId, Long teamId);
 
@@ -882,6 +916,13 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * これは「組織 ALL アンケートを閲覧・回答してよいか」という所属判定であり、
      * 配信トグル（includeSupporters）とは別の軸である。</p>
      *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2780 甲層）</b>: {@code V60.010} で MEMBER / SUPPORTER の
+     * 在籍行は {@code user_roles} から {@code memberships} へ完全移行済みのため、{@code user_roles} だけを
+     * 走査すると「{@code memberships} にしか在籍行を持たない一般メンバー」を取りこぼす。候補集合は
+     * {@code user_roles} ∪ {@code memberships}（{@code left_at IS NULL} の在籍行）とし、{@code UNION}
+     * （{@code UNION ALL} ではない）で重複を畳む。{@code MembershipBatchQueryService} が direct スコープ・
+     * 親 ORG 軸で既に採っている型に揃えたものである。</p>
+     *
      * @param organizationId 母集団の根となる組織 ID（org_tree の根）
      * @param userId         判定対象ユーザー ID
      * @param maxDepth       再帰展開の最大深さ（サイクル防止上限・通常 32）
@@ -915,17 +956,25 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT COUNT(*) FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
-            "WHERE ur.user_id = :userId " +
-            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    ur.organization_id IN (SELECT id FROM org_tree) " +
-            "    OR ur.team_id IN ( " +
-            "      SELECT tom.team_id FROM team_org_memberships tom " +
-            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "    ) " +
-            "  )",
+            "SELECT COUNT(*) FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE ur.user_id = :userId " +
+            "      AND ( ur.organization_id IN (SELECT id FROM org_tree) " +
+            "            OR ur.team_id IN ( " +
+            "              SELECT tom.team_id FROM team_org_memberships tom " +
+            "              WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "            ) ) " +
+            "  UNION " +
+            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "    WHERE ms0.user_id = :userId AND ms0.left_at IS NULL " +
+            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "              WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
+            "            )) ) " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE'",
             nativeQuery = true)
     long countUserInOrganizationDescendants(
             @Param("organizationId") Long organizationId,
@@ -951,6 +1000,10 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * </ul>
      * <p>ユーザーを除外する。これにより「あるスコープでは MEMBER だが別スコープでは SUPPORTER」という
      * ユーザーは MEMBER 優先で残る（{@code resolveEffectiveRoleName} の priority 最強ルールと整合）。</p>
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2780 甲層）</b>: {@code V60.010} 以後、一般メンバーの在籍行は
+     * {@code memberships} にしか無い。候補集合を {@code user_roles} ∪ {@code memberships}
+     * （{@code left_at IS NULL}）へ広げた上で、上記の純 SUPPORTER 除外規約を従来どおり適用する。</p>
      *
      * <p><b>型の注意（M2 の轍を踏まない）</b>: native query で {@code SELECT COUNT(*) > 0} とすると
      * MySQL は BIGINT(1/0) を返し Hibernate が Boolean へキャストできず
@@ -987,21 +1040,29 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT COUNT(*) FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
-            "WHERE ur.user_id = :userId " +
-            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    ur.organization_id IN (SELECT id FROM org_tree) " +
-            "    OR ur.team_id IN ( " +
-            "      SELECT tom.team_id FROM team_org_memberships tom " +
-            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "    ) " +
-            "  ) " +
+            "SELECT COUNT(*) FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE ur.user_id = :userId " +
+            "      AND ( ur.organization_id IN (SELECT id FROM org_tree) " +
+            "            OR ur.team_id IN ( " +
+            "              SELECT tom.team_id FROM team_org_memberships tom " +
+            "              WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "            ) ) " +
+            "  UNION " +
+            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "    WHERE ms0.user_id = :userId AND ms0.left_at IS NULL " +
+            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "              WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
+            "            )) ) " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "  AND NOT ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM memberships ms " +
-            "      WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "      WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
             "        AND ( " +
             "          (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
             "          OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
@@ -1012,7 +1073,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "    ) " +
             "    AND NOT EXISTS ( " +
             "      SELECT 1 FROM memberships ms2 " +
-            "      WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "      WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
             "        AND ( " +
             "          (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
             "          OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
@@ -1046,6 +1107,10 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * （母集団全件版と単発判定が乖離しないようにする）。純 SUPPORTER 除外の規約
      * （org_tree のいずれかのスコープで {@code left_at IS NULL} の SUPPORTER 所属を持ち、かつ
      * {@code left_at IS NULL} の MEMBER 所属を持たないユーザーを除外＝MEMBER 優先）は母集団版と 1 対 1 同一。</p>
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2780 甲層）</b>: {@code V60.010} 以後、一般メンバーの在籍行は
+     * {@code memberships} にしか無いため、候補集合を {@code user_roles} ∪ {@code memberships}
+     * （{@code left_at IS NULL}）へ広げている。トグルによる純 SUPPORTER 除外の適用条件は従来どおり。</p>
      *
      * <p><b>型の注意（M2 の轍を踏まない）</b>: native query で {@code SELECT COUNT(*) > 0} とすると
      * MySQL は BIGINT(1/0) を返し Hibernate が Boolean へキャストできず
@@ -1084,23 +1149,31 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT COUNT(*) FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
-            "WHERE ur.user_id = :userId " +
-            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
-            "  AND ( " +
-            "    ur.organization_id IN (SELECT id FROM org_tree) " +
-            "    OR ur.team_id IN ( " +
-            "      SELECT tom.team_id FROM team_org_memberships tom " +
-            "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
-            "    ) " +
-            "  ) " +
+            "SELECT COUNT(*) FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE ur.user_id = :userId " +
+            "      AND ( ur.organization_id IN (SELECT id FROM org_tree) " +
+            "            OR ur.team_id IN ( " +
+            "              SELECT tom.team_id FROM team_org_memberships tom " +
+            "              WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "            ) ) " +
+            "  UNION " +
+            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "    WHERE ms0.user_id = :userId AND ms0.left_at IS NULL " +
+            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "              WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
+            "            )) ) " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "  AND ( " +
             "    :includeSupporters = TRUE " +
             "    OR NOT ( " +
             "      EXISTS ( " +
             "        SELECT 1 FROM memberships ms " +
-            "        WHERE ms.user_id = ur.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "        WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
             "          AND ( " +
             "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
@@ -1111,7 +1184,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      ) " +
             "      AND NOT EXISTS ( " +
             "        SELECT 1 FROM memberships ms2 " +
-            "        WHERE ms2.user_id = ur.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "        WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
             "          AND ( " +
             "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
             "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
@@ -1166,6 +1239,17 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * {@code roles} への結合は <b>LEFT JOIN</b> であり、role_id が解決できない不整合行があっても
      * 「所属している」判定（従来の戻り値集合）は一切変化しない（ロール名だけが {@code null} になる）。</p>
      *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2780 甲層）</b>: {@code V60.010} で MEMBER / SUPPORTER の
+     * 在籍行が {@code memberships} へ完全移行したため、{@code user_roles} 由来の枝に加えて
+     * {@code memberships}（{@code left_at IS NULL}）由来の枝を<b>同一クエリ内で {@code UNION}</b> する。
+     * SQL は 1 本のままであり、F00 snapshot の SQL 本数上限（7 本）を侵さない。</p>
+     *
+     * <p><b>ロール名は {@code memberships.role_kind} をそのまま供給する</b>（{@code MEMBER} / {@code SUPPORTER}）。
+     * {@code UserScopeRoleSnapshot#hasDescendantRoleOrAbove} はロール名が解決できないと fail-closed で
+     * false を返すため、候補集合に足すだけでは閲覧閾値の評価段で再び落ちる。{@code role_kind} は
+     * テーブル内で完結する ENUM なので {@code roles} 表のシードに依存せず、{@code LEFT JOIN roles} に
+     * 依存する実装より堅い。両系統に同じロール名の行を持つ者は {@code UNION} で 1 行に畳まれる。</p>
+     *
      * @param rootOrgIds 下向き再帰の根となる ORG ID 集合（空集合で呼ばないこと）
      * @param userId     判定対象 viewer の user_id
      * @param maxDepth   再帰展開の最大深さ（サイクル防止上限・通常 32）
@@ -1190,7 +1274,18 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "JOIN users u ON u.id = ur.user_id " +
             "LEFT JOIN roles r ON r.id = ur.role_id " +
             "WHERE ur.user_id = :userId " +
-            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "UNION " +
+            "SELECT t2.root_id AS rootOrgId, CAST(ms.role_kind AS CHAR) AS roleName FROM org_tree t2 " +
+            "JOIN memberships ms " +
+            "  ON ( ( ms.scope_type = 'ORGANIZATION' AND ms.scope_id = t2.id ) " +
+            "       OR ( ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "         SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "         WHERE tom2.organization_id = t2.id AND tom2.status = 'ACTIVE' " +
+            "       ) ) ) " +
+            "JOIN users u2 ON u2.id = ms.user_id " +
+            "WHERE ms.user_id = :userId AND ms.left_at IS NULL " +
+            "  AND u2.deleted_at IS NULL AND u2.status = 'ACTIVE'",
             nativeQuery = true)
     List<DescendantMembershipRoleProjection> findDescendantMembershipRolesByOrgRoots(
             @Param("rootOrgIds") Set<Long> rootOrgIds,
@@ -1517,5 +1612,53 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
         Long getUserId();
         String getScopeType();
         Long getScopeId();
+    }
+
+    /**
+     * F03.16 是正3【P2】: ORGANIZATION スコープの候補ユーザー群について、組織を根とした
+     * 再帰的配下ツリー（直属 ∪ 配下 {@code ACTIVE} チーム）における所属ロール種別（{@code role_kind}）を
+     * <b>1 SQL</b>で一括解決する（{@code ScheduleCommentViewerFilter} 段1 専用の拡張）。
+     *
+     * <p>{@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} と同一の
+     * org_tree 再帰展開（直属組織 ∪ 配下 ACTIVE チーム）を候補ユーザー ID の {@code IN} 句で絞って
+     * 使う。既存の {@code AccessControlService#resolveEffectiveRoleNames} は
+     * {@code memberships.scope_type = 'ORGANIZATION' AND scope_id = :organizationId} の<b>直接所属のみ</b>
+     * を見るため、配下チームのみに所属するメンバーはロールが解決できず（{@code null}）、
+     * {@code MinViewRoleThreshold.satisfies} が既定閾値 {@code MEMBER_PLUS} で一律 fail-closed になっていた
+     * （§4.5.0 の段3 {@code canView} には正しい判定があるのに、その手前の段2 で誤って落とされる）。
+     * 本メソッドはその欠落を補う<b>追加 1 本</b>のクエリで、候補者数に依らず定数のまま
+     * （AC-39 の「定数 SQL」は本数が候補者数に比例しないことを求めており、本数そのものの増減は禁じていない）。</p>
+     *
+     * @param organizationId 母集団の根となる組織 ID
+     * @param userIds        候補ユーザー ID 集合（空で呼ばないこと）
+     * @param maxDepth       再帰展開の最大深さ（サイクル防止上限。{@code OrgFanoutRecipientSource} と同値の 32 を渡す）
+     * @return 配下ツリーに所属する候補ユーザーの {@code role_kind}（同一ユーザーが複数所属を持つ場合は複数行）
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (id, depth) AS ( "
+            + "    SELECT :organizationId, 0 "
+            + "  UNION ALL "
+            + "    SELECT c.id, p.depth + 1 FROM organizations c JOIN org_tree p ON c.parent_organization_id = p.id "
+            + "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth "
+            + ") "
+            + "SELECT ms.user_id AS userId, ms.role_kind AS roleKind FROM memberships ms "
+            + "WHERE ms.left_at IS NULL AND ms.user_id IN (:userIds) "
+            + "  AND ( "
+            + "    (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) "
+            + "    OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( "
+            + "      SELECT tom.team_id FROM team_org_memberships tom "
+            + "      WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' "
+            + "    )) "
+            + "  )",
+            nativeQuery = true)
+    List<OrgDescendantMembershipRoleRow> findMembershipRoleKindsForOrganizationDescendants(
+            @Param("organizationId") Long organizationId,
+            @Param("userIds") Collection<Long> userIds,
+            @Param("maxDepth") int maxDepth);
+
+    /** {@link #findMembershipRoleKindsForOrganizationDescendants} の射影。 */
+    interface OrgDescendantMembershipRoleRow {
+        Long getUserId();
+        String getRoleKind();
     }
 }

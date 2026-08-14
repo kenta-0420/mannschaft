@@ -166,6 +166,50 @@
       }
     },
     "google_sync_notice": "Mit Google Kalender verbunden. Änderungen in Google werden beim nächsten Speichern hier durch die Mannschaft-Daten ersetzt.",
+    "comment": {
+      "title": "Kommentare",
+      "placeholder": "Zu diesem Termin kommentieren…",
+      "submit": "Senden",
+      "cancel": "Abbrechen",
+      "save": "Speichern",
+      "reply": "Antworten",
+      "replyTo": "Antwort an {name}",
+      "showReplies": "{count} weitere Antworten anzeigen",
+      "empty": "Noch keine Kommentare",
+      "loadMore": "Mehr laden",
+      "edit": "Bearbeiten",
+      "edited": "(bearbeitet)",
+      "delete": "Löschen",
+      "deleteConfirm": "Diesen Kommentar löschen?",
+      "deleted": "Dieser Kommentar wurde gelöscht",
+      "deletedAuthor": "Gelöschter Benutzer",
+      "closed": "Kommentare zu diesem Termin sind geschlossen",
+      "cancelled": "Zu abgesagten Terminen sind keine Kommentare möglich",
+      "updateSuccess": "Kommentar aktualisiert",
+      "deleteSuccess": "Kommentar gelöscht",
+      "postSuccess": "Kommentar veröffentlicht",
+      "settings": {
+        "enable": "Kommentare zulassen",
+        "disable": "Kommentare schließen",
+        "updateSuccess": "Kommentareinstellungen aktualisiert"
+      },
+      "mention": {
+        "hint": "Sie können ein Mitglied erwähnen",
+        "empty": "Keine passenden Mitglieder"
+      },
+      "count": "{count} Kommentare",
+      "error": {
+        "bodyRequired": "Bitte geben Sie einen Kommentar ein",
+        "bodyTooLong": "Kommentare dürfen höchstens 2000 Zeichen lang sein",
+        "maxDepth": "Auf diese Antwort kann nicht geantwortet werden",
+        "closed": "Kommentare sind geschlossen",
+        "forbidden": "Sie haben keine Berechtigung für diese Aktion",
+        "tooManyMentions": "Sie können höchstens 20 Personen erwähnen",
+        "rateLimited": "Zu viele Beiträge. Bitte später erneut versuchen",
+        "generic": "Der Vorgang ist fehlgeschlagen",
+        "notFound": "Kommentar nicht gefunden"
+      }
+    },
     "todo_load_error": {
       "summary": "TODOs konnten nicht geladen werden",
       "detail": "TODOs konnten im Kalender nicht angezeigt werden. Termine werden weiterhin angezeigt. Bitte spaeter neu laden."

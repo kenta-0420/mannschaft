@@ -1,5 +1,8 @@
 package com.mannschaft.app.survey.dto;
 
+import com.mannschaft.app.survey.DistributionMode;
+import com.mannschaft.app.survey.ResultsVisibility;
+import com.mannschaft.app.survey.UnrespondedVisibility;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,17 +33,23 @@ public class CreateSurveyRequest {
     @NotNull
     private final Boolean allowMultipleSubmissions;
 
-    @NotBlank
-    private final String resultsVisibility;
+    /**
+     * 結果公開設定。未知値は Jackson の束縛段階で弾かれ 400 となる（#2617-1）。
+     */
+    @NotNull
+    private final ResultsVisibility resultsVisibility;
 
-    @NotBlank
-    private final String distributionMode;
+    /**
+     * 配信方式。未知値は Jackson の束縛段階で弾かれ 400 となる（#2617-1）。
+     */
+    @NotNull
+    private final DistributionMode distributionMode;
 
     /**
      * 未回答者一覧の公開範囲。HIDDEN / CREATOR_AND_ADMIN / ALL_MEMBERS。
      * 省略時は CREATOR_AND_ADMIN（既存挙動と同等）。
      */
-    private final String unrespondedVisibility;
+    private final UnrespondedVisibility unrespondedVisibility;
 
     private final Boolean autoPostToTimeline;
 

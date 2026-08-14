@@ -150,6 +150,25 @@ class ScheduleQueryServiceTest {
             verify(contentVisibilityChecker, never())
                     .filterAccessible(eq(ReferenceType.SCHEDULE), any(), eq(USER_ID));
         }
+
+        @Test
+        @DisplayName("AC-07(b) 回帰: schedules 由来のエントリは scheduleId が id と同値で入る（events.schedule_id 判別用）")
+        void getMyCalendar_scheduleIdはidと同値で常に入る() {
+            // Given: 個人予定のみ（schedules 由来のエントリを1件用意すれば十分）
+            ScheduleEntity personal = schedule(1L, null, null, USER_ID);
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
+                    .willReturn(List.of(personal));
+            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+
+            // When
+            List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
+
+            // Then: schedules 由来のエントリは scheduleId が非 null かつ id と同値
+            // （§1.5・events.schedule_id が NULL のイベントを判別するための FE ガード用フィールド）。
+            assertThat(entries).hasSize(1);
+            assertThat(entries.get(0).getScheduleId()).isEqualTo(entries.get(0).getId()).isEqualTo(1L);
+        }
     }
 
     // ========================================
