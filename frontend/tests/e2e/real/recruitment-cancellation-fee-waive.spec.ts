@@ -110,8 +110,6 @@ function toJstWallClock(d: Date): string {
 
 let api: APIRequestContext
 let adminToken: string
-let userToken: string
-let adminUserId: number
 let adminTeamId: number
 let policyId: number | null = null
 let listingId: number | null = null
@@ -121,9 +119,10 @@ test.beforeAll(async () => {
 
   const admin = await login(api, ADMIN_EMAIL, ADMIN_PASSWORD)
   adminToken = admin.accessToken
-  adminUserId = admin.userId
-  const user = await login(api, APPLICANT_EMAIL, APPLICANT_PASSWORD)
-  userToken = user.accessToken
+  // 申込者のログイン可否だけをここで早期に検証する（login() 内の expect が 200 を保証する）。
+  // 実際の申込・キャンセルは CMP024-001 がブラウザ経由（loginViaApi）で行うため、
+  // ここで取得した accessToken 自体は使わない。
+  await login(api, APPLICANT_EMAIL, APPLICANT_PASSWORD)
 
   adminTeamId = await resolveAdminTeamId(api, adminToken)
 
@@ -183,12 +182,19 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   if (adminToken && listingId) {
+    // 後始末（作成した募集枠のキャンセル）は best-effort とする。
+    // ここで投げ直すと、既に成功しているテスト本体のアサーション結果まで巻き添えで失敗表示に
+    // なってしまい、「何が壊れたか」の切り分けを難しくする。ただし黙って握り潰すと、後始末が
+    // 効いていないこと自体に誰も気づけなくなる（次回実行時の listingId 重複等で症状だけが
+    // 後から出る）ため、console.warn で必ず表面化させる。
     await api
       .post(`${BE_API}/recruitment-listings/${listingId}/cancel`, {
         headers: authHeaders(adminToken),
         data: { reason: 'e2e-cmp024-waive cleanup' },
       })
-      .catch(() => {})
+      .catch((e: unknown) => {
+        console.warn(`E2E後始末: 募集枠 ${listingId} のキャンセルに失敗（best-effort・テスト結果には影響しない）`, e)
+      })
   }
   await api.dispose()
 })
