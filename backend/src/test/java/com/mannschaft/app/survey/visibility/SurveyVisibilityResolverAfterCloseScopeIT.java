@@ -73,6 +73,14 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
     private Long descendantUserId;
     /** プラットフォーム管理者（高速パスの陽性対照）。 */
     private Long sysAdminUserId;
+    /**
+     * 配下組織チームの<b>応援者</b>（{@code memberships.role_kind = SUPPORTER}）。
+     *
+     * <p>スコープ所属者ではあるが、{@code include_supporters = FALSE} の組織 ALL 配信の
+     * <b>配信母集団には含まれない</b>。この差が {@code AFTER_CLOSE}（所属軸）と
+     * {@code ALWAYS}（配信母集団軸）を区別する（Issue #2774 の検分指摘）。</p>
+     */
+    private Long supporterUserId;
 
     private Long rootOrgId;
     private Long childOrgId;
@@ -86,6 +94,7 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
         leftUserId = insertUser("sv2774.left@example.com", "退会", "次郎");
         descendantUserId = insertUser("sv2774.descendant@example.com", "配下", "三郎");
         sysAdminUserId = insertUser("sv2774.sysadmin@example.com", "管理", "者");
+        supporterUserId = insertUser("sv2774.supporter@example.com", "応援", "四郎");
 
         rootOrgId = insertOrganization("2774 根組織", null);
         childOrgId = insertOrganization("2774 配下組織", rootOrgId);
@@ -101,6 +110,8 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
                 RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, leftUserId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
         markMembershipLeft(leftUserId, teamId);
+        MembershipTestHelper.insertMembership(em, supporterUserId, ScopeType.TEAM, descendantTeamId,
+                RoleKind.SUPPORTER);
 
         MembershipTestHelper.insertUserRole(em, sysAdminUserId, "SYSTEM_ADMIN", null, null);
 
@@ -321,6 +332,107 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
     }
 
     // =========================================================================
+    // 受け入れ条件 AC-6: AFTER_CLOSE の所属軸は「配信母集団」ではなく「スコープ所属」である
+    //
+    // 設計書 docs/features/F05.4_survey_vote.md は両者を明確に書き分けている:
+    //   ALWAYS      … 「配信母集団に含まれる者」（TARGETED は名簿のみ／
+    //                   include_supporters=FALSE の組織 ALL は応援者を除外）
+    //   AFTER_CLOSE … 「締切後のみスコープ所属者全員」
+    // 両者を同一述語に寄せると仕様より狭くなり、下記 2 者を締切後も不当に締め出す。
+    // 以下 4 本の対照（AFTER_CLOSE で可視 ↔ ALWAYS で不可視）が、
+    // 2 つの述語が別物であることを構造的に固定する。
+    // =========================================================================
+
+    /**
+     * AC-6: TARGETED 配信のアンケートでも、締切後は<b>対象者名簿に載っていない</b>
+     * スコープ所属メンバーが結果を閲覧できる。
+     *
+     * <p>名簿（{@code survey_targets}）は「配信母集団」の定義であって「所属」の定義ではない。
+     * 締切後の基準はスコープ所属であるため、名簿の内外を問わない。</p>
+     */
+    @Test
+    @DisplayName("AC-6 TARGETED でも名簿に無いスコープ所属メンバーは締切後に閲覧できる")
+    void ac6_targetedNonRosterMemberCanViewAfterClose() {
+        Long surveyId = insertSurvey("2774-targeted-after-close", "TEAM", teamId, "CLOSED",
+                "AFTER_CLOSE", null, "TARGETED", false);
+        em.flush();
+        em.clear();
+
+        // insider は survey_targets に一切登録していない（名簿は空）。
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, insiderUserId)).isTrue();
+    }
+
+    /**
+     * AC-6【陽性対照】: 同じ「名簿に無いスコープ所属メンバー」が、{@code ALWAYS} では閲覧できない。
+     *
+     * <p>{@code ALWAYS} の配信母集団判定（TARGETED＝名簿がそのまま母集団）が
+     * 壊れていないことを固定する。AC-6 と本ケースが同時に成立することが、
+     * 2 つの述語が別物である証拠になる。</p>
+     */
+    @Test
+    @DisplayName("AC-6【陽性対照】名簿に無いスコープ所属メンバーは ALWAYS では閲覧できない")
+    void ac6_targetedNonRosterMemberCannotViewAlways() {
+        Long surveyId = insertSurvey("2774-targeted-always", "TEAM", teamId, "PUBLISHED",
+                "ALWAYS", null, "TARGETED", false);
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, insiderUserId)).isFalse();
+    }
+
+    /**
+     * AC-6: {@code include_supporters = FALSE} の組織 ALL 配信でも、締切後は<b>応援者</b>が
+     * 結果を閲覧できる。応援者は配信母集団には入らないが、スコープ所属者ではあるためである。
+     */
+    @Test
+    @DisplayName("AC-6 include_supporters=FALSE の組織アンケートでも応援者は締切後に閲覧できる")
+    void ac6_supporterCanViewOrganizationSurveyAfterClose() {
+        Long surveyId = insertSurvey("2774-org-supporter-after-close", "ORGANIZATION", rootOrgId,
+                "CLOSED", "AFTER_CLOSE", null, "ALL", false);
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, supporterUserId)).isTrue();
+    }
+
+    /**
+     * AC-6【陽性対照】: 同じ応援者が、{@code ALWAYS} では閲覧できない。
+     *
+     * <p>{@code include_supporters = FALSE} では応援者は配信母集団に入らないため、
+     * 中間集計は見せない（設計書の「配信母集団＝中間集計の閲覧母集団」）。
+     * {@code ALWAYS} 側の母集団判定が壊れていないことを固定する。</p>
+     */
+    @Test
+    @DisplayName("AC-6【陽性対照】応援者は include_supporters=FALSE の ALWAYS では閲覧できない")
+    void ac6_supporterCannotViewOrganizationSurveyAlways() {
+        Long surveyId = insertSurvey("2774-org-supporter-always", "ORGANIZATION", rootOrgId,
+                "PUBLISHED", "ALWAYS", null, "ALL", false);
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.SURVEY, surveyId, supporterUserId)).isFalse();
+    }
+
+    /**
+     * AC-6【境界】: 述語を広げても、スコープ外の利用者は TARGETED / ALL いずれの配信方式でも
+     * 締切後に閲覧できない。所属軸への切り替えが「誰でも可視」に戻る退行でないことを固定する。
+     */
+    @Test
+    @DisplayName("AC-6【境界】スコープ外の利用者は配信方式によらず締切後も閲覧できない")
+    void ac6_outsiderCannotViewAfterCloseRegardlessOfDistributionMode() {
+        Long targetedId = insertSurvey("2774-targeted-outsider", "TEAM", teamId, "CLOSED",
+                "AFTER_CLOSE", null, "TARGETED", false);
+        Long allId = insertSurvey("2774-all-outsider", "TEAM", teamId, "CLOSED",
+                "AFTER_CLOSE", null, "ALL", true);
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.SURVEY, targetedId, outsiderUserId)).isFalse();
+        assertThat(checker.canView(ReferenceType.SURVEY, allId, outsiderUserId)).isFalse();
+        assertThat(checker.canView(ReferenceType.SURVEY, targetedId, null)).isFalse();
+    }
+
+    // =========================================================================
     // seed ヘルパー
     // =========================================================================
 
@@ -417,6 +529,17 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
      */
     private Long insertSurvey(String title, String scopeType, Long scopeId, String status,
                               String resultsVisibility, LocalDateTime expiresAt) {
+        return insertSurvey(title, scopeType, scopeId, status, resultsVisibility, expiresAt,
+                "ALL", false);
+    }
+
+    /**
+     * 配信方式（{@code distribution_mode}）と応援者トグル（{@code include_supporters}）を
+     * 明示する版。{@code AFTER_CLOSE}（所属軸）と {@code ALWAYS}（配信母集団軸）の差を測るために要る。
+     */
+    private Long insertSurvey(String title, String scopeType, Long scopeId, String status,
+                              String resultsVisibility, LocalDateTime expiresAt,
+                              String distributionMode, boolean includeSupporters) {
         String expiresExpr = expiresAt == null ? "NULL" : "'" + toDbLiteral(expiresAt) + "'";
         em.createNativeQuery(
                 "INSERT INTO surveys ("
@@ -428,10 +551,12 @@ class SurveyVisibilityResolverAfterCloseScopeIT extends AbstractMySqlIntegration
                         + "created_at, updated_at) "
                         + "VALUES (:scopeType, :scopeId, :title, :status, "
                         + "0, 0, :resultsVisibility, "
-                        + "'ALL', 0, 'CREATOR_AND_ADMIN', "
+                        + ":distributionMode, :includeSupporters, 'CREATOR_AND_ADMIN', "
                         + "0, 0, 0, 0, "
                         + "0, :createdBy, " + expiresExpr + ", "
                         + "NOW(), NOW())")
+                .setParameter("distributionMode", distributionMode)
+                .setParameter("includeSupporters", includeSupporters ? 1 : 0)
                 .setParameter("scopeType", scopeType)
                 .setParameter("scopeId", scopeId)
                 .setParameter("title", title)
