@@ -125,7 +125,6 @@ class PaymentW6TeamScopeContractIT extends AbstractMySqlIntegrationTest {
         MembershipTestHelper.insertMembership(em, adminTeamBId, ScopeType.TEAM, teamBId, RoleKind.MEMBER);
         MembershipTestHelper.insertUserRole(em, adminTeamBId, "ADMIN", teamBId, null);
         MembershipTestHelper.insertMembership(em, memberTeamAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberTeamAId, "MEMBER", teamAId, null);
         // outsiderId はどこにも所属させない。
 
         itemTeamAId = paymentItemRepository.save(PaymentItemEntity.builder()

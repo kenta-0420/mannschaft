@@ -107,7 +107,6 @@ class OrganizationCoreAuthzContractIT extends AbstractMySqlIntegrationTest {
 
         // memberA は組織Aの一般メンバー（ADMIN 権限なし）。
         // transfer-ownership の正当系で「譲渡先がスコープに所属している」条件も満たす。
-        MembershipTestHelper.insertUserRole(em, memberAId, "MEMBER", null, orgAId);
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
 
         // 可視性ラダーの正常系（PRIVATE でもメンバーなら 200）を固定するため

@@ -1,6 +1,5 @@
 package com.mannschaft.app.visibility.service;
 
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
 import com.mannschaft.app.visibility.dto.VisibilityTemplateRuleView;
@@ -226,9 +225,9 @@ public class VisibilityTemplateEvaluator {
 
         if ("@USER_PRIMARY_TEAM".equals(rule.ruleTargetText())) {
             // オーナーの primary チームを解決（最小 team_id を primary とする暫定実装）
-            targetTeamId = userRoleRepository.findByUserIdAndTeamIdIsNotNull(ownerUserId)
+            // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
+            targetTeamId = userRoleRepository.findTeamIdsByUserId(ownerUserId)
                     .stream()
-                    .map(UserRoleEntity::getTeamId)
                     .min(Long::compareTo)
                     .orElse(null);
             if (targetTeamId == null) {
@@ -242,11 +241,8 @@ public class VisibilityTemplateEvaluator {
             }
         }
 
-        // viewer が属するチームを取得
-        List<Long> viewerTeamIds = userRoleRepository.findByUserIdAndTeamIdIsNotNull(viewerUserId)
-                .stream()
-                .map(UserRoleEntity::getTeamId)
-                .toList();
+        // viewer が属するチームを取得（CMP-027: user_roles ∪ memberships の在籍チーム ID）
+        List<Long> viewerTeamIds = userRoleRepository.findTeamIdsByUserId(viewerUserId);
         if (viewerTeamIds.isEmpty()) {
             return false;
         }
@@ -324,9 +320,9 @@ public class VisibilityTemplateEvaluator {
      */
     private Long resolveTargetTeamId(VisibilityTemplateRuleView rule, Long ownerUserId) {
         if ("@USER_PRIMARY_TEAM".equals(rule.ruleTargetText())) {
-            Long primaryTeamId = userRoleRepository.findByUserIdAndTeamIdIsNotNull(ownerUserId)
+            // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
+            Long primaryTeamId = userRoleRepository.findTeamIdsByUserId(ownerUserId)
                     .stream()
-                    .map(UserRoleEntity::getTeamId)
                     .min(Long::compareTo)
                     .orElse(null);
             if (primaryTeamId == null) {

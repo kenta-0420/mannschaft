@@ -11,7 +11,6 @@ import com.mannschaft.app.organization.dto.ChildOrganizationResponse;
 import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
@@ -336,18 +335,16 @@ public class OrganizationHierarchyService {
      */
     private boolean isDescendantMember(Long requesterId, Long targetOrgId) {
         // ユーザー所属組織のうち、祖先に targetOrgId を含むものがあれば true
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(requesterId);
-        for (UserRoleEntity ur : orgRoles) {
-            Long memberOrgId = ur.getOrganizationId();
+        // CMP-027: user_roles ∪ memberships の在籍組織（素メンバー/応援者を取りこぼさない）
+        for (Long memberOrgId : userRoleRepository.findOrganizationIdsByUserId(requesterId)) {
             if (memberOrgId == null) continue;
             if (memberOrgId.equals(targetOrgId)) continue; // 直接所属は別判定なので除外
             if (hasAncestor(memberOrgId, targetOrgId)) return true;
         }
 
         // ユーザー所属チームの所属組織を起点に祖先を辿る
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(requesterId);
-        for (UserRoleEntity ur : teamRoles) {
-            Long teamId = ur.getTeamId();
+        // CMP-027: user_roles ∪ memberships の在籍チーム
+        for (Long teamId : userRoleRepository.findTeamIdsByUserId(requesterId)) {
             if (teamId == null) continue;
             List<TeamOrgMembershipEntity> memberships = teamOrgMembershipRepository
                     .findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE);

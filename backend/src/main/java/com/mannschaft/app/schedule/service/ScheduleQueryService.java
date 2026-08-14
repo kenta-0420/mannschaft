@@ -3,7 +3,6 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
@@ -189,21 +188,23 @@ public class ScheduleQueryService {
         personalSchedules.forEach(s -> entries.add(toCalendarEntry(s, SCOPE_TYPE_PERSONAL, userId)));
 
         // 所属チームのスケジュールを取得（スコープ別の集約に scopeId を保持する）。
+        // CMP-027: user_roles ∪ memberships の在籍チーム ID。素メンバー/応援者（memberships 専属）の
+        // 所属チームを取りこぼすと、その min_view 対象予定が一覧に一切現れない退行（AC-03）が起きる。
         List<ScopedSchedule> teamScoped = new ArrayList<>();
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        for (UserRoleEntity role : teamRoles) {
+        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        for (Long teamId : teamIds) {
             scheduleRepository
-                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to)
-                    .forEach(s -> teamScoped.add(new ScopedSchedule(s, "TEAM", role.getTeamId())));
+                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to)
+                    .forEach(s -> teamScoped.add(new ScopedSchedule(s, "TEAM", teamId)));
         }
 
-        // 所属組織のスケジュールを取得。
+        // 所属組織のスケジュールを取得（CMP-027: user_roles ∪ memberships の在籍組織 ID）。
         List<ScopedSchedule> orgScoped = new ArrayList<>();
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        for (UserRoleEntity role : orgRoles) {
+        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        for (Long orgId : orgIds) {
             scheduleRepository
-                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to)
-                    .forEach(s -> orgScoped.add(new ScopedSchedule(s, "ORGANIZATION", role.getOrganizationId())));
+                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to)
+                    .forEach(s -> orgScoped.add(new ScopedSchedule(s, "ORGANIZATION", orgId)));
         }
 
         // F00 認可基盤連携（2026-05-29）: team/org のチーム横断スケジュールは

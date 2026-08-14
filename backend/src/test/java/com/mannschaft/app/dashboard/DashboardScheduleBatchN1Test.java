@@ -211,8 +211,8 @@ class DashboardScheduleBatchN1Test {
         void getCalendar_3チーム_旧メソッド未呼出_新バッチ1回() {
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B), teamRole(TEAM_C)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B, TEAM_C));
             given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                     .willReturn(List.of());
 
@@ -232,8 +232,8 @@ class DashboardScheduleBatchN1Test {
         @DisplayName("Service.getPersonalDashboard: 3チーム所属でも旧teamメソッドは呼ばれず新バッチメソッドのみ使用")
         void personalDashboard_3チーム_旧メソッド未呼出_新バッチ使用() {
             stubCommonPersonalForAll();
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B), teamRole(TEAM_C)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B, TEAM_C));
             given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                     .willReturn(List.of());
 
@@ -260,8 +260,8 @@ class DashboardScheduleBatchN1Test {
             // 個人予定は 0 件。
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
 
             // 最広範囲（todayStart〜monthEnd）を 1 回だけ取得する。5件のうち
             // 1,2 が today 以内、1,2,3,4 が week 以内、全件が month 以内。
@@ -289,8 +289,8 @@ class DashboardScheduleBatchN1Test {
             LocalDateTime todayStart = LocalDate.now(ZoneOffset.UTC).atStartOfDay();
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A));
 
             ScheduleEntity visible = teamSchedule(TEAM_A, todayStart.plusHours(1), 1L);
             ScheduleEntity hidden = teamSchedule(TEAM_A, todayStart.plusHours(2), 2L);
@@ -323,7 +323,7 @@ class DashboardScheduleBatchN1Test {
         void getCalendar_teamRoles空_バッチ未呼出() {
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
             dashboardController.getCalendar(null);
 
@@ -337,7 +337,7 @@ class DashboardScheduleBatchN1Test {
         @DisplayName("Service.getPersonalDashboard: teamRoles が空ならバッチメソッドを呼ばない")
         void personalDashboard_teamRoles空_バッチ未呼出() {
             stubCommonPersonalForAll();
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
             dashboardService.getPersonalDashboard(USER_ID, "ALL");
 
@@ -360,7 +360,7 @@ class DashboardScheduleBatchN1Test {
                 .willReturn(new org.springframework.data.domain.PageImpl<>(List.of()));
         given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any()))

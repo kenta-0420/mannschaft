@@ -731,18 +731,17 @@ public class ScheduleAttendanceService {
         // ユーザーが所属するチームのスケジュールIDを収集
         List<Long> allScheduleIds = new ArrayList<>();
 
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        for (UserRoleEntity role : teamRoles) {
+        // CMP-027: user_roles ∪ memberships の在籍チーム（素メンバー/応援者を取りこぼさない）
+        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
             List<ScheduleEntity> teamSchedules = scheduleRepository
-                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to);
+                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to);
             allScheduleIds.addAll(teamSchedules.stream().map(ScheduleEntity::getId).toList());
         }
 
-        // ユーザーが所属する組織のスケジュールIDを収集
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        for (UserRoleEntity role : orgRoles) {
+        // ユーザーが所属する組織のスケジュールIDを収集（CMP-027: user_roles ∪ memberships の在籍組織）
+        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
             List<ScheduleEntity> orgSchedules = scheduleRepository
-                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to);
+                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to);
             allScheduleIds.addAll(orgSchedules.stream().map(ScheduleEntity::getId).toList());
         }
 

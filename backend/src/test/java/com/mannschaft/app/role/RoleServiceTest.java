@@ -564,6 +564,10 @@ class RoleServiceTest {
 
             given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(currentUserRole));
+            // CMP-027: 譲渡先の在籍確認は existsByUserIdAndOrganizationId(user_roles ∪ memberships)経由。
+            // findByUserIdAndOrganizationId は既存 user_roles 行の削除(ifPresent)にのみ使われる。
+            given(userRoleRepository.existsByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(true);
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(targetUserRole));
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));

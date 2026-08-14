@@ -24,7 +24,6 @@ import com.mannschaft.app.dashboard.service.DashboardWidgetService;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -455,8 +454,8 @@ class DashboardControllerTest {
                     .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
                             eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // When
             ResponseEntity<ApiResponse<List<Map<String, Object>>>> response =
@@ -480,8 +479,8 @@ class DashboardControllerTest {
                     .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
                             eq(USER_ID), fromCaptor.capture(), untilCaptor.capture()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // When
             ResponseEntity<ApiResponse<List<Map<String, Object>>>> response =
@@ -513,10 +512,10 @@ class DashboardControllerTest {
                     .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
                             eq(USER_ID), any(), any()))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(UserRoleEntity.builder().teamId(TEAM_ID).build()));
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID))
-                    .willReturn(List.of(UserRoleEntity.builder().organizationId(ORG_ID).build()));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_ID));
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+                    .willReturn(List.of(ORG_ID));
             given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(eq(TEAM_ID), any(), any()))
                     .willReturn(List.of(teamVisible, teamHidden));
             given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(eq(ORG_ID), any(), any()))
@@ -548,8 +547,8 @@ class DashboardControllerTest {
                     .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
                             eq(USER_ID), any(), any()))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // When
             ResponseEntity<ApiResponse<List<Map<String, Object>>>> response =
@@ -608,8 +607,8 @@ class DashboardControllerTest {
                     .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
                             eq(USER_ID), any(), any()))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // シフト（06/02 09:00-17:00・中間）
             Object[] shiftRow = new Object[]{
@@ -651,8 +650,8 @@ class DashboardControllerTest {
                     .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
                             eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // When
             dashboardController.getUpcomingEvents(7);
@@ -670,8 +669,8 @@ class DashboardControllerTest {
                     .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
                             eq(USER_ID), any(), any()))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
             // シフト・予約は setUp() の既定スタブにより空リスト
 
             // When
@@ -696,8 +695,8 @@ class DashboardControllerTest {
                     .findByUserIdAndTeamIdIsNullAndOrganizationIdIsNullAndStartAtBetweenOrderByStartAtAsc(
                             eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
 
             // 同一チームに属する複数件のシフト・予約
             Object[] shift1 = new Object[]{
@@ -738,7 +737,7 @@ class DashboardControllerTest {
         @DisplayName("正常系: 未読スレッドが200で返る")
         void getUnreadThreads_正常_200() {
             // Given
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
             given(chatChannelMemberRepository.findByUserId(USER_ID)).willReturn(List.of());
 
             // When
@@ -764,7 +763,7 @@ class DashboardControllerTest {
         @DisplayName("正常系: アクティビティが200で返る")
         void getActivity_正常_200() {
             // Given
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
             given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any()))
                     .willReturn(List.of());
 
@@ -792,7 +791,7 @@ class DashboardControllerTest {
             // Given
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
             // When
             ResponseEntity<ApiResponse<Map<String, Object>>> response = dashboardController.getCalendar(null);

@@ -493,8 +493,15 @@ public class RoleService {
         }
 
         // 対象ユーザーがスコープに所属していることを確認
-        UserRoleEntity targetUserRole = findUserRole(targetUserId, scopeId, scopeType)
-                .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
+        // CMP-027: V60.010 で MEMBER/SUPPORTER は user_roles から memberships へ移行したため、
+        // 在籍判定は user_roles 一系統では素メンバーを取りこぼす。memberships 統合の在籍判定
+        // （existsByUserIdAndTeamId/OrganizationId は user_roles ∪ memberships）で確認する。
+        boolean targetIsMember = "TEAM".equals(scopeType)
+                ? userRoleRepository.existsByUserIdAndTeamId(targetUserId, scopeId)
+                : userRoleRepository.existsByUserIdAndOrganizationId(targetUserId, scopeId);
+        if (!targetIsMember) {
+            throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
 
         // ADMIN ロールと MEMBER ロールを取得
         RoleEntity adminRole = currentRole;
@@ -504,8 +511,11 @@ public class RoleService {
         // 対象ユーザーを ADMIN に昇格
         // delete→save が同一 scope_key を再挿入するため flush で DELETE を先に確定させる
         // （uq_user_roles_user_scope ユニーク制約の衝突回避。詳細は changeRole 参照）。
-        userRoleRepository.delete(targetUserRole);
-        userRoleRepository.flush();
+        // memberships 専属の素メンバー（user_roles 行なし）は削除対象が無いためスキップする。
+        findUserRole(targetUserId, scopeId, scopeType).ifPresent(existing -> {
+            userRoleRepository.delete(existing);
+            userRoleRepository.flush();
+        });
         var newAdminBuilder = UserRoleEntity.builder()
                 .userId(targetUserId)
                 .roleId(adminRole.getId())

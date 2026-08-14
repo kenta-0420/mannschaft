@@ -8,7 +8,6 @@ import com.mannschaft.app.organization.dto.ChildOrganizationResponse;
 import com.mannschaft.app.organization.dto.ChildrenResponse;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,8 +74,8 @@ class OrganizationServiceAncestorsTest {
         given(organizationRepository.findParentOrganizationIdById(anyLong())).willReturn(Optional.empty());
 
         // 所属系 stub のデフォルトは「所属なし」
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(anyLong())).willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(anyLong())).willReturn(List.of());
+        given(userRoleRepository.findOrganizationIdsByUserId(anyLong())).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(anyLong())).willReturn(List.of());
 
         // 画像 URL 根治 Phase 2: 既存アサーション（iconUrl=生キー値）を温存するため、
         // デフォルトは恒等変換（resolve(key)=key）にしておく。署名 URL 化の検証は専用テストで上書きする。
@@ -174,11 +173,9 @@ class OrganizationServiceAncestorsTest {
             // 親には直接所属していない
             given(userRoleRepository.existsByUserIdAndOrganizationId(REQUESTER_ID, PARENT_ORG_ID)).willReturn(false);
 
-            // 子孫メンバー判定: ユーザーは対象組織（PARENT の子）に所属
-            UserRoleEntity ur = UserRoleEntity.builder()
-                    .id(1L).userId(REQUESTER_ID).roleId(10L).organizationId(TARGET_ORG_ID).build();
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(REQUESTER_ID))
-                    .willReturn(List.of(ur));
+            // 子孫メンバー判定: ユーザーは対象組織（PARENT の子）に所属（CMP-027: 在籍組織 ID 列挙）
+            given(userRoleRepository.findOrganizationIdsByUserId(REQUESTER_ID))
+                    .willReturn(List.of(TARGET_ORG_ID));
             // TARGET_ORG_ID の親 = PARENT_ORG_ID（hasAncestor で参照）
             given(organizationRepository.findParentOrganizationIdById(TARGET_ORG_ID))
                     .willReturn(Optional.of(PARENT_ORG_ID));
@@ -212,10 +209,9 @@ class OrganizationServiceAncestorsTest {
 
             given(userRoleRepository.existsByUserIdAndOrganizationId(REQUESTER_ID, PARENT_ORG_ID)).willReturn(false);
 
-            UserRoleEntity ur = UserRoleEntity.builder()
-                    .id(1L).userId(REQUESTER_ID).roleId(10L).organizationId(TARGET_ORG_ID).build();
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(REQUESTER_ID))
-                    .willReturn(List.of(ur));
+            // CMP-027: 在籍組織 ID 列挙（user_roles ∪ memberships）
+            given(userRoleRepository.findOrganizationIdsByUserId(REQUESTER_ID))
+                    .willReturn(List.of(TARGET_ORG_ID));
             given(organizationRepository.findParentOrganizationIdById(TARGET_ORG_ID))
                     .willReturn(Optional.of(PARENT_ORG_ID));
 
