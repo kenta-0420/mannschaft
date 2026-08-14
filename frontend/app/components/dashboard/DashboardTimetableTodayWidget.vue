@@ -129,8 +129,13 @@ onMounted(load)
     refreshable
     @refresh="load"
   >
-    <!-- メモ（従）だけが失敗した場合。時間割は表示したまま、メモ欄の欠落だけを控えめに知らせる -->
-    <p v-if="notesError" class="mb-2 text-xs text-amber-700 dark:text-amber-400">
+    <!--
+      メモ（従）だけが失敗した場合。時間割は表示したまま、メモ欄の欠落だけを控えめに知らせる。
+      時間割（主）も失敗しているときは出さない — 「時間割のみ表示しています」が嘘になるうえ、
+      その場面で利用者に必要な情報は「時間割の取得に失敗した」の一点だけである。
+      なお検出は両方について引き続き行っており、ここで抑えているのは表示だけ。
+    -->
+    <p v-if="notesError && !timetableError" class="mb-2 text-xs text-amber-700 dark:text-amber-400">
       {{ t('personalTimetable.dashboard.notes_load_failed') }}
     </p>
 
