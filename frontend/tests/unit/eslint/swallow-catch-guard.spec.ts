@@ -99,6 +99,16 @@ describe('エラー握りつぶし禁止ガード', () => {
       '山括弧で null を包む': 'foo().catch(() => ({ data: <Foo | null>null }))',
       '山括弧と as の混在': 'foo().catch(() => (<ApiResponse>{ data: [] as Foo[] }))',
       '山括弧で空配列そのものを包む': 'foo().catch(() => (<Foo[]>[]))',
+
+      // --- 5巡目: 透過の上限を超える段数は中身を問わず違反（fail-closed） ---
+      '4段の包み（オブジェクト）': 'foo().catch(() => (((({ data: [] } as A) as B) as C) as D))',
+      '5段の包み（オブジェクト）': 'foo().catch(() => (((((({ data: [] } as A) as B) as C) as D) as E)))',
+      '4段の包み（空配列）': 'foo().catch(() => (((([] as A) as B) as C) as D))',
+      '4段の包み（as と山括弧の混在）': 'foo().catch(() => (<D>((<B>({ data: [] } as A)) as C)))',
+      '4段の包み（ブロック本体）': 'foo().catch(() => { return (((({ data: [] } as A) as B) as C) as D) })',
+      '4段の包み（try/catch）': 'function f() { try { g() } catch { return (((({ data: [] } as A) as B) as C) as D) } }',
+      // 中身が握りつぶしでなくても、上限超過そのものを違反とする（fail-closed）
+      '4段の包み（中身は実のある値）': 'foo().catch(() => (((({ data: [1] } as A) as B) as C) as D))',
     }
 
     for (const [name, code] of Object.entries(detected)) {
@@ -147,6 +157,13 @@ describe('エラー握りつぶし禁止ガード', () => {
       // --- 4巡目: 山括弧形式でも過剰検出しないこと ---
       '山括弧だが非空配列': 'foo().catch(() => (<ApiResponse>{ data: [1] }))',
       '山括弧だが変数参照': 'foo().catch(() => ({ data: <Foo[]>items }))',
+
+      // --- 5巡目: 上限内なら従来どおり中身の判定が効き続けること ---
+      // 上限超過ルールが「3段までの正当な包み」を巻き込んでいないことの固定
+      '2段の包みで実のある値': 'foo().catch(() => (({ data: [1] } as A) as B))',
+      '3段の包みで実のある値': 'foo().catch(() => ((({ data: [1] } as A) as B) as C))',
+      '3段の包みで変数参照': 'foo().catch(() => (((items as A) as B) as C))',
+      '3段の包みでエラー保持': 'foo().catch(e => ((({ data: [], error: e } as A) as B) as C))',
     }
 
     for (const [name, code] of Object.entries(allowed)) {

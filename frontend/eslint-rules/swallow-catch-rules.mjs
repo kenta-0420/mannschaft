@@ -26,6 +26,39 @@
 // 返り値そのもの・プロパティ値・「空の付き添い」・「実のある値だから対象外」の
 // 除外判定は、すべて (A)(B) の組み合わせから作られる。
 // もう一段深い記法が来ても、直すのは (A) か (B) の1箇所だけで全所に効く。
+//
+// ============================================================================
+// 段数の上限と fail-closed
+// ============================================================================
+//
+// (A) の透過は段数に上限を持つ（MAX_WRAPPER_DEPTH）。esquery に「0段以上の繰り返し」を
+// 表す構文が無く、任意深さは原理的に扱えないためである。上限がある以上、
+// その1つ上の段数で必ず破られる（段数を増やしてもいたちごっこにしかならない）。
+//
+// そこで **上限を超える段数の型ラッパーで包まれた catch の返り値は、中身を問わず違反**
+// とする（ルールX）。判定できないものを通す（fail-open）のではなく、
+// 止める（fail-closed）方を選ぶ。
+// 型アサーションを4段以上重ねた返り値は「うっかり書ける自然な形」ではなく、
+// 検出器の回避を狙った記述とみなすのが妥当だからである。
+//
+// ============================================================================
+// 意図的に範囲外としている迂回路（見落としではない）
+// ============================================================================
+//
+// 以下は本ガードでは検出しない。**穴ではなく、意図した線引きである。**
+// 場当たりに塞ごうとする前にこの節を読むこと。
+//
+//   1. `.catch(() => Object.assign({}, {}))` / `structuredClone(EMPTY)`
+//      — 任意の関数呼び出しの戻り値を静的セレクタでは確定できない
+//   2. 定数への切り出し（`const EMPTY = { data: [] }` … `.catch(() => EMPTY)`）
+//      — 変数の指す先を追う必要があり、構文セレクタでは原理的に不可能
+//   3. named handler（`.catch(handleError)`）— 導入時（#2460）から意図的に対象外
+//   4. 三項・論理演算子での包み（`.catch(() => (flag ? [] : []))`）
+//
+// 1・2 を本気で塞ぐにはスコープ解析を持つカスタム ESLint ルールが要り、
+// `no-restricted-syntax` の枠組みでは扱えない（別戦役）。
+// その際は (A)(B) の定義をそのまま JS 側の述語として流用でき、
+// 判定ロジックを書き直さずにスコープ解析だけを足せる構造にしてある。
 
 // ============================================================================
 // (A) 型ラッパーの透過 — 定義は1箇所
@@ -60,6 +93,15 @@ const TYPE_WRAPPER_TYPES = [
  * 透過する包みの最大段数。`({ data: [] } as A) as B` のような多重の包みに備える。
  * esquery には「0段以上の繰り返し」を表す構文が無いため、段数を明示的に展開する
  * （展開は下の生成関数が行う。手書きでコピーしないこと）。
+ *
+ * 【設計判断: 上限超過は fail-closed で違反にする】
+ * 段数に上限がある以上、その1つ上の段数で必ず破られる。段数を増やしてもいたちごっこであり、
+ * 任意深さは esquery では原理的に扱えない。
+ * そこで「上限を超える段数の型ラッパーで包まれた catch の返り値」は、
+ * **中身を問わず違反**とする（ルールX）。
+ * 4段以上の型アサーションを重ねるのは「うっかり書ける自然な形」ではなく、
+ * 検出器の回避を狙った記述とみなすのが妥当であり、番人としては
+ * 判定不能なものを通す（fail-open）より違反として止める（fail-closed）方が素直である。
  */
 const MAX_WRAPPER_DEPTH = 3
 
@@ -94,6 +136,22 @@ function throughTypeWrappers(base, target) {
     paths.push(depth === 0 ? `${base} > ${target}` : `${base} ${chain} > ${target}`)
   }
   return paths
+}
+
+/**
+ * `base` の直下に型の包みが MAX_WRAPPER_DEPTH を **超える** 段数で連なっている経路。
+ * 透過して中身を判定できる範囲の外側にあたるため、中身を問わずここで打ち止めにする
+ * （MAX_WRAPPER_DEPTH のコメントにある fail-closed の設計判断を参照）。
+ *
+ * ちょうど MAX_WRAPPER_DEPTH + 1 段の連なりを指すため、それより深い場合も
+ * 一致するのは1ノードだけで、二重報告にならない。
+ */
+function exceedingTypeWrappers(base) {
+  const chain = Array.from(
+    { length: MAX_WRAPPER_DEPTH + 1 },
+    () => `> ${TYPE_WRAPPER_NODE}`,
+  ).join(' ')
+  return `${base} ${chain}`
 }
 
 // ============================================================================
@@ -209,6 +267,12 @@ const MESSAGE_CATCH_BLOCK
   = 'Promiseの.catchでの握りつぶし返却（空配列/null/空オブジェクト/undefined/空return）を禁止（型アサーションで包んでも同じ）。ログ・通知・再throwで表面化させるか、正当な理由をコメントで明記のうえ該当行を個別にeslint-disableすること。'
 const MESSAGE_WRAPPED
   = 'catchで「中身が空のオブジェクト」（例: { data: [] } / { items: [], total: 0 } / { data: null as Foo }）を返して握りつぶさないこと。取得失敗が0件表示に偽装される。ログ・通知・再throwで表面化させるか、正当な理由をコメントで明記のうえ該当行を個別にeslint-disableすること。'
+const MESSAGE_EXCESSIVE_WRAPPING
+  = `catchの返り値に型アサーション（as / satisfies / ! / <T>）を${MAX_WRAPPER_DEPTH + 1}段以上重ねないこと。`
+    + `このガードは包みを${MAX_WRAPPER_DEPTH}段まで剥がして中身が握りつぶしかを判定するため、`
+    + 'それを超える段数は中身を検査できない。'
+    + '型アサーションをこれだけ重ねる必要のある正当なコードは通常存在せず、握りつぶし検出の回避とみなす。'
+    + '包みを減らして中身が判定できる形にするか、そもそも握りつぶしをやめてログ・通知・再throwで表面化させること。'
 
 /** `no-restricted-syntax` に渡すエントリ群（オプション配列の中身）。 */
 export const swallowCatchRestrictions = [
@@ -249,5 +313,19 @@ export const swallowCatchRestrictions = [
   {
     selector: throughTypeWrappers(TRY_CATCH_RETURN, SWALLOW_OBJECT).join(', '),
     message: MESSAGE_WRAPPED,
+  },
+
+  // --- 透過の上限を超える包み（fail-closed） ---
+
+  // ルールX: 型ラッパーが MAX_WRAPPER_DEPTH を超えて連なる catch の返り値は、
+  // 中身を問わず違反とする。中身を判定できない以上、通す（fail-open）のではなく
+  // 止める（fail-closed）。設計判断の根拠は MAX_WRAPPER_DEPTH のコメントを参照。
+  {
+    selector: [
+      exceedingTypeWrappers(CATCH_ARROW),
+      exceedingTypeWrappers(CATCH_ARROW_RETURN),
+      exceedingTypeWrappers(TRY_CATCH_RETURN),
+    ].join(', '),
+    message: MESSAGE_EXCESSIVE_WRAPPING,
   },
 ]
