@@ -155,7 +155,8 @@
     "visibility_saved": "Visibilidad actualizada",
     "visibility_failed": "Error al actualizar la visibilidad",
     "load_failed": "Error al cargar los espacios de contacto",
-    "divisions_load_failed": "Error al cargar las divisiones"
+    "divisions_load_failed": "Error al cargar las divisiones",
+    "permissions_load_failed": "Error al cargar los permisos. Algunas acciones pueden no estar disponibles."
   },
   "submission": {
     "title": "Recepción de documentos",

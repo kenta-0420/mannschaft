@@ -213,24 +213,63 @@ const EMPTY_PROPERTY = selectorList('Property', valueVariants('value', EMPTY_KIN
 const NEUTRAL_PROPERTY = selectorList('Property', valueVariants('value', NEUTRAL_KINDS))
 
 /**
+ * 「入れ物」でしかないプロパティ値。中身は下位のプロパティとして別途判定される。
+ *
+ * `{ data: { items: [], total: 0 } }` は API のレスポンス形として極めて一般的で、
+ * 外側の `data` を単純に「実のある値」と見てしまうと入れ子の握りつぶしを取りこぼす。
+ * そこでオブジェクトは「それ自体は実のある値ではなく入れ物」として扱い、
+ * 中身の空判定に委ねる。
+ */
+const CONTAINER_KINDS = [
+  at => `[${at}.type='ObjectExpression']`,
+]
+
+/**
+ * 値が入れ物（オブジェクト）であるプロパティ。型ラッパーは透過する
+ * （`{ data: { items: [] } as Page }` / `{ data: <Page>{ items: [] } }` も辿れる）。
+ *
+ * 計算キー（`{ [k]: v }`）は除外する。キー側にもオブジェクトが現れうるため、
+ * 入れ物として扱うとキーの中身まで空判定に巻き込んでしまう。
+ */
+const CONTAINER_PROPERTY = selectorList(
+  'Property:not([computed=true])',
+  valueVariants('value', CONTAINER_KINDS),
+)
+
+/**
  * 握りつぶしオブジェクトのセレクタ。過剰検出を避けるため、以下をすべて満たす場合のみ一致する:
  *
  * 1. プロパティが1つ以上ある（空オブジェクト `{}` は空値そのものとして別途扱う）
- * 2. スプレッド（`{ ...base, data: [] }`）を含まない
+ * 2. スプレッドを **部分木のどこにも** 含まない（`{ data: { ...base, items: [] } }` も除外）
  *    — 実データを土台にしているため握りつぶしと断定できない
- * 3. すべてのプロパティが「空値」か「空の付き添い」である
- *    — `{ data: [1] }` や `{ data: [1] as Foo[] }`、`{ data: [], error: e }` のように
- *      実のある値が1つでもあれば対象外。この除外判定も同じ EMPTY/NEUTRAL 定義を
- *      透過込みで使うため、包みの有無で判定がぶれない
- * 4. 「空値」プロパティを少なくとも1つ含む
+ * 3. 部分木の **すべての** プロパティが「空値」「空の付き添い」「入れ物」のいずれかである
+ *    — `{ data: [1] }`、`{ data: [], error: e }`、`{ data: { items: [1], total: 1 } }`、
+ *      `{ data: { user: someUser } }` のように実のある値が1つでもあれば対象外。
+ *      この除外判定も同じ EMPTY/NEUTRAL 定義を透過込みで使うため、包みや入れ子の
+ *      有無で判定がぶれない
+ * 4. 部分木に「空値」のプロパティを少なくとも1つ含む
  *    — `{ ok: false }` のような単なるフラグ返却を巻き込まない
+ *
+ * 【設計判断: 入れ子の深さに上限を設けない】
+ * 3・4 の判定に子セレクタ（`>`）ではなく **子孫セレクタ** を使うことで、
+ * 入れ子の深さに関係なく「部分木のどこかに実のある値があるか」を1つの式で表せる。
+ * esquery の子孫セレクタは深さを問わないため、型ラッパーの段数（ルールX）のような
+ * 上限の問題がそもそも発生しない。よって入れ子については fail-closed も
+ * 上限の明示も不要である。
+ *
+ * 実のある値を持つプロパティが部分木のどこかにあれば、その時点で 3 の条件が破れて
+ * 対象外になる。したがって深い入れ子に実データを持つ正当なコードを巻き込むこともない。
  */
+// 条件の並びは評価コストを考えて決めている。
+// 属性だけで判定できるものを先に置き、次に「最初の一致で打ち切れる」:has、
+// 最後に部分木を全走査する必要がある :not(:has(...)) を置く。
+// 大半のオブジェクトは前2つで振り落とされるため、最も重い条件まで到達しない。
 const SWALLOW_OBJECT = [
   'ObjectExpression',
   ':not([properties.length=0])',
-  ':not(:has(> SpreadElement))',
-  `:not(:has(> Property:not(:matches(${EMPTY_PROPERTY}, ${NEUTRAL_PROPERTY}))))`,
-  `:has(> :matches(${EMPTY_PROPERTY}))`,
+  `:has(:matches(${EMPTY_PROPERTY}))`,
+  ':not(:has(SpreadElement))',
+  `:not(:has(Property:not(:matches(${EMPTY_PROPERTY}, ${NEUTRAL_PROPERTY}, ${CONTAINER_PROPERTY}))))`,
 ].join('')
 
 // ============================================================================

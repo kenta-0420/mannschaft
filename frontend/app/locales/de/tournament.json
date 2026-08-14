@@ -155,7 +155,8 @@
     "visibility_saved": "Sichtbarkeit aktualisiert",
     "visibility_failed": "Fehler beim Aktualisieren der Sichtbarkeit",
     "load_failed": "Kontaktbereiche konnten nicht geladen werden",
-    "divisions_load_failed": "Divisionen konnten nicht geladen werden"
+    "divisions_load_failed": "Divisionen konnten nicht geladen werden",
+    "permissions_load_failed": "Berechtigungen konnten nicht geladen werden. Einige Aktionen sind möglicherweise nicht verfügbar."
   },
   "submission": {
     "title": "Dokumenteneinreichung",

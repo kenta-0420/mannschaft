@@ -92,6 +92,7 @@
       "loading": "불러오는 중…",
       "empty": "오늘 시간표가 없습니다",
       "load_failed": "시간표를 불러오지 못했습니다. 다시 불러와 주세요",
+      "notes_load_failed": "메모를 불러오지 못했습니다. 시간표만 표시합니다",
       "tag_personal": "개인",
       "tag_team": "팀",
       "memo_label": "메모",

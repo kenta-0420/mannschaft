@@ -155,7 +155,8 @@
     "visibility_saved": "公開設定を変更しました",
     "visibility_failed": "公開設定の変更に失敗しました",
     "load_failed": "連絡スペースの取得に失敗しました",
-    "divisions_load_failed": "ディビジョン一覧の取得に失敗しました"
+    "divisions_load_failed": "ディビジョン一覧の取得に失敗しました",
+    "permissions_load_failed": "権限情報の取得に失敗しました。操作が制限される場合があります"
   },
   "submission": {
     "title": "書類提出受付",

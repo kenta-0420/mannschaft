@@ -109,6 +109,19 @@ describe('エラー握りつぶし禁止ガード', () => {
       '4段の包み（try/catch）': 'function f() { try { g() } catch { return (((({ data: [] } as A) as B) as C) as D) } }',
       // 中身が握りつぶしでなくても、上限超過そのものを違反とする（fail-closed）
       '4段の包み（中身は実のある値）': 'foo().catch(() => (((({ data: [1] } as A) as B) as C) as D))',
+
+      // --- 6巡目: 入れ子の空レスポンス ---
+      '入れ子 { data: { items: [], total: 0 } }': 'foo().catch(() => ({ data: { items: [], total: 0 } }))',
+      '入れ子 { data: { data: [] } }': 'foo().catch(() => ({ data: { data: [] } }))',
+      '入れ子 { data: { items: [], nextCursor: null } }': 'foo().catch(() => ({ data: { items: [], nextCursor: null } }))',
+      '入れ子の値に型ラッパー': 'foo().catch(() => ({ data: { items: [] } as Page }))',
+      '入れ子＋外側に型ラッパー': 'foo().catch(() => ({ data: { items: [] } } as ApiResponse))',
+      '入れ子＋山括弧': 'foo().catch(() => ({ data: <Page>{ items: [] } }))',
+      '2段の入れ子': 'foo().catch(() => ({ data: { result: { items: [] } } }))',
+      // 子孫セレクタで判定するため深さに上限が無いことの固定
+      '5段の入れ子': 'foo().catch(() => ({ a: { b: { c: { d: { e: [] } } } } }))',
+      '入れ子（ブロック本体）': 'foo().catch(() => { return { data: { items: [], total: 0 } } })',
+      '入れ子（try/catch）': 'function f() { try { g() } catch { return { data: { items: [], total: 0 } } } }',
     }
 
     for (const [name, code] of Object.entries(detected)) {
@@ -164,6 +177,15 @@ describe('エラー握りつぶし禁止ガード', () => {
       '3段の包みで実のある値': 'foo().catch(() => ((({ data: [1] } as A) as B) as C))',
       '3段の包みで変数参照': 'foo().catch(() => (((items as A) as B) as C))',
       '3段の包みでエラー保持': 'foo().catch(e => ((({ data: [], error: e } as A) as B) as C))',
+
+      // --- 6巡目: 入れ子でも過剰検出しないこと ---
+      '入れ子に非空配列': 'foo().catch(() => ({ data: { items: [1], total: 1 } }))',
+      '入れ子にエラー保持': 'foo().catch(e => ({ data: { items: [], error: e } }))',
+      '入れ子に実体参照': 'foo().catch(() => ({ data: { user: someUser } }))',
+      '入れ子に null と非空配列の混在': 'foo().catch(() => ({ data: { user: null, items: [1] } }))',
+      '2段の入れ子で実のある値': 'foo().catch(() => ({ data: { result: { items: [1] } } }))',
+      '入れ子にスプレッド': 'foo().catch(() => ({ data: { ...base, items: [] } }))',
+      '入れ子に関数を持つ': 'foo().catch(() => ({ data: { items: [] }, retry: () => load() }))',
     }
 
     for (const [name, code] of Object.entries(allowed)) {

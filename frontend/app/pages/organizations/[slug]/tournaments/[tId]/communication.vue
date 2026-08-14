@@ -157,16 +157,27 @@ watch(activeTab, async (tab) => {
 
 onMounted(async () => {
   try {
-    await loadPermissions()
-    const [, divRes] = await Promise.all([
+    // 権限・連絡スペース・ディビジョン一覧は失敗を独立に扱う。
+    // Promise.all でまとめると「どれか1つでも失敗＝全部失敗」に粒度が粗くなり、
+    // 取得できているものまで捨てたり、無関係な失敗文言を出したりする（Issue #2770）。
+    // なお loadTournamentSpaces は自前で失敗を通知するため、ここでは結果を見ない。
+    const [permResult, , divResult] = await Promise.allSettled([
+      loadPermissions(),
       loadTournamentSpaces(),
-      // 取得失敗を空配列に偽装せず、失敗として表面化させる（Issue #2770）
+      // 取得失敗を空配列に偽装せず、失敗として表面化させる
       getDivisions(orgSlug, tId),
     ])
-    divisions.value = divRes.data
-  }
-  catch {
-    showError(t('tournament.communication.divisions_load_failed'))
+
+    if (permResult.status === 'rejected') {
+      showError(t('tournament.communication.permissions_load_failed'))
+    }
+
+    if (divResult.status === 'fulfilled') {
+      divisions.value = divResult.value.data
+    }
+    else {
+      showError(t('tournament.communication.divisions_load_failed'))
+    }
   }
   finally {
     loading.value = false
