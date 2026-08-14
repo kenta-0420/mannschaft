@@ -75,8 +75,10 @@ public class ShiftChangeRequestEntity {
     /** 有効期限 */
     private LocalDateTime expiresAt;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     /** 楽観ロック用バージョン */

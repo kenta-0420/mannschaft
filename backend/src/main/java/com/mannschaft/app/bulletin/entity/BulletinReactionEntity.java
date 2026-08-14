@@ -44,6 +44,7 @@ public class BulletinReactionEntity {
     @Column(nullable = false, length = 10)
     private String emoji;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

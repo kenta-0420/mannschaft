@@ -47,6 +47,7 @@ public class KbPageRevisionEntity {
     @Column(length = 500)
     private String changeSummary;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

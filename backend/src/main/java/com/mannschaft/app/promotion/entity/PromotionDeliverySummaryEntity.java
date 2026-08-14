@@ -48,5 +48,6 @@ public class PromotionDeliverySummaryEntity {
     private Integer failedCount = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }

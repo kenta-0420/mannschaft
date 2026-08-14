@@ -44,6 +44,7 @@ public class KbImageUploadEntity {
     @Column(nullable = false, length = 50)
     private String contentType;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

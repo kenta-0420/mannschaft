@@ -51,6 +51,7 @@ public class BatchJobLogEntity {
     @Column(columnDefinition = "TEXT")
     private String errorMessage;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

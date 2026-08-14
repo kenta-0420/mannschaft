@@ -37,6 +37,7 @@ public class SearchSavedQueryEntity {
     @Column(nullable = false, columnDefinition = "JSON")
     private String queryParams;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

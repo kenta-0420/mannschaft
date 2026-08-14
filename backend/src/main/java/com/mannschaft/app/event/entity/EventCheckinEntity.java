@@ -57,6 +57,7 @@ public class EventCheckinEntity {
     @Column(length = 300)
     private String note;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     // F03.12 ケア対象者見守り通知・点呼機能

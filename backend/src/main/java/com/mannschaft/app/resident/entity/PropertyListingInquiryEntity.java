@@ -38,5 +38,6 @@ public class PropertyListingInquiryEntity {
     private String message;
 
     @Builder.Default
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }

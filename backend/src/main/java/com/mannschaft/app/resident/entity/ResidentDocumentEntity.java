@@ -50,5 +50,6 @@ public class ResidentDocumentEntity {
     private Long uploadedBy;
 
     @Builder.Default
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }

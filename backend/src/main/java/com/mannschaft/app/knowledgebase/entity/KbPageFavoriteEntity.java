@@ -35,6 +35,7 @@ public class KbPageFavoriteEntity {
     @Column(nullable = false)
     private Long userId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
