@@ -2,18 +2,37 @@
  * このテストはAPIモックを使わない実機テストです。
  * バックエンド http://localhost:8080 / フロントエンド http://localhost:3000 が起動済みの状態で実行してください。
  *
- * 認証: tests/e2e/.auth/real-user.json の storageState を使用します（単一セッション設計。
- * ファイル冒頭の describe をまたいだトップレベルの beforeAll で 1 つの BrowserContext を
- * 作成し、DASH-* / PROF-* / TEAM-NAV-* / NOTIF-* の全 describe で使い回す）。
+ * 認証: ファイル冒頭の describe をまたいだトップレベルの beforeAll で 1 つの
+ * BrowserContext を作成し、その中で loginViaApi() による本ファイル専用の新規ログインを
+ * 1 回だけ行い、DASH-* / PROF-* / TEAM-NAV-* / NOTIF-* の全 describe で使い回す
+ * （単一セッション設計）。playwright-real.config.ts の projects は
+ * storageState: 'tests/e2e/.auth/real-user.json' を指定しているが、本ファイルは
+ * beforeAll で自前の context を作るためその指定は効かない（意図的）。
  *
- * なぜ単一セッション設計にするか（villages.spec.ts と同じ理由）:
- *   アクセストークンはリフレッシュのたびにサーバ側で「回転」する（旧トークンを revoke し
- *   後継を発行）。後継トークンは Cookie 経由でその場の BrowserContext にしか残らない。
- *   テストが新しい storageState スナップショットや新規ログインから始まると、既に revoke
- *   済みのトークンを再提示することになり、grace window（60秒）超過後は「リプレイ攻撃」
- *   として検出されセッションごと失効する（AuthTokenRotationService）。本ファイルは
- *   DASH/PROF/TEAM-NAV/NOTIF 合計 20 件超のテストを持ち、実行時間がアクセストークンの
- *   TTL（900秒）を超えうるため、1 スペックファイル = 1 セッション（1 context）に揃える。
+ * なぜ「storageState 共有」ではなく「ファイル単位の新規ログイン」なのか（実測に基づく）:
+ *   殿による実機実測で以下が判明した。
+ *     - favorites.spec.ts 単独実行: 12/12 全緑
+ *     - dashboard.spec.ts 単独実行: 18 passed（TEAM-NAV-003 のみ失敗、別原因で是正済み）
+ *     - 2 ファイルまとめて実行: dashboard 側は同じ 1 件のみ失敗するが、
+ *       favorites 側は初手 FAV-001 で /login?redirect=/dashboard に飛ばされて死亡
+ *       （serial のため後続 16 件は未実行）。
+ *   両ファイルとも旧実装では beforeAll で storageState: 'tests/e2e/.auth/real-user.json'
+ *   から context を作っていた。同一実行内で複数の spec ファイルが同じディスク上の
+ *   スナップショットから別々の context を作ると、先行ファイルがトークンを回転させた
+ *   （サーバが旧トークンを revoke し後継を発行）時点で、後継トークンは Cookie 経由で
+ *   その context にしか残らない。後続ファイルは新しい context を storageState から
+ *   作り直すため、既に revoke 済みのトークンを再提示することになり、grace window
+ *   （60秒）超過後は「リプレイ攻撃」として検出されセッションごと失効する
+ *   （AuthTokenRotationService）。本ファイルは DASH/PROF/TEAM-NAV/NOTIF 合計 20 件超の
+ *   テストを持ち、実行時間がアクセストークンの TTL（900秒）を超えうるため、
+ *   1 スペックファイル = 1 セッション（1 context）に揃える必要もある。
+ *
+ *   「1ファイル=1セッション」だけでは不十分で、「1ファイル=1ログイン」まで踏み込み、
+ *   storageState を読み込まずファイル専用に新規ログインして新しいトークン系列を確立する。
+ *   新規ログイン自体は危険ではない（まっさらなトークン系列を作るだけ）。危険なのは
+ *   「回転済み＝revoke 済みのトークンを他ファイルの context 経由で再提示すること」であり、
+ *   旧設計はこれを「スナップショットの再利用」と「テストごとの重複ログイン」を混同して
+ *   壊していた。ログインは beforeAll 内で 1 回だけ行い、テストごとには呼ばない。
  *
  * なぜ describe ごとに context を分けないか:
  *   同一ファイル内で複数の describe がそれぞれ BrowserContext を beforeAll/afterAll で
@@ -33,6 +52,12 @@
 
 import { test, expect, type Page, type BrowserContext } from '@playwright/test'
 import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
+import { loginViaApi } from '../fixtures/auth'
+
+const E2E_USER = {
+  email: 'e2e-user@test.mannschaft.local',
+  password: 'TestPass2026!',
+}
 
 test.describe.configure({ mode: 'serial' })
 
@@ -42,7 +67,19 @@ let context: BrowserContext
 let page: Page
 
 test.beforeAll(async ({ browser }) => {
-  context = await browser.newContext({ storageState: 'tests/e2e/.auth/real-user.json' })
+  // storageState は読み込まない。ファイル間でスナップショットを共有すると、先行ファイルが
+  // 回転させた（revoke 済みの）トークンを本ファイルが再提示することになりセッションごと
+  // 失効する（実測: dashboard 単独 18 passed → favorites と2本立てでも dashboard 自体は
+  // 同じ1件のみ失敗、影響を受けるのは後続の favorites 側）。そのため本ファイル専用に
+  // 新規ログインして新しいトークン系列を確立する。ログインは beforeAll 内で1回だけ行う。
+  context = await browser.newContext()
+  const setupPage = await context.newPage()
+  try {
+    await loginViaApi(setupPage, E2E_USER)
+  }
+  finally {
+    await setupPage.close()
+  }
 })
 
 test.beforeEach(async () => {
@@ -255,9 +292,13 @@ test.describe('TEAM-NAV-001〜006: チームナビゲーション', () => {
     const teamLink = page.getByText('FC東京U-18').first()
     await expect(teamLink).toBeVisible({ timeout: 20_000 })
     await teamLink.click()
-    // /teams/[id] 相当のページに遷移したことを確認
-    await page.waitForURL(/\/teams\/\d+/, { timeout: 20_000 })
-    expect(page.url()).toMatch(/\/teams\/\d+/)
+    // /teams/[slug] 相当の詳細ページに遷移したことを確認する。
+    // 本プロジェクトは URL 識別子を slug に一本化済みであり（例: /teams/fc-u-18-2）、
+    // 数値 ID を期待する正規表現は時代遅れ（FAV-008 で同種の是正を実施済み）。
+    // 「/teams/」直下の一覧ページ自身に誤マッチしないよう、後ろに1セグメントあることを
+    // 要求する（末尾スラッシュなしの1セグメント、または区切り記号までを許容）。
+    await page.waitForURL(/\/teams\/[^/?#]+/, { timeout: 20_000 })
+    expect(page.url()).toMatch(/\/teams\/[^/?#]+/)
   })
 
   test('TEAM-NAV-004: チームホームページが表示される', async () => {

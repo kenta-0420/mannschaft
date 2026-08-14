@@ -5,23 +5,37 @@
  * バックエンド (http://localhost:8080) とフロントエンド (http://localhost:3000) が
  * 起動済みの状態で実行してください。
  *
- * 認証: tests/e2e/.auth/real-user.json の storageState を使用（単一セッション設計。
- * villages.spec.ts と同じ理由により、beforeAll で 1 つの BrowserContext を作成し
- * FAV-001〜009 全テストで使い回す（mode: 'serial'）。
+ * 認証: beforeAll で 1 つの BrowserContext を作成し、その中で loginViaApi() による
+ * ファイル専用の新規ログインを 1 回だけ行い、FAV-001〜009 全テストで使い回す
+ * （mode: 'serial'）。playwright-real.config.ts の projects は
+ * storageState: 'tests/e2e/.auth/real-user.json' を指定しているが、本ファイルは
+ * beforeAll で自前の context を作るためその指定は効かない（意図的）。
  *
- * なぜ単一セッション設計にするか:
- *   アクセストークンはリフレッシュのたびにサーバ側で「回転」する（旧トークンを revoke し
- *   後継を発行）。後継トークンは Cookie 経由でその場の BrowserContext にしか残らない。
- *   テストが新しい storageState スナップショットや新規ログインから始まると、既に revoke
- *   済みのトークンを再提示することになり、grace window（60秒）超過後は「リプレイ攻撃」
- *   として検出されセッションごと失効する（AuthTokenRotationService）。
+ * なぜ「storageState 共有」ではなく「ファイル単位の新規ログイン」なのか（実測に基づく）:
+ *   殿による実機実測で以下が判明した。
+ *     - favorites.spec.ts 単独実行: 12/12 全緑
+ *     - dashboard.spec.ts 単独実行: 18 passed（TEAM-NAV-003 のみ失敗、別原因）
+ *     - 2 ファイルまとめて実行: dashboard 側は同じ 1 件のみ失敗するが、
+ *       favorites 側は初手 FAV-001 で /login?redirect=/dashboard に飛ばされて死亡
+ *       （serial のため後続 16 件は未実行）。
+ *   両ファイルとも beforeAll で storageState: 'tests/e2e/.auth/real-user.json' から
+ *   context を作っていたことが原因。同一実行内で複数の spec ファイルが同じディスク上の
+ *   スナップショットから別々の context を作ると、先行ファイルがトークンを回転させた
+ *   （サーバが旧トークンを revoke し後継を発行）時点で、後継トークンは Cookie 経由で
+ *   その context にしか残らない。後続ファイルは新しい context を storageState から
+ *   作り直すため、既に revoke 済みのトークンを再提示することになり、grace window
+ *   （60秒）超過後は「リプレイ攻撃」として検出されセッションごと失効する
+ *   （AuthTokenRotationService）。
  *
- *   本ファイルは以前、FAV-003〜007 が毎テスト POST /api/v1/auth/login で新規ログインし
- *   Authorization ヘッダで別トークン系列を叩く構成だった。これは (a) UI ログイン
- *   (loginIfNeeded) より根が深い問題で、テストごとに全く別のトークン系列を生成するため
- *   共有 context の Cookie とも整合が取れず、長時間実行時にセッション失効を誘発していた。
- *   → 現在は共有 context から一度だけ（beforeAll 内の一時 page で）トークンを解決し、
- *   以降の全テストでそのトークンを使い回す。別途 API ログインを増やしてはならない。
+ *   「1ファイル=1セッション（1 context）」までは前回是正済みだが、それだけでは
+ *   ファイル間のスナップショット共有によるトークン回転干渉を防げない。
+ *   「1ファイル=1ログイン」まで踏み込み、各ファイルの beforeAll で storageState を
+ *   読み込まず、そのファイル専用に新規ログインして新しいトークン系列を確立する必要がある。
+ *   新規ログイン自体は危険ではない（まっさらなトークン系列を作るだけ）。危険なのは
+ *   「回転済み＝revoke 済みのトークンを他ファイルの context 経由で再提示すること」であり、
+ *   旧設計はこれを「スナップショットの再利用」と「テストごとの重複ログイン」を混同して
+ *   壊していた。ログインは beforeAll 内で 1 回だけ行い、テストごとには呼ばない
+ *   （それが旧設計の欠陥そのもの）。
  *
  * page はテストごとに beforeEach で newPage() → afterEach で close() する。回転後トークンの
  * 継続性に必要なのは Cookie ジャー（= context）であって page 自体の使い回しではなく、
@@ -46,6 +60,12 @@
 
 import { test, expect, type Page, type BrowserContext } from '@playwright/test'
 import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
+import { loginViaApi } from '../fixtures/auth'
+
+const E2E_USER = {
+  email: 'e2e-user@test.mannschaft.local',
+  password: 'TestPass2026!',
+}
 
 interface FavoriteResponse {
   id: string
@@ -83,17 +103,24 @@ test.describe('FAV-001〜010: F02.9 お気に入りウィジェット', () => {
   let sharedToken = ''
 
   test.beforeAll(async ({ browser }) => {
-    context = await browser.newContext({ storageState: 'tests/e2e/.auth/real-user.json' })
+    // storageState は読み込まない。ファイル間でスナップショットを共有すると、
+    // 先行ファイルが回転させた（revoke 済みの）トークンを本ファイルが再提示することになり
+    // セッションごと失効する（実測: favorites 単独 12/12 緑 → dashboard と2本立てで FAV-001
+    // から死亡）。そのため本ファイル専用に新規ログインして新しいトークン系列を確立する。
+    context = await browser.newContext()
 
-    // token 解決専用の一時 page（beforeEach 前なので明示的に作って閉じる）。
-    // 別途 API ログイン (POST /auth/login) はせず、共有 context の Cookie（access_token）
-    // をそのまま使ってトークンを解決する。
+    // ログイン専用の一時 page（beforeEach 前なので明示的に作って閉じる）。
+    // loginViaApi() は POST /api/v1/auth/login を直接叩き、発行された access_token /
+    // refresh_token の HttpOnly Cookie を context に残す。ログインは beforeAll 内で
+    // この 1 回のみ行う（テストごとに呼ぶのは旧設計の欠陥そのものであり厳禁）。
     const setupPage = await context.newPage()
     try {
-      // 共有 context の Cookie（access_token）から直接トークンを取り出す（新規ログインは行わない）。
+      await loginViaApi(setupPage, E2E_USER)
+
+      // context の Cookie（access_token）から直接トークンを取り出す。
       const cookies = await context.cookies()
       const accessTokenCookie = cookies.find((c) => c.name === 'access_token')
-      expect(accessTokenCookie, 'storageState に access_token Cookie が含まれていない').toBeTruthy()
+      expect(accessTokenCookie, 'ログイン後に access_token Cookie が発行されていない').toBeTruthy()
       sharedToken = accessTokenCookie!.value
 
       // 解決したトークンが有効であることをここで検証しておく（以降の全テストの前提）。
