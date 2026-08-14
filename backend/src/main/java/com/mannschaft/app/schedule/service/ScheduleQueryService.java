@@ -321,6 +321,7 @@ public class ScheduleQueryService {
         String iconUrl = nameResolverService.resolveIconUrl(scopeType, scopeId);
         return CalendarEntryResponse.builder()
                 .id(entity.getId())
+                .scheduleId(entity.getId())
                 .content(new CalendarEntryResponse.CalendarContentDto(
                         entity.getTitle(), entity.getEventType().name(), entity.getStatus().name()))
                 .time(new CalendarEntryResponse.CalendarTimeDto(

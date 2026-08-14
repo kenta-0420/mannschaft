@@ -442,5 +442,25 @@ public class MembershipService {
         return membershipRepository.findActiveDistinctUserIdsByScopes(teamIds, orgIds);
     }
 
+    /**
+     * 指定スコープ（単一）に在籍するアクティブメンバーの user_id 一覧を joined_at 昇順で返す。
+     *
+     * <p>{@code schedule} ドメインの {@code ScheduleCommentService} がメンション候補の母集団
+     * （親スコープの直属メンバー）を取得する際、{@code membership} ドメインの
+     * {@link MembershipRepository} を直接注入することを避けるための公開窓口
+     * （D-5 ArchUnit 準拠: 別ドメインの Repository へ直接依存しない）。
+     * プリミティブ（{@code List<Long>}）のみを返し、Entity を漏らさない
+     * （{@link #getActiveUserIdsInScopes(Collection, Collection)} の単一スコープ版）。</p>
+     *
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @return 在籍者の user_id 一覧（joined_at 昇順・退会済みは除外）
+     */
+    public List<Long> getActiveMemberUserIds(ScopeType scopeType, Long scopeId) {
+        return membershipRepository.findAllActiveByScope(scopeType, scopeId).stream()
+                .map(MembershipEntity::getUserId)
+                .toList();
+    }
+
 }
 

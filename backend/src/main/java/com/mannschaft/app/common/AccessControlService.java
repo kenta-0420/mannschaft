@@ -51,6 +51,9 @@ public class AccessControlService {
 
     private static final Set<String> ADMIN_ROLES = Set.of("ADMIN", "DEPUTY_ADMIN");
 
+    /** ORG 再帰展開のサイクル防止上限（{@code OrgFanoutRecipientSource.MAX_ORG_DESCENDANT_DEPTH} と同値）。 */
+    private static final int ORG_DESCENDANT_MAX_DEPTH = 32;
+
     // ========================================
     // メンバーシップ検証
     // ========================================
@@ -256,6 +259,100 @@ public class AccessControlService {
 
     /** 有効ロールの名前と priority を束ねる内部値オブジェクト。 */
     private record EffectiveRole(String name, int priority) {
+    }
+
+    /**
+     * 「単一スコープ × 複数ユーザー」向けの有効ロール名一括解決（F03.16 §4.5.0 段1）。
+     *
+     * <p>{@link #resolveEffectiveRoleName} と<b>完全に同一の規則</b>
+     * （権限ロール（{@code user_roles}）と所属ロール（{@code memberships.role_kind}）の
+     * 両系統を集め、{@link com.mannschaft.app.common.visibility.RolePriority} が最強
+     * （priority 最小）のロール名を採る）で、候補者数に依らず<b>SQL 2 本</b>で解決する。
+     * {@link #resolveEffectiveRoleName} を候補者ごとに呼ぶと候補者数に比例して SQL が増える
+     * ため、一括版が必要な呼び出し元（{@code schedule} ドメインのメンション可視性フィルタ等）
+     * 向けに本メソッドを設ける。</p>
+     *
+     * <p>本メソッドは {@code common}（共有ドメイン）に属するため、{@code role}/{@code membership}
+     * ドメインの Repository・射影型を他ドメインへ一切漏らさない
+     * （ArchUnit D-1/D-5 準拠の公開窓口。{@code schedule} ドメインの
+     * {@code ScheduleCommentViewerFilter} が本メソッド経由でロール解決する）。</p>
+     *
+     * @param userIds   候補ユーザー ID 集合
+     * @param scopeId   スコープ ID（チーム ID または組織 ID）
+     * @param scopeType スコープ種別（"TEAM" または "ORGANIZATION"）
+     * @return Map(userId → 有効ロール名)。両系統いずれにも該当が無いユーザーは含まれない
+     */
+    public Map<Long, String> resolveEffectiveRoleNames(
+            java.util.Collection<Long> userIds, Long scopeId, String scopeType) {
+        Map<Long, String> roleByUser = new LinkedHashMap<>();
+        if (userIds == null || userIds.isEmpty() || scopeId == null || scopeType == null) {
+            return roleByUser;
+        }
+        boolean team = "TEAM".equals(scopeType);
+
+        // SQL 1: 権限ロール（ADMIN / DEPUTY_ADMIN / GUEST 等）。
+        List<com.mannschaft.app.common.visibility.ScopeUserRoleProjection> permissionRoles = team
+                ? userRoleRepository.findScopeRolesByTeamIdAndUserIdIn(scopeId, userIds)
+                : userRoleRepository.findScopeRolesByOrganizationIdAndUserIdIn(scopeId, userIds);
+        for (com.mannschaft.app.common.visibility.ScopeUserRoleProjection row : permissionRoles) {
+            mergeStrongestRole(roleByUser, row.getUserId(), row.getRoleName());
+        }
+
+        // SQL 2: 所属ロール（MEMBER / SUPPORTER）。
+        ScopeType scope = team ? ScopeType.TEAM : ScopeType.ORGANIZATION;
+        List<MembershipRepository.MembershipUserRoleKindProjection> membershipRoles =
+                membershipRepository.findActiveRoleKindsByScopeAndUsers(scope, scopeId, userIds);
+        for (MembershipRepository.MembershipUserRoleKindProjection row : membershipRoles) {
+            if (row.getRoleKind() != null) {
+                mergeStrongestRole(roleByUser, row.getUserId(), row.getRoleKind().name());
+            }
+        }
+        return roleByUser;
+    }
+
+    /**
+     * F03.16 是正3【P2】: {@link #resolveEffectiveRoleNames} の ORGANIZATION 版に、配下チーム経由の
+     * 所属ロールを合成した版。
+     *
+     * <p>{@link #resolveEffectiveRoleNames} は {@code memberships.scope_type = 'ORGANIZATION' AND
+     * scope_id = :organizationId} の<b>直接所属のみ</b>を見るため、配下チームのみに所属するメンバーは
+     * ロールが解決できず {@code null} になる（{@code MinViewRoleThreshold.satisfies} が既定閾値
+     * {@code MEMBER_PLUS} で一律 fail-closed になる欠陥）。本メソッドは既存の2 SQLに加えて
+     * {@link UserRoleRepository#findMembershipRoleKindsForOrganizationDescendants} を追加で1回呼び、
+     * 配下チーム所属のロール（MEMBER/SUPPORTER）を合成する。候補者数に依らず定数（SQL 3本）のまま。</p>
+     *
+     * @param userIds        候補ユーザー ID 集合
+     * @param organizationId 組織 ID（母集団の根）
+     * @return ユーザー ID → 実効ロール名（直接所属 ∪ 配下チーム所属の最強ロール）
+     */
+    public Map<Long, String> resolveEffectiveRoleNamesIncludingOrgDescendants(
+            java.util.Collection<Long> userIds, Long organizationId) {
+        Map<Long, String> roleByUser = resolveEffectiveRoleNames(userIds, organizationId, "ORGANIZATION");
+        if (userIds == null || userIds.isEmpty() || organizationId == null) {
+            return roleByUser;
+        }
+        List<UserRoleRepository.OrgDescendantMembershipRoleRow> descendantRoles =
+                userRoleRepository.findMembershipRoleKindsForOrganizationDescendants(
+                        organizationId, userIds, ORG_DESCENDANT_MAX_DEPTH);
+        for (UserRoleRepository.OrgDescendantMembershipRoleRow row : descendantRoles) {
+            if (row.getRoleKind() != null) {
+                mergeStrongestRole(roleByUser, row.getUserId(), row.getRoleKind());
+            }
+        }
+        return roleByUser;
+    }
+
+    /** priority が最小（＝最強）のロール名を採用する（{@link #resolveEffectiveRoleNames} 専用）。 */
+    private void mergeStrongestRole(Map<Long, String> roleByUser, Long userId, String roleName) {
+        if (userId == null || roleName == null) {
+            return;
+        }
+        String current = roleByUser.get(userId);
+        if (current == null
+                || com.mannschaft.app.common.visibility.RolePriority.priority(roleName)
+                        < com.mannschaft.app.common.visibility.RolePriority.priority(current)) {
+            roleByUser.put(userId, roleName);
+        }
     }
 
     /**
