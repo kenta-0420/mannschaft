@@ -1511,6 +1511,116 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("maxDepth") int maxDepth);
 
     /**
+     * 複数の ORG 根に対し、単一 viewer が<b>配信母集団</b>（{@code includeSupporters} トグル準拠）に
+     * 含まれる ORG 根の ID 集合を<b>1 クエリ（1 SQL）</b>で返す（Issue #2782）。
+     *
+     * <p>{@link #existsInOrgDistributionAudience(Long, Long, boolean, int)}（単一 ORG 根 × 単一 viewer）の
+     * <b>複数根バルク化</b>である。{@code SurveyVisibilityResolver} の {@code ALWAYS} 判定は、
+     * 別組織のアンケートが 1 バッチに混ざると組織ごとに単発 EXISTS を撃っており、
+     * <b>組織の種類数に比例</b>して SQL が増えていた。{@link #findDescendantMembershipRolesByOrgRoots}
+     * と同じ作法で再帰 CTE に根 {@code root_id} を伝播させ、根単位の判定を 1 回の集計で済ませる。</p>
+     *
+     * <p><b>⚠️ なぜ所属軸（{@link #findDescendantMembershipRolesByOrgRoots}）で代用できないのか</b> —
+     * あちらは「スコープ所属者全員」を返す<b>所属軸</b>で、G7 により SUPPORTER を一律含む。
+     * 対して本メソッドは<b>配信母集団</b>であり、{@code includeSupporters = FALSE} のときは
+     * 純 SUPPORTER を除外しなければならない。所属軸へ寄せると母集団の意味論が壊れ、
+     * <b>配信されていない者に中間集計が見える</b>（漏洩）。両者は統合してはならない。</p>
+     *
+     * <p><b>純 SUPPORTER 除外は根ごとに閉じる</b>: 除外判定（SUPPORTER 所属を持ち、かつ MEMBER 所属を
+     * 持たない＝MEMBER 優先）の走査範囲は、単一根版では「その根の org_tree」であった。バルク版でも
+     * 意味を変えないため、EXISTS の内側を {@code org_tree.root_id = cand.root_id} で当該根の部分木に
+     * 限定する。根をまたいで判定が混ざると、別組織で MEMBER である者が本組織でも
+     * 応援者除外を免れる（不当な緩和）ため、ここは必ず根で閉じること。</p>
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2780 甲層）</b>: {@code V60.010} 以後、一般メンバーの
+     * 在籍行は {@code memberships} にしか無いため、{@code user_roles} ∪ {@code memberships}
+     * （{@code left_at IS NULL}）を {@code UNION} する。{@code memberships} 枝は
+     * {@code scope_id} 単独索引が無いため、必ず {@code scope_type} の等値条件を伴わせる。</p>
+     *
+     * <p>呼び出し側は {@code rootOrgIds} が空のときは本メソッドを<b>呼ばない</b>こと
+     * （空 IN () 回避・SQL 0 回）。トグルは 2 値なので、1 バッチで発行される本メソッドの
+     * SQL は<b>最大 2 本</b>（実在するトグルの種類数）に収まる。</p>
+     *
+     * @param rootOrgIds        母集団の根となる ORG ID 集合（空集合で呼ばないこと）
+     * @param userId            判定対象 viewer の user_id
+     * @param includeSupporters true=配下 SUPPORTER も母集団に含める / false=純 SUPPORTER を除外する
+     * @param maxDepth          再帰展開の最大深さ（サイクル防止上限・通常 32）
+     * @return viewer がトグル準拠の配信母集団に含まれる根 ORG の ID（distinct）リスト
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (root_id, id, depth) AS ( " +
+            "    SELECT o.id, o.id, 0 FROM organizations o " +
+            "      WHERE o.id IN (:rootOrgIds) AND o.deleted_at IS NULL " +
+            "  UNION ALL " +
+            "    SELECT p.root_id, c.id, p.depth + 1 FROM organizations c " +
+            "      JOIN org_tree p ON c.parent_organization_id = p.id " +
+            "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
+            ") " +
+            // 候補集合。findDescendantMembershipRolesByOrgRoots と同じ「CTE への JOIN」形にして
+            // root_id を外へ持ち出す（cand 派生表の各行が「どの根の配下で拾われたか」を保持する）。
+            "SELECT DISTINCT cand.root_id FROM ( " +
+            "  SELECT t.root_id AS root_id, ur.user_id AS user_id FROM org_tree t " +
+            "    JOIN user_roles ur " +
+            "      ON ( ur.organization_id = t.id " +
+            "           OR ur.team_id IN ( " +
+            "             SELECT tom.team_id FROM team_org_memberships tom " +
+            "             WHERE tom.organization_id = t.id AND tom.status = 'ACTIVE' " +
+            "           ) ) " +
+            "    WHERE ur.user_id = :userId " +
+            "  UNION " +
+            "  SELECT t2.root_id AS root_id, ms0.user_id AS user_id FROM org_tree t2 " +
+            "    JOIN memberships ms0 " +
+            "      ON ( ( ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id = t2.id ) " +
+            "           OR ( ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "             SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "             WHERE tom1.organization_id = t2.id AND tom1.status = 'ACTIVE' " +
+            "           ) ) ) " +
+            "    WHERE ms0.user_id = :userId AND ms0.left_at IS NULL " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            // 純 SUPPORTER 除外（MEMBER 優先）。走査範囲は cand.root_id の部分木に限定する。
+            "  AND ( " +
+            "    :includeSupporters = TRUE " +
+            "    OR NOT ( " +
+            "      EXISTS ( " +
+            "        SELECT 1 FROM memberships ms " +
+            "        WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "          AND ( " +
+            "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN ( " +
+            "              SELECT ot1.id FROM org_tree ot1 WHERE ot1.root_id = cand.root_id )) " +
+            "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "              SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "              WHERE tom2.organization_id IN ( " +
+            "                SELECT ot2.id FROM org_tree ot2 WHERE ot2.root_id = cand.root_id ) " +
+            "                AND tom2.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "      AND NOT EXISTS ( " +
+            "        SELECT 1 FROM memberships ms2 " +
+            "        WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "          AND ( " +
+            "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN ( " +
+            "              SELECT ot3.id FROM org_tree ot3 WHERE ot3.root_id = cand.root_id )) " +
+            "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
+            "              SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "              WHERE tom3.organization_id IN ( " +
+            "                SELECT ot4.id FROM org_tree ot4 WHERE ot4.root_id = cand.root_id ) " +
+            "                AND tom3.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "    ) " +
+            "  )",
+            nativeQuery = true)
+    List<Long> findOrgDistributionAudienceRoots(
+            @Param("rootOrgIds") Set<Long> rootOrgIds,
+            @Param("userId") Long userId,
+            @Param("includeSupporters") boolean includeSupporters,
+            @Param("maxDepth") int maxDepth);
+
+    /**
      * 複数の ORG 根に対し、単一 viewer が「再帰的配下メンバー」である ORG 根の ID 集合を
      * <b>1 クエリ（1 SQL）</b>で返す（フェーズ M2 / F00 可視性
      * {@link com.mannschaft.app.common.visibility.StandardVisibility#ORGANIZATION_AND_DESCENDANTS}

@@ -777,6 +777,12 @@ class SurveyVisibilityResolverAlwaysTest {
                     .isInOrgDistributionAudience(org.mockito.ArgumentMatchers.any(),
                             org.mockito.ArgumentMatchers.any(),
                             org.mockito.ArgumentMatchers.anyBoolean());
+            // Issue #2782 のバルク版も同様に呼ばれない（AFTER_CLOSE は snapshot 完結で追加 0 本）。
+            org.mockito.Mockito.verify(organizationMembershipService,
+                    org.mockito.Mockito.never())
+                    .resolveOrgDistributionAudienceRoots(org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.any(),
+                            org.mockito.ArgumentMatchers.anyBoolean());
             // snapshot 構築は組織数に関わらずバッチ 1 回。
             org.mockito.Mockito.verify(membershipBatchQueryService,
                     org.mockito.Mockito.times(1))
@@ -798,10 +804,18 @@ class SurveyVisibilityResolverAlwaysTest {
         }
     }
 
-    /** 組織配信母集団の述語（配信と同一の述語）をスタブする。 */
+    /**
+     * 組織配信母集団の述語（配信と同一の述語）をスタブする。
+     *
+     * <p>Issue #2782 で照会が「組織ごとの単発 EXISTS」から「トグルごとのバルク 1 本」へ変わったため、
+     * スタブ先も {@code resolveOrgDistributionAudienceRoots} へ移した。返すのは
+     * <b>閲覧者が母集団に含まれる組織 ID の集合</b>であり、含まれないときは空集合を返す。
+     * 期待値（各テストの true / false）は一切変えていない。</p>
+     */
     private void stubInAudience(boolean includeSupporters, boolean result) {
-        when(organizationMembershipService.isInOrgDistributionAudience(
-                eq(ORG_ID), eq(VIEWER_ID), eq(includeSupporters))).thenReturn(result);
+        when(organizationMembershipService.resolveOrgDistributionAudienceRoots(
+                anySet(), eq(VIEWER_ID), eq(includeSupporters)))
+                .thenReturn(result ? Set.of(ORG_ID) : Set.of());
     }
 
     private static UserScopeRoleSnapshot roleInScope(String role) {
