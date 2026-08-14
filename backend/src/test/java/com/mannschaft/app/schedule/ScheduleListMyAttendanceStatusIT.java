@@ -101,22 +101,19 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
         userAId = insertUser("myattend-a@example.com");
         userBId = insertUser("myattend-b@example.com");
 
+        // 検分差し戻し是正（2026-08-15、二度目）: schedules.min_response_role は DDL
+        // NOT NULL DEFAULT 'MEMBER_PLUS' であり ScheduleEntity 側も @Builder.Default で
+        // 揃えたため、respondAttendance は実際に ScheduleAttendanceService#validateMinResponseRole
+        // → AccessControlService#hasRoleOrAbove(...,"MEMBER") を通る。
+        // 所属ロール（MEMBER/SUPPORTER）は CMP-027（V60.010 移行）以降 memberships のみで
+        // 表現するのが本番の姿であり、user_roles へ張るのは本番で成立しえない
+        // （MembershipTestHelper.insertUserRole が MEMBER/SUPPORTER を禁じる番人を持つ）。
+        // insertMembership 自体が roles テーブルへの roleKind 冪等 seed を内包しているため
+        // （resolveRoleIdByName 呼び出し）、追加の insertUserRole は不要かつ禁止。
         MembershipTestHelper.insertMembership(em, userAId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, userBId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, userAId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, userBId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);
-        // 検分差し戻し是正（2026-08-15）: schedules.min_response_role は DDL NOT NULL DEFAULT
-        // 'MEMBER_PLUS' であり ScheduleEntity 側も @Builder.Default で揃えたため、
-        // respondAttendance は実際に ScheduleAttendanceService#validateMinResponseRole →
-        // AccessControlService#hasRoleOrAbove(...,"MEMBER") を通る。insertMembership だけでは
-        // memberships 行しか作らず roles テーブルに "MEMBER" が無いため
-        // （flyway.enabled=false でシード未投入・MembershipTestHelper.insertUserRole が
-        // オンデマンドseedを兼ねる）hasRoleOrAbove が false 固定になり 403 で落ちていた
-        // （EventCategoryAndIcalScopeContractIT と同じ確立済みパターンに揃える）。
-        MembershipTestHelper.insertUserRole(em, userAId, "MEMBER", teamId, null);
-        MembershipTestHelper.insertUserRole(em, userBId, "MEMBER", teamId, null);
-        MembershipTestHelper.insertUserRole(em, userAId, "MEMBER", null, orgId);
-        MembershipTestHelper.insertUserRole(em, userBId, "MEMBER", null, orgId);
 
         em.flush();
         em.clear();
