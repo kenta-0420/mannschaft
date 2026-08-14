@@ -127,7 +127,9 @@ ArchUnit 認可番人（`AuthzControllerGuardArchTest`）は、公開エンド�
 3. `permissions.name` は UNIQUE で `scope` は 1 値しか持てない。`scope` 列は**認可判定では参照されない**（権限一覧 UI 向けの分類列）ため、TEAM と ORGANIZATION の両方で使う権限は主たるスコープ 1 値で登録してよい。
 4. ユニットテストは `AccessControlService` をモックするため、この欠陥を**構造的に検出できない**。また通常の統合テスト基底は `spring.flyway.enabled=false` / `ddl-auto=create` で動くため `permissions` は空表になる。検証するには `spring.flyway.enabled=true` / `ddl-auto=none` をクラス単位で上書きした IT が要る（手本: `ManageRecruitmentsPermissionFlywayIT`）。
 
-**既知の未登録権限（別戦役で対応）**: `VIEW_ATTENDANCE`（`ClassHomeroomService`・当該経路は全ユーザー 403）、`MANAGE_COMMITTEE`（`CommitteeService`・DEPUTY_ADMIN への委任が不成立）。付与先ロールの決定を伴うため本節の新設とは分離する。あわせて「コード中の権限名がカタログに実在すること」を機械検証する横断ガードの新設もこの戦役の対象とする。
+**既知の未登録権限（2026-08-15 解消済み）**: `VIEW_ATTENDANCE`（`ClassHomeroomService`・当該経路は全ユーザー 403）、`MANAGE_COMMITTEE`（`CommitteeService`・DEPUTY_ADMIN への委任が不成立）、`jobs.manage`（`JobPolicy`・同上）の 3 件は `V184.20260814202646__add_dead_permission_names_to_catalog.sql` でカタログへ登録し、ADMIN のみ `is_default=1` で付与した（DEPUTY_ADMIN への天井行は上記ルール 2 に従い置かない。委任は `permission_groups` 経由）。あわせて `ClassHomeroomService.listHomerooms` の認可を設計意図（管理者＋担任本人）どおりに実装し直した。回帰は `DeadPermissionCatalogFlywayIT` が実 Flyway スキーマで見張る。なお `jobs.manage` は他権限と表記が揃っていないが、認可の是正と改名を混ぜないためコード側の定数に合わせて現状の名前で登録している（命名統一は別途）。
+
+**残務**: 「コード中の権限名がカタログに実在すること」を機械検証する横断ガードの新設（第二陣）。是正を先に済ませたのは、ガードを先に入れると既知の未登録権限で即座に赤くなり、抑止リストで黙らせる運用＝免罪符になるためである。
 
 **なぜ「実機裏取り」を required 化しないか**: `e2e-real-smoke` は JAR ビルド〜Testcontainers 不要の実サーバー起動〜seed 投入までを含む重量ワークフローで、ネットワーク・起動タイミング等に起因する flaky 要因を認可とは無関係に持ち込みうる。real E2E（Playwright）を CI スモーク必須対象から除外したのと同じ理由（[project_real_admin_e2e_excluded_from_ci_smoke]）で、**認可回帰の機械的ゲートは既に `*ScopeContractIT` が「Compile & Test」内で担っている**ため、二重に required 化する必要がない。実機裏取りは「契約テストのモック/DI 境界では見えない、実際の HTTP レイヤーでの認可漏れ」を低頻度で捕捉する補助網として非 required のまま維持する。
 
