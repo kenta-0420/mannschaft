@@ -4,6 +4,8 @@ import type { GanttTodo } from '~/types/todo'
 interface CalendarEntryRaw {
   // reflection 等 UUID 主キードメインの行は id=null（§6.2/AC-21）。
   id: number | null
+  // 親 schedules 行の ID（§1.5/AC-07(b)）。schedule 由来は id と同値、reflection 等は null。
+  scheduleId: number | null
   content: {
     title: string
     eventType: string
@@ -114,6 +116,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
 
     const personalEvents = ((personal.data ?? []) as unknown as PersonalScheduleRaw[]).map((e): CalEvent => ({
       id: e.id,
+      scheduleId: e.id,
       uniqueKey: `personal:${e.id}`,
       title: e.content?.title ?? '',
       startAt: e.time?.startAt ?? '',
@@ -136,6 +139,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
       .filter((e) => !!e.content?.referenceKind && !!e.content?.referenceUuid)
       .map((e): CalEvent => ({
         id: -1, // UUID 主キーゆえ数値 id は持たない（ルックアップ/描画は uniqueKey を使う）
+        scheduleId: null, // reflection 行は親 schedules を持たない
         uniqueKey: `ref:${e.content.referenceKind}:${e.content.referenceUuid}`,
         title: e.content?.title ?? '',
         startAt: e.time?.startAt ?? '',
@@ -158,6 +162,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
       .filter((e) => !e.content?.referenceKind && e.scope?.scopeType !== 'PERSONAL')
       .map((e): CalEvent => ({
         id: e.id as number,
+        scheduleId: e.scheduleId ?? null,
         uniqueKey: `shared:${e.id}`,
         title: e.content?.title ?? '',
         startAt: e.time?.startAt ?? '',

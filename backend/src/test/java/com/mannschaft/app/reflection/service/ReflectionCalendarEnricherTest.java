@@ -109,6 +109,8 @@ class ReflectionCalendarEnricherTest {
         assertThat(result).hasSize(1);
         CalendarEntryResponse cal = result.get(0);
         assertThat(cal.getId()).isNull();
+        // AC-07(b) 回帰: 親 schedules 行を持たない reflection エントリは scheduleId も常に null。
+        assertThat(cal.getScheduleId()).isNull();
         assertThat(cal.getContent().referenceUuid()).isEqualTo(entryId.toString());
         assertThat(cal.getContent().referenceKind()).isEqualTo("REFLECTION_ENTRY");
         assertThat(cal.getContent().eventType()).isEqualTo("REFLECTION_ENTRY");

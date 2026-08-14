@@ -1,6 +1,13 @@
 export interface CalendarEventItem {
   id: number
   /**
+   * 親 {@code schedules} 行の ID（BE {@code CalendarEntryResponse.scheduleId}・設計書 §1.5 / AC-07(b)）。
+   *
+   * schedule 由来のエントリでは {@code id} と同値。reflection 等 UUID 主キードメイン由来（{@code id=-1}）や
+   * TODO（{@code id}負数）では常に {@code null}。イベント詳細のコメントセクション表示可否判定に使う。
+   */
+  scheduleId?: number | null
+  /**
    * 一覧/ループの安定一意キー（v-for :key・ルックアップ用）。
    *
    * 既存の数値 id 依存だと、UUID 主キードメイン（reflection・F06.5 §6.2/AC-21）の行は
