@@ -344,7 +344,7 @@ ALTER TABLE schedule_scheduled_tasks
     MODIFY COLUMN materialized_entity_id BIGINT UNSIGNED NULL     COMMENT '生成後の実体id（event_survey / schedule_attendance 等）';
 
 -- ===== match/tournament ドメイン =====
--- matches.organization_id は現実のスキーマが NULL 許容であり、NOT NULL 行が存在しうる。
+-- matches.organization_id は現実のスキーマが NULL 許容であり、NULL 行が存在しうる。
 -- 本マイグレーションの目的は符号統一（signed → UNSIGNED）のみであって NULL 許容の変更ではないため、
 -- 現行の NULL 許容をそのまま保つ（NOT NULL 化の是非は設計判断として別途扱う）。
 ALTER TABLE matches
