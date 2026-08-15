@@ -215,6 +215,16 @@ public class PermissionGroupService {
 
     /**
      * ユーザーに権限グループを割り当てる。
+     *
+     * <p>Issue #2797 BOLA 根治: 付与対象の group は<b>引数のスコープに属するものに限る</b>。
+     * 従来は {@code findById} による存在確認しかしておらず、別スコープの権限グループ ID を
+     * 指定すると割当行が作られていた。削除側は既に {@link #findByScope} でスコープを絞っており、
+     * 付与側だけが非対称に緩かった。判定を二重に書かず、削除側と<b>同じ集合</b>
+     * （{@code scopeGroupIds}）を許可リストとして使う。</p>
+     *
+     * <p>スコープ外の ID は「見つからない」（{@link RoleErrorCode#ROLE_006} / 404）として扱う。
+     * 存在しない ID と他スコープの ID を同一応答へ畳むことで、他組織にどの権限グループが
+     * 存在するかを応答差から推し量れないようにする（{@link RoleErrorCode#ROLE_002} と同じ存在秘匿の作法）。</p>
      */
     @Transactional
     public void assignUserPermissionGroups(Long userId, Long scopeId, String scopeType,
@@ -232,8 +242,10 @@ public class PermissionGroupService {
 
         // 新しい割当を作成
         for (Long groupId : req.getGroupIds()) {
-            permissionGroupRepository.findById(groupId)
-                    .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
+            // Issue #2797: 当該スコープに属する group のみ許可（越境付与の遮断）。
+            if (!scopeGroupIds.contains(groupId)) {
+                throw new BusinessException(RoleErrorCode.ROLE_006);
+            }
 
             UserPermissionGroupEntity entity = UserPermissionGroupEntity.builder()
                     .userId(userId)
