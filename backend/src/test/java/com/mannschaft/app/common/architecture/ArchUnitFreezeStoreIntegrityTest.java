@@ -730,8 +730,15 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>2026-08-04 更新（2025→2022）: 通知 fan-out Wave-1 で
      * {@code ShiftPublishedNotificationListener}（shift ドメイン）の {@code UserRoleRepository}（role ドメイン）
      * 越境依存を耐久ジョブ enqueue への載せ替えで解消し、当該 3 行が正当に返済されたため実測値へ追随。</p>
+     *
+     * <p>2026-08-15 更新（2022→2013）: CMP-042 / Issue #2787（アンケートの対象人数スナップショット）で、
+     * survey ドメインの 4 クラス（{@code SurveyService} / {@code SurveyResultService} /
+     * {@code SurveyRemindService} / {@code SurveyPublishNotificationListener}）に重複していた
+     * {@code UserRoleRepository}（role ドメイン）越境依存を、母集団解決の唯一の窓口
+     * {@code SurveyUniverseResolver} 1 クラスへ集約した。13 行が消え 4 行が増えて差引 9 行の返済。
+     * 越境依存そのものは残るが、母集団の定義を 1 箇所に閉じたことで返済対象が 1 クラスに縮んだ。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2022;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2013;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(
