@@ -356,6 +356,7 @@ public class SurveyService {
         // 母集団の定義は SurveyUniverseResolver に一元化してあり、結果閲覧時の分母・
         // 未回答者一覧・督促の宛先とまったく同じ定義を用いる。
         // 状態遷移と同一トランザクション内で書くため、公開が失敗すれば本値も保存されない。
+        entity.updateTargetCount(universeResolver.countUniverseUserIds(entity));
         entity.publish();
         SurveyEntity saved = surveyRepository.save(entity);
         log.info("アンケート公開: surveyId={}, targetCount={}", surveyId, saved.getTargetCount());
