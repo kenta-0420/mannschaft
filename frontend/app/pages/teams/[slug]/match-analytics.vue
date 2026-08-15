@@ -35,7 +35,7 @@ async function load(): Promise<void> {
     // resolveContext は tm.slug === 引数 で照合するため slug を渡す（数値 ID 不可）
     const ctx = await resolveContext(teamSlug.value)
     orgId.value = ctx?.orgId ?? null
-    if (ctx === null) {
+    if (ctx === null || ctx.orgId === null) {
       stats.value = null
       return
     }
