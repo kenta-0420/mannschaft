@@ -450,28 +450,44 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      *
      * <p>退会・非アクティブユーザーは除外する。SYSTEM_ADMIN は別途 {@link #findSystemAdminUserIds} で取得する想定。</p>
      *
-     * <p><b>本メソッドは Issue #2786 丙層の修正対象から外してある（Issue #2797 へ切り出し）</b>:
-     * 個別付与の枝が参照する列名が実スキーマと一致しておらず、呼び出すと SQL 例外になる。
-     * 是正には「権限グループを組織ごとに持たせる」方式変更（スキーマ変更を伴う）が必要であり、
-     * {@code memberships} への候補集合拡張だけでは片付かない。受け入れ条件・テストとも
-     * Issue #2797 側に移してあるため、本メソッドは #2797 で一括して直すこと。</p>
+     * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: {@code V60.010} 以降 MEMBER / SUPPORTER の
+     * 在籍行は {@code memberships} 側にしか無いため、{@code user_roles} だけを起点にすると
+     * ロール既定権限を持つ一般メンバーを取りこぼす。候補は {@code (user_id, role_id)} の組で作り、
+     * {@code memberships} 側は {@code role_kind} を {@code roles.name} に突き合わせて role_id を解決する。</p>
+     *
+     * <p><b>権限グループ経路のスコープ（Issue #2797）</b>: 割当表 {@code user_permission_groups} は
+     * {@code (user_id, group_id)} だけを持ち組織列を持たない。組織スコープは
+     * {@code permission_groups.organization_id} が保持しているため、グループを JOIN して
+     * そちらで絞る。旧実装は存在しない列（{@code upg.organization_id} /
+     * {@code *.permission_group_id}）を参照しており、呼ぶと必ず SQL 例外になっていた。
+     * また {@link com.mannschaft.app.role.entity.PermissionGroupEntity} の {@code @SQLRestriction}
+     * は native クエリに効かないため、{@code pg.deleted_at IS NULL} を SQL 側で明示する。</p>
      */
     @Query(value =
-            "SELECT DISTINCT ur.user_id FROM user_roles ur " +
-            "JOIN users u ON u.id = ur.user_id " +
-            "WHERE ur.organization_id = :organizationId " +
-            "  AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "SELECT DISTINCT cand.user_id FROM ( " +
+            "  SELECT ur.user_id AS user_id, ur.role_id AS role_id FROM user_roles ur " +
+            "    WHERE ur.organization_id = :organizationId " +
+            "  UNION " +
+            "  SELECT ms.user_id AS user_id, r.id AS role_id FROM memberships ms " +
+            "    JOIN roles r ON r.name = ms.role_kind " +
+            "    WHERE ms.scope_type = 'ORGANIZATION' AND ms.scope_id = :organizationId " +
+            "      AND ms.left_at IS NULL " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "  AND ( " +
             "    EXISTS ( " +
             "      SELECT 1 FROM role_permissions rp " +
             "      JOIN permissions p ON p.id = rp.permission_id " +
-            "      WHERE rp.role_id = ur.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
+            "      WHERE rp.role_id = cand.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
             "    ) OR EXISTS ( " +
             "      SELECT 1 FROM user_permission_groups upg " +
-            "      JOIN permission_group_permissions pgp ON pgp.permission_group_id = upg.permission_group_id " +
+            "      JOIN permission_groups pg ON pg.id = upg.group_id " +
+            "      JOIN permission_group_permissions pgp ON pgp.group_id = pg.id " +
             "      JOIN permissions p2 ON p2.id = pgp.permission_id " +
-            "      WHERE upg.user_id = ur.user_id " +
-            "        AND upg.organization_id = ur.organization_id " +
+            "      WHERE upg.user_id = cand.user_id " +
+            "        AND pg.organization_id = :organizationId " +
+            "        AND pg.deleted_at IS NULL " +
             "        AND p2.name = :permissionName " +
             "    ) " +
             "  )",
@@ -497,9 +513,32 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      *
      * <p>{@code is_default=0} の「天井登録のみ」は許可しない（V9.156 のように DEPUTY_ADMIN へ天井登録だけしてある
      * 状態を「自動付与」と誤判定しないため）。</p>
+     *
+     * <p><b>権限グループ経路のスコープ（Issue #2797）</b>: 割当表 {@code user_permission_groups} は
+     * 組織列を持たないため、{@code permission_groups} を JOIN して
+     * {@code pg.organization_id = ur.organization_id} で絞る。これを欠くと、他組織で付与された
+     * 権限束が本組織の許可判定へ持ち込まれる。論理削除済みグループを生かさないよう
+     * {@code pg.deleted_at IS NULL} も明示する（{@code @SQLRestriction} は native に効かない）。</p>
+     *
+     * @see #countDeputyAdminWithPermissionInOrganization(Long, Long, String)
+     */
+    default boolean existsDeputyAdminWithPermissionInOrganization(
+            Long userId,
+            Long organizationId,
+            String permissionName) {
+        return countDeputyAdminWithPermissionInOrganization(userId, organizationId, permissionName) > 0;
+    }
+
+    /**
+     * {@link #existsDeputyAdminWithPermissionInOrganization(Long, Long, String)} の native 実装。
+     *
+     * <p>native の {@code COUNT(*) > 0} は MySQL では BIGINT を返すため、戻り値を {@code boolean} で
+     * 受けると {@code ClassCastException: Long cannot be cast to Boolean} で必ず死ぬ。
+     * 本リポジトリ既存の {@code countInOrgDistributionAudience} と同じ作法に揃え、
+     * {@code long} で受けて Java 側で {@code > 0} 比較する。直接呼ばず上記 default メソッドを経由すること。</p>
      */
     @Query(value =
-            "SELECT COUNT(*) > 0 FROM user_roles ur " +
+            "SELECT COUNT(*) FROM user_roles ur " +
             "JOIN roles r ON r.id = ur.role_id " +
             "WHERE ur.user_id = :userId " +
             "  AND ur.organization_id = :organizationId " +
@@ -511,15 +550,17 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      WHERE rp.role_id = ur.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
             "    ) OR EXISTS ( " +
             "      SELECT 1 FROM user_permission_groups upg " +
-            "      JOIN permission_group_permissions pgp ON pgp.permission_group_id = upg.permission_group_id " +
+            "      JOIN permission_groups pg ON pg.id = upg.group_id " +
+            "      JOIN permission_group_permissions pgp ON pgp.group_id = pg.id " +
             "      JOIN permissions p2 ON p2.id = pgp.permission_id " +
             "      WHERE upg.user_id = ur.user_id " +
-            "        AND upg.organization_id = ur.organization_id " +
+            "        AND pg.organization_id = ur.organization_id " +
+            "        AND pg.deleted_at IS NULL " +
             "        AND p2.name = :permissionName " +
             "    ) " +
             "  )",
             nativeQuery = true)
-    boolean existsDeputyAdminWithPermissionInOrganization(
+    long countDeputyAdminWithPermissionInOrganization(
             @Param("userId") Long userId,
             @Param("organizationId") Long organizationId,
             @Param("permissionName") String permissionName);
@@ -1992,6 +2033,12 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * 指定チームで特定権限を持つ DEPUTY_ADMIN ユーザー ID 一覧を取得する（F10.7 予約通知用）。
      *
      * <p>権限保有判定は role_permissions（ロール定義）と user_permission_groups（個別付与）を OR で集約する。</p>
+     *
+     * <p><b>権限グループ経路のスコープ（Issue #2797）</b>: 割当表 {@code user_permission_groups} は
+     * チーム列を持たないため、{@code permission_groups} を JOIN して
+     * {@code pg.team_id = ur.team_id} で絞る。これを欠くと、別チームで付与された権限束によって
+     * 無関係なチームの DEPUTY_ADMIN が通知宛先に混ざる。論理削除済みグループを生かさないよう
+     * {@code pg.deleted_at IS NULL} も明示する（{@code @SQLRestriction} は native に効かない）。</p>
      */
     @Query(value =
             "SELECT DISTINCT ur.user_id FROM user_roles ur " +
@@ -2007,9 +2054,13 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "    WHERE rp.role_id = ur.role_id AND p.name = :permissionName " +
             "  ) OR EXISTS ( " +
             "    SELECT 1 FROM user_permission_groups upg " +
-            "    JOIN permission_group_permissions pgp ON pgp.permission_group_id = upg.permission_group_id " +
+            "    JOIN permission_groups pg ON pg.id = upg.group_id " +
+            "    JOIN permission_group_permissions pgp ON pgp.group_id = pg.id " +
             "    JOIN permissions p ON p.id = pgp.permission_id " +
-            "    WHERE upg.user_id = ur.user_id AND p.name = :permissionName " +
+            "    WHERE upg.user_id = ur.user_id " +
+            "      AND pg.team_id = ur.team_id " +
+            "      AND pg.deleted_at IS NULL " +
+            "      AND p.name = :permissionName " +
             "  ) " +
             ")",
             nativeQuery = true)

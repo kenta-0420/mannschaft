@@ -297,8 +297,9 @@ class PermissionGroupServiceTest {
         void assignUserPermissionGroups_正常_割り当てられる() {
             // Given
             PermissionGroupEntity group = createGroupEntity(GROUP_ID, "グループA");
+            // Issue #2797: 付与の関門は findById（存在確認）から findByScope（スコープ内集合）へ移った。
+            // findById のスタブは不要になったため削除（アサーションは不変）。
             given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of(group));
-            given(permissionGroupRepository.findById(GROUP_ID)).willReturn(Optional.of(group));
             given(userPermissionGroupRepository.save(any(UserPermissionGroupEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
@@ -313,11 +314,12 @@ class PermissionGroupServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 存在しないグループIDでROLE_006例外")
+        @DisplayName("異常系: スコープ内に存在しないグループIDでROLE_006例外")
         void assignUserPermissionGroups_グループ不在_ROLE006例外() {
             // Given
+            // Issue #2797: 不在の ID と他スコープの ID はいずれも「スコープ内集合に無い」として
+            // 同一の ROLE_006（404）へ畳まれる（存在秘匿）。findById のスタブは不要になった。
             given(permissionGroupRepository.findByTeamId(SCOPE_ID)).willReturn(List.of());
-            given(permissionGroupRepository.findById(GROUP_ID)).willReturn(Optional.empty());
 
             UserPermissionGroupAssignRequest req = new UserPermissionGroupAssignRequest(List.of(GROUP_ID));
 
