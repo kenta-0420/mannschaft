@@ -222,12 +222,36 @@ tasks.withType<Test> {
     // POI は内部で大量の XSD スキーマをロードしてヒープ・メタスペースを圧迫する。
     // ubuntu-latest は 7GB RAM。G1GC と SoftRef 積極解放で長時間テストのヒープ枯渇を防ぐ。
     maxHeapSize = "4g"
-    // 100 テストごとに JVM を fork し直し、累積メモリ（特に MySQL Connector の AbandonedConnectionCleanup が
+    // N テストごとに JVM を fork し直し、累積メモリ（特に MySQL Connector の AbandonedConnectionCleanup が
     // WeakReference 監視している放置 Connection オブジェクトの累積）をリセットする。
-    // forkEvery を入れないと全 ~1500 テストを 1 JVM で走らせるため、後半でヒープが枯渇する。
+    //
+    // 【100 → 500 に緩和した理由（CMP-045・CI shard の 60 分打ち切り根治）】
+    // 既定値 100 は「CI 全テスト OOM 根治」（2026-05-07）で導入されたが、同じコミットで入れた
+    // -Dcom.mysql.cj.disableAbandonedConnectionCleanup=true が OOM の真因（cleanup スレッドの
+    // WeakReference 累積）を潰しており、forkEvery はコミットメッセージ自身が「万一漏れがあった
+    // 場合の補助的な堤」と書いているとおり二重の保険だった。その保険の代償が桁違いに大きい:
+    //
+    //   - AbstractMySqlIntegrationTest（継承 348 クラス）の singleton コンテナは
+    //     「JVM 内でしか singleton ではない」。JVM を捨てるたび static 初期化が再走し、
+    //     withReuse(false) の MySQL コンテナが再起動、Spring TestContext キャッシュも全消滅する。
+    //   - 対照実験（同一テスト・テスト実正味 23.3 秒で不変）: fork.every=0 → 390 秒 /
+    //     fork.every=50 → 1285 秒。1 fork あたり +447 秒（保守見積でも +357 秒）。
+    //   - 本番 shard4 は :test 41.96 分に対しテスト実正味 7.4 分。約 14 回の fork が
+    //     34.6 分を食い潰しており、これが 60 分 timeout 打ち切りの支配項だった。
+    //
+    // 【なぜ 0 ではなく 500 か（ローカル実測 2026-08-15）】
+    // Testcontainers を使う IT 184 クラス（2517 テスト・CI 1 shard 相当）を fork.every=0 /
+    // maxParallelForks=2 で完走させたところ OOM もヒープダンプも発生しなかったが、
+    // 各ワーカー JVM のヒープは 4g 上限に対し 3.9g 使用まで張り付いた（G1 が辛うじて維持）。
+    // ubuntu-latest は 7GB RAM で 4g × 2 fork が同時に上限へ達すると OS 側で詰む。
+    // よって「fork しない」ではなく「1 JVM あたりのテスト数を 5 倍に緩める」を採る。
+    // 500 なら 1 shard あたりの fork 回数が約 14 → 約 3 に減り固定コストの大半を落としつつ、
+    // 実測で安全域だった水準の半分以下でヒープを定期リセットできる。
+    // ※ この値を 100 に戻すと CI shard は再び 60 分打ち切りに戻る。変更時は必ず再実測すること。
+    //
     // ローカル（WSL2 Docker）環境では -Pfork.every=0 で無効化し、1コンテナ共有で高速化できる。
     // perfTask は単一クラスの重量級 IT ゆえ forkEvery=0（1 JVM 共有）で無駄な再 fork を避ける。
-    setForkEvery(if (isPerfTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 100L))
+    setForkEvery(if (isPerfTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 500L))
     // ローカル（WSL2 Docker）環境では Testcontainers の並列コンテナ起動が WSL2 ポートミラーリングの
     // タイミング問題を引き起こすため、-Pmax.parallel.forks=1 で上書きできるようにする。
     // CI 環境ではデフォルト 2 のまま動作する。
