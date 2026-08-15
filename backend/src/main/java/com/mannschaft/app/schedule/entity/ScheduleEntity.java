@@ -76,8 +76,9 @@ public class ScheduleEntity extends BaseEntity {
     private MinViewRole minViewRole;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private MinResponseRole minResponseRole;
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private MinResponseRole minResponseRole = MinResponseRole.MEMBER_PLUS;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -109,14 +110,16 @@ public class ScheduleEntity extends BaseEntity {
     private Boolean teamBreakdownEnabled = false;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private AttendanceGenerationStatus attendanceStatus;
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private AttendanceGenerationStatus attendanceStatus = AttendanceGenerationStatus.READY;
 
     private LocalDateTime attendanceDeadline;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
-    private CommentOption commentOption;
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private CommentOption commentOption = CommentOption.OPTIONAL;
 
     private Long eventCategoryId;
 

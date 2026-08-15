@@ -59,8 +59,10 @@ public class ShiftRequestEntity {
     @Column(name = "proxy_input_record_id")
     private Long proxyInputRecordId;
 
+    @Column(nullable = false)
     private LocalDateTime submittedAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

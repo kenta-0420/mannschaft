@@ -44,6 +44,7 @@ public class StripeCustomerEntity {
     @Column(name = "default_payment_method", length = 64)
     private String defaultPaymentMethod;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

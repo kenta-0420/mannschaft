@@ -106,6 +106,16 @@ export interface SurveyDetailResponse {
   data: SurveyResponse & {
     questions: SurveyQuestion[]
     hasResponded?: boolean
+    /**
+     * この閲覧者がアンケート結果を閲覧できるか（Issue #2779）。
+     *
+     * Backend の結果取得 API が 403 を投げるのと同じ判定点から得ているため、
+     * `true` なら結果取得は必ず 200、`false` なら必ず 403 になる。
+     * これが入るまで詳細画面は結果取得を 1 回余分に叩いて 403 で判定していた。
+     *
+     * optionality は生成型（`app/types/generated/index.ts`）に合わせて任意にしてある。
+     */
+    viewerCanViewResults?: boolean
   }
 }
 
@@ -280,6 +290,17 @@ export type SurveyResponseWire = Omit<SurveyResponse, 'policy'> & {
 export interface SurveyDetailWire {
   data: SurveyResponseWire & {
     questions: SurveyQuestionWire[]
+    /**
+     * この閲覧者が結果を閲覧できるか（Issue #2779）。
+     *
+     * FE 側の型（{@link SurveyDetailResponse}）では生成型に合わせて任意にしてあるが、
+     * **wire 形（＝ BE が実際に返す形）では必須**にしている。BE は必ず設定する契約であり、
+     * E2E のモックがこの項目を落とすと「BE が返さない応答」という**本番で起こりえない状態**を
+     * 作ってしまうためである（フィクスチャが実在しない状態を模すと、死んだ判定が永久に緑になる）。
+     *
+     * 画面側はこの値が欠けた応答を fail-closed（不可視）として扱う。
+     */
+    viewerCanViewResults: boolean
   }
 }
 

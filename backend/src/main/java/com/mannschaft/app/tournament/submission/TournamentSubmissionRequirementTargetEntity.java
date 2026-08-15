@@ -35,6 +35,7 @@ public class TournamentSubmissionRequirementTargetEntity extends UuidV7Entity {
     @Column(nullable = false)
     private Long teamId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

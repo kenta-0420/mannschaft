@@ -56,6 +56,7 @@ public class NotificationDeliveryStatsEntity {
     @Builder.Default
     private Integer bounceCount = 0;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

@@ -119,30 +119,24 @@ async function mockSideApis(page: Page): Promise<void> {
 }
 
 /**
- * 「自分は回答済み」を表す wire 行配列で responses/me を上書きする。
- * RESPONDENTS 可視性で非作成者・非管理者が結果を閲覧するシナリオで使用する
- * （hasResponded を行有無から導出する getSurvey に整合させるため）。
+ * 「自分は回答済み」を表す wire 行（`responses/me` が返す行配列の1件）。
+ *
+ * ⚠️ これは `mockSurveyApi` の `myResponseById` に渡すこと。
+ * かつては同 path を spec 側の `page.route` で先に上書きする専用ヘルパーがあったが、
+ * その後に呼ぶ `mockSurveyApi` が同じ path を登録し直すため、**Playwright の後着優先で
+ * 常に上書きされて無効化**されていた（＝「回答済み」を作ったつもりが未回答のままだった）。
+ * `myResponseById` は `mockSurveyApi` の内部で登録されるので後から潰されない。
  */
-async function mockRespondedSelf(page: Page, viewerId: number): Promise<void> {
-  await page.route('**/api/v1/surveys/*/responses/me', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: [
-          {
-            id: 1,
-            surveyId: SURVEY_ID,
-            questionId: QUESTION.id,
-            userId: viewerId,
-            optionId: null,
-            textResponse: 'x',
-            createdAt: '2026-04-20T00:00:00Z',
-          },
-        ],
-      }),
-    })
-  })
+function respondedSelfRow(viewerId: number) {
+  return {
+    id: 1,
+    surveyId: SURVEY_ID,
+    questionId: QUESTION.id,
+    userId: viewerId,
+    optionId: null,
+    textResponse: 'x',
+    createdAt: '2026-04-20T00:00:00Z',
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -173,7 +167,7 @@ test.describe('SURVEY-005a: 結果可視性 CREATOR_ONLY', () => {
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -204,7 +198,7 @@ test.describe('SURVEY-005a: 結果可視性 CREATOR_ONLY', () => {
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -234,7 +228,7 @@ test.describe('SURVEY-005a: 結果可視性 CREATOR_ONLY', () => {
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -269,7 +263,7 @@ test.describe('SURVEY-005a: 結果可視性 CREATOR_ONLY', () => {
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -301,7 +295,7 @@ test.describe('SURVEY-005a: 結果可視性 CREATOR_ONLY', () => {
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -332,9 +326,6 @@ test.describe('SURVEY-005b: 結果可視性 RESPONDENTS', () => {
       scopeId: TEAM_ID,
     })
     await mockMePermissions(page, 'MEMBER')
-    // RESPONDENTS 可視性で非作成者・非管理者が結果を見るには hasResponded=true が必須。
-    // getSurvey は responses/me の行有無から導出するため、非空 wire 配列で上書きする。
-    await mockRespondedSelf(page, MEMBER_ID)
 
     const survey = buildSurvey({
       id: SURVEY_ID,
@@ -345,8 +336,11 @@ test.describe('SURVEY-005b: 結果可視性 RESPONDENTS', () => {
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+      // RESPONDENTS 可視性で非作成者・非管理者が結果を見るには hasResponded=true が必須。
+      // getSurvey は responses/me の行有無から導出するため、非空の行配列を渡す。
+      myResponseById: { [SURVEY_ID]: [respondedSelfRow(MEMBER_ID)] },
     })
 
     await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
@@ -375,7 +369,7 @@ test.describe('SURVEY-005b: 結果可視性 RESPONDENTS', () => {
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -418,7 +412,7 @@ test.describe('SURVEY-005c: 結果可視性 ALL_MEMBERS', () => {
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -448,7 +442,7 @@ test.describe('SURVEY-005c: 結果可視性 ALL_MEMBERS', () => {
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -479,7 +473,7 @@ test.describe('SURVEY-005c: 結果可視性 ALL_MEMBERS', () => {
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -553,7 +547,7 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await loginAsMember(page)
     const survey = buildAnonymousRealtimeSurvey(0)
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -572,7 +566,7 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await loginAsMember(page)
     const survey = buildAnonymousRealtimeSurvey(4)
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
       // hasResponded は「自分の回答」API から導出されるため、ここで回答済みにする
       myResponseById: { [SURVEY_ID]: [MY_RESPONSE_ROW] },
@@ -595,7 +589,7 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await loginAsMember(page)
     const survey = buildAnonymousRealtimeSurvey(5)
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -614,7 +608,7 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await loginAsMember(page)
     const survey = buildAnonymousRealtimeSurvey(1, false)
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -635,7 +629,7 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await loginAsMember(page)
     const survey = buildAnonymousRealtimeSurvey(3, false)
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -657,7 +651,7 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await loginAsMember(page)
     const survey = buildAnonymousRealtimeSurvey(5)
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -672,7 +666,7 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await loginAsMember(page)
     const survey = buildAnonymousRealtimeSurvey(6, false)
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
       myResponseById: { [SURVEY_ID]: [MY_RESPONSE_ROW] },
     })
@@ -696,7 +690,7 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -715,7 +709,8 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await loginAsMember(page)
     const survey = buildAnonymousRealtimeSurvey(3, false)
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      // 配信対象外: BE は詳細応答でも false を返す（結果 API の 403 と同じ判定点）
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], false) },
       resultsForbiddenIds: [SURVEY_ID],
     })
 
@@ -735,7 +730,7 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await loginAsMember(page)
     const survey = buildAnonymousRealtimeSurvey(3, false)
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 
@@ -747,6 +742,47 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
     await expect(
       page.locator('[data-testid="survey-mode-results-forbidden"]'),
     ).toHaveCount(0)
+  })
+
+  test('viewerCanViewResults が欠けた応答は fail-closed（結果も回答導線も出さない）', async ({
+    page,
+  }) => {
+    // 旧 BE・キャッシュされた古い応答・項目を落としたモックなど、フラグが無い応答のケース。
+    //
+    // Issue #2779 で 403 プローブを撤去した。プローブが在った頃は「実際に叩いて 403 か見る」
+    // という裏付けがあったので、フラグが無くても許可へ倒して問題なかった。撤去した今は
+    // 判断材料が一つも無いため、許可へ倒すと配信対象外の利用者に結果と回答導線が出てしまう。
+    // よってフラグ欠落は不可視に倒す（このリポジトリの可視性は fail-closed が原則）。
+    await loginAsMember(page)
+    const survey = buildAnonymousRealtimeSurvey(3, false)
+    const detail = buildSurveyDetail(survey, [QUESTION], true)
+    // BE が項目を返さない応答を再現する（型上は必須だがワイヤ上は欠落しうる）。
+    const detailWithoutFlag = {
+      data: { ...detail.data, viewerCanViewResults: undefined as unknown as boolean },
+    }
+    await mockSurveyApi(page, {
+      resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
+    })
+    await page.route('**/api/v1/teams/*/surveys/*', async (route) => {
+      if (route.request().method() !== 'GET') {
+        await route.continue()
+        return
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(detailWithoutFlag),
+      })
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    // 見せないだけでよい（エラー扱い・再試行導線にはしない）
+    await expect(page.locator('[data-testid="survey-mode-results-forbidden"]')).toBeVisible()
+    await expect(page.locator('[data-testid="survey-results-panel"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="survey-respond-cta"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="survey-mode-results"]')).toHaveCount(0)
   })
 
   test('匿名 + AFTER_CLOSE + 回答者1名 → 従来どおり（他の可視性を塞いでいない）', async ({
@@ -764,7 +800,7 @@ test.describe('SURVEY-005d: 匿名＋リアルタイム結果のプライバシ�
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [QUESTION], true) },
       resultsById: { [SURVEY_ID]: [RESULT_SUMMARY] },
     })
 

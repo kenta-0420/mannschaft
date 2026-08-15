@@ -204,6 +204,12 @@ class ScheduleAttendanceServiceTest {
             // given
             ScheduleEntity schedule = createScheduleWithAttendance();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は DB DEFAULT / Entity @Builder.Default により常に MEMBER_PLUS
+            // （nullではない・DDL上NOT NULL DEFAULT 'MEMBER_PLUS'）。本テストは認可自体を
+            // 検証対象にしていないため、被験者がMEMBER以上を満たす前提で明示的にstubする
+            // （検分差し戻し是正: 認可で先に弾かれて意図した分岐に到達しない事故の再発防止）。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
             given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))
@@ -257,6 +263,11 @@ class ScheduleAttendanceServiceTest {
                     .isException(false)
                     .build();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は既定 MEMBER_PLUS（DDL NOT NULL DEFAULT と同値）。本テストの
+            // 検証対象は期限チェックであり認可ではないため、被験者がMEMBER以上を満たす前提で
+            // 明示的にstubし、認可で先に弾かれて意図した分岐に到達しない事故を防ぐ。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             AttendanceRequest req = new AttendanceRequest("ATTENDING", null, null);
 
@@ -287,6 +298,11 @@ class ScheduleAttendanceServiceTest {
                     .isException(false)
                     .build();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は既定 MEMBER_PLUS（DDL NOT NULL DEFAULT と同値）。本テストの
+            // 検証対象はコメント必須チェックであり認可ではないため、被験者がMEMBER以上を
+            // 満たす前提で明示的にstubし、認可で先に弾かれて意図した分岐に到達しない事故を防ぐ。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             AttendanceRequest req = new AttendanceRequest("ABSENT", null, null);
 
@@ -323,6 +339,11 @@ class ScheduleAttendanceServiceTest {
 
             ScheduleEntity schedule = createScheduleWithAttendance();
             given(scheduleService.getSchedule(SCHEDULE_ID)).willReturn(schedule);
+            // minResponseRole は既定 MEMBER_PLUS（DDL NOT NULL DEFAULT と同値）。本テストは
+            // 後見切替の代理入力記録スモークが検証対象であり認可ではないため、respondAttendance
+            // に渡る被験者（USER_ID）がMEMBER以上を満たす前提で明示的にstubする。
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.hasRoleOrAbove(USER_ID, TEAM_ID, "TEAM", "MEMBER")).willReturn(true);
 
             ScheduleAttendanceEntity attendance = createAttendanceEntity(AttendanceStatus.UNDECIDED);
             given(attendanceRepository.findByScheduleIdAndUserId(SCHEDULE_ID, USER_ID))

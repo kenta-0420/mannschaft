@@ -43,6 +43,7 @@ public class CirculationAttachmentEntity {
     @Column(nullable = false, length = 100)
     private String mimeType;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

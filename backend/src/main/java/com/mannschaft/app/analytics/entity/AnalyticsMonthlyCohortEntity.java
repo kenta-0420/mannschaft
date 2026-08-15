@@ -30,12 +30,15 @@ public class AnalyticsMonthlyCohortEntity extends BaseEntity {
     private int monthsElapsed;
 
     @Builder.Default
+    @Column(nullable = false)
     private int cohortSize = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int retainedUsers = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int retainedPaying = 0;
 
     @Column(nullable = false)
