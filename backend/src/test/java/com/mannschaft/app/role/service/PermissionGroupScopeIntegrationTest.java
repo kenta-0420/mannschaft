@@ -24,7 +24,9 @@ import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -68,6 +70,10 @@ class PermissionGroupScopeIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private PermissionGroupService permissionGroupService;
+
+    /** AC-13 専用: テストトランザクションに依らず、実際にコミット／ロールバックさせるために使う。 */
+    @Autowired
+    private TransactionTemplate transactionTemplate;
 
     // ---------------------------------------------------------------------
     // 永続化ヘルパー
@@ -343,6 +349,98 @@ class PermissionGroupScopeIntegrationTest extends AbstractMySqlIntegrationTest {
         assertThat(assigned)
                 .as("自組織の権限グループ付与は成立すべきである")
                 .isEqualTo(1L);
+    }
+
+    // =====================================================================
+    // AC-13: 越境付与の拒否が既存の正当な割当を巻き添えにしない（番人）
+    // =====================================================================
+
+    /**
+     * AC-13【番人】: 越境グループ ID を含む付与要求が拒否されたあと、
+     * 被害者となる利用者の<b>既存の正当な割当が残っていること</b>。
+     *
+     * <p><b>この番人が守るもの</b>:
+     * {@link PermissionGroupService#assignUserPermissionGroups} は
+     * 「先に {@code deleteByUserIdAndGroupIdIn} で当該スコープの既存割当を全消しし、
+     * その後のループで越境 ID を検知して throw する」構造になっている。
+     * 現状はメソッドの {@code @Transactional} が例外でロールバックするため実害は無い。
+     * しかし将来トランザクション境界が崩れると
+     * （{@code REQUIRES_NEW} の混入、{@code noRollbackFor} の追加、呼び出し元での例外握り潰し等）、
+     * <b>「越境付与を試みるだけで被害者の既存権限が全消しされる」</b>という壊れ方をする。
+     * AC-11 は「越境 ID の行が作られていないこと」しか見ておらず、この軸を覆っていない。</p>
+     *
+     * <p><b>検証の作法</b>: 本テストだけはクラス既定のテストトランザクションを使わない
+     * （{@link Propagation#NOT_SUPPORTED}）。テストトランザクションに参加した状態では
+     * サービスの例外はロールバック<b>予約</b>にしかならず、削除がその場では取り消されないため、
+     * 本番の挙動（呼び出しごとに独立したトランザクションが実際にロールバックする）を再現できない。</p>
+     *
+     * <p><b>サービス呼び出しを外側のトランザクションで包んではならない</b>:
+     * {@link TransactionTemplate} で包むと、ロールバックしているのは外側のテンプレートであって
+     * サービス自身のトランザクション境界ではなくなる。その形では
+     * {@code @Transactional(noRollbackFor = BusinessException.class)} のような境界の破壊を
+     * 入れても番人が緑のまま素通りする（本テスト設置時に実測で確認済み）。
+     * よってフィクスチャ投入と結果の読み直しだけを {@link TransactionTemplate} で包み、
+     * <b>サービスは裸で呼ぶ</b>（サービス自身の {@code @Transactional} が唯一の境界になる）。</p>
+     */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    @DisplayName("AC-13【番人】: 越境グループIDを含む付与要求が拒否されても既存の正当な割当は巻き添えにならない")
+    void ac13_番人_越境付与の拒否で既存割当は巻き添えにならない() {
+        // 1) フィクスチャ投入（独立したトランザクションでコミットする）
+        Long[] ids = transactionTemplate.execute(status -> {
+            Long orgA = persistOrganization();
+            Long orgB = persistOrganization();
+            Long adminOfA = persistActiveUser();
+            grantOrgRole(adminOfA, orgA, "ADMIN", 2);
+            Long targetUser = persistActiveUser();
+            grantOrgRole(targetUser, orgA, "DEPUTY_ADMIN", 3);
+            Long groupOfA = persistOrgPermissionGroup(orgA);
+            Long groupOfB = persistOrgPermissionGroup(orgB);
+            // 被害者は既に自組織の正当な権限束を持っている
+            assignGroupToUser(targetUser, groupOfA);
+            em.flush();
+            return new Long[]{orgA, adminOfA, targetUser, groupOfA, groupOfB};
+        });
+        Long orgA = ids[0];
+        Long adminOfA = ids[1];
+        Long targetUser = ids[2];
+        Long groupOfA = ids[3];
+        Long groupOfB = ids[4];
+
+        assertThat(countAssignment(targetUser, groupOfA))
+                .as("前提: 越境要求の前に、自組織の正当な割当が 1 件存在すること")
+                .isEqualTo(1L);
+
+        // 2) 越境グループ ID のみを含む付与要求。
+        //    外側にトランザクションを張らずに裸で呼ぶ（サービス自身の境界だけが働く状態にする）。
+        UserPermissionGroupAssignRequest req = new UserPermissionGroupAssignRequest(List.of(groupOfB));
+        assertThatThrownBy(() -> permissionGroupService.assignUserPermissionGroups(
+                targetUser, orgA, "ORGANIZATION", req, adminOfA))
+                .as("他組織の権限グループ ID を含む付与要求は拒否されるべきである")
+                .isInstanceOf(BusinessException.class);
+
+        // 3) 実 DB を読み直して被害の有無を確認する
+        assertThat(countAssignment(targetUser, groupOfA))
+                .as("拒否された越境付与要求の巻き添えで、既存の正当な割当が消えてはならない"
+                        + "（消えていればトランザクション境界が崩れている）")
+                .isEqualTo(1L);
+        assertThat(countAssignment(targetUser, groupOfB))
+                .as("拒否された付与要求で越境グループの割当行が作られてはならない")
+                .isZero();
+    }
+
+    /** 独立したトランザクションで実 DB の割当行数を数える（1 次キャッシュを跨ぐ）。 */
+    private long countAssignment(Long userId, Long groupId) {
+        Long count = transactionTemplate.execute(status -> {
+            em.clear();
+            return ((Number) em.createNativeQuery(
+                            "SELECT COUNT(*) FROM user_permission_groups "
+                                    + "WHERE user_id = :uid AND group_id = :gid")
+                    .setParameter("uid", userId)
+                    .setParameter("gid", groupId)
+                    .getSingleResult()).longValue();
+        });
+        return count == null ? 0L : count;
     }
 
     // =====================================================================
