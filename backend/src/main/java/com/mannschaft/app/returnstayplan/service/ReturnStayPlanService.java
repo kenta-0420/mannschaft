@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.returnstayplan.ReturnStayPlanErrorCode;
 import com.mannschaft.app.returnstayplan.dto.ReturnStayPlanCreateRequest;
+import com.mannschaft.app.returnstayplan.dto.OwnPlan;
 import com.mannschaft.app.returnstayplan.entity.ReturnStayPlanEntity;
 import com.mannschaft.app.returnstayplan.entity.ReturnStayPlanTeamVisibilityEntity;
 import com.mannschaft.app.returnstayplan.repository.ReturnStayPlanOwnerLockRepository;
@@ -53,7 +54,7 @@ public class ReturnStayPlanService {
     }
 
     @Transactional
-    public ReturnStayPlanEntity create(Long ownerUserId, ReturnStayPlanCreateRequest request) {
+    public OwnPlan create(Long ownerUserId, ReturnStayPlanCreateRequest request) {
         validate(request);
         validateTeamIds(ownerUserId, request.teamIds());
         lockOwner(ownerUserId);
@@ -62,16 +63,17 @@ public class ReturnStayPlanService {
         }
         ReturnStayPlanEntity saved = plans.saveAndFlush(toEntity(ownerUserId, request));
         replaceVisibility(saved, request.teamIds());
-        return saved;
+        return toOwnPlan(saved, request.teamIds());
     }
 
     @Transactional(readOnly = true)
-    public ReturnStayPlanEntity getForOwner(Long ownerUserId, UUID planId) {
-        return accessGuard.findByIdAndOwnerUserId(planId, ownerUserId);
+    public OwnPlan getForOwner(Long ownerUserId, UUID planId) {
+        ReturnStayPlanEntity plan = accessGuard.findByIdAndOwnerUserId(planId, ownerUserId);
+        return toOwnPlan(plan, null);
     }
 
     @Transactional
-    public ReturnStayPlanEntity update(
+    public OwnPlan update(
             Long ownerUserId,
             UUID planId,
             Long version,
@@ -109,7 +111,7 @@ public class ReturnStayPlanService {
         try {
             ReturnStayPlanEntity saved = plans.saveAndFlush(current);
             replaceVisibility(saved, request.teamIds());
-            return saved;
+            return toOwnPlan(saved, request.teamIds());
         } catch (OptimisticLockingFailureException exception) {
             throw new BusinessException(ReturnStayPlanErrorCode.VERSION_CONFLICT, exception);
         }
@@ -121,7 +123,7 @@ public class ReturnStayPlanService {
     }
 
     @Transactional(readOnly = true)
-    public Page<ReturnStayPlanEntity> list(
+    public Page<OwnPlan> list(
             Long ownerUserId, boolean includeEnded, int page, int size) {
         if (page < 0 || size < 1 || size > 100) {
             throw error(ReturnStayPlanErrorCode.INVALID_PAGING);
@@ -130,9 +132,11 @@ public class ReturnStayPlanService {
                 Sort.by("endDate").ascending()
                         .and(Sort.by("startDate").ascending())
                         .and(Sort.by("id").ascending()));
-        return includeEnded
+        Page<ReturnStayPlanEntity> result = includeEnded
                 ? plans.findByOwnerUserId(ownerUserId, pageable)
                 : plans.findByOwnerUserIdAndEndDateGreaterThanEqual(ownerUserId, today(JST), pageable);
+        Map<UUID, List<Long>> teams = teamIdsByPlan(result.getContent());
+        return result.map(plan -> toOwnPlan(plan, teams.getOrDefault(plan.getId(), List.of())));
     }
 
     @Transactional(readOnly = true)
@@ -296,6 +300,24 @@ public class ReturnStayPlanService {
                             .build())
                     .toList());
         }
+    }
+
+    private OwnPlan toOwnPlan(ReturnStayPlanEntity plan, List<Long> knownTeamIds) {
+        List<Long> teamIds = knownTeamIds;
+        if (teamIds == null) teamIds = teamIdsByPlan(List.of(plan)).getOrDefault(plan.getId(), List.of());
+        return new OwnPlan(plan.getId(), plan.getPlanType().name(), plan.getPublished(),
+                new OwnPlan.Location(plan.getCountryCode(), plan.getPrefectureCode(), plan.getRegionName()),
+                plan.getTimezone(), plan.getStartDate(), plan.getEndDate(), List.copyOf(teamIds),
+                plan.getVersion(), plan.getCreatedAt(), plan.getUpdatedAt());
+    }
+
+    private Map<UUID, List<Long>> teamIdsByPlan(List<ReturnStayPlanEntity> content) {
+        if (content.isEmpty()) return Map.of();
+        Map<UUID, List<Long>> result = new LinkedHashMap<>();
+        content.forEach(plan -> result.put(plan.getId(), new ArrayList<>()));
+        visibilities.findTeamIdsByPlanIds(content.stream().map(ReturnStayPlanEntity::getId).toList())
+                .forEach(row -> result.get(uuidFromHex(row.getPlanIdHex())).add(row.getTeamId()));
+        return result;
     }
 
     private TeamPlanView toTeamView(

@@ -2,6 +2,8 @@ package com.mannschaft.app.returnstayplan;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.returnstayplan.dto.ReturnStayPlanCreateRequest;
@@ -11,7 +13,6 @@ import com.mannschaft.app.returnstayplan.service.ReturnStayPlanService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManagerFactory;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -27,16 +28,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
 
 /** MySQL authorization, persistence, race, paging and query-count contracts. */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@Import(ReturnStayPlanPersistenceIT.FixedClockConfiguration.class)
 @TestPropertySource(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
 class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
 
@@ -59,8 +56,15 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private EntityManagerFactory entityManagerFactory;
 
+    @MockitoBean(name = "utcClock")
+    private Clock utcClock;
+
     @BeforeEach
     void cleanAndSeedAuthorizationBoundary() {
+        when(utcClock.withZone(any(ZoneId.class)))
+                .thenAnswer(invocation -> Clock.fixed(
+                        java.time.Instant.parse("2026-08-17T03:00:00Z"),
+                        invocation.getArgument(0)));
         jdbc.update("DELETE FROM return_stay_plan_team_visibilities");
         jdbc.update("DELETE FROM return_stay_plans WHERE owner_user_id BETWEEN 923000 AND 923999");
         jdbc.update("DELETE FROM return_stay_plan_owner_locks WHERE owner_user_id BETWEEN 923000 AND 923999");
@@ -81,10 +85,10 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-13 OFF retains the allow-list row in MySQL")
     void ac13_offRetainsVisibilityRows() {
         var created = service.create(OWNER_ID, request(false, TEAM_ID));
-        assertThat(created.getPublished()).isFalse();
+        assertThat(created.isPublished()).isFalse();
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM return_stay_plan_team_visibilities WHERE plan_id = UUID_TO_BIN(?)",
-                Long.class, created.getId().toString())).isEqualTo(1L);
+                Long.class, created.id().toString())).isEqualTo(1L);
     }
 
     @Test
@@ -266,12 +270,4 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
                 """, userId, roleId);
     }
 
-    @TestConfiguration
-    static class FixedClockConfiguration {
-        @Bean
-        @Primary
-        Clock returnStayPlanPersistenceClock() {
-            return Clock.fixed(Instant.parse("2026-08-17T03:00:00Z"), ZoneId.of("Asia/Tokyo"));
-        }
-    }
 }

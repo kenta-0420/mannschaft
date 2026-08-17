@@ -1,5 +1,7 @@
 package com.mannschaft.app.returnstayplan.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -12,7 +14,6 @@ import com.mannschaft.app.returnstayplan.dto.ReturnStayPlanCreateRequest;
 import com.mannschaft.app.returnstayplan.service.ReturnStayPlanService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -23,19 +24,15 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /** Full Security filter, MVC advice and MySQL HTTP contract tests. */
 @AutoConfigureMockMvc
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@Import(ReturnStayPlanControllerTest.FixedClockConfiguration.class)
 class ReturnStayPlanControllerTest extends AbstractMySqlIntegrationTest {
 
     private static final long OWNER_ID = 922001L;
@@ -54,8 +51,15 @@ class ReturnStayPlanControllerTest extends AbstractMySqlIntegrationTest {
     @Autowired
     private ReturnStayPlanService service;
 
+    @MockitoBean(name = "utcClock")
+    private Clock utcClock;
+
     @BeforeEach
     void seed() {
+        when(utcClock.withZone(any(ZoneId.class)))
+                .thenAnswer(invocation -> Clock.fixed(
+                        java.time.Instant.parse("2026-08-17T03:00:00Z"),
+                        invocation.getArgument(0)));
         jdbc.update("DELETE FROM return_stay_plan_team_visibilities");
         jdbc.update("DELETE FROM return_stay_plans WHERE owner_user_id BETWEEN 922000 AND 922999");
         jdbc.update("DELETE FROM return_stay_plan_owner_locks WHERE owner_user_id BETWEEN 922000 AND 922999");
@@ -123,7 +127,7 @@ class ReturnStayPlanControllerTest extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-17 stale version returns mapped 409")
     void ac17_staleVersionIs409() throws Exception {
         var created = service.create(OWNER_ID, validRequest());
-        mockMvc.perform(put("/api/v1/me/return-stay-plans/{id}", created.getId())
+        mockMvc.perform(put("/api/v1/me/return-stay-plans/{id}", created.id())
                         .with(csrf())
                         .param("version", "99")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -144,7 +148,7 @@ class ReturnStayPlanControllerTest extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-02 another owner's item and missing item share 404")
     void ac02_otherOwnerIs404() throws Exception {
         var otherPlan = service.create(OTHER_ID, validRequest());
-        mockMvc.perform(get("/api/v1/me/return-stay-plans/{id}", otherPlan.getId()))
+        mockMvc.perform(get("/api/v1/me/return-stay-plans/{id}", otherPlan.id()))
                 .andExpect(status().isNotFound());
     }
 
@@ -186,12 +190,4 @@ class ReturnStayPlanControllerTest extends AbstractMySqlIntegrationTest {
                 """, userId, teamId);
     }
 
-    @TestConfiguration
-    static class FixedClockConfiguration {
-        @Bean
-        @Primary
-        Clock returnStayPlanControllerClock() {
-            return Clock.fixed(Instant.parse("2026-08-17T03:00:00Z"), ZoneId.of("Asia/Tokyo"));
-        }
-    }
 }

@@ -2,13 +2,14 @@ package com.mannschaft.app.returnstayplan.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.returnstayplan.ReturnStayPlanErrorCode;
 import com.mannschaft.app.returnstayplan.dto.ReturnStayPlanCreateRequest;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import java.time.Clock;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
@@ -17,15 +18,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 /** F02.11 validation and state contracts against the real MySQL repositories. */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
-@Import(ReturnStayPlanServiceTest.FixedClockConfiguration.class)
 class ReturnStayPlanServiceTest extends AbstractMySqlIntegrationTest {
 
     private static final LocalDate TODAY = LocalDate.of(2026, 8, 17);
@@ -38,8 +35,15 @@ class ReturnStayPlanServiceTest extends AbstractMySqlIntegrationTest {
     @Autowired
     private JdbcTemplate jdbc;
 
+    @MockitoBean(name = "utcClock")
+    private Clock utcClock;
+
     @BeforeEach
     void cleanAndSeed() {
+        when(utcClock.withZone(any(ZoneId.class)))
+                .thenAnswer(invocation -> Clock.fixed(
+                        java.time.Instant.parse("2026-08-17T03:00:00Z"),
+                        invocation.getArgument(0)));
         jdbc.update("DELETE FROM return_stay_plan_team_visibilities");
         jdbc.update("DELETE FROM return_stay_plans WHERE owner_user_id >= 921000");
         jdbc.update("DELETE FROM return_stay_plan_owner_locks WHERE owner_user_id >= 921000");
@@ -58,12 +62,12 @@ class ReturnStayPlanServiceTest extends AbstractMySqlIntegrationTest {
                 "HOMECOMING", true, "JP", "13", null,
                 TODAY, TODAY.plusDays(3), List.of(TEAM_ID)));
 
-        assertThat(created.getId().version()).isEqualTo(7);
-        assertThat(created.getOwnerUserId()).isEqualTo(OWNER_ID);
-        assertThat(created.getTimezone()).isEqualTo("Asia/Tokyo");
+        assertThat(created.version()).isEqualTo(0L);
+        assertThat(created.id().version()).isEqualTo(7);
+        assertThat(created.timezone()).isEqualTo("Asia/Tokyo");
         assertThat(jdbc.queryForObject(
                 "SELECT COUNT(*) FROM return_stay_plan_team_visibilities WHERE plan_id = ?",
-                Long.class, created.getId())).isEqualTo(1L);
+                Long.class, created.id())).isEqualTo(1L);
     }
 
     @Test
@@ -79,7 +83,7 @@ class ReturnStayPlanServiceTest extends AbstractMySqlIntegrationTest {
     void ac07_acceptsEndDateAt365Days() {
         var created = service.create(OWNER_ID, request("STAYING", false, "JP", "47", null,
                 TODAY.plusDays(1), TODAY.plusDays(365), List.of()));
-        assertThat(created.getEndDate()).isEqualTo(TODAY.plusDays(365));
+        assertThat(created.endDate()).isEqualTo(TODAY.plusDays(365));
     }
 
     @Test
@@ -190,12 +194,4 @@ class ReturnStayPlanServiceTest extends AbstractMySqlIntegrationTest {
                 """, userId, teamId, roleKind);
     }
 
-    @TestConfiguration
-    static class FixedClockConfiguration {
-        @Bean
-        @Primary
-        Clock returnStayPlanTestClock() {
-            return Clock.fixed(Instant.parse("2026-08-17T03:00:00Z"), ZoneId.of("Asia/Tokyo"));
-        }
-    }
 }

@@ -17,6 +17,19 @@ public interface ReturnStayPlanTeamVisibilityRepository
     void deleteByPlanId(UUID planId);
 
     @Query(value = """
+            SELECT HEX(plan_id) AS planIdHex, team_id AS teamId
+              FROM return_stay_plan_team_visibilities
+             WHERE plan_id IN (:planIds)
+             ORDER BY plan_id, team_id
+            """, nativeQuery = true)
+    List<PlanTeamIdProjection> findTeamIdsByPlanIds(@Param("planIds") List<UUID> planIds);
+
+    interface PlanTeamIdProjection {
+        String getPlanIdHex();
+        Long getTeamId();
+    }
+
+    @Query(value = """
             SELECT COUNT(DISTINCT t.id)
               FROM teams t
               JOIN memberships m
