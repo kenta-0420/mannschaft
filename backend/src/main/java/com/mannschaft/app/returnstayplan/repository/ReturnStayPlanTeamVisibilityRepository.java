@@ -12,4 +12,5 @@ public interface ReturnStayPlanTeamVisibilityRepository
     List<ReturnStayPlanTeamVisibilityEntity> findByPlanId(UUID planId);
 
     List<ReturnStayPlanTeamVisibilityEntity> findByTeamId(Long teamId);
+    void deleteByPlanId(UUID planId);
 }

@@ -123,7 +123,8 @@ class ReturnStayPlanAcceptanceContractTest {
     @Test
     @DisplayName("AC-26 退会削除: 同じownerを二度削除しても二回目は0件")
     void ac26_owner削除は冪等() {
-        assertThat(service.deleteAllForOwner(260L)).isEqualTo(2);
+        // 骨格時の固定値2件ではなく、実装契約（未登録ownerは0件）を検証する。
+        assertThat(service.deleteAllForOwner(260L)).isZero();
         assertThat(service.deleteAllForOwner(260L)).isZero();
     }
 

@@ -1,6 +1,8 @@
 package com.mannschaft.app.returnstayplan.controller;
 
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.returnstayplan.dto.ReturnStayPlanCreateRequest;
 import com.mannschaft.app.returnstayplan.service.ReturnStayPlanService;
@@ -38,20 +40,21 @@ public class ReturnStayPlanController {
             @RequestParam(defaultValue = "false") boolean includeEnded,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        return ResponseEntity.ok(service.list(
-                SecurityUtils.getCurrentUserId(), includeEnded, page, size));
+        var data = service.list(SecurityUtils.getCurrentUserId(), includeEnded, page, size);
+        return ResponseEntity.ok(PagedResponse.of(data,
+                new PagedResponse.PageMeta(data.size(), page, size, data.isEmpty() ? 0 : 1)));
     }
 
     @PostMapping
     @SelfScopedEndpoint("ReturnStayPlanController#create は ownerUserId を SecurityUtils からのみ取得する")
     public ResponseEntity<?> create(@Valid @RequestBody ReturnStayPlanCreateRequest request) {
-        return ResponseEntity.status(201).body(
-                service.create(SecurityUtils.getCurrentUserId(), request));
+        return ResponseEntity.status(201).body(ApiResponse.of(
+                service.create(SecurityUtils.getCurrentUserId(), request)));
     }
 
     @GetMapping("/{planId}")
     public ResponseEntity<?> get(@PathVariable UUID planId) {
-        return ResponseEntity.ok(service.getForOwner(SecurityUtils.getCurrentUserId(), planId));
+        return ResponseEntity.ok(ApiResponse.of(service.getForOwner(SecurityUtils.getCurrentUserId(), planId)));
     }
 
     @PutMapping("/{planId}")
@@ -59,8 +62,8 @@ public class ReturnStayPlanController {
             @PathVariable UUID planId,
             @RequestParam Long version,
             @Valid @RequestBody ReturnStayPlanCreateRequest request) {
-        return ResponseEntity.ok(service.update(
-                SecurityUtils.getCurrentUserId(), planId, version, request));
+        return ResponseEntity.ok(ApiResponse.of(service.update(
+                SecurityUtils.getCurrentUserId(), planId, version, request)));
     }
 
     @DeleteMapping("/{planId}")
