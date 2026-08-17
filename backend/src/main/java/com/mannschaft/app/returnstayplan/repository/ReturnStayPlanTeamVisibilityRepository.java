@@ -4,6 +4,7 @@ import com.mannschaft.app.returnstayplan.entity.ReturnStayPlanTeamVisibilityEnti
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -15,6 +16,17 @@ public interface ReturnStayPlanTeamVisibilityRepository
 
     List<ReturnStayPlanTeamVisibilityEntity> findByTeamId(Long teamId);
     void deleteByPlanId(UUID planId);
+
+    @Modifying
+    @Query(value = """
+            INSERT INTO return_stay_plan_team_visibilities
+                (id, plan_id, team_id, created_at, updated_at)
+            VALUES (:id, :planId, :teamId, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+            """, nativeQuery = true)
+    int insertVisibility(
+            @Param("id") UUID id,
+            @Param("planId") UUID planId,
+            @Param("teamId") Long teamId);
 
     @Query(value = """
             SELECT HEX(plan_id) AS planIdHex, team_id AS teamId

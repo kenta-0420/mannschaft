@@ -6,7 +6,6 @@ import com.mannschaft.app.returnstayplan.ReturnStayPlanErrorCode;
 import com.mannschaft.app.returnstayplan.dto.ReturnStayPlanCreateRequest;
 import com.mannschaft.app.returnstayplan.dto.OwnPlan;
 import com.mannschaft.app.returnstayplan.entity.ReturnStayPlanEntity;
-import com.mannschaft.app.returnstayplan.entity.ReturnStayPlanTeamVisibilityEntity;
 import com.mannschaft.app.returnstayplan.repository.ReturnStayPlanOwnerLockRepository;
 import com.mannschaft.app.returnstayplan.repository.ReturnStayPlanRepository;
 import com.mannschaft.app.returnstayplan.repository.ReturnStayPlanTeamVisibilityRepository;
@@ -61,8 +60,19 @@ public class ReturnStayPlanService {
         if (countActive(ownerUserId) >= MAX_ACTIVE) {
             throw error(ReturnStayPlanErrorCode.LIMIT_EXCEEDED);
         }
-        ReturnStayPlanEntity saved = plans.saveAndFlush(toEntity(ownerUserId, request));
-        replaceVisibility(saved, request.teamIds());
+        UUID planId = UuidV7.generate(clock);
+        plans.insertNew(
+                planId,
+                ownerUserId,
+                type(request.planType()).name(),
+                request.isPublished(),
+                request.location().prefectureCode().trim(),
+                JST,
+                request.startDate(),
+                request.endDate());
+        ReturnStayPlanEntity saved = plans.findById(planId)
+                .orElseThrow(() -> new IllegalStateException("inserted plan was not found"));
+        replaceVisibility(saved.getId(), request.teamIds());
         return toOwnPlan(saved, request.teamIds());
     }
 
@@ -110,7 +120,7 @@ public class ReturnStayPlanService {
         current.setEndDate(request.endDate());
         try {
             ReturnStayPlanEntity saved = plans.saveAndFlush(current);
-            replaceVisibility(saved, request.teamIds());
+            replaceVisibility(saved.getId(), request.teamIds());
             return toOwnPlan(saved, request.teamIds());
         } catch (OptimisticLockingFailureException exception) {
             throw new BusinessException(ReturnStayPlanErrorCode.VERSION_CONFLICT, exception);
@@ -275,33 +285,10 @@ public class ReturnStayPlanService {
         return plans.countByOwnerUserIdAndEndDateGreaterThanEqual(ownerUserId, today(JST));
     }
 
-    private ReturnStayPlanEntity toEntity(
-            Long ownerUserId, ReturnStayPlanCreateRequest request) {
-        return ReturnStayPlanEntity.builder()
-                .id(UuidV7.generate(clock))
-                .ownerUserId(ownerUserId)
-                .planType(type(request.planType()))
-                .published(request.isPublished())
-                .countryCode("JP")
-                .prefectureCode(request.location().prefectureCode().trim())
-                .regionName(null)
-                .timezone(JST)
-                .startDate(request.startDate())
-                .endDate(request.endDate())
-                .build();
-    }
-
-    private void replaceVisibility(ReturnStayPlanEntity plan, List<Long> teamIds) {
-        visibilities.deleteByPlanId(plan.getId());
-        if (!teamIds.isEmpty()) {
-            visibilities.saveAll(teamIds.stream()
-                    .map(teamId -> ReturnStayPlanTeamVisibilityEntity.builder()
-                            .id(UuidV7.generate(clock))
-                            .plan(plan)
-                            .teamId(teamId)
-                            .build())
-                    .toList());
-        }
+    private void replaceVisibility(UUID planId, List<Long> teamIds) {
+        visibilities.deleteByPlanId(planId);
+        teamIds.forEach(teamId -> visibilities.insertVisibility(
+                UuidV7.generate(clock), planId, teamId));
     }
 
     private OwnPlan toOwnPlan(ReturnStayPlanEntity plan, List<Long> knownTeamIds) {
