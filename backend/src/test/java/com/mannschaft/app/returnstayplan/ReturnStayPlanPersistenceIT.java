@@ -55,7 +55,7 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
 
     @Test
     @DisplayName("AC-31 owner lock raceは上限直前の並行結果を直列化しrow countを保つ")
-    void ac31_ownerLockRaceIsSerializedInDatabase() {
+    void ac31_ownerLockRaceIsSerializedInDatabase() throws InterruptedException {
         long ownerId = 91031L;
         planRepository.saveAllAndFlush(IntStream.range(0, 29)
                 .mapToObj(index -> plan(ownerId))
