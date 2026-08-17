@@ -278,6 +278,7 @@ public class ReturnStayPlanService {
     private ReturnStayPlanEntity toEntity(
             Long ownerUserId, ReturnStayPlanCreateRequest request) {
         return ReturnStayPlanEntity.builder()
+                .id(UuidV7.generate(clock))
                 .ownerUserId(ownerUserId)
                 .planType(type(request.planType()))
                 .published(request.isPublished())
@@ -295,6 +296,7 @@ public class ReturnStayPlanService {
         if (!teamIds.isEmpty()) {
             visibilities.saveAll(teamIds.stream()
                     .map(teamId -> ReturnStayPlanTeamVisibilityEntity.builder()
+                            .id(UuidV7.generate(clock))
                             .plan(plan)
                             .teamId(teamId)
                             .build())

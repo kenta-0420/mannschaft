@@ -89,7 +89,10 @@ class ReturnStayPlanControllerTest extends AbstractMySqlIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest())))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.data.ownerUserId").value(OWNER_ID));
+                .andExpect(jsonPath("$.data.planType").value("HOMECOMING"))
+                .andExpect(jsonPath("$.data.location.prefectureCode").value("13"))
+                .andExpect(jsonPath("$.data.teamIds[0]").value(TEAM_ID))
+                .andExpect(jsonPath("$.data.ownerUserId").doesNotExist());
     }
 
     @Test
