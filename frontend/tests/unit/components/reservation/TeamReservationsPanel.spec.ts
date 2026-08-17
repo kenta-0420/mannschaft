@@ -251,6 +251,53 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     expect(tabs[3]!.text()).toBe('緊急休業')
   })
 
+  it('管理者がメンバー表示へ切り替えた場合は予約と自分の予約だけを表示する', async () => {
+    roleOverride.isAdmin = true
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'ADMIN'
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug', managementView: false },
+    })
+    await flushPromises()
+
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(tabs).toHaveLength(2)
+    expect(tabs[0]!.text()).toBe('Book')
+    expect(tabs[1]!.text()).toBe('My Reservations')
+
+    const list = wrapper.findComponent(ReservationList)
+    expect(list.props('mode')).toBe('mine')
+    expect(list.props('canManage')).toBe(false)
+    expect(wrapper.findComponent(LineManager).exists()).toBe(false)
+  })
+
+  it('管理タブを開いた状態でメンバー表示へ切り替えた場合は予約タブへ戻る', async () => {
+    roleOverride.isAdmin = true
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'ADMIN'
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug', managementView: true },
+    })
+    await flushPromises()
+
+    await wrapper.findAll('[role="tab"]')[2]!.trigger('click')
+    await wrapper.setProps({ managementView: false })
+    await flushPromises()
+
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(tabs).toHaveLength(2)
+    expect(tabs[0]!.attributes('aria-selected')).toBe('true')
+  })
+
+  it('予約画面には別機能のイベント導線を表示しない', async () => {
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug' },
+    })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="reservation-event-link"]').exists()).toBe(false)
+  })
+
   it('AC-8（旧表示撤去に伴う置換・UX改善5点の3）: タブ往復（予約する→予約一覧→予約する）でマトリックスは破棄されず再mountしない', async () => {
     // 旧 AC-8 は「表示切替（マトリックス↔リスト）で KeepAlive により破棄されない」ことを検証していたが、
     // 表示切替 UI ごと撤去したため前提が消滅した。状態保持という観点そのものは、TabPanels 非 lazy による

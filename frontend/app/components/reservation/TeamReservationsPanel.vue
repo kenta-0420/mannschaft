@@ -6,15 +6,33 @@ type ReservationMenuResponse = components['schemas']['ReservationMenuResponse']
 type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
 type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeResponse']
 
-const props = defineProps<{ teamId: string }>()
+const props = withDefaults(defineProps<{
+  teamId: string
+  /** 管理者権限を持つ利用者に管理UIを表示するか。メンバー表示では false。 */
+  managementView?: boolean
+}>(), {
+  managementView: true,
+})
 
 const { t } = useI18n()
 const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
+
+/** 管理者レンズがメンバー表示のときは、実ロールが管理者でも利用者向けUIへ切り替える。 */
+const isManagementView = computed(() => props.managementView && isAdminOrDeputy.value)
+const isFullAdminView = computed(() => props.managementView && isAdmin.value)
 
 /** 呼称の動的差し込み（F03.4.5 §5.2）: 管理タブ名・件数バッジに使う。 */
 const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
 
 const activeTab = ref(0)
+
+/** 管理タブを開いた状態でメンバー表示へ切り替えた場合は、予約タブへ戻す。 */
+watch(isManagementView, (enabled) => {
+  if (!enabled && activeTab.value > 1) {
+    activeTab.value = 0
+  }
+})
+
 /** 使い方ガイドモーダルの表示状態。 */
 const showGuide = ref(false)
 
@@ -236,12 +254,12 @@ onMounted(async () => {
     <Tabs v-model:value="activeTab">
       <TabList>
         <Tab :value="0">{{ t('reservation.tab.book') }}</Tab>
-        <!-- 非管理者（SUPPORTER含む）は「自分の予約」に改名（表示のみ・認可挙動は不変）。
-             管理者/副管理者（mode=team）は従来通り「予約一覧」。 -->
-        <Tab :value="1">{{ isAdminOrDeputy ? t('reservation.tab.list') : t('reservation.tab.my_reservations') }}</Tab>
+        <!-- メンバー表示（実ロールの非管理者・SUPPORTER含む）は「自分の予約」。
+             管理者表示（mode=team）は従来通り「予約一覧」。 -->
+        <Tab :value="1">{{ isManagementView ? t('reservation.tab.list') : t('reservation.tab.my_reservations') }}</Tab>
         <!-- ②予約対象タブ: ADMIN は全機能、DEPUTY_ADMIN は呼称のみ（マスター裁可 2026-07-11）。タブ自体は両者に開放 -->
-        <Tab v-if="isAdminOrDeputy" :value="2">{{ t('reservation.tab.line_manage', { resourceName }) }}</Tab>
-        <Tab v-if="isAdminOrDeputy" :value="3">{{ t('reservation.tab.emergency_closure') }}</Tab>
+        <Tab v-if="isManagementView" :value="2">{{ t('reservation.tab.line_manage', { resourceName }) }}</Tab>
+        <Tab v-if="isManagementView" :value="3">{{ t('reservation.tab.emergency_closure') }}</Tab>
       </TabList>
       <TabPanels>
         <!-- 予約タブ: 非所属かつ設定OFFの場合は案内文を表示 -->
@@ -250,23 +268,12 @@ onMounted(async () => {
             <Skeleton height="4rem" width="100%" />
           </div>
           <template v-else-if="canBook">
-            <!-- イベント募集への導線（結線なし・NuxtLinkのみ。F03.4.5 §UX第三弾第一波） -->
-            <div class="mb-3 flex justify-end">
-              <NuxtLink
-                :to="`/teams/${props.teamId}/events`"
-                class="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                data-testid="reservation-event-link"
-              >
-                <i class="pi pi-calendar" aria-hidden="true" />
-                {{ t('reservation.team_guide.event_link') }}
-              </NuxtLink>
-            </div>
             <!-- 予約枠の表示はマトリックス一本（旧リスト/旧staff軸グリッドは撤去済み）。
                  TabPanels は非 lazy のためタブ切替でも破棄されず、KeepAlive は不要。 -->
             <SlotMatrixPicker
               ref="slotMatrixPickerRef"
               :team-id="props.teamId"
-              :is-admin="isAdmin"
+              :is-admin="isFullAdminView"
               @slot-selected="onSlotSelected"
               @manage-lines="activeTab = 2"
               @manage-slots="openWeeklyScheduleSection"
@@ -292,7 +299,7 @@ onMounted(async () => {
             <ReservationMyWaitlistList ref="myWaitlistListRef" :team-id="props.teamId" />
           </div>
           <ReservationList
-            v-if="isAdminOrDeputy"
+            v-if="isManagementView"
             ref="reservationListRef"
             :team-id="props.teamId"
             :can-manage="true"
@@ -310,10 +317,10 @@ onMounted(async () => {
         </TabPanel>
 
         <!-- ②予約対象タブ: ADMIN=全管理機能 / DEPUTY_ADMIN=呼称設定のみ（マスター裁可 2026-07-11）。
-             タブ自体は isAdminOrDeputy に開放し、中身をロールで出し分ける（ライン/メニュー管理は ADMIN 限定を維持）。 -->
-        <TabPanel v-if="isAdminOrDeputy" :value="2">
+             管理者表示でのみ開放し、中身をロールで出し分ける（ライン/メニュー管理は ADMIN 限定を維持）。 -->
+        <TabPanel v-if="isManagementView" :value="2">
           <!-- ADMIN: ライン管理 + メニュー管理 + 週間テンプレート + 枠管理 + 詳細設定アコーディオン（従来どおり） -->
-          <template v-if="isAdmin">
+          <template v-if="isFullAdminView">
           <!-- 管理セクション群（初期は全閉・ADHD配慮で脳内摩擦削減。件数バッジ付き）
                並び順は初期セットアップの思考順（F03.4.5 §3.2 確定）:
                ①営業時間 → ②予約対象 → ③メニュー → ④週間スケジュール → ⑤例外日カレンダー → ⑥詳細設定（Accordion外・下部）。 -->
@@ -348,7 +355,7 @@ onMounted(async () => {
                   <!-- 呼称設定は ADMIN・DEPUTY_ADMIN とも編集可（マスター裁可 2026-07-11・設計§2）。ライン管理は ADMIN のみ -->
                   <ReservationResourceNameSettings
                     :team-id="props.teamId"
-                    :disabled="!isAdminOrDeputy"
+                    :disabled="!isManagementView"
                     @changed="onResourceNameChanged"
                   />
                 </div>
@@ -494,14 +501,14 @@ onMounted(async () => {
               </p>
               <ReservationResourceNameSettings
                 :team-id="props.teamId"
-                :disabled="!isAdminOrDeputy"
+                :disabled="!isManagementView"
                 @changed="onResourceNameChanged"
               />
             </div>
           </template>
         </TabPanel>
 
-        <TabPanel v-if="isAdminOrDeputy" :value="3">
+        <TabPanel v-if="isManagementView" :value="3">
           <EmergencyClosureForm :team-id="props.teamId" />
         </TabPanel>
       </TabPanels>
@@ -522,8 +529,8 @@ onMounted(async () => {
     <TeamReservationGuideModal
       v-model:visible="showGuide"
       :team-id="props.teamId"
-      :is-admin="isAdmin"
-      :is-admin-or-deputy="isAdminOrDeputy"
+      :is-admin="isFullAdminView"
+      :is-admin-or-deputy="isManagementView"
       :active-tab="activeTab"
     />
   </div>

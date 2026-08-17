@@ -11,10 +11,11 @@ definePageMeta({ layout: 'default', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
+const { adminLens } = useTeamShellContext()
 </script>
 
 <template>
   <div class="mt-4">
-    <TeamReservationsPanel :team-id="teamSlug" />
+    <TeamReservationsPanel :team-id="teamSlug" :management-view="adminLens" />
   </div>
 </template>
