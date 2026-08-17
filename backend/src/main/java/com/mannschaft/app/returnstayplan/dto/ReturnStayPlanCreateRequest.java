@@ -1,5 +1,6 @@
 package com.mannschaft.app.returnstayplan.dto;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,7 +17,16 @@ public record ReturnStayPlanCreateRequest(
         @NotNull LocalDate endDate,
         @NotNull @Size(max = 20) List<@NotNull Long> teamIds) {
 
+    @JsonAnySetter
+    public void rejectUnknownProperty(String name, Object value) {
+        throw new IllegalArgumentException("Unknown property: " + name);
+    }
+
     /** 国内・海外共通の場所契約。 */
     public record Location(@NotBlank String countryCode, String prefectureCode, String regionName) {
+        @JsonAnySetter
+        public void rejectUnknownProperty(String name, Object value) {
+            throw new IllegalArgumentException("Unknown location property: " + name);
+        }
     }
 }

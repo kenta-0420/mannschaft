@@ -82,6 +82,10 @@ public class GlobalExceptionHandler {
      */
     // 型推論限界回避のため明示型指定（エントリ数増加に伴う javac 推論破綻を根治）
     private static final Map<String, HttpStatus> ERROR_CODE_STATUS_MAP = Map.<String, HttpStatus>ofEntries(
+            Map.entry("RETURN_STAY_PLAN_001", HttpStatus.NOT_FOUND),
+            Map.entry("RETURN_STAY_PLAN_005", HttpStatus.CONFLICT),
+            Map.entry("RETURN_STAY_PLAN_006", HttpStatus.CONFLICT),
+            Map.entry("RETURN_STAY_PLAN_007", HttpStatus.NOT_FOUND),
             // F00 共通可視性基盤（Severity.WARN デフォルト 400 を設計書 §7.4 の正しい status に上書き）
             Map.entry("VISIBILITY_001", HttpStatus.FORBIDDEN),   // 認可拒否（権限不足）→ 403
             Map.entry("VISIBILITY_004", HttpStatus.NOT_FOUND),  // コンテンツ不在 → 404

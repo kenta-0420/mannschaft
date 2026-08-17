@@ -40,9 +40,10 @@ public class ReturnStayPlanController {
             @RequestParam(defaultValue = "false") boolean includeEnded,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size) {
-        var data = service.list(SecurityUtils.getCurrentUserId(), includeEnded, page, size);
-        return ResponseEntity.ok(PagedResponse.of(data,
-                new PagedResponse.PageMeta(data.size(), page, size, data.isEmpty() ? 0 : 1)));
+        var result = service.list(SecurityUtils.getCurrentUserId(), includeEnded, page, size);
+        return ResponseEntity.ok(PagedResponse.of(result.getContent(),
+                new PagedResponse.PageMeta(
+                        result.getTotalElements(), page, size, result.getTotalPages())));
     }
 
     @PostMapping

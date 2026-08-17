@@ -5,6 +5,8 @@ import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /** F02.11 予定 Repository の骨格。認可付き検索は Service 実装時に追加する。 */
@@ -15,7 +17,11 @@ public interface ReturnStayPlanRepository extends JpaRepository<ReturnStayPlanEn
     long countByOwnerUserIdAndEndDateGreaterThanEqual(Long ownerUserId, LocalDate today);
 
     long countByOwnerUserId(Long ownerUserId);
-    List<ReturnStayPlanEntity> findByOwnerUserIdOrderByEndDateAscStartDateAscIdAsc(Long ownerUserId);
+    Page<ReturnStayPlanEntity> findByOwnerUserId(
+            Long ownerUserId, Pageable pageable);
+
+    Page<ReturnStayPlanEntity> findByOwnerUserIdAndEndDateGreaterThanEqual(
+            Long ownerUserId, LocalDate today, Pageable pageable);
     void deleteByOwnerUserId(Long ownerUserId);
-    List<ReturnStayPlanEntity> findTop500ByEndDateBefore(LocalDate date);
+    List<ReturnStayPlanEntity> findTop500ByEndDateBeforeOrderByEndDateAscIdAsc(LocalDate date);
 }

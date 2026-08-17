@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,5 +21,13 @@ public interface ReturnStayPlanOwnerLockRepository
     Optional<ReturnStayPlanOwnerLockEntity> findByOwnerUserIdForUpdate(
             @Param("ownerUserId") Long ownerUserId);
 
-    long countByOwnerUserId(Long ownerUserId);
+    @Modifying
+    @Query(value = """
+            INSERT IGNORE INTO return_stay_plan_owner_locks
+                (id, owner_user_id, created_at, updated_at)
+            VALUES (:lockId, :ownerUserId, CURRENT_TIMESTAMP(6), CURRENT_TIMESTAMP(6))
+            """, nativeQuery = true)
+    int insertIfAbsent(
+            @Param("lockId") UUID lockId,
+            @Param("ownerUserId") Long ownerUserId);
 }

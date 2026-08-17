@@ -23,7 +23,8 @@ CREATE TABLE return_stay_plans (
         OR (country_code <> 'JP' AND prefecture_code IS NULL AND region_name IS NOT NULL)
     ),
     KEY idx_rsp_owner_end (owner_user_id, end_date, start_date, id),
-    KEY idx_rsp_owner_updated (owner_user_id, updated_at)
+    KEY idx_rsp_owner_updated (owner_user_id, updated_at),
+    KEY idx_rsp_purge_end (end_date, id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE return_stay_plan_team_visibilities (
