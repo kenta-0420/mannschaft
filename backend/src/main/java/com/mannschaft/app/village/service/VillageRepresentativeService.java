@@ -80,6 +80,8 @@ public class VillageRepresentativeService {
      *   <li>実行者が当該村の HEADMAN または ELDER であること（VILLAGE_024）</li>
      *   <li>対象メンバーシップが TEAM または ORGANIZATION 種別であること（VILLAGE_054）</li>
      *   <li>委任先ユーザーが対象チーム/組織のメンバーであること（VILLAGE_055）</li>
+     *   <li>委任先ユーザーのアカウントが生存していること（未削除かつ ACTIVE。CMP-050。
+     *       状態を漏らさないため非メンバー時と同じ VILLAGE_055 へ畳む）</li>
      *   <li>同一メンバーシップ × 同一ユーザーで現役の委任が既に存在する場合は重複として拒否（VILLAGE_053）</li>
      * </ul>
      *
@@ -130,6 +132,17 @@ public class VillageRepresentativeService {
             default -> false; // unreachable
         };
         if (!isSubjectMember) {
+            throw new BusinessException(VillageErrorCode.REPRESENTATIVE_USER_NOT_IN_SUBJECT);
+        }
+
+        // CMP-050: 委任先のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
+        // 凍結・退会済みのユーザーへ代表権を委ねると、その村のチーム/組織を代表する者が実質不在になる。
+        // 論理削除済みユーザーは UserEntity の @SQLRestriction により findById が empty となる。
+        // ErrorCode は他人のアカウント状態を漏らさないよう非メンバー時と同じ VILLAGE_055 へ畳む。
+        boolean representativeIsActive = userRepository.findById(representativeUserId)
+                .map(u -> u.getStatus() == UserEntity.UserStatus.ACTIVE)
+                .orElse(false);
+        if (!representativeIsActive) {
             throw new BusinessException(VillageErrorCode.REPRESENTATIVE_USER_NOT_IN_SUBJECT);
         }
 

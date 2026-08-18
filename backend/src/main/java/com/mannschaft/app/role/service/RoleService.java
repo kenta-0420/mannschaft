@@ -503,6 +503,16 @@ public class RoleService {
             throw new BusinessException(RoleErrorCode.ROLE_001);
         }
 
+        // CMP-050 二重防御: 譲渡先のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
+        // 在籍プリミティブ側にも ACTIVE 条件を課したが、唯一の ADMIN を凍結・退会済みユーザーへ
+        // 譲渡するとそのスコープが恒久的に操作不能になるため、権限を与える経路でも明示確認する。
+        // ErrorCode を分けると他人のアカウント状態が漏れるので本メソッド内の他の拒否と同じ
+        // ROLE_001 へ畳む。role→auth の Repository 直接依存を避けるため判定は
+        // UserRoleRepository 側（既に users を参照している）に置いている。
+        if (!userRoleRepository.isActiveUser(targetUserId)) {
+            throw new BusinessException(RoleErrorCode.ROLE_001);
+        }
+
         // ADMIN ロールと MEMBER ロールを取得
         RoleEntity adminRole = currentRole;
         RoleEntity memberRole = roleRepository.findByName("MEMBER")

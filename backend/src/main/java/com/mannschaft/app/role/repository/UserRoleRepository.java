@@ -84,6 +84,11 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * user_roles 一系統の在籍判定では素メンバー/応援者を「非所属」と誤判定する。
      * memberships 由来（{@code left_at IS NULL} の在籍）を OR して根治する。
      * role_kind は問わない（在籍軸。ADMIN/DEPUTY 等の権限判定は別メソッド）。</p>
+     *
+     * <p><b>CMP-050</b>: 列挙系と同一の生存条件（{@code deleted_at IS NULL} かつ
+     * {@code status = 'ACTIVE'}）を課す。在籍軸のプリミティブが ACTIVE を問わないままだと、
+     * 凍結・論理削除済みユーザーを唯一の ADMIN へ昇格させる経路
+     * （{@code RoleService#transferOwnership}）が残る。</p>
      */
     default boolean existsByUserIdAndTeamId(Long userId, Long teamId) {
         return countRoleOrMembershipByUserIdAndTeamId(userId, teamId) > 0;
@@ -91,10 +96,16 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     @Query(value =
             "SELECT COUNT(*) FROM ( " +
-            "  SELECT ur.id FROM user_roles ur WHERE ur.user_id = :userId AND ur.team_id = :teamId " +
+            "  SELECT ur.id FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
+            "    WHERE ur.user_id = :userId AND ur.team_id = :teamId " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "  UNION ALL " +
-            "  SELECT m.id FROM memberships m WHERE m.user_id = :userId " +
-            "    AND m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL " +
+            "  SELECT m.id FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
+            "    WHERE m.user_id = :userId " +
+            "      AND m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             ") both_arms",
             nativeQuery = true)
     long countRoleOrMembershipByUserIdAndTeamId(@Param("userId") Long userId, @Param("teamId") Long teamId);
@@ -149,6 +160,9 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     /**
      * ユーザーが組織に所属するか（CMP-027: user_roles 権限ロール ∪ memberships 素所属）。
      * {@link #existsByUserIdAndTeamId} の ORGANIZATION 版。
+     *
+     * <p><b>CMP-050</b>: 列挙系と同一の生存条件を課す（理由は
+     * {@link #existsByUserIdAndTeamId(Long, Long)} の javadoc 参照）。</p>
      */
     default boolean existsByUserIdAndOrganizationId(Long userId, Long organizationId) {
         return countRoleOrMembershipByUserIdAndOrganizationId(userId, organizationId) > 0;
@@ -156,10 +170,16 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
 
     @Query(value =
             "SELECT COUNT(*) FROM ( " +
-            "  SELECT ur.id FROM user_roles ur WHERE ur.user_id = :userId AND ur.organization_id = :organizationId " +
+            "  SELECT ur.id FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
+            "    WHERE ur.user_id = :userId AND ur.organization_id = :organizationId " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "  UNION ALL " +
-            "  SELECT m.id FROM memberships m WHERE m.user_id = :userId " +
-            "    AND m.scope_type = 'ORGANIZATION' AND m.scope_id = :organizationId AND m.left_at IS NULL " +
+            "  SELECT m.id FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
+            "    WHERE m.user_id = :userId " +
+            "      AND m.scope_type = 'ORGANIZATION' AND m.scope_id = :organizationId AND m.left_at IS NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             ") both_arms",
             nativeQuery = true)
     long countRoleOrMembershipByUserIdAndOrganizationId(
@@ -181,16 +201,23 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * CMP-027 の本改修で 2 系統の {@code UNION}（{@code UNION ALL} ではない）へ是正済みである。
      * 退会済（{@code left_at} 非 NULL）の membership 由来の組織は所属に含めない。</p>
      *
+     * <p><b>CMP-050</b>: 列挙系と同一の生存条件を課す（理由は
+     * {@link #existsByUserIdAndTeamId(Long, Long)} の javadoc 参照）。</p>
+     *
      * @param userId 対象ユーザー ID
      * @return 直接所属する組織 ID の一覧（0件の場合は空リスト）
      */
     @Query(value =
             "SELECT DISTINCT org_id FROM ( " +
             "  SELECT ur.organization_id AS org_id FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
             "    WHERE ur.user_id = :userId AND ur.organization_id IS NOT NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "  UNION " +
             "  SELECT m.scope_id AS org_id FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
             "    WHERE m.user_id = :userId AND m.scope_type = 'ORGANIZATION' AND m.left_at IS NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             ") x",
             nativeQuery = true)
     List<Long> findOrganizationIdsByUserId(@Param("userId") Long userId);
@@ -203,16 +230,23 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * （{@code left_at IS NULL} の在籍のみ・role は問わない在籍軸）。呼出元が teamId のみを使う
      * 箇所はこのメソッドへ載せ替えること（entity の role/createdAt 等を読む箇所は対象外）。</p>
      *
+     * <p><b>CMP-050</b>: 列挙系と同一の生存条件を課す（理由は
+     * {@link #existsByUserIdAndTeamId(Long, Long)} の javadoc 参照）。</p>
+     *
      * @param userId 対象ユーザー ID
      * @return 直接所属するチーム ID の一覧（0件の場合は空リスト）
      */
     @Query(value =
             "SELECT DISTINCT team_id FROM ( " +
             "  SELECT ur.team_id AS team_id FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
             "    WHERE ur.user_id = :userId AND ur.team_id IS NOT NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "  UNION " +
             "  SELECT m.scope_id AS team_id FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
             "    WHERE m.user_id = :userId AND m.scope_type = 'TEAM' AND m.left_at IS NULL " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             ") x",
             nativeQuery = true)
     List<Long> findTeamIdsByUserId(@Param("userId") Long userId);
