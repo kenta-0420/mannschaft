@@ -137,12 +137,12 @@ public class VillageRepresentativeService {
 
         // CMP-050: 委任先のアカウントが生存している（未削除かつ ACTIVE）ことを確認する。
         // 凍結・退会済みのユーザーへ代表権を委ねると、その村のチーム/組織を代表する者が実質不在になる。
-        // 論理削除済みユーザーは UserEntity の @SQLRestriction により findById が empty となる。
-        // ErrorCode は他人のアカウント状態を漏らさないよう非メンバー時と同じ VILLAGE_055 へ畳む。
-        boolean representativeIsActive = userRepository.findById(representativeUserId)
-                .map(u -> u.getStatus() == UserEntity.UserStatus.ACTIVE)
-                .orElse(false);
-        if (!representativeIsActive) {
+        // ErrorCode は他人のアカウント状態を漏らさないよう非メンバー時と同じ VILLAGE_055 へ畳む
+        // （凍結なのか退会なのか非メンバーなのかを呼び出し側から区別させない）。
+        // 判定に UserEntity.UserStatus を直接読まないのは、village → auth のエンティティ依存が
+        // ArchUnit D-1（no cross-domain entity dependency）の新規違反になるためである。
+        // 既に users を参照している role 側のプリミティブへ委ねる（deleted_at と status を SQL で見る）。
+        if (!userRoleRepository.isActiveUser(representativeUserId)) {
             throw new BusinessException(VillageErrorCode.REPRESENTATIVE_USER_NOT_IN_SUBJECT);
         }
 
