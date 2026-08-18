@@ -383,6 +383,14 @@ public class MembershipService {
                 .toList();
     }
 
+    public List<Long> getActiveTeamIdsIncludingRoleAssignments(Long userId) {
+        return java.util.stream.Stream.concat(
+                        userRoleRepository.findTeamIdsByUserId(userId).stream(),
+                        getActiveTeamIdsByUser(userId).stream())
+                .distinct()
+                .toList();
+    }
+
     /**
      * 指定ユーザーがアクティブ（退会していない）に所属する組織の ID 一覧を返す。
      *
@@ -402,6 +410,14 @@ public class MembershipService {
                 .findActiveByUserAndScopeType(userId, ScopeType.ORGANIZATION)
                 .stream()
                 .map(MembershipEntity::getScopeId)
+                .toList();
+    }
+
+    public List<Long> getActiveOrgIdsIncludingRoleAssignments(Long userId) {
+        return java.util.stream.Stream.concat(
+                        userRoleRepository.findOrganizationIdsByUserId(userId).stream(),
+                        getActiveOrgIdsByUser(userId).stream())
+                .distinct()
                 .toList();
     }
 

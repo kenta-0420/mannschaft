@@ -20,11 +20,13 @@ import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.ScheduleEventCategoryErrorCode;
 import com.mannschaft.app.schedule.ScheduleStatus;
+import com.mannschaft.app.schedule.ScheduleTargetMode;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
+import com.mannschaft.app.schedule.dto.ScheduleTargetResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
@@ -46,6 +48,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import java.util.Objects;
 
 /**
@@ -87,6 +90,7 @@ public class ScheduleService {
     private final ScheduleRecurrenceService recurrenceService;
     private final ScheduleScheduledTaskService scheduledTaskService;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final ScheduleTargetService scheduleTargetService;
     /**
      * 認可根治 Wave3-B6: schedule 書込（update/delete/cancel/create）・出欠閲覧の per-scope 認可に使用する。
      */
@@ -220,6 +224,8 @@ public class ScheduleService {
         ScheduleEntity schedule = buildScheduleEntity(req, scopeId, scopeType, userId,
                 startAtJst, endAtJst, deadlineJst);
         schedule = scheduleRepository.save(schedule);
+        scheduleTargetService.replaceForCreate(
+                schedule, scopeType, scopeId, req.getTargetMode(), req.getTargetUserIds());
 
         // 繰り返しルールがある場合は子スケジュールを展開
         if (req.getRecurrenceRule() != null) {
@@ -291,6 +297,7 @@ public class ScheduleService {
         }
 
         schedule = scheduleRepository.save(schedule);
+        updateTargetsForRecurrenceScope(schedule, req, updateScope);
 
         // 機能55 BE対応: リマインダー更新（null = 変更なし、空リスト = 全削除、非空 = 差し替え）
         if (req.getReminders() != null) {
@@ -566,6 +573,7 @@ public class ScheduleService {
         ScheduleEntity source = findScheduleOrThrow(id);
 
         ScheduleEntity duplicate = source.toBuilder()
+                .id(null)
                 .status(ScheduleStatus.SCHEDULED)
                 .createdBy(userId)
                 .googleCalendarEventId(null)
@@ -573,6 +581,7 @@ public class ScheduleService {
 
         // BaseEntity の id, createdAt, updatedAt は @PrePersist で再設定される
         duplicate = scheduleRepository.save(duplicate);
+        scheduleTargetService.copyTargets(source.getId(), duplicate.getId());
 
         // F03.18 §5.1: 複製は新規作成扱いのため SCHEDULE_CREATED を発行する（AC-01・AC-07）
         publishScheduleActivity(ActivityType.SCHEDULE_CREATED, duplicate, duplicate.getId(), userId,
@@ -580,6 +589,60 @@ public class ScheduleService {
 
         log.info("スケジュール複製: sourceId={}, newId={}", id, duplicate.getId());
         return toScheduleResponse(duplicate);
+    }
+
+    /** クロススコープ招待の受諾用。元スコープの明示対象者は複製しない。 */
+    @Transactional
+    public ScheduleEntity duplicateScheduleIntoScope(Long id, String targetScopeType,
+                                                      Long targetScopeId, Long userId) {
+        ScheduleEntity source = findScheduleOrThrow(id);
+        boolean team = SCOPE_TYPE_TEAM.equals(targetScopeType);
+        boolean organization = SCOPE_TYPE_ORGANIZATION.equals(targetScopeType);
+        if (!team && !organization) {
+            throw new IllegalArgumentException("招待先スコープが不正です");
+        }
+        ScheduleEntity duplicate = source.toBuilder()
+                .id(null)
+                .teamId(team ? targetScopeId : null)
+                .organizationId(organization ? targetScopeId : null)
+                .userId(null)
+                .parentScheduleId(null)
+                .recurrenceRule(null)
+                .googleCalendarEventId(null)
+                .status(ScheduleStatus.SCHEDULED)
+                .targetMode(ScheduleTargetMode.ALL_MEMBERS)
+                .createdBy(userId)
+                .build();
+        return scheduleRepository.save(duplicate);
+    }
+
+    /** 対象者名簿は同一スコープのアクティブメンバーにだけ返す。 */
+    public com.mannschaft.app.schedule.dto.ScheduleTargetResponse targetResponseForViewer(
+            ScheduleEntity schedule, Long viewerUserId) {
+        return scheduleTargetService.responsesForSchedules(List.of(schedule),
+                scheduleTargetService.isActiveScopeMember(schedule, viewerUserId)).get(schedule.getId());
+    }
+
+    private void updateTargetsForRecurrenceScope(ScheduleEntity schedule, UpdateScheduleRequest req,
+                                                  String updateScope) {
+        if (req.getTargetMode() == null && req.getTargetUserIds() == null) return;
+        List<ScheduleEntity> affected = new ArrayList<>();
+        if (UPDATE_SCOPE_ALL.equals(updateScope)
+                && (schedule.isRecurring() || schedule.getParentScheduleId() != null)) {
+            Long parentId = schedule.getParentScheduleId() == null ? schedule.getId() : schedule.getParentScheduleId();
+            affected.add(findScheduleOrThrow(parentId));
+            affected.addAll(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(parentId));
+        } else if (UPDATE_SCOPE_THIS_AND_FOLLOWING.equals(updateScope)
+                && schedule.getParentScheduleId() != null) {
+            affected.add(schedule);
+            affected.addAll(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(schedule.getParentScheduleId())
+                    .stream().filter(child -> child.getStartAt().isAfter(schedule.getStartAt())).toList());
+        } else {
+            affected.add(schedule);
+        }
+        affected.forEach(affectedSchedule -> scheduleTargetService.replaceForUpdate(
+                affectedSchedule, resolveScopeType(affectedSchedule), resolveScopeId(affectedSchedule),
+                req.getTargetMode(), req.getTargetUserIds()));
     }
 
     /**
@@ -963,11 +1026,24 @@ public class ScheduleService {
         return SCOPE_TYPE_PERSONAL;
     }
 
+    private Long resolveScopeId(ScheduleEntity schedule) {
+        if (schedule.isTeamScope()) return schedule.getTeamId();
+        if (schedule.isOrganizationScope()) return schedule.getOrganizationId();
+        return schedule.getUserId();
+    }
+
     /**
      * エンティティをスケジュール一覧用レスポンスDTOに変換する。
      */
     private ScheduleResponse toScheduleResponse(ScheduleEntity entity) {
         EventCategoryResponse categoryResponse = resolveEventCategoryResponse(entity.getEventCategoryId());
+        var targets = scheduleTargetService.responsesForSchedules(List.of(entity), true)
+                .getOrDefault(entity.getId(), new ScheduleTargetResponse(
+                        entity.getTargetMode() == null
+                                ? ScheduleTargetMode.ALL_MEMBERS.name()
+                                : entity.getTargetMode().name(),
+                        0,
+                        List.of()));
         return ScheduleResponse.builder()
                 .id(entity.getId())
                 .content(new ScheduleResponse.ScheduleContentDto(
@@ -985,6 +1061,9 @@ public class ScheduleService {
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), null))
                 .myAttendanceStatus(null)
+                .targetMode(targets.targetMode())
+                .targetCount(targets.targetCount())
+                .targets(targets.targets())
                 .build();
     }
 

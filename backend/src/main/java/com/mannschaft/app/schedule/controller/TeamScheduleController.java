@@ -111,6 +111,8 @@ public class TeamScheduleController {
         String myAttendanceStatus = attendanceService
                 .getMyAttendanceStatus(scheduleId, SecurityUtils.getCurrentUserId())
                 .orElse(null);
+        var targetResponse = scheduleService.targetResponseForViewer(
+                entity, SecurityUtils.getCurrentUserId());
         ScheduleResponse response = ScheduleResponse.builder()
                 .id(entity.getId())
                 .content(new ScheduleResponse.ScheduleContentDto(
@@ -128,6 +130,9 @@ public class TeamScheduleController {
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), createdByDisplayName))
                 .myAttendanceStatus(myAttendanceStatus)
+                .targetMode(targetResponse.targetMode())
+                .targetCount(targetResponse.targetCount())
+                .targets(targetResponse.targets())
                 .reminders(reminderService.getReminders(scheduleId))
                 .scheduledTasks(scheduledTaskService.findTaskResponsesForSchedule(scheduleId))
                 .build();

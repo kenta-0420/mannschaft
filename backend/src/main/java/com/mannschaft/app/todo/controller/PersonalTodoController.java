@@ -3,6 +3,7 @@ package com.mannschaft.app.todo.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.CreateTodoRequest;
+import com.mannschaft.app.todo.dto.CalendarTodoResponse;
 import com.mannschaft.app.todo.dto.GanttTodoResponse;
 import com.mannschaft.app.todo.dto.LinkScheduleRequest;
 import com.mannschaft.app.todo.dto.PatchTodoRequest;
@@ -16,6 +17,7 @@ import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
 import com.mannschaft.app.todo.security.TodoAccessGuard;
 import com.mannschaft.app.todo.service.TodoGanttService;
+import com.mannschaft.app.todo.service.TodoCalendarService;
 import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
@@ -75,6 +77,7 @@ public class PersonalTodoController {
     private final TodoService todoService;
     private final TodoStatusService todoStatusService;
     private final TodoGanttService ganttService;
+    private final TodoCalendarService calendarService;
     private final TodoScheduleLinkService scheduleLinkService;
     private final TodoPersonalMemoService personalMemoService;
     private final TodoAccessGuard todoAccessGuard;
@@ -233,6 +236,24 @@ public class PersonalTodoController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TodoResponse>>> getMyTodos() {
         return ResponseEntity.ok(todoService.getMyTodos(SecurityUtils.getCurrentUserId()));
+    }
+
+    /**
+     * ダッシュボード・マイカレンダー用に、自分が担当する全スコープの未完了 TODO を返す。
+     */
+    @SelfScopedEndpoint("TodoCalendarService#getMyCalendarTodos は SecurityUtils.getCurrentUserId() を検索条件に固定し、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い")
+    @GetMapping("/my/calendar")
+    @Operation(summary = "自分担当TODOのマイカレンダー表示用一覧（全スコープ横断）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<CalendarTodoResponse>>> getMyCalendarTodos(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (from.isAfter(to)) {
+            return ResponseEntity.badRequest().build();
+        }
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.of(calendarService.getMyCalendarTodos(userId, from, to)));
     }
 
     /**

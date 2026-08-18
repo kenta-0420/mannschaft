@@ -22,6 +22,7 @@ import com.mannschaft.app.schedule.service.ScheduleRecurrenceService;
 import com.mannschaft.app.schedule.service.ScheduleReminderService;
 import com.mannschaft.app.schedule.service.ScheduleScheduledTaskService;
 import com.mannschaft.app.schedule.service.ScheduleService;
+import com.mannschaft.app.schedule.service.ScheduleTargetService;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -99,6 +100,8 @@ class ScheduleServiceTest {
      */
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
+    @Mock
+    private ScheduleTargetService scheduleTargetService;
 
     @InjectMocks
     private ScheduleService scheduleService;

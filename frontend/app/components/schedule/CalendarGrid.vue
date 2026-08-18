@@ -256,10 +256,18 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
                 <img v-if="event.scopeIconUrl" :src="event.scopeIconUrl" class="w-full h-full object-cover" alt="" >
                 <span v-else class="text-[8px] font-bold leading-none">{{ event.scopeName?.charAt(0) }}</span>
               </span>
-              <span class="truncate">
+              <span class="min-w-0 truncate">
                 <i v-if="event.isTodo" class="pi pi-check-square mr-0.5 opacity-80" />
                 <span v-if="!event.allDay" class="opacity-70 mr-0.5">{{ fmtTime(event.startAt) }}</span>{{ event.title }}
               </span>
+              <ScheduleTargetAudience
+                v-if="event.scopeType && event.scopeType !== 'PERSONAL' && !event.isTodo"
+                :target-mode="event.targetMode"
+                :target-count="event.targetCount"
+                :targets="event.targets"
+                compact
+                class="ml-auto shrink-0"
+              />
             </div>
           </div>
         </div>
@@ -291,6 +299,14 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
             <span class="flex-1 truncate px-0.5">
               <i v-if="slot.event.isTodo" class="pi pi-check-square mr-0.5 opacity-80" />{{ slot.event.title }}
             </span>
+            <ScheduleTargetAudience
+              v-if="slot.event.scopeType && slot.event.scopeType !== 'PERSONAL' && !slot.event.isTodo"
+              :target-mode="slot.event.targetMode"
+              :target-count="slot.event.targetCount"
+              :targets="slot.event.targets"
+              compact
+              class="mr-1 shrink-0"
+            />
             <i v-if="slot.continuesAfter" class="pi pi-angle-right shrink-0 text-[9px]" />
           </div>
         </div>

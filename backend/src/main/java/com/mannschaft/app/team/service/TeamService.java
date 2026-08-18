@@ -26,6 +26,7 @@ import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
@@ -84,6 +85,7 @@ public class TeamService {
     private final TeamShiftSettingsService teamShiftSettingsService;
     private final MeterRegistry meterRegistry;
     private final MemberQueryDispatcher memberQueryDispatcher;
+    private final ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
     /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
@@ -631,6 +633,8 @@ public class TeamService {
 
         // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照に完全切替
         var memberDtos = memberQueryDispatcher.queryMembers(teamId, ScopeType.TEAM, null);
+        var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
+                ScopeType.TEAM, teamId, memberDtos.stream().map(dto -> dto.userId()).toList());
 
         var data = memberDtos.stream()
                 .map(dto -> new MemberResponse(
@@ -638,7 +642,8 @@ public class TeamService {
                         dto.displayName(),
                         dto.avatarUrl(),
                         dto.roleName(),
-                        dto.joinedAt()))
+                        dto.joinedAt(),
+                        colorsByUserId.get(dto.userId())))
                 .toList();
 
         // Dispatcher は全件リストを返すため、ページネーションはアプリ側でエミュレート

@@ -17,6 +17,7 @@ import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
+import com.mannschaft.app.schedule.ScheduleTargetMode;
 import com.mannschaft.app.schedule.dto.AttendanceRequest;
 import com.mannschaft.app.schedule.dto.AttendanceSolicitationSettings;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
@@ -30,6 +31,7 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.event.AttendanceRespondedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.repository.ScheduleTargetRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -80,6 +82,7 @@ public class ScheduleAttendanceService {
     private final ScheduleDelegationService scheduleDelegationService;
     private final NotificationService notificationService;
     private final NotificationDispatchService notificationDispatchService;
+    private final ScheduleTargetRepository scheduleTargetRepository;
 
     /**
      * (B) 組織→参加チーム配信 案C フェーズA: 組織スコープ配信の宛先解決窓口。
@@ -604,6 +607,12 @@ public class ScheduleAttendanceService {
             memberUserIds = userRoleRepository.findUserIdsByScope(scopeType, scopeId).stream()
                     .distinct()
                     .toList();
+        }
+        if (schedule.getTargetMode() == ScheduleTargetMode.SELECTED_MEMBERS) {
+            var targetIds = scheduleTargetRepository.findByScheduleIdOrderByUserIdAsc(schedule.getId()).stream()
+                    .map(com.mannschaft.app.schedule.entity.ScheduleTargetEntity::getUserId)
+                    .collect(java.util.stream.Collectors.toSet());
+            memberUserIds = memberUserIds.stream().filter(targetIds::contains).toList();
         }
         if (memberUserIds.isEmpty()) {
             log.info("出欠募集スキップ（対象メンバー0名）: scheduleId={}, scope={}:{}",

@@ -157,20 +157,10 @@ public class ScheduleCrossRefService {
         checkTargetScopeAdmin(crossRef, targetType, targetId, userId);
         validateInviteStatus(crossRef, CrossRefStatus.PENDING);
 
-        ScheduleEntity sourceSchedule = scheduleService.getSchedule(crossRef.getSourceScheduleId());
-
         // 招待元スケジュールを複製して招待先スコープに作成
-        ScheduleEntity duplicate = sourceSchedule.toBuilder()
-                .teamId(crossRef.getTargetType() == CrossRefTargetType.TEAM ? crossRef.getTargetId() : null)
-                .organizationId(crossRef.getTargetType() == CrossRefTargetType.ORGANIZATION ? crossRef.getTargetId() : null)
-                .userId(null)
-                .parentScheduleId(null)
-                .recurrenceRule(null)
-                .googleCalendarEventId(null)
-                .build();
-
-        duplicate = scheduleService.findScheduleOrThrow(
-                scheduleService.duplicateSchedule(crossRef.getSourceScheduleId(), crossRef.getInvitedBy()).getId());
+        ScheduleEntity duplicate = scheduleService.duplicateScheduleIntoScope(
+                crossRef.getSourceScheduleId(), crossRef.getTargetType().name(),
+                crossRef.getTargetId(), userId);
 
         // 複製先IDを設定して承認
         crossRef.accept(duplicate.getId());

@@ -12,6 +12,7 @@ import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.dto.MembershipLeaveRequest;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.organization.OrgErrorCode;
@@ -57,6 +58,7 @@ public class OrganizationMembershipService {
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final MemberQueryDispatcher memberQueryDispatcher;
+    private final ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
     private final MediaUrlResolver mediaUrlResolver;
@@ -80,6 +82,8 @@ public class OrganizationMembershipService {
 
         // F00.5 Phase 3: MemberQueryDispatcher 経由で memberships 参照に完全切替
         var memberDtos = memberQueryDispatcher.queryMembers(orgId, ScopeType.ORGANIZATION, null);
+        var colorsByUserId = scopeMemberCalendarSettingService.resolveColors(
+                ScopeType.ORGANIZATION, orgId, memberDtos.stream().map(dto -> dto.userId()).toList());
 
         var data = memberDtos.stream()
                 .map(dto -> new MemberResponse(
@@ -87,7 +91,8 @@ public class OrganizationMembershipService {
                         dto.displayName(),
                         dto.avatarUrl(),
                         dto.roleName(),
-                        dto.joinedAt()))
+                        dto.joinedAt(),
+                        colorsByUserId.get(dto.userId())))
                 .toList();
 
         // Dispatcher は全件リストを返すため、ページネーションはアプリ側でエミュレート

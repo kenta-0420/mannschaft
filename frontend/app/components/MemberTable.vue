@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { MEMBER_CALENDAR_COLORS } from '~/utils/memberCalendarColor'
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: string
@@ -17,6 +18,7 @@ interface Member {
   avatarUrl: string | null
   roleName: string
   joinedAt: string
+  calendarColor?: string | null
 }
 
 interface PagedMembers {
@@ -27,6 +29,7 @@ interface PagedMembers {
 const api = useApi()
 const notification = useNotification()
 const { formatDate } = useDatetime()
+const { t } = useI18n()
 const members = ref<Member[]>([])
 const totalRecords = ref(0)
 const loading = ref(false)
@@ -81,6 +84,33 @@ async function onRemoveMember(userId: number, displayName: string) {
   }
 }
 
+async function onChangeCalendarColor(userId: number, calendarColor: string) {
+  try {
+    const base = props.scopeType === 'team' ? 'teams' : 'organizations'
+    await api(`/api/v1/${base}/${props.scopeId}/members/${userId}/calendar-color`, {
+      method: 'PATCH',
+      body: { calendarColor },
+    })
+    notification.success(t('schedule.memberColor.updated'))
+    await loadMembers()
+  }
+  catch {
+    notification.error(t('schedule.memberColor.updateFailed'))
+  }
+}
+
+async function onResetCalendarColor(userId: number) {
+  try {
+    const base = props.scopeType === 'team' ? 'teams' : 'organizations'
+    await api(`/api/v1/${base}/${props.scopeId}/members/${userId}/calendar-color`, { method: 'DELETE' })
+    notification.success(t('schedule.memberColor.resetDone'))
+    await loadMembers()
+  }
+  catch {
+    notification.error(t('schedule.memberColor.updateFailed'))
+  }
+}
+
 function onPage(event: { page: number; rows: number }) {
   page.value = event.page
   rows.value = event.rows
@@ -124,6 +154,38 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
     <Column header="ロール" field="roleName" style="width: 160px">
       <template #body="{ data }">
         <RoleBadge :role="data.roleName" />
+      </template>
+    </Column>
+    <Column :header="t('schedule.memberColor.column')" style="width: 170px">
+      <template #body="{ data }">
+        <div class="flex items-center gap-2">
+          <span
+            class="h-4 w-4 shrink-0 rounded-full ring-1 ring-surface-300 dark:ring-surface-600"
+            :style="{ backgroundColor: data.calendarColor ?? '#64748b' }"
+            :aria-label="t('schedule.memberColor.colorLabel', { name: data.displayName })"
+          />
+          <Select
+            v-if="canChangeRole"
+            :model-value="data.calendarColor ?? null"
+            :options="MEMBER_CALENDAR_COLORS"
+            :placeholder="t('schedule.memberColor.auto')"
+            class="min-w-0 flex-1"
+            @update:model-value="(color) => color && onChangeCalendarColor(data.userId, color)"
+          >
+            <template #option="{ option }">
+              <span class="flex items-center gap-2"><span class="h-3 w-3 rounded-full" :style="{ backgroundColor: option }" />{{ option }}</span>
+            </template>
+          </Select>
+          <Button
+            v-if="canChangeRole && data.calendarColor"
+            :aria-label="t('schedule.memberColor.reset')"
+            icon="pi pi-replay"
+            text
+            rounded
+            size="small"
+            @click="onResetCalendarColor(data.userId)"
+          />
+        </div>
       </template>
     </Column>
     <Column header="参加日" field="joinedAt" style="width: 120px">
