@@ -1,5 +1,5 @@
 /**
- * ハイドレーション完了を表す composable。
+ * ハイドレーション開始時のフォーム送信準備状態を表す composable。
  *
  * 目的: **SSR で配信済みの HTML に対して、Vue のイベントハンドラがまだ結合されていない窓を塞ぐため**。
  *
@@ -24,15 +24,19 @@
  * // <Button type="submit" :disabled="!hydrated" />
  * ```
  *
- * @returns ハイドレーション完了で `true` になる読み取り専用の ref（SSR 中は常に `false`）
+ * @returns SSR 中は `false`、最初のクライアントハイドレーションの同期 DOM パッチ開始直前に
+ * `true` となる読み取り専用の ref。submit の有効化とイベントハンドラ結合を同じパッチにそろえる。
  */
 
-import { ref, readonly, onMounted, type Ref } from 'vue'
+import { ref, readonly, onBeforeMount, type Ref } from 'vue'
 
 export function useHydrated(): Readonly<Ref<boolean>> {
   const hydrated = ref(false)
 
-  onMounted(() => {
+  // onBeforeMount は最初のハイドレーションパッチの直前に同期実行される。
+  // この直後の同じ同期 DOM パッチで、@submit.prevent の結合と submit の有効化が行われる。
+  // SSR ではこのフックが走らないため、初期 HTML の native submit 防止も維持できる。
+  onBeforeMount(() => {
     hydrated.value = true
   })
 
