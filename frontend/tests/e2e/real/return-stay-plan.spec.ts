@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
+import { waitForHydration, waitForSpinnerGone } from '../helpers/wait'
 
 /** 実BE・実DBを使うため、page.route等のAPIモックは使わない。chromium-realのstorageStateを利用する。 */
 test.describe.configure({ mode: 'serial' })
@@ -16,11 +17,6 @@ function japanDate(offsetDays: number): string {
   return `${values.year}-${values.month}-${values.day}`
 }
 
-async function waitForHydration(page: Page): Promise<void> {
-  await page.waitForLoadState('domcontentloaded')
-  await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 30_000 }).catch(() => {})
-}
-
 test('F02.11: UIで予定を作成・更新・詳細確認・削除できる', async ({ page }) => {
   const startDate = japanDate(3)
   const endDate = japanDate(10)
@@ -36,6 +32,7 @@ test('F02.11: UIで予定を作成・更新・詳細確認・削除できる', a
 
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
+    await waitForSpinnerGone(page)
     const addButton = page.getByRole('button', { name: /予定を追加|Add a plan/ }).first()
     await expect(addButton).toBeVisible({ timeout: 30_000 })
     await addButton.click()
@@ -75,6 +72,7 @@ test('F02.11: UIで予定を作成・更新・詳細確認・削除できる', a
 
     await page.goto(`/teams/${team!.slug}/members`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
+    await waitForSpinnerGone(page)
     const planPill = page.getByRole('button').filter({ hasText: updatedEndDate }).first()
     await expect(planPill).toBeVisible({ timeout: 30_000 })
     await planPill.click()
@@ -84,6 +82,7 @@ test('F02.11: UIで予定を作成・更新・詳細確認・削除できる', a
 
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
+    await waitForSpinnerGone(page)
     const updatedPlanCard = page.locator('li').filter({ hasText: updatedEndDate }).first()
     await updatedPlanCard.getByRole('button', { name: /削除|Delete/ }).waitFor()
     page.once('dialog', (dialog) => dialog.accept())
