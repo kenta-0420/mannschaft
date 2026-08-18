@@ -78,8 +78,9 @@ public class MemberSkillService {
         String categoryName = null;
         if (skillCategoryId != null) {
             SkillCategoryEntity category = skillCategoryService.findCategoryOrThrow(skillCategoryId);
+            // 実在するが受け付けない状態（非アクティブ）は不在（SKILL_001・404）と区別して 409。
             if (!Boolean.TRUE.equals(category.getIsActive())) {
-                throw new BusinessException(SkillErrorCode.SKILL_001);
+                throw new BusinessException(SkillErrorCode.SKILL_010);
             }
             categoryName = category.getName();
         }

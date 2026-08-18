@@ -6,6 +6,9 @@ import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
+import com.mannschaft.app.gdpr.GdprErrorCode;
+import com.mannschaft.app.skill.SkillErrorCode;
+import com.mannschaft.app.webhook.WebhookErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -1459,6 +1462,90 @@ class GlobalExceptionHandlerTest {
                                 errorCode.getCode())
                         .isEqualTo(HttpStatus.BAD_REQUEST);
             }
+        }
+
+        @Test
+        @DisplayName("村ドメインの『重複』は全て 409 に揃っている"
+                + "（VILLAGE_005 と VILLAGE_035 が同じスラッグ重複で別ステータスだった割れの固定）")
+        void 村の重複は409に統一されている() {
+            List<ErrorCode> duplicates = List.of(
+                    com.mannschaft.app.village.VillageErrorCode.VILLAGE_NAME_TAKEN,       // VILLAGE_003
+                    com.mannschaft.app.village.VillageErrorCode.VILLAGE_SLUG_TAKEN,       // VILLAGE_005
+                    com.mannschaft.app.village.VillageErrorCode.NICKNAME_TAKEN,           // VILLAGE_008
+                    com.mannschaft.app.village.VillageErrorCode.CREATION_REQUEST_SLUG_TAKEN); // VILLAGE_035
+
+            for (ErrorCode errorCode : duplicates) {
+                assertThat(globalExceptionHandler.resolveHttpStatus(errorCode))
+                        .as("村ドメインの『重複』概念は 409 に統一する。%s だけ別ステータスになっている",
+                                errorCode.getCode())
+                        .isEqualTo(HttpStatus.CONFLICT);
+            }
+        }
+
+        @Test
+        @DisplayName("VILLAGE_004（スラッグ形式不正）は重複ではなく入力形式の検証なので 400 のまま")
+        void 村のスラッグ形式不正は400のまま() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.village.VillageErrorCode.VILLAGE_SLUG_INVALID))
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("GDPR エクスポート: 不在は 404 / 未完了は 409 / 期限切れは 410（GDPR_003 の3意味分割）")
+        void GDPRエクスポートの3経路が別ステータスで返る() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(GdprErrorCode.GDPR_003))
+                    .as("レコード不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(GdprErrorCode.GDPR_009))
+                    .as("未完了は「無い」ではなく状態競合なので 409")
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(GdprErrorCode.GDPR_010))
+                    .as("期限切れは「かつて存在したが失効した」ので 410 GONE")
+                    .isEqualTo(HttpStatus.GONE);
+        }
+
+        @Test
+        @DisplayName("スキル: カテゴリ不在は 404 / 名称重複は 409 / 非アクティブは 409（SKILL_001 の3意味分割）")
+        void スキルカテゴリの3経路が別ステータスで返る() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_001))
+                    .as("カテゴリ不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_009))
+                    .as("名称重複は既存リソースとの状態競合なので 409")
+                    .isEqualTo(HttpStatus.CONFLICT);
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_010))
+                    .as("非アクティブカテゴリは実在するが操作を受け付けない状態競合なので 409")
+                    .isEqualTo(HttpStatus.CONFLICT);
+        }
+
+        @Test
+        @DisplayName("意図的な集約は 400 のまま（分割すると存在オラクルになるため）: SKILL_003 / SIGNAGE_002")
+        void 意図的に畳んだコードは400のまま() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_003))
+                    .as("他スコープの存在秘匿と権限拒否を意図的に畳んでいる。分けると存在オラクルになる")
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.signage.SignageErrorCode.SIGNAGE_002))
+                    .as("トークンの『不在／無効化済み／期限切れ』を意図的に畳んでいる")
+                    .isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
+        @DisplayName("Webhook: 認証失敗は 401 / 管理系CRUDの不在は 404"
+                + "（WEBHOOK_005・007 が両方の意味を兼ねていた割れの是正）")
+        void Webhookの認証失敗と管理系不在が別ステータスで返る() {
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_005))
+                    .as("Incoming Webhook 受信時のトークン認証失敗は 401")
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_007))
+                    .as("APIキー認証失敗（形式不正・照合不一致を畳んだもの）は 401")
+                    .isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_013))
+                    .as("管理系CRUDでの Incoming トークン不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(globalExceptionHandler.resolveHttpStatus(WebhookErrorCode.WEBHOOK_014))
+                    .as("管理系CRUDでのAPIキー不在は 404")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
         }
 
         @Test
