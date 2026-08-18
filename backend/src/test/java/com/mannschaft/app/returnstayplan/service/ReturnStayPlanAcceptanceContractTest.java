@@ -3,6 +3,8 @@ package com.mannschaft.app.returnstayplan.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.returnstayplan.controller.ReturnStayPlanController;
+import com.mannschaft.app.returnstayplan.dto.ReturnStayPlanCreateRequest;
 import com.mannschaft.app.returnstayplan.event.ReturnStayPlanLifecycleListener;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.lang.reflect.Method;
@@ -56,6 +58,34 @@ class ReturnStayPlanAcceptanceContractTest {
         assertThat(ReturnStayPlanService.TeamPlanView.Location.class
                 .getRecordComponents()[2].getAccessor().getAnnotation(Schema.class).nullable())
                 .isTrue();
+    }
+
+    @Test
+    @DisplayName("AC-22 owner API exposes concrete response types and 201/204 status contracts")
+    void ac22_ownerApiOpenApiContract() throws Exception {
+        Method list = ReturnStayPlanController.class
+                .getMethod("list", boolean.class, int.class, int.class);
+        Method create = ReturnStayPlanController.class
+                .getMethod("create", ReturnStayPlanCreateRequest.class);
+        Method get = ReturnStayPlanController.class.getMethod("get", java.util.UUID.class);
+        Method update = ReturnStayPlanController.class.getMethod(
+                "update", java.util.UUID.class, Long.class, ReturnStayPlanCreateRequest.class);
+        Method delete = ReturnStayPlanController.class.getMethod("delete", java.util.UUID.class);
+
+        assertThat(list.getGenericReturnType().getTypeName())
+                .contains("PagedResponse<com.mannschaft.app.returnstayplan.dto.OwnPlan>");
+        assertThat(create.getGenericReturnType().getTypeName())
+                .contains("ApiResponse<com.mannschaft.app.returnstayplan.dto.OwnPlan>");
+        assertThat(get.getGenericReturnType().getTypeName())
+                .contains("ApiResponse<com.mannschaft.app.returnstayplan.dto.OwnPlan>");
+        assertThat(update.getGenericReturnType().getTypeName())
+                .contains("ApiResponse<com.mannschaft.app.returnstayplan.dto.OwnPlan>");
+        assertThat(create.getAnnotation(
+                io.swagger.v3.oas.annotations.responses.ApiResponse.class).responseCode())
+                .isEqualTo("201");
+        assertThat(delete.getAnnotation(
+                io.swagger.v3.oas.annotations.responses.ApiResponse.class).responseCode())
+                .isEqualTo("204");
     }
 
     @Test

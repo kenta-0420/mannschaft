@@ -52546,6 +52546,28 @@ export interface components {
             startDate: string;
             teamIds: number[];
         };
+        ApiResponseOwnPlan: {
+            data?: components["schemas"]["OwnPlan"];
+        };
+        OwnPlan: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date */
+            endDate?: string;
+            /** Format: uuid */
+            id?: string;
+            isPublished?: boolean;
+            location?: components["schemas"]["Location"];
+            planType?: string;
+            /** Format: date */
+            startDate?: string;
+            teamIds?: number[];
+            timezone?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int64 */
+            version?: number;
+        };
         UpdateReflectionSettingsRequest: {
             /** Format: int32 */
             remindHour: number;
@@ -76633,6 +76655,10 @@ export interface components {
         ApiResponseListPersonalScheduleResponse: {
             data?: components["schemas"]["PersonalScheduleResponse"][];
         };
+        PagedResponseOwnPlan: {
+            data?: components["schemas"]["OwnPlan"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
         ApiResponseReflectionTodayResponse: {
             data?: components["schemas"]["ReflectionTodayResponse"];
         };
@@ -91988,7 +92014,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseOwnPlan"];
                 };
             };
         };
@@ -92016,7 +92042,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseOwnPlan"];
                 };
             };
         };
@@ -92032,8 +92058,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -121745,7 +121771,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["PagedResponseOwnPlan"];
                 };
             };
         };
@@ -121763,13 +121789,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Created */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": Record<string, never>;
+                    "*/*": components["schemas"]["ApiResponseOwnPlan"];
                 };
             };
         };
