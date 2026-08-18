@@ -246,11 +246,11 @@ export function useMatchLiveSpectator(ctx: MatchSpectatorContext) {
    * 成功で hasSnapshot=true。失敗（HTTP 不通）時は最後のスナップショットを保持し OFFLINE を示す。
    */
   async function fetchSnapshot(): Promise<boolean> {
-    if (ctx.orgId.value === null || ctx.teamId.value === null) return false
+    if (ctx.teamId.value === null) return false
     try {
       const [match, events] = await Promise.all([
         matchApi.getMatch(ctx.orgId.value, ctx.teamId.value, ctx.matchId),
-        eventApi.listEvents(ctx.orgId.value, ctx.matchId),
+        eventApi.listEvents(ctx.orgId.value, ctx.teamId.value, ctx.matchId),
       ])
       if (disposed) return false
       snapshot.value = {

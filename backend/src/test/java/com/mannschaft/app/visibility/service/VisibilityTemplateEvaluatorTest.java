@@ -221,6 +221,30 @@ class VisibilityTemplateEvaluatorTest {
                     .thenReturn(List.of());
             assertThat(evaluator.canView(VIEWER_ID, TEMPLATE_ID, OWNER_ID)).isFalse();
         }
+
+        /**
+         * CMP-050 AC-20: {@code findTeamIdsByUserId(ownerId)} が空のとき、
+         * {@code evaluateTeamFriendOf} は false・{@code resolveTargetTeamId} は null
+         * （＝メンバー集合が空）となり、非公開側へ倒れること。
+         *
+         * <p>CMP-050 で在籍プリミティブに ACTIVE 条件が入ると、凍結オーナーの
+         * {@code @USER_PRIMARY_TEAM} テンプレは解決不能になる。これはフェイルセーフとして
+         * 意図した挙動であり、公開側へ倒れない（可視化されない）ことを締める番人である。</p>
+         */
+        @Test
+        @DisplayName("CMP-050 AC-20: owner の所属チームが空なら canView は false・メンバー集合も空（非公開側へ倒れる）")
+        void cmp050_ac20_ownerTeamsEmpty_failsClosed() {
+            mockRules(rule(VisibilityTemplateRuleType.TEAM_FRIEND_OF, null, "@USER_PRIMARY_TEAM"));
+            when(userRoleRepository.findTeamIdsByUserId(OWNER_ID))
+                    .thenReturn(List.of());
+
+            assertThat(evaluator.canView(VIEWER_ID, TEMPLATE_ID, OWNER_ID))
+                    .as("primary チームが解決できないテンプレは非公開側（false）へ倒れるべきである")
+                    .isFalse();
+            assertThat(evaluator.resolveMemberUserIds(TEMPLATE_ID, OWNER_ID))
+                    .as("resolveTargetTeamId が null のときメンバー集合は空であるべきである")
+                    .isEmpty();
+        }
     }
 
     // ─── OR 結合・short-circuit ─────────────────────────────────
