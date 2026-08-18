@@ -181,11 +181,14 @@ public class IncomingWebhookService {
     // ========================================
 
     /**
-     * IDでトークンを取得する。見つからない場合は WEBHOOK_005 例外。
+     * IDでトークンを取得する。見つからない場合は WEBHOOK_013（404）例外。
+     *
+     * <p>管理系CRUDでのリソース参照であり、受信時の認証失敗（WEBHOOK_005・401）とは
+     * 意味が異なるため別コードを使う。</p>
      */
     private IncomingWebhookTokenEntity findTokenOrThrow(Long id) {
         return tokenRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(WebhookErrorCode.WEBHOOK_005));
+                .orElseThrow(() -> new BusinessException(WebhookErrorCode.WEBHOOK_013));
     }
 
     /**
