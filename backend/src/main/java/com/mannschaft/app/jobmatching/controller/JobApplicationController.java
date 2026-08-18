@@ -145,9 +145,7 @@ public class JobApplicationController {
     /**
      * 応募詳細を取得する。当事者（応募者本人、または対象求人の採否権限者）のみ許可。
      *
-     * <p>BOLA対策: 従来は認証済みであれば誰でも他人の応募（自己PR含む）を id 直打ちで
-     * 閲覧できてしまう欠陥があったため、{@link JobApplicationService#findById(Long, Long)} で
-     * 当事者チェックを行うよう根治した。</p>
+     * <p>BOLA対策: {@link JobApplicationService#findById(Long, Long)} で当事者チェックを行う。</p>
      */
     @GetMapping("/api/v1/applications/{id}")
     @Operation(summary = "応募詳細取得")

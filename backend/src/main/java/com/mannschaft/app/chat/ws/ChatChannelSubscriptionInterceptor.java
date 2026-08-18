@@ -26,11 +26,10 @@ import java.util.regex.Pattern;
  * {@link MessagingException} をスローして拒否する（ERROR フレーム返却・購読不成立）。
  * 既存 {@code MatchLiveSubscriptionInterceptor}・{@code EmergencyClosureSubscriptionInterceptor} と同パターン。</p>
  *
- * <h3>是正する欠陥（§2.6）</h3>
- * <p>現行は SUBSCRIBE 認可インターセプタが match live / emergency-closure の 2 destination にしか無く、
- * チャット {@code /topic/channels/{channelId}} には購読認可が存在しない。その結果、認証済みユーザーであれば
- * 自分がメンバーでない任意の channelId を購読でき、他チームのチャット本文を受信できた（既存 IDOR）。
- * 本インターセプタでメンバーシップ検査を行い閉塞する。</p>
+ * <h3>設計意図（§2.6）</h3>
+ * <p>SUBSCRIBE 認可インターセプタは match live / emergency-closure に加え、
+ * チャット {@code /topic/channels/{channelId}} にも購読認可を適用する。
+ * 本インターセプタでメンバーシップ検査を行う。</p>
  *
  * <h3>設計上の不変条件</h3>
  * <ul>
