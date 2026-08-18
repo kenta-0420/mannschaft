@@ -54,6 +54,9 @@ interface EventDetail {
   status?: string
   categoryName?: string | null
   categoryColor?: string | null
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: Array<{ userId: number; displayName: string; avatarUrl: string | null; calendarColor: string | null }>
 }
 
 interface PersonalScheduleRaw {
@@ -165,6 +168,9 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
         scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
         createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
         myAttendance: d.myAttendanceStatus ?? null,
+        targetMode: d.targetMode ?? ext.targetMode,
+        targetCount: d.targetCount ?? ext.targetCount,
+        targets: d.targets ?? ext.targets,
       }
     }
     showEventPanel.value = true
@@ -555,6 +561,9 @@ onMounted(async () => {
                 attendanceRequired: selectedEvent.attendanceRequired ?? false,
                 myAttendance: selectedEvent.myAttendance ?? null,
                 attendanceStats: selectedEvent.attendanceStats ?? null,
+                targetMode: selectedEvent.targetMode,
+                targetCount: selectedEvent.targetCount,
+                targets: selectedEvent.targets,
               }"
               :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
               :scope-id="selectedEvent.scopeId ?? ''"
@@ -562,6 +571,7 @@ onMounted(async () => {
               :skip-delegations="selectedEventIsPersonal"
               :scope-name="selectedEvent.scopeName ?? null"
               :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
+              :show-audience="!selectedEventIsPersonal"
               :highlight-comment-id="linkedCommentId"
               @edit="onEditEvent"
               @delete="onDeleteEvent"

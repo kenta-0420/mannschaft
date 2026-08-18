@@ -210,6 +210,24 @@
         "notFound": "未找到该评论"
       }
     },
+    "targetAudience": {
+      "label": "日程对象",
+      "allMembers": "全体成员",
+      "selectMembers": "选择成员",
+      "memberPlaceholder": "选择对象成员",
+      "more": "另有{count}人",
+      "selectedCount": "已选择{count}人",
+      "invalidSelection": "请选择1至500名对象成员"
+    },
+    "memberColor": {
+      "column": "日程颜色",
+      "auto": "自动",
+      "reset": "恢复自动颜色",
+      "updated": "已更新成员日程颜色",
+      "resetDone": "已恢复成员日程自动颜色",
+      "updateFailed": "无法更新成员日程颜色",
+      "colorLabel": "{name}的日程颜色"
+    },
     "todo_load_error": {
       "summary": "TODO 加载失败",
       "detail": "无法在日历上显示 TODO。日程仍然显示。请稍后重新加载。"

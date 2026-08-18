@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
 import type { RecurrenceEndType, RecurrenceType, ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
+import type { ScheduleTargetMode } from '~/types/schedule'
 
 interface ScopeOption {
   label: string
@@ -65,6 +66,9 @@ const { googleSyncEnabled, fetchPersonalSyncStatus } = useGoogleCalendarApi()
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const isEdit = computed(() => !!props.scheduleId)
+const targetMode = ref<ScheduleTargetMode>('ALL_MEMBERS')
+const targetUserIds = ref<number[]>([])
+const targetValidationError = ref<string | null>(null)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -254,6 +258,9 @@ watch(
           form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
           form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
           form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
+          targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
+          targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
+            .map(target => target.userId)
           if (data.startAt) {
             const start = new Date(data.startAt as string)
             form.value.startDate = start
@@ -397,6 +404,10 @@ async function submit() {
     fieldErrors.value = { title: t('schedule.error_title_required') }
     return
   }
+  if (!effectiveScope.value.isPersonal && targetValidationError.value) {
+    notification.error(targetValidationError.value)
+    return
+  }
   const scheduledError = validateScheduledInputs()
   if (scheduledError) {
     notification.error(scheduledError)
@@ -427,6 +438,8 @@ async function submit() {
     body.attendanceRequired = form.value.attendanceRequired
     body.allow_proxy_attendance = form.value.allowProxyAttendance
     body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
+    body.targetMode = targetMode.value
+    body.targetUserIds = targetMode.value === 'SELECTED_MEMBERS' ? targetUserIds.value : []
     // F03.1 (B) チーム別内訳トグルは組織スコープ + 出欠ありのときのみ送る
     if (effectiveScope.value.scopeType === 'organization' && form.value.attendanceRequired) {
       body.teamBreakdownEnabled = form.value.teamBreakdownEnabled
@@ -584,6 +597,9 @@ function resetForm() {
       minResponseRole: '',
     },
   }
+  targetMode.value = 'ALL_MEMBERS'
+  targetUserIds.value = []
+  targetValidationError.value = null
   fieldErrors.value = {}
 }
 
@@ -622,6 +638,14 @@ function close() {
         :is-personal-scope="effectiveScope.isPersonal"
         :time-history="timeHistory"
         :time-options="timeOptions"
+      />
+      <ScheduleTargetPicker
+        v-if="!effectiveScope.isPersonal"
+        v-model:target-mode="targetMode"
+        v-model:target-user-ids="targetUserIds"
+        :scope-type="effectiveScope.scopeType"
+        :scope-id="effectiveScope.scopeId"
+        @invalid="targetValidationError = $event"
       />
       <!-- F03.1 (B) チーム別内訳トグル（組織スコープ + 出欠ありのときのみ） -->
       <div
