@@ -367,7 +367,7 @@ public class SharedFolderQueryService {
      * <p>マスター確定仕様: 公開リンクは未認証・非会員にファイルを開く capability を配る強力な操作のため、
      * 発行・一覧・削除は<b>管理者（ADMIN / DEPUTY_ADMIN）限定</b>とする（一般 MEMBER は 403）。
      * これは削除認可 {@link #authorizeDelete} と同じ「閲覧より強い」権限で、fileId → folder を解決して当てる。
-     * 従来 {@link SharedFileLinkService} は大会フォルダ以外で認可が no-op（素通り）だった穴を本メソッドで是正する。</p>
+     * {@link SharedFileLinkService} からはこのメソッドを介して全スコープに一貫適用する。</p>
      *
      * <ul>
      *   <li>PERSONAL: 所有者本人のみ。他人は {@code FOLDER_NOT_FOUND}（404・存在隠蔽）。</li>

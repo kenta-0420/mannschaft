@@ -42,8 +42,8 @@ import com.mannschaft.app.common.SecurityUtils;
  * </p>
  *
  * <p><b>認可根治戦役 Wave3-B1b（2026-07-16）:</b> listPayments/updatePayment/cancelPayment/refundPayment
- * の 4EP に認可が一切敷設されておらず、未認証以外は誰でも到達できていた（双子コントローラー
- * {@link OrganizationPaymentController}（Wave3-B1 済）と同型の欠陥）。閲覧系（listPayments）は
+ * の 4EP に認可を敷設する（双子コントローラー {@link OrganizationPaymentController}（Wave3-B1 済）と同型）。
+ * 閲覧系（listPayments）は
  * {@link AccessControlService#checkMembership}（"TEAM" scope）、変更系（updatePayment/cancelPayment/
  * refundPayment・<b>refundPayment は Stripe 実返金の最重要案件</b>）は
  * {@link AccessControlService#checkAdminOrAbove} を要求する。加えて、path 上位スコープの ADMIN であっても
@@ -173,8 +173,8 @@ public class TeamPaymentController {
             @PathVariable Long id,
             @PathVariable Long itemId) {
         accessControlService.checkAdminOrAbove(SecurityUtils.getCurrentUserId(), id, "TEAM");
-        // 認可根治戦役 Wave3-B1b: path {id}（TEAM）の ADMIN 判定は通っていたが、その itemId が
-        // team {id} 配下かを検証していなかった（team A の ADMIN が team B の itemId を渡す越境）。
+        // 認可根治戦役 Wave3-B1b: path {id}（TEAM）の ADMIN 判定に加え、その itemId が
+        // team {id} 配下であることを検証する（他チームの itemId を渡す越境を防ぐ）。
         // itemId → scope が path {id} と一致するかをここで検証する（不一致は 404・存在秘匿）。
         paymentItemService.findByIdAndTeamIdOrThrow(itemId, id);
         RemindResponse response = memberPaymentService.sendRemind(itemId);

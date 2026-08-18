@@ -15,7 +15,7 @@ import java.util.List;
  * <b>操作者・作成者を除いた</b>集合。純 SUPPORTER（{@code role_kind='SUPPORTER'}）と
  * メンバーシップを持たない GUEST は母集団段階で除外し、可視性再チェックをしない一括配信
  * （{@link com.mannschaft.app.notification.service.NotificationBulkFanoutService}）でもタイトルを漏らさない
- * （§6.1・CMP-017b の SUPPORTER 素通り欠陥を母集団側で塞ぐ）。</p>
+ * （§6.1・CMP-017b）。</p>
  *
  * <h2>配置ドメイン（越境 Repository 依存の解消・D-5 番人）</h2>
  * <p>受信者解決は {@link MembershipRepository}（membership ドメイン）を引くため、本実装は membership ドメイン

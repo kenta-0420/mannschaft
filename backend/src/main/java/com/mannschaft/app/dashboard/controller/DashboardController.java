@@ -294,7 +294,7 @@ public class DashboardController {
                 .toList();
 
         // F00 認可基盤連携（2026-05-29）: チーム横断・組織横断スケジュールは
-        // これまで visibility 無視で返していた認可漏れがあったため、ID 群を
+        // visibility を必ず反映させるため、ID 群を
         // filterAccessible に通して可視なものだけ採用する（team/org をまとめて 1 回判定）。
         // 個人スケジュールは本人取得のため対象外で常に含める。
         List<ScheduleEntity> teamOrgSchedules = new ArrayList<>();

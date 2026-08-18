@@ -61,8 +61,7 @@ public class ScheduleQueryService {
      * {@link ContentVisibilityChecker#filterAccessible} に通し、閲覧者
      * {@code viewerUserId} が可視なものだけを返す。これにより
      * {@code minViewRole=ADMIN_ONLY} や {@code visibility=CUSTOM_TEMPLATE} の
-     * チーム予定が一覧でも詳細 GET と同じ認可で絞り込まれる
-     * （従来は一覧系が {@code assertCanView} をバイパスしていた認可漏れ）。</p>
+     * チーム予定が一覧でも詳細 GET と同じ認可で絞り込まれる。</p>
      *
      * @param teamId       チームID
      * @param from         期間開始
@@ -208,7 +207,7 @@ public class ScheduleQueryService {
         }
 
         // F00 認可基盤連携（2026-05-29）: team/org のチーム横断スケジュールは
-        // visibility 無視で表示されていた認可漏れがあったため、ID 群を
+        // visibility を必ず反映させるため、ID 群を
         // filterAccessible に通して可視なものだけを採用する（team で 1 回・org で 1 回、
         // ループ内 per-item 呼び出しは避ける）。個人予定は本人取得のため対象外。
         addVisibleEntries(teamScoped, userId, entries);
