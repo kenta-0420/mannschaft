@@ -23,13 +23,18 @@ export function useMatchEventApi() {
   const notification = useNotification()
   const { t } = useI18n()
 
-  const base = (orgId: number, matchId: string) =>
-    `/api/v1/organizations/${orgId}/matches/${matchId}`
+  const base = (orgId: number | null, teamId: number, matchId: string) => orgId === null
+    ? `/api/v1/teams/${teamId}/matches/${matchId}`
+    : `/api/v1/organizations/${orgId}/matches/${matchId}`
 
   /** イベント一覧（events + 導出スコア + scoreMismatch） */
-  async function listEvents(orgId: number, matchId: string): Promise<MatchEventsResponse> {
+  async function listEvents(
+    orgId: number | null,
+    teamId: number,
+    matchId: string,
+  ): Promise<MatchEventsResponse> {
     try {
-      const res = await api<{ data: MatchEventsResponse }>(`${base(orgId, matchId)}/events`)
+      const res = await api<{ data: MatchEventsResponse }>(`${base(orgId, teamId, matchId)}/events`)
       return res.data
     } catch (err) {
       notification.error(t('match.live.error.load_events_failed'))
@@ -39,12 +44,13 @@ export function useMatchEventApi() {
 
   /** 出場記録一覧（in/out 区間・computedMinutes） */
   async function listAppearances(
-    orgId: number,
+    orgId: number | null,
+    teamId: number,
     matchId: string,
   ): Promise<PlayerAppearanceResponse[]> {
     try {
       const res = await api<{ data: PlayerAppearanceResponse[] }>(
-        `${base(orgId, matchId)}/appearances`,
+        `${base(orgId, teamId, matchId)}/appearances`,
       )
       return res.data
     } catch (err) {
@@ -55,12 +61,13 @@ export function useMatchEventApi() {
 
   /** イベント追加（素の CRUD・連鎖束ねは 3-B） */
   async function addEvent(
-    orgId: number,
+    orgId: number | null,
+    teamId: number,
     matchId: string,
     body: MatchEventRequest,
   ): Promise<MatchEventResponse> {
     try {
-      const res = await api<{ data: MatchEventResponse }>(`${base(orgId, matchId)}/events`, {
+      const res = await api<{ data: MatchEventResponse }>(`${base(orgId, teamId, matchId)}/events`, {
         method: 'POST',
         body,
       })
@@ -73,14 +80,15 @@ export function useMatchEventApi() {
 
   /** イベント更新 */
   async function updateEvent(
-    orgId: number,
+    orgId: number | null,
+    teamId: number,
     matchId: string,
     eventId: string,
     body: MatchEventRequest,
   ): Promise<MatchEventResponse> {
     try {
       const res = await api<{ data: MatchEventResponse }>(
-        `${base(orgId, matchId)}/events/${eventId}`,
+        `${base(orgId, teamId, matchId)}/events/${eventId}`,
         { method: 'PATCH', body },
       )
       return res.data
@@ -91,9 +99,14 @@ export function useMatchEventApi() {
   }
 
   /** イベント削除 */
-  async function deleteEvent(orgId: number, matchId: string, eventId: string): Promise<void> {
+  async function deleteEvent(
+    orgId: number | null,
+    teamId: number,
+    matchId: string,
+    eventId: string,
+  ): Promise<void> {
     try {
-      await api(`${base(orgId, matchId)}/events/${eventId}`, { method: 'DELETE' })
+      await api(`${base(orgId, teamId, matchId)}/events/${eventId}`, { method: 'DELETE' })
     } catch (err) {
       notification.error(t('match.live.error.delete_event_failed'))
       throw err

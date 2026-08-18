@@ -184,7 +184,9 @@ jobs:
     needs: detect
     if: needs.detect.outputs.backend_changed == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    # shard 4 がテスト・成果物アップロード成功後の後処理中に 60m21s で打ち切られたため、
+    # テストを省略せず後処理まで完了できる最小限の余裕を確保する。
+    timeout-minutes: 75
     defaults:
       run:
         working-directory: ./backend
