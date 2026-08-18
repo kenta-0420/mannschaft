@@ -75,6 +75,7 @@ public interface DashboardMapper {
                 entity.getTargetType().name(),
                 entity.getTargetId(),
                 entity.getSummary(),
+                entity.getDetail(),
                 entity.getCreatedAt()
         );
     }

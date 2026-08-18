@@ -143,9 +143,9 @@ class DashboardPersonalParallelEquivalenceTest {
 
         // アクティビティ 2 件。
         ActivityFeedResponse a1 = new ActivityFeedResponse(
-                1L, "POST", null, "TEAM", TEAM_A, "チームA", null, null, "投稿しました", null);
+                1L, "POST", null, "TEAM", TEAM_A, "チームA", null, null, "投稿しました", null, null);
         ActivityFeedResponse a2 = new ActivityFeedResponse(
-                2L, "EVENT", null, "TEAM", TEAM_B, "チームB", null, null, "予定を追加", null);
+                2L, "EVENT", null, "TEAM", TEAM_B, "チームB", null, null, "予定を追加", null, null);
         given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
                 .willReturn(List.of(a1, a2));
 

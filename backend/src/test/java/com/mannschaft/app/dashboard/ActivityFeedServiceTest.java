@@ -73,6 +73,7 @@ class ActivityFeedServiceTest {
                 new ActivityFeedResponse.ActorSummary(ACTOR_ID, "テストユーザー", null),
                 "TEAM", SCOPE_ID_TEAM, scopeName,
                 "TIMELINE_POST", 100L, "テスト投稿を作成しました",
+                null,
                 LocalDateTime.now()
         );
     }

@@ -41,6 +41,7 @@ public class ActivityFeedEventListener {
                     .targetType(event.getTargetType())
                     .targetId(event.getTargetId())
                     .summary(summary)
+                    .detail(event.getDetail())
                     .build();
 
             activityFeedRepository.save(entity);

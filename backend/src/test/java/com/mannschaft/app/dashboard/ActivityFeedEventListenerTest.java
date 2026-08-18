@@ -47,7 +47,7 @@ class ActivityFeedEventListenerTest {
         void handleActivityEvent_正常_フィードに書き込み() {
             // Given
             ActivityEvent event = new ActivityEvent(
-                    ActivityType.POST_CREATED, ScopeType.TEAM, 10L, 1L, TargetType.TIMELINE_POST, 100L);
+                    ActivityType.POST_CREATED, ScopeType.TEAM, 10L, 1L, TargetType.TIMELINE_POST, 100L, null);
             given(summaryGenerator.generate(ActivityType.POST_CREATED)).willReturn("新しい投稿を作成しました");
 
             // When
@@ -63,7 +63,7 @@ class ActivityFeedEventListenerTest {
         void handleActivityEvent_書き込み失敗_例外キャッチ() {
             // Given
             ActivityEvent event = new ActivityEvent(
-                    ActivityType.EVENT_CREATED, ScopeType.ORGANIZATION, 20L, 2L, TargetType.SCHEDULE, 200L);
+                    ActivityType.EVENT_CREATED, ScopeType.ORGANIZATION, 20L, 2L, TargetType.SCHEDULE, 200L, null);
             given(summaryGenerator.generate(ActivityType.EVENT_CREATED)).willReturn("新しいイベントを作成しました");
             doThrow(new RuntimeException("DB接続エラー")).when(activityFeedRepository).save(any(ActivityFeedEntity.class));
 
@@ -79,7 +79,7 @@ class ActivityFeedEventListenerTest {
         void handleActivityEvent_TODOComplete_正しいサマリー() {
             // Given
             ActivityEvent event = new ActivityEvent(
-                    ActivityType.TODO_COMPLETED, ScopeType.TEAM, 10L, 3L, TargetType.TODO, 300L);
+                    ActivityType.TODO_COMPLETED, ScopeType.TEAM, 10L, 3L, TargetType.TODO, 300L, null);
             given(summaryGenerator.generate(ActivityType.TODO_COMPLETED)).willReturn("TODOを完了しました");
 
             // When
@@ -95,7 +95,7 @@ class ActivityFeedEventListenerTest {
         void handleActivityEvent_サマリー生成失敗_例外キャッチ() {
             // Given
             ActivityEvent event = new ActivityEvent(
-                    ActivityType.FILE_UPLOADED, ScopeType.TEAM, 10L, 1L, TargetType.FILE, 400L);
+                    ActivityType.FILE_UPLOADED, ScopeType.TEAM, 10L, 1L, TargetType.FILE, 400L, null);
             given(summaryGenerator.generate(ActivityType.FILE_UPLOADED)).willThrow(new RuntimeException("生成エラー"));
 
             // When（例外がスローされないことを確認）
