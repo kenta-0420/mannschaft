@@ -210,6 +210,26 @@
         "notFound": "댓글을 찾을 수 없습니다"
       }
     },
+    "targetAudience": {
+      "label": "일정 대상",
+      "allMembers": "전체",
+      "selectMembers": "구성원 선택",
+      "memberPlaceholder": "대상 구성원 선택",
+      "more": "외 {count}명",
+      "selectedCount": "대상 {count}명",
+      "invalidSelection": "대상 구성원을 1~500명 선택하세요"
+    },
+    "memberColor": {
+      "column": "일정 색상",
+      "auto": "자동",
+      "reset": "자동 색상으로 재설정",
+      "updated": "구성원 일정 색상을 업데이트했습니다",
+      "resetDone": "구성원 일정 색상을 자동으로 되돌렸습니다",
+      "updateFailed": "구성원 일정 색상을 업데이트할 수 없습니다",
+      "colorLabel": "{name}의 일정 색상"
+    },
+    "targetAudience": { "label": "일정 대상", "allMembers": "전체", "selectMembers": "구성원 선택", "memberPlaceholder": "대상 구성원 선택", "more": "외 {count}명", "selectedCount": "대상 {count}명", "invalidSelection": "대상 구성원을 1~500명 선택하세요" },
+    "memberColor": { "column": "일정 색상", "auto": "자동", "reset": "자동 색상으로 재설정", "updated": "구성원 일정 색상을 업데이트했습니다", "resetDone": "구성원 일정 색상을 자동으로 되돌렸습니다", "updateFailed": "구성원 일정 색상을 업데이트할 수 없습니다", "colorLabel": "{name}의 일정 색상" },
     "todo_load_error": {
       "summary": "TODO 불러오기에 실패했습니다",
       "detail": "TODO를 캘린더에 표시할 수 없습니다. 일정은 표시되어 있습니다. 잠시 후 다시 불러오세요."

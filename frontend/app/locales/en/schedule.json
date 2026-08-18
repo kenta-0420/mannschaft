@@ -210,6 +210,24 @@
         "notFound": "Comment not found"
       }
     },
+    "targetAudience": {
+      "label": "Schedule audience",
+      "allMembers": "Everyone",
+      "selectMembers": "Select members",
+      "memberPlaceholder": "Select audience members",
+      "more": "+{count} more",
+      "selectedCount": "{count} selected",
+      "invalidSelection": "Select between 1 and 500 audience members"
+    },
+    "memberColor": {
+      "column": "Schedule color",
+      "auto": "Automatic",
+      "reset": "Reset to automatic color",
+      "updated": "Member schedule color updated",
+      "resetDone": "Member schedule color reset",
+      "updateFailed": "Could not update member schedule color",
+      "colorLabel": "Schedule color for {name}"
+    },
     "todo_load_error": {
       "summary": "Failed to load TODOs",
       "detail": "TODOs could not be shown on the calendar. Schedules are still displayed. Please reload after a while."

@@ -1,5 +1,5 @@
 import type { CalendarEventItem } from './useCalendarEvents'
-import type { GanttTodo } from '~/types/todo'
+import type { MyCalendarTodo } from '~/types/todo'
 
 interface CalendarEntryRaw {
   // reflection 等 UUID 主キードメインの行は id=null（§6.2/AC-21）。
@@ -17,6 +17,14 @@ interface CalendarEntryRaw {
   time: { startAt: string; endAt: string; allDay: boolean }
   scope: { scopeType: string; scopeId: string; scopeName: string | null; scopeIconUrl: string | null }
   myAttendanceStatus: string
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: Array<{
+    userId: number
+    displayName: string
+    avatarUrl: string | null
+    calendarColor: string | null
+  }>
 }
 
 interface PersonalScheduleRaw {
@@ -69,6 +77,28 @@ export function shouldNotifyTodoLoadFailure(status: number | undefined): boolean
   return true
 }
 
+/**
+ * 自己担当TODOの表示可否。リンク先予定が既に見えている場合は予定を正本として抑止する。
+ */
+export function shouldDisplayMyCalendarTodo(todo: MyCalendarTodo, visibleScheduleIds: Set<number>): boolean {
+  return !!todo.dueDate
+    && todo.status !== 'COMPLETED'
+    && (!todo.linkedScheduleId || !visibleScheduleIds.has(todo.linkedScheduleId))
+}
+
+/**
+ * API がフィルタ済みであることを正本としつつ、現在ユーザーIDが得られる場面だけ防御的に確認する。
+ * ID 未初期化時に予定を消してしまわないため、unknown は常に表示する。
+ */
+export function shouldDisplayScheduleForCurrentUser(
+  targetMode: CalendarEntryRaw['targetMode'],
+  targets: CalendarEntryRaw['targets'],
+  currentUserId: number | null | undefined,
+): boolean {
+  if (targetMode !== 'SELECTED_MEMBERS' || currentUserId == null || !targets?.length) return true
+  return targets.some(target => target.userId === currentUserId)
+}
+
 export function useMyCalendarData(options?: { storageKey?: string }) {
   const SCOPE_FILTER_KEY = options?.storageKey ?? 'mannschaft:calendar:scopeFilter'
   const scheduleApi = useScheduleApi()
@@ -76,6 +106,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
   const { buildDayStartStr, buildDayEndStr } = useDatetime()
   const errorHandler = useErrorHandler()
   const errorReport = useErrorReport()
+  const authStore = useAuthStore()
 
   const extendedEvents = ref<CalEvent[]>([])
   /** TODO レイヤの取得に失敗したか（Issue #2637: 部分失敗をユーザーと利用側に見せる） */
@@ -84,14 +115,14 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
   const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> => {
     // TODO 取得だけは部分失敗として扱う（カレンダー本体＝個人予定・共有予定・reflection は描画を続ける）。
     // ただし失敗は握りつぶさず、必ずエラー報告に載せ、失敗状態（todosFailed）を立てる（Issue #2637）。
-    const fetchTodos = async (): Promise<{ data: GanttTodo[] }> => {
+    const fetchTodos = async (): Promise<{ data: MyCalendarTodo[] }> => {
       try {
-        const res = await ganttApi.getPersonalGanttTodos(from, to)
+        const res = await ganttApi.getMyCalendarTodos(from, to)
         todosFailed.value = false
-        return res as { data: GanttTodo[] }
+        return res
       }
       catch (e) {
-        const context = `useMyCalendarData.getPersonalGanttTodos(${from}..${to})`
+        const context = `useMyCalendarData.getMyCalendarTodos(${from}..${to})`
         if (shouldNotifyTodoLoadFailure(extractHttpStatus(e))) {
           // 共通ハンドラが提示しない失敗（4xx・応答なし）。共通エラーハンドラへ委譲し、
           // errorReport への記録とユーザー提示の双方を任せる。
@@ -160,6 +191,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
     const sharedEvents = sharedRaw
       // reflection 等 UUID ドメイン行は上で別途処理済み。残りの PERSONAL 行は除外（重複防止）。
       .filter((e) => !e.content?.referenceKind && e.scope?.scopeType !== 'PERSONAL')
+      .filter(e => shouldDisplayScheduleForCurrentUser(e.targetMode, e.targets, authStore.currentUser?.id))
       .map((e): CalEvent => ({
         id: e.id as number,
         scheduleId: e.scheduleId ?? null,
@@ -174,29 +206,37 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
         scopeId: e.scope?.scopeId,
         scopeName: e.scope?.scopeName ?? null,
         scopeIconUrl: e.scope?.scopeIconUrl ?? null,
+        targetMode: e.targetMode,
+        targetCount: e.targetCount,
+        targets: e.targets,
       }))
 
     // 期限付き TODO をカレンダーに追加（完了済みは除外）
     // ID は負数にしてスケジュール ID と衝突しないようにする
-    const todos = (todosRes.data ?? []) as GanttTodo[]
+    const visibleScheduleIds = new Set([
+      ...personalEvents.map(event => event.scheduleId),
+      ...sharedEvents.map(event => event.scheduleId),
+    ].filter((id): id is number => id !== null && id !== undefined))
+    const todos = todosRes.data ?? []
     const todoEvents: CalEvent[] = todos
-      .filter((t) => t.dueDate && t.status !== 'COMPLETED')
+      .filter(t => shouldDisplayMyCalendarTodo(t, visibleScheduleIds))
       .map((t) => ({
         id: -(t.id + 1),
         uniqueKey: `todo:${t.id}`,
         title: t.title,
         // TODO の期限は LocalDate。ユーザーTZの 00:00:00 / 23:59:59 としてオフセット付きで組む
         // （ナイーブ連結だと表示時に再度 TZ 変換されて日がずれる。Issue #2508 Phase 2）
-        startAt: buildDayStartStr(t.startDate || t.dueDate),
+        startAt: buildDayStartStr(t.startDate ?? t.dueDate),
         endAt: buildDayEndStr(t.dueDate),
         allDay: true,
         color: t.priority === 'HIGH' ? '#f97316'
           : t.priority === 'LOW' ? '#22c55e'
           : '#3b82f6',
-        isPersonal: true,
-        scopeType: 'PERSONAL',
-        scopeId: undefined,
-        scopeName: null,
+        isPersonal: t.scope.scopeType === 'PERSONAL',
+        scopeType: t.scope.scopeType,
+        scopeId: t.scope.scopeId ?? undefined,
+        scopeName: t.scope.scopeName,
+        scopeIconUrl: t.scope.scopeIconUrl,
         isTodo: true,
       }))
 
