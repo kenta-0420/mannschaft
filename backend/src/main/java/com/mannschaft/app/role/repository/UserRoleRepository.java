@@ -100,6 +100,53 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     long countRoleOrMembershipByUserIdAndTeamId(@Param("userId") Long userId, @Param("teamId") Long teamId);
 
     /**
+     * ユーザーがチームに在籍するか（<b>アカウント状態を問わない</b>・家族経路専用）。
+     *
+     * <p><b>なぜ ACTIVE を問わないのか</b>: 子アカウントは
+     * {@code PENDING_PARENTAL_CONSENT} / {@code FROZEN} を取り得るが、その間も
+     * 保護者の家族時間割閲覧は維持する仕様である。本メソッドは「認可の対象者」ではなく
+     * 「<b>被参照者</b>」を数えるものであり、<b>権限を与える方向の判定に使ってはならない</b>。
+     * 一般用途は必ず ACTIVE 必須版 {@link #existsByUserIdAndTeamId(Long, Long)} を使うこと。</p>
+     *
+     * <p>状態は問わないが離脱は問う（{@code left_at IS NULL} の在籍のみ）。
+     * ORGANIZATION 版は呼出元が無いため意図的に用意していない（抜け道を増やさない）。</p>
+     */
+    default boolean existsAnyStatusByUserIdAndTeamId(Long userId, Long teamId) {
+        return countRoleOrMembershipAnyStatusByUserIdAndTeamId(userId, teamId) > 0;
+    }
+
+    @Query(value =
+            "SELECT COUNT(*) FROM ( " +
+            "  SELECT ur.id FROM user_roles ur WHERE ur.user_id = :userId AND ur.team_id = :teamId " +
+            "  UNION ALL " +
+            "  SELECT m.id FROM memberships m WHERE m.user_id = :userId " +
+            "    AND m.scope_type = 'TEAM' AND m.scope_id = :teamId AND m.left_at IS NULL " +
+            ") both_arms",
+            nativeQuery = true)
+    long countRoleOrMembershipAnyStatusByUserIdAndTeamId(
+            @Param("userId") Long userId, @Param("teamId") Long teamId);
+
+    /**
+     * 指定ユーザーが生存している（未削除かつ ACTIVE）か。
+     *
+     * <p>CMP-050 二重防御。在籍プリミティブ側の ACTIVE 条件に加えて、権限を与える経路
+     * （{@code RoleService#transferOwnership}）でも譲渡先の生存を明示確認する。</p>
+     *
+     * <p><b>role ドメインに置く理由</b>: {@code RoleService} へ auth ドメインの
+     * {@code UserRepository} を新規注入すると、{@code CrossDomainRepositoryDependencyArchTest}(D-5)
+     * / {@code CrossDomainTransactionalArchTest}(D-3) の新規違反になる。本リポジトリは既に
+     * 列挙系クエリで {@code users} を参照しているため、ここへ置くのが最も安全である。</p>
+     */
+    default boolean isActiveUser(Long userId) {
+        return countActiveUserById(userId) > 0;
+    }
+
+    @Query(value = "SELECT COUNT(*) FROM users u "
+            + "WHERE u.id = :userId AND u.deleted_at IS NULL AND u.status = 'ACTIVE'",
+            nativeQuery = true)
+    long countActiveUserById(@Param("userId") Long userId);
+
+    /**
      * ユーザーが組織に所属するか（CMP-027: user_roles 権限ロール ∪ memberships 素所属）。
      * {@link #existsByUserIdAndTeamId} の ORGANIZATION 版。
      */

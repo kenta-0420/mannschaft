@@ -570,6 +570,9 @@ class RoleServiceTest {
                     .willReturn(true);
             given(userRoleRepository.findByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
                     .willReturn(Optional.of(targetUserRole));
+            // CMP-050 AC-14【陽性対照】: 譲渡先のアカウント生存確認。isActiveUser は default メソッドだが
+            // Mockito は default 実装を呼ばないため、明示的に stub する必要がある。
+            given(userRoleRepository.isActiveUser(TARGET_USER_ID)).willReturn(true);
             given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
             given(roleRepository.findByName("MEMBER")).willReturn(Optional.of(createMemberRole()));
 
@@ -616,6 +619,41 @@ class RoleServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_001"));
+        }
+
+        /**
+         * CMP-050 AC-13: 譲渡先が在籍はしているが FROZEN のとき ROLE_001 で拒否し、
+         * {@code save} を一度も呼ばないこと。
+         *
+         * <p>在籍プリミティブが ACTIVE を問わないままだと、凍結ユーザーがスコープ唯一の
+         * ADMIN へ昇格し、以後そのスコープは誰も操作できなくなる。ErrorCode を分けると
+         * 他人のアカウント状態が漏れるため、本メソッドの他の拒否と同じ ROLE_001 へ畳む。</p>
+         *
+         * <p>{@code isActiveUser} は default メソッドであり Mockito は default 実装を呼ばない。
+         * 実際の SQL 判定ではなく stub の戻り値で分岐を締める。</p>
+         */
+        @Test
+        @DisplayName("CMP-050 AC-13: 譲渡先が非ACTIVE_ROLE_001例外でsaveを呼ばない")
+        void cmp050_AC13_譲渡先が非ACTIVE_ROLE_001例外() {
+            UserRoleEntity currentUserRole = UserRoleEntity.builder()
+                    .id(1L).userId(USER_ID).roleId(ADMIN_ROLE_ID).organizationId(SCOPE_ID).build();
+
+            given(userRoleRepository.findByUserIdAndOrganizationId(USER_ID, SCOPE_ID))
+                    .willReturn(Optional.of(currentUserRole));
+            given(roleRepository.findById(ADMIN_ROLE_ID)).willReturn(Optional.of(createAdminRole()));
+            // 在籍はしている（凍結ユーザーの在籍行自体は残る運用）
+            given(userRoleRepository.existsByUserIdAndOrganizationId(TARGET_USER_ID, SCOPE_ID))
+                    .willReturn(true);
+            given(userRoleRepository.isActiveUser(TARGET_USER_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> roleService.transferOwnership(SCOPE_ID, "ORGANIZATION", USER_ID, TARGET_USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .as("他人のアカウント状態を漏らさないため他の拒否と同じ ROLE_001 へ畳むこと")
+                            .isEqualTo("ROLE_001"));
+
+            verify(userRoleRepository, org.mockito.Mockito.never())
+                    .save(org.mockito.ArgumentMatchers.any(UserRoleEntity.class));
         }
     }
 
