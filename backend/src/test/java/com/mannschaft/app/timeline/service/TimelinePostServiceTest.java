@@ -116,8 +116,28 @@ class TimelinePostServiceTest {
     @Mock
     private TimelinePostAccessGuard postAccessGuard;
 
+    @Mock
+    private TimelineDeliveryScopeResolver deliveryScopeResolver;
+
+    @Mock
+    private com.mannschaft.app.timeline.repository.UserMuteRepository muteRepository;
+
     @InjectMocks
     private TimelinePostService timelinePostService;
+
+    /**
+     * 配下配信の到達範囲は既定で「空」（＝配信で届く上位組織なし）とする。
+     *
+     * <p>本単体テストの関心は所属スコープの絞り込みと enrich であり、祖先展開そのものは
+     * {@code OrganizationHierarchyServiceTest}（単体）と実 DB IT が担当する。ここで
+     * 実物を通すと組織階層のスタブが全テストに波及するため、空の Reach で固定する。</p>
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubDeliveryScopeResolverAsEmpty() {
+        org.mockito.Mockito.lenient().when(deliveryScopeResolver.resolve(
+                        org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList()))
+                .thenReturn(new TimelineDeliveryScopeResolver.Reach(List.of(), List.of()));
+    }
 
     private static final Long POST_ID = 1L;
     private static final Long USER_ID = 100L;
@@ -1211,7 +1231,7 @@ class TimelinePostServiceTest {
         private void givenFeed(List<PostResponse> rawPosts) {
             given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of(TEAM_ID));
             given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of(ORG_ID));
-            given(postRepository.findMyFeed(anyList(), anyList(), any(), any(PageRequest.class)))
+            given(postRepository.findMyFeed(anyList(), anyList(), anyList(), anyList(), anyList(), anyList(), any(), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(rawPosts);
         }
@@ -1383,7 +1403,7 @@ class TimelinePostServiceTest {
             // then
             assertThat(result).isEmpty();
             verify(postRepository, org.mockito.Mockito.never())
-                    .findMyFeed(anyList(), anyList(), any(), any(PageRequest.class));
+                    .findMyFeed(anyList(), anyList(), anyList(), anyList(), anyList(), anyList(), any(), any(PageRequest.class));
             then(nameResolverService).shouldHaveNoInteractions();
         }
     }
@@ -1433,7 +1453,7 @@ class TimelinePostServiceTest {
             given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of(teamId));
             given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of(orgId));
             given(postRepository.searchByKeyword(
-                    eq("テスト"), eq(List.of(teamId)), eq(List.of(orgId)), eq(USER_ID), eq(10)))
+                    eq("テスト"), eq(List.of(teamId)), eq(List.of(orgId)), anyList(), anyList(), eq(USER_ID), eq(10)))
                     .willReturn(posts);
             given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
 
@@ -1451,7 +1471,7 @@ class TimelinePostServiceTest {
             given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of());
             given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
             given(postRepository.searchByKeyword(
-                    eq("テスト"), eq(List.of(-1L)), eq(List.of(-1L)), eq(USER_ID), eq(20)))
+                    eq("テスト"), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), anyList(), eq(USER_ID), eq(20)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
@@ -1459,7 +1479,7 @@ class TimelinePostServiceTest {
             timelinePostService.searchPosts("テスト", 0, USER_ID);
 
             // then
-            verify(postRepository).searchByKeyword("テスト", List.of(-1L), List.of(-1L), USER_ID, 20);
+            verify(postRepository).searchByKeyword(eq("テスト"), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), anyList(), eq(USER_ID), eq(20));
         }
 
         @Test
@@ -1468,7 +1488,7 @@ class TimelinePostServiceTest {
             // given: 所属チーム/組織ゼロのユーザー
             given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of());
             given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
-            given(postRepository.searchByKeyword(any(), anyList(), anyList(), any(), anyInt()))
+            given(postRepository.searchByKeyword(any(), anyList(), anyList(), anyList(), anyList(), any(), anyInt()))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
@@ -1476,7 +1496,7 @@ class TimelinePostServiceTest {
             org.assertj.core.api.Assertions.assertThatCode(
                     () -> timelinePostService.searchPosts("テスト", 10, USER_ID))
                     .doesNotThrowAnyException();
-            verify(postRepository).searchByKeyword("テスト", List.of(-1L), List.of(-1L), USER_ID, 10);
+            verify(postRepository).searchByKeyword(eq("テスト"), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), anyList(), eq(USER_ID), eq(10));
         }
     }
 
@@ -1701,7 +1721,7 @@ class TimelinePostServiceTest {
             givenCallerHasNoMemberships(USER_ID);
 
             given(postRepository.findByUserIdVisibleToCaller(
-                    eq(USER_ID), eq(USER_ID), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), any(PageRequest.class)))
+                    eq(USER_ID), eq(USER_ID), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), anyList(), anyList(), any(PageRequest.class)))
                     .willReturn(posts);
             given(timelineMapper.toPostResponseList(posts)).willReturn(expected);
 
@@ -1718,7 +1738,7 @@ class TimelinePostServiceTest {
             // given
             givenCallerHasNoMemberships(USER_ID);
             given(postRepository.findByUserIdVisibleToCaller(
-                    eq(USER_ID), eq(USER_ID), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), any(PageRequest.class)))
+                    eq(USER_ID), eq(USER_ID), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), anyList(), anyList(), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
@@ -1727,7 +1747,7 @@ class TimelinePostServiceTest {
 
             // then
             verify(postRepository).findByUserIdVisibleToCaller(
-                    eq(USER_ID), eq(USER_ID), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), eq(PageRequest.of(0, 20)));
+                    eq(USER_ID), eq(USER_ID), eq(List.of(-1L)), eq(List.of(-1L)), anyList(), anyList(), anyList(), eq(PageRequest.of(0, 20)));
         }
 
         @Test
@@ -1739,7 +1759,7 @@ class TimelinePostServiceTest {
             given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of());
             given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of());
             given(postRepository.findByUserIdVisibleToCaller(
-                    eq(OTHER_USER_ID), eq(USER_ID), eq(List.of(teamId)), eq(List.of(-1L)), anyList(), any(PageRequest.class)))
+                    eq(OTHER_USER_ID), eq(USER_ID), eq(List.of(teamId)), eq(List.of(-1L)), anyList(), anyList(), anyList(), any(PageRequest.class)))
                     .willReturn(List.of());
             given(timelineMapper.toPostResponseList(any())).willReturn(List.of());
 
@@ -1748,7 +1768,7 @@ class TimelinePostServiceTest {
 
             // then: 呼び出し元の所属 teamId でリポジトリに絞り込みが渡ること（PERSONAL・非所属scopeはリポジトリ側で除外）
             verify(postRepository).findByUserIdVisibleToCaller(
-                    eq(OTHER_USER_ID), eq(USER_ID), eq(List.of(teamId)), eq(List.of(-1L)), anyList(), any(PageRequest.class));
+                    eq(OTHER_USER_ID), eq(USER_ID), eq(List.of(teamId)), eq(List.of(-1L)), anyList(), anyList(), anyList(), any(PageRequest.class));
         }
     }
 
