@@ -51,6 +51,13 @@ public class CreateScheduleRequest {
 
     private final String minResponseRole;
 
+    /** null は後方互換のため ALL_MEMBERS として扱う。 */
+    private final String targetMode;
+
+    /** SELECTED_MEMBERS 時だけ指定する、スコープ内の対象ユーザーID。 */
+    @Size(max = 500)
+    private final List<Long> targetUserIds;
+
     @NotNull
     private final Boolean attendanceRequired;
 

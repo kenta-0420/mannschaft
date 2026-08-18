@@ -7,6 +7,7 @@ import com.mannschaft.app.schedule.EventType;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleStatus;
+import com.mannschaft.app.schedule.ScheduleTargetMode;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -38,6 +39,12 @@ public class ScheduleEntity extends BaseEntity {
     private Long organizationId;
 
     private Long userId;
+
+    /** 対象者未指定の既存予定は全員予定として扱う。 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_mode", nullable = false, length = 20)
+    @Builder.Default
+    private ScheduleTargetMode targetMode = ScheduleTargetMode.ALL_MEMBERS;
 
     @Column(nullable = false, length = 200)
     private String title;
@@ -218,6 +225,10 @@ public class ScheduleEntity extends BaseEntity {
         this.startAt = startAt;
         this.endAt = endAt;
         this.color = color;
+    }
+
+    public void updateTargetMode(ScheduleTargetMode targetMode) {
+        this.targetMode = targetMode;
     }
 
     /**

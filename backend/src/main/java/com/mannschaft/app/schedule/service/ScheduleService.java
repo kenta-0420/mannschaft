@@ -79,6 +79,7 @@ public class ScheduleService {
     private final ScheduleRecurrenceService recurrenceService;
     private final ScheduleScheduledTaskService scheduledTaskService;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
+    private final ScheduleTargetService scheduleTargetService;
     /**
      * 認可根治 Wave3-B6: schedule 書込（update/delete/cancel/create）・出欠閲覧の per-scope 認可に使用する。
      */
@@ -207,6 +208,8 @@ public class ScheduleService {
         ScheduleEntity schedule = buildScheduleEntity(req, scopeId, scopeType, userId,
                 startAtJst, endAtJst, deadlineJst);
         schedule = scheduleRepository.save(schedule);
+        scheduleTargetService.replaceForCreate(
+                schedule, scopeType, scopeId, req.getTargetMode(), req.getTargetUserIds());
 
         // 繰り返しルールがある場合は子スケジュールを展開
         if (req.getRecurrenceRule() != null) {
@@ -266,6 +269,9 @@ public class ScheduleService {
         }
 
         schedule = scheduleRepository.save(schedule);
+        scheduleTargetService.replaceForUpdate(
+                schedule, resolveScopeType(schedule), resolveScopeId(schedule),
+                req.getTargetMode(), req.getTargetUserIds());
 
         // 機能55 BE対応: リマインダー更新（null = 変更なし、空リスト = 全削除、非空 = 差し替え）
         if (req.getReminders() != null) {
@@ -761,6 +767,12 @@ public class ScheduleService {
         if (schedule.isTeamScope()) return SCOPE_TYPE_TEAM;
         if (schedule.isOrganizationScope()) return SCOPE_TYPE_ORGANIZATION;
         return SCOPE_TYPE_PERSONAL;
+    }
+
+    private Long resolveScopeId(ScheduleEntity schedule) {
+        if (schedule.isTeamScope()) return schedule.getTeamId();
+        if (schedule.isOrganizationScope()) return schedule.getOrganizationId();
+        return schedule.getUserId();
     }
 
     /**

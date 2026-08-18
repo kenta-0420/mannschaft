@@ -47,6 +47,13 @@ public class UpdateScheduleRequest {
 
     private final String minResponseRole;
 
+    /** null なら対象モードを更新しない。 */
+    private final String targetMode;
+
+    /** null なら対象者を更新しない。SELECTED_MEMBERS 時は1〜500件。 */
+    @Size(max = 500)
+    private final List<Long> targetUserIds;
+
     private final Boolean attendanceRequired;
 
     /**
