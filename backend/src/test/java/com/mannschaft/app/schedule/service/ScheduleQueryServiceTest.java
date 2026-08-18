@@ -15,7 +15,6 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleEventCategoryRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -54,7 +53,6 @@ class ScheduleQueryServiceTest {
 
     @Mock private ScheduleRepository scheduleRepository;
     @Mock private NameResolverService nameResolverService;
-    @Mock private UserRoleRepository userRoleRepository;
     @Mock private MembershipService membershipService;
     @Mock private ScheduleEventCategoryRepository categoryRepository;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
@@ -141,10 +139,10 @@ class ScheduleQueryServiceTest {
         void includes_membership_only_team_and_organization() {
             ScheduleEntity team = schedule(30L, TEAM_ID, null, null);
             ScheduleEntity org = schedule(40L, null, ORG_ID, null);
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
-            given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of(TEAM_ID));
-            given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of(ORG_ID));
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(TEAM_ID));
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(ORG_ID));
             given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
                     .willReturn(List.of(team));
             given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
