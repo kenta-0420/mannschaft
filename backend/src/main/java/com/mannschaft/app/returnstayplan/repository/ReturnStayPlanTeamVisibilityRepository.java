@@ -15,7 +15,19 @@ public interface ReturnStayPlanTeamVisibilityRepository
     List<ReturnStayPlanTeamVisibilityEntity> findByPlanId(UUID planId);
 
     List<ReturnStayPlanTeamVisibilityEntity> findByTeamId(Long teamId);
-    void deleteByPlanId(UUID planId);
+    @Modifying
+    @Query("delete from ReturnStayPlanTeamVisibilityEntity v where v.plan.id = :planId")
+    int deleteByPlanId(@Param("planId") UUID planId);
+
+    @Modifying
+    @Query("delete from ReturnStayPlanTeamVisibilityEntity v where v.plan.id in :planIds")
+    int deleteByPlanIds(@Param("planIds") List<UUID> planIds);
+
+    @Modifying
+    @Query("delete from ReturnStayPlanTeamVisibilityEntity v "
+            + "where v.plan.id in (select p.id from ReturnStayPlanEntity p "
+            + "where p.ownerUserId = :ownerUserId)")
+    int deleteByOwnerUserId(@Param("ownerUserId") Long ownerUserId);
 
     @Modifying
     @Query(value = """

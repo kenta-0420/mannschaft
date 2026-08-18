@@ -129,7 +129,9 @@ public class ReturnStayPlanService {
 
     @Transactional
     public void delete(Long ownerUserId, UUID planId) {
-        plans.delete(accessGuard.findByIdAndOwnerUserId(planId, ownerUserId));
+        ReturnStayPlanEntity plan = accessGuard.findByIdAndOwnerUserId(planId, ownerUserId);
+        visibilities.deleteByPlanId(plan.getId());
+        plans.delete(plan);
     }
 
     @Transactional(readOnly = true)
@@ -175,21 +177,22 @@ public class ReturnStayPlanService {
 
     @Transactional
     public int purgeExpiredPlans() {
-        int deleted = 0;
         LocalDate candidateCutoff = today(JST).minusYears(1);
-        for (ReturnStayPlanEntity plan
-                : plans.findTop500ByEndDateBeforeOrderByEndDateAscIdAsc(candidateCutoff)) {
-            if (plan.getEndDate().isBefore(today(plan.getTimezone()).minusYears(1))) {
-                plans.delete(plan);
-                deleted++;
-            }
-        }
-        return deleted;
+        List<ReturnStayPlanEntity> candidates = plans
+                .findTop500ByEndDateBeforeOrderByEndDateAscIdAsc(candidateCutoff)
+                .stream()
+                .filter(plan -> plan.getEndDate().isBefore(today(plan.getTimezone()).minusYears(1)))
+                .toList();
+        if (candidates.isEmpty()) return 0;
+        visibilities.deleteByPlanIds(candidates.stream().map(ReturnStayPlanEntity::getId).toList());
+        plans.deleteAll(candidates);
+        return candidates.size();
     }
 
     @Transactional
     public int deleteAllForOwner(Long ownerUserId) {
         int count = Math.toIntExact(plans.countByOwnerUserId(ownerUserId));
+        visibilities.deleteByOwnerUserId(ownerUserId);
         plans.deleteByOwnerUserId(ownerUserId);
         return count;
     }

@@ -13,6 +13,8 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -66,8 +68,23 @@ class ReturnStayPlanServiceTest extends AbstractMySqlIntegrationTest {
         assertThat(created.id().version()).isEqualTo(7);
         assertThat(created.timezone()).isEqualTo("Asia/Tokyo");
         assertThat(jdbc.queryForObject(
-                "SELECT COUNT(*) FROM return_stay_plan_team_visibilities WHERE plan_id = ?",
-                Long.class, created.id())).isEqualTo(1L);
+                "SELECT COUNT(*) FROM return_stay_plan_team_visibilities WHERE plan_id = UUID_TO_BIN(?)",
+                Long.class, created.id().toString())).isEqualTo(1L);
+        Map<String, Object> visibility = jdbc.queryForMap(
+                "SELECT HEX(id) AS visibility_id, HEX(plan_id) AS plan_id "
+                        + "FROM return_stay_plan_team_visibilities WHERE plan_id = UUID_TO_BIN(?)",
+                created.id().toString());
+        assertThat(uuidFromHex((String) visibility.get("visibility_id")).version()).isEqualTo(7);
+        assertThat(uuidFromHex((String) visibility.get("plan_id"))).isEqualTo(created.id());
+    }
+
+    private static UUID uuidFromHex(String hex) {
+        String normalized = hex.toLowerCase();
+        return UUID.fromString(normalized.substring(0, 8) + "-"
+                + normalized.substring(8, 12) + "-"
+                + normalized.substring(12, 16) + "-"
+                + normalized.substring(16, 20) + "-"
+                + normalized.substring(20));
     }
 
     @Test

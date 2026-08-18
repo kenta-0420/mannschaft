@@ -5,10 +5,14 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.UuidV7;
+import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.returnstayplan.dto.ReturnStayPlanCreateRequest;
 import com.mannschaft.app.returnstayplan.entity.ReturnStayPlanEntity;
 import com.mannschaft.app.returnstayplan.repository.ReturnStayPlanRepository;
+import com.mannschaft.app.returnstayplan.repository.ReturnStayPlanTeamVisibilityRepository;
 import com.mannschaft.app.returnstayplan.service.ReturnStayPlanService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManagerFactory;
@@ -28,9 +32,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /** MySQL authorization, persistence, race, paging and query-count contracts. */
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
@@ -49,6 +56,15 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ReturnStayPlanRepository plans;
+
+    @Autowired
+    private ReturnStayPlanTeamVisibilityRepository visibilities;
+
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Autowired
     private JdbcTemplate jdbc;
@@ -98,6 +114,92 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
         var result = service.listVisiblePlansForMembers(VIEWER_ID, TEAM_SLUG, List.of(OWNER_ID));
         assertThat(result.get(OWNER_ID)).hasSize(1);
         assertThat(result.get(OWNER_ID).getFirst().ownerDisplayName()).isEqualTo("Owner");
+    }
+
+    @Test
+    @DisplayName("AC-14 ACTIVE予定は開始日変更を拒否し、終了日延長は許可する")
+    void ac14_activeUpdateConstraints() {
+        var created = service.create(OWNER_ID, request(false, TEAM_ID));
+
+        assertThatThrownBy(() -> service.update(OWNER_ID, created.id(), created.version(),
+                new ReturnStayPlanCreateRequest("STAYING", false,
+                        new ReturnStayPlanCreateRequest.Location("JP", "13", null),
+                        TODAY, TODAY.plusDays(3), List.of(TEAM_ID))))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
+                        .isEqualTo(ReturnStayPlanErrorCode.INVALID_REQUEST));
+
+        assertThatThrownBy(() -> service.update(OWNER_ID, created.id(), created.version(),
+                new ReturnStayPlanCreateRequest("HOMECOMING", false,
+                        new ReturnStayPlanCreateRequest.Location("JP", "13", null),
+                        TODAY.plusDays(1), TODAY.plusDays(3), List.of(TEAM_ID))))
+                .isInstanceOf(BusinessException.class);
+
+        var extended = service.update(OWNER_ID, created.id(), created.version(),
+                new ReturnStayPlanCreateRequest("HOMECOMING", false,
+                        new ReturnStayPlanCreateRequest.Location("JP", "13", null),
+                        TODAY, TODAY.plusDays(5), List.of(TEAM_ID)));
+        assertThat(extended.endDate()).isEqualTo(TODAY.plusDays(5));
+    }
+
+    @Test
+    @DisplayName("AC-15 timezone境界でUPCOMINGを解決する")
+    void ac15_statusUsesPlanTimezoneAtBoundary() {
+        var created = service.create(OWNER_ID, request(true, TEAM_ID));
+        jdbc.update("UPDATE return_stay_plans SET timezone = 'America/Los_Angeles', end_date = ? "
+                + "WHERE id = UUID_TO_BIN(?)", TODAY, created.id().toString());
+
+        var result = service.listVisiblePlansForMembers(VIEWER_ID, TEAM_SLUG, List.of(OWNER_ID));
+        assertThat(result.get(OWNER_ID)).singleElement()
+                .extracting(ReturnStayPlanService.TeamPlanView::status)
+                .isEqualTo("UPCOMING");
+    }
+
+    @Test
+    @DisplayName("AC-16 owner削除は成功し、他者による削除は404になる")
+    void ac16_ownerDeleteAndOtherOwnerNotFound() {
+        var created = service.create(OWNER_ID, request(false, TEAM_ID));
+        assertThatThrownBy(() -> service.delete(VIEWER_ID, created.id()))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(exception -> assertThat(((BusinessException) exception).getErrorCode())
+                        .isEqualTo(ReturnStayPlanErrorCode.NOT_FOUND));
+        service.delete(OWNER_ID, created.id());
+        assertThat(plans.findById(created.id())).isEmpty();
+    }
+
+    @Test
+    @DisplayName("AC-26 退会イベントの二重処理は予定と公開先を冪等削除する")
+    void ac26_lifecycleListenersAreIdempotent() {
+        service.create(OWNER_ID, request(false, TEAM_ID));
+        publishAfterCommit(
+                new UserAnonymizedEvent(OWNER_ID, "owner@example.test"),
+                new UserAnonymizedEvent(OWNER_ID, "owner@example.test"));
+        awaitPlansDeleted(OWNER_ID);
+
+        service.create(OWNER_ID, request(false, TEAM_ID));
+        publishAfterCommit(
+                new AccountPurgedEvent(OWNER_ID, "hash"),
+                new AccountPurgedEvent(OWNER_ID, "hash"));
+        awaitPlansDeleted(OWNER_ID);
+    }
+
+    private void publishAfterCommit(Object... events) {
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            for (Object event : events) {
+                eventPublisher.publishEvent(event);
+            }
+        });
+    }
+
+    private void awaitPlansDeleted(long ownerId) {
+        org.awaitility.Awaitility.await()
+                .atMost(java.time.Duration.ofSeconds(10))
+                .untilAsserted(() -> {
+                    assertThat(plans.countByOwnerUserId(ownerId)).isZero();
+                    assertThat(jdbc.queryForObject(
+                            "SELECT COUNT(*) FROM return_stay_plan_team_visibilities",
+                            Long.class)).isZero();
+                });
     }
 
     @Test
@@ -176,6 +278,25 @@ class ReturnStayPlanPersistenceIT extends AbstractMySqlIntegrationTest {
                 .toList());
         assertThat(service.purgeExpiredPlans()).isEqualTo(500);
         assertThat(plans.countByOwnerUserId(ownerId)).isEqualTo(1L);
+    }
+
+    @Test
+    @DisplayName("AC-27 timezone基準のちょうど1年前は残し、1日前だけpurgeする")
+    void ac27_purgeRespectsExactlyOneYearInPlanTimezone() {
+        var planFixtures = IntStream.range(0, 2)
+                .mapToObj(index -> oldPlan(923028L, TODAY.minusYears(1).minusDays(index + 1L)))
+                .toList();
+        var savedPlans = plans.saveAllAndFlush(planFixtures);
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                visibilities.insertVisibility(
+                        UuidV7.generate(), savedPlans.get(1).getId(), TEAM_ID));
+        jdbc.update("UPDATE return_stay_plans SET timezone = 'America/Los_Angeles' "
+                + "WHERE owner_user_id = ?", 923028L);
+
+        assertThat(service.purgeExpiredPlans()).isEqualTo(1);
+        assertThat(plans.countByOwnerUserId(923028L)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject(
+                "SELECT COUNT(*) FROM return_stay_plan_team_visibilities", Long.class)).isZero();
     }
 
     private void createAfterGate(CountDownLatch gate, long ownerId) {
