@@ -106,9 +106,9 @@ class ScheduleQueryServiceTest {
 
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of(TEAM_ID));
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
                     .willReturn(List.of(ORG_ID));
             given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
                     .willReturn(List.of(teamVisible, teamHidden));
@@ -167,8 +167,10 @@ class ScheduleQueryServiceTest {
             ScheduleEntity personal = schedule(1L, null, null, USER_ID);
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of());
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of());
 
             // When
             List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
@@ -186,9 +188,6 @@ class ScheduleQueryServiceTest {
             ScheduleEntity personal = schedule(1L, null, null, USER_ID);
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(USER_ID, FROM, TO))
                     .willReturn(List.of(personal));
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
-
             // When
             List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
 
