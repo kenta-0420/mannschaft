@@ -5,6 +5,7 @@ import com.mannschaft.app.membership.dto.MemberDto;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.membership.repository.ScopeMemberCalendarSettingRepository;
 import com.mannschaft.app.schedule.ScheduleTargetMode;
+import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleTargetRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,12 +57,39 @@ class ScheduleTargetServiceTest {
     }
 
     @Test
-    void selectedMembers_accepts_one_and_500_active_members_in_a_single_membership_query() {
+    void selectedMembers_accepts_one_active_member_in_a_single_membership_query() {
         when(memberQueryDispatcher.queryMembers(10L, ScopeType.TEAM, null))
                 .thenReturn(List.of(member(7L)));
         service.replaceForCreate(schedule, "TEAM", 10L, "SELECTED_MEMBERS", List.of(7L));
         verify(targetRepository).saveAll(any());
         verify(memberQueryDispatcher).queryMembers(10L, ScopeType.TEAM, null);
+    }
+
+    @Test
+    void selectedMembers_accepts_exactly_500_active_members() {
+        List<Long> userIds = java.util.stream.LongStream.rangeClosed(1, 500).boxed().toList();
+        when(memberQueryDispatcher.queryMembers(10L, ScopeType.TEAM, null))
+                .thenReturn(userIds.stream().map(this::member).toList());
+
+        service.replaceForCreate(schedule, "TEAM", 10L, "SELECTED_MEMBERS", userIds);
+
+        verify(targetRepository).saveAll(any());
+        verify(memberQueryDispatcher).queryMembers(10L, ScopeType.TEAM, null);
+    }
+
+    @Test
+    void selectedMembers_rejects_member_below_schedule_view_role() {
+        schedule = ScheduleEntity.builder()
+                .teamId(10L)
+                .targetMode(ScheduleTargetMode.ALL_MEMBERS)
+                .minViewRole(MinViewRole.ADMIN_ONLY)
+                .build();
+        when(memberQueryDispatcher.queryMembers(10L, ScopeType.TEAM, null))
+                .thenReturn(List.of(member(7L)));
+
+        assertThatIllegalArgumentException().isThrownBy(() ->
+                service.replaceForCreate(schedule, "TEAM", 10L, "SELECTED_MEMBERS", List.of(7L)));
+        verify(targetRepository, never()).saveAll(any());
     }
 
     @Test

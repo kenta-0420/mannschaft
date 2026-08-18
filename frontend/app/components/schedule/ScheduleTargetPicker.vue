@@ -42,12 +42,11 @@ async function loadMembers() {
   }
 }
 
-watch(mode, (value) => {
-  if (value === 'ALL_MEMBERS') emit('update:targetUserIds', [])
-})
-
-watch(selectedIds, (ids) => {
-  const message = mode.value === 'SELECTED_MEMBERS' && (ids.length < 1 || ids.length > 500)
+watch([mode, selectedIds], ([currentMode, ids]) => {
+  if (currentMode === 'ALL_MEMBERS' && ids.length > 0) {
+    emit('update:targetUserIds', [])
+  }
+  const message = currentMode === 'SELECTED_MEMBERS' && (ids.length < 1 || ids.length > 500)
     ? t('schedule.targetAudience.invalidSelection')
     : null
   emit('invalid', message)

@@ -1,4 +1,8 @@
+// @vitest-environment happy-dom
+// 検査対象は副作用のない表示判定関数だけで、Nuxt app context は使用しない。
+// 共通 setup が document を参照するため、同種の純関数 spec と同じ happy-dom を用いる。
 import type { MyCalendarTodo } from '~/types/todo'
+import { describe, expect, it } from 'vitest'
 import {
   shouldDisplayMyCalendarTodo,
   shouldDisplayScheduleForCurrentUser,
@@ -14,7 +18,10 @@ const baseTodo: MyCalendarTodo = {
   status: 'OPEN',
   priority: 'MEDIUM',
   linkedScheduleId: null,
-  scope: { scopeType: 'TEAM', scopeId: 'family', scopeName: '家族', scopeIconUrl: null },
+  scopeType: 'TEAM',
+  scopeId: 1,
+  scopeSlug: 'family',
+  scopeName: '家族',
 }
 
 describe('useMyCalendarData の自己担当TODO契約', () => {
@@ -22,7 +29,7 @@ describe('useMyCalendarData の自己担当TODO契約', () => {
     expect(shouldDisplayMyCalendarTodo(baseTodo, new Set())).toBe(true)
     expect(shouldDisplayMyCalendarTodo({
       ...baseTodo,
-      scope: { ...baseTodo.scope, scopeType: 'ORGANIZATION' },
+      scopeType: 'ORGANIZATION',
     }, new Set())).toBe(true)
   })
 

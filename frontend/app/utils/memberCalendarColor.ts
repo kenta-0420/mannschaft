@@ -5,4 +5,4 @@
 export const MEMBER_CALENDAR_COLORS = [
   '#2563EB', '#7C3AED', '#DB2777', '#DC2626', '#EA580C', '#CA8A04',
   '#16A34A', '#0D9488', '#0891B2', '#4F46E5', '#64748B', '#9333EA',
-] as const
+]

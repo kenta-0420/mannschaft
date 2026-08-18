@@ -8,6 +8,7 @@ import com.mannschaft.app.schedule.dto.ScheduleTargetResponse;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.ScheduleTargetEntity;
 import com.mannschaft.app.schedule.repository.ScheduleTargetRepository;
+import com.mannschaft.app.schedule.visibility.MinViewRoleThreshold;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,12 +80,18 @@ public class ScheduleTargetService {
             throw new IllegalArgumentException("対象者は重複なしで1〜500名を指定してください");
         }
         ScopeType scopeType = parseScopeType(scopeTypeText);
-        Set<Long> activeUserIds = memberQueryDispatcher.queryMembers(scopeId, scopeType, null).stream()
-                .map(com.mannschaft.app.membership.dto.MemberDto::userId)
-                .collect(java.util.stream.Collectors.toSet());
-        if (!activeUserIds.containsAll(uniqueIds)) {
+        Map<Long, MemberDto> activeMembers = memberQueryDispatcher.queryMembers(scopeId, scopeType, null).stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        MemberDto::userId, Function.identity(), (first, ignored) -> first));
+        if (!activeMembers.keySet().containsAll(uniqueIds)) {
             // 所属外・退会済みのどちらかを詳細化せず、スコープの名簿を漏らさない。
             throw new IllegalArgumentException("対象者は有効なスコープメンバーである必要があります");
+        }
+        if (schedule.getMinViewRole() != null && uniqueIds.stream()
+                .map(activeMembers::get)
+                .anyMatch(member -> !MinViewRoleThreshold.satisfies(
+                        member.roleName(), schedule.getMinViewRole()))) {
+            throw new IllegalArgumentException("対象者は予定の閲覧ロールを満たす必要があります");
         }
 
         targetRepository.deleteByScheduleId(schedule.getId());

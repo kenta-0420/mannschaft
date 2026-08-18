@@ -84,23 +84,6 @@ public class ScheduleAttendanceService {
     private final NotificationDispatchService notificationDispatchService;
     private final ScheduleTargetRepository scheduleTargetRepository;
 
-    /** 既存の単体試験用。Spring注入時は対象者Repositoryを含むコンストラクタを使う。 */
-    ScheduleAttendanceService(ScheduleAttendanceRepository attendanceRepository,
-                              ScheduleRepository scheduleRepository, ScheduleService scheduleService,
-                              EventSurveyService eventSurveyService, UserRoleRepository userRoleRepository,
-                              ApplicationEventPublisher eventPublisher, ProxyInputContext proxyInputContext,
-                              ProxyInputRecordRepository proxyInputRecordRepository,
-                              ScheduleDelegationService scheduleDelegationService,
-                              NotificationService notificationService,
-                              NotificationDispatchService notificationDispatchService,
-                              OrganizationMembershipService organizationMembershipService,
-                              AccessControlService accessControlService) {
-        this(attendanceRepository, scheduleRepository, scheduleService, eventSurveyService, userRoleRepository,
-                eventPublisher, proxyInputContext, proxyInputRecordRepository, scheduleDelegationService,
-                notificationService, notificationDispatchService, null, organizationMembershipService,
-                accessControlService);
-    }
-
     /**
      * (B) 組織→参加チーム配信 案C フェーズA: 組織スコープ配信の宛先解決窓口。
      * {@code team_org_memberships} / {@code memberships} を直接参照せず、本窓口経由で
@@ -625,7 +608,7 @@ public class ScheduleAttendanceService {
                     .distinct()
                     .toList();
         }
-        if (schedule.getTargetMode() == ScheduleTargetMode.SELECTED_MEMBERS && scheduleTargetRepository != null) {
+        if (schedule.getTargetMode() == ScheduleTargetMode.SELECTED_MEMBERS) {
             var targetIds = scheduleTargetRepository.findByScheduleIdOrderByUserIdAsc(schedule.getId()).stream()
                     .map(com.mannschaft.app.schedule.entity.ScheduleTargetEntity::getUserId)
                     .collect(java.util.stream.Collectors.toSet());

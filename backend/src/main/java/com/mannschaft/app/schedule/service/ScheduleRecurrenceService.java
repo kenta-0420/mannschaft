@@ -43,11 +43,6 @@ public class ScheduleRecurrenceService {
     private final ScheduleTargetService scheduleTargetService;
     private final ObjectMapper objectMapper;
 
-    /** 既存の単体試験用。Spring注入時は3引数コンストラクタが使われる。 */
-    ScheduleRecurrenceService(ScheduleRepository scheduleRepository, ObjectMapper objectMapper) {
-        this(scheduleRepository, null, objectMapper);
-    }
-
     /**
      * 繰り返しスケジュールを展開して子スケジュールを生成する。
      * DAILY: interval日ごと、WEEKLY: daysOfWeek に従って展開、
@@ -81,9 +76,7 @@ public class ScheduleRecurrenceService {
                     .build();
 
             ScheduleEntity savedChild = scheduleRepository.save(child);
-            if (scheduleTargetService != null) {
-                scheduleTargetService.copyTargets(parent.getId(), savedChild.getId());
-            }
+            scheduleTargetService.copyTargets(parent.getId(), savedChild.getId());
         }
 
         log.info("繰り返し展開: parentId={}, 生成数={}", parent.getId(), occurrences.size());

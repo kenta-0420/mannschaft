@@ -232,11 +232,11 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
         color: t.priority === 'HIGH' ? '#f97316'
           : t.priority === 'LOW' ? '#22c55e'
           : '#3b82f6',
-        isPersonal: t.scope.scopeType === 'PERSONAL',
-        scopeType: t.scope.scopeType,
-        scopeId: t.scope.scopeId ?? undefined,
-        scopeName: t.scope.scopeName,
-        scopeIconUrl: t.scope.scopeIconUrl,
+        isPersonal: t.scopeType === 'PERSONAL',
+        scopeType: t.scopeType,
+        scopeId: t.scopeId == null ? undefined : String(t.scopeId),
+        scopeName: t.scopeName,
+        scopeIconUrl: null,
         isTodo: true,
       }))
 

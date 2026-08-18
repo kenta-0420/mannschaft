@@ -21,7 +21,9 @@ public class ScheduleResponse {
     ScheduleAcademicDto academic;   // eventCategory, academicYear, sourceScheduleId
     ScheduleAuditDto   audit;       // createdAt, createdByDisplayName
     String             myAttendanceStatus;
-    ScheduleTargetResponse targets;
+    String             targetMode;
+    Integer            targetCount;
+    List<ScheduleTargetResponse.TargetMember> targets;
 
     /**
      * リマインダー一覧（機能55 第三陣）。詳細 GET のみ populate し、一覧 GET では null。

@@ -11,6 +11,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.repository.ScheduleTargetRepository;
 import com.mannschaft.app.schedule.service.EventSurveyService;
 import com.mannschaft.app.schedule.service.ScheduleAttendanceService;
 import com.mannschaft.app.schedule.service.ScheduleDelegationService;
@@ -67,6 +68,8 @@ class ScheduleAttendanceSolicitationServiceTest {
     @Mock
     private NotificationDispatchService notificationDispatchService;
     @Mock
+    private ScheduleTargetRepository scheduleTargetRepository;
+    @Mock
     private OrganizationMembershipService organizationMembershipService;
 
     private ScheduleAttendanceService service;
@@ -82,6 +85,7 @@ class ScheduleAttendanceSolicitationServiceTest {
                 userRoleRepository, eventPublisher, proxyInputContext, proxyInputRecordRepository,
                 scheduleDelegationService,
                 notificationService, notificationDispatchService,
+                scheduleTargetRepository,
                 organizationMembershipService,
                 accessControlService);
     }

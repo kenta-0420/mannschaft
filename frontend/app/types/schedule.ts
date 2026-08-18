@@ -11,15 +11,6 @@ export interface ScheduleTargetMember {
   avatarUrl: string | null
   calendarColor: string | null
 }
-export type ScheduleTargetMode = 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
-
-/** 予定の対象者。予定の背景色とは別に、誰の予定かを示すためだけに用いる。 */
-export interface ScheduleTargetMember {
-  userId: number
-  displayName: string
-  avatarUrl: string | null
-  calendarColor: string | null
-}
 
 export interface ScheduleResponse {
   id: number
@@ -38,9 +29,6 @@ export interface ScheduleResponse {
   categoryId: number | null
   categoryName: string | null
   categoryColor: string | null
-  targetMode?: ScheduleTargetMode
-  targetCount?: number
-  targets?: ScheduleTargetMember[]
   targetMode?: ScheduleTargetMode
   targetCount?: number
   targets?: ScheduleTargetMember[]
@@ -85,8 +73,6 @@ export interface CreateScheduleRequest {
   responseDeadline?: string
   targetMode?: ScheduleTargetMode
   targetUserIds?: number[]
-  targetMode?: ScheduleTargetMode
-  targetUserIds?: number[]
 }
 
 export interface UpdateScheduleRequest {
@@ -99,8 +85,6 @@ export interface UpdateScheduleRequest {
   categoryId?: number
   responseDeadline?: string
   editScope?: EditScope
-  targetMode?: ScheduleTargetMode
-  targetUserIds?: number[]
   targetMode?: ScheduleTargetMode
   targetUserIds?: number[]
 }

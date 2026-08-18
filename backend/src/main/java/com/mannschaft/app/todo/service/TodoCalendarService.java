@@ -1,6 +1,7 @@
 package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.CalendarTodoResponse;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -27,6 +29,7 @@ public class TodoCalendarService {
     private final TodoRepository todoRepository;
     private final TeamService teamService;
     private final OrganizationService organizationService;
+    private final UserRoleRepository userRoleRepository;
 
     /**
      * 本人が担当する未完了 TODO を全スコープから取得する。
@@ -36,7 +39,16 @@ public class TodoCalendarService {
      * カレンダー月表示での N+1 を防ぐ。</p>
      */
     public List<CalendarTodoResponse> getMyCalendarTodos(Long userId, LocalDate from, LocalDate to) {
-        List<TodoEntity> todos = todoRepository.findMyCalendarTodos(userId, from, to);
+        Set<Long> activeTeamIds = new HashSet<>(userRoleRepository.findTeamIdsByUserId(userId));
+        Set<Long> activeOrganizationIds = new HashSet<>(
+                userRoleRepository.findOrganizationIdsByUserId(userId));
+        List<TodoEntity> todos = todoRepository.findMyCalendarTodos(userId, from, to).stream()
+                .filter(todo -> switch (todo.getScopeType()) {
+                    case PERSONAL -> todo.getScopeId().equals(userId);
+                    case TEAM -> activeTeamIds.contains(todo.getScopeId());
+                    case ORGANIZATION -> activeOrganizationIds.contains(todo.getScopeId());
+                })
+                .toList();
 
         Set<Long> teamIds = scopeIds(todos, TodoScopeType.TEAM);
         Set<Long> organizationIds = scopeIds(todos, TodoScopeType.ORGANIZATION);

@@ -383,6 +383,7 @@ public class ScheduleService {
         ScheduleEntity source = findScheduleOrThrow(id);
 
         ScheduleEntity duplicate = source.toBuilder()
+                .id(null)
                 .status(ScheduleStatus.SCHEDULED)
                 .createdBy(userId)
                 .googleCalendarEventId(null)
@@ -407,6 +408,7 @@ public class ScheduleService {
             throw new IllegalArgumentException("招待先スコープが不正です");
         }
         ScheduleEntity duplicate = source.toBuilder()
+                .id(null)
                 .teamId(team ? targetScopeId : null)
                 .organizationId(organization ? targetScopeId : null)
                 .userId(null)
@@ -852,7 +854,9 @@ public class ScheduleService {
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), null))
                 .myAttendanceStatus(null)
-                .targets(targets)
+                .targetMode(targets.targetMode())
+                .targetCount(targets.targetCount())
+                .targets(targets.targets())
                 .build();
     }
 

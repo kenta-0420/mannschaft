@@ -24541,6 +24541,22 @@ export interface paths {
         patch: operations["update_49"];
         trace?: never;
     };
+    "/api/v1/teams/{teamPublicId}/members/{memberUserId}/calendar-color": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["reset_1"];
+        options?: never;
+        head?: never;
+        patch: operations["override"];
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/translations/{id}/status": {
         parameters: {
             query?: never;
@@ -27937,6 +27953,22 @@ export interface paths {
         head?: never;
         /** 組織キープ更新 */
         patch: operations["update_54"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/members/{memberUserId}/calendar-color": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["reset_2"];
+        options?: never;
+        head?: never;
+        patch: operations["override_1"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/translations/{id}/status": {
@@ -31401,6 +31433,23 @@ export interface paths {
         };
         /** 自分のTODO一覧（全スコープ横断） */
         get: operations["getMyTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/todos/my/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自分担当TODOのマイカレンダー表示用一覧（全スコープ横断） */
+        get: operations["getMyCalendarTodos"];
         put?: never;
         post?: never;
         delete?: never;
@@ -55580,6 +55629,8 @@ export interface components {
             /** Format: date-time */
             startAt: string;
             surveys?: components["schemas"]["CreateSurveyRequest"][];
+            targetMode?: string;
+            targetUserIds?: number[];
             teamBreakdownEnabled?: boolean;
             title?: string;
             visibility?: string;
@@ -55664,6 +55715,10 @@ export interface components {
             reminders?: components["schemas"]["ReminderResponse"][];
             scheduledTasks?: components["schemas"]["ScheduledTaskResponse"][];
             scope?: components["schemas"]["ScheduleScopeDto"];
+            /** Format: int32 */
+            targetCount?: number;
+            targetMode?: string;
+            targets?: components["schemas"]["TargetMember"][];
             time?: components["schemas"]["ScheduleTimeDto"];
         };
         ScheduleScopeDto: {
@@ -55685,6 +55740,13 @@ export interface components {
             scheduledAt?: string;
             status?: string;
             taskType?: string;
+        };
+        TargetMember: {
+            avatarUrl?: string;
+            calendarColor?: string;
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
         };
         CrossInviteRequest: {
             message?: string;
@@ -66200,6 +66262,8 @@ export interface components {
             scheduledSurveys?: components["schemas"]["ScheduledSurveyRequest"][];
             /** Format: date-time */
             startAt?: string;
+            targetMode?: string;
+            targetUserIds?: number[];
             title?: string;
             updateScope?: string;
             visibility?: string;
@@ -66212,6 +66276,18 @@ export interface components {
         };
         BulkAttendanceRequest: {
             attendances?: components["schemas"]["BulkAttendanceItem"][];
+        };
+        UpdateMemberCalendarColorRequest: {
+            calendarColor?: string;
+        };
+        ApiResponseMemberCalendarColorResponse: {
+            data?: components["schemas"]["MemberCalendarColorResponse"];
+        };
+        MemberCalendarColorResponse: {
+            calendarColor?: string;
+            overridden?: boolean;
+            /** Format: int64 */
+            userId?: number;
         };
         BulkStatusChangeRequest: {
             status?: string;
@@ -69428,6 +69504,29 @@ export interface components {
         MyTournamentFeesResponse: {
             fees?: components["schemas"]["MyTournamentFeeItem"][];
         };
+        ApiResponseListCalendarTodoResponse: {
+            data?: components["schemas"]["CalendarTodoResponse"][];
+        };
+        CalendarTodoResponse: {
+            /** Format: date */
+            dueDate?: string;
+            /** @example 14:30:00 */
+            dueTime?: string;
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            linkedScheduleId?: number;
+            priority?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeName?: string;
+            scopeSlug?: string;
+            scopeType?: string;
+            /** Format: date */
+            startDate?: string;
+            status?: string;
+            title?: string;
+        };
         ApiResponseListGanttTodoResponse: {
             data?: components["schemas"]["GanttTodoResponse"][];
         };
@@ -72128,9 +72227,19 @@ export interface components {
              */
             trialExpiresAt?: string;
         };
-        PagedResponseMemberResponse: {
-            data?: components["schemas"]["MemberResponse"][];
+        PagedResponseScopeMemberResponse: {
+            data?: components["schemas"]["ScopeMemberResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ScopeMemberResponse: {
+            avatarUrl?: string;
+            calendarColor?: string;
+            displayName?: string;
+            /** Format: date-time */
+            joinedAt?: string;
+            roleName?: string;
+            /** Format: int64 */
+            userId?: number;
         };
         ApiResponseEffectivePermissionsResponse: {
             data?: components["schemas"]["EffectivePermissionsResponse"];
@@ -76083,6 +76192,10 @@ export interface components {
             /** Format: int64 */
             scheduleId?: number;
             scope?: components["schemas"]["CalendarScopeDto"];
+            /** Format: int32 */
+            targetCount?: number;
+            targetMode?: string;
+            targets?: components["schemas"]["TargetMember"][];
             time?: components["schemas"]["CalendarTimeDto"];
         };
         CalendarScopeDto: {
@@ -130664,6 +130777,56 @@ export interface operations {
             };
         };
     };
+    reset_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                memberUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberCalendarColorResponse"];
+                };
+            };
+        };
+    };
+    override: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                memberUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMemberCalendarColorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberCalendarColorResponse"];
+                };
+            };
+        };
+    };
     changeTeamTranslationStatus: {
         parameters: {
             query?: never;
@@ -137166,6 +137329,56 @@ export interface operations {
             };
         };
     };
+    reset_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                memberUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberCalendarColorResponse"];
+                };
+            };
+        };
+    };
+    override_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                memberUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMemberCalendarColorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberCalendarColorResponse"];
+                };
+            };
+        };
+    };
     changeOrgTranslationStatus: {
         parameters: {
             query?: never;
@@ -143282,6 +143495,29 @@ export interface operations {
             };
         };
     };
+    getMyCalendarTodos: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListCalendarTodoResponse"];
+                };
+            };
+        };
+    };
     getGanttTodos: {
         parameters: {
             query: {
@@ -147679,7 +147915,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
             /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
@@ -147688,7 +147924,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
             /** @description チームが存在しない / 論理削除済み */
@@ -147697,7 +147933,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
         };
@@ -152443,7 +152679,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
             /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
@@ -152452,7 +152688,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
             /** @description 組織が存在しない / 論理削除済み */
@@ -152461,7 +152697,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
         };

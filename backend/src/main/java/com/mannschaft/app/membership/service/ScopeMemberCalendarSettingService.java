@@ -40,7 +40,8 @@ public class ScopeMemberCalendarSettingService {
     }
 
     public static String fallback(ScopeType scopeType, Long scopeId, Long userId) {
-        int index = Math.floorMod(java.util.Objects.hash(scopeType, scopeId, userId), PALETTE.size());
+        int index = Math.floorMod(
+                java.util.Objects.hash(scopeType.name(), scopeId, userId), PALETTE.size());
         return PALETTE.get(index);
     }
 

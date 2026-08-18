@@ -212,8 +212,6 @@
     },
     "targetAudience": { "label": "Destinatarios del evento", "allMembers": "Todos", "selectMembers": "Seleccionar miembros", "memberPlaceholder": "Selecciona miembros destinatarios", "more": "y {count} más", "selectedCount": "{count} seleccionados", "invalidSelection": "Selecciona entre 1 y 500 miembros" },
     "memberColor": { "column": "Color del evento", "auto": "Automático", "reset": "Restablecer color automático", "updated": "Se actualizó el color del evento del miembro", "resetDone": "Se restableció el color automático del miembro", "updateFailed": "No se pudo actualizar el color del miembro", "colorLabel": "Color del evento de {name}" },
-    "targetAudience": { "label": "Destinatarios del evento", "allMembers": "Todos", "selectMembers": "Seleccionar miembros", "memberPlaceholder": "Selecciona miembros destinatarios", "more": "y {count} más", "selectedCount": "{count} seleccionados", "invalidSelection": "Selecciona entre 1 y 500 miembros" },
-    "memberColor": { "column": "Color del evento", "auto": "Automático", "reset": "Restablecer color automático", "updated": "Se actualizó el color del evento del miembro", "resetDone": "Se restableció el color automático del miembro", "updateFailed": "No se pudo actualizar el color del miembro", "colorLabel": "Color del evento de {name}" },
     "todo_load_error": {
       "summary": "No se pudieron cargar las tareas (TODO)",
       "detail": "No se pudieron mostrar las tareas en el calendario. Los eventos siguen visibles. Vuelve a cargar mas tarde."

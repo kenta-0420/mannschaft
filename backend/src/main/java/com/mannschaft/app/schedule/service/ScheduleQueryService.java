@@ -259,11 +259,17 @@ public class ScheduleQueryService {
                 .filterAccessible(ReferenceType.SCHEDULE, ids, userId);
         Set<Long> assignedIds = scheduleTargetService.assignedScheduleIds(
                 scoped.stream().map(ScopedSchedule::schedule).toList(), userId);
-        scoped.stream()
+        List<ScopedSchedule> visibleAssigned = scoped.stream()
                 .filter(sc -> visibleIds.contains(sc.schedule().getId())
                         && assignedIds.contains(sc.schedule().getId()))
+                .toList();
+        Map<Long, com.mannschaft.app.schedule.dto.ScheduleTargetResponse> targetsByScheduleId =
+                scheduleTargetService.responsesForSchedules(
+                        visibleAssigned.stream().map(ScopedSchedule::schedule).toList(), true);
+        visibleAssigned.stream()
                 .forEach(sc -> entries.add(
-                        toCalendarEntry(sc.schedule(), sc.scopeType(), sc.scopeId())));
+                        toCalendarEntry(sc.schedule(), sc.scopeType(), sc.scopeId(),
+                                targetsByScheduleId.get(sc.schedule().getId()))));
     }
 
     /**
@@ -305,7 +311,9 @@ public class ScheduleQueryService {
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), null))
                 .myAttendanceStatus(myAttendanceStatus)
-                .targets(targets)
+                .targetMode(targets == null ? null : targets.targetMode())
+                .targetCount(targets == null ? null : targets.targetCount())
+                .targets(targets == null ? null : targets.targets())
                 .build();
     }
 
@@ -335,7 +343,9 @@ public class ScheduleQueryService {
     /**
      * エンティティをカレンダーエントリーレスポンスDTOに変換する。
      */
-    private CalendarEntryResponse toCalendarEntry(ScheduleEntity entity, String scopeType, Long scopeId) {
+    private CalendarEntryResponse toCalendarEntry(
+            ScheduleEntity entity, String scopeType, Long scopeId,
+            com.mannschaft.app.schedule.dto.ScheduleTargetResponse targetResponse) {
         String scopeName = nameResolverService.resolveScopeName(scopeType, scopeId);
         String iconUrl = nameResolverService.resolveIconUrl(scopeType, scopeId);
         return CalendarEntryResponse.builder()
@@ -347,6 +357,14 @@ public class ScheduleQueryService {
                         entity.getStartAt(), entity.getEndAt(), entity.getAllDay()))
                 .scope(new CalendarEntryResponse.CalendarScopeDto(scopeType, scopeId, scopeName, iconUrl))
                 .myAttendanceStatus(null)
+                .targetMode(targetResponse == null ? null : targetResponse.targetMode())
+                .targetCount(targetResponse == null ? null : targetResponse.targetCount())
+                .targets(targetResponse == null ? null : targetResponse.targets())
                 .build();
+    }
+
+    private CalendarEntryResponse toCalendarEntry(
+            ScheduleEntity entity, String scopeType, Long scopeId) {
+        return toCalendarEntry(entity, scopeType, scopeId, null);
     }
 }

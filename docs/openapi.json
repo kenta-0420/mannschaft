@@ -87801,6 +87801,92 @@
         }
       }
     },
+    "/api/v1/teams/{teamPublicId}/members/{memberUserId}/calendar-color": {
+      "delete": {
+        "tags": [
+          "team-member-calendar-color-controller"
+        ],
+        "operationId": "reset_1",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberCalendarColorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "team-member-calendar-color-controller"
+        ],
+        "operationId": "override",
+        "parameters": [
+          {
+            "name": "teamPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberCalendarColorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberCalendarColorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/translations/{id}/status": {
       "patch": {
         "tags": [
@@ -98461,6 +98547,92 @@
         }
       }
     },
+    "/api/v1/organizations/{orgPublicId}/members/{memberUserId}/calendar-color": {
+      "delete": {
+        "tags": [
+          "organization-member-calendar-color-controller"
+        ],
+        "operationId": "reset_2",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberCalendarColorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "organization-member-calendar-color-controller"
+        ],
+        "operationId": "override_1",
+        "parameters": [
+          {
+            "name": "orgPublicId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMemberCalendarColorRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberCalendarColorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/organizations/{orgId}/translations/{id}/status": {
       "patch": {
         "tags": [
@@ -108797,6 +108969,47 @@
         }
       }
     },
+    "/api/v1/todos/my/calendar": {
+      "get": {
+        "tags": [
+          "TODO（個人）"
+        ],
+        "summary": "自分担当TODOのマイカレンダー表示用一覧（全スコープ横断）",
+        "operationId": "getMyCalendarTodos",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCalendarTodoResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/todos/gantt": {
       "get": {
         "tags": [
@@ -117026,7 +117239,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseMemberResponse"
+                  "$ref": "#/components/schemas/PagedResponseScopeMemberResponse"
                 }
               }
             }
@@ -117036,7 +117249,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseMemberResponse"
+                  "$ref": "#/components/schemas/PagedResponseScopeMemberResponse"
                 }
               }
             }
@@ -117046,7 +117259,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseMemberResponse"
+                  "$ref": "#/components/schemas/PagedResponseScopeMemberResponse"
                 }
               }
             }
@@ -125356,7 +125569,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseMemberResponse"
+                  "$ref": "#/components/schemas/PagedResponseScopeMemberResponse"
                 }
               }
             }
@@ -125366,7 +125579,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseMemberResponse"
+                  "$ref": "#/components/schemas/PagedResponseScopeMemberResponse"
                 }
               }
             }
@@ -125376,7 +125589,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/PagedResponseMemberResponse"
+                  "$ref": "#/components/schemas/PagedResponseScopeMemberResponse"
                 }
               }
             }
@@ -169176,6 +169389,18 @@
             "maxItems": 10,
             "minItems": 0
           },
+          "targetMode": {
+            "type": "string"
+          },
+          "targetUserIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "maxItems": 500,
+            "minItems": 0
+          },
           "teamBreakdownEnabled": {
             "type": "boolean"
           },
@@ -169418,6 +169643,19 @@
           "scope": {
             "$ref": "#/components/schemas/ScheduleScopeDto"
           },
+          "targetCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "targetMode": {
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TargetMember"
+            }
+          },
           "time": {
             "$ref": "#/components/schemas/ScheduleTimeDto"
           }
@@ -169469,6 +169707,24 @@
           },
           "taskType": {
             "type": "string"
+          }
+        }
+      },
+      "TargetMember": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "calendarColor": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -198598,6 +198854,18 @@
             "type": "string",
             "format": "date-time"
           },
+          "targetMode": {
+            "type": "string"
+          },
+          "targetUserIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "maxItems": 500,
+            "minItems": 0
+          },
           "title": {
             "type": "string",
             "maxLength": 200,
@@ -198638,6 +198906,39 @@
               "$ref": "#/components/schemas/BulkAttendanceItem"
             },
             "minItems": 1
+          }
+        }
+      },
+      "UpdateMemberCalendarColorRequest": {
+        "type": "object",
+        "properties": {
+          "calendarColor": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^#[0-9A-Fa-f]{6}$"
+          }
+        }
+      },
+      "ApiResponseMemberCalendarColorResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemberCalendarColorResponse"
+          }
+        }
+      },
+      "MemberCalendarColorResponse": {
+        "type": "object",
+        "properties": {
+          "calendarColor": {
+            "type": "string"
+          },
+          "overridden": {
+            "type": "boolean"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -207471,6 +207772,64 @@
           }
         }
       },
+      "ApiResponseListCalendarTodoResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarTodoResponse"
+            }
+          }
+        }
+      },
+      "CalendarTodoResponse": {
+        "type": "object",
+        "properties": {
+          "dueDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "dueTime": {
+            "type": "string",
+            "example": "14:30:00"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "linkedScheduleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "priority": {
+            "type": "string"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scopeName": {
+            "type": "string"
+          },
+          "scopeSlug": {
+            "type": "string"
+          },
+          "scopeType": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
       "ApiResponseListGanttTodoResponse": {
         "type": "object",
         "properties": {
@@ -214573,17 +214932,42 @@
           }
         }
       },
-      "PagedResponseMemberResponse": {
+      "PagedResponseScopeMemberResponse": {
         "type": "object",
         "properties": {
           "data": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/MemberResponse"
+              "$ref": "#/components/schemas/ScopeMemberResponse"
             }
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ScopeMemberResponse": {
+        "type": "object",
+        "properties": {
+          "avatarUrl": {
+            "type": "string"
+          },
+          "calendarColor": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int64"
           }
         }
       },
@@ -225052,6 +225436,19 @@
           },
           "scope": {
             "$ref": "#/components/schemas/CalendarScopeDto"
+          },
+          "targetCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "targetMode": {
+            "type": "string"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TargetMember"
+            }
           },
           "time": {
             "$ref": "#/components/schemas/CalendarTimeDto"

@@ -95,7 +95,7 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
             WHERE t.deletedAt IS NULL
               AND t.dueDate IS NOT NULL
               AND t.dueDate >= :fromDate
-              AND (t.startDate IS NULL OR t.startDate <= :toDate)
+              AND COALESCE(t.startDate, t.dueDate) <= :toDate
               AND t.status IN (com.mannschaft.app.todo.TodoStatus.OPEN,
                                com.mannschaft.app.todo.TodoStatus.IN_PROGRESS)
               AND EXISTS (

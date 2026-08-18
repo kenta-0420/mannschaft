@@ -151,12 +151,10 @@ export interface MyCalendarTodo {
   status: TodoStatus
   priority: TodoPriority
   linkedScheduleId: number | null
-  scope: {
-    scopeType: TodoScopeType
-    scopeId: string | null
-    scopeName: string | null
-    scopeIconUrl: string | null
-  }
+  scopeType: TodoScopeType
+  scopeId: number | null
+  scopeSlug: string | null
+  scopeName: string | null
 }
 
 export interface MyCalendarTodoResponse {

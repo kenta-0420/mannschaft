@@ -102,4 +102,20 @@ public class UpdateScheduleRequest {
      */
     @Valid
     private final ScheduledAttendanceRequest scheduledAttendance;
+
+    /** CMP-051以前のJava呼び出し元向け。対象者項目は未変更（null）として扱う。 */
+    public UpdateScheduleRequest(
+            String title, String description, String location,
+            OffsetDateTime startAt, OffsetDateTime endAt, Boolean allDay,
+            String eventType, String visibility, String minViewRole, String minResponseRole,
+            Boolean attendanceRequired, OffsetDateTime attendanceDeadline, String commentOption,
+            Long eventCategoryId, Integer academicYear, String updateScope,
+            List<UpdateReminderRequest> reminders,
+            List<ScheduledSurveyRequest> scheduledSurveys,
+            ScheduledAttendanceRequest scheduledAttendance) {
+        this(title, description, location, startAt, endAt, allDay, eventType, visibility,
+                minViewRole, minResponseRole, null, null, attendanceRequired, attendanceDeadline,
+                commentOption, eventCategoryId, academicYear, updateScope, reminders,
+                scheduledSurveys, scheduledAttendance);
+    }
 }

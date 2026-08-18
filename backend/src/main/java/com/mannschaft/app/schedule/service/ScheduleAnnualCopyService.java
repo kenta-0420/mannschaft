@@ -147,6 +147,7 @@ public class ScheduleAnnualCopyService {
 
             // 新しいスケジュールを作成
             ScheduleEntity newSchedule = source.toBuilder()
+                    .id(null)
                     .startAt(item.targetStartAt())
                     .endAt(item.targetEndAt())
                     .status(ScheduleStatus.SCHEDULED)
