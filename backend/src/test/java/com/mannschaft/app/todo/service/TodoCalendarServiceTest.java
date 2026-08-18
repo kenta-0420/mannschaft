@@ -2,6 +2,7 @@ package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.todo.TodoPriority;
 import com.mannschaft.app.todo.TodoScopeType;
@@ -28,8 +29,9 @@ class TodoCalendarServiceTest {
         var teamService = mock(TeamService.class);
         var organizationService = mock(OrganizationService.class);
         var userRoleRepository = mock(UserRoleRepository.class);
+        var membershipService = mock(MembershipService.class);
         var service = new TodoCalendarService(
-                repository, teamService, organizationService, userRoleRepository);
+                repository, teamService, organizationService, userRoleRepository, membershipService);
         Long userId = 10L;
         LocalDate from = LocalDate.of(2030, 1, 1);
         LocalDate to = LocalDate.of(2030, 1, 31);
@@ -49,6 +51,35 @@ class TodoCalendarServiceTest {
         assertThat(service.getMyCalendarTodos(userId, from, to))
                 .extracting(response -> response.id())
                 .containsExactly(1L);
+    }
+
+    @Test
+    @DisplayName("membership-only の通常メンバー/SUPPORTERのTODOも返す")
+    void includesTodosFromMembershipOnlyScopes() {
+        var repository = mock(TodoRepository.class);
+        var teamService = mock(TeamService.class);
+        var organizationService = mock(OrganizationService.class);
+        var userRoleRepository = mock(UserRoleRepository.class);
+        var membershipService = mock(MembershipService.class);
+        var service = new TodoCalendarService(
+                repository, teamService, organizationService, userRoleRepository, membershipService);
+        Long userId = 10L;
+        LocalDate from = LocalDate.of(2030, 1, 1);
+        LocalDate to = LocalDate.of(2030, 1, 31);
+        when(repository.findMyCalendarTodos(userId, from, to)).thenReturn(List.of(
+                todo(1L, TodoScopeType.TEAM, 100L),
+                todo(2L, TodoScopeType.ORGANIZATION, 200L)));
+        when(userRoleRepository.findTeamIdsByUserId(userId)).thenReturn(List.of());
+        when(userRoleRepository.findOrganizationIdsByUserId(userId)).thenReturn(List.of());
+        when(membershipService.getActiveTeamIdsByUser(userId)).thenReturn(List.of(100L));
+        when(membershipService.getActiveOrgIdsByUser(userId)).thenReturn(List.of(200L));
+        when(teamService.getSlugsByIds(java.util.Set.of(100L))).thenReturn(Map.of(100L, "family"));
+        when(teamService.getNamesByIds(java.util.Set.of(100L))).thenReturn(Map.of(100L, "家族"));
+        when(organizationService.getSlugsByIds(java.util.Set.of(200L))).thenReturn(Map.of(200L, "home"));
+        when(organizationService.getNamesByIds(java.util.Set.of(200L))).thenReturn(Map.of(200L, "家庭"));
+
+        assertThat(service.getMyCalendarTodos(userId, from, to))
+                .extracting(response -> response.id()).containsExactly(1L, 2L);
     }
 
     private TodoEntity todo(Long id, TodoScopeType scopeType, Long scopeId) {

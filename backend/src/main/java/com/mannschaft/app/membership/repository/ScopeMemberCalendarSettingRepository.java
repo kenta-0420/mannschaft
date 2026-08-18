@@ -17,4 +17,6 @@ public interface ScopeMemberCalendarSettingRepository extends JpaRepository<Scop
             ScopeType scopeType, Long scopeId, Collection<Long> userIds);
 
     void deleteByScopeTypeAndScopeIdAndUserId(ScopeType scopeType, Long scopeId, Long userId);
+
+    void deleteByUserId(Long userId);
 }

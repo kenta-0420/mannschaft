@@ -4,6 +4,8 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.membership.repository.ScopeMemberCalendarSettingRepository;
 import com.mannschaft.app.schedule.ScheduleTargetMode;
+import com.mannschaft.app.schedule.ScheduleErrorCode;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.schedule.dto.ScheduleTargetResponse;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.entity.ScheduleTargetEntity;
@@ -58,7 +60,7 @@ public class ScheduleTargetService {
                          ScheduleTargetMode mode, List<Long> requestedUserIds) {
         if (schedule.isPersonal()) {
             if (mode != ScheduleTargetMode.ALL_MEMBERS || (requestedUserIds != null && !requestedUserIds.isEmpty())) {
-                throw new IllegalArgumentException("個人予定には対象者を指定できません");
+                throw new BusinessException(ScheduleErrorCode.INVALID_TARGET_SELECTION);
             }
             schedule.updateTargetMode(ScheduleTargetMode.ALL_MEMBERS);
             return;
@@ -67,7 +69,7 @@ public class ScheduleTargetService {
         List<Long> ids = requestedUserIds == null ? List.of() : requestedUserIds;
         if (mode == ScheduleTargetMode.ALL_MEMBERS) {
             if (!ids.isEmpty()) {
-                throw new IllegalArgumentException("ALL_MEMBERS では対象者を指定できません");
+                throw new BusinessException(ScheduleErrorCode.INVALID_TARGET_SELECTION);
             }
             targetRepository.deleteByScheduleId(schedule.getId());
             schedule.updateTargetMode(mode);
@@ -77,7 +79,7 @@ public class ScheduleTargetService {
         Set<Long> uniqueIds = new LinkedHashSet<>(ids);
         if (uniqueIds.size() != ids.size() || uniqueIds.isEmpty() || uniqueIds.size() > MAX_TARGETS
                 || uniqueIds.stream().anyMatch(id -> id == null || id <= 0)) {
-            throw new IllegalArgumentException("対象者は重複なしで1〜500名を指定してください");
+            throw new BusinessException(ScheduleErrorCode.INVALID_TARGET_SELECTION);
         }
         ScopeType scopeType = parseScopeType(scopeTypeText);
         Map<Long, MemberDto> activeMembers = memberQueryDispatcher.queryMembers(scopeId, scopeType, null).stream()
@@ -85,13 +87,13 @@ public class ScheduleTargetService {
                         MemberDto::userId, Function.identity(), (first, ignored) -> first));
         if (!activeMembers.keySet().containsAll(uniqueIds)) {
             // 所属外・退会済みのどちらかを詳細化せず、スコープの名簿を漏らさない。
-            throw new IllegalArgumentException("対象者は有効なスコープメンバーである必要があります");
+            throw new BusinessException(ScheduleErrorCode.SCHEDULE_TARGET_MEMBER_NOT_FOUND);
         }
         if (schedule.getMinViewRole() != null && uniqueIds.stream()
                 .map(activeMembers::get)
                 .anyMatch(member -> !MinViewRoleThreshold.satisfies(
                         member.roleName(), schedule.getMinViewRole()))) {
-            throw new IllegalArgumentException("対象者は予定の閲覧ロールを満たす必要があります");
+            throw new BusinessException(ScheduleErrorCode.INVALID_TARGET_SELECTION);
         }
 
         targetRepository.deleteByScheduleId(schedule.getId());
@@ -103,21 +105,21 @@ public class ScheduleTargetService {
 
     private static ScheduleTargetMode parseMode(String value, ScheduleTargetMode defaultValue) {
         if (value == null) {
-            if (defaultValue == null) throw new IllegalArgumentException("対象モードを指定してください");
+            if (defaultValue == null) throw new BusinessException(ScheduleErrorCode.INVALID_TARGET_SELECTION);
             return defaultValue;
         }
         try {
             return ScheduleTargetMode.valueOf(value.toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("不正な対象モードです");
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            throw new BusinessException(ScheduleErrorCode.INVALID_TARGET_SELECTION, ex);
         }
     }
 
     private static ScopeType parseScopeType(String scopeType) {
         try {
             return ScopeType.valueOf(scopeType);
-        } catch (IllegalArgumentException ex) {
-            throw new IllegalArgumentException("共有予定のスコープが不正です");
+        } catch (IllegalArgumentException | NullPointerException ex) {
+            throw new BusinessException(ScheduleErrorCode.INVALID_TARGET_SELECTION, ex);
         }
     }
 
@@ -174,11 +176,13 @@ public class ScheduleTargetService {
                 continue;
             }
             Map<Long, String> colors = colorsByScope.getOrDefault(key, Map.of());
-            List<ScheduleTargetResponse.TargetMember> targets = ids.stream().map(id -> {
+            List<ScheduleTargetResponse.TargetMember> targets = ids.stream()
+                    .filter(members::containsKey)
+                    .map(id -> {
                 MemberDto member = members.get(id);
                 return new ScheduleTargetResponse.TargetMember(id,
-                        member == null ? null : member.displayName(),
-                        member == null ? null : member.avatarUrl(),
+                        member.displayName(),
+                        member.avatarUrl(),
                         colors.getOrDefault(id, ScopeMemberCalendarSettingService.fallback(
                                 key.scopeType(), key.scopeId(), id)));
             }).toList();

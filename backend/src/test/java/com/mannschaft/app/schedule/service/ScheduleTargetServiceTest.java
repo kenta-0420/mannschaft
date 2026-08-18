@@ -1,19 +1,24 @@
 package com.mannschaft.app.schedule.service;
 
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MemberDto;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.membership.repository.ScopeMemberCalendarSettingRepository;
 import com.mannschaft.app.schedule.ScheduleTargetMode;
+import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.MinViewRole;
+import com.mannschaft.app.schedule.entity.ScheduleTargetEntity;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleTargetRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
@@ -41,17 +46,20 @@ class ScheduleTargetServiceTest {
     @Test
     void allMembers_is_default_and_rejects_targets() {
         service.replaceForCreate(schedule, "TEAM", 10L, null, null);
-        assertThatIllegalArgumentException().isThrownBy(() ->
-                service.replaceForCreate(schedule, "TEAM", 10L, "ALL_MEMBERS", List.of(1L)));
+        assertThatThrownBy(() -> service.replaceForCreate(
+                schedule, "TEAM", 10L, "ALL_MEMBERS", List.of(1L)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ScheduleErrorCode.INVALID_TARGET_SELECTION);
     }
 
     @Test
     void selectedMembers_rejects_empty_duplicate_and_over500() {
-        assertThatIllegalArgumentException().isThrownBy(() ->
+        assertThatThrownBy(() ->
                 service.replaceForCreate(schedule, "TEAM", 10L, "SELECTED_MEMBERS", List.of()));
-        assertThatIllegalArgumentException().isThrownBy(() ->
+        assertThatThrownBy(() ->
                 service.replaceForCreate(schedule, "TEAM", 10L, "SELECTED_MEMBERS", List.of(1L, 1L)));
-        assertThatIllegalArgumentException().isThrownBy(() ->
+        assertThatThrownBy(() ->
                 service.replaceForCreate(schedule, "TEAM", 10L, "SELECTED_MEMBERS",
                         java.util.stream.LongStream.rangeClosed(1, 501).boxed().toList()));
     }
@@ -87,7 +95,7 @@ class ScheduleTargetServiceTest {
         when(memberQueryDispatcher.queryMembers(10L, ScopeType.TEAM, null))
                 .thenReturn(List.of(member(7L)));
 
-        assertThatIllegalArgumentException().isThrownBy(() ->
+        assertThatThrownBy(() ->
                 service.replaceForCreate(schedule, "TEAM", 10L, "SELECTED_MEMBERS", List.of(7L)));
         verify(targetRepository, never()).saveAll(any());
     }
@@ -96,8 +104,11 @@ class ScheduleTargetServiceTest {
     void selectedMembers_rejects_inactive_or_other_scope_member_without_writing() {
         when(memberQueryDispatcher.queryMembers(10L, ScopeType.TEAM, null))
                 .thenReturn(List.of(member(1L)));
-        assertThatIllegalArgumentException().isThrownBy(() ->
-                service.replaceForCreate(schedule, "TEAM", 10L, "SELECTED_MEMBERS", List.of(1L, 2L)));
+        assertThatThrownBy(() -> service.replaceForCreate(
+                schedule, "TEAM", 10L, "SELECTED_MEMBERS", List.of(1L, 2L)))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(ScheduleErrorCode.SCHEDULE_TARGET_MEMBER_NOT_FOUND);
         verify(targetRepository, never()).saveAll(any());
     }
 
@@ -105,6 +116,41 @@ class ScheduleTargetServiceTest {
     void update_without_target_fields_preserves_existing_assignment() {
         service.replaceForUpdate(schedule, "TEAM", 10L, null, null);
         verify(targetRepository, never()).deleteByScheduleId(any());
+    }
+
+    @Test
+    void responses_omit_departed_target_but_keep_stored_target_count_and_selected_mode() {
+        ReflectionTestUtils.setField(schedule, "id", 50L);
+        when(targetRepository.findByScheduleIdInOrderByScheduleIdAscUserIdAsc(List.of(50L)))
+                .thenReturn(List.of(
+                        ScheduleTargetEntity.builder().scheduleId(50L).userId(1L).build(),
+                        ScheduleTargetEntity.builder().scheduleId(50L).userId(2L).build()));
+        when(memberQueryDispatcher.queryMembers(10L, ScopeType.TEAM, null))
+                .thenReturn(List.of(member(1L)));
+        when(calendarSettingRepository.findByScopeTypeAndScopeIdAndUserIdIn(
+                eq(ScopeType.TEAM), eq(10L), anyCollection())).thenReturn(List.of());
+        schedule.updateTargetMode(ScheduleTargetMode.SELECTED_MEMBERS);
+
+        var response = service.responsesForSchedules(List.of(schedule), true).get(50L);
+
+        assertThat(response.targetMode()).isEqualTo("SELECTED_MEMBERS");
+        assertThat(response.targetCount()).isEqualTo(2);
+        assertThat(response.targets()).extracting(target -> target.userId()).containsExactly(1L);
+    }
+
+    @Test
+    void responses_keep_selected_mode_when_anonymization_removes_every_target() {
+        ReflectionTestUtils.setField(schedule, "id", 51L);
+        schedule.updateTargetMode(ScheduleTargetMode.SELECTED_MEMBERS);
+        when(targetRepository.findByScheduleIdInOrderByScheduleIdAscUserIdAsc(List.of(51L)))
+                .thenReturn(List.of());
+        when(memberQueryDispatcher.queryMembers(10L, ScopeType.TEAM, null)).thenReturn(List.of());
+
+        var response = service.responsesForSchedules(List.of(schedule), true).get(51L);
+
+        assertThat(response.targetMode()).isEqualTo("SELECTED_MEMBERS");
+        assertThat(response.targetCount()).isZero();
+        assertThat(response.targets()).isEmpty();
     }
 
     private MemberDto member(Long userId) {

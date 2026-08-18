@@ -4,6 +4,7 @@ import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -43,6 +45,7 @@ public class ScheduleQueryService {
     private final ScheduleRepository scheduleRepository;
     private final NameResolverService nameResolverService;
     private final UserRoleRepository userRoleRepository;
+    private final MembershipService membershipService;
     private final ScheduleEventCategoryRepository categoryRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final ScheduleAttendanceRepository attendanceRepository;
@@ -200,7 +203,8 @@ public class ScheduleQueryService {
         // CMP-027: user_roles ∪ memberships の在籍チーム ID。素メンバー/応援者（memberships 専属）の
         // 所属チームを取りこぼすと、その min_view 対象予定が一覧に一切現れない退行（AC-03）が起きる。
         List<ScopedSchedule> teamScoped = new ArrayList<>();
-        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        Set<Long> teamIds = new LinkedHashSet<>(userRoleRepository.findTeamIdsByUserId(userId));
+        teamIds.addAll(membershipService.getActiveTeamIdsByUser(userId));
         for (Long teamId : teamIds) {
             scheduleRepository
                     .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to)
@@ -209,7 +213,8 @@ public class ScheduleQueryService {
 
         // 所属組織のスケジュールを取得（CMP-027: user_roles ∪ memberships の在籍組織 ID）。
         List<ScopedSchedule> orgScoped = new ArrayList<>();
-        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        Set<Long> orgIds = new LinkedHashSet<>(userRoleRepository.findOrganizationIdsByUserId(userId));
+        orgIds.addAll(membershipService.getActiveOrgIdsByUser(userId));
         for (Long orgId : orgIds) {
             scheduleRepository
                     .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to)

@@ -16,6 +16,7 @@ import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleEventCategoryRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -54,9 +55,11 @@ class ScheduleQueryServiceTest {
     @Mock private ScheduleRepository scheduleRepository;
     @Mock private NameResolverService nameResolverService;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MembershipService membershipService;
     @Mock private ScheduleEventCategoryRepository categoryRepository;
     @Mock private ContentVisibilityChecker contentVisibilityChecker;
     @Mock private ScheduleAttendanceRepository attendanceRepository;
+    @Mock private ScheduleTargetService scheduleTargetService;
 
     @InjectMocks
     private ScheduleQueryService scheduleQueryService;
@@ -121,6 +124,8 @@ class ScheduleQueryServiceTest {
             given(contentVisibilityChecker.filterAccessible(
                     eq(ReferenceType.SCHEDULE), eq(List.of(20L, 21L)), eq(USER_ID)))
                     .willReturn(Set.of(20L));
+            given(scheduleTargetService.assignedScheduleIds(any(), eq(USER_ID)))
+                    .willReturn(Set.of(10L, 11L, 20L, 21L));
 
             // When
             List<CalendarEntryResponse> entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
@@ -129,6 +134,32 @@ class ScheduleQueryServiceTest {
             assertThat(entries).extracting(CalendarEntryResponse::getId)
                     .containsExactlyInAnyOrder(1L, 10L, 20L)
                     .doesNotContain(11L, 21L);
+        }
+
+        @Test
+        @DisplayName("membership-only の通常メンバーもマイカレンダー対象になる")
+        void includes_membership_only_team_and_organization() {
+            ScheduleEntity team = schedule(30L, TEAM_ID, null, null);
+            ScheduleEntity org = schedule(40L, null, ORG_ID, null);
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(membershipService.getActiveTeamIdsByUser(USER_ID)).willReturn(List.of(TEAM_ID));
+            given(membershipService.getActiveOrgIdsByUser(USER_ID)).willReturn(List.of(ORG_ID));
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of(team));
+            given(scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(ORG_ID, FROM, TO))
+                    .willReturn(List.of(org));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(30L)), eq(USER_ID))).willReturn(Set.of(30L));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(40L)), eq(USER_ID))).willReturn(Set.of(40L));
+            given(scheduleTargetService.assignedScheduleIds(any(), eq(USER_ID)))
+                    .willReturn(Set.of(30L, 40L));
+
+            var entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
+
+            assertThat(entries).extracting(CalendarEntryResponse::getId)
+                    .containsExactlyInAnyOrder(30L, 40L);
         }
 
         @Test

@@ -15,4 +15,6 @@ public interface ScheduleTargetRepository extends JpaRepository<ScheduleTargetEn
     List<ScheduleTargetEntity> findByScheduleIdOrderByUserIdAsc(Long scheduleId);
 
     void deleteByScheduleId(Long scheduleId);
+
+    void deleteByUserId(Long userId);
 }

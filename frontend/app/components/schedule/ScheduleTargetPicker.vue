@@ -33,10 +33,22 @@ const base = computed(() => props.scopeType === 'team' ? 'teams' : 'organization
 async function loadMembers() {
   loading.value = true
   try {
-    const response = await api<{ data: MemberResponse[] }>(
-      `/api/v1/${base.value}/${props.scopeId}/members?page=0&size=500`,
-    )
-    members.value = response.data ?? []
+    type PagedMembersResponse = {
+      data: MemberResponse[]
+      meta?: { totalPages?: number }
+    }
+    const allMembers: MemberResponse[] = []
+    let page = 0
+    let totalPages = 1
+    while (page < totalPages) {
+      const response = await api<PagedMembersResponse>(
+        `/api/v1/${base.value}/${props.scopeId}/members?page=${page}&size=500`,
+      )
+      allMembers.push(...(response.data ?? []))
+      totalPages = response.meta?.totalPages ?? 1
+      page++
+    }
+    members.value = [...new Map(allMembers.map(member => [member.userId, member])).values()]
   } finally {
     loading.value = false
   }

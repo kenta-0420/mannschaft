@@ -75,7 +75,13 @@ public enum MembershipErrorCode implements ErrorCode {
     MEMBERSHIP_021("MEMBERSHIP_021", "QRトークンのフォーマットが不正です", Severity.WARN),
 
     /** 統計の期間が90日超過 */
-    MEMBERSHIP_022("MEMBERSHIP_022", "集計期間は最大90日間です", Severity.WARN);
+    MEMBERSHIP_022("MEMBERSHIP_022", "集計期間は最大90日間です", Severity.WARN),
+
+    /** メンバーカレンダー色がアクセシブル固定パレット外。 */
+    MEMBERSHIP_023("MEMBERSHIP_023", "カレンダー色は指定されたパレットから選択してください", Severity.WARN),
+
+    /** 色設定対象が当該スコープの有効メンバーではない（存在秘匿）。 */
+    MEMBERSHIP_024("MEMBERSHIP_024", "対象メンバーが見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

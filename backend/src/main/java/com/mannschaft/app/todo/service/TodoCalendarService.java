@@ -2,6 +2,7 @@ package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.CalendarTodoResponse;
@@ -30,6 +31,7 @@ public class TodoCalendarService {
     private final TeamService teamService;
     private final OrganizationService organizationService;
     private final UserRoleRepository userRoleRepository;
+    private final MembershipService membershipService;
 
     /**
      * 本人が担当する未完了 TODO を全スコープから取得する。
@@ -40,8 +42,10 @@ public class TodoCalendarService {
      */
     public List<CalendarTodoResponse> getMyCalendarTodos(Long userId, LocalDate from, LocalDate to) {
         Set<Long> activeTeamIds = new HashSet<>(userRoleRepository.findTeamIdsByUserId(userId));
+        activeTeamIds.addAll(membershipService.getActiveTeamIdsByUser(userId));
         Set<Long> activeOrganizationIds = new HashSet<>(
                 userRoleRepository.findOrganizationIdsByUserId(userId));
+        activeOrganizationIds.addAll(membershipService.getActiveOrgIdsByUser(userId));
         List<TodoEntity> todos = todoRepository.findMyCalendarTodos(userId, from, to).stream()
                 .filter(todo -> switch (todo.getScopeType()) {
                     case PERSONAL -> todo.getScopeId().equals(userId);
