@@ -44338,6 +44338,338 @@
         }
       }
     },
+    "/api/v1/teams/{teamId}/matches": {
+      "get": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ）",
+        "operationId": "listMatches",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRACTICE",
+                "FRIENDLY",
+                "TOURNAMENT",
+                "LEAGUE"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SCHEDULED",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "POSTPONED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "sport",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SOCCER",
+                "FUTSAL",
+                "BASKETBALL",
+                "VOLLEYBALL",
+                "SHOGI",
+                "GO",
+                "FIGURE_SKATING",
+                "GYMNASTICS"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseMatchSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "試合作成",
+        "operationId": "createMatch",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches": {
+      "get": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ）",
+        "operationId": "listMatches_1",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PRACTICE",
+                "FRIENDLY",
+                "TOURNAMENT",
+                "LEAGUE"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SCHEDULED",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "POSTPONED",
+                "CANCELLED"
+              ]
+            }
+          },
+          {
+            "name": "sport",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "SOCCER",
+                "FUTSAL",
+                "BASKETBALL",
+                "VOLLEYBALL",
+                "SHOGI",
+                "GO",
+                "FIGURE_SKATING",
+                "GYMNASTICS"
+              ]
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 0
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/PagedResponseMatchSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "試合作成",
+        "operationId": "createMatch_1",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/line/test": {
       "post": {
         "tags": [
@@ -65629,181 +65961,6 @@
         }
       }
     },
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches": {
-      "get": {
-        "tags": [
-          "試合記録"
-        ],
-        "summary": "チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ）",
-        "operationId": "listMatches",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "kind",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "PRACTICE",
-                "FRIENDLY",
-                "TOURNAMENT",
-                "LEAGUE"
-              ]
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "SCHEDULED",
-                "IN_PROGRESS",
-                "COMPLETED",
-                "POSTPONED",
-                "CANCELLED"
-              ]
-            }
-          },
-          {
-            "name": "sport",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "enum": [
-                "SOCCER",
-                "FUTSAL",
-                "BASKETBALL",
-                "VOLLEYBALL",
-                "SHOGI",
-                "GO",
-                "FIGURE_SKATING",
-                "GYMNASTICS"
-              ]
-            }
-          },
-          {
-            "name": "from",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "to",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "string",
-              "format": "date-time"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 0
-            }
-          },
-          {
-            "name": "size",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer",
-              "format": "int32",
-              "default": 20
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/PagedResponseMatchSummaryResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "試合記録"
-        ],
-        "summary": "試合作成",
-        "operationId": "createMatch",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateMatchRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/v1/organizations/{orgId}/teams/{teamId}/entry-templates": {
       "get": {
         "tags": [
@@ -68558,13 +68715,103 @@
         }
       }
     },
-    "/api/v1/organizations/{orgId}/matches/{matchId}/events": {
+    "/api/v1/teams/{teamId}/matches/{matchId}/events": {
       "get": {
         "tags": [
           "試合イベント"
         ],
         "summary": "試合内タイムライン取得（スコア整合警告込み）",
         "operationId": "listEvents_1",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchEventsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "試合イベント"
+        ],
+        "summary": "イベント記録",
+        "operationId": "recordEvent_1",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchEventResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/matches/{matchId}/events": {
+      "get": {
+        "tags": [
+          "試合イベント"
+        ],
+        "summary": "試合内タイムライン取得（スコア整合警告込み）",
+        "operationId": "listEvents_2",
         "parameters": [
           {
             "name": "orgId",
@@ -68603,7 +68850,7 @@
           "試合イベント"
         ],
         "summary": "イベント記録",
-        "operationId": "recordEvent_1",
+        "operationId": "recordEvent_2",
         "parameters": [
           {
             "name": "orgId",
@@ -69003,7 +69250,7 @@
           "組織イベント管理"
         ],
         "summary": "組織イベント一覧",
-        "operationId": "listEvents_2",
+        "operationId": "listEvents_3",
         "parameters": [
           {
             "name": "orgId",
@@ -90531,6 +90778,610 @@
         }
       }
     },
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/status": {
+      "patch": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "status 遷移（COMPLETED で確定再計算）",
+        "operationId": "changeStatus_4",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchChangeStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/matches/{matchId}/status": {
+      "patch": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "status 遷移（COMPLETED で確定再計算）",
+        "operationId": "changeStatus_5",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchChangeStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/matches/{matchId}/score": {
+      "patch": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "最終スコア確定",
+        "operationId": "finalizeScore",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalizeScoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/score": {
+      "patch": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "最終スコア確定",
+        "operationId": "finalizeScore_1",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinalizeScoreRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/recording-mode": {
+      "patch": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "記録モード切替（公式戦⇔共同記録）",
+        "operationId": "changeRecordingMode",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRecordingModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/matches/{matchId}/recording-mode": {
+      "patch": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "記録モード切替（公式戦⇔共同記録）",
+        "operationId": "changeRecordingMode_1",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeRecordingModeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}": {
+      "get": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "試合詳細",
+        "operationId": "getMatch",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "試合論理削除",
+        "operationId": "deleteMatch",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "試合メタ更新",
+        "operationId": "updateMatch",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/matches/{matchId}": {
+      "get": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "試合詳細",
+        "operationId": "getMatch_1",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "試合論理削除",
+        "operationId": "deleteMatch_1",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "試合メタ更新",
+        "operationId": "updateMatch_1",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{teamId}/knowledge-base/templates/{templateId}": {
       "delete": {
         "tags": [
@@ -93192,7 +94043,7 @@
           "メンバー紹介ページ"
         ],
         "summary": "公開ステータス変更",
-        "operationId": "changeStatus_4",
+        "operationId": "changeStatus_6",
         "parameters": [
           {
             "name": "id",
@@ -98782,7 +99633,7 @@
           "大会管理"
         ],
         "summary": "ステータス変更",
-        "operationId": "changeStatus_5",
+        "operationId": "changeStatus_7",
         "parameters": [
           {
             "name": "orgId",
@@ -99348,7 +100199,7 @@
           "TODO（組織）"
         ],
         "summary": "組織TODOステータス変更",
-        "operationId": "changeStatus_6",
+        "operationId": "changeStatus_8",
         "parameters": [
           {
             "name": "orgId",
@@ -99530,335 +100381,6 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListTodoStatusChangeResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}": {
-      "get": {
-        "tags": [
-          "試合記録"
-        ],
-        "summary": "試合詳細",
-        "operationId": "getMatch",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "matchId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "試合記録"
-        ],
-        "summary": "試合論理削除",
-        "operationId": "deleteMatch",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "matchId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "試合記録"
-        ],
-        "summary": "試合メタ更新",
-        "operationId": "updateMatch",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "matchId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateMatchRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/status": {
-      "patch": {
-        "tags": [
-          "試合記録"
-        ],
-        "summary": "status 遷移（COMPLETED で確定再計算）",
-        "operationId": "changeStatus_7",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "matchId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MatchChangeStatusRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/score": {
-      "patch": {
-        "tags": [
-          "試合記録"
-        ],
-        "summary": "最終スコア確定",
-        "operationId": "finalizeScore",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "matchId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FinalizeScoreRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/recording-mode": {
-      "patch": {
-        "tags": [
-          "試合記録"
-        ],
-        "summary": "記録モード切替（公式戦⇔共同記録）",
-        "operationId": "changeRecordingMode",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "matchId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChangeRecordingModeRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMatchDetailResponse"
                 }
               }
             }
@@ -100154,13 +100676,114 @@
         }
       }
     },
-    "/api/v1/organizations/{orgId}/matches/{matchId}/events/{eventId}": {
+    "/api/v1/teams/{teamId}/matches/{matchId}/events/{eventId}": {
       "delete": {
         "tags": [
           "試合イベント"
         ],
         "summary": "イベント削除",
         "operationId": "deleteEvent_1",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "試合イベント"
+        ],
+        "summary": "イベント更新",
+        "operationId": "updateEvent_1",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "eventId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchEventRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchEventResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/matches/{matchId}/events/{eventId}": {
+      "delete": {
+        "tags": [
+          "試合イベント"
+        ],
+        "summary": "イベント削除",
+        "operationId": "deleteEvent_2",
         "parameters": [
           {
             "name": "orgId",
@@ -100201,7 +100824,7 @@
           "試合イベント"
         ],
         "summary": "イベント更新",
-        "operationId": "updateEvent_1",
+        "operationId": "updateEvent_2",
         "parameters": [
           {
             "name": "orgId",
@@ -100300,7 +100923,7 @@
           "組織イベント管理"
         ],
         "summary": "イベント削除",
-        "operationId": "deleteEvent_2",
+        "operationId": "deleteEvent_3",
         "parameters": [
           {
             "name": "orgId",
@@ -100332,7 +100955,7 @@
           "組織イベント管理"
         ],
         "summary": "イベント更新",
-        "operationId": "updateEvent_2",
+        "operationId": "updateEvent_3",
         "parameters": [
           {
             "name": "orgId",
@@ -102002,7 +102625,7 @@
         "tags": [
           "incident-controller"
         ],
-        "operationId": "changeStatus_8",
+        "operationId": "changeStatus_9",
         "parameters": [
           {
             "name": "id",
@@ -103733,7 +104356,7 @@
           "ブログ"
         ],
         "summary": "公開ステータス変更",
-        "operationId": "changeStatus_9",
+        "operationId": "changeStatus_10",
         "parameters": [
           {
             "name": "id",
@@ -113301,6 +113924,188 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseCancellationSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/matches/by-schedule/{scheduleId}": {
+      "get": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "カレンダー予定から既存試合を解決（入口④・二重起票防止）",
+        "operationId": "resolveBySchedule",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-schedule/{scheduleId}": {
+      "get": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "カレンダー予定から既存試合を解決（入口④・二重起票防止）",
+        "operationId": "resolveBySchedule_1",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "scheduleId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{teamId}/matches/by-fixture/{fixtureId}": {
+      "get": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "大会の対戦カードから既存試合を解決（入口①・二重起票防止）",
+        "operationId": "resolveByFixture",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "fixtureId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-fixture/{fixtureId}": {
+      "get": {
+        "tags": [
+          "試合記録"
+        ],
+        "summary": "大会の対戦カードから既存試合を解決（入口①・二重起票防止）",
+        "operationId": "resolveByFixture_1",
+        "parameters": [
+          {
+            "name": "orgId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "fixtureId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMatchSummaryResponse"
                 }
               }
             }
@@ -127606,7 +128411,7 @@
           "対戦カード・結果管理"
         ],
         "summary": "試合詳細",
-        "operationId": "getMatch_1",
+        "operationId": "getMatch_2",
         "parameters": [
           {
             "name": "orgId",
@@ -128160,106 +128965,6 @@
               "*/*": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponseListGanttTodoResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-schedule/{scheduleId}": {
-      "get": {
-        "tags": [
-          "試合記録"
-        ],
-        "summary": "カレンダー予定から既存試合を解決（入口④・二重起票防止）",
-        "operationId": "resolveBySchedule",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "scheduleId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMatchSummaryResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-fixture/{fixtureId}": {
-      "get": {
-        "tags": [
-          "試合記録"
-        ],
-        "summary": "大会の対戦カードから既存試合を解決（入口①・二重起票防止）",
-        "operationId": "resolveByFixture",
-        "parameters": [
-          {
-            "name": "orgId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "teamId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          },
-          {
-            "name": "fixtureId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "*/*": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApiResponseMatchSummaryResponse"
                 }
               }
             }
@@ -129668,13 +130373,54 @@
         }
       }
     },
-    "/api/v1/organizations/{orgId}/matches/{matchId}/appearances": {
+    "/api/v1/teams/{teamId}/matches/{matchId}/appearances": {
       "get": {
         "tags": [
           "試合イベント"
         ],
         "summary": "試合内出場記録一覧（computed_minutes 込み）",
         "operationId": "listAppearances",
+        "parameters": [
+          {
+            "name": "teamId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "matchId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPlayerAppearanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/organizations/{orgId}/matches/{matchId}/appearances": {
+      "get": {
+        "tags": [
+          "試合イベント"
+        ],
+        "summary": "試合内出場記録一覧（computed_minutes 込み）",
+        "operationId": "listAppearances_1",
         "parameters": [
           {
             "name": "orgId",
@@ -175179,6 +175925,92 @@
           }
         }
       },
+      "CreateMatchRequest": {
+        "type": "object",
+        "properties": {
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "hasScorekeeper": {
+            "type": "boolean"
+          },
+          "homeAway": {
+            "type": "string",
+            "enum": [
+              "HOME",
+              "AWAY",
+              "NEUTRAL"
+            ]
+          },
+          "kickoffAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "PRACTICE",
+              "FRIENDLY",
+              "TOURNAMENT",
+              "LEAGUE"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "opponentName": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          },
+          "opponentTeamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "periodFormat": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
+          },
+          "scheduleId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "scorekeeperUserId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sport": {
+            "type": "string",
+            "enum": [
+              "SOCCER",
+              "FUTSAL",
+              "BASKETBALL",
+              "VOLLEYBALL",
+              "SHOGI",
+              "GO",
+              "FIGURE_SKATING",
+              "GYMNASTICS"
+            ]
+          },
+          "tournamentFixtureId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "venue": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        },
+        "required": [
+          "kind"
+        ]
+      },
       "TestMessageRequest": {
         "type": "object",
         "properties": {
@@ -187678,92 +188510,6 @@
           }
         }
       },
-      "CreateMatchRequest": {
-        "type": "object",
-        "properties": {
-          "durationMinutes": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 0
-          },
-          "hasScorekeeper": {
-            "type": "boolean"
-          },
-          "homeAway": {
-            "type": "string",
-            "enum": [
-              "HOME",
-              "AWAY",
-              "NEUTRAL"
-            ]
-          },
-          "kickoffAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "PRACTICE",
-              "FRIENDLY",
-              "TOURNAMENT",
-              "LEAGUE"
-            ]
-          },
-          "notes": {
-            "type": "string",
-            "maxLength": 2000,
-            "minLength": 0
-          },
-          "opponentName": {
-            "type": "string",
-            "maxLength": 128,
-            "minLength": 0
-          },
-          "opponentTeamId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "periodFormat": {
-            "type": "string",
-            "maxLength": 32,
-            "minLength": 0
-          },
-          "scheduleId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "scorekeeperUserId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sport": {
-            "type": "string",
-            "enum": [
-              "SOCCER",
-              "FUTSAL",
-              "BASKETBALL",
-              "VOLLEYBALL",
-              "SHOGI",
-              "GO",
-              "FIGURE_SKATING",
-              "GYMNASTICS"
-            ]
-          },
-          "tournamentFixtureId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "venue": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          }
-        },
-        "required": [
-          "kind"
-        ]
-      },
       "CreateEntryTemplateRequest": {
         "type": "object",
         "properties": {
@@ -199484,6 +200230,111 @@
           }
         }
       },
+      "MatchChangeStatusRequest": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "POSTPONED",
+              "CANCELLED"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "FinalizeScoreRequest": {
+        "type": "object",
+        "properties": {
+          "awayPenaltyScore": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 999,
+            "minimum": 0
+          },
+          "awayScore": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 999,
+            "minimum": 0
+          },
+          "homePenaltyScore": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 999,
+            "minimum": 0
+          },
+          "homeScore": {
+            "type": "integer",
+            "format": "int32",
+            "maximum": 999,
+            "minimum": 0
+          }
+        }
+      },
+      "ChangeRecordingModeRequest": {
+        "type": "object",
+        "properties": {
+          "hasScorekeeper": {
+            "type": "boolean"
+          },
+          "scorekeeperUserId": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "UpdateMatchRequest": {
+        "type": "object",
+        "properties": {
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 0
+          },
+          "homeAway": {
+            "type": "string",
+            "enum": [
+              "HOME",
+              "AWAY",
+              "NEUTRAL"
+            ]
+          },
+          "kickoffAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "minLength": 0
+          },
+          "opponentName": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 0
+          },
+          "opponentTeamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "periodFormat": {
+            "type": "string",
+            "maxLength": 32,
+            "minLength": 0
+          },
+          "venue": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 0
+          }
+        }
+      },
       "UpdateKbTemplateRequest": {
         "type": "object",
         "properties": {
@@ -202659,111 +203510,6 @@
           },
           "status": {
             "type": "string"
-          }
-        }
-      },
-      "UpdateMatchRequest": {
-        "type": "object",
-        "properties": {
-          "durationMinutes": {
-            "type": "integer",
-            "format": "int32",
-            "minimum": 0
-          },
-          "homeAway": {
-            "type": "string",
-            "enum": [
-              "HOME",
-              "AWAY",
-              "NEUTRAL"
-            ]
-          },
-          "kickoffAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "notes": {
-            "type": "string",
-            "maxLength": 2000,
-            "minLength": 0
-          },
-          "opponentName": {
-            "type": "string",
-            "maxLength": 128,
-            "minLength": 0
-          },
-          "opponentTeamId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "periodFormat": {
-            "type": "string",
-            "maxLength": 32,
-            "minLength": 0
-          },
-          "venue": {
-            "type": "string",
-            "maxLength": 200,
-            "minLength": 0
-          }
-        }
-      },
-      "MatchChangeStatusRequest": {
-        "type": "object",
-        "properties": {
-          "status": {
-            "type": "string",
-            "enum": [
-              "SCHEDULED",
-              "IN_PROGRESS",
-              "COMPLETED",
-              "POSTPONED",
-              "CANCELLED"
-            ]
-          }
-        },
-        "required": [
-          "status"
-        ]
-      },
-      "FinalizeScoreRequest": {
-        "type": "object",
-        "properties": {
-          "awayPenaltyScore": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 999,
-            "minimum": 0
-          },
-          "awayScore": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 999,
-            "minimum": 0
-          },
-          "homePenaltyScore": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 999,
-            "minimum": 0
-          },
-          "homeScore": {
-            "type": "integer",
-            "format": "int32",
-            "maximum": 999,
-            "minimum": 0
-          }
-        }
-      },
-      "ChangeRecordingModeRequest": {
-        "type": "object",
-        "properties": {
-          "hasScorekeeper": {
-            "type": "boolean"
-          },
-          "scorekeeperUserId": {
-            "type": "integer",
-            "format": "int64"
           }
         }
       },
@@ -211201,6 +211947,111 @@
           "teamId": {
             "type": "integer",
             "format": "int64"
+          }
+        }
+      },
+      "ApiResponseMatchSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MatchSummaryResponse"
+          }
+        }
+      },
+      "MatchSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "awayPenaltyScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "awayScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "homeAway": {
+            "type": "string",
+            "enum": [
+              "HOME",
+              "AWAY",
+              "NEUTRAL"
+            ]
+          },
+          "homePenaltyScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "homeScore": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "kickoffAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "PRACTICE",
+              "FRIENDLY",
+              "TOURNAMENT",
+              "LEAGUE"
+            ]
+          },
+          "opponentName": {
+            "type": "string"
+          },
+          "opponentTeamId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sport": {
+            "type": "string",
+            "enum": [
+              "SOCCER",
+              "FUTSAL",
+              "BASKETBALL",
+              "VOLLEYBALL",
+              "SHOGI",
+              "GO",
+              "FIGURE_SKATING",
+              "GYMNASTICS"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "IN_PROGRESS",
+              "COMPLETED",
+              "POSTPONED",
+              "CANCELLED"
+            ]
+          },
+          "venue": {
+            "type": "string"
+          }
+        }
+      },
+      "PagedResponseMatchSummaryResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MatchSummaryResponse"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PageMeta"
           }
         }
       },
@@ -223231,111 +224082,6 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
-          }
-        }
-      },
-      "MatchSummaryResponse": {
-        "type": "object",
-        "properties": {
-          "awayPenaltyScore": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "awayScore": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "durationMinutes": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "homeAway": {
-            "type": "string",
-            "enum": [
-              "HOME",
-              "AWAY",
-              "NEUTRAL"
-            ]
-          },
-          "homePenaltyScore": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "homeScore": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "kickoffAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "kind": {
-            "type": "string",
-            "enum": [
-              "PRACTICE",
-              "FRIENDLY",
-              "TOURNAMENT",
-              "LEAGUE"
-            ]
-          },
-          "opponentName": {
-            "type": "string"
-          },
-          "opponentTeamId": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "sport": {
-            "type": "string",
-            "enum": [
-              "SOCCER",
-              "FUTSAL",
-              "BASKETBALL",
-              "VOLLEYBALL",
-              "SHOGI",
-              "GO",
-              "FIGURE_SKATING",
-              "GYMNASTICS"
-            ]
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "SCHEDULED",
-              "IN_PROGRESS",
-              "COMPLETED",
-              "POSTPONED",
-              "CANCELLED"
-            ]
-          },
-          "venue": {
-            "type": "string"
-          }
-        }
-      },
-      "PagedResponseMatchSummaryResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/MatchSummaryResponse"
-            }
-          },
-          "meta": {
-            "$ref": "#/components/schemas/PageMeta"
-          }
-        }
-      },
-      "ApiResponseMatchSummaryResponse": {
-        "type": "object",
-        "properties": {
-          "data": {
-            "$ref": "#/components/schemas/MatchSummaryResponse"
           }
         }
       },

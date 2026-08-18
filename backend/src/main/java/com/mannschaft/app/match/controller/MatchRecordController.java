@@ -62,7 +62,10 @@ import java.util.UUID;
  *   / 03_permissions_and_recording_modes.md §C</p>
  */
 @RestController("matchRecordController")
-@RequestMapping("/api/v1/organizations/{orgId}/teams/{teamId}/matches")
+@RequestMapping({
+        "/api/v1/organizations/{orgId}/teams/{teamId}/matches",
+        "/api/v1/teams/{teamId}/matches"
+})
 @Tag(name = "試合記録", description = "F08.10 試合 CRUD・status・スコア確定・記録モード")
 @RequiredArgsConstructor
 public class MatchRecordController {
@@ -74,13 +77,13 @@ public class MatchRecordController {
     @Operation(summary = "試合作成")
     @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId.value(), 'TEAM')")
     public ResponseEntity<ApiResponse<MatchResponse>> createMatch(
-            @PathVariable OrgScopeId orgId,
+            @PathVariable(required = false) OrgScopeId orgId,
             @PathVariable TeamScopeId teamId,
             @Valid @RequestBody CreateMatchRequest request) {
         Long actor = SecurityUtils.getCurrentUserId();
         // teamId / createdBy / organizationId はサーバー導出（DTO から受けない・マスアサインメント防止・03 §C.4a）
         MatchService.CreateCommand command = MatchService.CreateCommand.builder()
-                .organizationId(orgId.value())
+                .organizationId(valueOf(orgId))
                 .teamId(teamId.value())
                 .createdBy(actor)
                 .sport(request.getSport())
@@ -107,7 +110,7 @@ public class MatchRecordController {
     @Operation(summary = "チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ）")
     @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId.value(), 'TEAM')")
     public ResponseEntity<PagedResponse<MatchSummaryResponse>> listMatches(
-            @PathVariable OrgScopeId orgId,
+            @PathVariable(required = false) OrgScopeId orgId,
             @PathVariable TeamScopeId teamId,
             @RequestParam(required = false) MatchKind kind,
             @RequestParam(required = false) MatchStatus status,
@@ -126,7 +129,7 @@ public class MatchRecordController {
                 .to(to)
                 .build();
         Page<MatchSummaryResponse> result = matchService.listMatches(
-                orgId.value(), teamId.value(), actor, filter, PageRequest.of(page, size));
+                valueOf(orgId), teamId.value(), actor, filter, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -136,14 +139,14 @@ public class MatchRecordController {
     @Operation(summary = "カレンダー予定から既存試合を解決（入口④・二重起票防止）")
     @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId.value(), 'TEAM')")
     public ResponseEntity<ApiResponse<MatchSummaryResponse>> resolveBySchedule(
-            @PathVariable OrgScopeId orgId,
+            @PathVariable(required = false) OrgScopeId orgId,
             @PathVariable TeamScopeId teamId,
             @PathVariable Long scheduleId) {
         Long actor = SecurityUtils.getCurrentUserId();
         // 既存があれば FE は live を開く・無ければ作成する。存在しない場合は 200 + data:null を返し、
         // FE が単純に null 判定できるようにする（404 を正常フローとして扱わせない・症状を隠さない）。
         MatchSummaryResponse summary = matchService
-                .resolveByScheduleId(orgId.value(), teamId.value(), actor, scheduleId)
+                .resolveByScheduleId(valueOf(orgId), teamId.value(), actor, scheduleId)
                 .orElse(null);
         return ResponseEntity.ok(ApiResponse.of(summary));
     }
@@ -152,7 +155,7 @@ public class MatchRecordController {
     @Operation(summary = "大会の対戦カードから既存試合を解決（入口①・二重起票防止）")
     @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId.value(), 'TEAM')")
     public ResponseEntity<ApiResponse<MatchSummaryResponse>> resolveByFixture(
-            @PathVariable OrgScopeId orgId,
+            @PathVariable(required = false) OrgScopeId orgId,
             @PathVariable TeamScopeId teamId,
             @PathVariable Long fixtureId) {
         Long actor = SecurityUtils.getCurrentUserId();
@@ -160,7 +163,7 @@ public class MatchRecordController {
         // FE が単純に null 判定できるようにする（404 を正常フローとして扱わせない・症状を隠さない）。
         // 入口④ by-schedule と完全対称（04 §G.1a-2）。
         MatchSummaryResponse summary = matchService
-                .resolveByFixtureId(orgId.value(), teamId.value(), actor, fixtureId)
+                .resolveByFixtureId(valueOf(orgId), teamId.value(), actor, fixtureId)
                 .orElse(null);
         return ResponseEntity.ok(ApiResponse.of(summary));
     }
@@ -168,20 +171,20 @@ public class MatchRecordController {
     @GetMapping("/{matchId}")
     @Operation(summary = "試合詳細")
     public ResponseEntity<ApiResponse<MatchResponse>> getMatch(
-            @PathVariable OrgScopeId orgId,
+            @PathVariable(required = false) OrgScopeId orgId,
             @PathVariable TeamScopeId teamId,
             @PathVariable UUID matchId) {
         Long actor = SecurityUtils.getCurrentUserId();
         // 閲覧可視性は F00 へ委譲（不可は 404・存在を漏らさない）
         matchAccessService.assertCanView(actor, matchId);
-        MatchEntity match = matchService.getMatchOrThrow(matchId, orgId.value());
+        MatchEntity match = matchService.getMatchOrThrow(matchId, valueOf(orgId), teamId.value());
         return ResponseEntity.ok(ApiResponse.of(toResponse(match, actor)));
     }
 
     @PatchMapping("/{matchId}")
     @Operation(summary = "試合メタ更新")
     public ResponseEntity<ApiResponse<MatchResponse>> updateMatch(
-            @PathVariable OrgScopeId orgId,
+            @PathVariable(required = false) OrgScopeId orgId,
             @PathVariable TeamScopeId teamId,
             @PathVariable UUID matchId,
             @Valid @RequestBody UpdateMatchRequest request) {
@@ -196,31 +199,33 @@ public class MatchRecordController {
                 .periodFormat(request.getPeriodFormat())
                 .notes(request.getNotes())
                 .build();
-        MatchEntity saved = matchService.updateMeta(matchId, orgId.value(), actor, command);
+        MatchEntity saved = matchService.updateMeta(
+                matchId, valueOf(orgId), teamId.value(), actor, command);
         return ResponseEntity.ok(ApiResponse.of(toResponse(saved, actor)));
     }
 
     @PatchMapping("/{matchId}/status")
     @Operation(summary = "status 遷移（COMPLETED で確定再計算）")
     public ResponseEntity<ApiResponse<MatchResponse>> changeStatus(
-            @PathVariable OrgScopeId orgId,
+            @PathVariable(required = false) OrgScopeId orgId,
             @PathVariable TeamScopeId teamId,
             @PathVariable UUID matchId,
             @Valid @RequestBody ChangeStatusRequest request) {
         Long actor = SecurityUtils.getCurrentUserId();
-        MatchEntity saved = matchService.changeStatus(matchId, orgId.value(), actor, request.getStatus());
+        MatchEntity saved = matchService.changeStatus(
+                matchId, valueOf(orgId), teamId.value(), actor, request.getStatus());
         return ResponseEntity.ok(ApiResponse.of(toResponse(saved, actor)));
     }
 
     @PatchMapping("/{matchId}/score")
     @Operation(summary = "最終スコア確定")
     public ResponseEntity<ApiResponse<MatchResponse>> finalizeScore(
-            @PathVariable OrgScopeId orgId,
+            @PathVariable(required = false) OrgScopeId orgId,
             @PathVariable TeamScopeId teamId,
             @PathVariable UUID matchId,
             @Valid @RequestBody FinalizeScoreRequest request) {
         Long actor = SecurityUtils.getCurrentUserId();
-        MatchEntity saved = matchService.finalizeScore(matchId, orgId.value(), actor,
+        MatchEntity saved = matchService.finalizeScore(matchId, valueOf(orgId), teamId.value(), actor,
                 request.getHomeScore(), request.getAwayScore(),
                 request.getHomePenaltyScore(), request.getAwayPenaltyScore());
         return ResponseEntity.ok(ApiResponse.of(toResponse(saved, actor)));
@@ -229,12 +234,13 @@ public class MatchRecordController {
     @PatchMapping("/{matchId}/recording-mode")
     @Operation(summary = "記録モード切替（公式戦⇔共同記録）")
     public ResponseEntity<ApiResponse<MatchResponse>> changeRecordingMode(
-            @PathVariable OrgScopeId orgId,
+            @PathVariable(required = false) OrgScopeId orgId,
             @PathVariable TeamScopeId teamId,
             @PathVariable UUID matchId,
             @Valid @RequestBody ChangeRecordingModeRequest request) {
         Long actor = SecurityUtils.getCurrentUserId();
-        MatchEntity saved = matchService.changeRecordingMode(matchId, orgId.value(), actor,
+        MatchEntity saved = matchService.changeRecordingMode(
+                matchId, valueOf(orgId), teamId.value(), actor,
                 request.isHasScorekeeper(), request.getScorekeeperUserId());
         return ResponseEntity.ok(ApiResponse.of(toResponse(saved, actor)));
     }
@@ -242,11 +248,11 @@ public class MatchRecordController {
     @DeleteMapping("/{matchId}")
     @Operation(summary = "試合論理削除")
     public ResponseEntity<Void> deleteMatch(
-            @PathVariable OrgScopeId orgId,
+            @PathVariable(required = false) OrgScopeId orgId,
             @PathVariable TeamScopeId teamId,
             @PathVariable UUID matchId) {
         Long actor = SecurityUtils.getCurrentUserId();
-        matchService.softDelete(matchId, orgId.value(), actor);
+        matchService.softDelete(matchId, valueOf(orgId), teamId.value(), actor);
         return ResponseEntity.noContent().build();
     }
 
@@ -255,5 +261,9 @@ public class MatchRecordController {
         boolean canEdit = matchAccessService.canEditMeta(viewerUserId, match);
         boolean canRecord = matchAccessService.canRecordTimeline(viewerUserId, match);
         return MatchResponse.from(match, canEdit, canRecord);
+    }
+
+    private static Long valueOf(OrgScopeId orgId) {
+        return orgId != null ? orgId.value() : null;
     }
 }
