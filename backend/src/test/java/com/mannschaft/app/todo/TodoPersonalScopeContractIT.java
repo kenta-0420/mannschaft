@@ -484,7 +484,7 @@ class TodoPersonalScopeContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(jsonPath("$.data[*].id", not(hasItem(completedTodoId.intValue()))))
                     .andExpect(jsonPath("$.data[*].id", not(hasItem(deletedTodoId.intValue()))))
                     .andExpect(jsonPath("$.data[*].id", hasItem(jointlyAssignedTodoId.intValue())))
-                    .andExpect(jsonPath("$.data[?(@.id == " + jointlyAssignedTodoId + ")", org.hamcrest.Matchers.hasSize(1)))
+                    .andExpect(jsonPath("$.data[?(@.id == " + jointlyAssignedTodoId + ")]", org.hamcrest.Matchers.hasSize(1)))
                     .andExpect(jsonPath("$.data[*].id", not(hasItem(unassignedTodoId.intValue()))))
                     .andExpect(jsonPath("$.data[?(@.id == " + personalCalendarTodoId + ")].startDate")
                             .value(org.hamcrest.Matchers.contains(org.hamcrest.Matchers.nullValue())))
