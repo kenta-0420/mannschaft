@@ -2109,5 +2109,21 @@
   "comingSoon": {
     "title": "準備中",
     "description": "この機能は現在準備中です。もうしばらくお待ちください。"
+  },
+  "transferOwnership": {
+    "sectionTitle": "オーナー譲渡",
+    "sectionDescription": "管理者（オーナー）権限を他のメンバーへ引き継ぎます。譲渡後、あなたは副管理者になり、管理者専用の操作は行えなくなります。",
+    "openButton": "オーナーを譲渡",
+    "dialogTitle": "オーナーを譲渡する",
+    "warning": "この操作は取り消せません。譲渡すると管理者権限は新しいオーナーへ移り、元に戻すには新しいオーナーの操作が必要になります。",
+    "targetLabel": "譲渡先メンバー",
+    "targetPlaceholder": "メンバーを選択",
+    "noCandidates": "譲渡できるメンバーがいません。",
+    "confirmLabel": "確認のため「{name}」と入力してください",
+    "confirmMismatch": "名称が一致しません。",
+    "cancel": "キャンセル",
+    "submit": "譲渡する",
+    "successTitle": "オーナーを譲渡しました",
+    "successDetail": "管理者権限が新しいオーナーへ移りました。"
   }
 }
