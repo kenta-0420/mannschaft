@@ -2109,5 +2109,21 @@
   "comingSoon": {
     "title": "即将推出",
     "description": "此功能目前正在开发中。请稍后再来查看。"
+  },
+  "transferOwnership": {
+    "sectionTitle": "转让所有者",
+    "sectionDescription": "将管理员（所有者）权限移交给其他成员。转让后您将成为副管理员，无法再执行仅限管理员的操作。",
+    "openButton": "转让所有者",
+    "dialogTitle": "转让所有者",
+    "warning": "此操作无法撤销。转让后管理员权限将归新所有者所有，只有新所有者才能再转回。",
+    "targetLabel": "新所有者",
+    "targetPlaceholder": "选择成员",
+    "noCandidates": "没有可转让的成员。",
+    "confirmLabel": "请输入“{name}”以确认",
+    "confirmMismatch": "名称不一致。",
+    "cancel": "取消",
+    "submit": "转让",
+    "successTitle": "已转让所有者",
+    "successDetail": "管理员权限已移交给新所有者。"
   }
 }

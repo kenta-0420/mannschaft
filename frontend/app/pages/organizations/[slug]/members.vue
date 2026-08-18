@@ -13,7 +13,15 @@ definePageMeta({
 const route = useRoute()
 const orgSlug = computed(() => String(route.params.slug))
 
-const { isAdminOrDeputy } = useOrgShellContext()
+const { isAdmin, isAdminOrDeputy, displayName, refresh } = useOrgShellContext()
+
+/**
+ * CMP-051: オーナー譲渡後は自分が ADMIN でなくなるため、シェルの組織・権限を
+ * 再解決して権限依存 UI（管理者専用タブ・操作ボタン）を即座に整合させる。
+ */
+async function onOwnershipTransferred(): Promise<void> {
+  await refresh()
+}
 </script>
 
 <template>
@@ -23,6 +31,15 @@ const { isAdminOrDeputy } = useOrgShellContext()
       :scope-id="orgSlug"
       :can-change-role="isAdminOrDeputy"
       :can-remove="isAdminOrDeputy"
+    />
+    <!-- CMP-051: オーナー譲渡は ADMIN 本人のみ（BE も最終判定を ADMIN 限定にしている） -->
+    <TransferOwnershipPanel
+      v-if="isAdmin"
+      class="mt-6"
+      scope-type="organization"
+      :scope-slug="orgSlug"
+      :scope-name="displayName"
+      @transferred="onOwnershipTransferred"
     />
   </div>
 </template>

@@ -20,7 +20,15 @@ definePageMeta({
 const route = useRoute()
 const teamSlug = computed(() => String(route.params.slug))
 
-const { isAdminOrDeputy } = useTeamShellContext()
+const { isAdmin, isAdminOrDeputy, displayName, refresh } = useTeamShellContext()
+
+/**
+ * CMP-051: オーナー譲渡後は自分が ADMIN でなくなるため、シェルのチーム・権限を
+ * 再解決して権限依存 UI（管理者専用タブ・操作ボタン）を即座に整合させる。
+ */
+async function onOwnershipTransferred(): Promise<void> {
+  await refresh()
+}
 
 /** ちょうど `/teams/{slug}/members`（ネスト子なし）か。 */
 const isMembersRoot = computed<boolean>(() => {
@@ -37,6 +45,15 @@ const isMembersRoot = computed<boolean>(() => {
         :scope-id="teamSlug"
         :can-change-role="isAdminOrDeputy"
         :can-remove="isAdminOrDeputy"
+      />
+      <!-- CMP-051: オーナー譲渡は ADMIN 本人のみ（BE も最終判定を ADMIN 限定にしている） -->
+      <TransferOwnershipPanel
+        v-if="isAdmin"
+        class="mt-6"
+        scope-type="team"
+        :scope-slug="teamSlug"
+        :scope-name="displayName"
+        @transferred="onOwnershipTransferred"
       />
     </div>
     <!-- ネスト子（/members/{userId}/match-analytics 等）へ委譲 -->
