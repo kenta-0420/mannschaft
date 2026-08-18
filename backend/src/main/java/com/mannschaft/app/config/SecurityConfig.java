@@ -405,8 +405,8 @@ public class SecurityConfig {
                 // F01.9 年齢区分設定管理（SYSTEM_ADMIN 限定）
                 .requestMatchers("/api/v1/admin/age-group-settings/**").hasRole("SYSTEM_ADMIN")
                 // 認可根治戦役 束A（Wave 0）: SYSTEM_ADMIN 専用の admin 系 API（docs/security/01 §4）。
-                // requestMatcher 登録漏れにより、認証済みなら誰でも到達できていた（deny-by-default は
-                // 未認証しか弾かない）。以下 6 系統を SYSTEM_ADMIN 予約に格上げする。
+                // 以下 6 系統を requestMatcher で SYSTEM_ADMIN 予約とする（deny-by-default は
+                // 未認証しか弾かないため、ロール予約を別途明示する）。
                 //
                 // ※ per-scope（dashboard / permission-groups / feedbacks 等）はスコープ内 ADMIN が
                 //   使うため、ここではパス単位のロール予約をせず authenticated() のままとする。
@@ -427,9 +427,9 @@ public class SecurityConfig {
                 // Service 層の AccessControlService.checkSystemAdmin と二重防御になる。
                 .requestMatchers("/api/v1/admin/form-presets/**").hasRole("SYSTEM_ADMIN")
                 // 認可根治戦役 Wave5（admin 系 未回収エンドポイントの回収）:
-                // 以下 3 系統も Wave0 と同じ requestMatcher 登録漏れで authenticated() に落ちており、
-                // 認証済みなら誰でも到達できていた。いずれも「scope 引数を一切持たない」＝
-                // 全テナント横断のデータを対象とするシステム級 API のため SYSTEM_ADMIN 予約に格上げする
+                // 以下 3 系統も Wave0 と同じ方針で requestMatcher に登録する。いずれも
+                // 「scope 引数を一切持たない」＝全テナント横断のデータを対象とするシステム級 API
+                // のため SYSTEM_ADMIN 予約とする
                 // （scope 引数を持つ per-scope API は上記 ※ のとおり Controller 入口で scope 認可する）。
                 //   - seals            : 全ユーザーの電子印鑑の一覧・一括再生成
                 //   - action-templates : 全体共通のモデレーション用アクションテンプレート CRUD

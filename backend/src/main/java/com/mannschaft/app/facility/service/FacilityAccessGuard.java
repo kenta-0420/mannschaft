@@ -14,10 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 施設ドメインの認可ガード（認可根治戦役 Wave5 早馬）。
  *
- * <p>本ドメインは {@code FacilityService}/{@code FacilityBookingService} が
- * {@link AccessControlService} を注入すらしておらず、全 EP で認可が欠落していた
- * （任意ログインユーザーが bookingId/facilityId 総当りで他組織・他チームの予約・施設を
- * read/承認/取消/削除できる重大 BOLA/IDOR）。根因はドメイン全体に及ぶため、全 Controller の
+ * <p>本ドメインは全 EP で認可を必要とする（bookingId/facilityId で他組織・他チームの予約・施設に
+ * read/承認/取消/削除が及ぶ操作を含むため）。全 Controller の
  * public 入口でここを経由して認可を敷く（{@code feedback_authz_gate_on_public_entry_not_shared_method}:
  * 認可ガードは public 入口に集約し、バッチ等と共有される内部 finder には敷かない）。</p>
  *

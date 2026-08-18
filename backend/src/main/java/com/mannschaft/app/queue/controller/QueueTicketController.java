@@ -126,9 +126,8 @@ public class QueueTicketController {
     /**
      * 自分のチケットをキャンセルする。
      *
-     * <p>Service の {@code cancelMyTicket} は受け取った {@code userId} を「取消操作者」としてのみ記録しており、
-     * チケットの所有者と一致するかを検証していなかった（他人のチケットを取り消せる BOLA）。
-     * 入口で {@link QueueAccessGuard#requireOwnTicketInScope} により scope 帰属と本人性を検証する。</p>
+     * <p>入口で {@link QueueAccessGuard#requireOwnTicketInScope} により scope 帰属と本人性を検証してから、
+     * Service の {@code cancelMyTicket} を呼ぶ。</p>
      */
     @DeleteMapping("/tickets/{ticketId}")
     @Operation(summary = "チケットキャンセル")

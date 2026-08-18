@@ -104,10 +104,8 @@ public class ChatMessageService {
      * それ以外（"before" または null）は従来通り cursor より古いメッセージを降順で返す。
      * </p>
      *
-     * <p><b>認可根治 Wave 6</b>: 以前は閲覧者 ID を引数に取らず、認可はコントローラ側の呼び出しに
-     * 委ねられていた（しかもその実体は通常チャンネルで no-op だった）。「呼び出し元まかせ認可」は
-     * 呼び忘れ・実装漏れが即 IDOR になるため、<b>閲覧者 ID を必須引数として受け取り、
-     * サービス自身が入口で認可する</b>構造に是正した。</p>
+     * <p><b>認可根治 Wave 6</b>: 「呼び出し元まかせ認可」は呼び忘れ・実装漏れが即 IDOR になるため、
+     * <b>閲覧者 ID を必須引数として受け取り、サービス自身が入口で認可する</b>構造とする。</p>
      *
      * @param channelId チャンネルID
      * @param viewerId  閲覧ユーザーID（認可判定に使用）
@@ -466,8 +464,7 @@ public class ChatMessageService {
     public MessageResponse togglePin(Long messageId, boolean pinned, Long userId) {
         ChatMessageEntity message = findMessageOrThrow(messageId);
         // F08.7.1: 大会/ディビジョン連絡チャットのピン留めはモデレーション相当＝canPost（代表/主催者）を要求する。
-        // 認可根治 Wave6: 通常チャンネルもチャンネルメンバーであることを要求する
-        //（従来は no-op で、任意チャンネルの任意メッセージを誰でもピン留め/解除できた）。
+        // 認可根治 Wave6: 通常チャンネルもチャンネルメンバーであることを要求する。
         ChatChannelEntity channel = channelService.findChannelOrThrow(message.getChannelId());
         checkChannelPostAccess(channel, userId);
         if (pinned) {
@@ -537,11 +534,7 @@ public class ChatMessageService {
     /**
      * チャンネルの閲覧認可を検証する。
      *
-     * <p><b>認可根治 Wave 6</b>: 本メソッドは以前「通常チャンネルでは no-op」であり、
-     * {@code TOURNAMENT_CHAT}/{@code TOURNAMENT_DIVISION_CHAT} のときしか検証していなかった。
-     * その結果、認証済みであれば channelId を総当りするだけで<b>他人の DM 本文まで読めた</b>
-     * （メソッド名と実態の乖離。名前を見て「認可済み」と誤認する構造そのものが欠陥だった）。
-     * 現在は種別ごとに実際の認可を行う。</p>
+     * <p><b>認可根治 Wave 6</b>: 種別ごとに実際の認可を行う（メソッド名と実態を一致させる）。</p>
      *
      * <p>種別ごとの意味論（{@link ChannelType#isMembershipGated()} を単一の出所とする）:</p>
      * <ul>
@@ -557,7 +550,7 @@ public class ChatMessageService {
      *       アクセスモデルで認可する。{@code VILLAGE_LOBBY} は当該村の現役メンバー
      *       （{@link PostingIdentityService#isUserVillageMember}）、{@code EVENT_CHAT} は当該イベントスコープのメンバー
      *       （{@link EventScopeAccessGuard#isEventScopeMember}）を要求し、非該当は {@link ChatErrorCode#CHANNEL_ACCESS_DENIED}（403）。
-     *       旧実装はこれらを無言 return で素通ししており、非メンバーが本文を閲覧できた（{@code requireChannelMembership} 参照）。
+     *       非メンバーが本文を閲覧できないことを保証する（{@code requireChannelMembership} 参照）。
      *       なお WS 購読認可 {@code ChatChannelSubscriptionInterceptor} 側の同種別強化は引き続き既知課題（別スコープ）。</li>
      * </ul>
      *
@@ -613,10 +606,8 @@ public class ChatMessageService {
     /**
      * チャンネルへの投稿・モデレーション操作の認可を検証する。
      *
-     * <p><b>認可根治 Wave 6</b>: 旧 {@code verifyTournamentChannelPost} は大会チャット以外で no-op だったため、
-     * 誰でも他人の DM へ投稿でき、任意チャンネルの任意メッセージをピン留めできた。
-     * 大会チャットの既存経路（{@link TournamentContactAccessService#checkPost}）は維持したまま、
-     * 通常チャンネル向けにメンバーシップ検査を追加する。</p>
+     * <p><b>認可根治 Wave 6</b>: 大会チャットの既存経路（{@link TournamentContactAccessService#checkPost}）は
+     * 維持したまま、通常チャンネル向けにもメンバーシップ検査を適用する。</p>
      *
      * @param channel  対象チャンネル
      * @param senderId 操作ユーザー ID
@@ -634,12 +625,9 @@ public class ChatMessageService {
     /**
      * チャンネル種別ごとの閲覧・投稿認可を検証する。非該当は {@link ChatErrorCode#CHANNEL_ACCESS_DENIED}（403）。
      *
-     * <p><b>裏目付A（VILLAGE_LOBBY / EVENT_CHAT 素通し根治）:</b> 旧実装は
-     * {@code isMembershipGated()} でない種別（{@code VILLAGE_LOBBY} / {@code EVENT_CHAT}）を
-     * <b>無言 return で素通し</b>していたため、当該村の非メンバー・当該イベントの非参加者でも
-     * 本文一覧・スレッド・検索・投稿が通っていた（認可漏れ）。Javadoc の設計意図
-     * （「村ロビー・イベントは village / event ドメインのアクセスモデルで認可する」）を実装で満たすべく、
-     * 種別ごとに各ドメインの正準アクセス判定へ委譲する。無言 return は廃し、既定は fail-closed（拒否）とする。</p>
+     * <p><b>裏目付A（VILLAGE_LOBBY / EVENT_CHAT）:</b>
+     * {@code isMembershipGated()} でない種別（{@code VILLAGE_LOBBY} / {@code EVENT_CHAT}）についても、
+     * 種別ごとに各ドメインの正準アクセス判定へ委譲する。既定は fail-closed（拒否）とする。</p>
      *
      * <ul>
      *   <li><b>メンバーシップ管理種別</b>（{@link ChannelType#isMembershipGated()}）—

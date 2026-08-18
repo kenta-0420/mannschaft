@@ -165,8 +165,8 @@ public class FormPdfService {
 
     /**
      * 提出を取得し、URL の {@code scopeType}/{@code scopeId} と一致するかを検証する（BOLA ガード）。
-     * 認可根治戦役 Wave3-B4: 従来は submissionId のみで取得しており、URL の scope を一切
-     * 検証していなかった。不一致は {@link FormErrorCode#SUBMISSION_NOT_FOUND}（404）で存在秘匿する。
+     * 認可根治戦役 Wave3-B4: submissionId に加え URL の scope も検証する。
+     * 不一致は {@link FormErrorCode#SUBMISSION_NOT_FOUND}（404）で存在秘匿する。
      */
     private FormSubmissionEntity findSubmissionInScopeOrThrow(String scopeType, Long scopeId, Long submissionId) {
         FormSubmissionEntity entity = findSubmissionOrThrow(submissionId);

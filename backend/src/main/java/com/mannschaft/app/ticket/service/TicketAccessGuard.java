@@ -10,10 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 回数券（F08.5）ドメインの認可ガード（認可根治戦役 Wave5）。
  *
- * <p>本ドメインは Controller・Service ともに認可シグナルを一切持たず、
- * URL パスの {@code teamId} を検証なしに信頼していた。ログイン済みであれば誰でも
- * 他チームのスタッフ操作（発行・消化・返金・統計エクスポート）に到達でき、
- * 顧客面では他人の購入情報へ到達できる状態だったため、全 public 入口に本ガードを敷く
+ * <p>URL パスの {@code teamId} に対する membership/ADMIN 検証を全 public 入口に敷く
+ * （スタッフ操作＝発行・消化・返金・統計エクスポート、顧客面＝購入情報の双方を対象とする）
  * （{@code feedback_authz_gate_on_public_entry_not_shared_method}:
  * 認可ガードは public 入口に集約し、バッチ等と共有される内部 finder には敷かない）。</p>
  *

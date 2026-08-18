@@ -524,11 +524,8 @@ public class ChatChannelService {
      * DMチャンネルをグループDMに変換する。
      * 2者間DMをグループDMに拡張し、追加メンバーを招待可能にする。
      *
-     * <p><b>認可根治 Wave 6</b>: 従来は<b>呼出ユーザー ID を引数に取っておらず</b>、
-     * {@code channel.isDm()} しか検証していなかったため、<b>他人の DM を勝手に GROUP_DM へ変換できた</b>
-     * （変換後は追加メンバーを招待可能になるため、第三者を他人の会話に引き込む足がかりになる）。
-     * 既存のチャンネル管理操作（更新・削除・アーカイブ）と同じ {@link #checkChannelAdminAccess} を適用し、
-     * DM の場合はチャンネル OWNER のみに限定する。</p>
+     * <p><b>認可根治 Wave 6</b>: 既存のチャンネル管理操作（更新・削除・アーカイブ）と同じ
+     * {@link #checkChannelAdminAccess} を適用し、DM の場合はチャンネル OWNER のみに限定する。</p>
      *
      * @param channelId チャンネルID
      * @param callerId  操作ユーザーID（認可チェック用）
