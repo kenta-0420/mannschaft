@@ -141,7 +141,7 @@ export interface GanttTodo {
   childIds: number[]
 }
 
-/** 自分に割り当てられたTODOをカレンダーへ載せるための軽量DTO（CMP-057）。 */
+/** 自分に割り当てられたTODOをカレンダーへ載せるための軽量DTO。 */
 export interface MyCalendarTodo {
   id: number
   title: string
