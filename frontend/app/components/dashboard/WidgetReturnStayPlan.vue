@@ -35,6 +35,3 @@ onMounted(load)
     </form>
   </Dialog>
 </template>
-
-
-
