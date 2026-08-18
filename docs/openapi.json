@@ -117237,6 +117237,89 @@
         }
       }
     },
+    "/api/v1/teams/{slug}/members/{memberId}/return-stay-plans": {
+      "get": {
+        "tags": [
+          "return-stay-plan-team-controller"
+        ],
+        "operationId": "listForMember",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListTeamPlanView"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teams/{slug}/members/return-stay-plans": {
+      "get": {
+        "tags": [
+          "return-stay-plan-team-controller"
+        ],
+        "operationId": "listForMembers",
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberIds",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "maxItems": 400,
+              "minItems": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseMemberPlanItems"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/teams/{slug}/me/permissions": {
       "get": {
         "tags": [
@@ -214821,6 +214904,92 @@
           },
           "meta": {
             "$ref": "#/components/schemas/PageMeta"
+          }
+        }
+      },
+      "ApiResponseListTeamPlanView": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamPlanView"
+            }
+          }
+        }
+      },
+      "TeamPlanView": {
+        "type": "object",
+        "properties": {
+          "countryCode": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "ownerAvatarUrl": {
+            "type": "string"
+          },
+          "ownerDisplayName": {
+            "type": "string"
+          },
+          "planType": {
+            "type": "string"
+          },
+          "prefectureCode": {
+            "type": "string"
+          },
+          "regionName": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiResponseMemberPlanItems": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/MemberPlanItems"
+          }
+        }
+      },
+      "MemberPlanItem": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "plans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TeamPlanView"
+            }
+          }
+        }
+      },
+      "MemberPlanItems": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MemberPlanItem"
+            }
           }
         }
       },

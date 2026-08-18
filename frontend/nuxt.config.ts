@@ -89,7 +89,13 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match'],
+    dirs: [
+      'composables',
+      'composables/jobs',
+      'composables/wallet-group-show',
+      'composables/match',
+      'composables/returnStayPlan',
+    ],
   },
 
   devServer: {
@@ -526,6 +532,7 @@ export default defineNuxtConfig({
           'ja/parental-consent.json',
           'ja/billing.json',
           'ja/global_nav.json',
+          'ja/return_stay_plan.json',
         ],
       },
       {
@@ -599,6 +606,7 @@ export default defineNuxtConfig({
           'en/parental-consent.json',
           'en/billing.json',
           'en/global_nav.json',
+          'en/return_stay_plan.json',
         ],
       },
       {
@@ -672,6 +680,7 @@ export default defineNuxtConfig({
           'zh/parental-consent.json',
           'zh/billing.json',
           'zh/global_nav.json',
+          'zh/return_stay_plan.json',
         ],
       },
       {
@@ -745,6 +754,7 @@ export default defineNuxtConfig({
           'ko/parental-consent.json',
           'ko/billing.json',
           'ko/global_nav.json',
+          'ko/return_stay_plan.json',
         ],
       },
       {
@@ -818,6 +828,7 @@ export default defineNuxtConfig({
           'es/parental-consent.json',
           'es/billing.json',
           'es/global_nav.json',
+          'es/return_stay_plan.json',
         ],
       },
       {
@@ -891,6 +902,7 @@ export default defineNuxtConfig({
           'de/parental-consent.json',
           'de/billing.json',
           'de/global_nav.json',
+          'de/return_stay_plan.json',
         ],
       },
     ],

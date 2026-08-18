@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { TeamReturnStayPlan } from '~/composables/returnStayPlan/useReturnStayPlanApi'
 const props = defineProps<{
   scopeType: 'team' | 'organization'
   scopeId: string
@@ -32,22 +33,49 @@ const totalRecords = ref(0)
 const loading = ref(false)
 const page = ref(0)
 const rows = ref(20)
+const returnStayApi = useReturnStayPlanTeamApi()
+const returnStayPlans = ref<Map<number, TeamReturnStayPlan[]>>(new Map())
+const returnStayLoadError = ref(false)
+const returnStayLoading = ref(false)
+let returnStayRequestSequence = 0
+let memberRequestSequence = 0
+let memberController: AbortController | null = null
+async function loadReturnStayPlans() {
+  const sequence = ++returnStayRequestSequence
+  if (props.scopeType !== 'team' || members.value.length === 0) { returnStayPlans.value = new Map(); returnStayLoadError.value = false; returnStayLoading.value = false; return }
+  returnStayLoadError.value = false
+  returnStayLoading.value = true
+  try {
+    const items = await returnStayApi.fetchForMembers(props.scopeId, members.value.map((member) => member.userId))
+    if (sequence === returnStayRequestSequence && items) returnStayPlans.value = new Map(items.map((item) => [item.memberId, item.plans]))
+  } catch {
+    if (sequence === returnStayRequestSequence) { returnStayLoadError.value = true; returnStayPlans.value = new Map() }
+  }
+  finally { if (sequence === returnStayRequestSequence) returnStayLoading.value = false }
+}
 
 async function loadMembers() {
+  const sequence = ++memberRequestSequence
+  memberController?.abort()
+  memberController = new AbortController()
   loading.value = true
   try {
     const base = props.scopeType === 'team' ? 'teams' : 'organizations'
     const response = await api<PagedMembers>(
-      `/api/v1/${base}/${props.scopeId}/members?page=${page.value}&size=${rows.value}`
+      `/api/v1/${base}/${props.scopeId}/members?page=${page.value}&size=${rows.value}`,
+      { signal: memberController.signal },
     )
+    if (sequence !== memberRequestSequence) return
     members.value = response.data
     totalRecords.value = response.meta.totalElements
+    await loadReturnStayPlans()
   }
   catch {
+    if (sequence !== memberRequestSequence || memberController?.signal.aborted) return
     members.value = []
   }
   finally {
-    loading.value = false
+    if (sequence === memberRequestSequence) loading.value = false
   }
 }
 
@@ -92,6 +120,7 @@ function formatMemberDate(dateStr: string): string {
 }
 
 onMounted(() => loadMembers())
+onBeforeUnmount(() => memberController?.abort())
 
 defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
 </script>
@@ -129,6 +158,18 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
     <Column header="参加日" field="joinedAt" style="width: 120px">
       <template #body="{ data }">
         {{ formatMemberDate(data.joinedAt) }}
+      </template>
+    </Column>
+    <Column v-if="scopeType === 'team'" :header="$t('returnStayPlan.memberPill.title')" style="min-width: 180px">
+      <template #body="{ data }">
+        <div v-if="returnStayLoading" class="text-xs text-surface-400">{{ $t('common.loading') }}</div>
+        <div v-else-if="returnStayLoadError" class="flex items-center gap-1 text-xs text-surface-400">
+          <span>{{ $t('returnStayPlan.memberPill.unavailable') }}</span>
+          <Button text size="small" :label="$t('common.retry')" @click="loadReturnStayPlans" />
+        </div>
+        <div v-else class="flex flex-wrap gap-1">
+          <Tag v-for="plan in returnStayPlans.get(data.userId) ?? []" :key="plan.id" :severity="plan.status === 'ACTIVE' ? 'success' : 'info'" :value="plan.status === 'ACTIVE' ? $t(`returnStayPlan.status.${plan.planType}`) : `${plan.startDate}–${plan.endDate}`" />
+        </div>
       </template>
     </Column>
     <Column v-if="canChangeRole || canRemove" header="操作" style="width: 100px">
