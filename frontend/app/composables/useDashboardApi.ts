@@ -96,19 +96,24 @@ export function useDashboardApi() {
     const query = new URLSearchParams()
     if (params?.cursor) query.set('cursor', params.cursor)
     query.set('limit', String(params?.limit ?? 10))
+    // F03.18: レスポンスは配列直返しから { items, nextCursor } のラッパー型へ変更された（破壊的変更）。
     return api<{
-      data: Array<{
-        id: number
-        type: string
-        actor: { id: number; displayName: string; avatarUrl: string | null }
-        scopeType: string
-        scopeId: string
-        scopeName: string
-        targetType: string
-        targetId: number
-        summary: string
-        createdAt: string
-      }>
+      data: {
+        items: Array<{
+          id: number
+          type: string
+          actor: { id: number; displayName: string; avatarUrl: string | null }
+          scopeType: string
+          scopeId: string
+          scopeName: string
+          targetType: string
+          targetId: number
+          summary: string
+          detail: Record<string, unknown> | null
+          createdAt: string
+        }>
+        nextCursor: string | null
+      }
     }>(`/api/v1/dashboard/activity?${query}`)
   }
 

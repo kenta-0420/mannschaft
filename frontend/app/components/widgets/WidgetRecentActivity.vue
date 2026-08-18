@@ -21,7 +21,7 @@ async function load() {
   loading.value = true
   try {
     const res = await getActivity({ limit: 20 })
-    activities.value = res.data.map((a) => ({
+    activities.value = (res.data?.items ?? []).map((a) => ({
       id: a.id,
       activityType: a.type,
       actorName: a.actor?.displayName ?? '',

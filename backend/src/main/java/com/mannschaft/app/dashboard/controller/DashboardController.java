@@ -12,7 +12,9 @@ import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.dashboard.ScopeType;
-import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.dashboard.ScheduleFeedErrorCode;
+import com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse;
 import com.mannschaft.app.dashboard.dto.ChatHubResponse;
 import com.mannschaft.app.dashboard.dto.DashboardAnnouncementResponse;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
@@ -391,18 +393,30 @@ public class DashboardController {
     /**
      * 最近のアクティビティ。
      */
-    @SelfScopedEndpoint("スコープIDが userRoleRepository.findByUserIdAndTeamIdIsNotNull(認証主体の userId) から"
-            + "導出された自分の所属チームIDのみで、リクエストで他ユーザーの識別子は受け取らない"
-            + "（DashboardController.java:380-382）")
+    @SelfScopedEndpoint("スコープIDが userRoleRepository.findTeamIdsByUserId / findOrganizationIdsByUserId"
+            + "（いずれも認証主体の userId のみで絞り込む）から導出された自分の所属チーム・所属組織IDのみで、"
+            + "リクエストで他ユーザーの識別子は受け取らない（DashboardController.java:399-419）")
     @GetMapping("/activity")
     @Operation(summary = "最近のアクティビティ", description = "所属チーム/組織を横断した最近の活動フィード")
-    public ResponseEntity<ApiResponse<List<ActivityFeedResponse>>> getActivity(
+    public ResponseEntity<ApiResponse<ActivityFeedPageResponse>> getActivity(
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "10") Integer limit) {
+        // F03.18 §7 D-1: 入口で cursor / limit を検証する。ErrorCode をデッドコードにしない。
+        if (cursor != null && cursor <= 0) {
+            throw new BusinessException(ScheduleFeedErrorCode.INVALID_CURSOR);
+        }
+        if (limit != null && limit <= 0) {
+            throw new BusinessException(ScheduleFeedErrorCode.INVALID_LIMIT);
+        }
+
         Long userId = SecurityUtils.getCurrentUserId();
-        // 所属チームIDを取得してスコープとする（CMP-027: user_roles ∪ memberships の在籍チーム）
-        List<Long> scopeIds = userRoleRepository.findTeamIdsByUserId(userId);
-        List<ActivityFeedResponse> response = activityFeedService.getActivityFeed(userId, cursor, limit, scopeIds);
+        // 所属チームIDと所属組織IDの «両方» をスコープとする（CMP-027: user_roles ∪ memberships の在籍）。
+        // 従来はチームIDしか集めておらず、ORGANIZATION スコープの活動が原理的に一件も表示されなかった
+        // （SCHEDULE 系だけでなく既存7種別も同じく被害を受けていた）。
+        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        ActivityFeedPageResponse response =
+                activityFeedService.getActivityFeed(userId, cursor, limit, teamIds, orgIds);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
