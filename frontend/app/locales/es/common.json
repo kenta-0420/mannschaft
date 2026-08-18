@@ -2109,5 +2109,21 @@
   "comingSoon": {
     "title": "Próximamente",
     "description": "Esta función está actualmente en desarrollo. Por favor, vuelva más tarde."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Transferir la propiedad",
+    "sectionDescription": "Cede el rol de propietario (administrador) a otro miembro. Tras la transferencia pasas a ser subadministrador y ya no podrás realizar acciones exclusivas de administrador.",
+    "openButton": "Transferir la propiedad",
+    "dialogTitle": "Transferir la propiedad",
+    "warning": "Esta acción no se puede deshacer. Los permisos de administrador pasan al nuevo propietario y solo él podrá devolverlos.",
+    "targetLabel": "Nuevo propietario",
+    "targetPlaceholder": "Selecciona un miembro",
+    "noCandidates": "No hay ningún miembro al que puedas transferir la propiedad.",
+    "confirmLabel": "Escribe “{name}” para confirmar",
+    "confirmMismatch": "El nombre no coincide.",
+    "cancel": "Cancelar",
+    "submit": "Transferir",
+    "successTitle": "Propiedad transferida",
+    "successDetail": "Los permisos de administrador se han transferido al nuevo propietario."
   }
 }

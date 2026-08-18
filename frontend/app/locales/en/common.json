@@ -2109,5 +2109,21 @@
   "comingSoon": {
     "title": "Coming Soon",
     "description": "This feature is currently under development. Please check back later."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Transfer ownership",
+    "sectionDescription": "Hand over the owner (admin) role to another member. After the transfer you become a deputy admin and can no longer perform admin-only actions.",
+    "openButton": "Transfer ownership",
+    "dialogTitle": "Transfer ownership",
+    "warning": "This action cannot be undone. Admin rights move to the new owner, and only the new owner can hand them back.",
+    "targetLabel": "New owner",
+    "targetPlaceholder": "Select a member",
+    "noCandidates": "There is no member you can transfer ownership to.",
+    "confirmLabel": "Type “{name}” to confirm",
+    "confirmMismatch": "The name does not match.",
+    "cancel": "Cancel",
+    "submit": "Transfer",
+    "successTitle": "Ownership transferred",
+    "successDetail": "Admin rights have moved to the new owner."
   }
 }

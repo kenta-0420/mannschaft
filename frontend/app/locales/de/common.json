@@ -2109,5 +2109,21 @@
   "comingSoon": {
     "title": "Demnächst verfügbar",
     "description": "Diese Funktion befindet sich derzeit in der Entwicklung. Bitte schauen Sie später wieder vorbei."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Eigentum übertragen",
+    "sectionDescription": "Übergib die Rolle des Eigentümers (Administrator) an ein anderes Mitglied. Nach der Übertragung bist du stellvertretende:r Administrator:in und kannst administratorexklusive Aktionen nicht mehr ausführen.",
+    "openButton": "Eigentum übertragen",
+    "dialogTitle": "Eigentum übertragen",
+    "warning": "Diese Aktion kann nicht rückgängig gemacht werden. Die Administratorrechte gehen an die neue Eigentümerin bzw. den neuen Eigentümer über; nur diese Person kann sie zurückgeben.",
+    "targetLabel": "Neue:r Eigentümer:in",
+    "targetPlaceholder": "Mitglied auswählen",
+    "noCandidates": "Es gibt kein Mitglied, an das du das Eigentum übertragen kannst.",
+    "confirmLabel": "Gib zur Bestätigung „{name}“ ein",
+    "confirmMismatch": "Der Name stimmt nicht überein.",
+    "cancel": "Abbrechen",
+    "submit": "Übertragen",
+    "successTitle": "Eigentum übertragen",
+    "successDetail": "Die Administratorrechte wurden an die neue Eigentümerin bzw. den neuen Eigentümer übertragen."
   }
 }

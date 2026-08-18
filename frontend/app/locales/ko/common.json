@@ -2109,5 +2109,21 @@
   "comingSoon": {
     "title": "준비 중",
     "description": "이 기능은 현재 개발 중입니다. 잠시 후 다시 확인해 주세요."
+  },
+  "transferOwnership": {
+    "sectionTitle": "소유자 이전",
+    "sectionDescription": "관리자(소유자) 권한을 다른 멤버에게 넘깁니다. 이전 후에는 부관리자가 되며 관리자 전용 작업을 할 수 없습니다.",
+    "openButton": "소유자 이전",
+    "dialogTitle": "소유자 이전",
+    "warning": "이 작업은 취소할 수 없습니다. 관리자 권한이 새 소유자에게 이전되며, 되돌리려면 새 소유자의 조작이 필요합니다.",
+    "targetLabel": "새 소유자",
+    "targetPlaceholder": "멤버 선택",
+    "noCandidates": "이전할 수 있는 멤버가 없습니다.",
+    "confirmLabel": "확인을 위해 “{name}” 을(를) 입력하세요",
+    "confirmMismatch": "이름이 일치하지 않습니다.",
+    "cancel": "취소",
+    "submit": "이전",
+    "successTitle": "소유자를 이전했습니다",
+    "successDetail": "관리자 권한이 새 소유자에게 이전되었습니다."
   }
 }
