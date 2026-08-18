@@ -12,7 +12,7 @@ import { mockNuxtImport } from '@nuxt/test-utils/runtime'
  *   ORG-CTX-002: 同一 teamSlug の 2 回目はキャッシュを返し API を再度叩かない
  *   ORG-CTX-003: 別の teamSlug は正しい数値を返す（チーム切替バグ根治）
  *   ORG-CTX-004: slug 一致が無ければ静かに null を返す（想定内・警告トーストを出さない）
- *   ORG-CTX-005: 親組織 organizationId が null なら静かに null を返す（単独チーム）
+ *   ORG-CTX-005: 親組織 organizationId が null でも単独チームのコンテキストを返す
  *
  * 通知方針（#1850「match警告トースト抑止」で確定）:
  *   「/me/teams に当該チームが無い」「親組織なし（単独チーム。DB 上 88%）」は想定内の正常状態のため
@@ -99,7 +99,7 @@ describe('useMatchOrgContext', () => {
     expect(mockWarn).not.toHaveBeenCalled()
   })
 
-  it('ORG-CTX-005: 親組織 organizationId が null なら静かに null を返す（単独チーム）', async () => {
+  it('ORG-CTX-005: 親組織 organizationId が null でも単独チームのコンテキストを返す', async () => {
     mockFetch.mockResolvedValueOnce({
       data: [{ id: 100, slug: TEAM_A_SLUG, organizationId: null }],
     })
@@ -107,7 +107,7 @@ describe('useMatchOrgContext', () => {
     const { resolveContext } = useMatchOrgContext()
     const result = await resolveContext(TEAM_A_SLUG)
 
-    expect(result).toBeNull()
+    expect(result).toEqual({ orgId: null, teamId: 100 })
     expect(mockWarn).not.toHaveBeenCalled()
   })
 

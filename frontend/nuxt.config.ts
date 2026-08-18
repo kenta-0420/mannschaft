@@ -972,7 +972,10 @@ export default defineNuxtConfig({
     optimizeDeps: {
       // date-holidays は pure ESM パッケージのため、Vite が事前バンドルしないと
       // dev server の SSR コンテキストでモジュール評価が失敗する
-      include: ['date-holidays', 'dexie'],
+      // chart.js / dompurify / vuedraggable は遅延ロードされる詳細ページで初めて参照される。
+      // 未指定だと初回 SPA 遷移中に Vite が依存を発見してページ全体を reload し、
+      // URL 確定前の一覧へ戻るため、dev server 起動時に事前最適化しておく。
+      include: ['date-holidays', 'dexie', 'chart.js', 'dompurify', 'vuedraggable'],
     },
   },
 })

@@ -10444,6 +10444,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ） */
+        get: operations["listMatches"];
+        put?: never;
+        /** 試合作成 */
+        post: operations["createMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ） */
+        get: operations["listMatches_1"];
+        put?: never;
+        /** 試合作成 */
+        post: operations["createMatch_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/line/test": {
         parameters: {
             query?: never;
@@ -17106,24 +17142,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ） */
-        get: operations["listMatches"];
-        put?: never;
-        /** 試合作成 */
-        post: operations["createMatch"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/organizations/{orgId}/teams/{teamId}/entry-templates": {
         parameters: {
             query?: never;
@@ -17916,7 +17934,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{orgId}/matches/{matchId}/events": {
+    "/api/v1/teams/{teamId}/matches/{matchId}/events": {
         parameters: {
             query?: never;
             header?: never;
@@ -17928,6 +17946,24 @@ export interface paths {
         put?: never;
         /** イベント記録 */
         post: operations["recordEvent_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/matches/{matchId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 試合内タイムライン取得（スコア整合警告込み） */
+        get: operations["listEvents_2"];
+        put?: never;
+        /** イベント記録 */
+        post: operations["recordEvent_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18051,7 +18087,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織イベント一覧 */
-        get: operations["listEvents_2"];
+        get: operations["listEvents_3"];
         put?: never;
         /** イベント作成 */
         post: operations["createEvent_1"];
@@ -25400,6 +25436,146 @@ export interface paths {
         patch: operations["approve_9"];
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** status 遷移（COMPLETED で確定再計算） */
+        patch: operations["changeStatus_4"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/{matchId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** status 遷移（COMPLETED で確定再計算） */
+        patch: operations["changeStatus_5"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/{matchId}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 最終スコア確定 */
+        patch: operations["finalizeScore"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 最終スコア確定 */
+        patch: operations["finalizeScore_1"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/recording-mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 記録モード切替（公式戦⇔共同記録） */
+        patch: operations["changeRecordingMode"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/{matchId}/recording-mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 記録モード切替（公式戦⇔共同記録） */
+        patch: operations["changeRecordingMode_1"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 試合詳細 */
+        get: operations["getMatch"];
+        put?: never;
+        post?: never;
+        /** 試合論理削除 */
+        delete: operations["deleteMatch"];
+        options?: never;
+        head?: never;
+        /** 試合メタ更新 */
+        patch: operations["updateMatch"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/{matchId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 試合詳細 */
+        get: operations["getMatch_1"];
+        put?: never;
+        post?: never;
+        /** 試合論理削除 */
+        delete: operations["deleteMatch_1"];
+        options?: never;
+        head?: never;
+        /** 試合メタ更新 */
+        patch: operations["updateMatch_1"];
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/knowledge-base/templates/{templateId}": {
         parameters: {
             query?: never;
@@ -26133,7 +26309,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 公開ステータス変更 */
-        patch: operations["changeStatus_4"];
+        patch: operations["changeStatus_6"];
         trace?: never;
     };
     "/api/v1/team/members/reorder": {
@@ -28060,7 +28236,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** ステータス変更 */
-        patch: operations["changeStatus_5"];
+        patch: operations["changeStatus_7"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/tournaments/{tId}/matches/{matchId}/status": {
@@ -28183,7 +28359,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 組織TODOステータス変更 */
-        patch: operations["changeStatus_6"];
+        patch: operations["changeStatus_8"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/todos/{id}/progress": {
@@ -28235,76 +28411,6 @@ export interface paths {
         head?: never;
         /** 組織TODO一括ステータス変更 */
         patch: operations["bulkChangeStatus_1"];
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 試合詳細 */
-        get: operations["getMatch"];
-        put?: never;
-        post?: never;
-        /** 試合論理削除 */
-        delete: operations["deleteMatch"];
-        options?: never;
-        head?: never;
-        /** 試合メタ更新 */
-        patch: operations["updateMatch"];
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** status 遷移（COMPLETED で確定再計算） */
-        patch: operations["changeStatus_7"];
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/score": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** 最終スコア確定 */
-        patch: operations["finalizeScore"];
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/recording-mode": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** 記録モード切替（公式戦⇔共同記録） */
-        patch: operations["changeRecordingMode"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/residents/{id}/verify": {
@@ -28400,7 +28506,7 @@ export interface paths {
         patch: operations["cancel_12"];
         trace?: never;
     };
-    "/api/v1/organizations/{orgId}/matches/{matchId}/events/{eventId}": {
+    "/api/v1/teams/{teamId}/matches/{matchId}/events/{eventId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -28418,6 +28524,24 @@ export interface paths {
         patch: operations["updateEvent_1"];
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/matches/{matchId}/events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** イベント削除 */
+        delete: operations["deleteEvent_2"];
+        options?: never;
+        head?: never;
+        /** イベント更新 */
+        patch: operations["updateEvent_2"];
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/events/{eventId}": {
         parameters: {
             query?: never;
@@ -28430,11 +28554,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** イベント削除 */
-        delete: operations["deleteEvent_2"];
+        delete: operations["deleteEvent_3"];
         options?: never;
         head?: never;
         /** イベント更新 */
-        patch: operations["updateEvent_2"];
+        patch: operations["updateEvent_3"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/equipment/{id}/return": {
@@ -28930,7 +29054,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["changeStatus_8"];
+        patch: operations["changeStatus_9"];
         trace?: never;
     };
     "/api/v1/files/{fileId}": {
@@ -29415,7 +29539,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 公開ステータス変更 */
-        patch: operations["changeStatus_9"];
+        patch: operations["changeStatus_10"];
         trace?: never;
     };
     "/api/v1/blog/posts/{id}/public-visible": {
@@ -33108,6 +33232,74 @@ export interface paths {
         };
         /** チームのキャンセル履歴一覧 */
         get: operations["getCancellationHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** カレンダー予定から既存試合を解決（入口④・二重起票防止） */
+        get: operations["resolveBySchedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** カレンダー予定から既存試合を解決（入口④・二重起票防止） */
+        get: operations["resolveBySchedule_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/by-fixture/{fixtureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 大会の対戦カードから既存試合を解決（入口①・二重起票防止） */
+        get: operations["resolveByFixture"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-fixture/{fixtureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 大会の対戦カードから既存試合を解決（入口①・二重起票防止） */
+        get: operations["resolveByFixture_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38831,7 +39023,7 @@ export interface paths {
             cookie?: never;
         };
         /** 試合詳細 */
-        get: operations["getMatch_1"];
+        get: operations["getMatch_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39019,40 +39211,6 @@ export interface paths {
         };
         /** 組織TODOガントバー一覧 */
         get: operations["getGanttTodos_2"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-schedule/{scheduleId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** カレンダー予定から既存試合を解決（入口④・二重起票防止） */
-        get: operations["resolveBySchedule"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-fixture/{fixtureId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 大会の対戦カードから既存試合を解決（入口①・二重起票防止） */
-        get: operations["resolveByFixture"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39610,7 +39768,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{orgId}/matches/{matchId}/appearances": {
+    "/api/v1/teams/{teamId}/matches/{matchId}/appearances": {
         parameters: {
             query?: never;
             header?: never;
@@ -39619,6 +39777,23 @@ export interface paths {
         };
         /** 試合内出場記録一覧（computed_minutes 込み） */
         get: operations["listAppearances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/matches/{matchId}/appearances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 試合内出場記録一覧（computed_minutes 込み） */
+        get: operations["listAppearances_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -57905,6 +58080,31 @@ export interface components {
             /** Format: date-time */
             createdAt?: string;
         };
+        CreateMatchRequest: {
+            /** Format: int32 */
+            durationMinutes?: number;
+            hasScorekeeper?: boolean;
+            /** @enum {string} */
+            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
+            /** Format: date-time */
+            kickoffAt?: string;
+            /** @enum {string} */
+            kind: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
+            notes?: string;
+            opponentName?: string;
+            /** Format: int64 */
+            opponentTeamId?: number;
+            periodFormat?: string;
+            /** Format: int64 */
+            scheduleId?: number;
+            /** Format: int64 */
+            scorekeeperUserId?: number;
+            /** @enum {string} */
+            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
+            /** Format: int64 */
+            tournamentFixtureId?: number;
+            venue?: string;
+        };
         TestMessageRequest: {
             lineUserId?: string;
             message?: string;
@@ -62479,31 +62679,6 @@ export interface components {
         ApiResponseLeagueTransferResponse: {
             data?: components["schemas"]["LeagueTransferResponse"];
         };
-        CreateMatchRequest: {
-            /** Format: int32 */
-            durationMinutes?: number;
-            hasScorekeeper?: boolean;
-            /** @enum {string} */
-            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
-            /** Format: date-time */
-            kickoffAt?: string;
-            /** @enum {string} */
-            kind: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-            notes?: string;
-            opponentName?: string;
-            /** Format: int64 */
-            opponentTeamId?: number;
-            periodFormat?: string;
-            /** Format: int64 */
-            scheduleId?: number;
-            /** Format: int64 */
-            scorekeeperUserId?: number;
-            /** @enum {string} */
-            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
-            /** Format: int64 */
-            tournamentFixtureId?: number;
-            venue?: string;
-        };
         CreateEntryTemplateRequest: {
             description?: string;
             members: components["schemas"]["TemplateMemberItem"][];
@@ -66650,6 +66825,39 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        MatchChangeStatusRequest: {
+            /** @enum {string} */
+            status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
+        };
+        FinalizeScoreRequest: {
+            /** Format: int32 */
+            awayPenaltyScore?: number;
+            /** Format: int32 */
+            awayScore?: number;
+            /** Format: int32 */
+            homePenaltyScore?: number;
+            /** Format: int32 */
+            homeScore?: number;
+        };
+        ChangeRecordingModeRequest: {
+            hasScorekeeper?: boolean;
+            /** Format: int64 */
+            scorekeeperUserId?: number;
+        };
+        UpdateMatchRequest: {
+            /** Format: int32 */
+            durationMinutes?: number;
+            /** @enum {string} */
+            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
+            /** Format: date-time */
+            kickoffAt?: string;
+            notes?: string;
+            opponentName?: string;
+            /** Format: int64 */
+            opponentTeamId?: number;
+            periodFormat?: string;
+            venue?: string;
+        };
         UpdateKbTemplateRequest: {
             body?: string;
             icon?: string;
@@ -67789,39 +67997,6 @@ export interface components {
             /** Format: int32 */
             seed?: number;
             status?: string;
-        };
-        UpdateMatchRequest: {
-            /** Format: int32 */
-            durationMinutes?: number;
-            /** @enum {string} */
-            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
-            /** Format: date-time */
-            kickoffAt?: string;
-            notes?: string;
-            opponentName?: string;
-            /** Format: int64 */
-            opponentTeamId?: number;
-            periodFormat?: string;
-            venue?: string;
-        };
-        MatchChangeStatusRequest: {
-            /** @enum {string} */
-            status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
-        };
-        FinalizeScoreRequest: {
-            /** Format: int32 */
-            awayPenaltyScore?: number;
-            /** Format: int32 */
-            awayScore?: number;
-            /** Format: int32 */
-            homePenaltyScore?: number;
-            /** Format: int32 */
-            homeScore?: number;
-        };
-        ChangeRecordingModeRequest: {
-            hasScorekeeper?: boolean;
-            /** Format: int64 */
-            scorekeeperUserId?: number;
         };
         UpdateOrgProviderRequest: {
             brandColor?: string;
@@ -70886,6 +71061,41 @@ export interface components {
             cancellations?: components["schemas"]["CancellationResponse"][];
             /** Format: int64 */
             teamId?: number;
+        };
+        ApiResponseMatchSummaryResponse: {
+            data?: components["schemas"]["MatchSummaryResponse"];
+        };
+        MatchSummaryResponse: {
+            /** Format: int32 */
+            awayPenaltyScore?: number;
+            /** Format: int32 */
+            awayScore?: number;
+            /** Format: int32 */
+            durationMinutes?: number;
+            /** @enum {string} */
+            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
+            /** Format: int32 */
+            homePenaltyScore?: number;
+            /** Format: int32 */
+            homeScore?: number;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            kickoffAt?: string;
+            /** @enum {string} */
+            kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
+            opponentName?: string;
+            /** Format: int64 */
+            opponentTeamId?: number;
+            /** @enum {string} */
+            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
+            /** @enum {string} */
+            status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
+            venue?: string;
+        };
+        PagedResponseMatchSummaryResponse: {
+            data?: components["schemas"]["MatchSummaryResponse"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         LineMessageLogResponse: {
             contentSummary?: string;
@@ -75514,41 +75724,6 @@ export interface components {
         PagedResponseTemplateResponse: {
             data?: components["schemas"]["TemplateResponse"][];
             meta?: components["schemas"]["PageMeta"];
-        };
-        MatchSummaryResponse: {
-            /** Format: int32 */
-            awayPenaltyScore?: number;
-            /** Format: int32 */
-            awayScore?: number;
-            /** Format: int32 */
-            durationMinutes?: number;
-            /** @enum {string} */
-            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
-            /** Format: int32 */
-            homePenaltyScore?: number;
-            /** Format: int32 */
-            homeScore?: number;
-            /** Format: uuid */
-            id?: string;
-            /** Format: date-time */
-            kickoffAt?: string;
-            /** @enum {string} */
-            kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-            opponentName?: string;
-            /** Format: int64 */
-            opponentTeamId?: number;
-            /** @enum {string} */
-            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
-            /** @enum {string} */
-            status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
-            venue?: string;
-        };
-        PagedResponseMatchSummaryResponse: {
-            data?: components["schemas"]["MatchSummaryResponse"][];
-            meta?: components["schemas"]["PageMeta"];
-        };
-        ApiResponseMatchSummaryResponse: {
-            data?: components["schemas"]["MatchSummaryResponse"];
         };
         ApiResponseTeamMatchStatsResponse: {
             data?: components["schemas"]["TeamMatchStatsResponse"];
@@ -104104,6 +104279,120 @@ export interface operations {
             };
         };
     };
+    listMatches: {
+        parameters: {
+            query?: {
+                kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
+                status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
+                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
+                from?: string;
+                to?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    createMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    listMatches_1: {
+        parameters: {
+            query?: {
+                kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
+                status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
+                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
+                from?: string;
+                to?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    createMatch_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
     sendTestForTeam: {
         parameters: {
             query?: never;
@@ -117003,64 +117292,6 @@ export interface operations {
             };
         };
     };
-    listMatches: {
-        parameters: {
-            query?: {
-                kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-                status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
-                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
-                from?: string;
-                to?: string;
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagedResponseMatchSummaryResponse"];
-                };
-            };
-        };
-    };
-    createMatch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateMatchRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
-                };
-            };
-        };
-    };
     getTemplates_1: {
         parameters: {
             query?: never;
@@ -118656,7 +118887,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
+                teamId: number;
                 matchId: string;
             };
             cookie?: never;
@@ -118675,6 +118906,56 @@ export interface operations {
         };
     };
     recordEvent_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchEventResponse"];
+                };
+            };
+        };
+    };
+    listEvents_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchEventsResponse"];
+                };
+            };
+        };
+    };
+    recordEvent_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -118898,7 +119179,7 @@ export interface operations {
             };
         };
     };
-    listEvents_2: {
+    listEvents_3: {
         parameters: {
             query?: {
                 status?: string;
@@ -132414,6 +132695,316 @@ export interface operations {
             };
         };
     };
+    changeStatus_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchChangeStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    changeStatus_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchChangeStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    finalizeScore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinalizeScoreRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    finalizeScore_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinalizeScoreRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    changeRecordingMode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeRecordingModeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    changeRecordingMode_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeRecordingModeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    getMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    deleteMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    getMatch_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    deleteMatch_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateMatch_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
     deleteTemplate_11: {
         parameters: {
             query?: never;
@@ -134013,7 +134604,7 @@ export interface operations {
             };
         };
     };
-    changeStatus_4: {
+    changeStatus_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -137562,7 +138153,7 @@ export interface operations {
             };
         };
     };
-    changeStatus_5: {
+    changeStatus_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -137844,7 +138435,7 @@ export interface operations {
             };
         };
     };
-    changeStatus_6: {
+    changeStatus_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -137947,164 +138538,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListTodoStatusChangeResponse"];
-                };
-            };
-        };
-    };
-    getMatch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
-                };
-            };
-        };
-    };
-    deleteMatch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    updateMatch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateMatchRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
-                };
-            };
-        };
-    };
-    changeStatus_7: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MatchChangeStatusRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
-                };
-            };
-        };
-    };
-    finalizeScore: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FinalizeScoreRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
-                };
-            };
-        };
-    };
-    changeRecordingMode: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChangeRecordingModeRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
                 };
             };
         };
@@ -138277,7 +138710,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
+                teamId: number;
                 matchId: string;
                 eventId: string;
             };
@@ -138295,6 +138728,56 @@ export interface operations {
         };
     };
     updateEvent_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchEventResponse"];
+                };
+            };
+        };
+    };
+    deleteEvent_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateEvent_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -138345,7 +138828,7 @@ export interface operations {
             };
         };
     };
-    deleteEvent_2: {
+    deleteEvent_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -138366,7 +138849,7 @@ export interface operations {
             };
         };
     };
-    updateEvent_2: {
+    updateEvent_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -139456,7 +139939,7 @@ export interface operations {
             };
         };
     };
-    changeStatus_8: {
+    changeStatus_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -140550,7 +141033,7 @@ export interface operations {
             };
         };
     };
-    changeStatus_9: {
+    changeStatus_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -145924,6 +146407,100 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCancellationSummaryResponse"];
+                };
+            };
+        };
+    };
+    resolveBySchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    resolveBySchedule_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    resolveByFixture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                fixtureId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    resolveByFixture_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                fixtureId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
                 };
             };
         };
@@ -153826,7 +154403,7 @@ export interface operations {
             };
         };
     };
-    getMatch_1: {
+    getMatch_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -154107,54 +154684,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListGanttTodoResponse"];
-                };
-            };
-        };
-    };
-    resolveBySchedule: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                scheduleId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
-                };
-            };
-        };
-    };
-    resolveByFixture: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                fixtureId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
                 };
             };
         };
@@ -154895,6 +155424,29 @@ export interface operations {
         };
     };
     listAppearances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPlayerAppearanceResponse"];
+                };
+            };
+        };
+    };
+    listAppearances_1: {
         parameters: {
             query?: never;
             header?: never;

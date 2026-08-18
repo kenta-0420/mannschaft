@@ -85,6 +85,10 @@ class VillageRepresentativeControllerIntegrationTest extends AbstractVillageInte
         lenient().when(userRoleRepository.existsByUserIdAndOrganizationId(anyLong(), anyLong())).thenReturn(false);
         // 代表ユーザーはチームメンバー扱い
         lenient().when(userRoleRepository.existsByUserIdAndTeamId(REPRESENTATIVE_USER_ID, TEAM_ID)).thenReturn(true);
+        // CMP-050: 代表ユーザーのアカウントは生存（未削除かつ ACTIVE）している前提。
+        // isActiveUser は default メソッドだが Mockito は default 実装を呼ばず既定 false を返すため、
+        // 明示的に stub しないと委任がすべて VILLAGE_055 で拒否される。
+        lenient().when(userRoleRepository.isActiveUser(REPRESENTATIVE_USER_ID)).thenReturn(true);
         lenient().when(accessControlService.isSystemAdmin(anyLong())).thenReturn(false);
     }
 

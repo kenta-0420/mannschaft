@@ -1942,10 +1942,16 @@ public class GlobalExceptionHandler {
             Map.entry("ERROR_REPORT_012", HttpStatus.CONFLICT),             // GitHub Issue二重作成防止
 
             // Webhook/外部API連携: エンドポイント不在は404。APIキー期限切れは認証失敗のため401。
-            // WEBHOOK_005/007 はトークン/APIキーの管理系CRUD不在と受信認証失敗の両方で
-            // 使われており意味が割れているため変更を見送る。
+            // WEBHOOK_005/007 は「受信・認証の失敗」と「管理系CRUDでの不在」の2意味で共用されて
+            // いたため、認証失敗側（401）と管理系不在側（404）に分割した（WEBHOOK_013/014 を新設）。
+            // WEBHOOK_007 は「キー形式不正」と「BCrypt照合失敗」の両方を担い続けるが、これは
+            // 意図的な集約である（区別して返すと値の当否を攻撃者に教えるため。ApiKeyService 参照）。
             Map.entry("WEBHOOK_001", HttpStatus.NOT_FOUND),                 // Webhookエンドポイント不在
+            Map.entry("WEBHOOK_005", HttpStatus.UNAUTHORIZED),              // Incomingトークン認証失敗
+            Map.entry("WEBHOOK_007", HttpStatus.UNAUTHORIZED),              // APIキー認証失敗（形式不正含む）
             Map.entry("WEBHOOK_011", HttpStatus.UNAUTHORIZED),              // APIキー有効期限切れ（認証失敗）
+            Map.entry("WEBHOOK_013", HttpStatus.NOT_FOUND),                 // Incomingトークン不在（管理系CRUD）
+            Map.entry("WEBHOOK_014", HttpStatus.NOT_FOUND),                 // APIキー不在（管理系CRUD）
 
             // F09.1 住民台帳: 不在は404、重複登録・退去済み・確認済み・編集不可等の状態競合は409。
             Map.entry("RESIDENT_001", HttpStatus.NOT_FOUND),                // DWELLING_UNIT_NOT_FOUND
@@ -2000,28 +2006,42 @@ public class GlobalExceptionHandler {
             // デジタルサイネージ: 画面/スロット/トークン不在は404。アクセストークン検証失敗は
             // GCAL_009（GOOGLE_WEBHOOK_TOKEN_INVALID）と同じ流儀でアクセス拒否として403。
             Map.entry("SIGNAGE_001", HttpStatus.NOT_FOUND),                 // 画面不在
-            // SIGNAGE_002 は「無効化済み」「有効期限切れ」「存在しない」の3意味で共用されており
-            // （SignageAccessTokenService.java:152,156）、単一ステータスに寄せられないため見送り。
-            // 既存の SignageScopeContractIT が3状況とも400を契約として固定しており、既定 WARN=400 で正しい。
+            // SIGNAGE_002 は「無効化済み」「有効期限切れ」「存在しない」を*意図的に*同一コードへ
+            // 畳んでいる（SignageAccessTokenService#validateToken の Javadoc に明記）。トークンの
+            // 失敗理由を呼び出し側に区別させないための設計判断であり、意味が割れているのではない。
+            // ステータスを分ければ「そのトークンは実在するのか」を外部に教える存在オラクルになるため、
+            // 分割・ステータス分けを禁ずる。既存の SignageScopeContractIT が3状況とも400を契約として
+            // 固定しており、既定 WARN=400 のままが正しい。
             Map.entry("SIGNAGE_003", HttpStatus.NOT_FOUND),                 // スロット不在
             Map.entry("SIGNAGE_005", HttpStatus.NOT_FOUND),                 // トークン不在
 
             // スキル・資格管理: 資格不在は404。重複登録・楽観ロック不一致・承認対象外ステータスは
-            // 409。SKILL_001（名称重複／非アクティブカテゴリ／カテゴリ不在で意味が割れている）・
-            // SKILL_003（スコープ不一致の存在秘匿と本人以外操作の権限拒否の両方に使われ意味が
-            // 割れている）は変更を見送る。
+            // 409。SKILL_001 は「カテゴリ不在」「名称重複」「非アクティブカテゴリ」の3意味で割れて
+            // いたため、不在（404・SKILL_001 に限定）／名称重複（409・SKILL_009）／非アクティブ
+            // （409・SKILL_010）に分割した。
+            // SKILL_003（他スコープの存在秘匿と本人以外操作の権限拒否）は*意図的な集約*であり
+            // 分割しない。分ければ「そのカテゴリ/資格は他スコープに実在する」ことを外部に教える
+            // 存在オラクルになる。既存の MemberSkillScopeContractIT が 400 を契約として固定して
+            // おり、既定 WARN=400 のままが正しい（畳み込みで秘匿を達成する設計）。
+            Map.entry("SKILL_001", HttpStatus.NOT_FOUND),                   // カテゴリ不在
             Map.entry("SKILL_002", HttpStatus.NOT_FOUND),                   // 資格不在
+            Map.entry("SKILL_009", HttpStatus.CONFLICT),                    // カテゴリ名称の重複
+            Map.entry("SKILL_010", HttpStatus.CONFLICT),                    // 非アクティブカテゴリへの登録
             Map.entry("SKILL_005", HttpStatus.CONFLICT),                    // 同一資格の重複登録
             Map.entry("SKILL_006", HttpStatus.CONFLICT),                    // バージョン不一致（楽観ロック）
             Map.entry("SKILL_007", HttpStatus.CONFLICT),                    // 承認対象外ステータスでの承認操作
 
             // F12.3 GDPR/個人情報管理: エクスポート処理中の多重実行・唯一のSYSTEM_ADMIN退会拒否は
-            // 状態競合のため409。GDPR_003 は不在／未完了／期限切れの3経路から投げられ、設計書
-            // F12.3_gdpr_personal_data.md L667 のエラー表は404を挙げているが、既存の
-            // GdprControllerTest#異常_GDPR003_未存在_400（400を契約として固定）と矛盾するため、
-            // 「宣言（設計書）と実装のどちらが正しいか」を機械的に決めず変更を見送る
-            //（既定 WARN=400 のまま。CHAT_003/SIGNAGE_002 と同じ既存契約優先の判断）。
+            // 状態競合のため409。GDPR_003 は不在／未完了／期限切れの3経路から投げられていたため
+            // 分割した: 不在（404・GDPR_003 に限定・設計書 F12.3 §7 の宣言どおり）／未完了
+            // （409・GDPR_009。COMPLETED でない、または S3Key 未設定＝まだ落とせない状態競合）／
+            // 期限切れ（410・GDPR_010。かつては存在したが期限で消えた＝GONE が正確）。
+            // 旧 GdprControllerTest が 400 を契約として固定していたが、これは「登録漏れで既定 400 に
+            // 落ちていた実挙動」を後追いで固定したものであり、設計書の宣言側を正として 404 に改めた。
             Map.entry("GDPR_002", HttpStatus.CONFLICT),                     // エクスポート処理中の多重実行
+            Map.entry("GDPR_003", HttpStatus.NOT_FOUND),                    // エクスポートレコード不在
+            Map.entry("GDPR_009", HttpStatus.CONFLICT),                     // エクスポート未完了（ダウンロード不可）
+            Map.entry("GDPR_010", HttpStatus.GONE),                         // エクスポート期限切れ
             Map.entry("GDPR_006", HttpStatus.CONFLICT),                     // 唯一のSYSTEM_ADMIN退会拒否
 
             // 認可監査 Wave6 ロットE: 時間割管理（TimetableErrorCode）の残り未登録分。
@@ -2285,10 +2305,18 @@ public class GlobalExceptionHandler {
             Map.entry("NC_003", HttpStatus.NOT_FOUND),                   // PURCHASE_NOT_FOUND
             // NC_004（Stripe Checkout Session 作成失敗）は Severity.ERROR 既定の 500 のため変更なし。
 
-            // 村コミュニティ機能（VillageErrorCode）: VILLAGE_003/005（名称重複）は
-            // 設計書 F17.1_village_community.md §10 が 400 と明記しているため登録を撤回
-            // （CIの ErrorCodeHttpStatusDeclarationGuardTest で乖離検出・是正）。
-            // VILLAGE_004/029 も入力形式バリデーションのため変更なし（既定 400 のまま）。
+            // 村コミュニティ機能（VillageErrorCode）: VILLAGE_003（村名重複）/ VILLAGE_005
+            // （スラッグ重複）を 409 に統一する。従来は設計書 F17.1_village_community.md §10 が
+            // 400 と書いていることを理由に登録を見送っていたが、同一 enum 内で「重複」概念の
+            // ステータスが 400 と 409 に割れていた（重複系16定数のうち14件は既に409）。
+            // 決定的だったのは VILLAGE_005（スラッグ重複）が400、VILLAGE_035
+            // （村作成申請のスラッグ重複）が409で、*まったく同じ意味が経路によって別ステータス*に
+            // なっていたこと。重複＝既存リソースとの状態競合であり 409 が正しいと判断し、
+            // 実装側を 409 に揃えたうえで設計書 §10 の表も 409 へ是正した。
+            // VILLAGE_004（スラッグ形式不正）/ VILLAGE_029 は重複ではなく入力形式の
+            // バリデーションのため 400 のまま（既定）。
+            Map.entry("VILLAGE_003", HttpStatus.CONFLICT),              // 村名重複
+            Map.entry("VILLAGE_005", HttpStatus.CONFLICT),              // スラッグ重複
 
             // ユーザーブロック機能（UserErrorCode）。
             Map.entry("USER_001", HttpStatus.CONFLICT),                  // 既にブロック済み
