@@ -37,9 +37,25 @@ const returnStayApi = useReturnStayPlanTeamApi()
 const returnStayPlans = ref<Map<number, TeamReturnStayPlan[]>>(new Map())
 const returnStayLoadError = ref(false)
 const returnStayLoading = ref(false)
+const selectedReturnStayPlan = ref<TeamReturnStayPlan | null>(null)
+const returnStayDetailVisible = ref(false)
+const returnStayDetailFocus = ref<HTMLButtonElement | null>(null)
 let returnStayRequestSequence = 0
 let memberRequestSequence = 0
 let memberController: AbortController | null = null
+function openReturnStayDetail(plan: TeamReturnStayPlan) {
+  selectedReturnStayPlan.value = plan
+  returnStayDetailVisible.value = true
+}
+
+async function focusReturnStayDetail() {
+  await nextTick()
+  returnStayDetailFocus.value?.focus()
+}
+
+function returnStayLocation(plan: TeamReturnStayPlan): string {
+  return plan.location.regionName ?? plan.location.prefectureCode ?? plan.location.countryCode
+}
 async function loadReturnStayPlans() {
   const sequence = ++returnStayRequestSequence
   if (props.scopeType !== 'team' || members.value.length === 0) { returnStayPlans.value = new Map(); returnStayLoadError.value = false; returnStayLoading.value = false; return }
@@ -168,7 +184,9 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
           <Button text size="small" :label="$t('common.retry')" @click="loadReturnStayPlans" />
         </div>
         <div v-else class="flex flex-wrap gap-1">
-          <Tag v-for="plan in returnStayPlans.get(data.userId) ?? []" :key="plan.id" :severity="plan.status === 'ACTIVE' ? 'success' : 'info'" :value="plan.status === 'ACTIVE' ? $t(`returnStayPlan.status.${plan.planType}`) : `${plan.startDate}–${plan.endDate}`" />
+          <button v-for="plan in returnStayPlans.get(data.userId) ?? []" :key="plan.id" type="button" class="rounded focus:outline-none focus:ring-2 focus:ring-primary" :aria-label="$t('returnStayPlan.memberPill.title')" @click="openReturnStayDetail(plan)">
+            <Tag :severity="plan.status === 'ACTIVE' ? 'success' : 'info'" :value="plan.status === 'ACTIVE' ? $t(`returnStayPlan.status.${plan.planType}`) : `${plan.startDate}–${plan.endDate}`" />
+          </button>
         </div>
       </template>
     </Column>
@@ -193,4 +211,23 @@ defineExpose({ refresh: loadMembers, changeRole: onChangeRole })
       </div>
     </template>
   </DataTable>
+  <Dialog v-model:visible="returnStayDetailVisible" modal closable close-on-escape dismissable-mask class="return-stay-detail-dialog" :header="$t('returnStayPlan.dialog.title')" :style="{ width: 'min(34rem, calc(100vw - 2rem))' }" :breakpoints="{ '640px': '100vw' }" @show="focusReturnStayDetail">
+    <dl v-if="selectedReturnStayPlan" class="grid gap-3">
+      <div><dt class="text-sm text-surface-500">{{ $t('returnStayPlan.form.type') }}</dt><dd class="font-medium">{{ $t(`returnStayPlan.planType.${selectedReturnStayPlan.planType}`) }}</dd></div>
+      <div><dt class="text-sm text-surface-500">{{ $t('returnStayPlan.form.prefecture') }}</dt><dd class="font-medium">{{ returnStayLocation(selectedReturnStayPlan) }}</dd></div>
+      <div><dt class="text-sm text-surface-500">{{ $t('returnStayPlan.form.start') }}–{{ $t('returnStayPlan.form.end') }}</dt><dd class="font-medium">{{ selectedReturnStayPlan.startDate }}–{{ selectedReturnStayPlan.endDate }}</dd></div>
+      <button ref="returnStayDetailFocus" type="button" class="justify-self-end rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" @click="returnStayDetailVisible = false">{{ $t('returnStayPlan.dialog.close') }}</button>
+    </dl>
+  </Dialog>
 </template>
+
+<style scoped>
+@media (max-width: 640px) {
+  :global(.return-stay-detail-dialog) {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: none !important;
+    margin: 0 !important;
+  }
+}
+</style>

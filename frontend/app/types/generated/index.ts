@@ -72215,16 +72215,14 @@ export interface components {
             data?: components["schemas"]["TeamPlanView"][];
         };
         TeamPlanView: {
-            countryCode?: string;
             /** Format: date */
             endDate?: string;
             /** Format: uuid */
             id?: string;
+            location?: components["schemas"]["Location"];
             ownerAvatarUrl?: string;
             ownerDisplayName?: string;
             planType?: string;
-            prefectureCode?: string;
-            regionName?: string;
             /** Format: date */
             startDate?: string;
             status?: string;

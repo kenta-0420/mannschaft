@@ -9,6 +9,7 @@ import com.mannschaft.app.returnstayplan.entity.ReturnStayPlanEntity;
 import com.mannschaft.app.returnstayplan.repository.ReturnStayPlanOwnerLockRepository;
 import com.mannschaft.app.returnstayplan.repository.ReturnStayPlanRepository;
 import com.mannschaft.app.returnstayplan.repository.ReturnStayPlanTeamVisibilityRepository;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -218,15 +219,19 @@ public class ReturnStayPlanService {
     public record TeamPlanView(
             UUID id,
             String ownerDisplayName,
-            String ownerAvatarUrl,
+            @Schema(nullable = true) String ownerAvatarUrl,
             String planType,
-            String countryCode,
-            String prefectureCode,
-            String regionName,
+            Location location,
             String timezone,
             LocalDate startDate,
             LocalDate endDate,
-            String status) { }
+            String status) {
+
+        public record Location(
+                String countryCode,
+                @Schema(nullable = true) String prefectureCode,
+                @Schema(nullable = true) String regionName) { }
+    }
 
     private void validate(ReturnStayPlanCreateRequest request) {
         if (request == null || request.planType() == null || request.isPublished() == null
@@ -319,9 +324,8 @@ public class ReturnStayPlanService {
                 row.getOwnerDisplayName(),
                 row.getOwnerAvatarUrl(),
                 row.getPlanType(),
-                row.getCountryCode(),
-                row.getPrefectureCode(),
-                row.getRegionName(),
+                new TeamPlanView.Location(
+                        row.getCountryCode(), row.getPrefectureCode(), row.getRegionName()),
                 row.getTimezone(),
                 row.getStartDate(),
                 row.getEndDate(),

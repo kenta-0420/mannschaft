@@ -5,12 +5,14 @@ interface TeamOption { id: number; name: string; slug?: string }
 interface FormState { planType: ReturnStayPlanType; isPublished: boolean; prefectureCode: string; startDate: string; endDate: string; teamIds: number[] }
 const { t } = useI18n(); const api = useReturnStayPlanApi(); const notification = useNotification()
 const plans = ref<OwnReturnStayPlan[]>([]); const teams = ref<TeamOption[]>([]); const loading = ref(true); const saving = ref(false); const dialogVisible = ref(false); const loadError = ref(false); const formError = ref(''); const editing = ref<OwnReturnStayPlan | null>(null)
+const editDialogFocus = ref<HTMLSelectElement | null>(null)
 const form = reactive<FormState>({ planType: 'HOMECOMING', isPublished: true, prefectureCode: '', startDate: '', endDate: '', teamIds: [] })
 const prefectures = Array.from({ length: 47 }, (_, index) => ({ code: String(index + 1).padStart(2, '0'), label: ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'][index] }))
 const statusOf = (plan: OwnReturnStayPlan) => getOwnReturnStayPlanStatus(plan)
 const isActive = computed(() => editing.value ? statusOf(editing.value) === 'ACTIVE' : false); const endMin = computed(() => isActive.value ? editing.value?.endDate : undefined)
 const requestBody = computed<ReturnStayPlanRequest>(() => ({ planType: form.planType, isPublished: form.isPublished, location: { countryCode: 'JP', prefectureCode: form.prefectureCode || null, regionName: null }, startDate: form.startDate, endDate: form.endDate, teamIds: [...form.teamIds] }))
 function resetForm(plan?: OwnReturnStayPlan) { editing.value = plan ?? null; formError.value = ''; form.planType = plan?.planType ?? 'HOMECOMING'; form.isPublished = plan?.isPublished ?? true; form.prefectureCode = plan?.location.prefectureCode ?? ''; form.startDate = plan?.startDate ?? ''; form.endDate = plan?.endDate ?? ''; form.teamIds = [...(plan?.teamIds ?? [])]; dialogVisible.value = true }
+async function focusEditDialog() { await nextTick(); editDialogFocus.value?.focus() }
 function errorStatus(error: unknown): number | undefined { if (!error || typeof error !== 'object') return undefined; const value = error as { statusCode?: number; status?: number; response?: { status?: number } }; return value.statusCode ?? value.status ?? value.response?.status }
 async function load() { loading.value = true; loadError.value = false; try { const [result, teamResult] = await Promise.all([api.list(false), useApi()<{ data: TeamOption[] }>('/api/v1/me/teams')]); plans.value = result.data; teams.value = teamResult.data ?? [] } catch { loadError.value = true } finally { loading.value = false } }
 async function save() { formError.value = ''; if (!form.startDate || !form.endDate || form.endDate < form.startDate || !form.prefectureCode || (form.isPublished && form.teamIds.length === 0)) { formError.value = t('returnStayPlan.form.invalid'); return }; saving.value = true; try { const result = editing.value ? await api.update(editing.value.id, editing.value.version, requestBody.value) : await api.create(requestBody.value); const index = plans.value.findIndex((plan) => plan.id === result.data.id); if (index >= 0) plans.value[index] = result.data; else plans.value.unshift(result.data); dialogVisible.value = false; notification.success(t('returnStayPlan.form.saved')) } catch (error) { formError.value = errorStatus(error) === 409 ? t('returnStayPlan.form.conflict') : t('returnStayPlan.form.saveFailed') } finally { saving.value = false } }
@@ -25,9 +27,9 @@ onMounted(load)
     <div v-else-if="plans.length === 0" class="p-4 text-sm text-surface-500">{{ $t('returnStayPlan.empty') }}</div>
     <ul v-else class="space-y-2"><li v-for="plan in plans" :key="plan.id" class="rounded-lg bg-surface-50 p-3 dark:bg-surface-800"><div class="flex items-start justify-between gap-2"><div><div class="flex flex-wrap items-center gap-2 font-medium"><span>{{ $t(`returnStayPlan.planType.${plan.planType}`) }} · {{ prefectures.find((item) => item.code === plan.location.prefectureCode)?.label ?? plan.location.regionName }}</span><Tag :severity="statusOf(plan) === 'ACTIVE' ? 'success' : 'info'" :value="statusOf(plan) === 'ACTIVE' ? $t(`returnStayPlan.status.${plan.planType}`) : `${plan.startDate}–${plan.endDate}`" /></div><div class="text-xs">{{ plan.startDate }}–{{ plan.endDate }}</div></div><div class="flex shrink-0"><Button icon="pi pi-pencil" text rounded size="small" :aria-label="$t('returnStayPlan.form.edit')" @click="resetForm(plan)" /><Button icon="pi pi-trash" text rounded size="small" severity="danger" :aria-label="$t('returnStayPlan.form.delete')" @click="remove(plan)" /></div></div></li></ul>
   </DashboardWidgetCard>
-  <Dialog v-model:visible="dialogVisible" modal :header="editing ? $t('returnStayPlan.form.editTitle') : $t('returnStayPlan.form.addTitle')" :style="{ width: 'min(34rem, calc(100vw - 2rem))' }" :breakpoints="{ '640px': 'calc(100vw - 1rem)' }">
+  <Dialog v-model:visible="dialogVisible" modal closable close-on-escape dismissable-mask class="return-stay-edit-dialog" :header="editing ? $t('returnStayPlan.form.editTitle') : $t('returnStayPlan.form.addTitle')" :style="{ width: 'min(34rem, calc(100vw - 2rem))' }" :breakpoints="{ '640px': '100vw' }" @show="focusEditDialog">
     <form class="grid gap-4" @submit.prevent="save"><Message v-if="formError" severity="error" :closable="false">{{ formError }}</Message>
-      <div class="grid gap-2"><label for="return-stay-type">{{ $t('returnStayPlan.form.type') }}</label><select id="return-stay-type" v-model="form.planType" class="w-full rounded border p-2" :disabled="isActive"><option value="HOMECOMING">{{ $t('returnStayPlan.planType.HOMECOMING') }}</option><option value="STAYING">{{ $t('returnStayPlan.planType.STAYING') }}</option></select></div>
+      <div class="grid gap-2"><label for="return-stay-type">{{ $t('returnStayPlan.form.type') }}</label><select id="return-stay-type" ref="editDialogFocus" v-model="form.planType" class="w-full rounded border p-2" :disabled="isActive"><option value="HOMECOMING">{{ $t('returnStayPlan.planType.HOMECOMING') }}</option><option value="STAYING">{{ $t('returnStayPlan.planType.STAYING') }}</option></select></div>
       <div class="grid gap-2"><label for="return-stay-prefecture">{{ $t('returnStayPlan.form.prefecture') }}</label><select id="return-stay-prefecture" v-model="form.prefectureCode" class="w-full rounded border p-2"><option value="">{{ $t('returnStayPlan.form.choose') }}</option><option v-for="prefecture in prefectures" :key="prefecture.code" :value="prefecture.code">{{ prefecture.label }}</option></select></div>
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2"><div class="grid gap-2"><label for="return-stay-start">{{ $t('returnStayPlan.form.start') }}</label><input id="return-stay-start" v-model="form.startDate" type="date" class="rounded border p-2" :disabled="isActive" required></div><div class="grid gap-2"><label for="return-stay-end">{{ $t('returnStayPlan.form.end') }}</label><input id="return-stay-end" v-model="form.endDate" type="date" class="rounded border p-2" :min="endMin" required></div></div>
       <div class="grid gap-2"><span>{{ $t('returnStayPlan.form.teams') }}</span><select v-model="form.teamIds" multiple class="min-h-28 w-full rounded border p-2" :aria-label="$t('returnStayPlan.form.teams')"><option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option></select></div>
@@ -35,3 +37,14 @@ onMounted(load)
     </form>
   </Dialog>
 </template>
+
+<style scoped>
+@media (max-width: 640px) {
+  :global(.return-stay-edit-dialog) {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-height: none !important;
+    margin: 0 !important;
+  }
+}
+</style>

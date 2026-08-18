@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.returnstayplan.event.ReturnStayPlanLifecycleListener;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -39,9 +40,22 @@ class ReturnStayPlanAcceptanceContractTest {
                 .toList();
         assertThat(componentNames)
                 .containsExactly("id", "ownerDisplayName", "ownerAvatarUrl", "planType",
-                        "countryCode", "prefectureCode", "regionName", "timezone",
+                        "location", "timezone",
                         "startDate", "endDate", "status")
                 .doesNotContain("teamIds", "version");
+        assertThat(Arrays.stream(ReturnStayPlanService.TeamPlanView.Location.class.getRecordComponents())
+                .map(component -> component.getName())
+                .toList())
+                .containsExactly("countryCode", "prefectureCode", "regionName");
+        assertThat(ReturnStayPlanService.TeamPlanView.class
+                .getRecordComponents()[2].getAccessor().getAnnotation(Schema.class).nullable())
+                .isTrue();
+        assertThat(ReturnStayPlanService.TeamPlanView.Location.class
+                .getRecordComponents()[1].getAccessor().getAnnotation(Schema.class).nullable())
+                .isTrue();
+        assertThat(ReturnStayPlanService.TeamPlanView.Location.class
+                .getRecordComponents()[2].getAccessor().getAnnotation(Schema.class).nullable())
+                .isTrue();
     }
 
     @Test

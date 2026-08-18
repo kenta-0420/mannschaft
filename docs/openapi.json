@@ -214921,9 +214921,6 @@
       "TeamPlanView": {
         "type": "object",
         "properties": {
-          "countryCode": {
-            "type": "string"
-          },
           "endDate": {
             "type": "string",
             "format": "date"
@@ -214932,6 +214929,9 @@
             "type": "string",
             "format": "uuid"
           },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
           "ownerAvatarUrl": {
             "type": "string"
           },
@@ -214939,12 +214939,6 @@
             "type": "string"
           },
           "planType": {
-            "type": "string"
-          },
-          "prefectureCode": {
-            "type": "string"
-          },
-          "regionName": {
             "type": "string"
           },
           "startDate": {
