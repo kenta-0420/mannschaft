@@ -112,7 +112,7 @@ public class CreateScheduleRequest {
      */
     private final Boolean teamBreakdownEnabled;
 
-    /** CMP-052以前のJava呼び出し元向け。JSON契約では省略時ALL_MEMBERSとして扱う。 */
+    /** CMP-055以前のJava呼び出し元向け。JSON契約では省略時ALL_MEMBERSとして扱う。 */
     public CreateScheduleRequest(
             String title, String description, String location,
             OffsetDateTime startAt, OffsetDateTime endAt, Boolean allDay,

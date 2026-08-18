@@ -226,6 +226,8 @@ public class VisibilityTemplateEvaluator {
         if ("@USER_PRIMARY_TEAM".equals(rule.ruleTargetText())) {
             // オーナーの primary チームを解決（最小 team_id を primary とする暫定実装）
             // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
+            // CMP-050: 本メソッドは ACTIVE な在籍のみを返す。凍結オーナーのテンプレは解決不能となり
+            //          false/null（＝非公開）へ倒れるのが期待挙動である（フェイルセーフ）。
             targetTeamId = userRoleRepository.findTeamIdsByUserId(ownerUserId)
                     .stream()
                     .min(Long::compareTo)
@@ -321,6 +323,8 @@ public class VisibilityTemplateEvaluator {
     private Long resolveTargetTeamId(VisibilityTemplateRuleView rule, Long ownerUserId) {
         if ("@USER_PRIMARY_TEAM".equals(rule.ruleTargetText())) {
             // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
+            // CMP-050: 本メソッドは ACTIVE な在籍のみを返す。凍結オーナーのテンプレは解決不能となり
+            //          false/null（＝非公開）へ倒れるのが期待挙動である（フェイルセーフ）。
             Long primaryTeamId = userRoleRepository.findTeamIdsByUserId(ownerUserId)
                     .stream()
                     .min(Long::compareTo)

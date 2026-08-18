@@ -373,7 +373,7 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
      * 純 SUPPORTER は {@code role_kind='SUPPORTER'} で除外され、GUEST は memberships 行を持たないため自然に外れる。
      * キープ本体は {@code ScheduleKeepVisibilityResolver}（{@code MEMBERS_AND_ABOVE}）で SUPPORTER に不可視であり、
      * 受信者ごとの可視性再チェックをしない一括配信でも<b>母集団段階で SUPPORTER を落とすことでタイトル漏洩を防ぐ</b>
-     * （§6.1・CMP-017b の SUPPORTER 素通り欠陥の根治）。</p>
+     * （§6.1・CMP-017b）。</p>
      *
      * <p>操作者・作成者の除外は母集団側で行う（{@code m.user_id <> :excludedA AND m.user_id <> :excludedB}）。
      * 作成者は別途「必達」の直送で受領するため母集団からは外し二重送信を避ける。除外不要枠には

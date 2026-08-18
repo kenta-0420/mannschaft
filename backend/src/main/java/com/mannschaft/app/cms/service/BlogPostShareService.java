@@ -45,8 +45,7 @@ public class BlogPostShareService {
     /**
      * 個人ブログ記事をチーム/組織に共有する。
      *
-     * <p>認可根治戦役 Wave3-B7: 従来は認可判定が皆無だったため、任意のユーザーが他人の記事IDを
-     * 指定して自分が所属するチーム/組織へ共有できた（IDOR）。{@link #checkWriteAccess} で
+     * <p>認可根治戦役 Wave3-B7: {@link #checkWriteAccess} で
      * 投稿者本人（または記事のスコープADMIN）のみに制限する。</p>
      */
     @Transactional
@@ -118,8 +117,7 @@ public class BlogPostShareService {
     /**
      * プレビュートークンを発行する。
      *
-     * <p>認可根治戦役 Wave3-B7: 従来は認可判定が皆無だったため、任意のユーザーが他人の記事に
-     * プレビュートークンを発行・URL共有できた（IDOR）。{@link #checkWriteAccess} で
+     * <p>認可根治戦役 Wave3-B7: {@link #checkWriteAccess} で
      * 投稿者本人（または記事のスコープADMIN）のみに制限する。</p>
      */
     @Transactional

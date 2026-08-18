@@ -111,12 +111,10 @@ public class ChatMemberService {
     /**
      * チャンネルに自分で参加する。
      *
-     * <p><b>認可根治 Wave 6</b>: 従来は「チャンネルの存在確認 → 既参加チェック → 保存」だけで、
-     * {@code channelType}・{@code isPrivate}・スコープ所属を一切見ていなかった。そのため
-     * <b>誰でも他人同士の DM / グループ DM を含む任意のチャンネルに自己参加でき</b>、
-     * 参加後はメンバーとして全本文を閲覧できた（メンバーシップ自体を書き込める＝認可の土台の破壊）。</p>
+     * <p><b>認可根治 Wave 6</b>: {@code channelType}・{@code isPrivate}・スコープ所属に基づき
+     * 自己参加の可否を判定する。</p>
      *
-     * <p>是正後の規則:</p>
+     * <p>規則:</p>
      * <ul>
      *   <li><b>{@code DM} / {@code GROUP_DM} / 非公開チャンネル（{@code *_PRIVATE} または
      *       {@code isPrivate=true}）</b> — 自己参加は一切不可（招待制）。
@@ -156,10 +154,9 @@ public class ChatMemberService {
     /**
      * メンバーのロールを変更する。
      *
-     * <p>認可根治 Wave 1 束2: 従来は操作者が誰であるかを一切検証しておらず、
-     * 一般 MEMBER が自分自身を OWNER に昇格させる権限昇格（権限昇格 IDOR）が可能だった。
-     * 手本 {@link #removeMember(Long, Long, Long)} と同型で、操作者が当該チャンネルの
-     * OWNER/ADMIN であることを確認してから変更を許可する。</p>
+     * <p>認可根治 Wave 1 束2: 手本 {@link #removeMember(Long, Long, Long)} と同型で、
+     * 操作者が当該チャンネルの OWNER/ADMIN であることを確認してから変更を許可する
+     * （権限昇格の防止）。</p>
      *
      * @param channelId      チャンネルID
      * @param targetUserId   対象ユーザーID

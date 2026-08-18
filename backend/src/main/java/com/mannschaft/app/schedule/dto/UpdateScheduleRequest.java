@@ -103,7 +103,7 @@ public class UpdateScheduleRequest {
     @Valid
     private final ScheduledAttendanceRequest scheduledAttendance;
 
-    /** CMP-052以前のJava呼び出し元向け。対象者項目は未変更（null）として扱う。 */
+    /** CMP-055以前のJava呼び出し元向け。対象者項目は未変更（null）として扱う。 */
     public UpdateScheduleRequest(
             String title, String description, String location,
             OffsetDateTime startAt, OffsetDateTime endAt, Boolean allDay,

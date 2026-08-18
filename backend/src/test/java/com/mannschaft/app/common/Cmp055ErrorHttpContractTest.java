@@ -14,8 +14,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/** CMP-052 の業務例外から HTTP status/envelope への契約。 */
-class Cmp052ErrorHttpContractTest {
+/** CMP-055 の業務例外から HTTP status/envelope への契約。 */
+class Cmp055ErrorHttpContractTest {
 
     private final MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new ProbeController())
             .setControllerAdvice(new GlobalExceptionHandler(new StaticMessageSource()))
