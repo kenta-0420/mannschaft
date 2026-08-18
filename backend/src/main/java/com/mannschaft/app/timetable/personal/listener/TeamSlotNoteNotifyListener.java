@@ -85,8 +85,7 @@ public class TeamSlotNoteNotifyListener {
             String body = truncate(event.getNotes(), 100);
 
             // locale を一括解決（N+1 防止。Issue #2715 ロットB）。
-            Map<Long, String> locales = userLocaleCache != null
-                    ? userLocaleCache.getLocales(memberIds) : Map.of();
+            Map<Long, String> locales = userLocaleCache.getLocales(memberIds);
 
             for (Long memberId : memberIds) {
                 Optional<PersonalTimetableSettingsEntity> settingsOpt =

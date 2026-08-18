@@ -294,4 +294,89 @@ class PersonalTimetableLinkSyncListenerTest {
 
         verify(scheduleRepository).save(any(ScheduleEntity.class));
     }
+
+    @Test
+    @DisplayName("PR #2809 検分差し戻し①: locale解決がDataAccessExceptionを投げても"
+            + "スケジュールsaveは巻き戻らず継続する（通知失敗の隔離が効く）")
+    void locale解決失敗でもスケジュールsaveは巻き戻らない() throws ReflectiveOperationException {
+        com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache =
+                org.mockito.Mockito.mock(com.mannschaft.app.common.i18n.UserLocaleCache.class);
+        given(userLocaleCache.getLocale(USER_ID))
+                .willThrow(new org.springframework.dao.DataAccessResourceFailureException("DB down"));
+        com.mannschaft.app.notification.service.NotificationHelper notificationHelper =
+                org.mockito.Mockito.mock(com.mannschaft.app.notification.service.NotificationHelper.class);
+
+        setPrivateField(listener, "userLocaleCache", userLocaleCache);
+        setPrivateField(listener, "notificationHelper", notificationHelper);
+
+        LocalDate target = LocalDate.of(2026, 5, 4);
+        TimetableChangeEntity change = buildChange(TimetableChangeType.CANCEL, target, 3);
+
+        given(timetableChangeRepository.findById(CHANGE_ID)).willReturn(Optional.of(change));
+        given(timetableChangeRepository
+                .findByTimetableIdAndTargetDateAndPeriodNumberIsNull(TT_ID, target))
+                .willReturn(Optional.empty());
+        given(personalSlotRepository.findByLinkedTimetableId(TT_ID))
+                .willReturn(List.of(buildSlot("MON", 3)));
+        given(personalTimetableRepository.findById(PT_ID))
+                .willReturn(Optional.of(buildPersonal()));
+        given(settingsRepository.findById(USER_ID)).willReturn(Optional.empty());
+        given(personalPeriodRepository.findByPersonalTimetableIdOrderByPeriodNumberAsc(PT_ID))
+                .willReturn(List.of(buildPeriod(3)));
+        given(scheduleRepository.findByExternalRef(any())).willReturn(Optional.empty());
+        given(scheduleRepository.save(any(ScheduleEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        // 例外が外へ伝播せず、かつスケジュールの save が行われることを確認する
+        // （修正前は resolveLocale の例外が try の外にあり REQUIRES_NEW トランザクションが
+        //   rollback-only になって save が巻き戻っていた）。
+        listener.onChangeCreated(new TimetableChangeCreatedEvent(
+                CHANGE_ID, TT_ID, null, TimetableChangeType.CANCEL, target, true, true));
+
+        verify(scheduleRepository).save(any(ScheduleEntity.class));
+        verify(notificationHelper, never()).notify(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("PR #2809 検分差し戻し②: 取消通知の本文もen localeで英語化されプレースホルダが残らない")
+    void 取消通知の本文もenロケールで英語化される() throws ReflectiveOperationException {
+        var realMessageSource = new org.springframework.context.support.ResourceBundleMessageSource();
+        realMessageSource.setBasename("messages");
+        realMessageSource.setDefaultEncoding("UTF-8");
+
+        com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache =
+                org.mockito.Mockito.mock(com.mannschaft.app.common.i18n.UserLocaleCache.class);
+        given(userLocaleCache.getLocale(USER_ID)).willReturn("en");
+        com.mannschaft.app.notification.service.NotificationHelper notificationHelper =
+                org.mockito.Mockito.mock(com.mannschaft.app.notification.service.NotificationHelper.class);
+
+        setPrivateField(listener, "userLocaleCache", userLocaleCache);
+        setPrivateField(listener, "messageSource", realMessageSource);
+        setPrivateField(listener, "notificationHelper", notificationHelper);
+
+        ScheduleEntity sch = ScheduleEntity.builder()
+                .userId(USER_ID).title("[休講] ドイツ語Ⅰ")
+                .startAt(java.time.LocalDateTime.of(2026, 5, 4, 13, 0))
+                .externalRef("F03.15:" + CHANGE_ID + ":" + SLOT_ID)
+                .build();
+        given(scheduleRepository.findByExternalRefPrefix("F03.15:" + CHANGE_ID + ":%"))
+                .willReturn(List.of(sch));
+        given(scheduleRepository.save(any(ScheduleEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(personalSlotRepository.findById(SLOT_ID))
+                .willReturn(Optional.of(buildSlot("MON", 3)));
+
+        listener.onChangeDeleted(new TimetableChangeDeletedEvent(CHANGE_ID, TT_ID));
+
+        org.mockito.ArgumentCaptor<String> bodyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(notificationHelper).notify(
+                any(), eq("TIMETABLE_CHANGE_REVOKED"), any(), bodyCaptor.capture(),
+                any(), any(), any(), any(), any(), any());
+        assertThat(bodyCaptor.getValue())
+                .contains("2026-05-04")
+                .doesNotContain("{0}")
+                .doesNotContain("{1}")
+                .doesNotContain("[休講]");
+    }
 }

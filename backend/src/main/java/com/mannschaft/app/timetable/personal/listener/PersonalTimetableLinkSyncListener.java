@@ -141,21 +141,27 @@ public class PersonalTimetableLinkSyncListener {
                 sch.softDelete();
                 scheduleRepository.save(sch);
                 if (notificationHelper != null && sch.getUserId() != null) {
-                    Locale locale = resolveLocale(sch.getUserId());
-                    String notifTitle = messageSource != null
-                            ? messageSource.getMessage(
-                                    "notification.timetable.personalLink.revoked.title", null,
-                                    "授業変更が取り消されました", locale)
-                            : "授業変更が取り消されました";
-                    notificationHelper.notify(
-                            sch.getUserId(),
-                            "TIMETABLE_CHANGE_REVOKED",
-                            notifTitle,
-                            sch.getTitle(),
-                            "SCHEDULE", sch.getId(),
-                            NotificationScopeType.PERSONAL, sch.getUserId(),
-                            "/schedules/" + sch.getId(),
-                            null);
+                    try {
+                        Locale locale = resolveLocale(sch.getUserId());
+                        String notifTitle = messageSource != null
+                                ? messageSource.getMessage(
+                                        "notification.timetable.personalLink.revoked.title", null,
+                                        "授業変更が取り消されました", locale)
+                                : "授業変更が取り消されました";
+                        String notifBody = buildRevokedNotificationBody(sch, locale);
+                        notificationHelper.notify(
+                                sch.getUserId(),
+                                "TIMETABLE_CHANGE_REVOKED",
+                                notifTitle,
+                                notifBody,
+                                "SCHEDULE", sch.getId(),
+                                NotificationScopeType.PERSONAL, sch.getUserId(),
+                                "/schedules/" + sch.getId(),
+                                null);
+                    } catch (Exception ex) {
+                        log.warn("通知送信失敗（継続）: userId={}, error={}",
+                                sch.getUserId(), ex.getMessage());
+                    }
                 }
             }
             log.info("臨時変更削除に伴う個人スケジュール削除: changeId={}, count={}",
@@ -288,15 +294,15 @@ public class PersonalTimetableLinkSyncListener {
 
         // F04.3 通知（受信者 locale に従って件名を組み立てる。Issue #2715 ロットB）
         if (notificationHelper != null) {
-            Locale locale = resolveLocale(personal.getUserId());
-            String notifTitle = buildSyncedNotificationTitle(change, slot, locale);
-            String notifBody = messageSource != null
-                    ? messageSource.getMessage(
-                            "notification.timetable.personalLink.synced.body",
-                            new Object[]{slot.getSubjectName(), targetDate.toString()},
-                            slot.getSubjectName() + "（" + targetDate + "）", locale)
-                    : slot.getSubjectName() + "（" + targetDate + "）";
             try {
+                Locale locale = resolveLocale(personal.getUserId());
+                String notifTitle = buildSyncedNotificationTitle(change, slot, locale);
+                String notifBody = messageSource != null
+                        ? messageSource.getMessage(
+                                "notification.timetable.personalLink.synced.body",
+                                new Object[]{slot.getSubjectName(), targetDate.toString()},
+                                slot.getSubjectName() + "（" + targetDate + "）", locale)
+                        : slot.getSubjectName() + "（" + targetDate + "）";
                 notificationHelper.notify(
                         personal.getUserId(),
                         "TIMETABLE_CHANGE_SYNCED",
@@ -352,6 +358,53 @@ public class PersonalTimetableLinkSyncListener {
                         new Object[]{subject}, "[補講] " + subject, locale);
             }
         };
+    }
+
+    /**
+     * 取消通知の本文（{@code notifBody}）を組み立てる。
+     *
+     * <p>{@code sch.getTitle()} は {@code "[休講] Math"} のような合成済み日本語文字列であり、
+     * 文字列分解でプレフィックスを剥がすのは禁止（構造化データではないため）。
+     * かわりに {@code externalRef}（{@code "F03.15:{changeId}:{slotId}"}）から slotId を復元し、
+     * {@link PersonalTimetableSlotRepository} から科目名を取得する
+     * （synced 側の {@code notification.timetable.personalLink.synced.body} と同じ
+     * {@code {0}}=科目名, {@code {1}}=日付 の作り）。</p>
+     */
+    private String buildRevokedNotificationBody(ScheduleEntity sch, Locale locale) {
+        String subjectName = resolveSubjectNameFromExternalRef(sch.getExternalRef());
+        String dateText = sch.getStartAt() != null ? sch.getStartAt().toLocalDate().toString() : "";
+        if (subjectName == null) {
+            // 科目名が復元できない場合はスケジュールの title をそのまま使う（フォールバック）。
+            return sch.getTitle();
+        }
+        return messageSource != null
+                ? messageSource.getMessage(
+                        "notification.timetable.personalLink.revoked.body",
+                        new Object[]{subjectName, dateText},
+                        subjectName + "（" + dateText + "）", locale)
+                : subjectName + "（" + dateText + "）";
+    }
+
+    /**
+     * {@code externalRef}（{@code "F03.15:{changeId}:{slotId}"}）から個人時間割コマの
+     * 科目名を復元する。復元できない場合は {@code null} を返す。
+     */
+    private String resolveSubjectNameFromExternalRef(String externalRef) {
+        if (externalRef == null) {
+            return null;
+        }
+        int lastColon = externalRef.lastIndexOf(':');
+        if (lastColon < 0 || lastColon == externalRef.length() - 1) {
+            return null;
+        }
+        try {
+            Long slotId = Long.valueOf(externalRef.substring(lastColon + 1));
+            return personalSlotRepository.findById(slotId)
+                    .map(PersonalTimetableSlotEntity::getSubjectName)
+                    .orElse(null);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     /**
