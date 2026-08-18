@@ -1,11 +1,16 @@
 package com.mannschaft.app.schedule.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.dashboard.ActivityEvent;
+import com.mannschaft.app.dashboard.ActivityType;
+import com.mannschaft.app.dashboard.ScopeType;
+import com.mannschaft.app.dashboard.TargetType;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.AttendanceGenerationStatus;
@@ -37,7 +42,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -83,6 +91,11 @@ public class ScheduleService {
      * 認可根治 Wave3-B6: schedule 書込（update/delete/cancel/create）・出欠閲覧の per-scope 認可に使用する。
      */
     private final AccessControlService accessControlService;
+    /**
+     * F03.18: activity_feed 発行用の {@code detail} JSON をシリアライズするために使う。
+     * シリアライズ失敗時は予定本体の処理を巻き込まない（{@link #publishScheduleActivity}）。
+     */
+    private final ObjectMapper objectMapper;
 
     /**
      * スケジュールを単体取得する。存在しない場合は例外をスローする。
@@ -233,6 +246,10 @@ public class ScheduleService {
                 schedule.getId(), resolvedScopeType, scopeId, userId,
                 Boolean.TRUE.equals(req.getAttendanceRequired())));
 
+        // F03.18: 予定作成をアクティビティフィードへ発行する（AC-01・AC-07）
+        publishScheduleActivity(ActivityType.SCHEDULE_CREATED, schedule, schedule.getId(), userId,
+                schedule.getTitle(), List.of(), 1);
+
         log.info("スケジュール作成: id={}, title={}, scope={}:{}", schedule.getId(), schedule.getTitle(), scopeType, scopeId);
         return toScheduleResponse(schedule);
     }
@@ -259,10 +276,18 @@ public class ScheduleService {
             validateDateRange(startAt, endAt);
         }
 
+        // F03.18 B-1: applyUpdateToSchedule 呼び出し直前に更新前スナップショットを退避する
+        // （呼び出し後では差分が取れない）。
+        Long originalId = schedule.getId();
+        Long originalParentScheduleId = schedule.getParentScheduleId();
+        ScheduleSnapshot before = ScheduleSnapshot.from(schedule);
+
         if (schedule.isRecurring() || schedule.getParentScheduleId() != null) {
             recurrenceService.updateRecurringSchedule(schedule, req, updateScope, this::applyUpdateToSchedule);
         } else {
-            applyUpdateToSchedule(schedule, req);
+            // F03.18: 戻り値で schedule 参照を差し替える（applyUpdateToSchedule は新インスタンスを
+            // 構築するため、差し替えないと呼び出し元からは更新前の値のまま見えてしまう）。
+            schedule = applyUpdateToSchedule(schedule, req);
         }
 
         schedule = scheduleRepository.save(schedule);
@@ -299,8 +324,146 @@ public class ScheduleService {
         // イベント発行（トランザクションコミット後に発行）
         eventPublisher.publishEvent(new ScheduleUpdatedEvent(schedule.getId(), userId));
 
+        // F03.18: 予定変更をアクティビティフィードへ発行する（AC-02・AC-03・AC-05・AC-06・AC-08）
+        publishScheduleUpdateActivity(before, schedule, updateScope, originalId, originalParentScheduleId, userId);
+
         log.info("スケジュール更新: id={}, updateScope={}", id, updateScope);
         return toScheduleResponse(schedule);
+    }
+
+    /**
+     * F03.18: {@code updateSchedule} の変更差分をアクティビティフィードへ発行する。
+     *
+     * <p>{@code updateScope = ALL} の場合は「1操作=1行」（§5.3）とし、対象は親スケジュール
+     * （{@code originalParentScheduleId} があればそれ、無ければ {@code originalId} 自身）とする。
+     * 差分ゼロ（no-op 更新）の場合は発行しない（AC-05）。{@code description} の値そのものは
+     * 決して JSON に載せない（AC-06。{@link #buildFieldDiff} 参照）。</p>
+     */
+    private void publishScheduleUpdateActivity(ScheduleSnapshot before, ScheduleEntity schedule,
+                                                String updateScope, Long originalId,
+                                                Long originalParentScheduleId, Long userId) {
+        ScheduleEntity target = schedule;
+        Long targetId = originalId;
+        long affectedCount = 1;
+
+        if (UPDATE_SCOPE_ALL.equals(updateScope)) {
+            Long parentId = originalParentScheduleId != null ? originalParentScheduleId : originalId;
+            targetId = parentId;
+            affectedCount = scheduleRepository.countByParentScheduleId(parentId);
+            target = scheduleRepository.findById(parentId).orElse(schedule);
+        }
+
+        ScheduleSnapshot after = ScheduleSnapshot.from(target);
+        boolean rescheduled = !Objects.equals(before.startAt(), after.startAt())
+                || !Objects.equals(before.endAt(), after.endAt())
+                || !Objects.equals(before.allDay(), after.allDay());
+
+        List<Map<String, Object>> fields = buildFieldDiff(before, after);
+        if (fields.isEmpty()) {
+            // AC-05: 差分ゼロの no-op 更新はフィード行を増やさない
+            return;
+        }
+
+        ActivityType type = rescheduled ? ActivityType.SCHEDULE_RESCHEDULED : ActivityType.SCHEDULE_UPDATED;
+        publishScheduleActivity(type, target, targetId, userId, after.title(), fields, affectedCount);
+    }
+
+    /**
+     * F03.18 §2.1: 更新前後のスナップショットからフィード用の {@code fields} 差分を作る。
+     *
+     * <p>漏洩面の是正（設計書§3.2）: {@code description} は値そのものを載せず、
+     * 変更の有無（{@code changed: true}）のみを記録する。</p>
+     */
+    private List<Map<String, Object>> buildFieldDiff(ScheduleSnapshot before, ScheduleSnapshot after) {
+        List<Map<String, Object>> fields = new ArrayList<>();
+        addFieldDiff(fields, "title", before.title(), after.title());
+        addFieldDiff(fields, "location", before.location(), after.location());
+        addFieldDiff(fields, "status", before.status() != null ? before.status().name() : null,
+                after.status() != null ? after.status().name() : null);
+        addFieldDiff(fields, "startAt", before.startAt() != null ? before.startAt().toString() : null,
+                after.startAt() != null ? after.startAt().toString() : null);
+        addFieldDiff(fields, "endAt", before.endAt() != null ? before.endAt().toString() : null,
+                after.endAt() != null ? after.endAt().toString() : null);
+        // B-2: Entity側フィールド名は allDay だが JSON 側は isAllDay に名寄せする
+        addFieldDiff(fields, "isAllDay", before.allDay(), after.allDay());
+
+        if (!Objects.equals(before.description(), after.description())) {
+            Map<String, Object> descField = new LinkedHashMap<>();
+            descField.put("field", "description");
+            descField.put("changed", true);
+            fields.add(descField);
+        }
+        return fields;
+    }
+
+    /**
+     * 単一フィールドの前後値を比較し、差分があれば {@code fields} リストへ追加する。
+     */
+    private void addFieldDiff(List<Map<String, Object>> fields, String fieldName, Object before, Object after) {
+        if (Objects.equals(before, after)) {
+            return;
+        }
+        Map<String, Object> field = new LinkedHashMap<>();
+        field.put("field", fieldName);
+        field.put("before", before != null ? before.toString() : null);
+        field.put("after", after != null ? after.toString() : null);
+        fields.add(field);
+    }
+
+    /**
+     * F03.18: 予定 CRUD 操作の前後スナップショット（フィード差分算出用）。
+     *
+     * <p>{@code description} は値の比較（変更有無の判定）にのみ用い、JSON へは決して積まない
+     * （AC-06。値そのものは {@link #buildFieldDiff} が絶対に読み書きしない）。</p>
+     */
+    private record ScheduleSnapshot(String title, String description, LocalDateTime startAt, LocalDateTime endAt,
+                                     Boolean allDay, String location, ScheduleStatus status) {
+        static ScheduleSnapshot from(ScheduleEntity entity) {
+            return new ScheduleSnapshot(entity.getTitle(), entity.getDescription(), entity.getStartAt(),
+                    entity.getEndAt(), entity.getAllDay(), entity.getLocation(), entity.getStatus());
+        }
+    }
+
+    /**
+     * F03.18: アクティビティフィードへ {@link ActivityEvent} を発行する。
+     *
+     * <p>PERSONAL スコープは対象外（AC-07。§2.2）。{@code detail} の JSON シリアライズに失敗しても
+     * 予定本体の CRUD は絶対に失敗させない（AC-10）。ここで例外を握りつぶさず WARN ログへ理由を残した
+     * うえで、フィード発行だけをスキップして本体トランザクションから切り離す（CLAUDE.md 障害対応の原則）。</p>
+     *
+     * @param type          活動種別
+     * @param scopeSource   スコープ（team/organization）解決元のエンティティ
+     * @param targetId      {@code target_id}（フィード上の対象予定ID）
+     * @param userId        操作者ID
+     * @param title         予定の現在タイトル（{@code detail.title}）
+     * @param fields        変更フィールド差分（{@code detail.fields}）
+     * @param affectedCount 影響件数（{@code detail.affectedCount}）
+     */
+    private void publishScheduleActivity(ActivityType type, ScheduleEntity scopeSource, Long targetId, Long userId,
+                                          String title, List<Map<String, Object>> fields, long affectedCount) {
+        String scopeTypeStr = resolveScopeType(scopeSource);
+        if (SCOPE_TYPE_PERSONAL.equals(scopeTypeStr)) {
+            // AC-07: PERSONAL スコープはフィード対象外（§2.2）
+            return;
+        }
+        Long scopeId = scopeSource.isTeamScope() ? scopeSource.getTeamId() : scopeSource.getOrganizationId();
+
+        try {
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("scheduleId", targetId);
+            detail.put("title", title);
+            detail.put("fields", fields);
+            detail.put("affectedCount", affectedCount);
+            String json = objectMapper.writeValueAsString(detail);
+
+            eventPublisher.publishEvent(new ActivityEvent(
+                    type, ScopeType.valueOf(scopeTypeStr), scopeId, userId, TargetType.SCHEDULE, targetId, json));
+        } catch (Exception e) {
+            // AC-10: detail の JSON 化に失敗しても予定本体の作成・更新・削除は成功させる。
+            // 症状は握りつぶさずWARNで残し、フィード発行のみを本体処理から切り離す。
+            log.warn("アクティビティフィード発行に失敗しました（予定本体の処理には影響しません）: "
+                    + "activityType={}, targetId={}", type, targetId, e);
+        }
     }
 
     /**
@@ -315,21 +478,39 @@ public class ScheduleService {
         ScheduleEntity schedule = findScheduleOrThrow(id);
         checkScopeAdminAccess(schedule, userId);
 
+        // F03.18 B-5: 削除操作も「1操作=1行」。SCHEDULE_CANCELLED 発行のための
+        // 削除直前タイトル・対象ID・影響件数をここで確定させる（ソフトデリート後は
+        // @SQLRestriction("deleted_at IS NULL") により取得できなくなるため）。
+        Long feedTargetId;
+        String feedTitle;
+        long affectedCount = 1;
+
         if (UPDATE_SCOPE_ALL.equals(updateScope) && schedule.getParentScheduleId() != null) {
             // 親と全子を削除
             Long parentId = schedule.getParentScheduleId();
             ScheduleEntity parent = findScheduleOrThrow(parentId);
+            feedTargetId = parentId;
+            feedTitle = parent.getTitle();
+            affectedCount = scheduleRepository.countByParentScheduleId(parentId);
             parent.softDelete();
             scheduleRepository.save(parent);
             recurrenceService.deleteChildSchedules(parentId);
         } else if (UPDATE_SCOPE_THIS_AND_FOLLOWING.equals(updateScope) && schedule.getParentScheduleId() != null) {
             // この日以降の子を削除
+            feedTargetId = schedule.getId();
+            feedTitle = schedule.getTitle();
             recurrenceService.deleteFollowingSchedules(schedule);
         } else {
             // 単体削除
+            feedTargetId = schedule.getId();
+            feedTitle = schedule.getTitle();
             schedule.softDelete();
             scheduleRepository.save(schedule);
         }
+
+        // F03.18: 予定削除をアクティビティフィードへ発行する（AC-04・AC-07・AC-08）
+        publishScheduleActivity(ActivityType.SCHEDULE_CANCELLED, schedule, feedTargetId, userId,
+                feedTitle, List.of(), affectedCount);
 
         log.info("スケジュール削除: id={}, updateScope={}", id, updateScope);
     }
@@ -346,6 +527,10 @@ public class ScheduleService {
         checkScopeAdminAccess(schedule, userId);
         validateScheduleNotCancelled(schedule);
 
+        // F03.18 A-2: cancelSchedule 由来も deleteSchedule 由来も同じ SCHEDULE_CANCELLED を
+        // 発行する（可視性フィルタ扱いは ActivityType の値のみで一意に決まる。§4.2 A-1・§5.1）。
+        String feedTitle = schedule.getTitle();
+
         schedule.cancel();
         scheduleRepository.save(schedule);
 
@@ -354,6 +539,10 @@ public class ScheduleService {
 
         // イベント発行（トランザクションコミット後に発行）
         eventPublisher.publishEvent(new ScheduleCancelledEvent(schedule.getId(), userId));
+
+        // F03.18: 予定キャンセルをアクティビティフィードへ発行する（AC-04・AC-07）
+        publishScheduleActivity(ActivityType.SCHEDULE_CANCELLED, schedule, schedule.getId(), userId,
+                feedTitle, List.of(), 1);
 
         log.info("スケジュールキャンセル: id={}", id);
     }
@@ -384,6 +573,10 @@ public class ScheduleService {
 
         // BaseEntity の id, createdAt, updatedAt は @PrePersist で再設定される
         duplicate = scheduleRepository.save(duplicate);
+
+        // F03.18 §5.1: 複製は新規作成扱いのため SCHEDULE_CREATED を発行する（AC-01・AC-07）
+        publishScheduleActivity(ActivityType.SCHEDULE_CREATED, duplicate, duplicate.getId(), userId,
+                duplicate.getTitle(), List.of(), 1);
 
         log.info("スケジュール複製: sourceId={}, newId={}", id, duplicate.getId());
         return toScheduleResponse(duplicate);
@@ -621,8 +814,14 @@ public class ScheduleService {
      *
      * <p>startAt / endAt / attendanceDeadline は OffsetDateTime で受け取り、
      * JST LocalDateTime に変換して Entity に設定する。</p>
+     *
+     * <p>F03.18: 構築した更新後エンティティを呼び出し元へ返す。{@code schedule.toBuilder()} が
+     * 新しいインスタンスを作るため、呼び出し元が引数の {@code schedule} 参照をそのまま見ても
+     * 更新後の値には反映されない（JPA の merge に頼らない限り）。呼び出し元
+     * （{@link #updateSchedule}）はこの戻り値で自らの変数を差し替えることで、
+     * モックを使う単体テストでも実DBと同じ挙動でフィード差分を算出できる。</p>
      */
-    private void applyUpdateToSchedule(ScheduleEntity schedule, UpdateScheduleRequest req) {
+    private ScheduleEntity applyUpdateToSchedule(ScheduleEntity schedule, UpdateScheduleRequest req) {
         ScheduleEntity.ScheduleEntityBuilder builder = schedule.toBuilder();
 
         if (req.getTitle() != null) builder.title(req.getTitle());
@@ -662,6 +861,7 @@ public class ScheduleService {
 
         ScheduleEntity updated = builder.build();
         scheduleRepository.save(updated);
+        return updated;
     }
 
     /**
