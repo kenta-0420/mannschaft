@@ -55400,6 +55400,10 @@ export interface components {
         CreatePostRequest: {
             attachments?: components["schemas"]["CreateAttachmentRequest"][];
             content?: string;
+            /** @enum {string} */
+            deliveryScope?: "DIRECT" | "CHILDREN" | "DESCENDANTS";
+            /** @enum {string} */
+            deliveryScopeOrDefault?: "DIRECT" | "CHILDREN" | "DESCENDANTS";
             /** Format: int64 */
             parentId?: number;
             poll?: components["schemas"]["CreatePollRequest"];

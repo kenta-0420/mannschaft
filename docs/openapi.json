@@ -168992,6 +168992,22 @@
             "maxLength": 5000,
             "minLength": 0
           },
+          "deliveryScope": {
+            "type": "string",
+            "enum": [
+              "DIRECT",
+              "CHILDREN",
+              "DESCENDANTS"
+            ]
+          },
+          "deliveryScopeOrDefault": {
+            "type": "string",
+            "enum": [
+              "DIRECT",
+              "CHILDREN",
+              "DESCENDANTS"
+            ]
+          },
           "parentId": {
             "type": "integer",
             "format": "int64"
