@@ -1,7 +1,6 @@
 package com.mannschaft.app.todo.service;
 
 import com.mannschaft.app.organization.service.OrganizationService;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.todo.TodoScopeType;
@@ -30,7 +29,6 @@ public class TodoCalendarService {
     private final TodoRepository todoRepository;
     private final TeamService teamService;
     private final OrganizationService organizationService;
-    private final UserRoleRepository userRoleRepository;
     private final MembershipService membershipService;
 
     /**
@@ -41,11 +39,10 @@ public class TodoCalendarService {
      * カレンダー月表示での N+1 を防ぐ。</p>
      */
     public List<CalendarTodoResponse> getMyCalendarTodos(Long userId, LocalDate from, LocalDate to) {
-        Set<Long> activeTeamIds = new HashSet<>(userRoleRepository.findTeamIdsByUserId(userId));
-        activeTeamIds.addAll(membershipService.getActiveTeamIdsByUser(userId));
+        Set<Long> activeTeamIds = new HashSet<>(
+                membershipService.getActiveTeamIdsIncludingRoleAssignments(userId));
         Set<Long> activeOrganizationIds = new HashSet<>(
-                userRoleRepository.findOrganizationIdsByUserId(userId));
-        activeOrganizationIds.addAll(membershipService.getActiveOrgIdsByUser(userId));
+                membershipService.getActiveOrgIdsIncludingRoleAssignments(userId));
         List<TodoEntity> todos = todoRepository.findMyCalendarTodos(userId, from, to).stream()
                 .filter(todo -> switch (todo.getScopeType()) {
                     case PERSONAL -> todo.getScopeId().equals(userId);

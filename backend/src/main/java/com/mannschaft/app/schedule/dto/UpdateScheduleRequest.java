@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -15,7 +16,7 @@ import java.util.List;
  * null = 変更なし（部分更新セマンティクス）。空リスト = 全削除。</p>
  */
 @Getter
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @JsonCreator)
 public class UpdateScheduleRequest {
 
     @Size(max = 200)

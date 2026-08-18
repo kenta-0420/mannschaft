@@ -4,7 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MemberDto;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
-import com.mannschaft.app.membership.repository.ScopeMemberCalendarSettingRepository;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.schedule.ScheduleTargetMode;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.MinViewRole;
@@ -30,7 +30,7 @@ import static org.mockito.Mockito.when;
 class ScheduleTargetServiceTest {
     private ScheduleTargetRepository targetRepository;
     private MemberQueryDispatcher memberQueryDispatcher;
-    private ScopeMemberCalendarSettingRepository calendarSettingRepository;
+    private ScopeMemberCalendarSettingService calendarSettingService;
     private ScheduleTargetService service;
     private ScheduleEntity schedule;
 
@@ -38,8 +38,8 @@ class ScheduleTargetServiceTest {
     void setUp() {
         targetRepository = mock(ScheduleTargetRepository.class);
         memberQueryDispatcher = mock(MemberQueryDispatcher.class);
-        calendarSettingRepository = mock(ScopeMemberCalendarSettingRepository.class);
-        service = new ScheduleTargetService(targetRepository, memberQueryDispatcher, calendarSettingRepository);
+        calendarSettingService = mock(ScopeMemberCalendarSettingService.class);
+        service = new ScheduleTargetService(targetRepository, memberQueryDispatcher, calendarSettingService);
         schedule = ScheduleEntity.builder().teamId(10L).targetMode(ScheduleTargetMode.ALL_MEMBERS).build();
     }
 
@@ -127,8 +127,8 @@ class ScheduleTargetServiceTest {
                         ScheduleTargetEntity.builder().scheduleId(50L).userId(2L).build()));
         when(memberQueryDispatcher.queryMembers(10L, ScopeType.TEAM, null))
                 .thenReturn(List.of(member(1L)));
-        when(calendarSettingRepository.findByScopeTypeAndScopeIdAndUserIdIn(
-                eq(ScopeType.TEAM), eq(10L), anyCollection())).thenReturn(List.of());
+        when(calendarSettingService.resolveColors(
+                eq(ScopeType.TEAM), eq(10L), anyCollection())).thenReturn(java.util.Map.of());
         schedule.updateTargetMode(ScheduleTargetMode.SELECTED_MEMBERS);
 
         var response = service.responsesForSchedules(List.of(schedule), true).get(50L);

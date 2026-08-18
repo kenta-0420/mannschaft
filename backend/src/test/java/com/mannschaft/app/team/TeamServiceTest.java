@@ -10,6 +10,8 @@ import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.membership.query.MemberQueryDispatcher;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -56,6 +58,8 @@ class TeamServiceTest {
     @Mock private MembershipRepository membershipRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private MediaUrlResolver mediaUrlResolver;
+    @Mock private MemberQueryDispatcher memberQueryDispatcher;
+    @Mock private ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;

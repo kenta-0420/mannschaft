@@ -21,6 +21,7 @@ import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
+import com.mannschaft.app.schedule.dto.ScheduleTargetResponse;
 import com.mannschaft.app.schedule.dto.UpdateScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.event.ScheduleCancelledEvent;
@@ -836,7 +837,13 @@ public class ScheduleService {
      */
     private ScheduleResponse toScheduleResponse(ScheduleEntity entity) {
         EventCategoryResponse categoryResponse = resolveEventCategoryResponse(entity.getEventCategoryId());
-        var targets = scheduleTargetService.responsesForSchedules(List.of(entity), true).get(entity.getId());
+        var targets = scheduleTargetService.responsesForSchedules(List.of(entity), true)
+                .getOrDefault(entity.getId(), new ScheduleTargetResponse(
+                        entity.getTargetMode() == null
+                                ? ScheduleTargetMode.ALL_MEMBERS.name()
+                                : entity.getTargetMode().name(),
+                        0,
+                        List.of()));
         return ScheduleResponse.builder()
                 .id(entity.getId())
                 .content(new ScheduleResponse.ScheduleContentDto(

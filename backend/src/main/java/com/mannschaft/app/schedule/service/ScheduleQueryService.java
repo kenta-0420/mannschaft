@@ -3,7 +3,6 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
@@ -44,7 +43,6 @@ public class ScheduleQueryService {
 
     private final ScheduleRepository scheduleRepository;
     private final NameResolverService nameResolverService;
-    private final UserRoleRepository userRoleRepository;
     private final MembershipService membershipService;
     private final ScheduleEventCategoryRepository categoryRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
@@ -188,7 +186,7 @@ public class ScheduleQueryService {
      * @param to     期間終了
      * @return カレンダーエントリー一覧
      */
-    // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
+    // user_roles と memberships の統合は membership ドメインの公開窓口へ委譲する。
     @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "ScheduleService.getMyCalendar"})
     public List<CalendarEntryResponse> getMyCalendar(Long userId, LocalDateTime from, LocalDateTime to) {
         List<CalendarEntryResponse> entries = new ArrayList<>();
@@ -202,8 +200,8 @@ public class ScheduleQueryService {
         // CMP-027: user_roles ∪ memberships の在籍チーム ID。素メンバー/応援者（memberships 専属）の
         // 所属チームを取りこぼすと、その min_view 対象予定が一覧に一切現れない退行（AC-03）が起きる。
         List<ScopedSchedule> teamScoped = new ArrayList<>();
-        Set<Long> teamIds = new LinkedHashSet<>(userRoleRepository.findTeamIdsByUserId(userId));
-        teamIds.addAll(membershipService.getActiveTeamIdsByUser(userId));
+        Set<Long> teamIds = new LinkedHashSet<>(
+                membershipService.getActiveTeamIdsIncludingRoleAssignments(userId));
         for (Long teamId : teamIds) {
             scheduleRepository
                     .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to)
@@ -212,8 +210,8 @@ public class ScheduleQueryService {
 
         // 所属組織のスケジュールを取得（CMP-027: user_roles ∪ memberships の在籍組織 ID）。
         List<ScopedSchedule> orgScoped = new ArrayList<>();
-        Set<Long> orgIds = new LinkedHashSet<>(userRoleRepository.findOrganizationIdsByUserId(userId));
-        orgIds.addAll(membershipService.getActiveOrgIdsByUser(userId));
+        Set<Long> orgIds = new LinkedHashSet<>(
+                membershipService.getActiveOrgIdsIncludingRoleAssignments(userId));
         for (Long orgId : orgIds) {
             scheduleRepository
                     .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to)

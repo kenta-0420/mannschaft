@@ -2,7 +2,6 @@ package com.mannschaft.app.schedule.service;
 
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
-import com.mannschaft.app.membership.repository.ScopeMemberCalendarSettingRepository;
 import com.mannschaft.app.schedule.ScheduleTargetMode;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.common.BusinessException;
@@ -24,7 +23,6 @@ import java.util.HashMap;
 import java.util.Collection;
 import java.util.function.Function;
 import com.mannschaft.app.membership.dto.MemberDto;
-import com.mannschaft.app.membership.entity.ScopeMemberCalendarSettingEntity;
 import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 
 /** 予定対象者の構文・所属検証と置換を一つのトランザクションで行う。 */
@@ -36,7 +34,7 @@ public class ScheduleTargetService {
 
     private final ScheduleTargetRepository targetRepository;
     private final MemberQueryDispatcher memberQueryDispatcher;
-    private final ScopeMemberCalendarSettingRepository calendarSettingRepository;
+    private final ScopeMemberCalendarSettingService calendarSettingService;
 
     @Transactional
     public void replaceForCreate(ScheduleEntity schedule, String scopeType, Long scopeId,
@@ -151,11 +149,8 @@ public class ScheduleTargetService {
                     .flatMap(schedule -> targetIds.getOrDefault(schedule.getId(), List.of()).stream())
                     .collect(java.util.stream.Collectors.toSet());
             if (requestedIds.isEmpty()) continue;
-            colorsByScope.put(key, calendarSettingRepository
-                    .findByScopeTypeAndScopeIdAndUserIdIn(key.scopeType(), key.scopeId(), requestedIds).stream()
-                    .collect(java.util.stream.Collectors.toMap(
-                            ScopeMemberCalendarSettingEntity::getUserId,
-                            ScopeMemberCalendarSettingEntity::getCalendarColor)));
+            colorsByScope.put(key, calendarSettingService.resolveColors(
+                    key.scopeType(), key.scopeId(), requestedIds));
         }
 
         Map<Long, ScheduleTargetResponse> result = new HashMap<>();

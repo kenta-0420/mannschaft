@@ -13,6 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Collection;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /** 色のoverride/reset。認可はcontrollerが既存のcheckAdminOrAboveで行う。 */
 @Service
@@ -48,6 +51,23 @@ public class ScopeMemberCalendarSettingService {
         int index = Math.floorMod(
                 java.util.Objects.hash(scopeType.name(), scopeId, userId), PALETTE.size());
         return PALETTE.get(index);
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, String> resolveColors(
+            ScopeType scopeType, Long scopeId, Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, String> overrides = repository
+                .findByScopeTypeAndScopeIdAndUserIdIn(scopeType, scopeId, userIds)
+                .stream()
+                .collect(Collectors.toMap(
+                        ScopeMemberCalendarSettingEntity::getUserId,
+                        ScopeMemberCalendarSettingEntity::getCalendarColor));
+        return userIds.stream().distinct().collect(Collectors.toMap(
+                userId -> userId,
+                userId -> overrides.getOrDefault(userId, fallback(scopeType, scopeId, userId))));
     }
 
     private void assertActiveMember(ScopeType scopeType, Long scopeId, Long userId) {
