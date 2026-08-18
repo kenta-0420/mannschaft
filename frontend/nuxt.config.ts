@@ -9,6 +9,8 @@ import Aura from '@primeuix/themes/aura'
 // E2E プロキシ（NUXT_API_PROXY=true）時は API が Nuxt 同一オリジン経由になるため 'self' で足りる。
 // 本番（Cloudflare 経由 FE/BE 同一オリジン構成）では NUXT_PUBLIC_API_BASE='' (空文字) で運用する。
 const apiBase = process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080'
+const apiProxyEnabled = process.env.NUXT_API_PROXY === 'true'
+const apiProxyTarget = process.env.NUXT_API_PROXY_TARGET ?? 'http://127.0.0.1:8080'
 
 // CSP 違反レポートの送信先（report-uri）。
 // バックエンド受信エンドポイント `POST /api/v1/security/csp-reports`（permitAll・PR #1274）へ向ける。
@@ -408,7 +410,7 @@ export default defineNuxtConfig({
     // 設計書: docs/security/03_security_headers_and_csp.md §2.1（apiBase 二層構成）
     internalApiBase: process.env.NUXT_INTERNAL_API_BASE ?? 'http://localhost:8080',
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080',
+      apiBase: apiProxyEnabled ? '' : apiBase,
       // フロントエンドのベース URL（canonical / hreflang / JSON-LD 等の SEO 用）。
       // NUXT_PUBLIC_API_BASE=''（同一オリジン構成）では apiBase から FE の origin を
       // 逆算できないため、専用の環境変数で明示する。
@@ -430,8 +432,8 @@ export default defineNuxtConfig({
 
   // E2E テスト時（NUXT_API_PROXY=true 環境変数）は API を Nuxt サーバー経由でプロキシする。
   // これにより CORS プリフライト問題を回避し、Playwright のルートインターセプトが確実に機能する。
-  routeRules: process.env.NUXT_API_PROXY === 'true' ? {
-    '/api/v1/**': { proxy: `${apiBase}/api/v1/**` },
+  routeRules: apiProxyEnabled ? {
+    '/api/v1/**': { proxy: `${apiProxyTarget}/api/v1/**` },
   } : {},
 
   // ──────────────────────────────────────────────────────────────────────
@@ -445,7 +447,7 @@ export default defineNuxtConfig({
   // NUXT_API_PROXY=true（E2E 全 API プロキシ）時は routeRules 側が全 /api/v1/** を担うため二重化を避けて無効化。
   nitro: {
     devProxy:
-      process.env.NUXT_API_PROXY === 'true'
+      apiProxyEnabled
         ? {}
         : {
             '/api/v1/security/csp-reports': {

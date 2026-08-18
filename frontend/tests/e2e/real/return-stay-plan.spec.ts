@@ -76,9 +76,10 @@ test('F02.11: UIで予定を作成・更新・詳細確認・削除できる', a
     const planPill = page.getByRole('button').filter({ hasText: updatedEndDate }).first()
     await expect(planPill).toBeVisible({ timeout: 30_000 })
     await planPill.click()
-    await expect(page.locator('.return-stay-detail-dialog')).toBeVisible()
-    await expect(page.getByText(updatedEndDate, { exact: false })).toBeVisible()
-    await page.getByRole('button', { name: /閉じる|Close/ }).click()
+    const detailDialog = page.locator('.return-stay-detail-dialog')
+    await expect(detailDialog).toBeVisible()
+    await expect(detailDialog.getByText(updatedEndDate, { exact: false })).toBeVisible()
+    await detailDialog.locator('dl > button').click()
 
     await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
