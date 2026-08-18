@@ -550,6 +550,40 @@ class TimelinePostServiceTest {
                             .isEqualTo(TimelineErrorCode.MAX_ATTACHMENTS_EXCEEDED));
         }
 
+        // 配下配信: deliveryScope の既定値と透過保存
+        @Test
+        @DisplayName("配AC-6 deliveryScope 省略時は DIRECT で保存される")
+        void deliveryScope省略時はDIRECT() {
+            CreatePostRequest req = new CreatePostRequest("配信既定", "ORGANIZATION", 50L,
+                    "USER", null, null, null, null, null, null);
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(createPost());
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(createPostResponse());
+
+            timelinePostService.createPost(req, USER_ID);
+
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository).save(cap.capture());
+            assertThat(cap.getValue().getDeliveryScope())
+                    .isEqualTo(com.mannschaft.app.timeline.PostDeliveryScope.DIRECT);
+        }
+
+        @Test
+        @DisplayName("配AC-10 TEAM 投稿でも指定値はそのまま保存される（配信範囲には寄与しない）")
+        void TEAM投稿でもdeliveryScopeは保存される() {
+            CreatePostRequest req = new CreatePostRequest("配信指定", "TEAM", "50",
+                    "USER", null, null, null, null, null, null, null, null,
+                    com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS);
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(createPost());
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(createPostResponse());
+
+            timelinePostService.createPost(req, USER_ID);
+
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository).save(cap.capture());
+            assertThat(cap.getValue().getDeliveryScope())
+                    .isEqualTo(com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS);
+        }
+
         // F09.13 Phase 2-α-2: status 指定による DRAFT 起票
         @Test
         @DisplayName("正常系: status=DRAFT を指定するとDRAFTで保存される")

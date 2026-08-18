@@ -23,9 +23,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -373,6 +376,108 @@ public class OrganizationHierarchyService {
             hops++;
         }
         return false;
+    }
+
+    // ========================================================================
+    // 配下配信（timeline）向け 祖先展開ヘルパー
+    //
+    // 既存 getAncestors(orgId, requesterId) は DTO を返し可視性でマスクするため、
+    // 「配信が届くか」の判定には使えない（マスク済み DTO からは距離が取れない）。
+    // ここは ID と距離だけを返す素の展開を提供する。
+    // ========================================================================
+
+    /**
+     * 起点組織群から親方向へ辿り、到達できる<b>祖先組織 ID → 起点からの距離</b>を返す。
+     *
+     * <p>距離が必要なのは、配下配信の {@code CHILDREN}（距離 1 のみ届く）と
+     * {@code DESCENDANTS}（距離無制限で届く）を区別するためである。</p>
+     *
+     * <ul>
+     *   <li>起点組織そのものは戻り値に含めない（距離 0 は「直接所属」であり、
+     *       呼び出し側の別述語が担当する）。</li>
+     *   <li>複数の起点から同じ祖先に到達した場合は<b>最小距離</b>を採る
+     *       （近い経路で届くなら届く、が正しい）。</li>
+     *   <li>{@code app.org.max-depth} を超える深さは辿らない。</li>
+     *   <li>サイクルは訪問済み集合で検出し、その経路を打ち切る（無限ループしない）。</li>
+     *   <li>1 リクエスト内で親リンクをメモ化する（{@code parent_organization_id} には
+     *       キャッシュが無く、素朴に辿ると 1 ホップごとにクエリが飛ぶため）。</li>
+     * </ul>
+     *
+     * @param startOrgIds 起点組織 ID 群（null/空なら空 Map）
+     * @return 祖先組織 ID → 起点からの距離（1 以上）
+     */
+    public Map<Long, Integer> getAncestorOrgIdsWithDepth(Collection<Long> startOrgIds) {
+        if (startOrgIds == null || startOrgIds.isEmpty()) {
+            return Map.of();
+        }
+        // 1 リクエスト内メモ化。値が null の場合「親なし」を意味するため、
+        // containsKey で「未取得」と「親なし」を区別する。
+        Map<Long, Long> parentCache = new HashMap<>();
+        Map<Long, Integer> result = new HashMap<>();
+
+        for (Long startOrgId : startOrgIds) {
+            if (startOrgId == null) {
+                continue;
+            }
+            Set<Long> visited = new HashSet<>();
+            visited.add(startOrgId);
+            Long current = resolveParentId(startOrgId, parentCache);
+            int depth = 1;
+            while (current != null && depth <= maxDepth) {
+                if (!visited.add(current)) {
+                    // サイクル検出 → この経路は打ち切る
+                    log.warn("組織階層にサイクルを検出（配下配信の祖先展開）: startOrgId={}, cycleAt={}",
+                            startOrgId, current);
+                    break;
+                }
+                result.merge(current, depth, Math::min);
+                current = resolveParentId(current, parentCache);
+                depth++;
+            }
+        }
+        return result;
+    }
+
+    /**
+     * チーム ID 群が ACTIVE で所属する組織（アンカー組織）の ID を返す。
+     *
+     * <p>チーム加入時に上位組織の membership は自動生成されないため、チームにのみ所属する
+     * ユーザーへ組織の周知を届けるにはこのアンカー組織を起点にする必要がある。</p>
+     *
+     * <p><b>本メソッドの存在理由</b>: {@code TeamOrgMembershipRepository} の参照を organization
+     * ドメイン内に閉じ込めるため。timeline から直接注入するとドメイン境界原則 D-3
+     * （クロスドメインの Repository 直参照禁止）に抵触する。</p>
+     *
+     * @param teamIds チーム ID 群（null/空なら空リスト）
+     * @return アンカー組織 ID 一覧（重複なし・順不同）
+     */
+    public List<Long> getAnchorOrgIdsByTeamIds(Collection<Long> teamIds) {
+        if (teamIds == null || teamIds.isEmpty()) {
+            return List.of();
+        }
+        Set<Long> anchors = new HashSet<>();
+        for (Long teamId : teamIds) {
+            if (teamId == null) {
+                continue;
+            }
+            for (TeamOrgMembershipEntity m : teamOrgMembershipRepository
+                    .findByTeamIdAndStatus(teamId, TeamOrgMembershipEntity.Status.ACTIVE)) {
+                if (m.getOrganizationId() != null) {
+                    anchors.add(m.getOrganizationId());
+                }
+            }
+        }
+        return List.copyOf(anchors);
+    }
+
+    /** {@link #getAncestorOrgIdsWithDepth} 用: 親 ID をメモ化しつつ解決する。 */
+    private Long resolveParentId(Long orgId, Map<Long, Long> parentCache) {
+        if (parentCache.containsKey(orgId)) {
+            return parentCache.get(orgId);
+        }
+        Long parentId = organizationRepository.findParentOrganizationIdById(orgId).orElse(null);
+        parentCache.put(orgId, parentId);
+        return parentId;
     }
 
     private AncestorOrganizationResponse fullAncestor(OrganizationEntity org) {

@@ -7,6 +7,7 @@ import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.timeline.controller.TimelineFeedController;
 import com.mannschaft.app.timeline.controller.TimelinePostController;
@@ -14,6 +15,7 @@ import com.mannschaft.app.timeline.dto.PostDetailResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
 import com.mannschaft.app.timeline.dto.TimelineFeedResponse;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
+import com.mannschaft.app.timeline.entity.UserMuteEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.VillageEntity;
@@ -82,6 +84,15 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private VillageMembershipRepository villageMembershipRepository;
+
+    @Autowired
+    private com.mannschaft.app.organization.repository.OrganizationRepository organizationRepository;
+
+    @Autowired
+    private com.mannschaft.app.timeline.repository.UserMuteRepository muteRepository;
+
+    /** 組織 slug の一意性確保用の連番（slug は 30 文字・UNIQUE）。 */
+    private int deliveryOrgSeq = 0;
 
     // --- テスト用ユーザー（高位ID・seed と衝突しない） ---
     private static final Long USER_TEAM_A_MEMBER = 92_201L;
@@ -291,6 +302,153 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
 
             assertThat(response.getBody().getData()).extracting(PostResponse::getId).contains(villagePost);
         }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 配下配信の認可対称性 — 認AC-13〜15, 17, 18
+    //
+    // 配信範囲は「可視性の拡大」であるため、フィードに出る投稿は詳細取得・ユーザー投稿一覧でも
+    // 到達できなければならない（フィードには出るのに直リンクは404、という非対称を禁じる）。
+    // 逆に DIRECT の投稿は、どの経路からも子組織所属者に見えてはならない。
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("配下配信の認可対称性")
+    class DeliveryScopeAuthzSymmetry {
+
+        private Long parentOrg;
+        private Long childOrg;
+        private static final Long USER_CHILD_ORG_MEMBER = 92_301L;
+
+        @BeforeEach
+        void setUpHierarchy() {
+            parentOrg = saveOrgForDelivery(null);
+            childOrg = saveOrgForDelivery(parentOrg);
+            membershipRepository.save(membership(
+                    USER_CHILD_ORG_MEMBER, ScopeType.ORGANIZATION, childOrg));
+        }
+
+        @Test
+        @DisplayName("認AC-13 DESCENDANTS の投稿は受信者が getPost で取得できる（404にならない）")
+        void deliveredPost_isReachableByDirectLink() {
+            Long postId = saveDeliveryPost(parentOrg, PostDeliveryScope.DESCENDANTS);
+
+            setAuthentication(USER_CHILD_ORG_MEMBER);
+            ResponseEntity<ApiResponse<PostDetailResponse>> response = postController.getPost(postId);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getData().getId()).isEqualTo(postId);
+        }
+
+        @Test
+        @DisplayName("認AC-14 DIRECT の投稿を子組織所属者が直リンクで開くと404（POST_NOT_FOUND）")
+        void directPost_isNotReachableByChildOrgMember() {
+            Long postId = saveDeliveryPost(parentOrg, PostDeliveryScope.DIRECT);
+
+            setAuthentication(USER_CHILD_ORG_MEMBER);
+
+            assertThatThrownBy(() -> postController.getPost(postId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
+        }
+
+        @Test
+        @DisplayName("認AC-15/17 ユーザー投稿一覧: DESCENDANTS は出る・DIRECT は出ない")
+        void userPosts_respectDeliveryScope() {
+            Long delivered = saveDeliveryPost(parentOrg, PostDeliveryScope.DESCENDANTS);
+            Long direct = saveDeliveryPost(parentOrg, PostDeliveryScope.DIRECT);
+
+            setAuthentication(USER_CHILD_ORG_MEMBER);
+            ResponseEntity<ApiResponse<List<PostResponse>>> response =
+                    feedController.getUserPosts(USER_POST_OWNER, 50);
+
+            List<Long> ids = response.getBody().getData().stream().map(PostResponse::getId).toList();
+            assertThat(ids).contains(delivered);
+            assertThat(ids).doesNotContain(direct);
+        }
+
+        @Test
+        @DisplayName("認AC-18 配信は入場権ではない: 上位組織のタイムライン画面は依然403")
+        void delivery_doesNotGrantFeedEntry() {
+            saveDeliveryPost(parentOrg, PostDeliveryScope.DESCENDANTS);
+
+            setAuthentication(USER_CHILD_ORG_MEMBER);
+
+            assertThatThrownBy(() ->
+                    feedController.getFeed("ORGANIZATION", parentOrg.toString(), null, 20))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // ミュートは認可ではなく表示設定 — 認AC-25, 26
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("ミュートと認可の分離")
+    class MuteIsNotAuthorization {
+
+        @Test
+        @DisplayName("認AC-25 ミュート中スコープの投稿も getPost では 200 で取得できる")
+        void mutedScopePost_isStillReachable() {
+            Long postId = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
+            muteRepository.save(UserMuteEntity.builder()
+                    .userId(USER_TEAM_A_MEMBER).mutedType("TEAM").mutedId(TEAM_A).build());
+
+            setAuthentication(USER_TEAM_A_MEMBER);
+            ResponseEntity<ApiResponse<PostDetailResponse>> response = postController.getPost(postId);
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getData().getId()).isEqualTo(postId);
+        }
+
+        @Test
+        @DisplayName("認AC-26 自分のミュートは他人のフィードに影響しない")
+        void myMute_doesNotAffectOthersFeed() {
+            Long postId = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
+            // USER_ORG_A_MEMBER も TEAM_A に所属させ、USER_TEAM_A_MEMBER だけが TEAM_A をミュートする
+            membershipRepository.save(membership(USER_ORG_A_MEMBER, ScopeType.TEAM, TEAM_A));
+            muteRepository.save(UserMuteEntity.builder()
+                    .userId(USER_TEAM_A_MEMBER).mutedType("TEAM").mutedId(TEAM_A).build());
+
+            setAuthentication(USER_TEAM_A_MEMBER);
+            assertThat(feedController.getMyFeed(null, 50).getBody().getData().getPosts())
+                    .extracting(PostResponse::getId).doesNotContain(postId);
+
+            setAuthentication(USER_ORG_A_MEMBER);
+            assertThat(feedController.getMyFeed(null, 50).getBody().getData().getPosts())
+                    .extracting(PostResponse::getId).contains(postId);
+        }
+    }
+
+    // --- 配下配信テスト用ヘルパー ---
+
+    /** 組織を 1 件作る（親 ID 指定で子組織）。ID は採番されるため戻り値を使う。 */
+    private Long saveOrgForDelivery(Long parentOrgId) {
+        return organizationRepository.save(OrganizationEntity.builder()
+                .slug("b7dlv" + (deliveryOrgSeq++) + "-" + (System.nanoTime() % 1_000_000L))
+                .name("配下配信契約テスト組織")
+                .orgType(OrganizationEntity.OrgType.ASSOCIATION)
+                .parentOrganizationId(parentOrgId)
+                .visibility(OrganizationEntity.Visibility.PUBLIC)
+                .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.FULL)
+                .supporterEnabled(false)
+                .build()).getId();
+    }
+
+    /** 組織スコープ投稿を配信範囲付きで作る（投稿者は USER_POST_OWNER）。 */
+    private Long saveDeliveryPost(Long orgId, PostDeliveryScope deliveryScope) {
+        return postRepository.save(TimelinePostEntity.builder()
+                .scopeType(PostScopeType.ORGANIZATION)
+                .scopeId(orgId)
+                .userId(USER_POST_OWNER)
+                .content("delivery-" + orgId + "-" + deliveryScope)
+                .status(PostStatus.PUBLISHED)
+                .deliveryScope(deliveryScope)
+                .build()).getId();
     }
 
     // ═════════════════════════════════════════════════════════════════════

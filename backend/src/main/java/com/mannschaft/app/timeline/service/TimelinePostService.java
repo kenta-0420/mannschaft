@@ -502,6 +502,9 @@ public class TimelinePostService {
                 .scopeType(scopeTypeEnum)
                 .scopeId(effectiveScopeId)
                 .scopeVillageId(scopeVillageId)
+                // 配下配信範囲。省略時は DIRECT（現行挙動）。ORGANIZATION 以外では保存されても
+                // 配信範囲に寄与しない（チームに階層が無いため）。
+                .deliveryScope(req.getDeliveryScopeOrDefault())
                 .userId(userId)
                 .postedAsType(postedAsTypeEnum)
                 .postedAsId(postedAsId)
