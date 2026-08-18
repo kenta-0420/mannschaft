@@ -141,6 +141,15 @@ describe('WidgetReturnStayPlan.vue', () => {
     expect(field('#return-stay-type')).toHaveProperty('disabled', true)
     expect(field('#return-stay-start')).toHaveProperty('disabled', true)
     expect(field('#return-stay-end')).toHaveProperty('disabled', false)
+    await (wrapper.vm as unknown as { focusEditDialog: () => Promise<void> }).focusEditDialog()
+    expect(document.activeElement).toBe(field('#return-stay-prefecture'))
+  })
+
+  it('非ACTIVE予定では初期focusを種別selectに置く', async () => {
+    const wrapper = await mountWidget([plan()])
+    await wrapper.find('[aria-label="Edit"]').trigger('click')
+    await (wrapper.vm as unknown as { focusEditDialog: () => Promise<void> }).focusEditDialog()
+    expect(document.activeElement).toBe(field('#return-stay-type'))
   })
 
   it('409競合は再読込を促す文言を表示する', async () => {
