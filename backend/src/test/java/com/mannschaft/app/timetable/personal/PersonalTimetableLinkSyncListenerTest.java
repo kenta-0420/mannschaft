@@ -297,8 +297,10 @@ class PersonalTimetableLinkSyncListenerTest {
 
     @Test
     @DisplayName("PR #2809 検分差し戻し①: locale解決がDataAccessExceptionを投げても"
-            + "スケジュールsaveは巻き戻らず継続する（通知失敗の隔離が効く）")
-    void locale解決失敗でもスケジュールsaveは巻き戻らない() throws ReflectiveOperationException {
+            + "メソッドへ例外が伝播せずscheduleRepository.saveは呼ばれる"
+            + "（notify()呼び出し自体は隔離されるが、同一トランザクション内でのDB書き込みの"
+            + "rollback-only化は本テストでは再現できない。実トランザクション境界の問題は #2834）")
+    void locale解決失敗でも例外が伝播せずsaveが呼ばれる() throws ReflectiveOperationException {
         com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache =
                 org.mockito.Mockito.mock(com.mannschaft.app.common.i18n.UserLocaleCache.class);
         given(userLocaleCache.getLocale(USER_ID))
@@ -327,9 +329,13 @@ class PersonalTimetableLinkSyncListenerTest {
         given(scheduleRepository.save(any(ScheduleEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
 
-        // 例外が外へ伝播せず、かつスケジュールの save が行われることを確認する
-        // （修正前は resolveLocale の例外が try の外にあり REQUIRES_NEW トランザクションが
-        //   rollback-only になって save が巻き戻っていた）。
+        // 例外が呼び出し元へ伝播せず、かつスケジュールの save が呼ばれることを確認する
+        // （修正前は resolveLocale の例外を包む try が processSlotForChange の notify 呼び出し
+        //   より外にあり、通知の組み立て失敗がループ全体・save 呼び出しに影響し得た）。
+        // 注意: これはモックによるユニットテストであり、実 DB トランザクションの
+        //   rollback-only 化は再現できない。同一トランザクション内で notify() が REQUIRED で
+        //   参加してしまう構造上の問題（catch しても JPA 側は既に rollback-only）は
+        //   このテストでは検証できておらず、別issue #2834 で対応する。
         listener.onChangeCreated(new TimetableChangeCreatedEvent(
                 CHANGE_ID, TT_ID, null, TimetableChangeType.CANCEL, target, true, true));
 
@@ -364,8 +370,10 @@ class PersonalTimetableLinkSyncListenerTest {
                 .willReturn(List.of(sch));
         given(scheduleRepository.save(any(ScheduleEntity.class)))
                 .willAnswer(inv -> inv.getArgument(0));
-        given(personalSlotRepository.findById(SLOT_ID))
-                .willReturn(Optional.of(buildSlot("MON", 3)));
+        // N+1 是正（PR #2809 検分二次）で findById から findAllById 一括取得に変更したため、
+        // 取消対象1件のみでも findAllById をモックする。
+        given(personalSlotRepository.findAllById(List.of(SLOT_ID)))
+                .willReturn(List.of(buildSlot("MON", 3)));
 
         listener.onChangeDeleted(new TimetableChangeDeletedEvent(CHANGE_ID, TT_ID));
 
