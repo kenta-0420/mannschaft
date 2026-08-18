@@ -46,6 +46,7 @@ public class ScheduleQueryService {
     private final ScheduleEventCategoryRepository categoryRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final ScheduleAttendanceRepository attendanceRepository;
+    private final ScheduleTargetService scheduleTargetService;
 
     /**
      * 横断カレンダーへの追加合流 SPI（F06.5 §6.2）。schedule 以外のドメイン（例 reflection）が
@@ -133,9 +134,17 @@ public class ScheduleQueryService {
         }
         Map<Long, String> myAttendanceStatusByScheduleId =
                 fetchMyAttendanceStatusByScheduleId(idsOf(schedules), viewerUserId);
-        return schedules.stream()
+        List<ScheduleEntity> visibleSchedules = schedules.stream()
                 .filter(s -> visibleIds.contains(s.getId()))
-                .map(s -> toScheduleResponse(s, myAttendanceStatusByScheduleId.get(s.getId())))
+                .toList();
+        // ANYONE 可視の予定でも名簿は返さない。同一一覧は単一スコープなので所属照会は一度だけ行う。
+        boolean revealTargetMembers = !visibleSchedules.isEmpty()
+                && scheduleTargetService.isActiveScopeMember(visibleSchedules.get(0), viewerUserId);
+        Map<Long, com.mannschaft.app.schedule.dto.ScheduleTargetResponse> targetsByScheduleId =
+                scheduleTargetService.responsesForSchedules(visibleSchedules, revealTargetMembers);
+        return visibleSchedules.stream()
+                .map(s -> toScheduleResponse(s, myAttendanceStatusByScheduleId.get(s.getId()),
+                        targetsByScheduleId.get(s.getId())))
                 .toList();
     }
 
@@ -248,8 +257,11 @@ public class ScheduleQueryService {
         List<Long> ids = scoped.stream().map(sc -> sc.schedule().getId()).toList();
         Set<Long> visibleIds = contentVisibilityChecker
                 .filterAccessible(ReferenceType.SCHEDULE, ids, userId);
+        Set<Long> assignedIds = scheduleTargetService.assignedScheduleIds(
+                scoped.stream().map(ScopedSchedule::schedule).toList(), userId);
         scoped.stream()
-                .filter(sc -> visibleIds.contains(sc.schedule().getId()))
+                .filter(sc -> visibleIds.contains(sc.schedule().getId())
+                        && assignedIds.contains(sc.schedule().getId()))
                 .forEach(sc -> entries.add(
                         toCalendarEntry(sc.schedule(), sc.scopeType(), sc.scopeId())));
     }
@@ -270,6 +282,11 @@ public class ScheduleQueryService {
      *                           値を渡す（N+1 回避のため本メソッド内では出欠を取得しない）。
      */
     ScheduleResponse toScheduleResponse(ScheduleEntity entity, String myAttendanceStatus) {
+        return toScheduleResponse(entity, myAttendanceStatus, null);
+    }
+
+    ScheduleResponse toScheduleResponse(ScheduleEntity entity, String myAttendanceStatus,
+                                        com.mannschaft.app.schedule.dto.ScheduleTargetResponse targets) {
         EventCategoryResponse categoryResponse = resolveEventCategoryResponse(entity.getEventCategoryId());
         return ScheduleResponse.builder()
                 .id(entity.getId())
@@ -288,6 +305,7 @@ public class ScheduleQueryService {
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), null))
                 .myAttendanceStatus(myAttendanceStatus)
+                .targets(targets)
                 .build();
     }
 

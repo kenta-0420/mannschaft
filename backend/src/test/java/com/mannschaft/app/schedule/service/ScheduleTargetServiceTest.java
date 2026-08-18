@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MemberDto;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
+import com.mannschaft.app.membership.repository.ScopeMemberCalendarSettingRepository;
 import com.mannschaft.app.schedule.ScheduleTargetMode;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleTargetRepository;
@@ -23,6 +24,7 @@ import static org.mockito.Mockito.when;
 class ScheduleTargetServiceTest {
     private ScheduleTargetRepository targetRepository;
     private MemberQueryDispatcher memberQueryDispatcher;
+    private ScopeMemberCalendarSettingRepository calendarSettingRepository;
     private ScheduleTargetService service;
     private ScheduleEntity schedule;
 
@@ -30,7 +32,8 @@ class ScheduleTargetServiceTest {
     void setUp() {
         targetRepository = mock(ScheduleTargetRepository.class);
         memberQueryDispatcher = mock(MemberQueryDispatcher.class);
-        service = new ScheduleTargetService(targetRepository, memberQueryDispatcher);
+        calendarSettingRepository = mock(ScopeMemberCalendarSettingRepository.class);
+        service = new ScheduleTargetService(targetRepository, memberQueryDispatcher, calendarSettingRepository);
         schedule = ScheduleEntity.builder().teamId(10L).targetMode(ScheduleTargetMode.ALL_MEMBERS).build();
     }
 

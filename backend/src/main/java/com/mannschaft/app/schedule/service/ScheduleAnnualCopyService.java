@@ -44,6 +44,7 @@ public class ScheduleAnnualCopyService {
     private final ScheduleRepository scheduleRepository;
     private final ScheduleAnnualCopyLogRepository copyLogRepository;
     private final ScheduleEventCategoryRepository categoryRepository;
+    private final ScheduleTargetService scheduleTargetService;
 
     /**
      * コピープレビューを生成する。ソース年度のスケジュールから候補日を算出し、重複検出を行う。
@@ -159,6 +160,7 @@ public class ScheduleAnnualCopyService {
                     .build();
 
             ScheduleEntity saved = scheduleRepository.save(newSchedule);
+            scheduleTargetService.copyTargets(source.getId(), saved.getId());
             createdScheduleIds.add(saved.getId());
             totalCopied++;
         }

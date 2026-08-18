@@ -39,6 +39,7 @@ public interface ScheduleMapper {
     @Mapping(target = "audit.createdAt", source = "createdAt")
     @Mapping(target = "audit.createdByDisplayName", ignore = true)
     @Mapping(target = "myAttendanceStatus", ignore = true)
+    @Mapping(target = "targets", ignore = true)
     @Mapping(target = "reminders", ignore = true)
     @Mapping(target = "scheduledTasks", ignore = true)
     ScheduleResponse toResponse(ScheduleEntity scheduleEntity);
@@ -60,6 +61,7 @@ public interface ScheduleMapper {
     @Mapping(target = "audit.createdAt", source = "createdAt")
     @Mapping(target = "audit.createdByDisplayName", ignore = true)
     @Mapping(target = "myAttendanceStatus", ignore = true)
+    @Mapping(target = "targets", ignore = true)
     @Mapping(target = "detail.description", source = "description")
     @Mapping(target = "detail.visibility", expression = "java(scheduleEntity.getVisibility().name())")
     @Mapping(target = "detail.color", source = "color")

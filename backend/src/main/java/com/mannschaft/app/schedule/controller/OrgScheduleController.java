@@ -126,6 +126,7 @@ public class OrgScheduleController {
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), createdByDisplayName))
                 .myAttendanceStatus(myAttendanceStatus)
+                .targets(scheduleService.targetResponseForViewer(entity, SecurityUtils.getCurrentUserId()))
                 .reminders(reminderService.getReminders(scheduleId))
                 .scheduledTasks(scheduledTaskService.findTaskResponsesForSchedule(scheduleId))
                 .build();
