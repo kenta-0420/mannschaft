@@ -220,8 +220,13 @@ public class EventRsvpService {
 
         String displayName = getUserDisplayName(targetUserId);
 
-        // Issue #2715 CMP-055 ロットC-2 / AC-4: 通知送信（locale解決・件名/本文の組み立て・notify）を
-        // 隔離tryで囲み、通知系の失敗が本処理（遅刻連絡の登録）を巻き込まないようにする。
+        // Issue #2715 CMP-055 ロットC-2 / AC-4: locale解決・件名/本文の組み立て・イベント再取得を
+        // 隔離tryで囲む。ここで防げるのは MessageFormat エラーや業務例外など「非DB例外」であり、
+        // notifyOrganizer/sendAdvanceNoticeNotifications 内の createNotification は本メソッドと同一
+        // トランザクション（REQUIRED）に参加するため、DataAccessException 等の DB 層例外はこの catch
+        // で捕まえても JPA 側で rollback-only が立ち、メソッド終了時のコミットで
+        // rsvpResponseRepository.save(rsvp) ごと巻き戻る。このトランザクション境界の構造的課題は
+        // Issue #2834 / CMP-056 の対象であり、EventRsvpService もその該当箇所である（本PRのスコープ外）。
         // catch は log.warn で握りつぶさず可視化した上で継続する。
         try {
             EventEntity event = eventService.findEventOrThrow(eventId);
@@ -279,8 +284,14 @@ public class EventRsvpService {
 
         String displayName = getUserDisplayName(targetUserId);
 
-        // Issue #2715 CMP-055 ロットC-2 / AC-4: 通知送信を隔離tryで囲み、通知系の失敗が
-        // 本処理（欠席連絡の登録）を巻き込まないようにする。catch は log.warn で可視化して継続する。
+        // Issue #2715 CMP-055 ロットC-2 / AC-4: locale解決・件名/本文の組み立て・イベント再取得を
+        // 隔離tryで囲む。ここで防げるのは MessageFormat エラーや業務例外など「非DB例外」であり、
+        // notifyOrganizer/sendAdvanceNoticeNotifications 内の createNotification は本メソッドと同一
+        // トランザクション（REQUIRED）に参加するため、DataAccessException 等の DB 層例外はこの catch
+        // で捕まえても JPA 側で rollback-only が立ち、メソッド終了時のコミットで
+        // rsvpResponseRepository.save(rsvp) ごと巻き戻る。このトランザクション境界の構造的課題は
+        // Issue #2834 / CMP-056 の対象であり、EventRsvpService もその該当箇所である（本PRのスコープ外）。
+        // catch は log.warn で握りつぶさず可視化した上で継続する。
         try {
             EventEntity event = eventService.findEventOrThrow(eventId);
             sendAdvanceNoticeNotifications(event, teamId, operatorUserId, targetUserId, eventId,

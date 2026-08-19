@@ -346,8 +346,10 @@ class EventRsvpAdvanceNoticeServiceTest {
         }
 
         @Test
-        @DisplayName("submitLateNotice: 通知経路が例外を投げても本処理（RSVP登録）は完了する")
-        void submitLateNotice_通知例外時も本処理は継続する() {
+        @DisplayName("submitLateNotice: 通知経路（locale解決）が例外を投げても、隔離try以降のメソッド処理は例外を伝播させず続行する"
+                + "（モックによるユニットテストのため実DBトランザクションのrollback-only挙動は検証していない。"
+                + "createNotificationが同一トランザクションに参加する経路でのDB層例外はIssue #2834/CMP-056の対象）")
+        void submitLateNotice_通知経路の非DB例外は隔離tryで捕捉され後続処理へ伝播しない() {
             EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
             EventEntity event = buildEvent(EVENT_ID, OPERATOR);
             UserEntity user = buildUser(USER_ID, "テスト太郎");
@@ -356,14 +358,15 @@ class EventRsvpAdvanceNoticeServiceTest {
             given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
                     .willReturn(Optional.of(rsvp));
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            // 通知経路（locale解決）で例外を発生させる
+            // 通知経路（locale解決）で例外を発生させる（隔離tryが捕捉する「非DB例外」の一例）
             given(userLocaleCache.getLocale(OPERATOR)).willThrow(new RuntimeException("locale解決失敗"));
 
             LateNoticeRequest req = new LateNoticeRequest(USER_ID, 30, null);
 
             AdvanceNoticeResponse response = rsvpService.submitLateNotice(EVENT_ID, TEAM_ID, OPERATOR, req);
 
-            // 通知は例外で失敗するが、RSVP登録（本処理）自体は正常に完了しレスポンスが返る
+            // 例外は submitLateNotice の呼び出し元へ伝播せず、メソッドは正常にレスポンスを返す。
+            // ただし本テストはモック環境であり、実DBの@Transactional・rollback-only挙動は再現・検証していない。
             assertThat(response.getNoticeType()).isEqualTo("LATE");
             assertThat(response.getExpectedArrivalMinutesLate()).isEqualTo(30);
             verify(rsvpResponseRepository).save(rsvp);
