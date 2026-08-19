@@ -316,4 +316,16 @@ public class NameResolverService {
             default -> "不明なスコープ";
         };
     }
+
+    /** 共有予定の詳細API・画面URLで使用する公開slugを内部IDから解決する。 */
+    public String resolveScopeSlug(String scopeType, Long scopeId) {
+        if (scopeType == null || scopeId == null) {
+            return null;
+        }
+        return switch (scopeType.toUpperCase()) {
+            case "TEAM" -> teamRepository.findById(scopeId).map(TeamEntity::getSlug).orElse(null);
+            case "ORGANIZATION" -> organizationRepository.findById(scopeId).map(OrganizationEntity::getSlug).orElse(null);
+            default -> null;
+        };
+    }
 }

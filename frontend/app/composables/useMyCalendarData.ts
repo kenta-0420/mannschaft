@@ -15,7 +15,7 @@ interface CalendarEntryRaw {
     referenceKind?: string | null
   }
   time: { startAt: string; endAt: string; allDay: boolean }
-  scope: { scopeType: string; scopeId: string; scopeName: string | null; scopeIconUrl: string | null }
+  scope: { scopeType: string; scopeId: string; scopeName: string | null; scopeIconUrl: string | null; scopeSlug?: string | null }
   myAttendanceStatus: string
   targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
   targetCount?: number
@@ -97,6 +97,11 @@ export function shouldDisplayScheduleForCurrentUser(
 ): boolean {
   if (targetMode !== 'SELECTED_MEMBERS' || currentUserId == null || !targets?.length) return true
   return targets.some(target => target.userId === currentUserId)
+}
+
+/** 共有予定の詳細API・画面URLに渡す公開スコープIDを選ぶ。旧応答は内部IDへフォールバックする。 */
+export function resolveCalendarScopeRouteId(scope: CalendarEntryRaw['scope']): string {
+  return scope?.scopeSlug ?? String(scope?.scopeId ?? '')
 }
 
 export function useMyCalendarData(options?: { storageKey?: string }) {
@@ -203,7 +208,8 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
         color: null,
         isPersonal: false,
         scopeType: e.scope?.scopeType ?? '',
-        scopeId: e.scope?.scopeId,
+        // 詳細API・画面URLは内部数値IDではなく公開slugを要求する。
+        scopeId: resolveCalendarScopeRouteId(e.scope),
         scopeName: e.scope?.scopeName ?? null,
         scopeIconUrl: e.scope?.scopeIconUrl ?? null,
         targetMode: e.targetMode,

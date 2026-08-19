@@ -12,7 +12,11 @@ import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.dashboard.ScopeType;
-import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ErrorResponse;
+import com.mannschaft.app.dashboard.ScheduleFeedErrorCode;
+import com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse;
 import com.mannschaft.app.dashboard.dto.ChatHubResponse;
 import com.mannschaft.app.dashboard.dto.DashboardAnnouncementResponse;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
@@ -44,10 +48,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.MethodParameter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -55,8 +61,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.mannschaft.app.common.timezone.TimezoneContextHolder;
+import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -391,19 +399,92 @@ public class DashboardController {
     /**
      * 最近のアクティビティ。
      */
-    @SelfScopedEndpoint("スコープIDが userRoleRepository.findByUserIdAndTeamIdIsNotNull(認証主体の userId) から"
-            + "導出された自分の所属チームIDのみで、リクエストで他ユーザーの識別子は受け取らない"
-            + "（DashboardController.java:380-382）")
+    @SelfScopedEndpoint("スコープIDが userRoleRepository.findTeamIdsByUserId / findOrganizationIdsByUserId"
+            + "（いずれも認証主体の userId のみで絞り込む）から導出された自分の所属チーム・所属組織IDのみで、"
+            + "リクエストで他ユーザーの識別子は受け取らない（DashboardController.java:399-419）")
     @GetMapping("/activity")
     @Operation(summary = "最近のアクティビティ", description = "所属チーム/組織を横断した最近の活動フィード")
-    public ResponseEntity<ApiResponse<List<ActivityFeedResponse>>> getActivity(
+    public ResponseEntity<ApiResponse<ActivityFeedPageResponse>> getActivity(
             @RequestParam(required = false) Long cursor,
             @RequestParam(defaultValue = "10") Integer limit) {
+        // F03.18 §7 D-1: 入口で cursor / limit を検証する。ErrorCode をデッドコードにしない。
+        if (cursor != null && cursor <= 0) {
+            throw new BusinessException(ScheduleFeedErrorCode.INVALID_CURSOR);
+        }
+        if (limit != null && limit <= 0) {
+            throw new BusinessException(ScheduleFeedErrorCode.INVALID_LIMIT);
+        }
+
         Long userId = SecurityUtils.getCurrentUserId();
-        // 所属チームIDを取得してスコープとする（CMP-027: user_roles ∪ memberships の在籍チーム）
-        List<Long> scopeIds = userRoleRepository.findTeamIdsByUserId(userId);
-        List<ActivityFeedResponse> response = activityFeedService.getActivityFeed(userId, cursor, limit, scopeIds);
+        // 所属チームIDと所属組織IDの «両方» をスコープとする（CMP-027: user_roles ∪ memberships の在籍）。
+        // 従来はチームIDしか集めておらず、ORGANIZATION スコープの活動が原理的に一件も表示されなかった
+        // （SCHEDULE 系だけでなく既存7種別も同じく被害を受けていた）。
+        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        ActivityFeedPageResponse response =
+                activityFeedService.getActivityFeed(userId, cursor, limit, teamIds, orgIds);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * 本コントローラのクエリパラメータ型変換失敗を、ドメイン固有のエラーコードへ写像する。
+     *
+     * <p>F03.18 §7: {@code cursor=abc} のような非数値カーソルは、{@code @RequestParam Long cursor}
+     * のバインドが本体到達 «前» に失敗するため、そのままでは {@code GlobalExceptionHandler} の
+     * 既定写像で {@code COMMON_001} になり、入口バリデーションが投げる {@code SCHEDULE_FEED_001}
+     * （範囲外カーソル）と契約が食い違う。「不正なカーソルは常に SCHEDULE_FEED_001」という
+     * 契約を守るため、当該パラメータの型変換例外だけをここで写像する。</p>
+     *
+     * <p>コントローラ局所の {@code @ExceptionHandler} を使うのは、{@code GlobalExceptionHandler}
+     * 側に "cursor" という汎用的なパラメータ名の分岐を足すと、無関係な他エンドポイントの
+     * 型変換エラーまで巻き込むため（既存の {@code isUnresolvedScopeSlug} は 404 という
+     * 全体共通の意味づけだったが、SCHEDULE_FEED_001 は本機能固有である）。
+     * 局所ハンドラの前例: {@code WeatherController} / {@code OrganizationTeamSearchController}。</p>
+     *
+     * <p><b>CMP-045</b>: 本ハンドラは {@code @ExceptionHandler} の性質上コントローラ全体に効くため、
+     * パラメータ«名»だけで分岐すると同名パラメータを持つ他エンドポイント（{@code /notices},
+     * {@code /my-posts}, {@code /unread-threads}）まで SCHEDULE_FEED_001/002 に巻き込まれる。
+     * 発生元メソッドが {@link #getActivity} であることを {@link MethodParameter#getMethod()} で
+     * 確認してから写像する（文字列名の直書きに頼らず、メソッド参照から得た {@link Method} 同一性で
+     * 判定するため、{@code getActivity} がリネームされてもコンパイルが追従しズレない。
+     * 崩れた場合の検知は {@code DashboardActivityValidationTest} の陰性対照テストが担保する）。</p>
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleParameterTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        boolean isActivityEndpoint = isGetActivityMethod(ex.getParameter());
+        if (isActivityEndpoint && "cursor".equals(ex.getName())) {
+            return ResponseEntity.badRequest()
+                    .body(ErrorResponse.of(ScheduleFeedErrorCode.INVALID_CURSOR));
+        }
+        if (isActivityEndpoint && "limit".equals(ex.getName())) {
+            return ResponseEntity.badRequest()
+                    .body(ErrorResponse.of(ScheduleFeedErrorCode.INVALID_LIMIT));
+        }
+        // 他パラメータ・他エンドポイントは共通の型変換エラーとして扱う（握りつぶさず 400 で返す）。
+        return ResponseEntity.badRequest()
+                .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+    }
+
+    /**
+     * 型変換に失敗したパラメータの発生元が {@link #getActivity} かどうかを判定する。
+     *
+     * <p>{@link MethodParameter#getMethod()} が返す {@link Method} オブジェクトをリフレクションで
+     * 取得した {@code getActivity} の {@link Method} と同一性比較する。メソッド名の文字列直書きは
+     * このヘルパー1箇所に閉じ込め、リフレクション自体が失敗した場合は保守的に false（＝共通
+     * COMMON_001 側）へフォールバックする。</p>
+     */
+    private boolean isGetActivityMethod(MethodParameter parameter) {
+        Method method = parameter.getMethod();
+        if (method == null) {
+            return false;
+        }
+        try {
+            Method getActivityMethod = DashboardController.class.getDeclaredMethod(
+                    "getActivity", Long.class, Integer.class);
+            return method.equals(getActivityMethod);
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 
     /**
