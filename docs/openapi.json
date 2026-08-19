@@ -226214,6 +226214,9 @@
           "scopeName": {
             "type": "string"
           },
+          "scopeSlug": {
+            "type": "string"
+          },
           "scopeType": {
             "type": "string"
           }

@@ -19,7 +19,7 @@ const props = withDefaults(defineProps<{
 })
 
 const { t } = useI18n()
-const previewTargets = computed(() => props.targets.slice(0, props.compact ? 2 : 3))
+const previewTargets = computed(() => props.targets.slice(0, 3))
 const remainingCount = computed(() => Math.max(0, (props.targetCount || props.targets.length) - previewTargets.value.length))
 const isAllMembers = computed(() => props.targetMode !== 'SELECTED_MEMBERS')
 const accessibleLabel = computed(() => {
@@ -39,8 +39,19 @@ const accessibleLabel = computed(() => {
       <span class="truncate">{{ $t('schedule.targetAudience.allMembers') }}</span>
     </template>
     <template v-else-if="previewTargets.length">
+      <template v-if="compact">
+        <span
+          v-for="target in previewTargets"
+          :key="target.userId"
+          class="h-2 w-2 shrink-0 rounded-full ring-1 ring-white/70 dark:ring-surface-900"
+          :style="{ backgroundColor: target.calendarColor ?? '#64748b' }"
+          :title="target.displayName"
+          aria-hidden="true"
+        />
+      </template>
       <span
         v-for="target in previewTargets"
+        v-else
         :key="target.userId"
         class="inline-flex max-w-24 items-center gap-0.5 rounded-full bg-white/30 px-1 py-0.5 dark:bg-black/15"
         :title="target.displayName"
