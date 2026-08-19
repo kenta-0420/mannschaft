@@ -48,6 +48,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.MethodParameter;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
@@ -63,6 +64,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.mannschaft.app.common.timezone.TimezoneContextHolder;
+import java.lang.reflect.Method;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -438,20 +440,51 @@ public class DashboardController {
      * 型変換エラーまで巻き込むため（既存の {@code isUnresolvedScopeSlug} は 404 という
      * 全体共通の意味づけだったが、SCHEDULE_FEED_001 は本機能固有である）。
      * 局所ハンドラの前例: {@code WeatherController} / {@code OrganizationTeamSearchController}。</p>
+     *
+     * <p><b>CMP-045</b>: 本ハンドラは {@code @ExceptionHandler} の性質上コントローラ全体に効くため、
+     * パラメータ«名»だけで分岐すると同名パラメータを持つ他エンドポイント（{@code /notices},
+     * {@code /my-posts}, {@code /unread-threads}）まで SCHEDULE_FEED_001/002 に巻き込まれる。
+     * 発生元メソッドが {@link #getActivity} であることを {@link MethodParameter#getMethod()} で
+     * 確認してから写像する（文字列名の直書きに頼らず、メソッド参照から得た {@link Method} 同一性で
+     * 判定するため、{@code getActivity} がリネームされてもコンパイルが追従しズレない。
+     * 崩れた場合の検知は {@code DashboardActivityValidationTest} の陰性対照テストが担保する）。</p>
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleParameterTypeMismatch(MethodArgumentTypeMismatchException ex) {
-        if ("cursor".equals(ex.getName())) {
+        boolean isActivityEndpoint = isGetActivityMethod(ex.getParameter());
+        if (isActivityEndpoint && "cursor".equals(ex.getName())) {
             return ResponseEntity.badRequest()
                     .body(ErrorResponse.of(ScheduleFeedErrorCode.INVALID_CURSOR));
         }
-        if ("limit".equals(ex.getName())) {
+        if (isActivityEndpoint && "limit".equals(ex.getName())) {
             return ResponseEntity.badRequest()
                     .body(ErrorResponse.of(ScheduleFeedErrorCode.INVALID_LIMIT));
         }
-        // 他パラメータは共通の型変換エラーとして扱う（握りつぶさず 400 で返す）。
+        // 他パラメータ・他エンドポイントは共通の型変換エラーとして扱う（握りつぶさず 400 で返す）。
         return ResponseEntity.badRequest()
                 .body(ErrorResponse.of(CommonErrorCode.COMMON_001));
+    }
+
+    /**
+     * 型変換に失敗したパラメータの発生元が {@link #getActivity} かどうかを判定する。
+     *
+     * <p>{@link MethodParameter#getMethod()} が返す {@link Method} オブジェクトをリフレクションで
+     * 取得した {@code getActivity} の {@link Method} と同一性比較する。メソッド名の文字列直書きは
+     * このヘルパー1箇所に閉じ込め、リフレクション自体が失敗した場合は保守的に false（＝共通
+     * COMMON_001 側）へフォールバックする。</p>
+     */
+    private boolean isGetActivityMethod(MethodParameter parameter) {
+        Method method = parameter.getMethod();
+        if (method == null) {
+            return false;
+        }
+        try {
+            Method getActivityMethod = DashboardController.class.getDeclaredMethod(
+                    "getActivity", Long.class, Integer.class);
+            return method.equals(getActivityMethod);
+        } catch (NoSuchMethodException e) {
+            return false;
+        }
     }
 
     /**

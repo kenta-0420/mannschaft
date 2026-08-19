@@ -177,4 +177,53 @@ class DashboardActivityValidationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items").isArray());
     }
+
+    // --- 陰性対照（CMP-045 相当の巻き添え回帰確認） -----------------------------------------
+    // handleParameterTypeMismatch はコントローラ全体に効く @ExceptionHandler のため、
+    // パラメータ名だけで分岐すると同名パラメータを持つ他エンドポイントまで
+    // SCHEDULE_FEED_001/002 に巻き込まれる。getActivity 以外はこの写像の対象外であることを確認する。
+
+    @Test
+    @DisplayName("陰性対照: GET /dashboard/notices?cursor=abc は SCHEDULE_FEED_001 ではない")
+    void notices_cursorNonNumeric_doesNotReturnScheduleFeedCode() throws Exception {
+        given(notificationRepository.findByUserIdOrderByCreatedAtDesc(any(), any()))
+                .willReturn(org.springframework.data.domain.Page.empty());
+        mockMvc.perform(get("/api/v1/dashboard/notices").param("cursor", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> {
+                    String body = result.getResponse().getContentAsString();
+                    org.assertj.core.api.Assertions.assertThat(body)
+                            .as("notices の cursor 型変換エラーは SCHEDULE_FEED_001 に巻き込まれてはならない")
+                            .doesNotContain("SCHEDULE_FEED_001");
+                })
+                .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+    }
+
+    @Test
+    @DisplayName("陰性対照: GET /dashboard/my-posts?limit=abc は SCHEDULE_FEED_002 ではない")
+    void myPosts_limitNonNumeric_doesNotReturnScheduleFeedCode() throws Exception {
+        mockMvc.perform(get("/api/v1/dashboard/my-posts").param("limit", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> {
+                    String body = result.getResponse().getContentAsString();
+                    org.assertj.core.api.Assertions.assertThat(body)
+                            .as("my-posts の limit 型変換エラーは SCHEDULE_FEED_002 に巻き込まれてはならない")
+                            .doesNotContain("SCHEDULE_FEED_002");
+                })
+                .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+    }
+
+    @Test
+    @DisplayName("陰性対照: GET /dashboard/unread-threads?limit=abc は SCHEDULE_FEED_002 ではない")
+    void unreadThreads_limitNonNumeric_doesNotReturnScheduleFeedCode() throws Exception {
+        mockMvc.perform(get("/api/v1/dashboard/unread-threads").param("limit", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(result -> {
+                    String body = result.getResponse().getContentAsString();
+                    org.assertj.core.api.Assertions.assertThat(body)
+                            .as("unread-threads の limit 型変換エラーは SCHEDULE_FEED_002 に巻き込まれてはならない")
+                            .doesNotContain("SCHEDULE_FEED_002");
+                })
+                .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+    }
 }
