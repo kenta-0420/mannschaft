@@ -40,6 +40,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class SurveyAccessGuard {
 
+    /** CMP-041: ADMIN+ 委任判定に用いる permission 名。 */
+    private static final String PERMISSION_MANAGE_SURVEYS = "MANAGE_SURVEYS";
+
     private final SurveyRepository surveyRepository;
     private final AccessControlService accessControlService;
 
@@ -110,7 +113,8 @@ public class SurveyAccessGuard {
         if (isCreator) {
             return;
         }
-        if (!accessControlService.isAdminOrAbove(userId, survey.getScopeId(), survey.getScopeType())) {
+        if (!accessControlService.hasAdminOrPermissionInScope(
+                userId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS)) {
             throw new BusinessException(SurveyErrorCode.OPERATION_PERMISSION_DENIED);
         }
     }

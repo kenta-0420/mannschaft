@@ -55,6 +55,9 @@ public class SurveyResultService {
     /** CSV エクスポート時の匿名性保証のための最小回答者数（5名未満は集計マスク）。 */
     private static final int MIN_RESPONDENTS_FOR_DETAIL_EXPORT = 5;
 
+    /** CMP-041: ADMIN+ 委任判定に用いる permission 名。 */
+    private static final String PERMISSION_MANAGE_SURVEYS = "MANAGE_SURVEYS";
+
     private final SurveyRepository surveyRepository;
     private final SurveyQuestionRepository questionRepository;
     private final SurveyOptionRepository optionRepository;
@@ -133,7 +136,9 @@ public class SurveyResultService {
         SurveyEntity survey = surveyService.findSurveyEntityOrThrow(surveyId);
 
         boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(userId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(userId, survey.getScopeId(), survey.getScopeType());
+        // MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任（CMP-041）
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                userId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS);
         boolean isViewer = resultViewerRepository.existsBySurveyIdAndUserId(survey.getId(), userId);
 
         boolean fullAccess = isAdmin || isCreator || isViewer;
@@ -205,10 +210,10 @@ public class SurveyResultService {
         SurveyEntity survey = surveyRepository.findByIdAndScopeTypeAndScopeId(surveyId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(SurveyErrorCode.SURVEY_NOT_FOUND));
 
-        // 認可
+        // 認可（MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任・CMP-041）
         boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(currentUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(
-                currentUserId, survey.getScopeId(), survey.getScopeType());
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                currentUserId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS);
         boolean isViewer = resultViewerRepository.existsBySurveyIdAndUserId(surveyId, currentUserId);
         if (!isAdmin && !isCreator && !isViewer) {
             throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
@@ -423,7 +428,9 @@ public class SurveyResultService {
         SurveyEntity survey = surveyService.findSurveyEntityOrThrow(surveyId);
 
         // 認可: 組織の管理ビューゆえ ADMIN/DEPUTY_ADMIN を強制（ResultsVisibility より厳格）。
-        accessControlService.checkAdminOrAbove(userId, survey.getScopeId(), survey.getScopeType());
+        // MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任（CMP-041）。COMMON_002 は従来どおり維持。
+        accessControlService.checkAdminOrHasPermissionInScope(
+                userId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS);
 
         List<SurveyQuestionEntity> questions =
                 questionRepository.findBySurveyIdOrderByDisplayOrderAsc(survey.getId());

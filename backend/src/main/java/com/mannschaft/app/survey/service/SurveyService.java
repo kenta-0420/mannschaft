@@ -59,6 +59,9 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class SurveyService {
 
+    /** CMP-041: ADMIN+ 委任判定に用いる permission 名。 */
+    private static final String PERMISSION_MANAGE_SURVEYS = "MANAGE_SURVEYS";
+
     private final SurveyRepository surveyRepository;
     private final SurveyQuestionRepository questionRepository;
     private final SurveyOptionRepository optionRepository;
@@ -542,9 +545,10 @@ public class SurveyService {
                                           java.time.LocalDateTime newDeadline, Long currentUserId) {
         SurveyEntity entity = findSurveyOrThrow(scopeType, scopeId, surveyId);
 
-        // 認可: 作成者 or ADMIN+
+        // 認可: 作成者 or ADMIN+（MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任・CMP-041）
         boolean isCreator = entity.getCreatedBy() != null && entity.getCreatedBy().equals(currentUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, scopeId, scopeType);
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                currentUserId, scopeId, scopeType, PERMISSION_MANAGE_SURVEYS);
         if (!isCreator && !isAdmin) {
             throw new BusinessException(SurveyErrorCode.OPERATION_PERMISSION_DENIED);
         }
@@ -621,9 +625,10 @@ public class SurveyService {
                                                  DuplicateSurveyRequest request, Long currentUserId) {
         SurveyEntity source = findSurveyOrThrow(scopeType, scopeId, surveyId);
 
-        // 認可: 作成者 or ADMIN+
+        // 認可: 作成者 or ADMIN+（MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任・CMP-041）
         boolean isCreator = source.getCreatedBy() != null && source.getCreatedBy().equals(currentUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, scopeId, scopeType);
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                currentUserId, scopeId, scopeType, PERMISSION_MANAGE_SURVEYS);
         if (!isCreator && !isAdmin) {
             throw new BusinessException(SurveyErrorCode.OPERATION_PERMISSION_DENIED);
         }

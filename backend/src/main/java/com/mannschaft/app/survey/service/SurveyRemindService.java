@@ -44,6 +44,9 @@ public class SurveyRemindService {
     /** 督促回数の上限（手動リマインド）。 */
     private static final int MAX_MANUAL_REMIND_COUNT = 3;
 
+    /** CMP-041: ADMIN+ 委任判定に用いる permission 名。 */
+    private static final String PERMISSION_MANAGE_SURVEYS = "MANAGE_SURVEYS";
+
     /** 督促のクールダウン時間（時間単位）。 */
     private static final long REMIND_COOLDOWN_HOURS = 24L;
 
@@ -83,10 +86,11 @@ public class SurveyRemindService {
         SurveyEntity survey = surveyRepository.findById(surveyId)
                 .orElseThrow(() -> new BusinessException(SurveyErrorCode.SURVEY_NOT_FOUND));
 
-        // 認可: 作成者 or ADMIN+ のみ督促を送信可能（getRespondents の認可パターンに準拠）
+        // 認可: 作成者 or ADMIN+ のみ督促を送信可能（getRespondents の認可パターンに準拠。
+        // MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任・CMP-041）
         boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(currentUserId);
-        boolean isAdmin = accessControlService.isAdminOrAbove(
-                currentUserId, survey.getScopeId(), survey.getScopeType());
+        boolean isAdmin = accessControlService.hasAdminOrPermissionInScope(
+                currentUserId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS);
         if (!isCreator && !isAdmin) {
             throw new BusinessException(SurveyErrorCode.REMIND_PERMISSION_DENIED);
         }
