@@ -1,0 +1,665 @@
+# β機能棚卸し台帳（正本）
+#
+# 本ファイルは Mannschaft のβ機能を横断して棚卸しするための正本である。
+# `backend/src/test/java/com/mannschaft/app/common/architecture/FeatureInventorySchemaGuardTest.java`
+# がスキーマ規約を機械的に検証する。
+#
+# ## 語彙（この語彙以外の値は番人がredにする）
+#
+# - 実装状態（implementation.* の値）: 未実装 / 部分実装 / 実装済 / 不具合あり / 不明 / 対象外
+#     （対象外 = そのコンポーネントは当該機能に存在しない。例: 純フロントエンドのみの機能の background）
+# - 検証状態（verification.*.status の値）: 対象外 / 未作成 / 未実行 / 失敗中 / 通過 / ブロック中 / 不明
+#     省略した軸は「不明」として扱う（明示しなくてよい）。
+# - β区分（release.beta の値）: コア / β限定 / 内部限定 / 停止
+# - デプロイ安全性（release.deploy_safety の値）: 安全 / 条件付き安全 / デプロイ阻害 / 不明
+# - layer: 能力 / ドメイン
+#     - 能力: ユーザーが触る実際の機能単位。implementation/verification を持つ。
+#     - ドメイン: β解禁判断の粒度が粗い集約行（1ドメイン=1行の簡易運用）。
+#       implementation/verification を省略してよく、release.beta と blockers 中心で運用する。
+#       β昇格の判断が付いた時点で、能力粒度のレコード群へ分解して置き換える（このドメイン行は削除する）。
+# - 検証軸キー（verification の子キー）: unit / integration / authorization / migration /
+#   real_e2e / human_ui / resident_test / external_service / load / operation
+#
+# ## 運用ルール
+#
+# 1. feature_key は kebab-case・一意。**一度発行した feature_key はリネーム禁止**
+#    （他ドキュメント・Issue・チケットからの参照キーであるため）。
+# 2. 状態は「不明」起点で書く。証拠（evidence）が無いのに実装済・通過等を書かない。
+#    「不明」は常に合法な値であり、埋まっていないことを恥じる必要はない
+#    （不明が多いのは棚卸しがまだ実測されていないだけであり、正直な記録の方が価値がある）。
+# 3. 検証状態が「通過」の軸は evidence（PR番号・テストクラス名・Issue番号等）を必ず添える。
+#    evidence が空の「通過」は番人がredにする。
+# 4. implementation の「実装済」は evidence 不要（実装済の証拠はコード自体にあるため）。
+# 5. β解禁の判断が付き、ドメイン行（layer=ドメイン）を能力粒度へ展開する際は、
+#    ドメイン行を削除し、能力粒度の複数レコードに置き換える。
+# 6. gate_key は SCREAMING_SNAKE・あれば一意（AOP Gate 等の実装キーとの対応）。省略可。
+#
+records:
+  # ==========================================================================
+  # CORE（layer=能力, beta=コア）
+  # ==========================================================================
+  - feature_key: personal-profile
+    name: 個人プロフィール編集
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 対象外
+    verification:
+      integration: {status: 不明, evidence: []}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: PERSONAL_PROFILE
+    blockers:
+      - "CMP-103: 入力途中離脱で入力消失・未保存警告なし（Issue #2857）"
+    notes: null
+
+  - feature_key: account-settings
+    name: アカウント設定・退会
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: auth
+    name: 認証・ログイン・2FA
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "PR #2830 ハイドレーション即操作化済"
+
+  - feature_key: nav-settings
+    name: ナビ設定
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: team-create
+    name: チーム作成
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: team-invite
+    name: メンバー招待
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: team-admin
+    name: チーム管理コンソール
+    layer: 能力
+    design_docs:
+      - "docs/features/F10.1.1_team_org_admin_console"
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: team-modules
+    name: モジュール有効化
+    layer: 能力
+    design_docs:
+      - "docs/features/F01.3_template_module.md"
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: organization-manage
+    name: 組織作成・管理
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: organization-members
+    name: 組織メンバー管理
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: village-join
+    name: 村へ参加
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: village-members
+    name: 村の構成員管理
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: village-events
+    name: 村行事
+    layer: 能力
+    design_docs:
+      - "docs/features"
+    implementation:
+      frontend: 部分実装
+      backend: 部分実装
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers:
+      - "CMP-002 実装中"
+    notes: null
+
+  - feature_key: notification-inbox
+    name: 通知・受信箱
+    layer: 能力
+    design_docs:
+      - "docs/features/F04.11_notification_inbox"
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: timeline
+    name: タイムライン
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      real_e2e: {status: 未実行, evidence: []}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "実機E2E作業中spec群あり（frontend/tests/e2e/real/personal-timeline.spec.ts 等）"
+
+  - feature_key: chat
+    name: チャット
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: circulation
+    name: 回覧
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 対象外
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: dashboard
+    name: 個人ダッシュボード
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不具合あり
+      database: 不明
+      background: 不明
+    verification:
+      resident_test: {status: 失敗中, evidence: ["Issue #2856"]}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers:
+      - "CMP-102: data_exports s3Key列名不一致で /api/v1/dashboard が実機500（Issue #2856）"
+    notes: null
+
+  # -- 以下7件: マスター裁可（2026-08-19）により非COREドメインからCOREへ昇格。
+  #    layer=能力に昇格したが、詳細な能力分割は今後の棚卸し実測時に行う（1領域=1行の簡易運用）。
+  - feature_key: reservation
+    name: 予約
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers:
+      - "予約v2再設計(CMP-006)が進行中"
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。詳細な能力分割は今後の棚卸し実測時に行う"
+
+  - feature_key: survey
+    name: アンケート
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う"
+
+  - feature_key: todo-memo
+    name: ToDo・メモ類
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う"
+
+  - feature_key: corkboard
+    name: 掲示板
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う"
+
+  - feature_key: pointcard
+    name: ウォレット・ポイント
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。詳細な能力分割は今後の棚卸し実測時に行う"
+
+  - feature_key: tournament
+    name: 大会・試合記録
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う"
+
+  - feature_key: safetycheck
+    name: 安否確認
+    layer: 能力
+    design_docs: []
+    implementation:
+      frontend: 不明
+      backend: 不明
+      database: 不明
+      background: 不明
+    verification: {}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。健康・気象は含めず weather-health として非COREに残す。詳細な能力分割は今後の棚卸し実測時に行う"
+
+  # ==========================================================================
+  # 非CORE（layer=ドメイン, beta=停止, deploy_safety=不明）
+  # ==========================================================================
+  - feature_key: shift
+    name: シフト・シフト予算
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers:
+      - "バッチ・リスナーの停止判定未確認"
+    notes: null
+
+  - feature_key: matching
+    name: マッチング・求人
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: billing-payment
+    name: 決済・課金・会費
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers:
+      - "バッチ・リスナーの停止判定未確認"
+    notes: null
+
+  - feature_key: promotion
+    name: 広告・販促・サイネージ
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers:
+      - "バッチ・リスナーの停止判定未確認"
+    notes: null
+
+  - feature_key: market
+    name: マーケットプレイス
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: workflow-forms
+    name: ワークフロー・フォーム
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: facility
+    name: 備品・施設・会場・駐車場
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: property-repairplan
+    name: 不動産・修繕計画
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "唯一AOP Gateあり（RequireRepairPlanModule）"
+
+  - feature_key: family-care
+    name: 学校・家族・見守り
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: weather-health
+    name: 気象・健康
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置"
+
+  - feature_key: skill-resume
+    name: スキル・履歴書
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: recruitment
+    name: 募集
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: succession-proxy
+    name: 事業承継・代理投票
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: gdpr-disclosure
+    name: GDPR・情報開示
+    layer: ドメイン
+    release:
+      beta: 内部限定
+      deploy_safety: 不明
+      gate_key: null
+    blockers:
+      - "CMP-102: cleanupExpiredExportsバッチが失敗中（Issue #2856）"
+    notes: "基盤扱いすべきか要判断"
+
+  - feature_key: moderation-incident
+    name: モデレーション・インシデント
+    layer: ドメイン
+    release:
+      beta: 内部限定
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "運用基盤"
+
+  - feature_key: webhook-sync
+    name: Webhook・同期・LINE連携
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers:
+      - "バッチ・リスナーの停止判定未確認"
+    notes: null
+
+  - feature_key: translation-search
+    name: 翻訳・検索・分析
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
+
+  - feature_key: gamification
+    name: ゲーミフィケーション・サポーター
+    layer: ドメイン
+    release:
+      beta: 停止
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: null
