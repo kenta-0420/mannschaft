@@ -7,6 +7,7 @@ import {
   shouldDisplayMyCalendarTodo,
   shouldDisplayScheduleForCurrentUser,
   shouldNotifyTodoLoadFailure,
+  resolveCalendarScopeRouteId,
 } from '~/composables/useMyCalendarData'
 
 const baseTodo: MyCalendarTodo = {
@@ -54,5 +55,14 @@ describe('useMyCalendarData の自己担当TODO契約', () => {
     expect(shouldNotifyTodoLoadFailure(429)).toBe(false)
     expect(shouldNotifyTodoLoadFailure(403)).toBe(true)
     expect(shouldNotifyTodoLoadFailure(undefined)).toBe(true)
+  })
+
+  it('共有予定の詳細導線には内部数値IDではなく公開slugを使う', () => {
+    expect(resolveCalendarScopeRouteId({
+      scopeType: 'TEAM', scopeId: '1', scopeName: '家族', scopeIconUrl: null, scopeSlug: 'family',
+    })).toBe('family')
+    expect(resolveCalendarScopeRouteId({
+      scopeType: 'TEAM', scopeId: '1', scopeName: '家族', scopeIconUrl: null,
+    })).toBe('1')
   })
 })
