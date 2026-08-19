@@ -5,19 +5,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.dashboard.entity.ActivityFeedEntity;
 import com.mannschaft.app.dashboard.repository.ActivityFeedRepository;
 import com.mannschaft.app.dashboard.service.ActivitySummaryGenerator;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -47,8 +49,23 @@ class ActivityFeedEventListenerTest {
     @Mock
     private ActivitySummaryGenerator summaryGenerator;
 
-    @InjectMocks
+    /**
+     * マージ窓（5分）の判定を決定論的にするための固定「今」。
+     * リスナーは {@code ClockConfig#wallClock} 相当の壁時計 Clock を注入されるため、
+     * テストでも同一ゾーンの固定 Clock を与えて境界をぶらさない。
+     */
+    private static final ZoneId TEST_ZONE = ZoneId.of("Asia/Tokyo");
+    private static final LocalDateTime FIXED_NOW = LocalDateTime.of(2026, 8, 19, 12, 0, 0);
+    private static final Clock FIXED_CLOCK =
+            Clock.fixed(FIXED_NOW.toInstant(TEST_ZONE.getRules().getOffset(FIXED_NOW)), TEST_ZONE);
+
     private ActivityFeedEventListener activityFeedEventListener;
+
+    @BeforeEach
+    void setUpListener() {
+        activityFeedEventListener =
+                new ActivityFeedEventListener(activityFeedRepository, summaryGenerator, FIXED_CLOCK);
+    }
 
     // ========================================
     // handleActivityEvent
@@ -167,7 +184,7 @@ class ActivityFeedEventListenerTest {
         @Test
         @DisplayName("AC-09: 5分以内の2回目の編集は新規行を作らず直近行へマージされる（行数1・createdAt 不変・before は初回値）")
         void withinFiveMinutes_mergesIntoExistingRow() throws Exception {
-            LocalDateTime firstAt = LocalDateTime.now().minusMinutes(2);
+            LocalDateTime firstAt = FIXED_NOW.minusMinutes(2);
             ActivityFeedEntity existing = existingRow(ActivityType.SCHEDULE_UPDATED, firstAt, FIRST_DETAIL);
             given(activityFeedRepository.findTopByActorIdAndTargetIdAndTargetTypeOrderByIdDesc(
                     ACTOR_ID, SCHEDULE_ID, TargetType.SCHEDULE)).willReturn(Optional.of(existing));
@@ -203,7 +220,7 @@ class ActivityFeedEventListenerTest {
         @DisplayName("AC-09: 5分を超えていれば新規行として INSERT される（2行になる）")
         void beyondFiveMinutes_insertsNewRow() {
             ActivityFeedEntity existing = existingRow(
-                    ActivityType.SCHEDULE_UPDATED, LocalDateTime.now().minusMinutes(6), FIRST_DETAIL);
+                    ActivityType.SCHEDULE_UPDATED, FIXED_NOW.minusMinutes(6), FIRST_DETAIL);
             given(activityFeedRepository.findTopByActorIdAndTargetIdAndTargetTypeOrderByIdDesc(
                     ACTOR_ID, SCHEDULE_ID, TargetType.SCHEDULE)).willReturn(Optional.of(existing));
             given(summaryGenerator.generate(any(ActivityType.class))).willReturn("予定を更新しました");
@@ -223,7 +240,7 @@ class ActivityFeedEventListenerTest {
         @DisplayName("AC-09: 種別は降格しない（直近が RESCHEDULED なら UPDATED を受けても RESCHEDULED のまま）")
         void neverDemotesActivityType() {
             ActivityFeedEntity existing = existingRow(
-                    ActivityType.SCHEDULE_RESCHEDULED, LocalDateTime.now().minusMinutes(1), FIRST_DETAIL);
+                    ActivityType.SCHEDULE_RESCHEDULED, FIXED_NOW.minusMinutes(1), FIRST_DETAIL);
             given(activityFeedRepository.findTopByActorIdAndTargetIdAndTargetTypeOrderByIdDesc(
                     ACTOR_ID, SCHEDULE_ID, TargetType.SCHEDULE)).willReturn(Optional.of(existing));
             given(summaryGenerator.generate(any(ActivityType.class))).willReturn("予定の日程を変更しました");
@@ -240,7 +257,7 @@ class ActivityFeedEventListenerTest {
         @DisplayName("AC-09: 作成・削除イベントはマージ対象外（直近行があっても新規 INSERT）")
         void createAndCancelAreNotMerged() {
             ActivityFeedEntity existing = existingRow(
-                    ActivityType.SCHEDULE_UPDATED, LocalDateTime.now(), FIRST_DETAIL);
+                    ActivityType.SCHEDULE_UPDATED, FIXED_NOW, FIRST_DETAIL);
             given(activityFeedRepository.findTopByActorIdAndTargetIdAndTargetTypeOrderByIdDesc(
                     ACTOR_ID, SCHEDULE_ID, TargetType.SCHEDULE)).willReturn(Optional.of(existing));
             given(summaryGenerator.generate(any(ActivityType.class))).willReturn("予定を削除しました");

@@ -8,11 +8,13 @@ import com.mannschaft.app.dashboard.repository.ActivityFeedRepository;
 import com.mannschaft.app.dashboard.service.ActivitySummaryGenerator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -39,6 +41,20 @@ public class ActivityFeedEventListener {
 
     private final ActivityFeedRepository activityFeedRepository;
     private final ActivitySummaryGenerator summaryGenerator;
+
+    /**
+     * 業務ローカル時刻の壁時計（{@code ClockConfig#wallClock}）。
+     *
+     * <p>マージ窓の判定で比較する {@code ActivityFeedEntity#createdAt} は {@code @PrePersist} が
+     * JVM 既定ゾーン基準の壁時計として書き込む値である。UTC 固定の既定 Clock
+     * （{@code ClockConfig#utcClock}）で「今」を取ると、既定ゾーンが UTC でない環境
+     * （本番・開発機ともに JST）で 5 分の窓がオフセット分ずれてマージ判定が壊れるため、
+     * {@code ActivityFeedCleanupBatchService} と同じく壁時計 Bean を明示注入する。
+     * 引数なし {@code LocalDateTime.now()} を使わないことで暗黙のゾーン依存も断つ
+     * （番人 {@code DateTimeAndZoneGuardTest} / CMP-023）。テストでは固定 Clock を差し込める。</p>
+     */
+    @Qualifier("wallClock")
+    private final Clock clock;
 
     /**
      * detail JSON の読み書き用 ObjectMapper。
@@ -124,7 +140,7 @@ public class ActivityFeedEventListener {
             return false;
         }
         if (existing.getCreatedAt() == null
-                || existing.getCreatedAt().isBefore(LocalDateTime.now().minus(MERGE_WINDOW))) {
+                || existing.getCreatedAt().isBefore(LocalDateTime.now(clock).minus(MERGE_WINDOW))) {
             return false;
         }
 

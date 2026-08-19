@@ -423,11 +423,22 @@ public class ScheduleService {
      * <p>{@code description} は値の比較（変更有無の判定）にのみ用い、JSON へは決して積まない
      * （AC-06。値そのものは {@link #buildFieldDiff} が絶対に読み書きしない）。</p>
      */
-    private record ScheduleSnapshot(String title, String description, LocalDateTime startAt, LocalDateTime endAt,
+    private record ScheduleSnapshot(String title, String description, OffsetDateTime startAt, OffsetDateTime endAt,
                                      Boolean allDay, String location, ScheduleStatus status) {
+        /**
+         * Entity の壁時計 {@code LocalDateTime}（{@code STORAGE_ZONE} 基準）を、起きた瞬間を表す
+         * {@link OffsetDateTime} へ復元して保持する（{@code ScheduleService#toJst} の逆変換であり
+         * 情報の欠落は無い）。差分 JSON に載る文字列もオフセット付きとなり、
+         * 「どのゾーンの 10:00 か」が受け手側で一意に決まる。
+         */
         static ScheduleSnapshot from(ScheduleEntity entity) {
-            return new ScheduleSnapshot(entity.getTitle(), entity.getDescription(), entity.getStartAt(),
-                    entity.getEndAt(), entity.getAllDay(), entity.getLocation(), entity.getStatus());
+            return new ScheduleSnapshot(entity.getTitle(), entity.getDescription(),
+                    toStorageOffset(entity.getStartAt()), toStorageOffset(entity.getEndAt()),
+                    entity.getAllDay(), entity.getLocation(), entity.getStatus());
+        }
+
+        private static OffsetDateTime toStorageOffset(LocalDateTime wallClock) {
+            return wallClock != null ? wallClock.atZone(STORAGE_ZONE).toOffsetDateTime() : null;
         }
     }
 
