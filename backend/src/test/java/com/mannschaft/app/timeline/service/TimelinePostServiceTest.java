@@ -639,6 +639,175 @@ class TimelinePostServiceTest {
                     .isEqualTo(com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS);
         }
 
+        // ─────────────────────────────────────────────────────────────
+        // 配下配信の送信権限ゲート（CHILDREN / DESCENDANTS は組織の ADMIN / DEPUTY_ADMIN のみ）
+        //
+        // 配下配信は「投稿が届く人の集合」を組織階層ぶん広げる操作であり、組織名義投稿
+        // （posted_as_type=ORGANIZATION）が既に ADMIN/DEPUTY_ADMIN を要求しているのに対し
+        // 影響範囲がより広い。そこで同じ作法（AccessControlService#checkAdminOrAbove）に揃える。
+        // ─────────────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("配権AC-1/2 ORGANIZATION + DESCENDANTS の新規投稿は ADMIN/DEPUTY_ADMIN 検証を通る")
+        void 配下配信DESCENDANTSはADMIN検証を経て保存される() {
+            Long orgId = 60L;
+            CreatePostRequest req = new CreatePostRequest("配下配信", "ORGANIZATION", "60",
+                    "USER", null, null, null, null, null, null, null, null,
+                    com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS);
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(createPost());
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class)))
+                    .willReturn(createPostResponse());
+
+            timelinePostService.createPost(req, USER_ID);
+
+            // 在籍確認に加えて ADMIN/DEPUTY_ADMIN 確認が課されていること
+            then(accessControlService).should().checkMembership(USER_ID, orgId, "ORGANIZATION");
+            then(accessControlService).should().checkAdminOrAbove(USER_ID, orgId, "ORGANIZATION");
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository).save(cap.capture());
+            assertThat(cap.getValue().getDeliveryScope())
+                    .isEqualTo(com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS);
+        }
+
+        @Test
+        @DisplayName("配権AC-3/4 ADMIN/DEPUTY_ADMIN でないと DESCENDANTS は COMMON_002 で拒否され保存もされない")
+        void 配下配信DESCENDANTSは権限不足で拒否される() {
+            Long orgId = 60L;
+            CreatePostRequest req = new CreatePostRequest("配下配信", "ORGANIZATION", "60",
+                    "USER", null, null, null, null, null, null, null, null,
+                    com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS);
+            org.mockito.Mockito.doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(USER_ID, orgId, "ORGANIZATION");
+
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+
+            // 配権AC-8: 副作用ゼロ（save もイベント発行も起きない）
+            then(postRepository).shouldHaveNoInteractions();
+            then(domainEventPublisher).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("配権AC-5 CHILDREN でも同じゲートが課される（拒否）")
+        void 配下配信CHILDRENも権限不足で拒否される() {
+            Long orgId = 60L;
+            CreatePostRequest req = new CreatePostRequest("配下配信", "ORGANIZATION", "60",
+                    "USER", null, null, null, null, null, null, null, null,
+                    com.mannschaft.app.timeline.PostDeliveryScope.CHILDREN);
+            org.mockito.Mockito.doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(USER_ID, orgId, "ORGANIZATION");
+
+            assertThatThrownBy(() -> timelinePostService.createPost(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+
+            then(postRepository).shouldHaveNoInteractions();
+        }
+
+        @Test
+        @DisplayName("配権AC-5 CHILDREN も ADMIN/DEPUTY_ADMIN なら通る")
+        void 配下配信CHILDRENはADMIN検証を経て保存される() {
+            Long orgId = 60L;
+            CreatePostRequest req = new CreatePostRequest("配下配信", "ORGANIZATION", "60",
+                    "USER", null, null, null, null, null, null, null, null,
+                    com.mannschaft.app.timeline.PostDeliveryScope.CHILDREN);
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(createPost());
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class)))
+                    .willReturn(createPostResponse());
+
+            timelinePostService.createPost(req, USER_ID);
+
+            then(accessControlService).should().checkAdminOrAbove(USER_ID, orgId, "ORGANIZATION");
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository).save(cap.capture());
+            assertThat(cap.getValue().getDeliveryScope())
+                    .isEqualTo(com.mannschaft.app.timeline.PostDeliveryScope.CHILDREN);
+        }
+
+        @Test
+        @DisplayName("配権AC-6 非退行: DIRECT（および省略時）は ADMIN/DEPUTY_ADMIN を要求しない")
+        void 配下配信DIRECTはADMIN検証を課さない() {
+            CreatePostRequest req = new CreatePostRequest("直接配信", "ORGANIZATION", "60",
+                    "USER", null, null, null, null, null, null, null, null,
+                    com.mannschaft.app.timeline.PostDeliveryScope.DIRECT);
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(createPost());
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class)))
+                    .willReturn(createPostResponse());
+
+            timelinePostService.createPost(req, USER_ID);
+
+            then(accessControlService).should(org.mockito.Mockito.never())
+                    .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+            verify(postRepository).save(any(TimelinePostEntity.class));
+        }
+
+        @Test
+        @DisplayName("配権AC-6 非退行: deliveryScope 省略時も ADMIN/DEPUTY_ADMIN を要求しない")
+        void 配下配信省略時はADMIN検証を課さない() {
+            CreatePostRequest req = new CreatePostRequest("既定配信", "ORGANIZATION", 60L,
+                    "USER", null, null, null, null, null, null);
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(createPost());
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class)))
+                    .willReturn(createPostResponse());
+
+            timelinePostService.createPost(req, USER_ID);
+
+            then(accessControlService).should(org.mockito.Mockito.never())
+                    .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+        }
+
+        @Test
+        @DisplayName("配権AC-7 陰性対照: 返信（親からの継承経路）には ADMIN/DEPUTY_ADMIN を課さない")
+        void 継承経路の返信にはADMIN検証を課さない() {
+            Long parentId = 10L;
+            Long orgId = 60L;
+            // FE は content と parentId のみ送る。親が DESCENDANTS でも返信者に権限は要求しない。
+            CreatePostRequest req = new CreatePostRequest("配信投稿への返信", null, (Long) null,
+                    "USER", null, parentId, null, null, null, null);
+            TimelinePostEntity parentPost = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.ORGANIZATION)
+                    .scopeId(orgId)
+                    .userId(OTHER_USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("配下配信された元投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .deliveryScope(com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS)
+                    .build();
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
+            given(postVisibilityGuard.isVisible(parentPost, USER_ID)).willReturn(true);
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(createPost());
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class)))
+                    .willReturn(createPostResponse());
+
+            timelinePostService.createPost(req, USER_ID);
+
+            then(accessControlService).should(org.mockito.Mockito.never())
+                    .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository, org.mockito.Mockito.times(2)).save(cap.capture());
+            assertThat(cap.getAllValues().get(0).getDeliveryScope())
+                    .isEqualTo(com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS);
+        }
+
+        @Test
+        @DisplayName("配権AC-9 TEAM の非 DIRECT 指定にはゲートを課さない（配信範囲に寄与しないため）")
+        void TEAMの非DIRECT指定にはゲートを課さない() {
+            CreatePostRequest req = new CreatePostRequest("配信指定", "TEAM", "50",
+                    "USER", null, null, null, null, null, null, null, null,
+                    com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS);
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(createPost());
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class)))
+                    .willReturn(createPostResponse());
+
+            timelinePostService.createPost(req, USER_ID);
+
+            then(accessControlService).should(org.mockito.Mockito.never())
+                    .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+        }
+
         // F09.13 Phase 2-α-2: status 指定による DRAFT 起票
         @Test
         @DisplayName("正常系: status=DRAFT を指定するとDRAFTで保存される")
