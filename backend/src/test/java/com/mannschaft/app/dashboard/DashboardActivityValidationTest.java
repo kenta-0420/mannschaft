@@ -144,6 +144,24 @@ class DashboardActivityValidationTest {
     }
 
     @Test
+    @DisplayName("AC-20: 非数値 cursor（cursor=abc）も SCHEDULE_FEED_001 で HTTP 400")
+    void ac20_cursorNonNumeric_returns400WithFeedCode() throws Exception {
+        // @RequestParam Long cursor のバインドが本体到達 «前» に失敗するため、
+        // 何もしなければ COMMON_001 になってしまう（契約は「不正カーソルは常に SCHEDULE_FEED_001」）。
+        mockMvc.perform(get(PATH).param("cursor", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("SCHEDULE_FEED_001"));
+    }
+
+    @Test
+    @DisplayName("AC-20: 非数値 limit（limit=abc）は SCHEDULE_FEED_002 で HTTP 400")
+    void ac20_limitNonNumeric_returns400WithFeedCode() throws Exception {
+        mockMvc.perform(get(PATH).param("limit", "abc"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("SCHEDULE_FEED_002"));
+    }
+
+    @Test
     @DisplayName("陽性対照: 妥当な cursor / limit は 200 で items / nextCursor を返す")
     void validParams_returns200WithWrapper() throws Exception {
         mockMvc.perform(get(PATH).param("cursor", "100").param("limit", "10"))

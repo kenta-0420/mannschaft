@@ -1,4 +1,5 @@
 import type { TeamDashboardResponse, OrgDashboardResponse } from '~/types/dashboard-scope'
+import type { ActivityFeedDetail } from '~/types/dashboard'
 
 interface PlatformAnnouncement {
   id: number
@@ -109,7 +110,8 @@ export function useDashboardApi() {
           targetType: string
           targetId: number
           summary: string
-          detail: Record<string, unknown> | null
+          /** F03.18 §3.3: BE はパース済み object を返す（JSON 文字列ではない）。既存7種別は null */
+          detail: ActivityFeedDetail | null
           createdAt: string
         }>
         nextCursor: string | null

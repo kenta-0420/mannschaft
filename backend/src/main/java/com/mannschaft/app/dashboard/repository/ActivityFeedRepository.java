@@ -80,6 +80,15 @@ public interface ActivityFeedRepository extends JpaRepository<ActivityFeedEntity
             Pageable pageable);
 
     /**
+     * 同一操作者・同一対象の直近1行を取得する（F03.18 §5.4 フィード洪水対策）。
+     *
+     * <p>{@code ActivityFeedEventListener} が 5 分以内の連続編集をこの行へマージするために使う。
+     * 整列キーは本 Repository の規約どおり {@code id DESC}（＝最新1行）。</p>
+     */
+    java.util.Optional<ActivityFeedEntity> findTopByActorIdAndTargetIdAndTargetTypeOrderByIdDesc(
+            Long actorId, Long targetId, com.mannschaft.app.dashboard.TargetType targetType);
+
+    /**
      * 30日超の古いレコードを物理削除する（日次バッチ用）。
      */
     @Modifying

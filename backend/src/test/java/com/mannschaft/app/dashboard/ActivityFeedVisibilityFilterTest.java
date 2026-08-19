@@ -105,7 +105,7 @@ class ActivityFeedVisibilityFilterTest {
         given(nameResolverService.resolveUserDisplayNames(any())).willReturn(Map.of());
         given(nameResolverService.resolveTeamNames(any())).willReturn(Map.of());
         given(nameResolverService.resolveOrganizationNames(any())).willReturn(Map.of());
-        given(dashboardMapper.toActivityFeedResponse(any(), any(), any()))
+        given(dashboardMapper.toActivityFeedResponse(any(), any(), any(), any()))
                 .willAnswer(inv -> {
                     ActivityFeedEntity e = inv.getArgument(0);
                     return new ActivityFeedResponse(
@@ -113,7 +113,7 @@ class ActivityFeedVisibilityFilterTest {
                             inv.getArgument(1),
                             e.getScopeType().name(), e.getScopeId(), inv.getArgument(2),
                             e.getTargetType().name(), e.getTargetId(), e.getSummary(),
-                            e.getDetail(), e.getCreatedAt());
+                            inv.getArgument(3), e.getCreatedAt());
                 });
     }
 
@@ -350,7 +350,137 @@ class ActivityFeedVisibilityFilterTest {
 
             assertThat(result.getItems()).extracting(ActivityFeedResponse::getId)
                     .containsExactly(100L, 97L, 96L);
-            assertThat(result.getNextCursor()).isEqualTo("95");
+            // 切り詰めが起きた（可視4件中3件だけ返した）ため、nextCursor は
+            // «実際に返した最後の行» の id。«フィルタ前» 最終 id（95）を返すと、
+            // 切り捨てた id=95 の行が次ページ（id<95）に現れず恒久的に欠落する。
+            assertThat(result.getNextCursor()).isEqualTo("96");
+        }
+
+        @Test
+        @DisplayName("回帰(P1-2): 切り詰めで捨てた可視行が次ページで必ず取得でき、重複も欠落も出ない")
+        void truncatedVisibleRowIsNotLostAcrossPages() {
+            stubPassthroughMapping();
+            // limit=3。1周目=可視1件（100）、2周目=可視3件（97/96/95）＝可視4件。
+            // 1ページ目は 100/97/96 を返し、95 は切り詰められる。
+            given(activityFeedRepository.findByScopesAndExcludeActor(
+                    any(), any(), any(), any(Pageable.class)))
+                    .willReturn(List.of(postRow(100L), scheduleRow(99L, 777L), scheduleRow(98L, 778L)));
+            given(activityFeedRepository.findByScopeAndExcludeActorWithCursor(
+                    any(), any(), any(), any(), any(Pageable.class)))
+                    .willAnswer(inv -> {
+                        long cursor = inv.getArgument(3);
+                        // 実 Repository と同じく「id < cursor を id DESC で最大 size 件」を再現する。
+                        List<ActivityFeedEntity> all = List.of(
+                                postRow(97L), postRow(96L), postRow(95L));
+                        return all.stream().filter(r -> r.getId() < cursor).limit(3).toList();
+                    });
+            given(scheduleVisibilityResolver.filterAccessible(anyCollection(), anyLong()))
+                    .willReturn(Set.of());
+
+            ActivityFeedPageResponse page1 =
+                    activityFeedService.getActivityFeed(USER_ID, null, 3, TEAM_IDS, ORG_IDS);
+            assertThat(page1.getItems()).extracting(ActivityFeedResponse::getId)
+                    .containsExactly(100L, 97L, 96L);
+            assertThat(page1.getNextCursor())
+                    .as("切り詰め時は «返した最後の行» の id を返さないと、捨てた行が二度と取れない")
+                    .isEqualTo("96");
+
+            ActivityFeedPageResponse page2 = activityFeedService.getActivityFeed(
+                    USER_ID, Long.valueOf(page1.getNextCursor()), 3, TEAM_IDS, ORG_IDS);
+
+            List<Long> page1Ids = page1.getItems().stream().map(ActivityFeedResponse::getId).toList();
+            List<Long> page2Ids = page2.getItems().stream().map(ActivityFeedResponse::getId).toList();
+
+            assertThat(page2Ids)
+                    .as("1ページ目で切り捨てられた id=95 が2ページ目に現れない（恒久的な欠落）")
+                    .contains(95L);
+            assertThat(page2Ids)
+                    .as("2ページ目に1ページ目と同じ行が混ざっている（重複）")
+                    .doesNotContainAnyElementsOf(page1Ids);
+
+            // 2ページ通して可視4件が過不足なく現れる。
+            List<Long> all = new ArrayList<>(page1Ids);
+            all.addAll(page2Ids);
+            assertThat(all).containsExactly(100L, 97L, 96L, 95L);
+        }
+    }
+
+    // ==================================================================
+    // 回帰(P1-1) — detail は JSON 文字列でなくパース済み object で返る
+    // ==================================================================
+
+    @Nested
+    @DisplayName("detail のパース（F03.18 §3.3）")
+    class DetailParsing {
+
+        private static final String DETAIL_JSON =
+                "{\"scheduleId\":777,\"title\":\"定例会議\",\"fields\":["
+                        + "{\"field\":\"startAt\",\"before\":\"2026-08-10T19:00:00\",\"after\":\"2026-08-17T19:00:00\"}"
+                        + "],\"affectedCount\":1}";
+
+        private ActivityFeedEntity scheduleRowWithDetail(Long id, Long scheduleId, String detail) {
+            ActivityFeedEntity e = scheduleRow(id, scheduleId);
+            org.springframework.test.util.ReflectionTestUtils.setField(e, "detail", detail);
+            return e;
+        }
+
+        @Test
+        @DisplayName("回帰(P1-1): detail は JSON 文字列のままでなく構造化オブジェクトとして返る")
+        void detailIsParsedIntoObject() {
+            stubPassthroughMapping();
+            stubFirstPage(List.of(scheduleRowWithDetail(100L, 777L, DETAIL_JSON)));
+            given(scheduleVisibilityResolver.filterAccessible(anyCollection(), anyLong()))
+                    .willReturn(Set.of(777L));
+
+            ActivityFeedPageResponse result =
+                    activityFeedService.getActivityFeed(USER_ID, null, 10, TEAM_IDS, ORG_IDS);
+
+            Object detail = result.getItems().get(0).getDetail();
+            assertThat(detail)
+                    .as("detail が String のまま。Jackson がエスケープ済み文字列として出力し、"
+                            + "FE から detail.fields を読めない")
+                    .isNotInstanceOf(String.class)
+                    .isInstanceOf(com.mannschaft.app.dashboard.dto.ScheduleFeedDetail.class);
+
+            var parsed = (com.mannschaft.app.dashboard.dto.ScheduleFeedDetail) detail;
+            assertThat(parsed.title()).isEqualTo("定例会議");
+            assertThat(parsed.scheduleId()).isEqualTo(777L);
+            assertThat(parsed.fields()).hasSize(1);
+            assertThat(parsed.fields().get(0).field()).isEqualTo("startAt");
+            assertThat(parsed.fields().get(0).after()).isEqualTo("2026-08-17T19:00:00");
+            assertThat(parsed.affectedCount()).isEqualTo(1);
+        }
+
+        @Test
+        @DisplayName("回帰(P1-1): detail のパース失敗でも行は落とさず detail=null で返す")
+        void brokenDetailDoesNotDropTheRow() {
+            stubPassthroughMapping();
+            stubFirstPage(List.of(
+                    scheduleRowWithDetail(100L, 777L, "{壊れたJSON"),
+                    scheduleRowWithDetail(99L, 778L, DETAIL_JSON)));
+            given(scheduleVisibilityResolver.filterAccessible(anyCollection(), anyLong()))
+                    .willReturn(Set.of(777L, 778L));
+
+            ActivityFeedPageResponse result =
+                    activityFeedService.getActivityFeed(USER_ID, null, 10, TEAM_IDS, ORG_IDS);
+
+            assertThat(result.getItems())
+                    .as("壊れた1行がフィード一覧全体を壊してはならない")
+                    .hasSize(2);
+            assertThat(result.getItems().get(0).getDetail()).isNull();
+            assertThat(result.getItems().get(1).getDetail()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("既存7種別（detail 列が null）は detail=null のまま返る")
+        void existingTypesKeepNullDetail() {
+            stubPassthroughMapping();
+            stubFirstPage(List.of(postRow(100L)));
+
+            ActivityFeedPageResponse result =
+                    activityFeedService.getActivityFeed(USER_ID, null, 10, TEAM_IDS, ORG_IDS);
+
+            assertThat(result.getItems().get(0).getDetail()).isNull();
         }
     }
 

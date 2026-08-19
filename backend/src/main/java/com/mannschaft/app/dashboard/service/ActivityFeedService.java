@@ -1,5 +1,7 @@
 package com.mannschaft.app.dashboard.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.dashboard.ActivityType;
 import com.mannschaft.app.dashboard.DashboardMapper;
@@ -7,6 +9,7 @@ import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.TargetType;
 import com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse;
 import com.mannschaft.app.dashboard.dto.ActivityFeedResponse;
+import com.mannschaft.app.dashboard.dto.ScheduleFeedDetail;
 import com.mannschaft.app.dashboard.entity.ActivityFeedEntity;
 import com.mannschaft.app.dashboard.repository.ActivityFeedRepository;
 import com.mannschaft.app.schedule.visibility.ScheduleVisibilityResolver;
@@ -45,6 +48,14 @@ public class ActivityFeedService {
     private final DashboardMapper dashboardMapper;
     private final NameResolverService nameResolverService;
     private final ScheduleVisibilityResolver scheduleVisibilityResolver;
+
+    /**
+     * {@code detail} JSON のパース専用 ObjectMapper。
+     * 素の JSON → DTO 変換のみを行い、アプリ既定 Mapper の設定（日時フォーマット等）に
+     * 依存しないため定数として保持する（DI にするとモック注入を強いられ、
+     * 「パースされたか」の検証が偽物になる）。
+     */
+    private static final ObjectMapper DETAIL_OBJECT_MAPPER = new ObjectMapper();
 
     /** アクティビティ取得のデフォルト件数 */
     private static final int DEFAULT_LIMIT = 10;
@@ -125,12 +136,27 @@ public class ActivityFeedService {
         }
 
         // 追加フェッチで超過した分は切り詰める。
-        List<ActivityFeedEntity> pageRows = visibleRows.size() > resolvedLimit
+        boolean truncated = visibleRows.size() > resolvedLimit;
+        List<ActivityFeedEntity> pageRows = truncated
                 ? new ArrayList<>(visibleRows.subList(0, resolvedLimit))
                 : visibleRows;
 
-        // 尽きたら null、打ち切り／続きありなら «フィルタ前» 最終 id。
-        String nextCursor = (exhausted || lastRawId == null) ? null : String.valueOf(lastRawId);
+        // 次カーソルの算出（§4.2 手順6 ＋ 切り詰め時の是正）。
+        //
+        // 通常は «フィルタ前» の最終 id を返す。フィルタ後の id を使うと除外済み区間を
+        // 読み直してしまうためである。ただし «切り詰めが起きた場合» はこれが欠落を生む:
+        // 捨てた可視行は «フィルタ前» 最終 id より新しい（id が大きい）ため、
+        // 次回 `id < lastRawId` で二度と現れず、恒久的に失われる。
+        // 切り詰め時は「実際に返した最後の行の id」を返す。並びは id DESC なので
+        // 次回 `id < nextCursor` が捨てた行の先頭から正しく再開し、重複も欠落も出ない。
+        // このとき exhausted（母集団が尽きた）でも «返していない可視行が残っている» ため
+        // nextCursor は必ず非 null にする。
+        String nextCursor;
+        if (truncated) {
+            nextCursor = String.valueOf(pageRows.get(pageRows.size() - 1).getId());
+        } else {
+            nextCursor = (exhausted || lastRawId == null) ? null : String.valueOf(lastRawId);
+        }
 
         return new ActivityFeedPageResponse(toResponses(pageRows), nextCursor);
     }
@@ -248,10 +274,38 @@ public class ActivityFeedService {
                     return dashboardMapper.toActivityFeedResponse(
                             entity,
                             new ActivityFeedResponse.ActorSummary(entity.getActorId(), actorDisplayName, null),
-                            scopeName
+                            scopeName,
+                            parseDetail(entity)
                     );
                 })
                 .toList();
+    }
+
+    /**
+     * {@code detail}（JSON 文字列）を構造化オブジェクトへパースする（F03.18 §3.3 裁定）。
+     *
+     * <p>Entity は JSON «文字列» を保持するが、API レスポンスは object を返す契約である。
+     * 文字列のまま {@code ActivityFeedResponse.detail} に積むと Jackson が
+     * エスケープ済みの文字列として出力し、FE から {@code detail.fields} を読めない。</p>
+     *
+     * <p><strong>パース失敗で行を落とさない</strong>: 壊れた1行がフィード一覧全体を
+     * 壊してはならない。WARN で記録し {@code detail = null} として行自体は返す
+     * （書き込み側の「シリアライズ失敗時は detail=null で続行」と対になる読み取り側の失敗処理）。</p>
+     *
+     * @return パース済み detail。detail が無い（既存7種別）／パース失敗時は null
+     */
+    private Object parseDetail(ActivityFeedEntity entity) {
+        String raw = entity.getDetail();
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+        try {
+            return DETAIL_OBJECT_MAPPER.readValue(raw, ScheduleFeedDetail.class);
+        } catch (JsonProcessingException e) {
+            log.warn("アクティビティフィードの detail パース失敗（該当行は detail=null で返す） activityFeedId={}, error={}",
+                    entity.getId(), e.getMessage());
+            return null;
+        }
     }
 
     /**

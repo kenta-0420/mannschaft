@@ -111,7 +111,7 @@ class ActivityFeedServiceTest {
                     .willReturn(Map.of());
 
             ActivityFeedResponse response = createActivityFeedResponse(1L, "テストチーム");
-            given(dashboardMapper.toActivityFeedResponse(eq(entity), any(ActivityFeedResponse.ActorSummary.class), eq("テストチーム")))
+            given(dashboardMapper.toActivityFeedResponse(eq(entity), any(ActivityFeedResponse.ActorSummary.class), eq("テストチーム"), any()))
                     .willReturn(response);
 
             // When
@@ -143,7 +143,7 @@ class ActivityFeedServiceTest {
             given(nameResolverService.resolveOrganizationNames(any())).willReturn(Map.of());
 
             ActivityFeedResponse response = createActivityFeedResponse(1L, "テストチーム");
-            given(dashboardMapper.toActivityFeedResponse(any(), any(), any())).willReturn(response);
+            given(dashboardMapper.toActivityFeedResponse(any(), any(), any(), any())).willReturn(response);
 
             // When
             List<ActivityFeedResponse> result = activityFeedService
@@ -215,7 +215,7 @@ class ActivityFeedServiceTest {
             given(dashboardMapper.toActivityFeedResponse(
                     eq(entity),
                     argThat(actor -> "不明なユーザー".equals(actor.getDisplayName())),
-                    eq("テストチーム")))
+                    eq("テストチーム"), any()))
                     .willReturn(response);
 
             // When
@@ -227,7 +227,7 @@ class ActivityFeedServiceTest {
             verify(dashboardMapper).toActivityFeedResponse(
                     eq(entity),
                     argThat(actor -> "不明なユーザー".equals(actor.getDisplayName())),
-                    eq("テストチーム"));
+                    eq("テストチーム"), any());
         }
 
         @Test
@@ -246,7 +246,7 @@ class ActivityFeedServiceTest {
             given(nameResolverService.resolveTeamNames(Set.of(SCOPE_ID_TEAM))).willReturn(Map.of(SCOPE_ID_TEAM, "テストチーム"));
             given(nameResolverService.resolveOrganizationNames(Set.of(SCOPE_ID_ORG))).willReturn(Map.of(SCOPE_ID_ORG, "テスト組織"));
 
-            given(dashboardMapper.toActivityFeedResponse(any(), any(), anyString()))
+            given(dashboardMapper.toActivityFeedResponse(any(), any(), anyString(), any()))
                     .willAnswer(inv -> createActivityFeedResponse(1L, inv.getArgument(2)));
 
             // When
