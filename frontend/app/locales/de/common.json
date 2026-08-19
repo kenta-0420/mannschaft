@@ -259,7 +259,8 @@
     "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
-    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません"
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "Du hast das Limit von 200 Ausblendungen erreicht. Blende bitte etwas wieder ein."
   },
   "annual_plan": {
     "title": "Jahresveranstaltungsplan",
@@ -491,7 +492,38 @@
       "PUBLIC": "Was gibt's Neues?"
     },
     "submitLabel": "Posten",
-    "pollOptionsCount": "{count} Optionen"
+    "pollOptionsCount": "{count} Optionen",
+    "deliveryScope": {
+      "label": "Zustellbereich",
+      "options": {
+        "DIRECT": "Nur Mitglieder dieser Organisation",
+        "CHILDREN": "Auch direkte untergeordnete Organisationen",
+        "DESCENDANTS": "Alle untergeordneten Organisationen"
+      },
+      "hints": {
+        "DIRECT": "Wird nur in den Timelines der Mitglieder dieser Organisation angezeigt.",
+        "CHILDREN": "Wird auch Mitgliedern der direkt untergeordneten Organisationen angezeigt.",
+        "DESCENDANTS": "Wird Mitgliedern aller untergeordneten Organisationen angezeigt."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Beiträge dieses Teams ausblenden",
+        "ORGANIZATION": "Beiträge dieser Organisation ausblenden"
+      },
+      "targetType": {
+        "TEAM": "Team",
+        "ORGANIZATION": "Organisation"
+      },
+      "muted": "Beiträge von {name} wurden ausgeblendet",
+      "undo": "Rückgängig",
+      "unmuted": "Beiträge werden wieder angezeigt",
+      "chip": "Ausgeblendet: {count}",
+      "dialogTitle": "Ausgeblendete Quellen",
+      "emptyList": "Du hast niemanden ausgeblendet.",
+      "unmuteAction": "Wieder anzeigen",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Galerie",
