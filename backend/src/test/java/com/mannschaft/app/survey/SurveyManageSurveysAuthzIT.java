@@ -57,6 +57,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  *   <li>AC-22: {@code DRAFT} / {@code ARCHIVED} は権限があっても貫通しない（status 軸の非貫通）</li>
  *   <li>AC-23: 他スコープの ADMIN は通らない</li>
  *   <li>AC-24: 対象行 0 件のバッチで追加 SQL が 0 本</li>
+ *   <li>AC-25: SQL 本数の計器（{@code SqlIntentCounter}）が実際に捕捉している（生存証明）</li>
+ *   <li>AC-26: 権限の先読みがスコープ数に比例しない</li>
  * </ul>
  *
  * <p>{@code MANAGE_SURVEYS} のカタログ行は、test profile が Flyway 無効であるため
@@ -90,6 +92,8 @@ class SurveyManageSurveysAuthzIT extends AbstractMySqlIntegrationTest {
     private SurveySeriesService surveySeriesService;
     @Autowired
     private ContentVisibilityChecker checker;
+    @Autowired
+    private com.mannschaft.app.role.repository.UserRoleRepository userRoleRepository;
 
     private Long teamId;
     private Long otherTeamId;
@@ -484,6 +488,99 @@ class SurveyManageSurveysAuthzIT extends AbstractMySqlIntegrationTest {
                 .as("対象行が 0 件なら追加軸の先読みを含め SQL を 1 本も発行してはならない"
                         + "（権限判定を行ごとに足すと、この 0 本が崩れる）")
                 .isZero();
+    }
+
+    /**
+     * AC-20 の下支え: 可視性層が使う<b>バルク版</b>の述語が、第一陣の<b>単票版</b>と同じ答えを返すこと。
+     *
+     * <p>可視性層の判定は「バルク版が権限保有スコープを返す」ことに全面的に依存するため、
+     * ここが空を返すと AC-20 は静かに false になる。両版の一致を直接測っておく。</p>
+     */
+    @Test
+    @DisplayName("AC-20-下支え: 権限バルククエリは単票版と同じ答えを返す")
+    void ac20_bulk権限クエリは単票版と一致する() {
+        em.flush();
+        em.clear();
+
+        assertThat(userRoleRepository.existsDeputyAdminWithPermissionInTeam(
+                deputyWithPermissionId, teamId, PERMISSION))
+                .as("単票版: 権限保有 DEPUTY_ADMIN は true").isTrue();
+        assertThat(userRoleRepository.findDeputyAdminPermittedTeamIds(
+                deputyWithPermissionId, List.of(teamId), PERMISSION))
+                .as("バルク版: 単票版が true なら当該チームを返すべき").contains(teamId);
+        assertThat(userRoleRepository.findDeputyAdminPermittedTeamIds(
+                deputyWithoutPermissionId, List.of(teamId), PERMISSION))
+                .as("バルク版: 権限なし副管理者のスコープは返さない").isEmpty();
+        assertThat(userRoleRepository.findDeputyAdminPermittedTeamIds(
+                adminUserId, List.of(teamId), PERMISSION))
+                .as("バルク版: ADMIN は DEPUTY_ADMIN ではないので返さない（ADMIN 経路は isScopeAdmin が担う）")
+                .isEmpty();
+    }
+
+    // =====================================================================
+    // AC-25 / AC-26: SQL 本数（検出器の生存証明つき）
+    // =====================================================================
+
+    /**
+     * AC-25: SQL 本数の上限を測る前に、<b>計器そのものが生きている</b>ことを証明する。
+     *
+     * <p>{@code SqlIntentCounter} が捕捉していなければ常に 0 件と答え、どんな上限も
+     * 「上限以下」で素通りする（Issue #2782 の前科）。上限アサーションの前に
+     * 「非空バッチでは 1 本以上飛ぶ」を固定しておかないと、AC-26 は測っていないのに緑になる。</p>
+     */
+    @Test
+    @DisplayName("AC-25: SqlIntentCounter は非空バッチで実際に SQL を捕捉している（計器の生存証明）")
+    void ac25_sqlIntentCounterは実際に捕捉している() {
+        Long surveyId = insertSurvey(teamId, creatorUserId, "PUBLISHED", "ADMINS_ONLY", null, null, false);
+        em.flush();
+        em.clear();
+
+        SqlIntentCounter.reset();
+        checker.filterAccessible(ReferenceType.SURVEY, List.of(surveyId), deputyWithPermissionId);
+
+        assertThat(SqlIntentCounter.totalCount())
+                .as("非空バッチで 0 本と答えるなら計器が死んでおり、上限アサーションは無意味である。"
+                        + "捕捉 SQL=%s", SqlIntentCounter.capturedSqls())
+                .isGreaterThan(0);
+    }
+
+    /**
+     * AC-26: 権限の先読みは<b>スコープ数に比例しない</b>。
+     *
+     * <p>1 スコープのバッチと 5 スコープのバッチで発行 SQL 本数が等しいことを直接測る。
+     * 行ごと・スコープごとに {@code RoleService#resolveEffectivePermissions} を呼ぶ実装
+     * （Issue #2782 で撤去した形）に戻ると、この等式が崩れて赤になる。</p>
+     */
+    @Test
+    @DisplayName("AC-26: スコープ数を 1 → 5 に増やしても SQL 本数は増えない（比例しない）")
+    void ac26_権限先読みはスコープ数に比例しない() {
+        Long single = insertSurvey(teamId, creatorUserId, "PUBLISHED", "ADMINS_ONLY", null, null, false);
+        List<Long> many = new ArrayList<>();
+        many.add(single);
+        for (int i = 0; i < 4; i++) {
+            Long extraTeamId = insertTeam();
+            // 権限保有 DEPUTY_ADMIN を各チームにも置き、判定経路（権限バルク照会）を確実に踏ませる。
+            grantRole(deputyWithPermissionId, "DEPUTY_ADMIN", extraTeamId, null);
+            many.add(insertSurvey(extraTeamId, creatorUserId, "PUBLISHED", "ADMINS_ONLY",
+                    null, null, false));
+        }
+        em.flush();
+        em.clear();
+
+        SqlIntentCounter.reset();
+        checker.filterAccessible(ReferenceType.SURVEY, List.of(single), deputyWithPermissionId);
+        int oneScope = SqlIntentCounter.totalCount();
+
+        SqlIntentCounter.reset();
+        checker.filterAccessible(ReferenceType.SURVEY, many, deputyWithPermissionId);
+        int fiveScopes = SqlIntentCounter.totalCount();
+
+        assertThat(oneScope)
+                .as("AC-25 と同じ理由で、まず計器が生きていることを確認する").isGreaterThan(0);
+        assertThat(fiveScopes)
+                .as("スコープ数 1 → 5 で SQL 本数が増えてはならない（1 スコープ=%d 本 / 5 スコープ=%d 本・"
+                        + "捕捉 SQL=%s）", oneScope, fiveScopes, SqlIntentCounter.capturedSqls())
+                .isEqualTo(oneScope);
     }
 
     // =====================================================================

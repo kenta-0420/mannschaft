@@ -76,6 +76,9 @@ class SurveyVisibilityResolverTest {
     private com.mannschaft.app.organization.service.OrganizationMembershipService
             organizationMembershipService;
 
+    @Mock
+    private com.mannschaft.app.role.service.PermissionScopeQueryService permissionScopeQueryService;
+
     private VisibilityMetrics visibilityMetrics;
     private SurveyVisibilityResolver resolver;
 
@@ -92,7 +95,8 @@ class SurveyVisibilityResolverTest {
                 surveyResponseRepository,
                 surveyResultViewerRepository,
                 surveyTargetRepository,
-                organizationMembershipService);
+                organizationMembershipService,
+                permissionScopeQueryService);
     }
 
     @Test

@@ -79,6 +79,9 @@ class SurveyVisibilityResolverAlwaysTest {
     private com.mannschaft.app.organization.service.OrganizationMembershipService
             organizationMembershipService;
 
+    @Mock
+    private com.mannschaft.app.role.service.PermissionScopeQueryService permissionScopeQueryService;
+
     private SurveyVisibilityResolver resolver;
 
     private static final String SCOPE_TYPE = "TEAM";
@@ -100,7 +103,8 @@ class SurveyVisibilityResolverAlwaysTest {
                 surveyResponseRepository,
                 surveyResultViewerRepository,
                 surveyTargetRepository,
-                organizationMembershipService);
+                organizationMembershipService,
+                permissionScopeQueryService);
     }
 
     @Nested
@@ -226,24 +230,54 @@ class SurveyVisibilityResolverAlwaysTest {
         }
 
         /**
-         * AC-11 — {@code VIEWERS_ONLY} は名簿判定であり、ロール閾値ではない。
-         * <b>名簿に無い ADMIN が見えないこと</b>を固定する（FE で ADMINS_ONLY と畳んではならない根拠）。
+         * AC-11 — {@code VIEWERS_ONLY} は<b>一般メンバーに対しては</b>名簿判定であり、ロール閾値ではない。
+         * <b>名簿に無い MEMBER が見えないこと</b>を固定する（FE で ADMINS_ONLY と畳んではならない根拠）。
+         *
+         * <p><b>ADMIN+ を検体に使わないこと（CMP-041 五番隊で是正）</b> — 設計書
+         * {@code docs/features/F05.4_survey_vote.md} L1625-1628 は「上位条件に該当すれば
+         * {@code results_visibility} を<b>無視して</b>閲覧可能」と定め、優先順 2 に ADMIN+ を置く。
+         * 同 L116 も「名簿に無い ADMIN は本値では不可視。<b>ただし ADMIN+ は §「結果閲覧権限の判定」の
+         * 優先順 2 により別経路でフルアクセスを持つ</b>」と明記しており、L1634 の「ロールを問わず不可視」は
+         * 優先順 4（一般メンバー）の枝の中の記述である。よって ADMIN を検体にすると、
+         * 本テストが固定したい「名簿 vs ロール閾値の直交性」ではなく、優先順 2 の貫通そのものを
+         * 否定してしまう。直交性は一般メンバーで測るのが正しい。</p>
          */
         @Test
-        @DisplayName("AC-11: VIEWERS_ONLY は名簿判定（名簿に無い ADMIN は不可視）")
+        @DisplayName("AC-11: VIEWERS_ONLY は名簿判定（名簿に無い一般メンバーは不可視）")
         void ac11_viewersOnlyIsRosterNotRole() {
+            stubProjection(SurveyStatus.PUBLISHED, ResultsVisibility.VIEWERS_ONLY, null);
+            stubSnapshot(VIEWER_ID, roleInScope("MEMBER"));
+
+            when(surveyResultViewerRepository.existsBySurveyIdAndUserId(eq(SURVEY_ID), eq(VIEWER_ID)))
+                    .thenReturn(false);
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-11: 一般メンバーは名簿に無ければ不可視（ADMINS_ONLY とは直交）")
+                    .isFalse();
+
+            when(surveyResultViewerRepository.existsBySurveyIdAndUserId(eq(SURVEY_ID), eq(VIEWER_ID)))
+                    .thenReturn(true);
+            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
+                    .as("AC-11: 名簿に載れば一般メンバーでも可視").isTrue();
+        }
+
+        /**
+         * AC-11 の対（設計書 L116 / L1625-1628 の優先順 2）— 当該スコープの ADMIN は
+         * {@code VIEWERS_ONLY} でも名簿に依らずフルアクセスを持つ。
+         *
+         * <p>上の直交性テストと合わせて「名簿判定は一般メンバーに効き、ADMIN+ には上位条件が優先する」
+         * という二段の仕様を固定する。</p>
+         */
+        @Test
+        @DisplayName("AC-11-対: VIEWERS_ONLY でも当該スコープの ADMIN は上位条件で貫通する")
+        void ac11_viewersOnlyIsPiercedByScopeAdmin() {
             stubProjection(SurveyStatus.PUBLISHED, ResultsVisibility.VIEWERS_ONLY, null);
             stubSnapshot(VIEWER_ID, roleInScope("ADMIN"));
 
             when(surveyResultViewerRepository.existsBySurveyIdAndUserId(eq(SURVEY_ID), eq(VIEWER_ID)))
                     .thenReturn(false);
             assertThat(resolver.canView(SURVEY_ID, VIEWER_ID))
-                    .as("AC-11: ADMIN であっても名簿に無ければ不可視（ADMINS_ONLY とは直交）")
-                    .isFalse();
-
-            when(surveyResultViewerRepository.existsBySurveyIdAndUserId(eq(SURVEY_ID), eq(VIEWER_ID)))
-                    .thenReturn(true);
-            assertThat(resolver.canView(SURVEY_ID, VIEWER_ID)).isTrue();
+                    .as("設計書 優先順 2: ADMIN+ は results_visibility を無視してフルアクセス")
+                    .isTrue();
         }
     }
 

@@ -18,6 +18,7 @@ import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyResultViewerRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
+import com.mannschaft.app.role.service.PermissionScopeQueryService;
 import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,6 +89,10 @@ public class SurveyVisibilityResolver
     private final SurveyResultViewerRepository surveyResultViewerRepository;
     private final SurveyTargetRepository surveyTargetRepository;
     private final OrganizationMembershipService organizationMembershipService;
+    private final PermissionScopeQueryService permissionScopeQueryService;
+
+    /** 可視性の上位条件で「管理者相当」に含める権限（CMP-041）。 */
+    private static final String MANAGE_SURVEYS = "MANAGE_SURVEYS";
 
     public SurveyVisibilityResolver(
             MembershipBatchQueryService membershipBatchQueryService,
@@ -99,7 +104,8 @@ public class SurveyVisibilityResolver
             SurveyResponseRepository surveyResponseRepository,
             SurveyResultViewerRepository surveyResultViewerRepository,
             SurveyTargetRepository surveyTargetRepository,
-            OrganizationMembershipService organizationMembershipService) {
+            OrganizationMembershipService organizationMembershipService,
+            PermissionScopeQueryService permissionScopeQueryService) {
         super(membershipBatchQueryService, templateEvaluator, visibilityMetrics,
                 followBatchService, auditLogService);
         this.surveyRepository = surveyRepository;
@@ -107,6 +113,7 @@ public class SurveyVisibilityResolver
         this.surveyResultViewerRepository = surveyResultViewerRepository;
         this.surveyTargetRepository = surveyTargetRepository;
         this.organizationMembershipService = organizationMembershipService;
+        this.permissionScopeQueryService = permissionScopeQueryService;
     }
 
     @Override
@@ -216,9 +223,20 @@ public class SurveyVisibilityResolver
         Set<Long> bypassCandidateIds = new HashSet<>();
         Set<Long> targetedIds = new HashSet<>();
         Set<OrgAudienceKey> orgAudienceKeys = new HashSet<>();
+        // 権限保有 DEPUTY_ADMIN の判定対象スコープ。上位条件は results_visibility を問わず
+        // 全行に効く（ADMINS_ONLY / VIEWERS_ONLY 等も含む）ため、名簿の対象行とは母集団が異なる。
+        Set<Long> permissionTeamIds = new HashSet<>();
+        Set<Long> permissionOrgIds = new HashSet<>();
         for (SurveyVisibilityProjection row : rows) {
             if (row == null || row.id() == null) {
                 continue;
+            }
+            if (row.scopeId() != null) {
+                if ("TEAM".equals(row.scopeType())) {
+                    permissionTeamIds.add(row.scopeId());
+                } else if ("ORGANIZATION".equals(row.scopeType())) {
+                    permissionOrgIds.add(row.scopeId());
+                }
             }
             ResultsVisibility v = row.resultsVisibility();
             if (v == ResultsVisibility.ALWAYS) {
@@ -235,9 +253,14 @@ public class SurveyVisibilityResolver
                 bypassCandidateIds.add(row.id());
             }
         }
+        // 権限保有 DEPUTY_ADMIN のスコープを、スコープ種別ごとにバルク 1 本ずつ（最大 2 本）先読みする。
+        // 行ごと・スコープごとに引くとスコープ数比例の N+1 になり、§9 の SQL 本数上限に反する。
+        Set<ScopeKey> manageSurveysScopes =
+                resolveManageSurveysScopes(permissionTeamIds, permissionOrgIds, viewerUserId);
+
         if (bypassCandidateIds.isEmpty()) {
-            // 追加軸を持つ行が無ければ SQL を一切増やさない（他の値の経路は従来どおり）。
-            return AudienceContext.EMPTY;
+            // 名簿・母集団の追加軸を持つ行が無ければ、それらの SQL は増やさない（従来どおり）。
+            return new AudienceContext(Set.of(), Set.of(), Set.of(), manageSurveysScopes);
         }
 
         // 結果閲覧者名簿（上位条件）は対象全行に対して 1 本。
@@ -249,7 +272,76 @@ public class SurveyVisibilityResolver
                 : Set.copyOf(surveyTargetRepository.findTargetedSurveyIds(targetedIds, viewerUserId));
         // 組織の配信母集団は「組織数」ではなく「トグルの種類数」に比例させる（最大 2 本）。
         return new AudienceContext(targetedSurveyIds, resultViewerIds,
-                resolveOrgAudience(orgAudienceKeys, viewerUserId));
+                resolveOrgAudience(orgAudienceKeys, viewerUserId), manageSurveysScopes);
+    }
+
+    /**
+     * 閲覧者が {@code MANAGE_SURVEYS} を持つ<b>権限保有 DEPUTY_ADMIN</b> であるスコープ集合を
+     * <b>スコープ種別ごとにバルク 1 本</b>（最大 2 本）で先読みする（CMP-041 五番隊）。
+     *
+     * <p><b>なぜ snapshot ではなくここで引くのか</b> — {@link UserScopeRoleSnapshot} はロール名しか
+     * 持たず、{@code RolePriority} 上 DEPUTY_ADMIN(3) は ADMIN(2) より弱いため
+     * {@code hasRoleOrAbove(scope, "ADMIN")} では権限保有者を表現できない。一方で
+     * {@code RoleService#resolveEffectivePermissions} を Resolver から直に呼ぶと、キャッシュミス時に
+     * <b>スコープごとに</b>多数の SQL が飛び、Issue #2782 で撤去した実装を再生産する。
+     * そこで「バッチ 1 回につき集合を先読みする」という基盤の契約に沿ってバルク化する。</p>
+     *
+     * <p>述語は第一陣が新設した単票版
+     * {@code UserRoleRepository#existsDeputyAdminWithPermissionInTeam} /
+     * {@code #existsDeputyAdminWithPermissionInOrganization} と<b>同一の意味論</b>であり、
+     * role ドメインの {@link PermissionScopeQueryService} 経由で引く
+     * （他ドメインの Repository を直接触ると番人 {@code CrossDomainRepositoryDependencyArchTest} の
+     * D-5 に反するため）。判定は
+     * {@code role_permissions.is_default = 1} 経由か権限グループ経由のいずれかを実付与とみなす。</p>
+     *
+     * <p>対象スコープが無い種別の SQL は発行しない（両方無ければ 0 本）。</p>
+     */
+    private Set<ScopeKey> resolveManageSurveysScopes(
+            Set<Long> teamIds, Set<Long> orgIds, Long viewerUserId) {
+        if (viewerUserId == null || (teamIds.isEmpty() && orgIds.isEmpty())) {
+            return Set.of();
+        }
+        Set<ScopeKey> scopes = new HashSet<>();
+        if (!teamIds.isEmpty()) {
+            for (Long teamId : permissionScopeQueryService
+                    .findPermittedTeamIds(viewerUserId, teamIds, MANAGE_SURVEYS)) {
+                if (teamId != null) {
+                    scopes.add(new ScopeKey("TEAM", teamId));
+                }
+            }
+        }
+        if (!orgIds.isEmpty()) {
+            for (Long orgId : permissionScopeQueryService
+                    .findPermittedOrganizationIds(viewerUserId, orgIds, MANAGE_SURVEYS)) {
+                if (orgId != null) {
+                    scopes.add(new ScopeKey("ORGANIZATION", orgId));
+                }
+            }
+        }
+        return scopes;
+    }
+
+    /**
+     * 上位条件（当該スコープの管理者相当 ／ 結果閲覧者名簿の登録者）を
+     * <b>scope 軸ごと貫通</b>させる（CMP-041 五番隊）。
+     *
+     * <p>{@code ADMINS_ONLY} は {@link StandardVisibility#ADMINS_AND_ABOVE} という<b>閾値</b>に
+     * 解決されるため、AND 合成の {@link #visibleByAdditionalAxis} からは開けない。
+     * 基底クラスの {@code privilegedViewerBypass} が唯一の「開ける方向」の合流点である。</p>
+     *
+     * <p>status 軸（DRAFT / ARCHIVED）は基底クラスが本フックより手前で確定させるため貫通しない
+     * （AC-22）。参照するのは当該行のスコープと当該アンケートの名簿のみのため、
+     * 他スコープ・他テナントの管理者は通らない（AC-23）。</p>
+     */
+    @Override
+    protected boolean privilegedViewerBypass(
+            SurveyVisibilityProjection row, Long viewerUserId, UserScopeRoleSnapshot snapshot,
+            Object additionalAxisContext) {
+        if (row == null || viewerUserId == null) {
+            return false;
+        }
+        return isPrivilegedViewer(row, snapshot,
+                additionalAxisContext instanceof AudienceContext ctx ? ctx : AudienceContext.EMPTY);
     }
 
     /**
@@ -411,7 +503,24 @@ public class SurveyVisibilityResolver
         if (row.id() == null) {
             return false;
         }
-        return isScopeAdmin(row, snapshot) || context.resultViewerSurveyIds().contains(row.id());
+        return isScopeAdmin(row, snapshot)
+                || isPermittedDeputyAdmin(row, context)
+                || context.resultViewerSurveyIds().contains(row.id());
+    }
+
+    /**
+     * 当該スコープで {@code MANAGE_SURVEYS} を持つ DEPUTY_ADMIN か（CMP-041）。
+     *
+     * <p>集合は {@link #prepareAdditionalAxisContext} でバルク先読み済みのため、本メソッドは DB を触らない。
+     * {@link #isScopeAdmin} と OR で合成し、ADMIN の経路は一切変えない。</p>
+     */
+    private static boolean isPermittedDeputyAdmin(
+            SurveyVisibilityProjection row, AudienceContext context) {
+        if (row.scopeType() == null || row.scopeId() == null) {
+            return false;
+        }
+        return context.manageSurveysScopes()
+                .contains(new ScopeKey(row.scopeType(), row.scopeId()));
     }
 
     /**
@@ -483,10 +592,11 @@ public class SurveyVisibilityResolver
     private record AudienceContext(
             Set<Long> targetedSurveyIds,
             Set<Long> resultViewerSurveyIds,
-            Set<OrgAudienceKey> inOrgAudience) {
+            Set<OrgAudienceKey> inOrgAudience,
+            Set<ScopeKey> manageSurveysScopes) {
 
         private static final AudienceContext EMPTY =
-                new AudienceContext(Set.of(), Set.of(), Set.of());
+                new AudienceContext(Set.of(), Set.of(), Set.of(), Set.of());
     }
 
     /**
