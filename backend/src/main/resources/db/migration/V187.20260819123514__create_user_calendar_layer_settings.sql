@@ -6,6 +6,8 @@
 --   - クロスドメイン FK なし（原則1）。user_id / scope_id は論理参照でインデックスのみ。
 --   - scope_type='PERSONAL' の行は scope_id=0（センチネル）。NULL 混在でユニークが壊れるのを避ける。
 --   - 設定が無い＝自動色（決定的ハッシュ・§3.3）。「未設定」を表すために行を作る必要はない。
+--   - 照合順序は utf8mb4_0900_ai_ci（SchemaCollationPolicy.UNIFIED_COLLATION・
+--     MigrationCollationDeclarationGuardTest が major 175 以降で強制）。
 
 CREATE TABLE user_calendar_layer_settings (
     id             BINARY(16)   NOT NULL          COMMENT 'UUIDv7 主キー',
@@ -26,7 +28,5 @@ CREATE TABLE user_calendar_layer_settings (
     PRIMARY KEY (id),
     UNIQUE KEY uk_user_calendar_layer (user_id, scope_type, scope_id)
         COMMENT '1ユーザー1レイヤーにつき1行（upsert キー・AC-05）。user_id が左端のため findByUserId の索引も兼ねる'
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4
-  COLLATE=utf8mb4_unicode_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
   COMMENT='F03.19 ユーザー×カレンダーレイヤーの表示設定（色・表示可否）';
