@@ -64,6 +64,11 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             + "  scope_type = 'PUBLIC'"
             + "  OR (scope_type = 'TEAM' AND scope_id IN (:teamIds))"
             + "  OR (scope_type = 'ORGANIZATION' AND scope_id IN (:orgIds))"
+            // 配下配信: 距離1の祖先には CHILDREN/DESCENDANTS、距離2以上には DESCENDANTS のみ届く
+            + "  OR (scope_type = 'ORGANIZATION' AND delivery_scope IN ('CHILDREN', 'DESCENDANTS')"
+            + "      AND scope_id IN (:ancestorOrgIdsNear))"
+            + "  OR (scope_type = 'ORGANIZATION' AND delivery_scope = 'DESCENDANTS'"
+            + "      AND scope_id IN (:ancestorOrgIdsFar))"
             + "  OR (scope_type = 'PERSONAL' AND user_id = :userId)"
             + ") "
             + "ORDER BY created_at DESC LIMIT :limit";
@@ -92,16 +97,62 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
      * {@code teamIds} / {@code orgIds} は呼び出し側で空にならないことを保証すること
      * （空の場合は JPQL の {@code IN ()} を避けるためダミー値を渡すか、そもそも呼ばない）。</p>
      *
-     * @param teamIds  集約対象チーム scopeId 一覧（非空）
-     * @param orgIds   集約対象組織 scopeId 一覧（非空）
-     * @param cursorId カーソル（この id 未満を取得）。null なら先頭から
-     * @param pageable 取得件数
+     * <h3>配下配信（delivery_scope）</h3>
+     * <p>上位組織が {@code CHILDREN} / {@code DESCENDANTS} で出した投稿は、直接所属していなくても
+     * 配下の閲覧者に届く。届く範囲は<b>距離</b>（閲覧者の起点組織から投稿元組織まで親方向に何ホップか）で決まる:</p>
+     * <ul>
+     *   <li>{@code ancestorOrgIdsNear}（距離 1）… {@code CHILDREN} と {@code DESCENDANTS} の両方が届く</li>
+     *   <li>{@code ancestorOrgIdsFar}（距離 2 以上）… {@code DESCENDANTS} のみが届く</li>
+     * </ul>
+     * <p>集合を距離別に 2 本へ割ることで、この区別を SQL 上で素直に表現している
+     * （{@code TimelineDeliveryScopeResolver} が距離計算の唯一の正準実装）。</p>
+     *
+     * <p><b>述語は 3 本に分けたまま維持すること。統合してはならない</b>: 「直接所属なら DIRECT でも見える」と
+     * 「祖先経由なら配信指定があるときだけ見える」は別の規則であり、1 本にまとめるとどちらかが必ず壊れる。</p>
+     *
+     * <h3>ミュート除外は必ず SQL 側で行う</h3>
+     * <p>取得後にアプリ側で捨てると {@code limit} 件が目減りし、無限スクロールが早期終了・歯抜けになる
+     * （同型の事故が {@code OrganizationHierarchyService#getChildren} で起きて根治済み）。よって
+     * {@code NOT IN} を WHERE に降ろす。ミュートは<b>認可ではなく表示設定</b>なので本クエリ限定であり、
+     * 詳細取得（{@code TimelinePostVisibilityAccessGuard}）・検索には適用しない。</p>
+     *
+     * <h3>空集合のダミー値は IN と NOT IN で意味が反転する</h3>
+     * <p>scope ID は常に正の値なので、{@code -1L} を渡したときの効果は次のとおり:</p>
+     * <ul>
+     *   <li>{@code IN (-1)} … 1 件もマッチしない＝当該 OR 条件が無効化される（＝対象なし）</li>
+     *   <li>{@code NOT IN (-1)} … 全件マッチする＝除外が働かない（＝ミュートなし）</li>
+     * </ul>
+     * <p>取り違えると「全件消える」か「全件通る」に倒れる。呼び出し側は用途に応じて使い分けること。</p>
+     *
+     * @param teamIds            集約対象チーム scopeId 一覧（非空）
+     * @param orgIds             集約対象組織 scopeId 一覧（非空）
+     * @param ancestorOrgIdsNear 距離 1 の祖先組織 ID 一覧（非空・空なら {@code -1L}）
+     * @param ancestorOrgIdsFar  距離 2 以上の祖先組織 ID 一覧（非空・空なら {@code -1L}）
+     * @param mutedTeamIds       ミュート中のチーム scopeId 一覧（非空・空なら {@code -1L}）
+     * @param mutedOrgIds        ミュート中の組織 scopeId 一覧（非空・空なら {@code -1L}）
+     * @param cursorId           カーソル（この id 未満を取得）。null なら先頭から
+     * @param pageable           取得件数
      * @return マイフィード投稿一覧（id 降順）
      */
     @Query("""
             SELECT p FROM TimelinePostEntity p
-            WHERE ((p.scopeType = com.mannschaft.app.timeline.PostScopeType.TEAM AND p.scopeId IN :teamIds)
-                OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.ORGANIZATION AND p.scopeId IN :orgIds))
+            WHERE (
+                   (p.scopeType = com.mannschaft.app.timeline.PostScopeType.TEAM
+                        AND p.scopeId IN :teamIds
+                        AND p.scopeId NOT IN :mutedTeamIds)
+                OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.ORGANIZATION
+                        AND p.scopeId IN :orgIds
+                        AND p.scopeId NOT IN :mutedOrgIds)
+                OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.ORGANIZATION
+                        AND p.deliveryScope IN (com.mannschaft.app.timeline.PostDeliveryScope.CHILDREN,
+                                                com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS)
+                        AND p.scopeId IN :ancestorOrgIdsNear
+                        AND p.scopeId NOT IN :mutedOrgIds)
+                OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.ORGANIZATION
+                        AND p.deliveryScope = com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS
+                        AND p.scopeId IN :ancestorOrgIdsFar
+                        AND p.scopeId NOT IN :mutedOrgIds)
+              )
               AND p.parentId IS NULL
               AND p.status = com.mannschaft.app.timeline.PostStatus.PUBLISHED
               AND (:cursorId IS NULL OR p.id < :cursorId)
@@ -110,6 +161,10 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
     List<TimelinePostEntity> findMyFeed(
             @Param("teamIds") List<Long> teamIds,
             @Param("orgIds") List<Long> orgIds,
+            @Param("ancestorOrgIdsNear") List<Long> ancestorOrgIdsNear,
+            @Param("ancestorOrgIdsFar") List<Long> ancestorOrgIdsFar,
+            @Param("mutedTeamIds") List<Long> mutedTeamIds,
+            @Param("mutedOrgIds") List<Long> mutedOrgIds,
             @Param("cursorId") Long cursorId,
             Pageable pageable);
 
@@ -155,6 +210,13 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
                 OR p.scopeType = com.mannschaft.app.timeline.PostScopeType.PUBLIC
                 OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.TEAM AND p.scopeId IN :teamIds)
                 OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.ORGANIZATION AND p.scopeId IN :orgIds)
+                OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.ORGANIZATION
+                        AND p.deliveryScope IN (com.mannschaft.app.timeline.PostDeliveryScope.CHILDREN,
+                                                com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS)
+                        AND p.scopeId IN :ancestorOrgIdsNear)
+                OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.ORGANIZATION
+                        AND p.deliveryScope = com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS
+                        AND p.scopeId IN :ancestorOrgIdsFar)
                 OR (p.scopeType = com.mannschaft.app.timeline.PostScopeType.VILLAGE AND p.scopeVillageId IN :villageIds)
               )
             ORDER BY p.createdAt DESC
@@ -164,6 +226,8 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             @Param("callerUserId") Long callerUserId,
             @Param("teamIds") List<Long> teamIds,
             @Param("orgIds") List<Long> orgIds,
+            @Param("ancestorOrgIdsNear") List<Long> ancestorOrgIdsNear,
+            @Param("ancestorOrgIdsFar") List<Long> ancestorOrgIdsFar,
             @Param("villageIds") List<UUID> villageIds,
             Pageable pageable);
 
@@ -245,6 +309,8 @@ public interface TimelinePostRepository extends JpaRepository<TimelinePostEntity
             @Param("keyword") String keyword,
             @Param("teamIds") List<Long> teamIds,
             @Param("orgIds") List<Long> orgIds,
+            @Param("ancestorOrgIdsNear") List<Long> ancestorOrgIdsNear,
+            @Param("ancestorOrgIdsFar") List<Long> ancestorOrgIdsFar,
             @Param("userId") Long userId,
             @Param("limit") int limit);
 

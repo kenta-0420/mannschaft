@@ -43,6 +43,11 @@ public class TimelinePostVisibilityAccessGuard {
     private final TimelinePostRepository postRepository;
     private final AccessControlService accessControlService;
     private final PostingIdentityService postingIdentityService;
+    /**
+     * 配下配信（delivery_scope）の到達判定。フィード・ユーザー投稿一覧・検索と同じ展開規則を
+     * 使うため、判定を本クラスに書き写さず {@link TimelineDeliveryScopeResolver} を共有する。
+     */
+    private final TimelineDeliveryScopeResolver deliveryScopeResolver;
 
     /**
      * 投稿 1 件の可視性を判定する（既に取得済みの entity 版）。
@@ -55,7 +60,11 @@ public class TimelinePostVisibilityAccessGuard {
         return switch (post.getScopeType()) {
             case PUBLIC -> true;
             case TEAM -> accessControlService.isMember(userId, post.getScopeId(), "TEAM");
-            case ORGANIZATION -> accessControlService.isMember(userId, post.getScopeId(), "ORGANIZATION");
+            // 配下配信は「可視性の拡大」なので、直接所属でなくても配信で届く投稿には到達できる。
+            // これを入れないと「フィードには出るのに直リンクでは 404」という非対称になる。
+            // ミュートはここに混ぜない（ミュートは表示設定であり、混ぜると閲覧権限まで失う）。
+            case ORGANIZATION -> accessControlService.isMember(userId, post.getScopeId(), "ORGANIZATION")
+                    || deliveryScopeResolver.isDeliveredTo(post, userId);
             case VILLAGE -> post.getScopeVillageId() != null
                     && postingIdentityService.isUserVillageMember(post.getScopeVillageId(), userId);
             case PERSONAL -> userId != null && userId.equals(post.getUserId());
