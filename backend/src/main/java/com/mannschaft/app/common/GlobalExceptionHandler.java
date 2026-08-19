@@ -436,6 +436,8 @@ public class GlobalExceptionHandler {
             // 機能55 予約作成（第三陣）予約タスク取消
             Map.entry("SCHEDULE_091", HttpStatus.NOT_FOUND),                // SCHEDULED_TASK_NOT_FOUND（IDOR対策で 404）
             Map.entry("SCHEDULE_092", HttpStatus.CONFLICT),                 // SCHEDULED_TASK_NOT_CANCELLABLE（PENDING 以外）
+            Map.entry("SCHEDULE_093", HttpStatus.BAD_REQUEST),              // INVALID_TARGET_SELECTION
+            Map.entry("SCHEDULE_094", HttpStatus.NOT_FOUND),                // SCHEDULE_TARGET_MEMBER_NOT_FOUND（存在秘匿）
             // F03.4 スケジュール本体・クロスチーム招待・アンケート設問の不在 → 404。
             // ErrorCodeHttpStatusDeclarationGuardTest 是正（ロットA）: throw 元
             // （ScheduleService/ScheduleRecurrenceService/ScheduleAttendanceService/
@@ -1567,6 +1569,8 @@ public class GlobalExceptionHandler {
             Map.entry("MEMBERSHIP_016", HttpStatus.CONFLICT),
             Map.entry("MEMBERSHIP_017", HttpStatus.CONFLICT),
             Map.entry("MEMBERSHIP_018", HttpStatus.CONFLICT),
+            Map.entry("MEMBERSHIP_023", HttpStatus.BAD_REQUEST),          // INVALID_CALENDAR_COLOR
+            Map.entry("MEMBERSHIP_024", HttpStatus.NOT_FOUND),            // SCOPE_MEMBER_NOT_FOUND（存在秘匿）
             // 認可根治戦役 Wave3-B10: knowledgebase の revision/page 親子束縛（pageId/revisionId/
             // parentId/templateId/newParentId）は BOLA 存在秘匿のため 404（Severity.WARN 既定の 400 を上書き）。
             Map.entry("KB_001", HttpStatus.NOT_FOUND),                   // PAGE_NOT_FOUND（親/移動先/revision所属page束縛も同一コード・IDOR秘匿→404）

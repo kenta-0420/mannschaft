@@ -132,10 +132,9 @@ public class FormSubmissionService {
     /**
      * 提出詳細を取得する。
      *
-     * <p>認可根治戦役 Wave3-B4: 従来は submissionId のみで取得しており、URL の
-     * {@code scopeType}/{@code scopeId} を一切検証していなかったため、認証済みユーザーなら
-     * 誰でも任意スコープの提出内容を閲覧できる BOLA だった。entity 由来の scope が URL と
-     * 一致するかを検証（不一致は 404 で存在秘匿）したうえで {@code checkMembership} する。</p>
+     * <p>認可根治戦役 Wave3-B4: entity 由来の scope が URL の
+     * {@code scopeType}/{@code scopeId} と一致するかを検証（不一致は 404 で存在秘匿）したうえで
+     * {@code checkMembership} する。</p>
      *
      * @param scopeType    スコープ種別
      * @param scopeId      スコープID

@@ -168,7 +168,7 @@ class MatchRecordControllerContractTest {
     @Test
     @DisplayName("取得: 閲覧可なら 200")
     void getMatch_viewable_200() throws Exception {
-        given(matchService.getMatchOrThrow(MATCH_ID, ORG)).willReturn(savedMatch());
+        given(matchService.getMatchOrThrow(MATCH_ID, ORG, TEAM)).willReturn(savedMatch());
 
         mockMvc.perform(get("/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}",
                         ORG, TEAM, MATCH_ID))

@@ -30,9 +30,7 @@ public class TicketCheckoutController {
     /**
      * Stripe Checkout Session を作成する（MEMBER / SUPPORTER）。
      *
-     * <p>認可根治 Wave5 追込: 本 EP は JavaDoc で「MEMBER / SUPPORTER」を宣言しながら
-     * 認可の強制実装を持たず、ログイン済みであれば誰でも任意チームの商品に対して
-     * Stripe Checkout Session と PENDING の購入行を作成できた。
+     * <p>認可根治 Wave5 追込: 本 EP は JavaDoc の「MEMBER / SUPPORTER」宣言どおりに認可を強制実装する。
      * 同ドメインの {@code TicketProductController.listProducts} は既に
      * {@link TicketAccessGuard#requireTeamMember} で MEMBER/SUPPORTER に限定されており、
      * <b>カタログ閲覧のほうが購入より厳しい</b>という粒度逆転が生じていたため、

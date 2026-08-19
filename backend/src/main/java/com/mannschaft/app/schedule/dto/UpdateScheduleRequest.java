@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -15,7 +16,7 @@ import java.util.List;
  * null = 変更なし（部分更新セマンティクス）。空リスト = 全削除。</p>
  */
 @Getter
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @JsonCreator)
 public class UpdateScheduleRequest {
 
     @Size(max = 200)
@@ -46,6 +47,13 @@ public class UpdateScheduleRequest {
     private final String minViewRole;
 
     private final String minResponseRole;
+
+    /** null なら対象モードを更新しない。 */
+    private final String targetMode;
+
+    /** null なら対象者を更新しない。SELECTED_MEMBERS 時は1〜500件。 */
+    @Size(max = 500)
+    private final List<Long> targetUserIds;
 
     private final Boolean attendanceRequired;
 
@@ -95,4 +103,20 @@ public class UpdateScheduleRequest {
      */
     @Valid
     private final ScheduledAttendanceRequest scheduledAttendance;
+
+    /** 対象者機能追加以前のJava呼び出し元向け。対象者項目は未変更（null）として扱う。 */
+    public UpdateScheduleRequest(
+            String title, String description, String location,
+            OffsetDateTime startAt, OffsetDateTime endAt, Boolean allDay,
+            String eventType, String visibility, String minViewRole, String minResponseRole,
+            Boolean attendanceRequired, OffsetDateTime attendanceDeadline, String commentOption,
+            Long eventCategoryId, Integer academicYear, String updateScope,
+            List<UpdateReminderRequest> reminders,
+            List<ScheduledSurveyRequest> scheduledSurveys,
+            ScheduledAttendanceRequest scheduledAttendance) {
+        this(title, description, location, startAt, endAt, allDay, eventType, visibility,
+                minViewRole, minResponseRole, null, null, attendanceRequired, attendanceDeadline,
+                commentOption, eventCategoryId, academicYear, updateScope, reminders,
+                scheduledSurveys, scheduledAttendance);
+    }
 }

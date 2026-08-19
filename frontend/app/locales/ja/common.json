@@ -259,7 +259,8 @@
     "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
-    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません"
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "ミュートの上限（200件）に達しています。「非表示にしている相手」から不要な設定を解除してください。"
   },
   "annual_plan": {
     "title": "年間行事計画",
@@ -491,7 +492,38 @@
       "PUBLIC": "今どうしてる？"
     },
     "submitLabel": "投稿",
-    "pollOptionsCount": "{count}択"
+    "pollOptionsCount": "{count}択",
+    "deliveryScope": {
+      "label": "配信範囲",
+      "options": {
+        "DIRECT": "この団体のメンバーだけ",
+        "CHILDREN": "直下の子団体まで",
+        "DESCENDANTS": "配下のすべての団体"
+      },
+      "hints": {
+        "DIRECT": "この団体に所属している人のタイムラインにだけ表示されます。",
+        "CHILDREN": "この団体と、そのすぐ下の子団体のメンバーにも表示されます。",
+        "DESCENDANTS": "この団体の配下にあるすべての団体のメンバーに表示されます。"
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "このチームの投稿を非表示にする",
+        "ORGANIZATION": "この団体の投稿を非表示にする"
+      },
+      "targetType": {
+        "TEAM": "チーム",
+        "ORGANIZATION": "団体"
+      },
+      "muted": "{name} の投稿を非表示にしました",
+      "undo": "元に戻す",
+      "unmuted": "再び表示するようにしました",
+      "chip": "非表示中: {count}件",
+      "dialogTitle": "非表示にしている相手",
+      "emptyList": "非表示にしている相手はいません。",
+      "unmuteAction": "表示に戻す",
+      "unknownTarget": "{type}（ID: {id}）"
+    }
   },
   "gallery": {
     "title": "ギャラリー",
@@ -2109,5 +2141,21 @@
   "comingSoon": {
     "title": "準備中",
     "description": "この機能は現在準備中です。もうしばらくお待ちください。"
+  },
+  "transferOwnership": {
+    "sectionTitle": "オーナー譲渡",
+    "sectionDescription": "管理者（オーナー）権限を他のメンバーへ引き継ぎます。譲渡後、あなたは副管理者になり、管理者専用の操作は行えなくなります。",
+    "openButton": "オーナーを譲渡",
+    "dialogTitle": "オーナーを譲渡する",
+    "warning": "この操作は取り消せません。譲渡すると管理者権限は新しいオーナーへ移り、元に戻すには新しいオーナーの操作が必要になります。",
+    "targetLabel": "譲渡先メンバー",
+    "targetPlaceholder": "メンバーを選択",
+    "noCandidates": "譲渡できるメンバーがいません。",
+    "confirmLabel": "確認のため「{name}」と入力してください",
+    "confirmMismatch": "名称が一致しません。",
+    "cancel": "キャンセル",
+    "submit": "譲渡する",
+    "successTitle": "オーナーを譲渡しました",
+    "successDetail": "管理者権限が新しいオーナーへ移りました。"
   }
 }

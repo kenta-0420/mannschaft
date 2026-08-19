@@ -1,6 +1,7 @@
 package com.mannschaft.app.timeline.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.timeline.PostDeliveryScope;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
@@ -41,6 +42,17 @@ public class TimelinePostEntity extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Long scopeId = 0L;
+
+    /**
+     * 配下配信範囲（V186 で追加）。既定は {@link PostDeliveryScope#DIRECT}（＝現行挙動）。
+     *
+     * <p>ORGANIZATION スコープの投稿でのみ実効を持つ。チームには階層が無いため
+     * TEAM/PUBLIC/PERSONAL/VILLAGE 投稿に指定しても配信範囲は変わらない。</p>
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_scope", nullable = false, length = 20)
+    @Builder.Default
+    private PostDeliveryScope deliveryScope = PostDeliveryScope.DIRECT;
 
     /**
      * 村スコープ ID（F17.1 Phase 1）。

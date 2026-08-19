@@ -259,7 +259,8 @@
     "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
-    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません"
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "Has alcanzado el límite de 200 elementos ocultos. Muestra de nuevo alguno que ya no necesites."
   },
   "annual_plan": {
     "title": "Plan anual de eventos",
@@ -491,7 +492,38 @@
       "PUBLIC": "¿Qué está pasando?"
     },
     "submitLabel": "Publicar",
-    "pollOptionsCount": "{count} opciones"
+    "pollOptionsCount": "{count} opciones",
+    "deliveryScope": {
+      "label": "Alcance de entrega",
+      "options": {
+        "DIRECT": "Solo los miembros de esta organización",
+        "CHILDREN": "Incluir las organizaciones hijas directas",
+        "DESCENDANTS": "Todas las organizaciones subordinadas"
+      },
+      "hints": {
+        "DIRECT": "Solo se muestra en las cronologías de los miembros de esta organización.",
+        "CHILDREN": "También se muestra a los miembros de las organizaciones justo por debajo de esta.",
+        "DESCENDANTS": "Se muestra a los miembros de todas las organizaciones subordinadas."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Ocultar las publicaciones de este equipo",
+        "ORGANIZATION": "Ocultar las publicaciones de esta organización"
+      },
+      "targetType": {
+        "TEAM": "Equipo",
+        "ORGANIZATION": "Organización"
+      },
+      "muted": "Se han ocultado las publicaciones de {name}",
+      "undo": "Deshacer",
+      "unmuted": "Se vuelven a mostrar las publicaciones",
+      "chip": "Ocultos: {count}",
+      "dialogTitle": "Fuentes ocultas",
+      "emptyList": "No has ocultado a nadie.",
+      "unmuteAction": "Volver a mostrar",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Galería",
@@ -2109,5 +2141,21 @@
   "comingSoon": {
     "title": "Próximamente",
     "description": "Esta función está actualmente en desarrollo. Por favor, vuelva más tarde."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Transferir la propiedad",
+    "sectionDescription": "Cede el rol de propietario (administrador) a otro miembro. Tras la transferencia pasas a ser subadministrador y ya no podrás realizar acciones exclusivas de administrador.",
+    "openButton": "Transferir la propiedad",
+    "dialogTitle": "Transferir la propiedad",
+    "warning": "Esta acción no se puede deshacer. Los permisos de administrador pasan al nuevo propietario y solo él podrá devolverlos.",
+    "targetLabel": "Nuevo propietario",
+    "targetPlaceholder": "Selecciona un miembro",
+    "noCandidates": "No hay ningún miembro al que puedas transferir la propiedad.",
+    "confirmLabel": "Escribe “{name}” para confirmar",
+    "confirmMismatch": "El nombre no coincide.",
+    "cancel": "Cancelar",
+    "submit": "Transferir",
+    "successTitle": "Propiedad transferida",
+    "successDetail": "Los permisos de administrador se han transferido al nuevo propietario."
   }
 }

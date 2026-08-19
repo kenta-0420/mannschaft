@@ -32,6 +32,14 @@ export interface CalendarEventItem {
   scopeType?: string
   scopeName?: string | null
   scopeIconUrl?: string | null
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: Array<{
+    userId: number
+    displayName: string
+    avatarUrl: string | null
+    calendarColor: string | null
+  }>
   /**
    * 出欠回答が必須のイベントか（モバイルのリストビューで行内 RSVP ボタンの出し分けに使う）。
    * BE ScheduleResponse.content.attendanceRequired 由来。未設定は false 扱い。

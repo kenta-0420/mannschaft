@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TimelinePostResponse, TimelineScopeType } from '~/types/timeline'
+import type { TimelinePostResponse, TimelineScopeType, TimelineMute, TimelineMutedType } from '~/types/timeline'
 
 const props = defineProps<{
   /**
@@ -36,6 +36,28 @@ const {
   repost,
 } = useTimelineApi()
 const { showSuccess, showError } = useNotification()
+const { showUndoToast } = useUndoToast()
+const { t } = useI18n()
+
+// --- ミュート（個人集約フィードのみ・CMP-058） ---
+const { mutes, muteCount, loading: mutesLoading, loadMutes, mute: addMuteEntry, unmute } = useTimelineMutes()
+const mutedListVisible = ref(false)
+/**
+ * ミュートした対象の表示名の控え。BE の `MuteResponse` は名前を返さないため、
+ * ミュート実行時に投稿カードから受け取った名前をここに残して一覧に出す。
+ */
+const mutedNames = ref<Record<string, string>>({})
+
+function mutedNameKey(mutedType: TimelineMutedType, mutedId: number): string {
+  return `${mutedType}-${mutedId}`
+}
+
+function resolveMutedName(m: TimelineMute): string | null {
+  return mutedNames.value[mutedNameKey(m.mutedType, m.mutedId)] ?? null
+}
+
+/** ミュート0件のときはチップ自体を出さない（段階開示）。 */
+const showMutedChip = computed(() => !!props.myFeed && muteCount.value > 0)
 
 const pinnedPosts = ref<TimelinePostResponse[]>([])
 const posts = ref<TimelinePostResponse[]>([])
@@ -164,17 +186,91 @@ async function confirmRepost() {
   }
 }
 
+// --- ミュート操作 ---
+
+/** 指定スコープの投稿を一覧から即時除去する（楽観更新）。 */
+function removePostsOfScope(mutedType: TimelineMutedType, mutedId: number) {
+  const matches = (p: TimelinePostResponse) =>
+    p.scope?.scopeType === mutedType && Number(p.scope.scopeId) === mutedId
+  posts.value = posts.value.filter((p) => !matches(p))
+  pinnedPosts.value = pinnedPosts.value.filter((p) => !matches(p))
+}
+
+/**
+ * 投稿カードの「非表示にする」。確認ダイアログは出さず即実行し（摩擦ゼロ）、
+ * 「元に戻す」付きトーストで誤タップから復旧できるようにする（ADHD 配慮）。
+ * API が失敗した場合は楽観更新を巻き戻し、エラーは useTimelineMutes 側で必ずユーザーに見せる。
+ */
+async function onMute(payload: { postId: number, mutedType: TimelineMutedType, mutedId: number, name: string }) {
+  const { mutedType, mutedId, name } = payload
+  const removed = [...pinnedPosts.value, ...posts.value].filter(
+    (p) => p.scope?.scopeType === mutedType && Number(p.scope.scopeId) === mutedId,
+  )
+  removePostsOfScope(mutedType, mutedId)
+  if (name) mutedNames.value[mutedNameKey(mutedType, mutedId)] = name
+
+  const ok = await addMuteEntry(mutedType, mutedId)
+  if (!ok) {
+    // 失敗（200件上限 TIMELINE_017 等）。エラーは表示済みなので、消した投稿を戻して状態を偽らない。
+    if (removed.length > 0) refresh()
+    return
+  }
+
+  showUndoToast({
+    severity: 'success',
+    summary: t('timeline.mute.muted', { name: name || t(`timeline.mute.targetType.${mutedType}`) }),
+    undoLabel: t('timeline.mute.undo'),
+    onUndo: async () => {
+      const undone = await unmute(mutedType, mutedId)
+      if (undone) refresh()
+    },
+  })
+}
+
+/** ミュート一覧ダイアログからの解除。解除後はフィードを取り直して投稿を復帰させる。 */
+async function onUnmute(m: TimelineMute) {
+  const ok = await unmute(m.mutedType, m.mutedId)
+  if (!ok) return
+  const removedKey = mutedNameKey(m.mutedType, m.mutedId)
+  mutedNames.value = Object.fromEntries(
+    Object.entries(mutedNames.value).filter(([key]) => key !== removedKey),
+  )
+  showSuccess(t('timeline.mute.unmuted'))
+  refresh()
+}
+
+function openMutedList() {
+  mutedListVisible.value = true
+}
+
 function refresh() {
   loadFeed()
 }
 
-onMounted(() => loadFeed())
+onMounted(() => {
+  loadFeed()
+  // 個人集約フィードのみミュート一覧を取得する（チップ表示・件数の根拠）。
+  if (props.myFeed) void loadMutes()
+})
 
 defineExpose({ refresh })
 </script>
 
 <template>
   <div class="flex flex-col gap-3">
+    <!-- 非表示中チップ（個人集約フィードのみ・0件のときは出さない） -->
+    <div v-if="showMutedChip" class="flex justify-end">
+      <button
+        type="button"
+        class="inline-flex min-h-11 items-center gap-1 rounded-full bg-surface-100 px-3 text-xs font-medium text-surface-600 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-200"
+        data-testid="timeline-muted-chip"
+        @click="openMutedList"
+      >
+        <i class="pi pi-eye-slash text-[10px]" />
+        <span>{{ t('timeline.mute.chip', { count: muteCount }) }}</span>
+      </button>
+    </div>
+
     <!-- ピン留め投稿 -->
     <TimelinePostCard
       v-for="post in pinnedPosts"
@@ -182,12 +278,14 @@ defineExpose({ refresh })
       :post="post"
       :can-pin="canPin"
       :can-delete-others="canDeleteOthers"
+      :can-mute="myFeed"
       @mitayo-toggled="onMitayoToggled"
       @reply-added="onReplyAdded"
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
       @repost="onRepost"
+      @mute="onMute"
     />
 
     <!-- 通常投稿 -->
@@ -197,12 +295,14 @@ defineExpose({ refresh })
       :post="post"
       :can-pin="canPin"
       :can-delete-others="canDeleteOthers"
+      :can-mute="myFeed"
       @mitayo-toggled="onMitayoToggled"
       @reply-added="onReplyAdded"
       @bookmark="onBookmark"
       @pin="onPin"
       @delete="onDelete"
       @repost="onRepost"
+      @mute="onMute"
     />
 
     <!-- 空状態 -->
@@ -224,6 +324,16 @@ defineExpose({ refresh })
       <LoadingBounce />
     </div>
   </div>
+
+  <!-- 非表示中（ミュート）一覧ダイアログ -->
+  <TimelineMutedListDialog
+    v-if="myFeed"
+    v-model:visible="mutedListVisible"
+    :mutes="mutes"
+    :loading="mutesLoading"
+    :name-resolver="resolveMutedName"
+    @unmute="onUnmute"
+  />
 
   <!-- リポスト確認ダイアログ -->
   <Dialog

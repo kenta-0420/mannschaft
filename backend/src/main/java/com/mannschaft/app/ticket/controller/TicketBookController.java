@@ -51,8 +51,7 @@ import java.util.Map;
  * 手動発行・消化・取消・返金・延長・統計・エクスポート APIを提供する。
  *
  * <p>認可（認可根治 Wave5）: 本コントローラーは全顧客の購入履歴・購入者氏名・決済額・売上を扱う。
- * 従来 JavaDoc 上「ADMIN」と称しながら強制する実装が無く、ログイン済みであれば誰でも
- * 任意チームの URL を叩けたため、<b>全エンドポイント</b>の入口で
+ * JavaDoc の「ADMIN」宣言どおりに強制するため、<b>全エンドポイント</b>の入口で
  * {@link TicketAccessGuard#requireTeamAdmin} を通す。</p>
  */
 @RestController

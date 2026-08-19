@@ -210,6 +210,8 @@
         "notFound": "Kommentar nicht gefunden"
       }
     },
+    "targetAudience": { "label": "Termin-Zielgruppe", "allMembers": "Alle", "selectMembers": "Mitglieder auswählen", "memberPlaceholder": "Zielgruppenmitglieder auswählen", "more": "und {count} weitere", "selectedCount": "{count} ausgewählt", "invalidSelection": "Wähle zwischen 1 und 500 Mitgliedern aus" },
+    "memberColor": { "column": "Terminfarbe", "auto": "Automatisch", "reset": "Auf automatische Farbe zurücksetzen", "updated": "Terminfarbe des Mitglieds aktualisiert", "resetDone": "Automatische Terminfarbe wiederhergestellt", "updateFailed": "Terminfarbe des Mitglieds konnte nicht aktualisiert werden", "colorLabel": "Terminfarbe für {name}" },
     "todo_load_error": {
       "summary": "TODOs konnten nicht geladen werden",
       "detail": "TODOs konnten im Kalender nicht angezeigt werden. Termine werden weiterhin angezeigt. Bitte spaeter neu laden."

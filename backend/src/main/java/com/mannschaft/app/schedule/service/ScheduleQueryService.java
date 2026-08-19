@@ -3,7 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
-import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.EventCategoryResponse;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -42,10 +43,11 @@ public class ScheduleQueryService {
 
     private final ScheduleRepository scheduleRepository;
     private final NameResolverService nameResolverService;
-    private final UserRoleRepository userRoleRepository;
+    private final MembershipService membershipService;
     private final ScheduleEventCategoryRepository categoryRepository;
     private final ContentVisibilityChecker contentVisibilityChecker;
     private final ScheduleAttendanceRepository attendanceRepository;
+    private final ScheduleTargetService scheduleTargetService;
 
     /**
      * 横断カレンダーへの追加合流 SPI（F06.5 §6.2）。schedule 以外のドメイン（例 reflection）が
@@ -61,8 +63,7 @@ public class ScheduleQueryService {
      * {@link ContentVisibilityChecker#filterAccessible} に通し、閲覧者
      * {@code viewerUserId} が可視なものだけを返す。これにより
      * {@code minViewRole=ADMIN_ONLY} や {@code visibility=CUSTOM_TEMPLATE} の
-     * チーム予定が一覧でも詳細 GET と同じ認可で絞り込まれる
-     * （従来は一覧系が {@code assertCanView} をバイパスしていた認可漏れ）。</p>
+     * チーム予定が一覧でも詳細 GET と同じ認可で絞り込まれる。</p>
      *
      * @param teamId       チームID
      * @param from         期間開始
@@ -133,9 +134,17 @@ public class ScheduleQueryService {
         }
         Map<Long, String> myAttendanceStatusByScheduleId =
                 fetchMyAttendanceStatusByScheduleId(idsOf(schedules), viewerUserId);
-        return schedules.stream()
+        List<ScheduleEntity> visibleSchedules = schedules.stream()
                 .filter(s -> visibleIds.contains(s.getId()))
-                .map(s -> toScheduleResponse(s, myAttendanceStatusByScheduleId.get(s.getId())))
+                .toList();
+        // ANYONE 可視の予定でも名簿は返さない。同一一覧は単一スコープなので所属照会は一度だけ行う。
+        boolean revealTargetMembers = !visibleSchedules.isEmpty()
+                && scheduleTargetService.isActiveScopeMember(visibleSchedules.get(0), viewerUserId);
+        Map<Long, com.mannschaft.app.schedule.dto.ScheduleTargetResponse> targetsByScheduleId =
+                scheduleTargetService.responsesForSchedules(visibleSchedules, revealTargetMembers);
+        return visibleSchedules.stream()
+                .map(s -> toScheduleResponse(s, myAttendanceStatusByScheduleId.get(s.getId()),
+                        targetsByScheduleId.get(s.getId())))
                 .toList();
     }
 
@@ -177,7 +186,7 @@ public class ScheduleQueryService {
      * @param to     期間終了
      * @return カレンダーエントリー一覧
      */
-    // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
+    // user_roles と memberships の統合は membership ドメインの公開窓口へ委譲する。
     @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "ScheduleService.getMyCalendar"})
     public List<CalendarEntryResponse> getMyCalendar(Long userId, LocalDateTime from, LocalDateTime to) {
         List<CalendarEntryResponse> entries = new ArrayList<>();
@@ -191,7 +200,8 @@ public class ScheduleQueryService {
         // CMP-027: user_roles ∪ memberships の在籍チーム ID。素メンバー/応援者（memberships 専属）の
         // 所属チームを取りこぼすと、その min_view 対象予定が一覧に一切現れない退行（AC-03）が起きる。
         List<ScopedSchedule> teamScoped = new ArrayList<>();
-        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
+        Set<Long> teamIds = new LinkedHashSet<>(
+                membershipService.getActiveTeamIdsIncludingRoleAssignments(userId));
         for (Long teamId : teamIds) {
             scheduleRepository
                     .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to)
@@ -200,7 +210,8 @@ public class ScheduleQueryService {
 
         // 所属組織のスケジュールを取得（CMP-027: user_roles ∪ memberships の在籍組織 ID）。
         List<ScopedSchedule> orgScoped = new ArrayList<>();
-        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
+        Set<Long> orgIds = new LinkedHashSet<>(
+                membershipService.getActiveOrgIdsIncludingRoleAssignments(userId));
         for (Long orgId : orgIds) {
             scheduleRepository
                     .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to)
@@ -208,7 +219,7 @@ public class ScheduleQueryService {
         }
 
         // F00 認可基盤連携（2026-05-29）: team/org のチーム横断スケジュールは
-        // visibility 無視で表示されていた認可漏れがあったため、ID 群を
+        // visibility を必ず反映させるため、ID 群を
         // filterAccessible に通して可視なものだけを採用する（team で 1 回・org で 1 回、
         // ループ内 per-item 呼び出しは避ける）。個人予定は本人取得のため対象外。
         addVisibleEntries(teamScoped, userId, entries);
@@ -248,10 +259,19 @@ public class ScheduleQueryService {
         List<Long> ids = scoped.stream().map(sc -> sc.schedule().getId()).toList();
         Set<Long> visibleIds = contentVisibilityChecker
                 .filterAccessible(ReferenceType.SCHEDULE, ids, userId);
-        scoped.stream()
-                .filter(sc -> visibleIds.contains(sc.schedule().getId()))
+        Set<Long> assignedIds = scheduleTargetService.assignedScheduleIds(
+                scoped.stream().map(ScopedSchedule::schedule).toList(), userId);
+        List<ScopedSchedule> visibleAssigned = scoped.stream()
+                .filter(sc -> visibleIds.contains(sc.schedule().getId())
+                        && assignedIds.contains(sc.schedule().getId()))
+                .toList();
+        Map<Long, com.mannschaft.app.schedule.dto.ScheduleTargetResponse> targetsByScheduleId =
+                scheduleTargetService.responsesForSchedules(
+                        visibleAssigned.stream().map(ScopedSchedule::schedule).toList(), true);
+        visibleAssigned.stream()
                 .forEach(sc -> entries.add(
-                        toCalendarEntry(sc.schedule(), sc.scopeType(), sc.scopeId())));
+                        toCalendarEntry(sc.schedule(), sc.scopeType(), sc.scopeId(),
+                                targetsByScheduleId.get(sc.schedule().getId()))));
     }
 
     /**
@@ -270,6 +290,11 @@ public class ScheduleQueryService {
      *                           値を渡す（N+1 回避のため本メソッド内では出欠を取得しない）。
      */
     ScheduleResponse toScheduleResponse(ScheduleEntity entity, String myAttendanceStatus) {
+        return toScheduleResponse(entity, myAttendanceStatus, null);
+    }
+
+    ScheduleResponse toScheduleResponse(ScheduleEntity entity, String myAttendanceStatus,
+                                        com.mannschaft.app.schedule.dto.ScheduleTargetResponse targets) {
         EventCategoryResponse categoryResponse = resolveEventCategoryResponse(entity.getEventCategoryId());
         return ScheduleResponse.builder()
                 .id(entity.getId())
@@ -288,6 +313,9 @@ public class ScheduleQueryService {
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), null))
                 .myAttendanceStatus(myAttendanceStatus)
+                .targetMode(targets == null ? null : targets.targetMode())
+                .targetCount(targets == null ? null : targets.targetCount())
+                .targets(targets == null ? null : targets.targets())
                 .build();
     }
 
@@ -317,7 +345,9 @@ public class ScheduleQueryService {
     /**
      * エンティティをカレンダーエントリーレスポンスDTOに変換する。
      */
-    private CalendarEntryResponse toCalendarEntry(ScheduleEntity entity, String scopeType, Long scopeId) {
+    private CalendarEntryResponse toCalendarEntry(
+            ScheduleEntity entity, String scopeType, Long scopeId,
+            com.mannschaft.app.schedule.dto.ScheduleTargetResponse targetResponse) {
         String scopeName = nameResolverService.resolveScopeName(scopeType, scopeId);
         String iconUrl = nameResolverService.resolveIconUrl(scopeType, scopeId);
         return CalendarEntryResponse.builder()
@@ -329,6 +359,14 @@ public class ScheduleQueryService {
                         entity.getStartAt(), entity.getEndAt(), entity.getAllDay()))
                 .scope(new CalendarEntryResponse.CalendarScopeDto(scopeType, scopeId, scopeName, iconUrl))
                 .myAttendanceStatus(null)
+                .targetMode(targetResponse == null ? null : targetResponse.targetMode())
+                .targetCount(targetResponse == null ? null : targetResponse.targetCount())
+                .targets(targetResponse == null ? null : targetResponse.targets())
                 .build();
+    }
+
+    private CalendarEntryResponse toCalendarEntry(
+            ScheduleEntity entity, String scopeType, Long scopeId) {
+        return toCalendarEntry(entity, scopeType, scopeId, null);
     }
 }
