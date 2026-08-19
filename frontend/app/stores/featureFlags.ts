@@ -4,6 +4,10 @@ export const useFeatureFlagStore = defineStore('featureFlags', () => {
   const flags = ref<Record<string, boolean>>({})
   const loaded = ref(false)
 
+  /**
+   * システム管理者向け: admin API から全フラグ（description等含む）を取得する。
+   * 管理コンソール用途。isSystemAdmin でなければ何もしない。
+   */
   async function loadFlags() {
     const authStore = useAuthStore()
     if (!authStore.isSystemAdmin) return
@@ -18,9 +22,26 @@ export const useFeatureFlagStore = defineStore('featureFlags', () => {
     }
   }
 
+  /**
+   * 一般ユーザー向け: 公開フラグ読取API（GET /api/v1/feature-flags）から取得する
+   * （Gate基盤工事①）。認証済みユーザーであれば誰でも呼べる。
+   *
+   * エラーを握りつぶさず呼び出し元へ伝播する（根治治療の原則）。呼び出し元の
+   * plugins/feature-flags.client.ts で console.error に出力しつつアプリ起動は妨げない。
+   */
+  async function loadPublicFlags() {
+    const { getPublicFlags } = useFeatureFlagsApi()
+    const publicFlags = await getPublicFlags()
+    flags.value = {
+      ...flags.value,
+      ...Object.fromEntries(publicFlags.map((f) => [f.flagKey, f.enabled])),
+    }
+    loaded.value = true
+  }
+
   function isEnabled(flagKey: string): boolean {
     return flags.value[flagKey] ?? false
   }
 
-  return { flags, loaded, loadFlags, isEnabled }
+  return { flags, loaded, loadFlags, loadPublicFlags, isEnabled }
 })
