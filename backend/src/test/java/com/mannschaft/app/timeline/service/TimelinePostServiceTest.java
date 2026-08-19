@@ -570,6 +570,41 @@ class TimelinePostServiceTest {
                             .isEqualTo(TimelineErrorCode.MAX_ATTACHMENTS_EXCEEDED));
         }
 
+        @Test
+        @DisplayName("認AC-31 リプライは親の deliveryScope を継承する（クライアント指定の DIRECT で潰さない）")
+        void リプライは親のdeliveryScopeを継承する() {
+            Long parentId = 10L;
+            Long orgId = 60L;
+            // FE は content と parentId のみ送る。deliveryScope 未指定＝既定 DIRECT のまま届く。
+            CreatePostRequest req = new CreatePostRequest("配信投稿へのリプライ", null, (Long) null,
+                    "USER", null, parentId, null, null, null, null);
+            TimelinePostEntity parentPost = TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.ORGANIZATION)
+                    .scopeId(orgId)
+                    .userId(OTHER_USER_ID)
+                    .postedAsType(PostedAsType.USER)
+                    .content("配下配信された元投稿")
+                    .status(PostStatus.PUBLISHED)
+                    .deliveryScope(com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS)
+                    .build();
+
+            given(postRepository.findById(parentId)).willReturn(Optional.of(parentPost));
+            given(postVisibilityGuard.isVisible(parentPost, USER_ID)).willReturn(true);
+            given(postRepository.save(any(TimelinePostEntity.class))).willReturn(createPost());
+            given(timelineMapper.toPostResponse(any(TimelinePostEntity.class))).willReturn(createPostResponse());
+
+            timelinePostService.createPost(req, USER_ID);
+
+            // リプライ経路では save が2回呼ばれる（1回目=リプライ本体、2回目=親のリプライ数更新）
+            ArgumentCaptor<TimelinePostEntity> cap = ArgumentCaptor.forClass(TimelinePostEntity.class);
+            verify(postRepository, org.mockito.Mockito.times(2)).save(cap.capture());
+            TimelinePostEntity savedReply = cap.getAllValues().get(0);
+            // 親と同じ配信範囲でなければ、返信者自身から 404 になる（フィードには出るのに直リンク404）
+            assertThat(savedReply.getDeliveryScope())
+                    .isEqualTo(com.mannschaft.app.timeline.PostDeliveryScope.DESCENDANTS);
+            assertThat(savedReply.getScopeId()).isEqualTo(orgId);
+        }
+
         // 配下配信: deliveryScope の既定値と透過保存
         @Test
         @DisplayName("配AC-6 deliveryScope 省略時は DIRECT で保存される")

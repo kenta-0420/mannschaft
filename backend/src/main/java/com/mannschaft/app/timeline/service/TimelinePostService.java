@@ -14,6 +14,7 @@ import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.timeline.AttachmentType;
 import com.mannschaft.app.timeline.VideoProcessingStatus;
 import com.mannschaft.app.timeline.event.TimelinePostCreatedEvent;
+import com.mannschaft.app.timeline.PostDeliveryScope;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
@@ -488,15 +489,25 @@ public class TimelinePostService {
         PostScopeType scopeTypeEnum;
         Long effectiveScopeId;
         UUID scopeVillageId;
+        PostDeliveryScope effectiveDeliveryScope;
         if (parentPost != null) {
             // リプライ: 親投稿のスコープをそのまま継承する
             scopeTypeEnum = parentPost.getScopeType();
             effectiveScopeId = parentPost.getScopeId();
             scopeVillageId = parentPost.getScopeVillageId();
+            // 配下配信範囲も必ず親から継承する。ここでクライアント指定値（既定 DIRECT）を
+            // 入れると、配下配信で届いた投稿への返信が scope_id=上位組織 かつ
+            // delivery_scope=DIRECT の行になり、返信者自身からも 404 になる
+            // （フィードには出るのに直リンクでは 404、という本 PR が撲滅した非対称を
+            // 返信という形で再生産してしまう）。スコープ3点と同じく親が正である。
+            effectiveDeliveryScope = parentPost.getDeliveryScope() != null
+                    ? parentPost.getDeliveryScope()
+                    : PostDeliveryScope.DIRECT;
         } else {
             scopeTypeEnum = parseScopeType(req.getScopeTypeOrDefault());
             effectiveScopeId = resolvedScopeId != null ? resolvedScopeId : 0L;
             scopeVillageId = scopeTypeEnum == PostScopeType.VILLAGE ? req.getScopeVillageId() : null;
+            effectiveDeliveryScope = req.getDeliveryScopeOrDefault();
         }
 
         PostedAsType postedAsTypeEnum = PostedAsType.valueOf(req.getPostedAsTypeOrDefault());
@@ -525,9 +536,9 @@ public class TimelinePostService {
                 .scopeType(scopeTypeEnum)
                 .scopeId(effectiveScopeId)
                 .scopeVillageId(scopeVillageId)
-                // 配下配信範囲。省略時は DIRECT（現行挙動）。ORGANIZATION 以外では保存されても
-                // 配信範囲に寄与しない（チームに階層が無いため）。
-                .deliveryScope(req.getDeliveryScopeOrDefault())
+                // 配下配信範囲。リプライは親から継承、新規投稿は省略時 DIRECT（現行挙動）。
+                // ORGANIZATION 以外では保存されても配信範囲に寄与しない（チームに階層が無いため）。
+                .deliveryScope(effectiveDeliveryScope)
                 .userId(userId)
                 .postedAsType(postedAsTypeEnum)
                 .postedAsId(postedAsId)

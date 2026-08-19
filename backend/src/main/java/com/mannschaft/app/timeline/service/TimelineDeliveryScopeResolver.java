@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,12 +40,26 @@ import java.util.Set;
  *       「直接所属なら DIRECT でも見える／祖先経由なら配信指定時のみ」が表現できなくなる）。</li>
  * </ul>
  *
- * <p><b>閲覧者の起点</b>は「自分の所属組織」∪「自分の所属チームのアンカー組織」である。
- * チーム加入時に上位組織の membership は自動生成されないため、アンカー組織を辿らないと
- * チームにのみ所属するユーザーへ組織の周知が届かない。アンカー組織<b>自身</b>も距離 1 として
- * 扱う（チームはアンカー組織の一段下に位置すると見なす）。これにより、アンカー組織が
- * {@code CHILDREN} で出した周知はチーム所属者に届き、{@code DIRECT} で出した周知は届かない
- * （＝現行挙動を変えない）。</p>
+ * <p><b>閲覧者の起点は2経路あり、距離の数え方が1段ずれる</b>。チーム加入時に上位組織の
+ * membership は自動生成されないため、アンカー組織を辿らないとチームにのみ所属するユーザーへ
+ * 組織の周知が届かない。両経路を別々に展開し、同じ組織へ複数経路で届く場合は最小距離を採る。</p>
+ * <table border="1">
+ *   <caption>閲覧者から見た距離</caption>
+ *   <tr><th>経路</th><th>距離0</th><th>距離1</th><th>距離2</th></tr>
+ *   <tr><td>直接所属組織 O</td><td>O 自身</td><td>O の親</td><td>O の祖父</td></tr>
+ *   <tr><td>チーム T（アンカー組織 A）</td><td>T 自身（組織ではない）</td><td>A</td><td>A の親</td></tr>
+ * </table>
+ * <p>チームはアンカー組織の<b>一段下</b>に位置すると見なすため、アンカー経路は全体が +1 ずれる。
+ * これにより:</p>
+ * <ul>
+ *   <li>A が {@code CHILDREN} で出した周知は T の所属者に届く（距離1）。</li>
+ *   <li>A が {@code DIRECT} で出した周知は T の所属者に届かない（＝現行挙動を変えない）。</li>
+ *   <li><b>A の親</b>が {@code CHILDREN} で出した周知は T の所属者に届かない（距離2）。
+ *       ここを距離1と数えると「直下の子組織まで」のつもりの周知が一階層余分に流れる。</li>
+ * </ul>
+ * <p>深度打ち切りは組織階層を何ホップ辿るかの上限（{@code app.org.max-depth}）であり、
+ * アンカー組織を起点に数える。したがってチームのみ所属の閲覧者から見た到達距離は
+ * 最大で {@code max-depth + 1} になりうる（チーム→アンカーの1ホップ分）。</p>
  *
  * <p><b>ミュートは本クラスの関心事ではない</b>。ミュートは認可ではなく表示設定であり、
  * {@code findMyFeed} の中だけに置く。ここへ持ち込むと「ミュートしたら閲覧権限まで失う」ことになる。</p>
@@ -118,45 +133,58 @@ public class TimelineDeliveryScopeResolver {
     public Reach resolve(List<Long> teamIds, List<Long> orgIds) {
         List<Long> anchorOrgIds = organizationHierarchyService.getAnchorOrgIdsByTeamIds(teamIds);
 
-        // 起点＝直接所属組織 ∪ チームのアンカー組織
-        Set<Long> startOrgIds = new HashSet<>();
+        Set<Long> directOrgIds = new HashSet<>();
         if (orgIds != null) {
-            orgIds.stream().filter(java.util.Objects::nonNull).forEach(startOrgIds::add);
+            orgIds.stream().filter(java.util.Objects::nonNull).forEach(directOrgIds::add);
         }
-        startOrgIds.addAll(anchorOrgIds);
-
-        if (startOrgIds.isEmpty()) {
+        if (directOrgIds.isEmpty() && anchorOrgIds.isEmpty()) {
             return new Reach(List.of(), List.of());
         }
 
-        Map<Long, Integer> ancestorDepths = organizationHierarchyService
-                .getAncestorOrgIdsWithDepth(startOrgIds);
+        // 組織ID → 閲覧者から見た距離（最小）。2 経路を別々に展開してから最小距離で畳む。
+        Map<Long, Integer> depthByOrgId = new HashMap<>();
+
+        // 経路(a) 直接所属組織を起点にした祖先。直接所属組織自身は距離 0（直接所属述語の担当）
+        // なのでここには積まず、その親から距離 1 として積む。
+        for (Map.Entry<Long, Integer> e
+                : organizationHierarchyService.getAncestorOrgIdsWithDepth(directOrgIds).entrySet()) {
+            depthByOrgId.merge(e.getKey(), e.getValue(), Math::min);
+        }
+
+        // 経路(b) チームのアンカー組織。チームはアンカー組織の「一段下」に位置すると見なすため、
+        // アンカー組織自身が距離 1、アンカー組織の親は距離 2、以降 +1 ずつずれる。
+        //
+        // ここで +1 のオフセットを掛けるのが要点である。アンカー組織をそのまま
+        // getAncestorOrgIdsWithDepth の起点（＝距離 0 の位置）として渡すと、アンカーの親が
+        // 距離 1 として返り、本来 DESCENDANTS でしか届かないはずの一段上の組織へ CHILDREN が
+        // 過剰配信される（例: 全国連盟→県支部→市支部 で、市支部にアンカーされたチームのみの
+        // 所属者へ、県支部の CHILDREN 投稿が届いてしまう）。
+        //
+        // 深度打ち切りは getAncestorOrgIdsWithDepth 側が「アンカー組織を起点として」
+        // app.org.max-depth ホップまでで行う。したがってチームのみ所属の閲覧者から見た
+        // 到達距離は最大で max-depth + 1 になりうる（チーム→アンカーの 1 ホップ分）。
+        // これは「組織階層を何段辿るか」という上限の意味を保った上での帰結である。
+        for (Long anchorOrgId : anchorOrgIds) {
+            depthByOrgId.merge(anchorOrgId, 1, Math::min);
+        }
+        for (Map.Entry<Long, Integer> e
+                : organizationHierarchyService.getAncestorOrgIdsWithDepth(anchorOrgIds).entrySet()) {
+            depthByOrgId.merge(e.getKey(), e.getValue() + 1, Math::min);
+        }
 
         Set<Long> near = new HashSet<>();
         Set<Long> far = new HashSet<>();
-
-        // アンカー組織自身は距離 1 として扱う（チームはアンカー組織の一段下）。
-        // ただし閲覧者が同じ組織に直接所属している場合は距離 0（直接所属述語の担当）なので含めない。
-        for (Long anchorOrgId : anchorOrgIds) {
-            if (orgIds == null || !orgIds.contains(anchorOrgId)) {
-                near.add(anchorOrgId);
-            }
-        }
-
-        for (Map.Entry<Long, Integer> e : ancestorDepths.entrySet()) {
-            Long orgId = e.getKey();
+        for (Map.Entry<Long, Integer> e : depthByOrgId.entrySet()) {
             // 直接所属している組織は距離 0 扱い（直接所属述語が担当）。配信述語には載せない。
-            if (orgIds != null && orgIds.contains(orgId)) {
+            if (directOrgIds.contains(e.getKey())) {
                 continue;
             }
             if (e.getValue() == 1) {
-                near.add(orgId);
+                near.add(e.getKey());
             } else {
-                far.add(orgId);
+                far.add(e.getKey());
             }
         }
-        // 距離 1 で到達できるなら近い方を優先する（CHILDREN も届く方が正しい）
-        far.removeAll(near);
 
         return new Reach(new ArrayList<>(near), new ArrayList<>(far));
     }

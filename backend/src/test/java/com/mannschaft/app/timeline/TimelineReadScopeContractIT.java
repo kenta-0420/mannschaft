@@ -11,6 +11,7 @@ import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.timeline.controller.TimelineFeedController;
 import com.mannschaft.app.timeline.controller.TimelinePostController;
+import com.mannschaft.app.timeline.dto.CreatePostRequest;
 import com.mannschaft.app.timeline.dto.PostDetailResponse;
 import com.mannschaft.app.timeline.dto.PostResponse;
 import com.mannschaft.app.timeline.dto.TimelineFeedResponse;
@@ -90,6 +91,10 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private com.mannschaft.app.timeline.repository.UserMuteRepository muteRepository;
+
+    /** 返信の生成経路（親からのスコープ／配信範囲の継承）を実物で通すために使う。 */
+    @Autowired
+    private com.mannschaft.app.timeline.service.TimelinePostService postService;
 
     /** 組織 slug の一意性確保用の連番（slug は 30 文字・UNIQUE）。 */
     private int deliveryOrgSeq = 0;
@@ -366,6 +371,64 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
             List<Long> ids = response.getBody().getData().stream().map(PostResponse::getId).toList();
             assertThat(ids).contains(delivered);
             assertThat(ids).doesNotContain(direct);
+        }
+
+        @Test
+        @DisplayName("認AC-31 配信で届いた投稿への返信が、返信者自身から getPost で取得できる（404にならない）")
+        void replyToDeliveredPost_isReachableByReplier() {
+            Long parentPostId = saveDeliveryPost(parentOrg, PostDeliveryScope.DESCENDANTS);
+
+            setAuthentication(USER_CHILD_ORG_MEMBER);
+            // 返信は親のスコープ（上位組織 P）を継承する。delivery_scope も継承しないと
+            // scope_id=P / delivery_scope=DIRECT の行になり、返信者自身から 404 になる。
+            PostResponse reply = postService.createPost(new CreatePostRequest(
+                    "配信投稿への返信", null, (Long) null, null, null,
+                    parentPostId, null, null, null, null), USER_CHILD_ORG_MEMBER);
+
+            ResponseEntity<ApiResponse<PostDetailResponse>> response =
+                    postController.getPost(reply.getId());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getData().getId()).isEqualTo(reply.getId());
+        }
+
+        @Test
+        @DisplayName("認AC-31 同じ配信範囲の他ユーザーからも、その返信を getPost で取得できる")
+        void replyToDeliveredPost_isReachableByOtherDeliveredUser() {
+            Long otherChildOrgMember = 92_302L;
+            membershipRepository.save(membership(
+                    otherChildOrgMember, ScopeType.ORGANIZATION, childOrg));
+            Long parentPostId = saveDeliveryPost(parentOrg, PostDeliveryScope.DESCENDANTS);
+
+            setAuthentication(USER_CHILD_ORG_MEMBER);
+            PostResponse reply = postService.createPost(new CreatePostRequest(
+                    "配信投稿への返信", null, (Long) null, null, null,
+                    parentPostId, null, null, null, null), USER_CHILD_ORG_MEMBER);
+
+            setAuthentication(otherChildOrgMember);
+            ResponseEntity<ApiResponse<PostDetailResponse>> response =
+                    postController.getPost(reply.getId());
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().getData().getId()).isEqualTo(reply.getId());
+        }
+
+        @Test
+        @DisplayName("認AC-31 陰性対照: 配信範囲外のユーザーからはその返信も見えない（404）")
+        void replyToDeliveredPost_isNotReachableByOutsider() {
+            Long parentPostId = saveDeliveryPost(parentOrg, PostDeliveryScope.DESCENDANTS);
+
+            setAuthentication(USER_CHILD_ORG_MEMBER);
+            PostResponse reply = postService.createPost(new CreatePostRequest(
+                    "配信投稿への返信", null, (Long) null, null, null,
+                    parentPostId, null, null, null, null), USER_CHILD_ORG_MEMBER);
+
+            setAuthentication(USER_OUTSIDER);
+
+            assertThatThrownBy(() -> postController.getPost(reply.getId()))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
         }
 
         @Test

@@ -538,6 +538,33 @@ class TimelineMyFeedControllerIntegrationTest extends AbstractMySqlIntegrationTe
         }
 
         @Test
+        @DisplayName("配AC-30 CHILDREN × チームのみ所属: アンカー組織の投稿は届くが、その親の投稿は届かない")
+        void children_teamOnlyMember_reachesAnchorButNotItsParent() {
+            // 全国連盟(root) → 県支部 → 市支部。チーム T は市支部にアンカーされ、
+            // U は T のみ所属（組織 membership なし）。
+            // チームはアンカー組織の一段下なので、U から見て 市支部=距離1 / 県支部=距離2。
+            Long root = saveOrg(null);
+            Long pref = saveOrg(root);
+            Long city = saveOrg(pref);
+            Long teamId = 71_120L;
+            saveTeamOrgMembership(teamId, city);
+            Long user = 93_120L;
+            saveMembership(user, ScopeType.TEAM, teamId, RoleKind.MEMBER);
+
+            // 距離1（アンカー組織自身）の CHILDREN は届く
+            Long fromAnchor = saveOrgPost(city, PostDeliveryScope.CHILDREN);
+            // 距離2（アンカー組織の親）の CHILDREN は届かない。ここが1段ズレると過剰配信になる
+            Long fromParent = saveOrgPost(pref, PostDeliveryScope.CHILDREN);
+            // 陽性対照: 同じ距離2でも DESCENDANTS なら届く（「届かないのは距離のせい」だと示す）
+            Long fromParentDesc = saveOrgPost(pref, PostDeliveryScope.DESCENDANTS);
+
+            List<Long> ids = feedIds(user);
+            assertThat(ids).contains(fromAnchor);
+            assertThat(ids).doesNotContain(fromParent);
+            assertThat(ids).contains(fromParentDesc);
+        }
+
+        @Test
         @DisplayName("配AC-11 app.org.max-depth（既定5）を超える深さの子孫には届かない")
         void descendants_stopsAtMaxDepth() {
             // O0(root) → O1 → ... → O6 の 7 段。O5 は距離 5（届く）、O6 は距離 6（届かない）。
