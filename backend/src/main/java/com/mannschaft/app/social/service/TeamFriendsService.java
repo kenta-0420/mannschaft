@@ -26,6 +26,7 @@ import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.MessageSource;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.data.domain.Page;
@@ -36,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 /**
@@ -91,6 +93,8 @@ public class TeamFriendsService {
     private final UserRoleRepository userRoleRepository;
     private final TeamFriendQueryService teamFriendQueryService;
     private final TeamFriendVisibilityService teamFriendVisibilityService;
+    /** Issue #2715 ロットC-3: 受信者 locale で通知本文を組み立てるために用いる。 */
+    private final MessageSource messageSource;
 
     // ═════════════════════════════════════════════════════════════
     // 1. チーム間フォロー + 相互フォロー検知
@@ -596,36 +600,53 @@ public class TeamFriendsService {
 
         List<Long> selfAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, ROLE_ADMIN);
         if (!selfAdminIds.isEmpty()) {
-            notificationHelper.notifyAll(
+            notificationHelper.notifyAllLocalized(
                     selfAdminIds,
                     "FRIEND_ESTABLISHED",
-                    targetTeamName + "とフレンドチームになりました",
-                    targetTeamName + "との相互フォローが成立し、フレンドチームになりました",
                     "TEAM_FRIEND",
                     teamFriendId,
                     NotificationScopeType.FRIEND_TEAM,
                     teamId,
                     "/teams/" + teamId + "/friends",
-                    actorId
+                    actorId,
+                    (userId, locale) -> buildEstablishedMessage(targetTeamName, locale)
             );
         }
 
         // 相手チームの ADMIN へ通知
         List<Long> targetAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(targetTeamId, ROLE_ADMIN);
         if (!targetAdminIds.isEmpty()) {
-            notificationHelper.notifyAll(
+            notificationHelper.notifyAllLocalized(
                     targetAdminIds,
                     "FRIEND_ESTABLISHED",
-                    selfTeamName + "とフレンドチームになりました",
-                    selfTeamName + "との相互フォローが成立し、フレンドチームになりました",
                     "TEAM_FRIEND",
                     teamFriendId,
                     NotificationScopeType.FRIEND_TEAM,
                     targetTeamId,
                     "/teams/" + targetTeamId + "/friends",
-                    actorId
+                    actorId,
+                    (userId, locale) -> buildEstablishedMessage(selfTeamName, locale)
             );
         }
+    }
+
+    /**
+     * フレンドチーム成立通知の件名・本文を受信者 locale で組み立てる。
+     *
+     * <p>注意: {@code partnerTeamName} はチーム名の自由入力値であり、{@code '} を含みうる
+     * （例: {@code O'Brien's Team}）。{@link MessageSource#getMessage} は {@code {0}} への
+     * 引数代入自体では単一引用符のエスケープを要求しないため、ここでの追加処理は不要
+     * （エスケープが必要なのはメッセージ<b>パターン文字列</b>側にリテラルの {@code '} を書く場合のみ・
+     * ロケールファイルの値に {@code '} を含めていないことを確認済み）。</p>
+     */
+    private NotificationHelper.LocalizedMessage buildEstablishedMessage(String partnerTeamName, Locale locale) {
+        String title = messageSource.getMessage(
+                "notification.social.teamFriend.established.title",
+                new Object[]{partnerTeamName}, partnerTeamName + "とフレンドチームになりました", locale);
+        String body = messageSource.getMessage(
+                "notification.social.teamFriend.established.body",
+                new Object[]{partnerTeamName}, partnerTeamName + "との相互フォローが成立し、フレンドチームになりました", locale);
+        return new NotificationHelper.LocalizedMessage(title, body);
     }
 
     /**
@@ -651,35 +672,46 @@ public class TeamFriendsService {
         // 自チームの ADMIN へ通知
         List<Long> selfAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, ROLE_ADMIN);
         if (!selfAdminIds.isEmpty()) {
-            notificationHelper.notifyAll(
+            notificationHelper.notifyAllLocalized(
                     selfAdminIds,
                     "FRIEND_DISSOLVED",
-                    targetTeamName + "とのフレンドチーム関係が解除されました",
-                    targetTeamName + "とのフレンドチーム関係が解除されました",
                     "TEAM_FRIEND",
                     teamFriendId,
                     NotificationScopeType.FRIEND_TEAM,
                     teamId,
                     "/teams/" + teamId + "/friends",
-                    actorId
+                    actorId,
+                    (userId, locale) -> buildDissolvedMessage(targetTeamName, locale)
             );
         }
 
         // 相手チームの ADMIN へ通知
         List<Long> targetAdminIds = userRoleRepository.findUserIdsByTeamIdAndRoleName(targetTeamId, ROLE_ADMIN);
         if (!targetAdminIds.isEmpty()) {
-            notificationHelper.notifyAll(
+            notificationHelper.notifyAllLocalized(
                     targetAdminIds,
                     "FRIEND_DISSOLVED",
-                    selfTeamName + "とのフレンドチーム関係が解除されました",
-                    selfTeamName + "とのフレンドチーム関係が解除されました",
                     "TEAM_FRIEND",
                     teamFriendId,
                     NotificationScopeType.FRIEND_TEAM,
                     targetTeamId,
                     "/teams/" + targetTeamId + "/friends",
-                    actorId
+                    actorId,
+                    (userId, locale) -> buildDissolvedMessage(selfTeamName, locale)
             );
         }
+    }
+
+    /**
+     * フレンドチーム解除通知の件名・本文を受信者 locale で組み立てる（件名・本文とも同一文言）。
+     */
+    private NotificationHelper.LocalizedMessage buildDissolvedMessage(String partnerTeamName, Locale locale) {
+        String title = messageSource.getMessage(
+                "notification.social.teamFriend.dissolved.title",
+                new Object[]{partnerTeamName}, partnerTeamName + "とのフレンドチーム関係が解除されました", locale);
+        String body = messageSource.getMessage(
+                "notification.social.teamFriend.dissolved.body",
+                new Object[]{partnerTeamName}, partnerTeamName + "とのフレンドチーム関係が解除されました", locale);
+        return new NotificationHelper.LocalizedMessage(title, body);
     }
 }
