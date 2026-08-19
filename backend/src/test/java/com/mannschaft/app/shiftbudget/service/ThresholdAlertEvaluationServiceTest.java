@@ -19,14 +19,16 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.ResourceBundleMessageSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -82,14 +84,27 @@ class ThresholdAlertEvaluationServiceTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * Issue #2715 CMP-055 ロットC-4: 実物の MessageSource を使う（モックが引数をそのまま返す形だと
+     * 鍵の欠落もフォーマット崩れも検出できないため）。
+     */
+    private ResourceBundleMessageSource messageSource;
+
+    private static final Pattern JAPANESE_CHAR = Pattern.compile("[ぁ-ゖァ-ヶ一-龠]");
+
     private ThresholdAlertEvaluationService service;
 
     @BeforeEach
     void setUp() {
+        messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasenames("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        messageSource.setUseCodeAsDefaultMessage(false);
+
         service = new ThresholdAlertEvaluationService(
                 allocationRepository, alertRepository, budgetConfigRepository,
                 userRoleRepository, notificationHelper, auditLogService,
-                workflowRequestService, objectMapper, failedEventService);
+                workflowRequestService, objectMapper, failedEventService, messageSource);
     }
 
     /**
@@ -167,9 +182,9 @@ class ThresholdAlertEvaluationServiceTest {
         assertThat(captor.getValue().getThresholdPercent()).isEqualTo(80);
         assertThat(captor.getValue().getAllocationId()).isEqualTo(ALLOCATION_ID);
 
-        verify(notificationHelper, times(1)).notifyAll(
+        verify(notificationHelper, times(1)).notifyAllLocalized(
                 eq(List.of(10L, 11L)), eq("SHIFT_BUDGET_THRESHOLD_ALERT"),
-                any(), any(), any(), eq(ALLOCATION_ID), any(), eq(ORG_ID), any(), any());
+                any(), eq(ALLOCATION_ID), any(), eq(ORG_ID), any(), any(), any());
     }
 
     @Test
@@ -427,7 +442,137 @@ class ThresholdAlertEvaluationServiceTest {
         service.evaluateAndTrigger(ALLOCATION_ID);
 
         verify(alertRepository, times(1)).saveAndFlush(any());
-        // 受信ロール 0 名のため notifyAll は呼ばれない
+        // 受信ロール 0 名のため notifyAllLocalized は呼ばれない
         verifyNoInteractions(notificationHelper);
+    }
+
+    // =========================================================
+    // Issue #2715 CMP-055 ロットC-4: 通知本文の i18n
+    // =========================================================
+
+    @Nested
+    @DisplayName("通知本文の i18n (Issue #2715 CMP-055 ロットC-4)")
+    class NotificationI18n {
+
+        @Test
+        @DisplayName("80% 閾値: en ロケールで件名・本文が英語になりプレースホルダが残らない")
+        void 閾値80_en() {
+            ShiftBudgetAllocationEntity alloc = allocationWith(
+                    new BigDecimal("100000"), new BigDecimal("80000"));
+            given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
+            given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
+                    .willReturn(Optional.empty());
+            given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
+            given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
+                    .willReturn(List.of());
+
+            service.evaluateAndTrigger(ALLOCATION_ID);
+
+            ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> captor =
+                    ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
+            verify(notificationHelper).notifyAllLocalized(
+                    any(), eq("SHIFT_BUDGET_THRESHOLD_ALERT"),
+                    any(), any(), any(), any(), any(), any(), captor.capture());
+
+            NotificationHelper.LocalizedMessage en = captor.getValue().build(10L, Locale.ENGLISH);
+            assertThat(JAPANESE_CHAR.matcher(en.title()).find()).isFalse();
+            assertThat(JAPANESE_CHAR.matcher(en.body()).find()).isFalse();
+            assertThat(en.title()).isEqualTo("Shift budget warning (80%)");
+            assertThat(en.body()).isEqualTo("Budget has reached 80%");
+
+            NotificationHelper.LocalizedMessage ja = captor.getValue().build(10L, Locale.JAPANESE);
+            assertThat(ja.title()).isEqualTo("シフト予算 警告 (80%)");
+            assertThat(ja.body()).isEqualTo("予算 80% に到達しました");
+        }
+
+        @Test
+        @DisplayName("100% 閾値: en ロケールで件名・本文が英語になりプレースホルダが残らない")
+        void 閾値100_en() {
+            ShiftBudgetAllocationEntity alloc = allocationWith(
+                    new BigDecimal("100000"), new BigDecimal("100000"));
+            given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
+            given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
+                    .willReturn(Optional.empty());
+            given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
+            given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
+                    .willReturn(List.of());
+            given(budgetConfigRepository.findByScopeTypeAndScopeId("ORGANIZATION", ORG_ID))
+                    .willReturn(Optional.empty());
+
+            service.evaluateAndTrigger(ALLOCATION_ID);
+
+            ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> captor =
+                    ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
+            // 80%/100% の2回発火するので、100% 分（2回目の呼び出し）を検証
+            verify(notificationHelper, times(2)).notifyAllLocalized(
+                    any(), eq("SHIFT_BUDGET_THRESHOLD_ALERT"),
+                    any(), any(), any(), any(), any(), any(), captor.capture());
+
+            NotificationHelper.LocalizedMessage en100 = captor.getAllValues().get(1).build(10L, Locale.ENGLISH);
+            assertThat(JAPANESE_CHAR.matcher(en100.title()).find()).isFalse();
+            assertThat(JAPANESE_CHAR.matcher(en100.body()).find()).isFalse();
+            assertThat(en100.title()).isEqualTo("Shift budget warning (100%)");
+            assertThat(en100.body()).isEqualTo("Budget has been exceeded");
+        }
+
+        @Test
+        @DisplayName("120% 閾値: en ロケールで件名・本文が英語になりプレースホルダが残らない（重大表記含む）")
+        void 閾値120_en() {
+            ShiftBudgetAllocationEntity alloc = allocationWith(
+                    new BigDecimal("100000"), new BigDecimal("130000"));
+            given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
+            given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
+                    .willReturn(Optional.empty());
+            given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
+            given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
+                    .willReturn(List.of());
+            given(budgetConfigRepository.findByScopeTypeAndScopeId("ORGANIZATION", ORG_ID))
+                    .willReturn(Optional.empty());
+
+            service.evaluateAndTrigger(ALLOCATION_ID);
+
+            ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> captor =
+                    ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
+            // 80%/100%/120% の3回発火するので、120% 分（3回目の呼び出し）を検証
+            verify(notificationHelper, times(3)).notifyAllLocalized(
+                    any(), eq("SHIFT_BUDGET_THRESHOLD_ALERT"),
+                    any(), any(), any(), any(), any(), any(), captor.capture());
+
+            NotificationHelper.LocalizedMessage en120 = captor.getAllValues().get(2).build(10L, Locale.ENGLISH);
+            assertThat(JAPANESE_CHAR.matcher(en120.title()).find()).isFalse();
+            assertThat(JAPANESE_CHAR.matcher(en120.body()).find()).isFalse();
+            assertThat(en120.title()).isEqualTo("Shift budget warning (120%)");
+            assertThat(en120.body()).isEqualTo("Budget has exceeded 120% (critical)");
+        }
+
+        /**
+         * AC-3 番人: 複数受信者 (10L, 11L) へも notifyAllLocalized は1回のみ呼ばれる
+         * （受信者ごとに UserLocaleCache/MessageSource を直接ループで呼ばない）。
+         */
+        @Test
+        @DisplayName("複数受信者でも notifyAllLocalized は1回のみ呼ばれる（N+1防止）")
+        void 複数受信者でもnotifyAllLocalizedは1回() {
+            ShiftBudgetAllocationEntity alloc = allocationWith(
+                    new BigDecimal("100000"), new BigDecimal("80000"));
+            given(allocationRepository.findById(ALLOCATION_ID)).willReturn(Optional.of(alloc));
+            given(alertRepository.findByAllocationIdAndThresholdPercent(eq(ALLOCATION_ID), anyInt()))
+                    .willReturn(Optional.empty());
+            given(alertRepository.saveAndFlush(any(BudgetThresholdAlertEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(List.of(10L));
+            given(userRoleRepository.findUserIdsByOrganizationIdAndPermissionName(ORG_ID, "BUDGET_ADMIN"))
+                    .willReturn(List.of(11L));
+
+            service.evaluateAndTrigger(ALLOCATION_ID);
+
+            verify(notificationHelper, times(1)).notifyAllLocalized(
+                    eq(List.of(10L, 11L)), any(), any(), any(), any(), any(), any(), any(), any());
+        }
     }
 }
