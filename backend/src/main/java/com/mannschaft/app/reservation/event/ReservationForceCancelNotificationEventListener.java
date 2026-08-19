@@ -44,8 +44,6 @@ public class ReservationForceCancelNotificationEventListener {
     /** 通知 sourceType（F00 visibility / 受信権の判定キー・予約ドメイン共通）。 */
     static final String SOURCE_TYPE = "RESERVATION";
 
-    private static final DateTimeFormatter SLOT_AT_FORMAT = DateTimeFormatter.ofPattern("M月d日 HH:mm");
-
     private final NotificationHelper notificationHelper;
 
     /** Issue #2715 ロットC-3: 受信者 locale の解決（D-5: auth の UserRepository を直接呼ばない）。 */
@@ -119,7 +117,7 @@ public class ReservationForceCancelNotificationEventListener {
 
     private String formatSlot(ReservationForceCancelledByBlockEvent.CancelledSlot slot, Locale locale) {
         String slotAt = slot.slotStartAt() != null
-                ? slot.slotStartAt().format(SLOT_AT_FORMAT)
+                ? slot.slotStartAt().format(resolveSlotAtFormatter(locale))
                 : messageSource.getMessage(
                         "notification.reservation.forceCancelled.defaultSlotAt", null, "お申し込み", locale);
         String title = slot.slotTitle() != null
@@ -129,5 +127,22 @@ public class ReservationForceCancelNotificationEventListener {
         return messageSource.getMessage(
                 "notification.reservation.forceCancelled.slotFormat",
                 new Object[]{slotAt, title}, slotAt + " の「" + title + "」", locale);
+    }
+
+    /**
+     * 枠開始日時の表記パターンを受信者 locale で解決する（Codex検分是正・PR #2861 P2）。
+     *
+     * <p>以前は {@code DateTimeFormatter.ofPattern("M月d日 HH:mm")} を固定で使っており、
+     * en/de/es 受信者にも本文中の日時表記だけ日本語（「9月1日 10:00」）が残っていた。
+     * {@code notification.reservation.forceCancelled.slotAtPattern} キーから locale ごとの
+     * パターン文字列を取得し {@link DateTimeFormatter#ofPattern(String, Locale)} で組み立てる。</p>
+     *
+     * <p><b>時刻の値そのものは変更しない</b>（{@code LocalDateTime} はタイムゾーン非依存であり、
+     * ここで行うのはあくまで文字列表記のロケール化）。テナント TZ 対応は別戦役 CMP-023 の範囲。</p>
+     */
+    private DateTimeFormatter resolveSlotAtFormatter(Locale locale) {
+        String pattern = messageSource.getMessage(
+                "notification.reservation.forceCancelled.slotAtPattern", null, "M月d日 HH:mm", locale);
+        return DateTimeFormatter.ofPattern(pattern, locale);
     }
 }

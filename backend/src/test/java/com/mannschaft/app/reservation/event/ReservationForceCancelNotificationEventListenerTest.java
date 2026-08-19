@@ -154,4 +154,34 @@ class ReservationForceCancelNotificationEventListenerTest {
 
         verify(userLocaleCache).getLocale(1L);
     }
+
+    /**
+     * Codex検分是正（PR #2861 P2）: {@code formatSlot} が枠開始日時を固定パターン
+     * {@code "M月d日 HH:mm"} で整形しており、en/de/es 受信者の本文にも日本語表記
+     * （「9月1日 10:00」）が残っていた欠陥を直接突く番人。日本語（ひらがな・カタカナ・漢字）
+     * の混入を正規表現で検出する。
+     */
+    private static final java.util.regex.Pattern JAPANESE_CHARS =
+            java.util.regex.Pattern.compile("[ぁ-ゖァ-ヶ一-龠]");
+
+    @Test
+    @DisplayName("受信者 locale が en のとき、本文の日時表記にも日本語文字が残らない")
+    void 英語localeで日時表記に日本語が残らない() {
+        given(userLocaleCache.getLocale(1L)).willReturn("en");
+        ReservationForceCancelledByBlockEvent event = buildEvent("Math", null);
+
+        listener.onForceCancelled(event);
+
+        verify(notificationHelper).notify(
+                eq(1L), eq("RESERVATION_CANCELLED"),
+                titleCaptor.capture(), bodyCaptor.capture(),
+                eq("RESERVATION"), eq(100L),
+                eq(NotificationScopeType.TEAM), eq(10L),
+                eq("/teams/10/reservations"), eq((Long) null));
+
+        assertThat(JAPANESE_CHARS.matcher(bodyCaptor.getValue()).find())
+                .as("en 受信者の本文に日本語文字が含まれてはならない: %s", bodyCaptor.getValue())
+                .isFalse();
+        assertThat(bodyCaptor.getValue()).contains("9/1 10:00");
+    }
 }

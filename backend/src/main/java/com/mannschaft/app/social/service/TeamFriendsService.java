@@ -577,12 +577,41 @@ public class TeamFriendsService {
     // 通知発火ヘルパー（Phase 2）
     // ═════════════════════════════════════════════════════════════
 
+    /*
+     * Codex検分（PR #2861 P1）: このセクションは Issue #2834 / CMP-056（通知の隔離tryが
+     * DB 層例外に対して無力な構造欠陥）の該当箇所である。
+     *
+     * sendFriendEstablishedNotification / sendFriendDissolvedNotification は
+     * follow/unfollow のドメイン更新と同一トランザクション（REQUIRED）の中で呼ばれる。
+     * NotificationHelper#notifyAllLocalized は受信者 locale の一括解決
+     * （UserLocaleCache#getLocales、DB 参照）を個別 try の外側で行っており、
+     * ここが DataAccessException 等を投げた場合、JPA は rollback-only を立てる。
+     * その時点でどこで catch してもフレンド成立/解除（team_friends への INSERT/DELETE）
+     * 自体が巻き戻る。
+     *
+     * ここで隔離 try を足さない理由: 例外を catch すること自体は可能だが、
+     * rollback-only が既に立った後の catch は「例外を見なかったことにする」だけで、
+     * 本処理の巻き戻りは救えない。「隔離した」と書けるようにするための表面的な try 追加は、
+     * ロットB・C-2 で二度訂正させた「達成していないことを達成したように書く」誤記と同じ性質になる
+     * ため行わない。根治には呼び出し側との伝播設計そのものの変更（例:
+     * 通知発火を別トランザクション/AFTER_COMMIT に切り出す）が必要であり、それは #2834 の範囲。
+     *
+     * 現時点で判明している CMP-056 の対象は本クラス（TeamFriendsService）のほか、
+     * PersonalTimetableLinkSyncListener・EventRsvpService の計 3 箇所。
+     *
+     * なお、この露出自体は本 PR（ロットC-3）が新たに作ったものではない。変更前の
+     * notifyAll も可視性フィルタ（filterAccessibleRecipients、DB 参照）を
+     * 個別 try の外側で呼んでおり、同型の露出は元々存在した。本 PR は DB 呼び出しを
+     * （locale 一括解決という形で）1 本増やしただけで、構造そのものは変えていない。
+     */
+
     /**
      * フレンド関係成立時に両チームの ADMIN へ FRIEND_ESTABLISHED 通知を送信する。
      *
      * <p>
      * teamId チームの ADMIN と targetTeamId チームの ADMIN の両方へ通知を送る。
-     * 送信失敗は {@link NotificationHelper#notifyAll} が個別に握り込み継続する。
+     * 送信失敗は {@link NotificationHelper#notifyAllLocalized} が個別に握り込み継続する
+     * （ただし上記コメント参照: locale 一括解決自体の失敗はこの限りではない）。
      * </p>
      *
      * @param teamId       自チーム ID
