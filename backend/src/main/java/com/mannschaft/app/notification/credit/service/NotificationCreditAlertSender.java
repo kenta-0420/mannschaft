@@ -5,6 +5,7 @@ import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.service.RoleService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +24,8 @@ public class NotificationCreditAlertSender {
 
     private final NotificationHelper notificationHelper;
     private final RoleService roleService;
+    /** Issue #2715 CMP-055 ロットC-1: 通知本文の i18n。locale 解決自体は notifyAllLocalized 内部の UserLocaleCache が担う。 */
+    private final MessageSource messageSource;
 
     /**
      * 残高マイナス警告をADMINへ非同期送信する。
@@ -37,18 +40,24 @@ public class NotificationCreditAlertSender {
             if (adminUserIds.isEmpty()) {
                 return;
             }
-            notificationHelper.notifyAll(
+            notificationHelper.notifyAllLocalized(
                     adminUserIds,
                     "NOTIFICATION_CREDIT_NEGATIVE",
-                    "通知クレジット残高がマイナスです",
-                    "猶予期間中の超過分が相殺された結果、クレジット残高がマイナスになりました。"
-                            + "残高: " + creditBalance + "通。クレジットを購入してください。",
                     "NOTIFICATION_CREDIT",
                     organizationId,
                     NotificationScopeType.ORGANIZATION,
                     organizationId,
                     "/organizations/" + organizationId + "/settings/notification-credits",
-                    null
+                    null,
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                            messageSource.getMessage(
+                                    "notification.credit.negativeBalance.title", null,
+                                    "通知クレジット残高がマイナスです", locale),
+                            messageSource.getMessage(
+                                    "notification.credit.negativeBalance.body",
+                                    new Object[]{creditBalance},
+                                    "猶予期間中の超過分が相殺された結果、クレジット残高がマイナスになりました。"
+                                            + "残高: " + creditBalance + "通。クレジットを購入してください。", locale))
             );
             log.info("残高マイナスアラート送信: organizationId={}, balance={}", organizationId, creditBalance);
         } catch (Exception e) {

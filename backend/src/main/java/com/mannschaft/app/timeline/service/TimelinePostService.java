@@ -14,6 +14,7 @@ import com.mannschaft.app.common.storage.quota.StorageScopeType;
 import com.mannschaft.app.timeline.AttachmentType;
 import com.mannschaft.app.timeline.VideoProcessingStatus;
 import com.mannschaft.app.timeline.event.TimelinePostCreatedEvent;
+import com.mannschaft.app.timeline.PostDeliveryScope;
 import com.mannschaft.app.timeline.PostScopeType;
 import com.mannschaft.app.timeline.PostStatus;
 import com.mannschaft.app.timeline.PostedAsType;
@@ -129,6 +130,29 @@ public class TimelinePostService {
     private final TimelinePostVisibilityAccessGuard postVisibilityGuard;
     /** 投稿の更新・削除・ピン留め切替の管理操作ゲート（本人 or TEAM/ORGANIZATION スコープの ADMIN+）。 */
     private final TimelinePostAccessGuard postAccessGuard;
+    /**
+     * 配下配信（delivery_scope）の到達範囲を求める唯一の正準実装。マイフィード・ユーザー投稿一覧・
+     * 検索・可視性ゲートの 4 経路が本部品を共有する（重複実装すると必ずズレるため）。
+     */
+    private final TimelineDeliveryScopeResolver deliveryScopeResolver;
+    /** マイフィードのミュート除外用（表示設定であり認可ではない。本サービスのフィード経路限定）。 */
+    private final com.mannschaft.app.timeline.repository.UserMuteRepository muteRepository;
+
+    /** {@code user_mutes.muted_type} のチーム種別。 */
+    private static final String MUTED_TYPE_TEAM = "TEAM";
+    /** {@code user_mutes.muted_type} の組織種別。 */
+    private static final String MUTED_TYPE_ORGANIZATION = "ORGANIZATION";
+
+    /**
+     * {@code NOT IN} 句へ安全に渡せるリストへ変換する。
+     *
+     * <p><b>{@code IN} 用のダミーと意味が反転する</b>点に注意。scope ID は常に正の値なので
+     * {@code NOT IN (-1)} は「全件通過（除外なし）」を意味する。{@code IN (-1)} の
+     * 「1 件もマッチしない」と取り違えると、フィードが全件消えるか全件通るかに倒れる。</p>
+     */
+    private static List<Long> safeNotInList(List<Long> ids) {
+        return (ids == null || ids.isEmpty()) ? List.of(-1L) : ids;
+    }
 
     /** 名前解決フォールバック（退会・削除・匿名化で Map に存在しない場合）。 */
     private static final String UNKNOWN_USER_NAME = "不明なユーザー";
@@ -465,15 +489,25 @@ public class TimelinePostService {
         PostScopeType scopeTypeEnum;
         Long effectiveScopeId;
         UUID scopeVillageId;
+        PostDeliveryScope effectiveDeliveryScope;
         if (parentPost != null) {
             // リプライ: 親投稿のスコープをそのまま継承する
             scopeTypeEnum = parentPost.getScopeType();
             effectiveScopeId = parentPost.getScopeId();
             scopeVillageId = parentPost.getScopeVillageId();
+            // 配下配信範囲も必ず親から継承する。ここでクライアント指定値（既定 DIRECT）を
+            // 入れると、配下配信で届いた投稿への返信が scope_id=上位組織 かつ
+            // delivery_scope=DIRECT の行になり、返信者自身からも 404 になる
+            // （フィードには出るのに直リンクでは 404、という本 PR が撲滅した非対称を
+            // 返信という形で再生産してしまう）。スコープ3点と同じく親が正である。
+            effectiveDeliveryScope = parentPost.getDeliveryScope() != null
+                    ? parentPost.getDeliveryScope()
+                    : PostDeliveryScope.DIRECT;
         } else {
             scopeTypeEnum = parseScopeType(req.getScopeTypeOrDefault());
             effectiveScopeId = resolvedScopeId != null ? resolvedScopeId : 0L;
             scopeVillageId = scopeTypeEnum == PostScopeType.VILLAGE ? req.getScopeVillageId() : null;
+            effectiveDeliveryScope = req.getDeliveryScopeOrDefault();
         }
 
         PostedAsType postedAsTypeEnum = PostedAsType.valueOf(req.getPostedAsTypeOrDefault());
@@ -502,6 +536,9 @@ public class TimelinePostService {
                 .scopeType(scopeTypeEnum)
                 .scopeId(effectiveScopeId)
                 .scopeVillageId(scopeVillageId)
+                // 配下配信範囲。リプライは親から継承、新規投稿は省略時 DIRECT（現行挙動）。
+                // ORGANIZATION 以外では保存されても配信範囲に寄与しない（チームに階層が無いため）。
+                .deliveryScope(effectiveDeliveryScope)
                 .userId(userId)
                 .postedAsType(postedAsTypeEnum)
                 .postedAsId(postedAsId)
@@ -833,8 +870,21 @@ public class TimelinePostService {
         List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
         List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
 
+        // 配下配信: 上位組織が CHILDREN/DESCENDANTS で出した投稿の到達範囲（距離別）。
+        TimelineDeliveryScopeResolver.Reach reach = deliveryScopeResolver.resolve(teamIds, orgIds);
+
+        // ミュート除外は SQL 側で行う（アプリ側で捨てると limit 件が目減りしページが歯抜けになる）。
+        // NOT IN のダミーは IN と意味が反転する: NOT IN (-1) は「全件通過（ミュートなし）」を意味する。
+        List<Long> safeMutedTeamIds = safeNotInList(
+                muteRepository.findMutedIdsByUserIdAndMutedType(userId, MUTED_TYPE_TEAM));
+        List<Long> safeMutedOrgIds = safeNotInList(
+                muteRepository.findMutedIdsByUserIdAndMutedType(userId, MUTED_TYPE_ORGANIZATION));
+
         List<TimelinePostEntity> posts = postRepository.findMyFeed(
-                safeTeamIds, safeOrgIds, cursor, PageRequest.of(0, feedSize));
+                safeTeamIds, safeOrgIds,
+                reach.safeNearOrgIds(), reach.safeFarOrgIds(),
+                safeMutedTeamIds, safeMutedOrgIds,
+                cursor, PageRequest.of(0, feedSize));
         return enrichPosts(timelineMapper.toPostResponseList(posts));
     }
 
@@ -1078,8 +1128,11 @@ public class TimelinePostService {
         List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
         List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
         List<UUID> safeVillageIds = villageIds.isEmpty() ? List.of(NIL_VILLAGE_ID_SENTINEL) : villageIds;
+        // 配下配信の対称性: フィードに出る投稿はユーザー投稿一覧でも到達できなければならない。
+        TimelineDeliveryScopeResolver.Reach reach = deliveryScopeResolver.resolve(teamIds, orgIds);
         List<TimelinePostEntity> posts = postRepository.findByUserIdVisibleToCaller(
-                targetUserId, callerUserId, safeTeamIds, safeOrgIds, safeVillageIds,
+                targetUserId, callerUserId, safeTeamIds, safeOrgIds,
+                reach.safeNearOrgIds(), reach.safeFarOrgIds(), safeVillageIds,
                 PageRequest.of(0, feedSize));
         // issue #2424: プロフィール投稿一覧にも添付配列（画像は署名 URL）を付与する。
         return attachFeedAttachments(timelineMapper.toPostResponseList(posts));
@@ -1182,8 +1235,13 @@ public class TimelinePostService {
         // 空リストは native SQL の IN () で構文エラーになるためダミー値で埋める（findMyFeed と同一規約）。
         List<Long> safeTeamIds = teamIds.isEmpty() ? List.of(-1L) : teamIds;
         List<Long> safeOrgIds = orgIds.isEmpty() ? List.of(-1L) : orgIds;
+        // 配下配信の対称性: 配信で届いた投稿は検索でもヒットする。
+        // 一方でミュートは検索に適用しない（マスター御裁可。検索は自分から探しに行く行為であり、
+        // ミュートは「流れてこないようにする」表示設定であるため）。
+        TimelineDeliveryScopeResolver.Reach reach = deliveryScopeResolver.resolve(teamIds, orgIds);
         List<TimelinePostEntity> posts = postRepository.searchByKeyword(
-                keyword, safeTeamIds, safeOrgIds, userId, searchLimit);
+                keyword, safeTeamIds, safeOrgIds,
+                reach.safeNearOrgIds(), reach.safeFarOrgIds(), userId, searchLimit);
         // issue #2424: 検索結果一覧にも添付配列（画像は署名 URL）を付与する。
         return attachFeedAttachments(timelineMapper.toPostResponseList(posts));
     }
