@@ -259,7 +259,8 @@
     "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
-    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません"
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "已达到隐藏上限（200 个）。请先取消一些不需要的隐藏。"
   },
   "annual_plan": {
     "title": "年度行事计划",
@@ -491,7 +492,38 @@
       "PUBLIC": "在想什么？"
     },
     "submitLabel": "发布",
-    "pollOptionsCount": "{count}个选项"
+    "pollOptionsCount": "{count}个选项",
+    "deliveryScope": {
+      "label": "投放范围",
+      "options": {
+        "DIRECT": "仅本团体的成员",
+        "CHILDREN": "包含下一级子团体",
+        "DESCENDANTS": "下属的所有团体"
+      },
+      "hints": {
+        "DIRECT": "仅显示在本团体成员的时间线上。",
+        "CHILDREN": "同时显示给本团体正下方子团体的成员。",
+        "DESCENDANTS": "显示给本团体下属所有团体的成员。"
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "隐藏该团队的帖子",
+        "ORGANIZATION": "隐藏该团体的帖子"
+      },
+      "targetType": {
+        "TEAM": "团队",
+        "ORGANIZATION": "团体"
+      },
+      "muted": "已隐藏 {name} 的帖子",
+      "undo": "撤销",
+      "unmuted": "已恢复显示",
+      "chip": "已隐藏：{count} 个",
+      "dialogTitle": "已隐藏的对象",
+      "emptyList": "没有已隐藏的对象。",
+      "unmuteAction": "恢复显示",
+      "unknownTarget": "{type}（ID: {id}）"
+    }
   },
   "gallery": {
     "title": "相册",

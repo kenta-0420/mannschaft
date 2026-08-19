@@ -259,7 +259,8 @@
     "SCHEDULE_KEEP_008": "Can't undo -- attendance replies exist",
     "SCHEDULE_KEEP_009": "This transition isn't allowed",
     "SCHEDULE_KEEP_010": "Keep limit reached",
-    "SCHEDULE_KEEP_012": "Invalid reorder request"
+    "SCHEDULE_KEEP_012": "Invalid reorder request",
+    "TIMELINE_017": "You have reached the mute limit of 200. Please unhide something you no longer need."
   },
   "annual_plan": {
     "title": "Annual Event Plan",
@@ -491,7 +492,38 @@
       "PUBLIC": "What's happening?"
     },
     "submitLabel": "Post",
-    "pollOptionsCount": "{count} options"
+    "pollOptionsCount": "{count} options",
+    "deliveryScope": {
+      "label": "Delivery range",
+      "options": {
+        "DIRECT": "Members of this organization only",
+        "CHILDREN": "Include direct child organizations",
+        "DESCENDANTS": "All organizations below this one"
+      },
+      "hints": {
+        "DIRECT": "Shown only on the timelines of members of this organization.",
+        "CHILDREN": "Also shown to members of the organizations directly below this one.",
+        "DESCENDANTS": "Shown to members of every organization below this one."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Hide posts from this team",
+        "ORGANIZATION": "Hide posts from this organization"
+      },
+      "targetType": {
+        "TEAM": "Team",
+        "ORGANIZATION": "Organization"
+      },
+      "muted": "Posts from {name} are now hidden",
+      "undo": "Undo",
+      "unmuted": "Posts are shown again",
+      "chip": "Hidden: {count}",
+      "dialogTitle": "Hidden sources",
+      "emptyList": "You have not hidden anyone.",
+      "unmuteAction": "Show again",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Gallery",

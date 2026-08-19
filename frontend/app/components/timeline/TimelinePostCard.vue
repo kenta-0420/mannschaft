@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TimelinePostResponse } from '~/types/timeline'
+import type { TimelinePostResponse, TimelineMutedType } from '~/types/timeline'
 import { CONTENT_TRUNCATE_LENGTH } from '~/types/timeline'
 
 const props = withDefaults(defineProps<{
@@ -12,8 +12,15 @@ const props = withDefaults(defineProps<{
    * 返信アイテム（1段）や投稿詳細ページのカードでは false を渡してネストを防ぐ。
    */
   repliesAccordion?: boolean
+  /**
+   * ケバブメニューに「この組織/チームの投稿を非表示にする」を出すか（CMP-058）。
+   * 個人集約フィード（`myFeed`）でのみ true にする。単一スコープの TL では、
+   * 今見ているスコープ自身を非表示にしても画面上の意味が無いため出さない。
+   */
+  canMute?: boolean
 }>(), {
   repliesAccordion: true,
+  canMute: false,
 })
 
 const emit = defineEmits<{
@@ -25,6 +32,8 @@ const emit = defineEmits<{
   clickPost: [postId: number]
   mitayoToggled: [postId: number, mitayo: boolean, mitayoCount: number]
   replyAdded: [postId: number]
+  /** ミュート実行要求（確認ダイアログは出さず即実行。復旧は「元に戻す」トーストで担保する）。 */
+  mute: [payload: { postId: number, mutedType: TimelineMutedType, mutedId: number, name: string }]
 }>()
 
 const { t } = useI18n()
@@ -119,6 +128,20 @@ const displayContent = computed(() => {
   return props.post.content.content.substring(0, CONTENT_TRUNCATE_LENGTH)
 })
 
+/**
+ * ミュート対象（投稿元の チーム / 組織）。
+ * `scope.scopeId` は文字列なので数値化し、TEAM/ORGANIZATION 以外（PUBLIC/VILLAGE。
+ * VILLAGE は UUID のため数値化できない）は対象外として null にする。
+ */
+const muteTarget = computed<{ mutedType: TimelineMutedType, mutedId: number, name: string } | null>(() => {
+  const scope = props.post.scope
+  if (!scope) return null
+  if (scope.scopeType !== 'TEAM' && scope.scopeType !== 'ORGANIZATION') return null
+  const mutedId = Number(scope.scopeId)
+  if (!Number.isSafeInteger(mutedId) || mutedId <= 0) return null
+  return { mutedType: scope.scopeType, mutedId, name: scope.name ?? '' }
+})
+
 const menuItems = computed(() => {
   const items = []
   if (props.canPin) {
@@ -133,6 +156,16 @@ const menuItems = computed(() => {
       label: '削除',
       icon: 'pi pi-trash',
       command: () => emit('delete', props.post.id),
+    })
+  }
+  // 「この組織/チームの投稿を非表示にする」（CMP-058）。確認ダイアログは出さず即実行し、
+  // 誤タップは「元に戻す」トースト（親側）で復旧できるようにする。
+  if (props.canMute && muteTarget.value) {
+    const target = muteTarget.value
+    items.push({
+      label: t(`timeline.mute.menuLabel.${target.mutedType}`),
+      icon: 'pi pi-eye-slash',
+      command: () => emit('mute', { postId: props.post.id, ...target }),
     })
   }
   return items
