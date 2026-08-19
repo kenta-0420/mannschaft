@@ -3,6 +3,7 @@ package com.mannschaft.app.event.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.EventErrorCode;
 import com.mannschaft.app.event.dto.AbsenceNoticeRequest;
 import com.mannschaft.app.event.dto.AdvanceNoticeResponse;
@@ -24,10 +25,12 @@ import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -50,6 +53,10 @@ public class EventRsvpService {
     private final CareLinkService careLinkService;
     private final NotificationService notificationService;
     private final NotificationDispatchService notificationDispatchService;
+
+    /** Issue #2715 CMP-055 ロットC-2: 受信者 locale 別に通知本文を組み立てるための依存。 */
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     /**
      * RSVP回答を送信する（初回）。
@@ -211,17 +218,23 @@ public class EventRsvpService {
         rsvp.recordLateNotice(req.getExpectedArrivalMinutesLate());
         rsvpResponseRepository.save(rsvp);
 
-        // 主催者へ通知を送信する
-        EventEntity event = eventService.findEventOrThrow(eventId);
         String displayName = getUserDisplayName(targetUserId);
-        String body = displayName + " が " + req.getExpectedArrivalMinutesLate() + "分遅刻予定です";
-        notifyOrganizer(event, teamId, EventCareNotificationType.EVENT_LATE_ARRIVAL_NOTICE,
-                "遅刻連絡", body, operatorUserId);
 
-        // 見守り者が代理送信した場合、同じケア対象者の他の見守り者にも通知する
-        notifyOtherWatchers(targetUserId, operatorUserId, eventId, teamId,
-                EventCareNotificationType.EVENT_LATE_ARRIVAL_NOTICE,
-                "遅刻連絡", body);
+        // Issue #2715 CMP-055 ロットC-2 / AC-4: 通知送信（locale解決・件名/本文の組み立て・notify）を
+        // 隔離tryで囲み、通知系の失敗が本処理（遅刻連絡の登録）を巻き込まないようにする。
+        // catch は log.warn で握りつぶさず可視化した上で継続する。
+        try {
+            EventEntity event = eventService.findEventOrThrow(eventId);
+            sendAdvanceNoticeNotifications(event, teamId, operatorUserId, targetUserId, eventId,
+                    EventCareNotificationType.EVENT_LATE_ARRIVAL_NOTICE,
+                    "notification.event.rsvp.lateNotice.title", "遅刻連絡",
+                    "notification.event.rsvp.lateNotice.body",
+                    new Object[]{displayName, req.getExpectedArrivalMinutesLate()},
+                    displayName + " が " + req.getExpectedArrivalMinutesLate() + "分遅刻予定です");
+        } catch (Exception e) {
+            log.warn("遅刻連絡通知の送信に失敗（本処理は継続）: eventId={}, targetUserId={}, operatorUserId={}, error={}",
+                    eventId, targetUserId, operatorUserId, e.getMessage(), e);
+        }
 
         log.info("遅刻連絡送信: eventId={}, targetUserId={}, minutes={}, operatorUserId={}",
                 eventId, targetUserId, req.getExpectedArrivalMinutesLate(), operatorUserId);
@@ -264,17 +277,22 @@ public class EventRsvpService {
         rsvp.recordAbsenceNotice(req.getAbsenceReason());
         rsvpResponseRepository.save(rsvp);
 
-        // 主催者へ通知を送信する
-        EventEntity event = eventService.findEventOrThrow(eventId);
         String displayName = getUserDisplayName(targetUserId);
-        String body = displayName + " が事前欠席連絡を送りました（理由: " + req.getAbsenceReason() + "）";
-        notifyOrganizer(event, teamId, EventCareNotificationType.EVENT_ABSENCE_NOTICE,
-                "欠席連絡", body, operatorUserId);
 
-        // 見守り者が代理送信した場合、同じケア対象者の他の見守り者にも通知する
-        notifyOtherWatchers(targetUserId, operatorUserId, eventId, teamId,
-                EventCareNotificationType.EVENT_ABSENCE_NOTICE,
-                "欠席連絡", body);
+        // Issue #2715 CMP-055 ロットC-2 / AC-4: 通知送信を隔離tryで囲み、通知系の失敗が
+        // 本処理（欠席連絡の登録）を巻き込まないようにする。catch は log.warn で可視化して継続する。
+        try {
+            EventEntity event = eventService.findEventOrThrow(eventId);
+            sendAdvanceNoticeNotifications(event, teamId, operatorUserId, targetUserId, eventId,
+                    EventCareNotificationType.EVENT_ABSENCE_NOTICE,
+                    "notification.event.rsvp.absenceNotice.title", "欠席連絡",
+                    "notification.event.rsvp.absenceNotice.body",
+                    new Object[]{displayName, req.getAbsenceReason()},
+                    displayName + " が事前欠席連絡を送りました（理由: " + req.getAbsenceReason() + "）");
+        } catch (Exception e) {
+            log.warn("欠席連絡通知の送信に失敗（本処理は継続）: eventId={}, targetUserId={}, operatorUserId={}, error={}",
+                    eventId, targetUserId, operatorUserId, e.getMessage(), e);
+        }
 
         log.info("欠席連絡送信: eventId={}, targetUserId={}, reason={}, operatorUserId={}",
                 eventId, targetUserId, req.getAbsenceReason(), operatorUserId);
@@ -354,30 +372,53 @@ public class EventRsvpService {
     }
 
     /**
-     * 操作者が見守り者である場合に、同じケア対象者の他の見守り者へも通知を送信する。
+     * 事前遅刻・欠席連絡の通知を主催者・見守り者へ送信する。Issue #2715 CMP-055 ロットC-2。
      *
-     * <p>操作者（operatorUserId）がケア対象者（targetUserId）のアクティブな見守り者である場合、
-     * 他の見守り者にも同じ通知を送る（代理申告の共有）。</p>
+     * <p>主催者へは常に単発通知（{@link UserLocaleCache#getLocale}）、操作者がケア対象者の
+     * アクティブな見守り者である場合は他の見守り者へも通知する（{@link UserLocaleCache#getLocales}
+     * によるバルク解決で N+1 を防止する）。件名・本文は受信者ごとの locale で
+     * {@link MessageSource} から組み立てる。</p>
      *
-     * @param targetUserId   ケア対象者のユーザーID
-     * @param operatorUserId 操作者ユーザーID
+     * @param event          イベントエンティティ（主催者取得用）
+     * @param teamId         チームID（スコープID・actionUrl 構築用）
+     * @param operatorUserId 操作者ユーザーID（本人または見守り者の userId）
+     * @param targetUserId   ケア対象者（＝連絡対象）のユーザーID
      * @param eventId        イベントID
-     * @param teamId         チームID（スコープID）
      * @param type           通知種別
-     * @param title          通知タイトル
-     * @param body           通知本文
+     * @param titleKey       件名のメッセージキー
+     * @param defaultTitle   件名のデフォルト文言（ja）
+     * @param bodyKey        本文のメッセージキー
+     * @param bodyArgs       本文のプレースホルダ引数
+     * @param defaultBody    本文のデフォルト文言（ja、フォールバック時にも使用）
      */
-    private void notifyOtherWatchers(Long targetUserId, Long operatorUserId,
-                                      Long eventId, Long teamId,
-                                      EventCareNotificationType type,
-                                      String title, String body) {
-        // 操作者がケア対象者の見守り者かどうかを確認する
+    private void sendAdvanceNoticeNotifications(EventEntity event, Long teamId, Long operatorUserId,
+                                                 Long targetUserId, Long eventId,
+                                                 EventCareNotificationType type,
+                                                 String titleKey, String defaultTitle,
+                                                 String bodyKey, Object[] bodyArgs, String defaultBody) {
+        // 主催者へ通知
+        Long organizerUserId = event.getCreatedBy();
+        if (organizerUserId != null) {
+            Locale organizerLocale = Locale.forLanguageTag(userLocaleCache.getLocale(organizerUserId));
+            String title = messageSource.getMessage(titleKey, null, defaultTitle, organizerLocale);
+            String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, organizerLocale);
+            notifyOrganizer(event, teamId, type, title, body, operatorUserId);
+        }
+
+        // 操作者がケア対象者の見守り者かどうかを確認し、そうであれば他の見守り者にも通知する（代理申告の共有）
         List<Long> allWatcherIds = careLinkService.getActiveWatchers(targetUserId, "RSVP");
         if (!allWatcherIds.contains(operatorUserId)) return;
+
+        // 見守り者の locale をバルク解決（N+1 防止・AC-3）
+        Map<Long, String> watcherLocales = userLocaleCache.getLocales(allWatcherIds);
 
         // 操作者自身を除いた他の見守り者へ通知を送る
         for (Long watcherId : allWatcherIds) {
             if (watcherId.equals(operatorUserId)) continue;
+
+            Locale watcherLocale = Locale.forLanguageTag(watcherLocales.getOrDefault(watcherId, "ja"));
+            String title = messageSource.getMessage(titleKey, null, defaultTitle, watcherLocale);
+            String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, watcherLocale);
 
             NotificationEntity notification = notificationService.createNotification(
                     watcherId,
