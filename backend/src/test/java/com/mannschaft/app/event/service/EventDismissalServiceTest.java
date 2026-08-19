@@ -1,6 +1,7 @@
 package com.mannschaft.app.event.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.EventErrorCode;
 import com.mannschaft.app.event.dto.DismissalReminderTargetResponse;
 import com.mannschaft.app.event.dto.DismissalRequest;
@@ -23,21 +24,29 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
+import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -69,6 +78,12 @@ class EventDismissalServiceTest {
     @Mock
     private CareLinkService careLinkService;
 
+    @Mock
+    private UserLocaleCache userLocaleCache;
+
+    @Mock
+    private MessageSource messageSource;
+
     @InjectMocks
     private EventDismissalService eventDismissalService;
 
@@ -79,6 +94,24 @@ class EventDismissalServiceTest {
     private static final Long ATTENDING_USER_ID_1 = 201L;
     private static final Long ATTENDING_USER_ID_2 = 202L;
     private static final Long CARE_RECIPIENT_USER_ID = 203L;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUpLocale() {
+        // Issue #2715 ロットC-2: 新規依存 UserLocaleCache/MessageSource の既定スタブ
+        // （未スタブだと null 返却/NPE で通知が握りつぶされ、既存テストが偽装的に失敗する）。
+        lenient().when(userLocaleCache.getLocales(any())).thenReturn(Map.of());
+        lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
+        lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
+                .thenAnswer(invocation -> invocation.getArgument(2));
+    }
+
+    /** 実物の MessageSource（messages*.properties）を差し込む（Issue #2715 テスト方針）。 */
+    private void useRealMessageSource() {
+        ResourceBundleMessageSource realMessageSource = new ResourceBundleMessageSource();
+        realMessageSource.setBasename("messages");
+        realMessageSource.setDefaultEncoding("UTF-8");
+        ReflectionTestUtils.setField(eventDismissalService, "messageSource", realMessageSource);
+    }
 
     // =========================================================
     // sendDismissalNotification
@@ -218,6 +251,52 @@ class EventDismissalServiceTest {
                     anyLong(), eq("EVENT_DISMISSAL"), any(NotificationPriority.class),
                     any(), any(), eq("EVENT"), eq(EVENT_ID),
                     any(NotificationScopeType.class), anyLong(), any(), isNull());
+        }
+    }
+
+    // =========================================================
+    // Issue #2715 ロットC-2: 通知本文の locale 別組み立て
+    // =========================================================
+
+    @Nested
+    @DisplayName("Issue #2715 ロットC-2: 解散通知の locale 別組み立て")
+    class LocalizedDismissalNotification {
+
+        @Test
+        @DisplayName("受信者 locale が en なら件名・本文が英語になり、locale 解決は getLocales 1回のみ（N+1防止）")
+        void 受信者locale別に英語化され_バルク解決される() {
+            useRealMessageSource();
+            EventEntity event = buildEventWithoutDismissal();
+            DismissalRequest req = new DismissalRequest(null, null, false);
+
+            given(eventRepository.findByIdAndTeamScopeId(EVENT_ID, TEAM_ID)).willReturn(Optional.of(event));
+            given(rsvpResponseRepository.findUserIdsByEventIdAndResponse(EVENT_ID, "ATTENDING"))
+                    .willReturn(List.of(ATTENDING_USER_ID_1));
+            given(checkinRepository.findCheckedInUserIdsByEventId(EVENT_ID)).willReturn(List.of());
+            // 呼び出し元では Set<Long> を渡すため List.of() では一致しない。any() で受ける。
+            given(userLocaleCache.getLocales(any()))
+                    .willReturn(Map.of(ATTENDING_USER_ID_1, "en"));
+            given(notificationService.createNotification(
+                    anyLong(), any(), any(NotificationPriority.class),
+                    any(), any(), any(), anyLong(),
+                    any(NotificationScopeType.class), anyLong(), any(), isNull()))
+                    .willReturn(buildNotification());
+
+            eventDismissalService.sendDismissalNotification(EVENT_ID, TEAM_ID, OPERATOR_USER_ID, req);
+
+            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+            verify(notificationService).createNotification(
+                    eq(ATTENDING_USER_ID_1), eq("EVENT_DISMISSAL"), any(NotificationPriority.class),
+                    titleCaptor.capture(), bodyCaptor.capture(),
+                    eq("EVENT"), eq(EVENT_ID),
+                    any(NotificationScopeType.class), anyLong(), any(), isNull());
+            assertThat(titleCaptor.getValue()).doesNotContain("{0}").contains("テストイベント");
+            assertThat(bodyCaptor.getValue()).isEqualTo("Dismissed");
+
+            // AC-3: N+1 防止 — バルク解決 (getLocales) は 1 回、単体解決 (getLocale) は 0 回。
+            verify(userLocaleCache, times(1)).getLocales(any());
+            verify(userLocaleCache, never()).getLocale(anyLong());
         }
     }
 

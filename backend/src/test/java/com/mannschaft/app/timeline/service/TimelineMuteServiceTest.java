@@ -53,6 +53,34 @@ class TimelineMuteServiceTest {
     class AddMute {
 
         @Test
+        @DisplayName("ミAC-27 上限超過: ミュートが既に200件あると MAX_MUTES_EXCEEDED で拒否される")
+        void ミュート上限超過は拒否される() {
+            given(muteRepository.existsByUserIdAndMutedTypeAndMutedId(USER_ID, MUTED_TYPE, MUTED_ID))
+                    .willReturn(false);
+            given(muteRepository.countByUserId(USER_ID)).willReturn(200L);
+
+            assertThatThrownBy(() -> timelineMuteService.addMute(MUTED_TYPE, MUTED_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                            .isEqualTo(TimelineErrorCode.MAX_MUTES_EXCEEDED));
+        }
+
+        @Test
+        @DisplayName("ミAC-27 境界: 199件なら追加できる（上限ちょうどで止める）")
+        void ミュート199件なら追加できる() {
+            UserMuteEntity mute = UserMuteEntity.builder()
+                    .userId(USER_ID).mutedType(MUTED_TYPE).mutedId(MUTED_ID).build();
+            MuteResponse expected = new MuteResponse(1L, USER_ID, MUTED_TYPE, MUTED_ID, LocalDateTime.now());
+            given(muteRepository.existsByUserIdAndMutedTypeAndMutedId(USER_ID, MUTED_TYPE, MUTED_ID))
+                    .willReturn(false);
+            given(muteRepository.countByUserId(USER_ID)).willReturn(199L);
+            given(muteRepository.save(any(UserMuteEntity.class))).willReturn(mute);
+            given(timelineMapper.toMuteResponse(any(UserMuteEntity.class))).willReturn(expected);
+
+            assertThat(timelineMuteService.addMute(MUTED_TYPE, MUTED_ID, USER_ID)).isEqualTo(expected);
+        }
+
+        @Test
         @DisplayName("正常系: ミュートを追加できる")
         void ミュートを追加できる() {
             // given
