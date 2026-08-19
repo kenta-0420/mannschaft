@@ -369,7 +369,7 @@ class DashboardScheduleBatchN1Test {
         given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
                 any(), anyLong(), any()))
                 .willReturn(new org.springframework.data.domain.PageImpl<>(List.of()));
-        given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any()))
-                .willReturn(List.of());
+        given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any(), any()))
+                .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
     }
 }

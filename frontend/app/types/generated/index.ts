@@ -78061,10 +78061,19 @@ export interface components {
             /** Format: int64 */
             total_pending?: number;
         };
+        /** @description アクティビティフィードの1ページ */
+        ActivityFeedPageResponse: {
+            /** @description このページのアクティビティ一覧 */
+            items?: components["schemas"]["ActivityFeedResponse"][];
+            /** @description 次ページの起点となるアクティビティID（文字列）。続きが無い場合は null */
+            nextCursor?: string;
+        };
         ActivityFeedResponse: {
             actor?: components["schemas"]["ActorSummary"];
             /** Format: date-time */
             createdAt?: string;
+            /** @description 変更差分（SCHEDULE系のみ非null） */
+            detail?: Record<string, never>;
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
@@ -78083,8 +78092,8 @@ export interface components {
             /** Format: int64 */
             id?: number;
         };
-        ApiResponseListActivityFeedResponse: {
-            data?: components["schemas"]["ActivityFeedResponse"][];
+        ApiResponseActivityFeedPageResponse: {
+            data?: components["schemas"]["ActivityFeedPageResponse"];
         };
         ActionItem: {
             /** Format: date-time */
@@ -159638,7 +159647,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityFeedResponse"];
+                    "*/*": components["schemas"]["ApiResponseActivityFeedPageResponse"];
                 };
             };
         };

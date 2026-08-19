@@ -163,7 +163,7 @@ class DashboardMapperTest {
                     new ActivityFeedResponse.ActorSummary(1L, "yamada_taro", null);
 
             // When
-            ActivityFeedResponse result = dashboardMapper.toActivityFeedResponse(entity, actor, "テストFC");
+            ActivityFeedResponse result = dashboardMapper.toActivityFeedResponse(entity, actor, "テストFC", null);
 
             // Then
             assertThat(result).isNotNull();
