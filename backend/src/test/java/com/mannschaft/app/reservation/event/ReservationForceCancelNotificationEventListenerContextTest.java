@@ -1,13 +1,16 @@
 package com.mannschaft.app.reservation.event;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.event.EventListenerMethodProcessor;
+import org.springframework.context.support.StaticMessageSource;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.transaction.config.TransactionManagementConfigUtils;
 import org.springframework.transaction.event.TransactionalEventListenerFactory;
@@ -49,9 +52,20 @@ class ReservationForceCancelNotificationEventListenerContextTest {
         }
 
         @Bean
+        UserLocaleCache userLocaleCache() {
+            return Mockito.mock(UserLocaleCache.class);
+        }
+
+        @Bean
+        MessageSource messageSource() {
+            return new StaticMessageSource();
+        }
+
+        @Bean
         ReservationForceCancelNotificationEventListener reservationForceCancelNotificationEventListener(
-                NotificationHelper notificationHelper) {
-            return new ReservationForceCancelNotificationEventListener(notificationHelper);
+                NotificationHelper notificationHelper, UserLocaleCache userLocaleCache, MessageSource messageSource) {
+            return new ReservationForceCancelNotificationEventListener(
+                    notificationHelper, userLocaleCache, messageSource);
         }
     }
 
