@@ -63,7 +63,7 @@ import javax.sql.DataSource;
  * {@code backend/.claudecode.md} §30.1 / {@code TEST_CONVENTION.md} §9.6 を参照。</p>
  */
 @Configuration
-@Profile("!test & !openapi-gen")
+@Profile("!test & !openapi-gen & !e2e")
 @EnableScheduling
 @EnableSchedulerLock(defaultLockAtMostFor = "30m")
 public class ShedLockConfig {

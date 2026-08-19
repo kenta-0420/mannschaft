@@ -161,6 +161,28 @@ class ScheduleQueryServiceTest {
         }
 
         @Test
+        @DisplayName("共有予定は詳細APIで使える公開slugを返す")
+        void includes_scope_slug_for_detail_route() {
+            ScheduleEntity team = schedule(31L, TEAM_ID, null, null);
+            given(membershipService.getActiveTeamIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of(TEAM_ID));
+            given(membershipService.getActiveOrgIdsIncludingRoleAssignments(USER_ID))
+                    .willReturn(List.of());
+            given(scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(TEAM_ID, FROM, TO))
+                    .willReturn(List.of(team));
+            given(contentVisibilityChecker.filterAccessible(
+                    eq(ReferenceType.SCHEDULE), eq(List.of(31L)), eq(USER_ID))).willReturn(Set.of(31L));
+            given(scheduleTargetService.assignedScheduleIds(any(), eq(USER_ID))).willReturn(Set.of(31L));
+            given(nameResolverService.resolveScopeSlug("TEAM", TEAM_ID)).willReturn("fc-u-18");
+
+            var entries = scheduleQueryService.getMyCalendar(USER_ID, FROM, TO);
+
+            assertThat(entries).singleElement()
+                    .extracting(entry -> entry.getScope().scopeSlug())
+                    .isEqualTo("fc-u-18");
+        }
+
+        @Test
         @DisplayName("認可漏れ回帰: 個人予定は filterAccessible を通さず常に含まれる")
         void getMyCalendar_個人予定はフィルタ対象外() {
             // Given: チーム/組織所属なし、個人予定のみ

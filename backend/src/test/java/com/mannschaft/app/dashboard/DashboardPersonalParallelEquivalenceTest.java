@@ -143,11 +143,11 @@ class DashboardPersonalParallelEquivalenceTest {
 
         // アクティビティ 2 件。
         ActivityFeedResponse a1 = new ActivityFeedResponse(
-                1L, "POST", null, "TEAM", TEAM_A, "チームA", null, null, "投稿しました", null);
+                1L, "POST", null, "TEAM", TEAM_A, "チームA", null, null, "投稿しました", null, null);
         ActivityFeedResponse a2 = new ActivityFeedResponse(
-                2L, "EVENT", null, "TEAM", TEAM_B, "チームB", null, null, "予定を追加", null);
-        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                .willReturn(List.of(a1, a2));
+                2L, "EVENT", null, "TEAM", TEAM_B, "チームB", null, null, "予定を追加", null, null);
+        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(a1, a2), null));
 
         PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");
 
@@ -205,7 +205,7 @@ class DashboardPersonalParallelEquivalenceTest {
                 .willReturn(List.of());
         given(bulletinReadStatusRepository.findReadThreadIds(anyCollection(), anyLong()))
                 .willReturn(List.of());
-        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                .willReturn(List.of());
+        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
     }
 }

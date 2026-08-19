@@ -218,6 +218,27 @@
       "unpinAction": "Diese Karte loslösen",
       "navigationFailed": "Auf die Referenz dieser Karte kann nicht zugegriffen werden",
       "colorLabelAria": "{color} Etikett"
+    },
+    "activity_feed": {
+      "post_created": "が投稿しました",
+      "event_created": "がイベントを作成しました",
+      "member_joined": "が参加しました",
+      "todo_completed": "がTODOを完了しました",
+      "bulletin_created": "がお知らせを投稿しました",
+      "poll_created": "がアンケートを作成しました",
+      "file_uploaded": "がファイルを共有しました",
+      "schedule_created": "が予定を作成しました",
+      "schedule_updated": "が予定を更新しました",
+      "schedule_cancelled": "が予定をキャンセルしました",
+      "schedule_rescheduled": "が予定の日程を変更しました",
+      "detail_start_at": "開始日時",
+      "detail_end_at": "終了日時",
+      "detail_is_all_day": "終日設定",
+      "detail_title": "タイトル",
+      "detail_location": "場所",
+      "detail_status": "ステータス",
+      "detail_description_changed": "詳細が更新されました",
+      "unknown": "アクションしました"
     }
   },
   "swipeWidgets": {

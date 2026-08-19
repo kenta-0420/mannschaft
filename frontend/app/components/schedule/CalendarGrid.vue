@@ -256,7 +256,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
                 <img v-if="event.scopeIconUrl" :src="event.scopeIconUrl" class="w-full h-full object-cover" alt="" >
                 <span v-else class="text-[8px] font-bold leading-none">{{ event.scopeName?.charAt(0) }}</span>
               </span>
-              <span class="min-w-0 truncate">
+              <span class="min-w-0 flex-1 truncate">
                 <i v-if="event.isTodo" class="pi pi-check-square mr-0.5 opacity-80" />
                 <span v-if="!event.allDay" class="opacity-70 mr-0.5">{{ fmtTime(event.startAt) }}</span>{{ event.title }}
               </span>

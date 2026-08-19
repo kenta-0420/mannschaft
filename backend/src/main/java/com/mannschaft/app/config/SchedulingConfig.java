@@ -26,6 +26,6 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * のが正しい（{@link ShedLockConfig} が既に {@code !test} で除外しているのと同一方針に揃える）。</p>
  */
 @Configuration
-@Profile("!test & !openapi-gen")
+@Profile("!test & !openapi-gen & !e2e")
 @EnableScheduling
 public class SchedulingConfig {}

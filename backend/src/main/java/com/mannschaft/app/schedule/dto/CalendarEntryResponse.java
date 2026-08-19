@@ -60,6 +60,11 @@ public class CalendarEntryResponse {
 
     /** チーム・組織のアイコン画像URL。未設定またはPERSONALスコープの場合はnull。 */
     public record CalendarScopeDto(String scopeType, Long scopeId, String scopeName,
-                                   String scopeIconUrl) {
+                                   String scopeIconUrl, String scopeSlug) {
+
+        /** 既存呼び出し元との後方互換。PERSONAL・外部enricherはslugを持たなくてもよい。 */
+        public CalendarScopeDto(String scopeType, Long scopeId, String scopeName, String scopeIconUrl) {
+            this(scopeType, scopeId, scopeName, scopeIconUrl, null);
+        }
     }
 }
