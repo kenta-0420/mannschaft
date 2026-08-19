@@ -137423,7 +137423,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListActivityFeedResponse"
+                  "$ref": "#/components/schemas/ApiResponseActivityFeedPageResponse"
                 }
               }
             }
@@ -230626,6 +230626,23 @@
           }
         }
       },
+      "ActivityFeedPageResponse": {
+        "type": "object",
+        "description": "アクティビティフィードの1ページ",
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "このページのアクティビティ一覧",
+            "items": {
+              "$ref": "#/components/schemas/ActivityFeedResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "description": "次ページの起点となるアクティビティID（文字列）。続きが無い場合は null"
+          }
+        }
+      },
       "ActivityFeedResponse": {
         "type": "object",
         "properties": {
@@ -230635,6 +230652,10 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "detail": {
+            "type": "object",
+            "description": "変更差分（SCHEDULE系のみ非null）"
           },
           "id": {
             "type": "integer",
@@ -230680,14 +230701,11 @@
           }
         }
       },
-      "ApiResponseListActivityFeedResponse": {
+      "ApiResponseActivityFeedPageResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ActivityFeedResponse"
-            }
+            "$ref": "#/components/schemas/ActivityFeedPageResponse"
           }
         }
       },

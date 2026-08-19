@@ -62,6 +62,8 @@ onMounted(load)
         :target-title="activity.targetTitle"
         :scope-name="activity.scopeName"
         :created-at="activity.createdAt"
+        :target-type="activity.targetType"
+        :target-id="activity.targetId"
       />
       <div class="flex justify-end pt-2">
         <NuxtLink to="/timeline" class="text-sm text-primary hover:underline">
