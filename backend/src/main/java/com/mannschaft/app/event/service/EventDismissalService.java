@@ -1,6 +1,7 @@
 package com.mannschaft.app.event.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.EventErrorCode;
 import com.mannschaft.app.event.dto.DismissalReminderTargetResponse;
 import com.mannschaft.app.event.dto.DismissalRequest;
@@ -19,6 +20,7 @@ import com.mannschaft.app.notification.service.NotificationDispatchService;
 import com.mannschaft.app.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,8 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -51,6 +55,10 @@ public class EventDismissalService {
     private final NotificationDispatchService dispatchService;
     private final CareEventNotificationService careEventNotificationService;
     private final CareLinkService careLinkService;
+
+    /** Issue #2715 CMP-055 ロットC-2: 受信者 locale 別に通知本文を組み立てるための依存。 */
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     // =========================================================
     // 公開 API
@@ -99,12 +107,16 @@ public class EventDismissalService {
         Set<Long> targetUserIds = new HashSet<>(attendingUserIds);
         targetUserIds.addAll(checkedInUserIds);
 
-        String message = req.resolveMessage();
         String eventLabel = resolveEventLabel(event);
+
+        // Issue #2715 CMP-055 ロットC-2: locale を一括解決（N+1 防止。受信者ごとに
+        // UserLocaleCache#getLocale を呼ぶと受信者数分の DB 往復が発生する）。
+        Map<Long, String> locales = userLocaleCache.getLocales(targetUserIds);
 
         // 参加者へのプッシュ通知（F03.12 Phase11: actionUrl にチームID を含める）
         for (Long targetUserId : targetUserIds) {
-            sendParticipantDismissalNotification(targetUserId, eventId, teamId, eventLabel, message);
+            Locale locale = Locale.forLanguageTag(locales.getOrDefault(targetUserId, "ja"));
+            sendParticipantDismissalNotification(targetUserId, eventId, teamId, eventLabel, req, locale);
         }
 
         // 見守り者への追加通知
@@ -214,12 +226,15 @@ public class EventDismissalService {
      * @param eventId      イベントID
      * @param teamId       チームID（actionUrl 構築用）
      * @param eventLabel   イベント表示名
-     * @param message      解散メッセージ
+     * @param req          解散通知リクエスト（カスタムメッセージ有無の判定用）
+     * @param locale       通知先ユーザーの locale（Issue #2715 CMP-055 ロットC-2）
      */
     private void sendParticipantDismissalNotification(Long targetUserId, Long eventId, Long teamId,
-                                                       String eventLabel, String message) {
-        String title = "「" + eventLabel + "」が解散しました";
-        String body = message;
+                                                       String eventLabel, DismissalRequest req, Locale locale) {
+        String title = messageSource.getMessage(
+                "notification.event.dismissal.title", new Object[]{eventLabel},
+                "「" + eventLabel + "」が解散しました", locale);
+        String body = resolveDismissalBody(req, locale);
 
         NotificationEntity notification = notificationService.createNotification(
                 targetUserId,
@@ -268,5 +283,22 @@ public class EventDismissalService {
     private String resolveEventLabel(EventEntity event) {
         String subtitle = event.getSubtitle();
         return (subtitle != null && !subtitle.isBlank()) ? subtitle : event.getSlug();
+    }
+
+    /**
+     * 解散通知の本文を解決する。カスタムメッセージが指定されていればそのまま使用し（ユーザー入力のため
+     * i18n 対象外）、未指定時は locale 別のデフォルト文言を返す。Issue #2715 CMP-055 ロットC-2。
+     *
+     * @param req    解散通知リクエスト
+     * @param locale 通知先ユーザーの locale
+     * @return 解散通知本文（非 null）
+     */
+    private String resolveDismissalBody(DismissalRequest req, Locale locale) {
+        String custom = req.getMessage();
+        if (custom != null && !custom.isBlank()) {
+            return custom;
+        }
+        return messageSource.getMessage(
+                "notification.event.dismissal.defaultBody", null, "解散しました", locale);
     }
 }
