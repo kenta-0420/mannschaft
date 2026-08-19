@@ -350,6 +350,7 @@ public class ScheduleQueryService {
             com.mannschaft.app.schedule.dto.ScheduleTargetResponse targetResponse) {
         String scopeName = nameResolverService.resolveScopeName(scopeType, scopeId);
         String iconUrl = nameResolverService.resolveIconUrl(scopeType, scopeId);
+        String scopeSlug = nameResolverService.resolveScopeSlug(scopeType, scopeId);
         return CalendarEntryResponse.builder()
                 .id(entity.getId())
                 .scheduleId(entity.getId())
@@ -357,7 +358,7 @@ public class ScheduleQueryService {
                         entity.getTitle(), entity.getEventType().name(), entity.getStatus().name()))
                 .time(new CalendarEntryResponse.CalendarTimeDto(
                         entity.getStartAt(), entity.getEndAt(), entity.getAllDay()))
-                .scope(new CalendarEntryResponse.CalendarScopeDto(scopeType, scopeId, scopeName, iconUrl))
+                .scope(new CalendarEntryResponse.CalendarScopeDto(scopeType, scopeId, scopeName, iconUrl, scopeSlug))
                 .myAttendanceStatus(null)
                 .targetMode(targetResponse == null ? null : targetResponse.targetMode())
                 .targetCount(targetResponse == null ? null : targetResponse.targetCount())

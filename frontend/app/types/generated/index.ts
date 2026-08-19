@@ -76382,6 +76382,7 @@ export interface components {
             /** Format: int64 */
             scopeId?: number;
             scopeName?: string;
+            scopeSlug?: string;
             scopeType?: string;
         };
         CalendarTimeDto: {
