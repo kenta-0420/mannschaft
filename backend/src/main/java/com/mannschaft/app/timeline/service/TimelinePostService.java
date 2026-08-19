@@ -188,6 +188,31 @@ public class TimelinePostService {
         if (parseScopeType(req.getScopeTypeOrDefault()) != PostScopeType.VILLAGE) {
             checkScopeMembership(req.getScopeTypeOrDefault(), resolvedScopeId, userId);
         }
+        // 配下配信（CHILDREN / DESCENDANTS）の送信権限ゲート。
+        //
+        // 配下配信は「投稿が届く人の集合」を組織階層ぶん広げる操作であり、組織名義投稿
+        // （posted_as_type=ORGANIZATION）が既に ADMIN/DEPUTY_ADMIN を要求しているのに対して
+        // 影響範囲がより広い。在籍しているだけの MEMBER / SUPPORTER が最上位組織から
+        // 配下全体へ周知を流せる状態は権限の逆転であるため、組織名義投稿と同じ作法
+        // （AccessControlService#checkAdminOrAbove ＝ 違反時 403 COMMON_002）に揃えて塞ぐ。
+        //
+        // 課すのは「新規投稿でクライアントが明示指定した」場合のみ（parentId == null）。
+        // 返信は親投稿から delivery_scope を継承する（doCreatePost）ため、ここで返信にも課すと
+        // 配下配信で届いた投稿へ一般メンバーが返信できなくなる。継承経路には課さないこと。
+        //
+        // ORGANIZATION 以外（TEAM/PUBLIC/PERSONAL/VILLAGE）では delivery_scope は配信・可視性の
+        // どの述語にも寄与しない（到達範囲を計算する TimelineDeliveryScopeResolver は組織階層のみを
+        // 展開する）。値が保存されても誰にも余分に届かないため権限を要求する理由が無く、
+        // 指定値をそのまま保存する既存契約も変えない。
+        //
+        // なお checkScopeMembership と同じ理由（認可番人 AuthzControllerGuardArchTest の
+        // 委譲追跡 MAX_DELEGATION_DEPTH = 2）で、accessControlService の呼び出しは
+        // private ヘルパーへ沈めず本メソッド直下に置く。
+        if (req.getParentId() == null
+                && req.getDeliveryScopeOrDefault() != PostDeliveryScope.DIRECT
+                && parseScopeType(req.getScopeTypeOrDefault()) == PostScopeType.ORGANIZATION) {
+            accessControlService.checkAdminOrAbove(userId, resolvedScopeId, "ORGANIZATION");
+        }
         // 上記は「リクエストが申告したスコープ」に対する検証である。リプライは親投稿から
         // スコープを継承するため申告値と実効値が食い違いうる。継承後の実効スコープに対する
         // 再評価は doCreatePost（enforceScopeAuthorization = true）が担う。

@@ -8,6 +8,10 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
+import com.mannschaft.app.role.entity.RoleEntity;
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.RoleRepository;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.timeline.controller.TimelineFeedController;
 import com.mannschaft.app.timeline.controller.TimelinePostController;
@@ -96,8 +100,18 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private com.mannschaft.app.timeline.service.TimelinePostService postService;
 
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
     /** 組織 slug の一意性確保用の連番（slug は 30 文字・UNIQUE）。 */
     private int deliveryOrgSeq = 0;
+
+    // --- 権限ロール名（roles.name。専用 enum は無く文字列運用が正） ---
+    private static final String ROLE_ADMIN = "ADMIN";
+    private static final String ROLE_DEPUTY_ADMIN = "DEPUTY_ADMIN";
 
     // --- テスト用ユーザー（高位ID・seed と衝突しない） ---
     private static final Long USER_TEAM_A_MEMBER = 92_201L;
@@ -431,6 +445,119 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
                             .isEqualTo(TimelineErrorCode.POST_NOT_FOUND));
         }
 
+        // ─────────────────────────────────────────────────────────────
+        // 配下配信の「送信」権限ゲート（CHILDREN / DESCENDANTS は ADMIN / DEPUTY_ADMIN のみ）
+        // ─────────────────────────────────────────────────────────────
+
+        @Test
+        @DisplayName("配権AC-1 陽性対照: 組織 ADMIN は DESCENDANTS で投稿できる")
+        void descendantsPost_byOrgAdmin_isAccepted() {
+            Long admin = 92_311L;
+            membershipRepository.save(membership(admin, ScopeType.ORGANIZATION, parentOrg));
+            grantUserRole(admin, parentOrg, ROLE_ADMIN);
+
+            setAuthentication(admin);
+            PostResponse created = postService.createPost(deliveryRequest(
+                    parentOrg, PostDeliveryScope.DESCENDANTS), admin);
+
+            assertThat(postRepository.findById(created.getId())).isPresent()
+                    .get().extracting(TimelinePostEntity::getDeliveryScope)
+                    .isEqualTo(PostDeliveryScope.DESCENDANTS);
+        }
+
+        @Test
+        @DisplayName("配権AC-2 陽性対照: 組織 DEPUTY_ADMIN は DESCENDANTS で投稿できる")
+        void descendantsPost_byOrgDeputyAdmin_isAccepted() {
+            Long deputy = 92_312L;
+            membershipRepository.save(membership(deputy, ScopeType.ORGANIZATION, parentOrg));
+            grantUserRole(deputy, parentOrg, ROLE_DEPUTY_ADMIN);
+
+            setAuthentication(deputy);
+            PostResponse created = postService.createPost(deliveryRequest(
+                    parentOrg, PostDeliveryScope.DESCENDANTS), deputy);
+
+            assertThat(postRepository.findById(created.getId())).isPresent()
+                    .get().extracting(TimelinePostEntity::getDeliveryScope)
+                    .isEqualTo(PostDeliveryScope.DESCENDANTS);
+        }
+
+        @Test
+        @DisplayName("配権AC-3/8 一般 MEMBER の DESCENDANTS 投稿は COMMON_002 で拒否され1件も保存されない")
+        void descendantsPost_byPlainMember_isRejected() {
+            Long member = 92_313L;
+            membershipRepository.save(membership(member, ScopeType.ORGANIZATION, parentOrg));
+            long before = postRepository.count();
+
+            setAuthentication(member);
+            assertThatThrownBy(() -> postService.createPost(
+                    deliveryRequest(parentOrg, PostDeliveryScope.DESCENDANTS), member))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+
+            assertThat(postRepository.count()).isEqualTo(before);
+        }
+
+        @Test
+        @DisplayName("配権AC-4 SUPPORTER の DESCENDANTS 投稿も COMMON_002 で拒否される")
+        void descendantsPost_bySupporter_isRejected() {
+            Long supporter = 92_314L;
+            membershipRepository.save(MembershipEntity.builder()
+                    .userId(supporter)
+                    .scopeType(ScopeType.ORGANIZATION)
+                    .scopeId(parentOrg)
+                    .roleKind(RoleKind.SUPPORTER)
+                    .joinedAt(LocalDateTime.now())
+                    .build());
+
+            setAuthentication(supporter);
+            assertThatThrownBy(() -> postService.createPost(
+                    deliveryRequest(parentOrg, PostDeliveryScope.DESCENDANTS), supporter))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+        }
+
+        @Test
+        @DisplayName("配権AC-5 CHILDREN でも同様: 一般 MEMBER は拒否・ADMIN は許可")
+        void childrenPost_gateIsSymmetricWithDescendants() {
+            Long member = 92_315L;
+            Long admin = 92_316L;
+            membershipRepository.save(membership(member, ScopeType.ORGANIZATION, parentOrg));
+            membershipRepository.save(membership(admin, ScopeType.ORGANIZATION, parentOrg));
+            grantUserRole(admin, parentOrg, ROLE_ADMIN);
+
+            setAuthentication(member);
+            assertThatThrownBy(() -> postService.createPost(
+                    deliveryRequest(parentOrg, PostDeliveryScope.CHILDREN), member))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+
+            setAuthentication(admin);
+            PostResponse created = postService.createPost(
+                    deliveryRequest(parentOrg, PostDeliveryScope.CHILDREN), admin);
+            assertThat(postRepository.findById(created.getId())).isPresent()
+                    .get().extracting(TimelinePostEntity::getDeliveryScope)
+                    .isEqualTo(PostDeliveryScope.CHILDREN);
+        }
+
+        @Test
+        @DisplayName("配権AC-6 非退行: 一般 MEMBER の DIRECT（既定）投稿は従来どおり成功する")
+        void directPost_byPlainMember_isStillAccepted() {
+            Long member = 92_317L;
+            membershipRepository.save(membership(member, ScopeType.ORGANIZATION, parentOrg));
+
+            setAuthentication(member);
+            PostResponse created = postService.createPost(new CreatePostRequest(
+                    "既定配信の投稿", "ORGANIZATION", parentOrg, "USER",
+                    null, null, null, null, null, null), member);
+
+            assertThat(postRepository.findById(created.getId())).isPresent()
+                    .get().extracting(TimelinePostEntity::getDeliveryScope)
+                    .isEqualTo(PostDeliveryScope.DIRECT);
+        }
+
         @Test
         @DisplayName("認AC-18 配信は入場権ではない: 上位組織のタイムライン画面は依然403")
         void delivery_doesNotGrantFeedEntry() {
@@ -500,6 +627,48 @@ class TimelineReadScopeContractIT extends AbstractMySqlIntegrationTest {
                 .hierarchyVisibility(OrganizationEntity.HierarchyVisibility.FULL)
                 .supporterEnabled(false)
                 .build()).getId();
+    }
+
+    /**
+     * 配下配信の送信権限ゲート用のロールマスタを用意する。
+     *
+     * <p>test profile は Flyway 無効・schema は Entity 由来のため {@code roles} は空である。
+     * {@code AccessControlService#resolveEffectiveRoleName} は {@code roles.priority} を引くので、
+     * 判定に必要な行を全列充填で自前に積む（priority は本番 DDL と同じ値）。</p>
+     */
+    private Long roleId(String name, int priority) {
+        return roleRepository.findByName(name)
+                .map(RoleEntity::getId)
+                .orElseGet(() -> roleRepository.save(RoleEntity.builder()
+                        .name(name)
+                        .displayName(name)
+                        .priority(priority)
+                        .isSystem(true)
+                        .createdAt(LocalDateTime.now())
+                        .updatedAt(LocalDateTime.now())
+                        .build()).getId());
+    }
+
+    /** 指定ユーザーに組織スコープの権限ロール（user_roles 由来）を付与する。 */
+    private void grantUserRole(Long userId, Long organizationId, String roleName) {
+        // MEMBER / SUPPORTER も priority 比較の対象になるため、判定に絡む4ロールを揃えて積む
+        roleId(ROLE_ADMIN, 2);
+        roleId(ROLE_DEPUTY_ADMIN, 3);
+        roleId(RoleKind.MEMBER.name(), 4);
+        roleId(RoleKind.SUPPORTER.name(), 5);
+        userRoleRepository.save(UserRoleEntity.builder()
+                .userId(userId)
+                .roleId(roleId(roleName, ROLE_ADMIN.equals(roleName) ? 2 : 3))
+                .organizationId(organizationId)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build());
+    }
+
+    /** 配下配信を明示指定した組織スコープの新規投稿リクエスト。 */
+    private CreatePostRequest deliveryRequest(Long orgId, PostDeliveryScope deliveryScope) {
+        return new CreatePostRequest("配下配信の投稿", "ORGANIZATION", String.valueOf(orgId),
+                "USER", null, null, null, null, null, null, null, null, deliveryScope);
     }
 
     /** 組織スコープ投稿を配信範囲付きで作る（投稿者は USER_POST_OWNER）。 */
