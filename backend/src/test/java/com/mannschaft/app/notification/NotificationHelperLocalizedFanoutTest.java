@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -225,6 +226,58 @@ class NotificationHelperLocalizedFanoutTest {
                 .anySatisfy(event -> assertThat(event.getFormattedMessage())
                         .contains("failedRecipientCount=1")
                         .contains("deliveredRecipientCount=1"));
+    }
+
+    @Test
+    @DisplayName("null受信者は配信成功として誤集計されない（Codex四巡目是正）")
+    void null受信者は配信成功として誤集計されない() {
+        // given: null を含む受信者リスト。List.of は null を許さないため Arrays.asList を使う。
+        // 有効受信者は 1L(ja) / 2L(en) の2件。
+        java.util.List<Long> userIds = Arrays.asList(1L, null, 2L);
+        List<Long> effectiveRecipients = List.of(1L, 2L);
+        Map<Long, String> locales = Map.of(1L, "ja", 2L, "en");
+        given(userLocaleCache.getLocales(effectiveRecipients)).willReturn(locales);
+
+        // when
+        notificationHelper.notifyAllPreAuthorizedLocalized(
+                userIds,
+                "SURVEY_CREATED",
+                "SURVEY", 1L,
+                NotificationScopeType.ORGANIZATION, 2L,
+                "/surveys/1", 3L,
+                (userId, locale) -> new NotificationHelper.LocalizedMessage("t", "b"));
+
+        // then: 末尾ログの deliveredRecipientCount は null を除いた有効受信者数（2件）と一致する
+        // （null 受信者ぶんを「配信成功」として誤計上しない）。
+        assertThat(logAppender.list)
+                .as("null 受信者を除いた有効受信者数だけが deliveredRecipientCount へ反映される")
+                .anySatisfy(event -> assertThat(event.getFormattedMessage())
+                        .contains("deliveredRecipientCount=2")
+                        .contains("failedRecipientCount=0")
+                        .contains("effectiveRecipientCount=2"));
+        // getLocales には null を除いた有効受信者だけが渡る（下流の集計基準と揃える）。
+        verify(userLocaleCache, times(1)).getLocales(effectiveRecipients);
+    }
+
+    @Test
+    @DisplayName("受信者が全員nullの場合、insertAndDispatchChunkは一度も呼ばれずdeliveredRecipientCount=0になる")
+    void 受信者が全員nullの場合は配信も集計もされない() {
+        // given: 全員 null のリスト。
+        java.util.List<Long> userIds = Arrays.asList((Long) null, null);
+
+        // when
+        notificationHelper.notifyAllPreAuthorizedLocalized(
+                userIds,
+                "SURVEY_CREATED",
+                "SURVEY", 1L,
+                NotificationScopeType.ORGANIZATION, 2L,
+                "/surveys/1", 3L,
+                (userId, locale) -> new NotificationHelper.LocalizedMessage("t", "b"));
+
+        // then: 早期 return するため、getLocales・insertAndDispatchChunk のいずれも呼ばれない。
+        verify(userLocaleCache, never()).getLocales(any());
+        verify(bulkFanoutService, never()).insertAndDispatchChunk(
+                anyList(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     private static List<Long> argThatEquals(List<Long> expected) {

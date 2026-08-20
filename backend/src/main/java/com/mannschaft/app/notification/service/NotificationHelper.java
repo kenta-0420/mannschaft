@@ -463,12 +463,21 @@ public class NotificationHelper {
         if (userIds == null || userIds.isEmpty()) {
             return;
         }
+        // Codex 四巡目是正（PR #2873）: notifyAllPreAuthorized は先頭で null 受信者を除外し
+        // （NOT NULL 違反で 1 件ずつ落ちていた現行挙動と同じ最終結果）、null のみのグループは
+        // 1 件も INSERT せず failedRecipients=0 で正常 return する。グループ化より前に
+        // null を除外しておかないと、下流の集計基準（有効受信者数）とここでの group.size()
+        // （null 込みの元の要素数）がズレ、null 受信者を「配信成功」扱いで誤計上してしまう。
+        List<Long> recipients = userIds.stream().filter(java.util.Objects::nonNull).toList();
+        if (recipients.isEmpty()) {
+            return;
+        }
         // locale を一括解決（N+1 防止）。
-        Map<Long, String> locales = userLocaleCache.getLocales(userIds);
+        Map<Long, String> locales = userLocaleCache.getLocales(recipients);
 
         // 受信者を locale ごとにグループ化し、各グループをバルク経路（notifyAllPreAuthorized）へ渡す。
         Map<String, List<Long>> byLocale = new java.util.LinkedHashMap<>();
-        for (Long userId : userIds) {
+        for (Long userId : recipients) {
             String localeTag = locales.getOrDefault(userId, "ja");
             byLocale.computeIfAbsent(localeTag, k -> new java.util.ArrayList<>()).add(userId);
         }
@@ -513,10 +522,10 @@ public class NotificationHelper {
                         notificationType, entry.getKey(), group.size(), e.getMessage(), e);
             }
         }
-        log.info("一括通知送信(配信認可済・locale別): type={}, userCount={}, localeGroupCount={}, "
-                        + "messageBuiltGroupCount={}, messageBuildFailedGroupCount={}, "
+        log.info("一括通知送信(配信認可済・locale別): type={}, userCount={}, effectiveRecipientCount={}, "
+                        + "localeGroupCount={}, messageBuiltGroupCount={}, messageBuildFailedGroupCount={}, "
                         + "deliveredRecipientCount={}, failedRecipientCount={}",
-                notificationType, userIds.size(), byLocale.size(),
+                notificationType, userIds.size(), recipients.size(), byLocale.size(),
                 messageBuiltGroupCount, messageBuildFailedGroupCount,
                 deliveredRecipientCount, failedRecipientCount);
     }
