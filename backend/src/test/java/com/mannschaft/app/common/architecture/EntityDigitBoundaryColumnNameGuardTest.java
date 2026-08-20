@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 「命名戦略が曖昧になる境界では列名を明示する」という静的規約で根治する。</p>
  *
  * <p>実 Flyway スキーマに対する経験的な再現は
- * {@code com.mannschaft.app.common.migration.EntityDigitBoundaryColumnFlywaySchemaIT} が担う。
+ * {@code com.mannschaft.app.common.schema.EntityDigitBoundaryColumnFlywaySchemaIT} が担う。
  * 本テストは Docker 不要で全 Entity を機械走査する第一防衛線である。</p>
  */
 @DisplayName("Entity 数字→大文字境界フィールドの @Column(name) 明示 番人テスト")

@@ -1,4 +1,4 @@
-package com.mannschaft.app.common.migration;
+package com.mannschaft.app.common.schema;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -52,7 +52,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 @ActiveProfiles("test")
 @Testcontainers
 @Transactional
-@EnabledIf("com.mannschaft.app.common.migration.EntityDigitBoundaryColumnFlywaySchemaIT#isDockerAvailable")
+@EnabledIf("com.mannschaft.app.common.schema.EntityDigitBoundaryColumnFlywaySchemaIT#isDockerAvailable")
 @DisplayName("数字→大文字境界フィールドの物理列名 Flyway 実スキーマ整合テスト")
 class EntityDigitBoundaryColumnFlywaySchemaIT {
 
