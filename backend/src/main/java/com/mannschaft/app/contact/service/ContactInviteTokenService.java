@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.contact.ContactErrorCode;
 import com.mannschaft.app.contact.dto.ContactInvitePreviewResponse;
 import com.mannschaft.app.contact.dto.ContactInviteTokenResponse;
@@ -20,11 +21,13 @@ import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -45,6 +48,8 @@ public class ContactInviteTokenService {
     private final ContactRequestBlockRepository contactRequestBlockRepository;
     private final ContactService contactService;
     private final NotificationService notificationService;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
     private final BrandedQrImageWriter brandedQrImageWriter;
     private final NameResolverService nameResolverService;
 
@@ -212,20 +217,34 @@ public class ContactInviteTokenService {
     }
 
     private void sendInviteUsedNotification(Long actorId, Long issuerId, Long tokenId) {
-        UserEntity actor = userRepository.findById(actorId).orElse(null);
-        String actorName = actor != null ? actor.getLastName() + " " + actor.getFirstName() : "ユーザー";
-        notificationService.createNotification(
-                issuerId,
-                "CONTACT_INVITE_USED",
-                NotificationPriority.NORMAL,
-                "招待リンクが使用されました",
-                actorName + " さんが招待リンクを使用しました",
-                "CONTACT_INVITE_TOKEN",
-                tokenId,
-                NotificationScopeType.PERSONAL,
-                issuerId,
-                "/settings/contact-invite-tokens",
-                actorId
-        );
+        try {
+            UserEntity actor = userRepository.findById(actorId).orElse(null);
+            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(issuerId));
+            String defaultActorName = messageSource.getMessage(
+                    "notification.contact.common.defaultActorName", null, "ユーザー", locale);
+            String actorName = actor != null ? actor.getLastName() + " " + actor.getFirstName() : defaultActorName;
+            notificationService.createNotification(
+                    issuerId,
+                    "CONTACT_INVITE_USED",
+                    NotificationPriority.NORMAL,
+                    messageSource.getMessage(
+                            "notification.contact.inviteUsed.title", null,
+                            "招待リンクが使用されました", locale),
+                    messageSource.getMessage(
+                            "notification.contact.inviteUsed.body",
+                            new Object[]{actorName},
+                            actorName + " さんが招待リンクを使用しました", locale),
+                    "CONTACT_INVITE_TOKEN",
+                    tokenId,
+                    NotificationScopeType.PERSONAL,
+                    issuerId,
+                    "/settings/contact-invite-tokens",
+                    actorId
+            );
+        } catch (Exception e) {
+            // 通知失敗を隔離する（非DB例外・MessageFormatエラー等が対象。本処理の巻き戻りは防がない）。
+            log.warn("招待リンク使用通知の送信に失敗しました: issuerId={}, tokenId={}, error={}",
+                    issuerId, tokenId, e.getMessage());
+        }
     }
 }

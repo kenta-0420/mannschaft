@@ -1,6 +1,7 @@
 package com.mannschaft.app.memberinfo.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.memberinfo.TeamMemberInfoFieldEntity;
 import com.mannschaft.app.memberinfo.TeamMemberInfoFieldRepository;
 import com.mannschaft.app.memberinfo.TeamMemberInfoResponseEntity;
@@ -13,12 +14,14 @@ import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -41,6 +44,8 @@ public class MemberInfoUpdateReminderBatchService {
     private final TeamMemberInfoResponseRepository responseRepository;
     private final MembershipRepository membershipRepository;
     private final NotificationHelper notificationHelper;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * 毎日9時（JST）に実行。期限切れまたは未回答フィールドを持つメンバーへリマインドを送信する。
@@ -101,6 +106,13 @@ public class MemberInfoUpdateReminderBatchService {
                             r -> r,
                             (a, b) -> a));
 
+            // Issue #2715 CMP-055 ロットC-5: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+            Map<Long, String> teamLocales = userLocaleCache.getLocales(
+                    memberships.stream()
+                            .map(MembershipEntity::getUserId)
+                            .filter(java.util.Objects::nonNull)
+                            .toList());
+
             // 5. 各メンバーについて通知判定
             for (MembershipEntity membership : memberships) {
                 if (processedUserCount >= BATCH_LIMIT) {
@@ -141,10 +153,16 @@ public class MemberInfoUpdateReminderBatchService {
                 // 通知送信
                 try {
                     String firstFieldName = targetFields.get(0).getFieldName();
+                    Locale locale = Locale.forLanguageTag(teamLocales.getOrDefault(userId, "ja"));
                     notificationHelper.notify(
                             userId, "MEMBER_INFO_UPDATE_REMINDER",
-                            "情報の更新をお願いします",
-                            "「" + firstFieldName + "」等の情報を更新してください。",
+                            messageSource.getMessage(
+                                    "notification.memberinfo.updateReminder.title", null,
+                                    "情報の更新をお願いします", locale),
+                            messageSource.getMessage(
+                                    "notification.memberinfo.updateReminder.body",
+                                    new Object[]{firstFieldName},
+                                    "「" + firstFieldName + "」等の情報を更新してください。", locale),
                             "TEAM_MEMBER_INFO", teamId,
                             NotificationScopeType.TEAM, teamId,
                             "/teams/" + teamId + "/member-info", null);

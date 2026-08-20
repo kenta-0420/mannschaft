@@ -428,6 +428,46 @@ public class NotificationHelper {
                 notificationType, filtered.size(), successCount);
     }
 
+    /**
+     * 配信認可済み受信者リストへ、受信者ごとに locale の異なる本文で一括通知を作成・配信する。
+     *
+     * <p>Issue #2715 CMP-055 ロットC-5: {@link #notifyAllPreAuthorized} と同様に
+     * {@link #filterAccessibleRecipients}（canView 絞り込み）を<b>通さない</b>。
+     * 受信者リストが呼び出し側で事前認可済みの配信母集団である点は {@link #notifyAllPreAuthorized}
+     * と同じで、{@link #notifyAllLocalized} との違いは locale 別に本文を組み立てる点のみ。</p>
+     *
+     * @param userIds          配信母集団で事前認可済みの受信者リスト
+     * @param bodyBuilder      (userId, locale) → タイトル・本文 を組み立てる関数
+     */
+    public void notifyAllPreAuthorizedLocalized(List<Long> userIds, String notificationType,
+                                                String sourceType, Long sourceId,
+                                                NotificationScopeType scopeType, Long scopeId,
+                                                String actionUrl, Long actorId,
+                                                LocalizedMessageBuilder bodyBuilder) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        // locale を一括解決（N+1 防止）。
+        Map<Long, String> locales = userLocaleCache.getLocales(userIds);
+
+        int successCount = 0;
+        for (Long userId : userIds) {
+            try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(userId, "ja"));
+                LocalizedMessage message = bodyBuilder.build(userId, locale);
+                notifyPreAuthorized(userId, notificationType, NotificationPriority.NORMAL,
+                        message.title(), message.body(),
+                        sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+                successCount++;
+            } catch (Exception e) {
+                log.warn("通知送信失敗（継続）: userId={}, type={}, error={}",
+                        userId, notificationType, e.getMessage());
+            }
+        }
+        log.info("一括通知送信(配信認可済・locale別): type={}, userCount={}, successCount={}",
+                notificationType, userIds.size(), successCount);
+    }
+
     /** {@link #notifyAllLocalized} が受信者ごとに組み立てるタイトル・本文の組。 */
     public record LocalizedMessage(String title, String body) {
     }

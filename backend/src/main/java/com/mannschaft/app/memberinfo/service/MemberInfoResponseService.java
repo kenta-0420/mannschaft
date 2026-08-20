@@ -10,14 +10,17 @@ import com.mannschaft.app.memberinfo.TeamMemberInfoResponseRepository;
 import com.mannschaft.app.memberinfo.dto.MemberInfoResponseMeItem;
 import com.mannschaft.app.memberinfo.dto.MemberInfoStatusResponse;
 import com.mannschaft.app.memberinfo.dto.UpsertMemberInfoResponseRequest;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -30,6 +33,8 @@ public class MemberInfoResponseService {
     private final TeamMemberInfoResponseRepository responseRepository;
     private final AccessControlService accessControlService;
     private final NotificationHelper notificationHelper;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
     public List<MemberInfoResponseMeItem> getMyResponses(Long teamId, Long userId) {
         accessControlService.checkMembership(userId, teamId, "TEAM");
@@ -184,10 +189,16 @@ public class MemberInfoResponseService {
             throw new BusinessException(MemberInfoErrorCode.REMIND_TOO_SOON);
         }
 
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(targetUserId));
         notificationHelper.notify(
             targetUserId, "MEMBER_INFO_UPDATE_REMINDER",
-            "情報の更新をお願いします",
-            "「" + fields.get(0).getFieldName() + "」等の情報を更新してください。",
+            messageSource.getMessage(
+                "notification.memberinfo.updateReminder.title", null,
+                "情報の更新をお願いします", locale),
+            messageSource.getMessage(
+                "notification.memberinfo.updateReminder.body",
+                new Object[]{fields.get(0).getFieldName()},
+                "「" + fields.get(0).getFieldName() + "」等の情報を更新してください。", locale),
             "TEAM_MEMBER_INFO", teamId,
             NotificationScopeType.TEAM, teamId,
             "/teams/" + teamId + "/member-info", requestUserId);

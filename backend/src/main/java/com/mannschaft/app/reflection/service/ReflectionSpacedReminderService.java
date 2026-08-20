@@ -1,5 +1,6 @@
 package com.mannschaft.app.reflection.service;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.timezone.UserTimezoneCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -14,6 +15,7 @@ import com.mannschaft.app.reflection.repository.ReflectionSpacedReminderReposito
 import com.mannschaft.app.reflection.repository.ReflectionThemeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -49,6 +53,8 @@ public class ReflectionSpacedReminderService {
     private final ReflectionSettingsService reflectionSettingsService;
     private final UserTimezoneCache userTimezoneCache;
     private final NotificationHelper notificationHelper;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * エントリ保存時に SPACED 行（recall_interval_days 分）を生成する（§5.3・AC-9）。
@@ -181,6 +187,9 @@ public class ReflectionSpacedReminderService {
         LocalDateTime now = LocalDateTime.now(STORAGE_ZONE);
         List<ReflectionSpacedReminderEntity> due = reflectionSpacedReminderRepository
                 .findByStatusAndRemindAtLessThanEqual(ReflectionReminderStatus.PENDING, now);
+        // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+        Map<Long, String> locales = userLocaleCache.getLocales(
+                due.stream().map(ReflectionSpacedReminderEntity::getUserId).toList());
         for (ReflectionSpacedReminderEntity r : due) {
             try {
                 Optional<ReflectionThemeEntity> theme = resolveTheme(r);
@@ -190,9 +199,15 @@ public class ReflectionSpacedReminderService {
                     reflectionSpacedReminderRepository.save(r);
                     continue;
                 }
-                String title = "振り返りの想起テスト";
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(r.getUserId(), "ja"));
+                String title = messageSource.getMessage(
+                        "notification.reflection.recallReminder.title", null,
+                        "振り返りの想起テスト", locale);
                 // 通知 body はテーマ名のみ（振り返り本文は含めない＝プライバシー・§5.4）。
-                String body = theme.get().getTitle() + "の振り返りを思い出してみましょう";
+                String body = messageSource.getMessage(
+                        "notification.reflection.recallReminder.body",
+                        new Object[]{theme.get().getTitle()},
+                        theme.get().getTitle() + "の振り返りを思い出してみましょう", locale);
                 String actionUrl = r.getEntryId() != null
                         ? "/reflections/recall?entry=" + r.getEntryId()
                         : "/reflections/themes/" + r.getThemeId();
