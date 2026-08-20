@@ -114,10 +114,18 @@ public class GlobalExceptionHandler {
             Map.entry("SCHEDULE_KEEP_008", HttpStatus.CONFLICT),
             Map.entry("SCHEDULE_KEEP_009", HttpStatus.CONFLICT),
             Map.entry("SCHEDULE_KEEP_010", HttpStatus.CONFLICT),
-            // F08.1 マッチング: 認可拒否は 403（Severity.WARN 既定の 400 を上書き）。
-            //  - MATCHING_010 権限不足（募集の編集/取り下げ・サービス内認可）
-            //  - MATCHING_014 レビュー権限なし（対戦非参加/参加チームの管理者でない）
-            Map.entry("MATCHING_010", HttpStatus.FORBIDDEN),
+            // F08.1 マッチング: 認可拒否のステータス。
+            //  - MATCHING_010 権限不足 → 404（存在オラクル封じ・PARKING_020 の流儀）。
+            //    MatchProposalService の listProposals/acceptProposal/rejectProposal/withdrawProposal/
+            //    cancelProposal/agreeCancellation は、募集・応募が不在なら MATCHING_001/002（404）、
+            //    越境（他チームのリソース）なら MATCHING_010 を投げる。ここを 403 のままにすると、
+            //    攻撃者は応答が 404 か 403 かの差だけで募集ID・応募IDの実在を判別できてしまう
+            //    （存在オラクル）。不在側と同じ 404 に揃えて初めて存在秘匿が成立する。
+            //    MatchRequestService の updateRequest/deleteRequest、MatchTemplateService の
+            //    updateTemplate/deleteTemplate も同一コードを使う越境拒否であり、同じ扱いでよい。
+            //  - MATCHING_014 レビュー権限なし（対戦非参加/参加チームの管理者でない）→ 403
+            //    （対戦の存在自体は参加チーム双方に既知であり、秘匿対象ではない）
+            Map.entry("MATCHING_010", HttpStatus.NOT_FOUND),
             Map.entry("MATCHING_014", HttpStatus.FORBIDDEN),
             // 認可監査 Wave6 ロットC: F08.1 マッチングの残り未登録分。
             //  - MATCHING_001/002 は不在・NGチームブロック・非OPEN非所属を同一コードで返す存在秘匿 → 404

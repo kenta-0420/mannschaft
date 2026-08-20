@@ -8,6 +8,7 @@ import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
+import com.mannschaft.app.matching.MatchingErrorCode;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.succession.SuccessionErrorCode;
@@ -1843,6 +1844,24 @@ class GlobalExceptionHandlerTest {
         void チーム友だち可視性の存在オラクルが閉じている() {
             assertOracleClosed(SocialErrorCode.FRIEND_RELATION_NOT_FOUND,
                     SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY);
+        }
+
+        @Test
+        @DisplayName("マッチング募集: MATCHING_001（不在）と MATCHING_010（越境）がともに 404")
+        void マッチング募集の存在オラクルが閉じている() {
+            // MatchProposalService の listProposals/acceptProposal/rejectProposal/cancelProposal/
+            // agreeCancellation は、募集が不在なら REQUEST_NOT_FOUND、越境なら INSUFFICIENT_PERMISSION を
+            // 投げる。ステータスが割れると募集IDの実在が応答差から判別できる。
+            assertOracleClosed(MatchingErrorCode.REQUEST_NOT_FOUND,
+                    MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        @Test
+        @DisplayName("マッチング応募: MATCHING_002（不在）と MATCHING_010（越境）がともに 404")
+        void マッチング応募の存在オラクルが閉じている() {
+            // withdrawProposal は応募が不在なら PROPOSAL_NOT_FOUND、越境なら INSUFFICIENT_PERMISSION。
+            assertOracleClosed(MatchingErrorCode.PROPOSAL_NOT_FOUND,
+                    MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
     }
 }

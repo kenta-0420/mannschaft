@@ -38,7 +38,15 @@ public enum MatchingErrorCode implements ErrorCode {
     /** 応募のステータスが不正 */
     INVALID_PROPOSAL_STATUS("MATCHING_009", "この操作は現在の応募ステータスでは実行できません", Severity.WARN),
 
-    /** 権限不足 */
+    /**
+     * 権限不足（越境アクセス）。
+     *
+     * <p><b>HTTP 404</b> を返す（{@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} で登録）。
+     * 他チームの募集・応募・テンプレートへの操作は、不在時の
+     * {@link #REQUEST_NOT_FOUND}/{@link #PROPOSAL_NOT_FOUND}（ともに 404）と
+     * <b>同一ステータス</b>で応答し、リソースの存在自体を秘匿する（PARKING_020 起点の流儀）。
+     * 403 に戻すと、応答差だけで ID の実在を判別できる存在オラクルが復活するため戻してはならない。
+     */
     INSUFFICIENT_PERMISSION("MATCHING_010", "この操作に必要な権限がありません", Severity.WARN),
 
     /** レビューが見つからない */
