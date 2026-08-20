@@ -102,6 +102,14 @@ class SurveyServiceTest {
     @Mock
     private com.mannschaft.app.survey.service.SurveyResultAccessGuard resultAccessGuard;
 
+    /**
+     * 管理操作可否の判定点（CMP-041）。詳細レスポンスの {@code viewerCanManage} /
+     * {@code viewerCanViewTeamBreakdown} を載せるために SurveyService が依存する。
+     * 本テストは応答形のみを見るため既定の false で足りる。
+     */
+    @Mock
+    private com.mannschaft.app.survey.service.SurveyAccessGuard surveyAccessGuard;
+
     @InjectMocks
     private SurveyService surveyService;
 
@@ -367,7 +375,8 @@ class SurveyServiceTest {
 
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
+                    .willReturn(true);
             given(surveyRepository.save(entity)).willReturn(entity);
             given(surveyMapper.toSurveyResponse(entity)).willReturn(createSurveyResponse());
             given(userRoleRepository.findUserIdsByScope(SCOPE_TYPE, SCOPE_ID))
@@ -397,7 +406,8 @@ class SurveyServiceTest {
 
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, orgScopeType, SCOPE_ID))
                     .willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, orgScopeType)).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(USER_ID, SCOPE_ID, orgScopeType, "MANAGE_SURVEYS"))
+                    .willReturn(true);
             given(surveyRepository.save(entity)).willReturn(entity);
             given(surveyMapper.toSurveyResponse(entity)).willReturn(createSurveyResponse());
             // 配下チーム展開の窓口（組織×ALL のみ呼ばれること）
@@ -447,7 +457,8 @@ class SurveyServiceTest {
 
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
+                    .willReturn(true);
 
             // When & Then
             assertThatThrownBy(() -> surveyService.extendDeadline(
@@ -466,7 +477,8 @@ class SurveyServiceTest {
 
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(entity));
-            given(accessControlService.isAdminOrAbove(otherUserId, SCOPE_ID, SCOPE_TYPE)).willReturn(false);
+            given(accessControlService.hasAdminOrPermissionInScope(otherUserId, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
+                    .willReturn(false);
 
             // When & Then
             assertThatThrownBy(() -> surveyService.extendDeadline(
@@ -495,7 +507,8 @@ class SurveyServiceTest {
                     .willReturn(Optional.of(source));
             // duplicateSurvey は複製直後を非ガード toDetailResponse(savedNew) で返すため、
             // 新規survey の再lookup（findByIdAndScopeTypeAndScopeId）は不要になった。
-            given(accessControlService.isAdminOrAbove(USER_ID, SCOPE_ID, SCOPE_TYPE)).willReturn(true);
+            given(accessControlService.hasAdminOrPermissionInScope(USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
+                    .willReturn(true);
             // save の呼び出しでは引数のエンティティをそのまま返す
             given(surveyRepository.save(org.mockito.ArgumentMatchers.any(SurveyEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
@@ -526,7 +539,7 @@ class SurveyServiceTest {
             SurveyEntity source = createDraftSurvey();
             given(surveyRepository.findByIdAndScopeTypeAndScopeId(SURVEY_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(source));
-            given(accessControlService.isAdminOrAbove(otherUserId, SCOPE_ID, SCOPE_TYPE))
+            given(accessControlService.hasAdminOrPermissionInScope(otherUserId, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
                     .willReturn(false);
 
             // When & Then
