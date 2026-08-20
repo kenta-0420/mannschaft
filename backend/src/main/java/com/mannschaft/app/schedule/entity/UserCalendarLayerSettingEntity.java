@@ -6,6 +6,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -27,7 +28,10 @@ import java.time.LocalDateTime;
  * 削除＝物理削除でよい（原則3 の対象外。ユーザーの個人設定でありコアエンティティではない）。</p>
  */
 @Entity
-@Table(name = "user_calendar_layer_settings")
+@Table(name = "user_calendar_layer_settings",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_user_calendar_layer",
+                columnNames = {"user_id", "scope_type", "scope_id"}))
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PUBLIC)

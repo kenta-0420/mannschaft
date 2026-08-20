@@ -219,6 +219,15 @@ public class CalendarLayerService {
      *
      * <p>{@code INSERT IGNORE} が 0 件を返す＝並行 PATCH に先を越された場合は、
      * 相手が作った行を取り直してそのまま部分更新に回す。どちらが先着でも最終状態は同じになる。</p>
+     *
+     * <p><b>取り直しはロック付き読み取り</b>（{@code SELECT ... FOR UPDATE}）でなければならない。
+     * 本番 MySQL の分離レベルは {@code REPEATABLE-READ} であり、通常の SELECT は
+     * トランザクション冒頭に張ったスナップショットを見続けるため、
+     * {@code INSERT IGNORE} を挟んでも<b>先着がコミットした行は見えない</b>。
+     * 通常の {@code findBy...} で取り直すと必ず {@code IllegalStateException}（＝ 500）になり、
+     * 塞いだはずの欠陥がそのまま残る。ロック付き読み取りは InnoDB では現在読み取りとなり、
+     * 最新のコミット済みバージョンを読む。
+     * 詳細は {@link UserCalendarLayerSettingRepository#findForUpdateByUserIdAndScopeTypeAndScopeId}。</p>
      */
     private UserCalendarLayerSettingEntity createRowAtomically(Long userId, String type, long id) {
         UUID newId = UuidV7.generate();
@@ -235,8 +244,12 @@ public class CalendarLayerService {
             created.setId(newId);
             return created;
         }
-        // 並行 PATCH に先を越された。相手の行を取り直して更新に回す（冪等）。
-        return repository.findByUserIdAndScopeTypeAndScopeId(userId, type, id)
+        // 並行 PATCH に先を越された。相手の行を「ロック付き読み取り」で取り直して更新に回す（冪等）。
+        // 通常の findBy... では駄目である: 本番 MySQL は REPEATABLE-READ で、
+        // 通常の SELECT はトランザクション冒頭のスナップショットを見続けるため、
+        // 先着がコミットした行が最後まで見えず IllegalStateException（＝500）に落ちる。
+        // FOR UPDATE は InnoDB では現在読み取りになり、最新のコミット済み行を確実に読める。
+        return repository.findForUpdateByUserIdAndScopeTypeAndScopeId(userId, type, id)
                 .orElseThrow(() -> new IllegalStateException(
                         "INSERT IGNORE が 0 件を返したのに行が見つからない: userId=" + userId
                                 + ", scopeType=" + type + ", scopeId=" + id));

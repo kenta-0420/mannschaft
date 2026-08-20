@@ -1,7 +1,9 @@
 package com.mannschaft.app.schedule.repository;
 
 import com.mannschaft.app.schedule.entity.UserCalendarLayerSettingEntity;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -62,6 +64,39 @@ public interface UserCalendarLayerSettingRepository extends JpaRepository<UserCa
                        @Param("userId") Long userId,
                        @Param("scopeType") String scopeType,
                        @Param("scopeId") Long scopeId);
+
+    /**
+     * §4.4 PATCH で {@link #insertIfAbsent} が 0 件を返したとき、<b>先着がコミットした行を取り直す</b>ための
+     * ロック付き読み取り（{@code SELECT ... FOR UPDATE}）。
+     *
+     * <p><b>なぜ通常の {@code findBy...} では駄目か</b>: 本番 MySQL の分離レベルは
+     * {@code REPEATABLE-READ}（既定のまま。実 DB の
+     * {@code @@global.transaction_isolation} / {@code @@session.transaction_isolation} で確認済み）である。
+     * REPEATABLE READ の<b>通常の SELECT は一貫性読み取り</b>で、トランザクション最初の読み取りが
+     * 張ったスナップショットを見続ける。つまり
+     * 「{@code findBy...} が空 → {@code INSERT IGNORE} が 0（＝先着が居る）→ もう一度 {@code findBy...}」
+     * と進んでも、<b>先着の行は最後まで見えない</b>。前段の修正はこの点を見落としており、
+     * 0 件挿入の分岐が {@code IllegalStateException}（＝ 500）に落ちて、
+     * 塞いだはずの並行 PATCH の 500 が残っていた。</p>
+     *
+     * <p>{@code FOR UPDATE} などのロック付き読み取りは InnoDB では<b>現在読み取り
+     * （current read）</b>になり、スナップショットではなく<b>最新のコミット済みバージョン</b>を読む。
+     * よって先着の行が確実に見え、そのまま部分更新（{@code null}＝変更しない）の意味論を
+     * Java 側に残したまま更新に回せる。値まで含めた {@code ON DUPLICATE KEY UPDATE} に寄せると
+     * 部分更新の意味論を SQL に持ち込むことになるため採らない
+     * （兄弟の {@code UserCalendarSyncSettingRepository#upsert} は全項目上書きなので
+     * 読み直しが不要であり、この問題を持たない）。</p>
+     *
+     * <p>ロックは {@code INSERT IGNORE} が 0 を返した直後（＝先着は既にコミット済み）にのみ取り、
+     * 取得後すぐ更新してトランザクションを閉じるため、保持時間は短い。</p>
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM UserCalendarLayerSettingEntity s "
+            + "WHERE s.userId = :userId AND s.scopeType = :scopeType AND s.scopeId = :scopeId")
+    Optional<UserCalendarLayerSettingEntity> findForUpdateByUserIdAndScopeTypeAndScopeId(
+            @Param("userId") Long userId,
+            @Param("scopeType") String scopeType,
+            @Param("scopeId") Long scopeId);
 
     /** §4.4 の行数上限（1000件未満）チェック用。 */
     long countByUserId(Long userId);

@@ -12,53 +12,68 @@ import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 
 import java.nio.ByteBuffer;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 
 /**
- * F03.19 — レイヤー設定 PATCH の <b>upsert 原子性</b>の回帰テスト。
+ * F03.19 — レイヤー設定 PATCH の <b>upsert 原子性</b>の回帰テスト（単体・{@code REPEATABLE READ} 模倣）。
  *
  * <h2>塞ぐ欠陥</h2>
  * <p>設定行がまだ無い同一レイヤーへ PATCH が<b>並行して 2 件</b>来ると、
  * 「{@code findBy...} が空 → 新規 Entity を {@code save}」という検査と書き込みの隙間で
- * 両方が新規行を作ろうとし、後着が {@code uk_user_calendar_layer}
- * （{@code user_id, scope_type, scope_id}）違反で 500 を返していた。
- * PATCH の再送・二重操作で起き、<b>upsert・冪等という API 契約を破る</b>。</p>
+ * 両方が新規行を作ろうとし、後着が {@code uk_user_calendar_layer} 違反で 500 を返していた。</p>
  *
- * <h2>この単体テストがどうやって「並行」を再現するか</h2>
- * <p>Repository のモックにインメモリの実データ集合を持たせ、
- * <b>ユニーク制約まで忠実に再現</b>する（{@code save} で未採番の新規行のキーが既存と衝突したら
- * 実 DB と同じく {@link DataIntegrityViolationException} を投げる）。
- * そのうえで「{@code findBy...} の <b>1 回目の呼び出しが空を返した直後に</b>、
- * 別リクエストが同じ行を作る」という割り込みを {@code Answer} で挟み込む。
- * これは実 DB で起きる TOCTOU そのものであり、スレッドを起こさずに決定的に再現できる。</p>
+ * <p>その一次修正（{@code INSERT IGNORE} ＋ 0 件なら通常 SELECT で取り直し）は
+ * <b>実運用の分離レベルでは成立しない</b>。実 DB の
+ * {@code @@global.transaction_isolation} / {@code @@session.transaction_isolation} はいずれも
+ * {@code REPEATABLE-READ} であり、通常の SELECT はトランザクション冒頭に張ったスナップショットを
+ * 見続けるため、{@code INSERT IGNORE} が 0 を返した後に取り直しても
+ * <b>先着がコミットした行は見えない</b> → {@code IllegalStateException} → 500 のままだった。</p>
  *
- * <p>修正前はここで {@code DataIntegrityViolationException}（＝ 500）が漏れて赤くなる。
- * 修正後は {@code INSERT IGNORE}（{@code insertIfAbsent}）が競合を例外化せず、
- * 0 件挿入なら相手の作った行を取り直して更新に回すため、結果は冪等に確定する。</p>
+ * <h2>この単体テストがどうやって分離レベルを再現するか</h2>
+ * <p>Repository のモックに<b>スナップショット分離を持たせる</b>。
+ * すなわちインメモリのデータ集合を「コミット済みの現在値（{@code committed}）」と
+ * 「本トランザクションが最初の読み取り時に写し取ったスナップショット（{@code snapshot}）」に分け、</p>
+ * <ul>
+ *   <li>通常の {@code findByUserIdAndScopeTypeAndScopeId} は<b>スナップショット</b>を読む
+ *       （ただし自トランザクションの書き込みは見える — InnoDB と同じ）</li>
+ *   <li>{@code insertIfAbsent}（{@code INSERT IGNORE}）は<b>現在値</b>に対して働く
+ *       （書き込みは常に最新を見るため）</li>
+ *   <li>{@code findForUpdateBy...}（{@code SELECT ... FOR UPDATE}）は
+ *       ロック付き読み取り＝<b>現在読み取り</b>なので<b>現在値</b>を読む</li>
+ * </ul>
+ * <p>この模倣の下では、通常 SELECT で取り直す実装は必ず赤くなり、
+ * ロック付き読み取りで取り直す実装だけが緑になる。
+ * 実 DB での裏取りは {@code CalendarLayerUpsertConcurrencyIT}
+ * （Testcontainers・実 MySQL・実 2 トランザクション）が行う。</p>
  */
-@DisplayName("F03.19 レイヤー設定 PATCH の upsert 原子性（並行 PATCH で 500 にしない）")
+@DisplayName("F03.19 レイヤー設定 PATCH の upsert 原子性（REPEATABLE READ 下で並行 PATCH を 500 にしない）")
 class CalendarLayerUpsertConcurrencyTest {
 
     private static final Long ME = 1001L;
     private static final Long MY_TEAM = 42L;
 
-    /** {@code uk_user_calendar_layer} をキーに持つインメモリの実データ集合。 */
-    private Map<String, UserCalendarLayerSettingEntity> store;
+    /** コミット済みの現在値（{@code uk_user_calendar_layer} をキーに持つ）。 */
+    private Map<String, UserCalendarLayerSettingEntity> committed;
+    /** 本トランザクションが最初の読み取りで写し取ったスナップショット（未確立なら null）。 */
+    private Map<String, UserCalendarLayerSettingEntity> snapshot;
+    /** 本トランザクション自身が書いたキー（自分の書き込みは常に見える）。 */
+    private Set<String> writtenByMe;
+
     private UserCalendarLayerSettingRepository repository;
     private AccessControlService accessControlService;
     private NameResolverService nameResolverService;
@@ -66,7 +81,10 @@ class CalendarLayerUpsertConcurrencyTest {
 
     @BeforeEach
     void setUp() {
-        store = new LinkedHashMap<>();
+        committed = new LinkedHashMap<>();
+        snapshot = null;
+        writtenByMe = new HashSet<>();
+
         repository = mock(UserCalendarLayerSettingRepository.class);
         accessControlService = mock(AccessControlService.class);
         nameResolverService = mock(NameResolverService.class);
@@ -78,33 +96,46 @@ class CalendarLayerUpsertConcurrencyTest {
         lenient().when(nameResolverService.resolveIconUrl(anyString(), anyLong()))
                 .thenReturn(null);
 
-        doAnswer(inv -> Optional.ofNullable(
-                store.get(key(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2)))))
-                .when(repository).findByUserIdAndScopeTypeAndScopeId(any(), anyString(), any());
+        // 通常 SELECT = 一貫性読み取り（スナップショット）。最初の読み取りでスナップショットが張られる。
+        lenient().doAnswer(inv -> {
+            String k = key(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2));
+            establishSnapshot();
+            return Optional.ofNullable(readSnapshot(k));
+        }).when(repository).findByUserIdAndScopeTypeAndScopeId(any(), anyString(), any());
 
-        lenient().when(repository.countByUserId(any())).thenAnswer(inv -> (long) store.size());
+        // SELECT ... FOR UPDATE = 現在読み取り。スナップショットではなく最新のコミット済みを読む。
+        lenient().doAnswer(inv -> {
+            String k = key(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2));
+            return Optional.ofNullable(committed.get(k));
+        }).when(repository).findForUpdateByUserIdAndScopeTypeAndScopeId(any(), anyString(), any());
 
-        // INSERT IGNORE の意味論: 既にキーがあれば 0 件・例外なし。無ければ既定値の行を 1 件作る。
-        doAnswer(inv -> {
+        lenient().when(repository.countByUserId(any())).thenAnswer(inv -> {
+            establishSnapshot();
+            return (long) snapshot.size();
+        });
+
+        // INSERT IGNORE の意味論: 書き込みは現在値を見る。既にキーがあれば 0 件・例外なし。
+        lenient().doAnswer(inv -> {
             byte[] idBytes = inv.getArgument(0);
             Long userId = inv.getArgument(1);
             String scopeType = inv.getArgument(2);
             Long scopeId = inv.getArgument(3);
             String k = key(userId, scopeType, scopeId);
-            if (store.containsKey(k)) {
+            if (committed.containsKey(k)) {
                 return 0;
             }
             UserCalendarLayerSettingEntity created = row(userId, scopeType, scopeId, null, false);
             created.setId(toUuid(idBytes));
-            store.put(k, created);
+            committed.put(k, created);
+            writtenByMe.add(k);
             return 1;
         }).when(repository).insertIfAbsent(any(), any(), anyString(), any());
 
         // save の意味論: 未採番（新規）行が既存キーと衝突したら実 DB と同じく制約違反で落ちる。
-        doAnswer(inv -> {
+        lenient().doAnswer(inv -> {
             UserCalendarLayerSettingEntity e = inv.getArgument(0);
             String k = key(e.getUserId(), e.getScopeType(), e.getScopeId());
-            UserCalendarLayerSettingEntity current = store.get(k);
+            UserCalendarLayerSettingEntity current = committed.get(k);
             if (e.getId() == null) {
                 if (current != null) {
                     throw new DataIntegrityViolationException(
@@ -112,7 +143,8 @@ class CalendarLayerUpsertConcurrencyTest {
                 }
                 e.setId(UUID.randomUUID());
             }
-            store.put(k, e);
+            committed.put(k, e);
+            writtenByMe.add(k);
             return e;
         }).when(repository).save(any(UserCalendarLayerSettingEntity.class));
 
@@ -120,31 +152,38 @@ class CalendarLayerUpsertConcurrencyTest {
     }
 
     @Test
-    @DisplayName("〔陽性〕find が空を返した直後に他リクエストが同じ行を作っても 500 にならず冪等に確定する")
-    void concurrentPatch_whenRivalCreatesRowBetweenReadAndWrite_doesNotFail() {
-        // 1 回目の読み取りが空を返した「直後」に、別 PATCH が同じ行を作る（TOCTOU の割り込み）。
-        AtomicInteger reads = new AtomicInteger();
-        doAnswer(inv -> {
-            String k = key(inv.getArgument(0), inv.getArgument(1), inv.getArgument(2));
-            Optional<UserCalendarLayerSettingEntity> found = Optional.ofNullable(store.get(k));
-            if (reads.getAndIncrement() == 0 && found.isEmpty()) {
-                UserCalendarLayerSettingEntity rival = row(ME, "TEAM", MY_TEAM, "#059669", true);
-                rival.setId(UUID.randomUUID());
-                store.put(k, rival);
-            }
-            return found;
-        }).when(repository).findByUserIdAndScopeTypeAndScopeId(any(), anyString(), any());
+    @DisplayName("〔陽性〕REPEATABLE READ 下で先着が行を作っても 500 にならず冪等に確定する")
+    void concurrentPatch_underRepeatableRead_doesNotFail() {
+        // 本トランザクションのスナップショットを「行が無い」時点で確立する。
+        assertThat(repository.findByUserIdAndScopeTypeAndScopeId(ME, "TEAM", MY_TEAM)).isEmpty();
+
+        // 先着の別トランザクションが同じ行を作ってコミットする。
+        // REPEATABLE READ なので、本トランザクションの通常 SELECT には最後まで見えない。
+        UserCalendarLayerSettingEntity rival = row(ME, "TEAM", MY_TEAM, "#059669", true);
+        rival.setId(UUID.randomUUID());
+        committed.put(key(ME, "TEAM", MY_TEAM), rival);
 
         CalendarLayerResponse[] result = new CalendarLayerResponse[1];
         assertThatCode(() -> result[0] = service.updateLayer(
                 ME, "TEAM", MY_TEAM, new CalendarLayerUpdateRequest("#dc2626", null)))
                 .doesNotThrowAnyException();
 
-        // 冪等: 行は 1 本だけ・自分の指定色が載り、送っていない hidden は相手の値を壊さない。
-        assertThat(store).hasSize(1);
+        // 冪等: 行は 1 本だけ・自分の指定色が載り、送っていない hidden は先着の値を壊さない。
+        assertThat(committed).hasSize(1);
         assertThat(result[0].color()).isEqualTo("#DC2626");
-        assertThat(store.get(key(ME, "TEAM", MY_TEAM)).getColor()).isEqualTo("#DC2626");
-        assertThat(store.get(key(ME, "TEAM", MY_TEAM)).getHidden()).isTrue();
+        assertThat(committed.get(key(ME, "TEAM", MY_TEAM)).getColor()).isEqualTo("#DC2626");
+        assertThat(committed.get(key(ME, "TEAM", MY_TEAM)).getHidden()).isTrue();
+    }
+
+    @Test
+    @DisplayName("〔陽性〕先着が居なければ新規行が作られる（陽性対照）")
+    void patch_whenNoRival_createsRow() {
+        CalendarLayerResponse response = service.updateLayer(
+                ME, "TEAM", MY_TEAM, new CalendarLayerUpdateRequest("#DC2626", true));
+
+        assertThat(committed).hasSize(1);
+        assertThat(response.color()).isEqualTo("#DC2626");
+        assertThat(response.hidden()).isTrue();
     }
 
     @Test
@@ -155,9 +194,28 @@ class CalendarLayerUpsertConcurrencyTest {
         CalendarLayerResponse second = service.updateLayer(
                 ME, "TEAM", MY_TEAM, new CalendarLayerUpdateRequest("#DC2626", true));
 
-        assertThat(store).hasSize(1);
+        assertThat(committed).hasSize(1);
         assertThat(second.color()).isEqualTo(first.color());
         assertThat(second.hidden()).isEqualTo(first.hidden());
+    }
+
+    // ------------------------------------------------------------------
+    // スナップショット分離の模倣
+    // ------------------------------------------------------------------
+
+    /** 最初の読み取りでコミット済み現在値を写し取る（以後この写しが見え続ける）。 */
+    private void establishSnapshot() {
+        if (snapshot == null) {
+            snapshot = new LinkedHashMap<>(committed);
+        }
+    }
+
+    /** スナップショットを読む。ただし自トランザクションの書き込みだけは最新が見える。 */
+    private UserCalendarLayerSettingEntity readSnapshot(String k) {
+        if (writtenByMe.contains(k)) {
+            return committed.get(k);
+        }
+        return snapshot.get(k);
     }
 
     // ------------------------------------------------------------------
