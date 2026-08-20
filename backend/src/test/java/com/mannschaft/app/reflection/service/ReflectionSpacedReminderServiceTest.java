@@ -12,12 +12,14 @@ import com.mannschaft.app.reflection.repository.ReflectionEntryRepository;
 import com.mannschaft.app.reflection.repository.ReflectionSpacedReminderRepository;
 import com.mannschaft.app.reflection.repository.ReflectionThemeRepository;
 import org.junit.jupiter.api.DisplayName;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
@@ -51,8 +53,26 @@ class ReflectionSpacedReminderServiceTest {
     @Mock private UserTimezoneCache userTimezoneCache;
     @Mock private NotificationHelper notificationHelper;
 
+    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
+    @Mock private UserLocaleCache userLocaleCache;
+    @Mock private MessageSource messageSource;
+
     @InjectMocks private ReflectionSpacedReminderService service;
 
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
     private static final Long USER_ID = 100L;
 
     private static void setId(Object entity, UUID id) {

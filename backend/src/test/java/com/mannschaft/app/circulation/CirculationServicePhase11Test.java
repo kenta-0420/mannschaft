@@ -27,6 +27,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -94,8 +95,28 @@ class CirculationServicePhase11Test {
     @Mock
     private AccessControlService accessControlService;
 
+    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
+    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock private MessageSource messageSource;
+
     @InjectMocks
     private CirculationService circulationService;
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.Map.of());
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     /**
      * {@code auditLogService} は {@code CirculationService} 側で
@@ -106,6 +127,10 @@ class CirculationServicePhase11Test {
     @BeforeEach
     void injectOptionalFields() {
         ReflectionTestUtils.setField(circulationService, "auditLogService", auditLogService);
+        // Issue #2715 CMP-055: same @InjectMocks constructor-injection caveat applies to the
+        // newly added i18n dependencies, so force them in explicitly.
+        ReflectionTestUtils.setField(circulationService, "userLocaleCache", userLocaleCache);
+        ReflectionTestUtils.setField(circulationService, "messageSource", messageSource);
     }
 
     private static final Long DOCUMENT_ID = 100L;

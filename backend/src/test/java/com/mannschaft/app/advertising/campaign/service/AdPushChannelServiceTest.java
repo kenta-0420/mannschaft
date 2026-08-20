@@ -20,6 +20,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -44,8 +45,25 @@ class AdPushChannelServiceTest {
     @Mock private NotificationService notificationService;
     @Mock private NotificationDispatchService dispatchService;
     @Mock private AdPushDeliveryRepository deliveryRepository;
+    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
+    @Mock private MessageSource messageSource;
+
     @InjectMocks private AdPushChannelService service;
 
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
     private AdMessagingCampaign buildCampaign() {
         AdMessagingCampaign campaign = AdMessagingCampaign.builder()
                 .advertiserAccountId(100L)
