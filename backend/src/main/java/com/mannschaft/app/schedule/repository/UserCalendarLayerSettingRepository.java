@@ -29,6 +29,40 @@ public interface UserCalendarLayerSettingRepository extends JpaRepository<UserCa
     /** §4.5 DELETE（冪等・物理削除）。 */
     void deleteByUserIdAndScopeTypeAndScopeId(Long userId, String scopeType, Long scopeId);
 
+    /**
+     * §4.4 PATCH の<b>原子的な行作成</b>（{@code uk_user_calendar_layer} 競合を例外にしない）。
+     *
+     * <p>「{@code findBy...} が空 → 新規 Entity を作って {@code save}」は<b>検査と書き込みの間に
+     * 隙間がある</b>ため、設定行がまだ無い同一レイヤーへ PATCH が並行して 2 件来ると
+     * 両方が新規行を作ろうとし、片方が {@code uk_user_calendar_layer} 違反で 500 を返す。
+     * PATCH は upsert・冪等を契約しているので、これは契約違反である。</p>
+     *
+     * <p><b>なぜ例外捕捉（{@code save} + {@code DataIntegrityViolationException} でリトライ）ではなく
+     * {@code INSERT IGNORE} か</b>: 制約違反が例外化された時点で現在のトランザクションは
+     * rollback-only になり、同じトランザクション内で取り直して更新に回すことができない
+     * （{@code AdCampaignDeliveryClaimRepository} で同じ結論に達している）。
+     * {@code INSERT IGNORE} は競合そのものを例外化しないため、呼び出し元のトランザクションを
+     * 汚さずに「無ければ作る・有ればそのまま」を 1 往復で確定できる。</p>
+     *
+     * <p>作るのは<b>既定値の行</b>（{@code color=NULL}＝自動色 / {@code hidden=FALSE}）だけである。
+     * 実際の値の反映は呼び出し元が JPA の更新で行う（部分更新の意味論はサービス層に残す）。</p>
+     *
+     * @param id       採番済み UUIDv7 の 16 バイト表現（{@code BINARY(16)}）
+     * @param userId   設定の所有者
+     * @param scopeType レイヤー種別
+     * @param scopeId  レイヤー対象ID
+     * @return 挿入できたら 1、既に行が存在して無視されたら 0
+     */
+    @Modifying
+    @Query(value = "INSERT IGNORE INTO user_calendar_layer_settings "
+            + "(id, user_id, scope_type, scope_id, color, hidden, created_at, updated_at) "
+            + "VALUES (:id, :userId, :scopeType, :scopeId, NULL, FALSE, NOW(3), NOW(3))",
+            nativeQuery = true)
+    int insertIfAbsent(@Param("id") byte[] id,
+                       @Param("userId") Long userId,
+                       @Param("scopeType") String scopeType,
+                       @Param("scopeId") Long scopeId);
+
     /** §4.4 の行数上限（1000件未満）チェック用。 */
     long countByUserId(Long userId);
 

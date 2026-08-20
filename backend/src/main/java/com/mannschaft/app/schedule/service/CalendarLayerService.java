@@ -3,6 +3,7 @@ package com.mannschaft.app.schedule.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
 import com.mannschaft.app.schedule.dto.CalendarColorSource;
 import com.mannschaft.app.schedule.dto.CalendarLayerResponse;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -21,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 /**
@@ -175,13 +178,7 @@ public class CalendarLayerService {
             if (repository.countByUserId(userId) >= MAX_LAYER_SETTINGS_PER_USER) {
                 throw new BusinessException(ScheduleErrorCode.CALENDAR_LAYER_LIMIT_EXCEEDED);
             }
-            entity = UserCalendarLayerSettingEntity.builder()
-                    .userId(userId)
-                    .scopeType(type)
-                    .scopeId(id)
-                    .color(null)
-                    .hidden(false)
-                    .build();
+            entity = createRowAtomically(userId, type, id);
         }
 
         // 部分更新: null は「変更しない」。
@@ -198,6 +195,59 @@ public class CalendarLayerService {
         UserCalendarLayerSettingEntity saved = repository.save(entity);
         return toResponse(type, id, scopeDisplayName(type, id), scopeNameKey(type),
                 scopeIconUrl(type, id), saved);
+    }
+
+    /**
+     * 設定行がまだ無いときの<b>原子的な行作成</b>（並行 PATCH で 500 にしないための要）。
+     *
+     * <p>「{@code findBy...} が空 → 新規 Entity を {@code save}」は検査と書き込みの間に隙間があり、
+     * 設定行がまだ無い同一レイヤーへ PATCH が並行して 2 件来ると両方が新規行を作ろうとして、
+     * 後着が {@code uk_user_calendar_layer}（{@code user_id, scope_type, scope_id}）違反で
+     * 500 を返していた。PATCH の再送や二重操作で普通に起き、
+     * <b>upsert・冪等という API 契約を破る</b>。</p>
+     *
+     * <p><b>採った手段は {@code INSERT IGNORE}</b>
+     * （{@link UserCalendarLayerSettingRepository#insertIfAbsent}）である。
+     * 例外捕捉＋リトライ（{@code save} で {@code DataIntegrityViolationException} を捕まえて取り直す）は
+     * この場では成立しない — 制約違反が例外化された時点で<b>現在のトランザクションが
+     * rollback-only になり</b>、同じトランザクション内で取り直して更新に回せないからである
+     * （同じ結論に {@code AdCampaignDeliveryClaimRepository} が先に到達している）。
+     * 別 Bean の {@code REQUIRES_NEW} でリトライする手もあるが、
+     * PATCH 1 本のために新しいトランザクション境界を増やすより、
+     * 同一ドメインの兄弟（{@code UserCalendarSyncSettingRepository#upsert}）と同じ
+     * DB 側の upsert に寄せるほうが構造が薄い。</p>
+     *
+     * <p>{@code INSERT IGNORE} が 0 件を返す＝並行 PATCH に先を越された場合は、
+     * 相手が作った行を取り直してそのまま部分更新に回す。どちらが先着でも最終状態は同じになる。</p>
+     */
+    private UserCalendarLayerSettingEntity createRowAtomically(Long userId, String type, long id) {
+        UUID newId = UuidV7.generate();
+        int inserted = repository.insertIfAbsent(toBinary16(newId), userId, type, id);
+        if (inserted > 0) {
+            // 自分が作った行。採番済み ID を載せておけば以降の save は UPDATE になる。
+            UserCalendarLayerSettingEntity created = UserCalendarLayerSettingEntity.builder()
+                    .userId(userId)
+                    .scopeType(type)
+                    .scopeId(id)
+                    .color(null)
+                    .hidden(false)
+                    .build();
+            created.setId(newId);
+            return created;
+        }
+        // 並行 PATCH に先を越された。相手の行を取り直して更新に回す（冪等）。
+        return repository.findByUserIdAndScopeTypeAndScopeId(userId, type, id)
+                .orElseThrow(() -> new IllegalStateException(
+                        "INSERT IGNORE が 0 件を返したのに行が見つからない: userId=" + userId
+                                + ", scopeType=" + type + ", scopeId=" + id));
+    }
+
+    /** UUID を {@code BINARY(16)} のバイト列へ変換する（DDL の id 列に合わせる）。 */
+    private static byte[] toBinary16(UUID uuid) {
+        return ByteBuffer.allocate(16)
+                .putLong(uuid.getMostSignificantBits())
+                .putLong(uuid.getLeastSignificantBits())
+                .array();
     }
 
     // ------------------------------------------------------------------

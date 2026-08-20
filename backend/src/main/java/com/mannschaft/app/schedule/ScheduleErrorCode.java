@@ -223,7 +223,7 @@ public enum ScheduleErrorCode implements ErrorCode {
     CALENDAR_LAYER_INVALID_SCOPE(
             "SCHEDULE_103", "レイヤーのスコープ指定が不正です", Severity.WARN),
 
-    /** 1ユーザーあたりのレイヤー設定行数が上限に達した（409）。 */
+    /** 1ユーザーあたりのレイヤー設定行数が上限に達した（400。件数上限は .claudecode.md §3.2.1 の本則どおり既定の 400）。 */
     CALENDAR_LAYER_LIMIT_EXCEEDED(
             "SCHEDULE_104", "カレンダーレイヤー設定の上限（1000件）に達しています", Severity.WARN);
 

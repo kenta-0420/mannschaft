@@ -2,13 +2,10 @@ package com.mannschaft.app.schedule.listener;
 
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.organization.event.OrganizationDeletedEvent;
-import com.mannschaft.app.schedule.repository.UserCalendarLayerSettingRepository;
 import com.mannschaft.app.team.event.TeamDeletedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
@@ -43,12 +40,16 @@ import org.springframework.transaction.event.TransactionalEventListener;
  *   <li>{@link TransactionalEventListener}({@code AFTER_COMMIT}) — 親（チーム削除・退会）の
  *       コミットが<b>成立してから</b>動く。親がロールバックすれば本処理は<b>そもそも走らない</b>ので、
  *       「チームは残ったのに色設定だけ消えた」が起きない。</li>
- *   <li>{@link Transactional}({@code REQUIRES_NEW}) — 親とは<b>別の新規トランザクション</b>で消す。
+ *   <li>{@link CalendarLayerCleanupExecutor}（{@code REQUIRES_NEW}）— 親とは<b>別の新規トランザクション</b>で消す。
  *       ここでの失敗は自分の TX だけをロールバックし、親には届かない。
  *       素の {@code REQUIRED} は {@code AFTER_COMMIT} フェーズでは既にコミット済みの TX に参加できず
- *       silently 破棄されるため使えない。</li>
+ *       silently 破棄されるため使えない。
+ *       <b>この {@code REQUIRES_NEW} は本クラスではなく別 Bean 側に置く</b>
+ *       — 理由は下の「なぜ別 Bean なのか」を参照。</li>
  *   <li>try/catch + {@code warn} ログ — 例外を呼び出し元へ伝播させず、同一イベントを購読する
- *       <b>他ドメインのリスナーを巻き添えにしない</b>。</li>
+ *       <b>他ドメインのリスナーを巻き添えにしない</b>。
+ *       本クラスのメソッドは<b>トランザクション境界を持たない</b>ため、
+ *       捕捉が commit / rollback の外側になり、完了例外まで含めて確実に飲み込める。</li>
  * </ul>
  * <p><b>これは握りつぶし（{@code catch} して無言）ではない。</b>失敗は必ず
  * スタックトレース付きの {@code warn} で記録され、成功時も削除件数を {@code info} に残すので、
@@ -56,6 +57,16 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * 孤児行が残っても実害が無く（所属列挙経由でレイヤー一覧に現れない）、
  * §10.1 の 1000 行上限で頭打ちになるため、親の操作を巻き戻してまで整合を取る価値が無い、
  * という設計判断に基づく意図的な切り離しである。</p>
+ *
+ * <h2>なぜ別 Bean なのか（CMP-112 の根治）</h2>
+ * <p>{@code @Transactional} の commit / rollback は<b>メソッドを抜けた後にプロキシが行う</b>。
+ * かつて本クラスは購読メソッド自身に {@code REQUIRES_NEW} を付け、その内部で try/catch していたが、
+ * 削除 SQL が失敗して新規 TX が rollback-only になると、内部の {@code catch} が SQL 例外を
+ * 捕まえても<b>完了例外（{@code UnexpectedRollbackException} 等）が {@code try} の外へ伝播</b>し、
+ * 意図したベストエフォートの隔離が成立しなかった（同一イベントの後続リスナーを巻き添えにしうる）。
+ * 根治は定石どおり「{@code REQUIRES_NEW} を別 Bean へ切り出し、その呼び出し<b>全体</b>を
+ * 非トランザクションな側で捕捉する」。同一クラス内のメソッド分割では自己呼び出しになり
+ * プロキシが挟まらないため解決しない。</p>
  *
  * <h2>{@code @Transactional} の閉じ方（原則5）</h2>
  * <p>本リスナーは team / organization / auth ドメインのイベントを購読するが、
@@ -73,14 +84,14 @@ public class CalendarLayerLifecycleListener {
     private static final String SCOPE_TEAM = "TEAM";
     private static final String SCOPE_ORGANIZATION = "ORGANIZATION";
 
-    private final UserCalendarLayerSettingRepository repository;
+    /** REQUIRES_NEW を持つ削除実行 Bean（本クラス自身はトランザクション境界を持たない）。 */
+    private final CalendarLayerCleanupExecutor cleanupExecutor;
 
     /**
      * チーム削除時、そのチームレイヤーの設定行を全ユーザー分削除する（§10.4）。
      *
      * @param event チーム削除イベント
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleTeamDeleted(TeamDeletedEvent event) {
         deleteScope(SCOPE_TEAM, event.getTeamId());
@@ -91,7 +102,6 @@ public class CalendarLayerLifecycleListener {
      *
      * @param event 組織削除イベント
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleOrganizationDeleted(OrganizationDeletedEvent event) {
         deleteScope(SCOPE_ORGANIZATION, event.getOrganizationId());
@@ -106,12 +116,11 @@ public class CalendarLayerLifecycleListener {
      *
      * @param event 退会即時匿名化イベント
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleUserAnonymized(UserAnonymizedEvent event) {
         Long userId = event.getUserId();
         try {
-            int deleted = repository.deleteByUserId(userId);
+            int deleted = cleanupExecutor.deleteByUser(userId);
             log.info("ユーザー退会: カレンダーレイヤー設定を削除しました: userId={}, deleted={}",
                     userId, deleted);
         } catch (Exception ex) {
@@ -122,10 +131,13 @@ public class CalendarLayerLifecycleListener {
 
     /**
      * 指定スコープの設定行を全ユーザー分削除する。失敗は warn ログに残して伝播させない。
+     *
+     * <p>本メソッドは<b>トランザクション境界の外側</b>にあるため、委譲先 Bean のコミット試行で
+     * 生じる完了例外まで含めてここで捕まえられる（CMP-112）。</p>
      */
     private void deleteScope(String scopeType, Long scopeId) {
         try {
-            int deleted = repository.deleteByScopeTypeAndScopeId(scopeType, scopeId);
+            int deleted = cleanupExecutor.deleteScope(scopeType, scopeId);
             log.info("スコープ削除: カレンダーレイヤー設定を削除しました: scopeType={}, scopeId={}, deleted={}",
                     scopeType, scopeId, deleted);
         } catch (Exception ex) {

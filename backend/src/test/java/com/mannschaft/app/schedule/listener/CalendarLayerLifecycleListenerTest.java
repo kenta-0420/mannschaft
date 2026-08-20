@@ -10,6 +10,7 @@ import com.mannschaft.app.team.event.TeamMemberRemovedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.UnexpectedRollbackException;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.event.TransactionPhase;
@@ -86,7 +87,8 @@ class CalendarLayerLifecycleListenerTest {
             return removeIf(r -> Objects.equals(r.getUserId(), userId));
         }).when(repository).deleteByUserId(anyLong());
 
-        listener = new CalendarLayerLifecycleListener(repository);
+        // 委譲先 Bean は実物を使う（リスナー→Executor→Repository の経路そのものを踏む）。
+        listener = new CalendarLayerLifecycleListener(new CalendarLayerCleanupExecutor(repository));
     }
 
     // ------------------------------------------------------------------
@@ -211,8 +213,46 @@ class CalendarLayerLifecycleListenerTest {
     }
 
     @Test
-    @DisplayName("〔切り離しの機構〕全購読メソッドが AFTER_COMMIT かつ REQUIRES_NEW である")
-    void allListenerMethods_useAfterCommitAndRequiresNew() {
+    @DisplayName("〔切り離し・CMP-112〕委譲先 Bean のコミット完了例外も try の外へ漏らさない"
+            + "（後続リスナーを巻き添えにしない）")
+    void cleanupExecutorCompletionFailure_doesNotEscapeToCaller() {
+        // REQUIRES_NEW を持つのは委譲先 Bean 側。そこが rollback-only でコミットに失敗すると
+        // 例外はメソッドを抜けた後（プロキシのコミット時）に発生する。
+        // リスナー側はトランザクション境界の外側なので、これも確実に捕まえられなければならない。
+        CalendarLayerCleanupExecutor failing = mock(CalendarLayerCleanupExecutor.class);
+        doThrow(new UnexpectedRollbackException("Transaction silently rolled back"))
+                .when(failing).deleteScope(anyString(), anyLong());
+        doThrow(new UnexpectedRollbackException("Transaction silently rolled back"))
+                .when(failing).deleteByUser(anyLong());
+        CalendarLayerLifecycleListener isolated = new CalendarLayerLifecycleListener(failing);
+
+        assertThatCode(() -> isolated.handleTeamDeleted(new TeamDeletedEvent(USER_A, TEAM_10)))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> isolated.handleOrganizationDeleted(
+                new OrganizationDeletedEvent(USER_A, ORG_10)))
+                .doesNotThrowAnyException();
+        assertThatCode(() -> isolated.handleUserAnonymized(
+                new UserAnonymizedEvent(USER_A, "old@example.com")))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("〔経路の固定〕リスナーは Repository を直接持たず、委譲先 Bean 経由でのみ削除する")
+    void listener_doesNotHoldRepositoryDirectly() {
+        List<Class<?>> fieldTypes =
+                Arrays.stream(CalendarLayerLifecycleListener.class.getDeclaredFields())
+                        .map(java.lang.reflect.Field::getType)
+                        .collect(Collectors.toList());
+
+        assertThat(fieldTypes)
+                .as("Repository を直接持つと REQUIRES_NEW を経由しない削除経路が生まれる")
+                .doesNotContain(UserCalendarLayerSettingRepository.class)
+                .contains(CalendarLayerCleanupExecutor.class);
+    }
+
+    @Test
+    @DisplayName("〔切り離しの機構〕購読は AFTER_COMMIT・REQUIRES_NEW は委譲先 Bean が持つ（自クラスに付けない）")
+    void allListenerMethods_useAfterCommit_andDelegateRequiresNewToSeparateBean() {
         List<Method> methods = listenerMethods();
 
         assertThat(methods).hasSize(3);
@@ -221,12 +261,29 @@ class CalendarLayerLifecycleListenerTest {
             assertThat(m.getAnnotation(TransactionalEventListener.class).phase())
                     .as("%s の phase", m.getName())
                     .isEqualTo(TransactionPhase.AFTER_COMMIT);
-            // 親とは別 TX。REQUIRED だと AFTER_COMMIT では silently 破棄される
-            Transactional tx = m.getAnnotation(Transactional.class);
-            assertThat(tx).as("%s に @Transactional", m.getName()).isNotNull();
-            assertThat(tx.propagation()).as("%s の propagation", m.getName())
-                    .isEqualTo(Propagation.REQUIRES_NEW);
+            // 【CMP-112】REQUIRES_NEW を購読メソッド自身に付けてはならない。
+            // プロキシの commit/rollback は「メソッドを抜けた後」に走るため、削除 SQL が失敗して
+            // 新 TX が rollback-only になった場合、内部の catch が SQL 例外を捕まえても
+            // 完了例外（UnexpectedRollbackException / TransactionSystemException）は try の外へ伝播する。
+            // つまりベストエフォートの隔離が成立せず、同一イベントの後続リスナーを巻き添えにしうる。
+            // 根治は「REQUIRES_NEW を別 Bean へ切り出し、その呼び出し全体を非トランザクションな側で捕捉する」。
+            assertThat(m.getAnnotation(Transactional.class))
+                    .as("%s に @Transactional を付けない（REQUIRES_NEW は委譲先 Bean が持つ）", m.getName())
+                    .isNull();
         }
+
+        // 委譲先 Bean（別クラス）が REQUIRES_NEW を宣言していること。
+        // 同一クラス内のメソッド分割では自己呼び出しになりプロキシが挟まらないため解決しない。
+        List<Method> requiresNewOnCollaborators =
+                Arrays.stream(CalendarLayerLifecycleListener.class.getDeclaredFields())
+                        .flatMap(f -> Arrays.stream(f.getType().getDeclaredMethods()))
+                        .filter(mm -> mm.isAnnotationPresent(Transactional.class))
+                        .filter(mm -> mm.getAnnotation(Transactional.class).propagation()
+                                == Propagation.REQUIRES_NEW)
+                        .collect(Collectors.toList());
+        assertThat(requiresNewOnCollaborators)
+                .as("REQUIRES_NEW を宣言した委譲先 Bean が注入されていること")
+                .isNotEmpty();
     }
 
     // ------------------------------------------------------------------

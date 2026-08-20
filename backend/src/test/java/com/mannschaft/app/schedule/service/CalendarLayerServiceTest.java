@@ -103,6 +103,9 @@ class CalendarLayerServiceTest {
         lenient().when(repository.findByUserIdAndScopeTypeAndScopeId(any(), anyString(), any()))
                 .thenReturn(Optional.empty());
         lenient().when(repository.countByUserId(any())).thenReturn(0L);
+        // 新規行は INSERT IGNORE で原子的に作る（1 = 自分が作れた）。
+        // 並行 PATCH に負けた 0 のケースは CalendarLayerUpsertConcurrencyTest が受け持つ。
+        lenient().when(repository.insertIfAbsent(any(), any(), anyString(), any())).thenReturn(1);
         lenient().when(repository.save(any(UserCalendarLayerSettingEntity.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
     }
@@ -463,8 +466,8 @@ class CalendarLayerServiceTest {
         // --- 行数上限（§10.1 / R17） ---
 
         @Test
-        @DisplayName("AC-10d: 設定行が 1000 件ある状態の新規レイヤー PATCH は 409 SCHEDULE_104")
-        void AC10d_上限到達時の新規作成は409() {
+        @DisplayName("AC-10d: 設定行が 1000 件ある状態の新規レイヤー PATCH は 400 SCHEDULE_104（件数上限は既定の 400）")
+        void AC10d_上限到達時の新規作成は400() {
             when(repository.countByUserId(ME)).thenReturn(1000L);
 
             assertThatThrownBy(() -> service.updateLayer(
