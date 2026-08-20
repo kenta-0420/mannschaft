@@ -1495,6 +1495,10 @@
       "back_to_dashboard": "Back to dashboard",
       "retry": "Retry",
       "slow_loading": "Loading is taking longer than expected"
+    },
+    "unsavedChanges": {
+      "title": "Unsaved changes",
+      "confirmLeave": "You have unsaved changes. If you leave this page, your input will be lost. Continue?"
     }
   },
   "teamHub": {
