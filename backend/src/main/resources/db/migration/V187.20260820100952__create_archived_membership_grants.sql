@@ -21,7 +21,9 @@ CREATE TABLE archived_membership_grants (
     created_at DATETIME(3) NOT NULL,
     updated_at DATETIME(3) NOT NULL,
     PRIMARY KEY (id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4
+  COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE INDEX idx_archived_grants_membership
     ON archived_membership_grants (membership_id, archive_generation, restored_at);
