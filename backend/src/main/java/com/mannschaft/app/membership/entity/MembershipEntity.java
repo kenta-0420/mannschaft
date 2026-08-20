@@ -22,6 +22,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 
 /**
@@ -101,10 +102,16 @@ public class MembershipEntity {
 
     // ─── F14.3 住民ライフイベント（逝去・転出）アーカイブ（V187 で追加）────────
 
-    /** アーカイブ在籍の開始日時。NULL = 通常在籍。 */
-    @Column(name = "archived_at")
+    /**
+     * アーカイブ在籍の開始日時（起きた瞬間）。NULL = 通常在籍。
+     *
+     * <p>docs/architecture/datetime_policy_utc_instant_vs_wallclock.md の方針により
+     * {@code Instant} を用いる（{@code LocalDateTime} は瞬間・壁時計の区別がつかず新規追加禁止）。
+     * DB は {@code DATETIME}（UTC格納）。</p>
+     */
+    @Column(name = "archived_at", columnDefinition = "DATETIME(3)")
     @Setter
-    private LocalDateTime archivedAt;
+    private Instant archivedAt;
 
     /** アーカイブの事由。archived_at 等と同期する（CHECK 制約・§5.2.0 の導出規則）。 */
     @Enumerated(EnumType.STRING)
@@ -117,10 +124,10 @@ public class MembershipEntity {
     @Setter
     private Long archivedBy;
 
-    /** 自動退会の予定日時。移行時に確定して書く（§5.2.1）。 */
-    @Column(name = "archive_expires_at")
+    /** 自動退会の予定日時（起きた瞬間）。移行時に確定して書く（§5.2.1）。{@code Instant}。 */
+    @Column(name = "archive_expires_at", columnDefinition = "DATETIME(3)")
     @Setter
-    private LocalDateTime archiveExpiresAt;
+    private Instant archiveExpiresAt;
 
     /** 退会の主体（自動か人か）。left_at と同時に必須（CHECK 制約で保証）。 */
     @Enumerated(EnumType.STRING)

@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * アーカイブ在籍への移行時に取り上げた役職・権限グループ付与の退避記録。
@@ -62,30 +62,35 @@ public class ArchivedMembershipGrantEntity extends UuidV7Entity {
     @Column(name = "granted_by")
     private Long grantedBy;
 
-    /** 取り上げた日時。 */
-    @Column(name = "revoked_at", nullable = false)
-    private LocalDateTime revokedAt;
+    /**
+     * 取り上げた日時（起きた瞬間）。
+     *
+     * <p>docs/architecture/datetime_policy_utc_instant_vs_wallclock.md の方針により
+     * {@code Instant} を用いる（{@code LocalDateTime} は新規追加禁止）。DB は {@code DATETIME}（UTC格納）。</p>
+     */
+    @Column(name = "revoked_at", nullable = false, columnDefinition = "DATETIME(3)")
+    private Instant revokedAt;
 
-    /** 復元した日時。NULL = 未復元。 */
-    @Column(name = "restored_at")
-    private LocalDateTime restoredAt;
+    /** 復元した日時（起きた瞬間）。NULL = 未復元。 */
+    @Column(name = "restored_at", columnDefinition = "DATETIME(3)")
+    private Instant restoredAt;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "DATETIME(3)")
+    private Instant createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME(3)")
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         this.createdAt = now;
         this.updatedAt = now;
     }
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     /**
