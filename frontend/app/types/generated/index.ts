@@ -42055,6 +42055,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feature-flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開フィーチャーフラグ一覧取得 */
+        get: operations["getPublicFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/families/{teamId}/members/{userId}/personal-timetables": {
         parameters: {
             query?: never;
@@ -77514,6 +77531,22 @@ export interface components {
         ApiResponseListPermissionResponse: {
             data?: components["schemas"]["PermissionResponse"][];
         };
+        ApiResponseListPublicFeatureFlagResponse: {
+            data?: components["schemas"]["PublicFeatureFlagResponse"][];
+        };
+        /** @description 公開フィーチャーフラグ */
+        PublicFeatureFlagResponse: {
+            /**
+             * @description 有効フラグ
+             * @example true
+             */
+            enabled?: boolean;
+            /**
+             * @description フラグキー
+             * @example FEATURE_NEW_UI
+             */
+            flagKey?: string;
+        };
         ApiResponseListFamilyPersonalTimetableResponse: {
             data?: components["schemas"]["FamilyPersonalTimetableResponse"][];
         };
@@ -78071,10 +78104,19 @@ export interface components {
             /** Format: int64 */
             total_pending?: number;
         };
+        /** @description アクティビティフィードの1ページ */
+        ActivityFeedPageResponse: {
+            /** @description このページのアクティビティ一覧 */
+            items?: components["schemas"]["ActivityFeedResponse"][];
+            /** @description 次ページの起点となるアクティビティID（文字列）。続きが無い場合は null */
+            nextCursor?: string;
+        };
         ActivityFeedResponse: {
             actor?: components["schemas"]["ActorSummary"];
             /** Format: date-time */
             createdAt?: string;
+            /** @description 変更差分（SCHEDULE系のみ非null） */
+            detail?: Record<string, never>;
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
@@ -78093,8 +78135,8 @@ export interface components {
             /** Format: int64 */
             id?: number;
         };
-        ApiResponseListActivityFeedResponse: {
-            data?: components["schemas"]["ActivityFeedResponse"][];
+        ApiResponseActivityFeedPageResponse: {
+            data?: components["schemas"]["ActivityFeedPageResponse"];
         };
         ActionItem: {
             /** Format: date-time */
@@ -158514,6 +158556,26 @@ export interface operations {
             };
         };
     };
+    getPublicFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicFeatureFlagResponse"];
+                };
+            };
+        };
+    };
     list_89: {
         parameters: {
             query?: never;
@@ -159648,7 +159710,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityFeedResponse"];
+                    "*/*": components["schemas"]["ApiResponseActivityFeedPageResponse"];
                 };
             };
         };

@@ -2175,6 +2175,10 @@
       "description": "F03.10 スケジュール代理出席 API"
     },
     {
+      "name": "フィーチャーフラグ（公開）",
+      "description": "一般ユーザー向け公開フラグ読取API"
+    },
+    {
       "name": "履歴書・職務経歴書",
       "description": "F01.10 履歴書バージョン CRUD・複製・出力"
     },
@@ -135634,6 +135638,27 @@
         }
       }
     },
+    "/api/v1/feature-flags": {
+      "get": {
+        "tags": [
+          "フィーチャーフラグ（公開）"
+        ],
+        "summary": "公開フィーチャーフラグ一覧取得",
+        "operationId": "getPublicFlags",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPublicFeatureFlagResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/families/{teamId}/members/{userId}/personal-timetables": {
       "get": {
         "tags": [
@@ -137423,7 +137448,7 @@
             "content": {
               "*/*": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponseListActivityFeedResponse"
+                  "$ref": "#/components/schemas/ApiResponseActivityFeedPageResponse"
                 }
               }
             }
@@ -229182,6 +229207,33 @@
           }
         }
       },
+      "ApiResponseListPublicFeatureFlagResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicFeatureFlagResponse"
+            }
+          }
+        }
+      },
+      "PublicFeatureFlagResponse": {
+        "type": "object",
+        "description": "公開フィーチャーフラグ",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "有効フラグ",
+            "example": true
+          },
+          "flagKey": {
+            "type": "string",
+            "description": "フラグキー",
+            "example": "FEATURE_NEW_UI"
+          }
+        }
+      },
       "ApiResponseListFamilyPersonalTimetableResponse": {
         "type": "object",
         "properties": {
@@ -230655,6 +230707,23 @@
           }
         }
       },
+      "ActivityFeedPageResponse": {
+        "type": "object",
+        "description": "アクティビティフィードの1ページ",
+        "properties": {
+          "items": {
+            "type": "array",
+            "description": "このページのアクティビティ一覧",
+            "items": {
+              "$ref": "#/components/schemas/ActivityFeedResponse"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "description": "次ページの起点となるアクティビティID（文字列）。続きが無い場合は null"
+          }
+        }
+      },
       "ActivityFeedResponse": {
         "type": "object",
         "properties": {
@@ -230664,6 +230733,10 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "detail": {
+            "type": "object",
+            "description": "変更差分（SCHEDULE系のみ非null）"
           },
           "id": {
             "type": "integer",
@@ -230709,14 +230782,11 @@
           }
         }
       },
-      "ApiResponseListActivityFeedResponse": {
+      "ApiResponseActivityFeedPageResponse": {
         "type": "object",
         "properties": {
           "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ActivityFeedResponse"
-            }
+            "$ref": "#/components/schemas/ActivityFeedPageResponse"
           }
         }
       },

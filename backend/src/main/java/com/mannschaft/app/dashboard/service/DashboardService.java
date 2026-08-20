@@ -192,6 +192,9 @@ public class DashboardService {
             // ため、各 future 内では遅延ロードに依存せず、エンティティを Map / プリミティブへ
             // 即時変換して返すことで Hibernate セッション越境を避ける。
             final List<Long> finalTeamIds = teamIds;
+            // F03.18: アクティビティフィードは所属組織スコープの行も対象とする。
+            // 従来はチームIDしか渡しておらず ORGANIZATION スコープの活動が原理的に0件だった。
+            final List<Long> finalOrgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
             // TimezoneContextHolder は inheritable=false の ThreadLocal のため、リクエストスレッドで
             // 取得した ZoneId を future へ明示的に引き渡す（async ワーカーでは UTC に化けるのを防ぐ。
             // チームダッシュボードの buildCalendarSummary と同じ作法）。
@@ -202,7 +205,7 @@ public class DashboardService {
             CompletableFuture<Map<String, Object>> unreadThreadsFuture =
                     CompletableFuture.supplyAsync(() -> loadUnreadThreads(userId, finalTeamIds));
             CompletableFuture<List<Map<String, Object>>> recentActivityFuture =
-                    CompletableFuture.supplyAsync(() -> loadRecentActivity(userId, finalTeamIds));
+                    CompletableFuture.supplyAsync(() -> loadRecentActivity(userId, finalTeamIds, finalOrgIds));
             CompletableFuture<Map<String, Object>> personalCalendarFuture =
                     CompletableFuture.supplyAsync(() -> loadPersonalCalendarCounts(userId, finalTeamIds, userZone));
 
@@ -270,9 +273,13 @@ public class DashboardService {
     /**
      * 第2段階: アクティビティフィードを Map リストで取得する（ActivityFeedService に委譲）。
      */
-    private List<Map<String, Object>> loadRecentActivity(Long userId, List<Long> teamIds) {
+    private List<Map<String, Object>> loadRecentActivity(Long userId, List<Long> teamIds, List<Long> orgIds) {
+        // F03.18: 可視性フィルタは ActivityFeedService 側に一元化されており、
+        // ダッシュボード初期表示のこの経路にも自動的に適用される
+        // （ウィジェット単体の GET /dashboard/activity と同一のフィルタを通る）。
         List<ActivityFeedResponse> recentActivity = activityFeedService
-                .getActivityFeed(userId, null, DASHBOARD_ITEM_LIMIT, teamIds);
+                .getActivityFeed(userId, null, DASHBOARD_ITEM_LIMIT, teamIds, orgIds)
+                .getItems();
         return recentActivity.stream()
                 .map(a -> {
                     Map<String, Object> map = new HashMap<>();

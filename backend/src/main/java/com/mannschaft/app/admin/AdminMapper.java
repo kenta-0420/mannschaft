@@ -4,6 +4,7 @@ import com.mannschaft.app.admin.dto.BatchJobLogResponse;
 import com.mannschaft.app.admin.dto.FeatureFlagResponse;
 import com.mannschaft.app.admin.dto.MaintenanceScheduleResponse;
 import com.mannschaft.app.admin.dto.NotificationStatsResponse;
+import com.mannschaft.app.admin.dto.PublicFeatureFlagResponse;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.entity.FeatureFlagEntity;
 import com.mannschaft.app.admin.entity.MaintenanceScheduleEntity;
@@ -22,6 +23,11 @@ public interface AdminMapper {
     FeatureFlagResponse toFeatureFlagResponse(FeatureFlagEntity entity);
 
     List<FeatureFlagResponse> toFeatureFlagResponseList(List<FeatureFlagEntity> entities);
+
+    @Mapping(source = "isEnabled", target = "enabled")
+    PublicFeatureFlagResponse toPublicFeatureFlagResponse(FeatureFlagEntity entity);
+
+    List<PublicFeatureFlagResponse> toPublicFeatureFlagResponseList(List<FeatureFlagEntity> entities);
 
     @Mapping(target = "mode", expression = "java(entity.getMode().name())")
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")

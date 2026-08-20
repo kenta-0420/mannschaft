@@ -64,11 +64,13 @@
 
 **`docs/task-list.md` はコードと同じく worktree + PR で扱うこと。本陣の作業木で直接編集してはならない**（下記「例外」節の対象外）。本陣の作業木は全セッションで共有されており、そこでの編集は隔離されない。別セッションが自分の版を先に commit すると、**git の競合すら起こさずに自分の編集が消える**（2026-08-14、CMP-028 の完了記録が実際にこの経路で消失した）。
 
-**採番手順**: 新しい行を追加する際は `git fetch origin main` してから、`origin/main` 上の `docs/task-list.md` の最大 CMP 番号 +1 を採ること。並行セッションと同時に採番して重複する可能性はゼロにできないが、重複したまま静かに main へ入ることは番人 `TaskListCmpIdDuplicateGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）が CI で検出する。重複が検出された場合は、後から merge された側が採番し直す。
+**採番手順**: 新しい行の ID は**日時形式 `CMP-YYMMDD-HHMM`（JST）**とする。`date '+%y%m%d-%H%M'` で生成し（例: `CMP-260819-2131`）、そのまま使う。**`git fetch` して最大番号を調べる手順は不要**であり、採番の衝突は原理的に起きない。旧・連番形式（`CMP-001`〜）で採番していた時期の行はそのまま残すため、台帳には両形式が共存する（既存行の ID は書き換えない）。**方式を変えた理由**: 旧方式（`origin/main` 上の最大 CMP 番号 +1）は、採番からマージまでの時間差の間に並行セッションが同じ番号を取るため衝突が常態化しており、2026-08-19 には1行の追加に対して採番を3度やり直した（CMP-050 → 102 → 110。いずれも待っている間に他セッションに取られた）。
+
+**新規行は必ず表の末尾に追加すること。** 直前に触った行の近くへ挿入すると、同じ ID が別々の位置に入っても git が競合として検知できず、重複したまま静かに main へ入りうる。末尾追記に統一すれば、同時追加は必ず競合として止まる。なお重複したまま main へ入ることは番人 `TaskListCmpIdDuplicateGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）が CI で検出する（新旧両形式に対応）。重複が検出された場合は、後から merge された側が採番し直す。
 
 ### Dynamic Workflows との連携（出陣・検分の高速化／コスト最適化）
 
-`/出陣`・`/検分` は Dynamic Workflows で足軽の並列起動を表現できる（オプトイン。機械的タスクは sonnet/haiku・低 effort、難所は opus・high に固定。コミット/マージは `gh`）。詳細: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)。
+`/出陣`・`/検分 claude` は Dynamic Workflows で足軽の並列起動を表現できる（`/検分` の既定検分者は `codex` で、Codex による独立検分が走る。Workflow 検分を使うには `claude` を明示する）（オプトイン。機械的タスクは sonnet/haiku・低 effort、難所は opus・high に固定。コミット/マージは `gh`）。詳細: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)。
 
 ### 例外（メインディレクトリで直接やってよい作業）
 
