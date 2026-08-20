@@ -77,6 +77,8 @@ public class SurveyService {
     private final OrganizationMembershipService organizationMembershipService;
     /** 結果閲覧可否の唯一の判定点（結果取得 API の 403 と共用。Issue #2779）。 */
     private final SurveyResultAccessGuard resultAccessGuard;
+    /** 管理操作可否の唯一の判定点（管理系 API の 403 と共用。CMP-041）。 */
+    private final SurveyAccessGuard surveyAccessGuard;
 
     /**
      * アンケート一覧をページング取得する。
@@ -192,7 +194,13 @@ public class SurveyService {
         SurveyResponse surveyResponse = surveyMapper.toSurveyResponse(entity);
         List<QuestionResponse> questions = buildQuestionResponses(entity.getId());
         boolean viewerCanViewResults = resultAccessGuard.canViewResults(entity, userId);
-        return SurveyDetailResponse.of(surveyResponse, questions, viewerCanViewResults);
+        // CMP-041: 管理操作可否も BE の判定点（SurveyAccessGuard）から載せる。
+        // FE がロール名で操作ボタンを出し分けると、権限を持たない DEPUTY_ADMIN に
+        // 「押すと必ず 403 になるボタン」が見えるため、判定は BE 側に一本化する。
+        boolean viewerCanManage = surveyAccessGuard.canManage(userId, entity);
+        boolean viewerCanViewTeamBreakdown = surveyAccessGuard.hasSurveyAdminPermission(userId, entity);
+        return SurveyDetailResponse.of(surveyResponse, questions, viewerCanViewResults,
+                viewerCanManage, viewerCanViewTeamBreakdown);
     }
 
     /**

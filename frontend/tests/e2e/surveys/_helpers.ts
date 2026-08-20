@@ -83,7 +83,7 @@ export interface AuthOptions {
   /** displayName（UI 表示用） */
   displayName: string
   /** ロール（バックエンド AccessRole 準拠） */
-  role: 'SYSTEM_ADMIN' | 'ADMIN' | 'MEMBER' | 'GUEST'
+  role: 'SYSTEM_ADMIN' | 'ADMIN' | 'DEPUTY_ADMIN' | 'MEMBER' | 'GUEST'
   /** scope 種別。currentScope を localStorage に書く場合に使用 */
   scopeType?: 'TEAM' | 'ORGANIZATION'
   /** scope ID。currentScope を localStorage に書く場合に使用 */
@@ -361,18 +361,30 @@ export function buildQuestion(opts: BuildQuestionOptions): SurveyQuestionWire {
  * 「テストが何を意図していたのか」が読めなくなるうえ、新しいモックが黙って値を落としても
  * 気付けなくなる。**閲覧可なら `true`、配信対象外なら `false` を各テストが明示すること。**
  *
+ * CMP-041: `viewerCanManage` / `viewerCanViewTeamBreakdown` も BE が必ず設定する項目である。
+ * ただし既存の大半のテストは「一般メンバー視点」の結果表示を検べるものであり、そこでは両方 `false`
+ * が実在する正しい状態なので、**既定を fail-closed の `false`** としたうえで、管理操作の出し分けを
+ * 検べるテストだけが明示的に `true` を渡す形にしている。
+ *
  * @param viewerCanViewResults この閲覧者が結果を閲覧できるか（BE が必ず設定する項目）
+ * @param viewer               管理操作可否（省略時は非管理者 = 両方 false）
  */
 export function buildSurveyDetail(
   survey: SurveyResponseWire,
   questions: SurveyQuestionWire[],
   viewerCanViewResults: boolean,
+  viewer: { canManage: boolean; canViewTeamBreakdown: boolean } = {
+    canManage: false,
+    canViewTeamBreakdown: false,
+  },
 ): SurveyDetailWire {
   return {
     data: {
       ...survey,
       questions,
       viewerCanViewResults,
+      viewerCanManage: viewer.canManage,
+      viewerCanViewTeamBreakdown: viewer.canViewTeamBreakdown,
     },
   }
 }

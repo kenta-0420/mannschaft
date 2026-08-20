@@ -3,7 +3,9 @@ import type { SurveyStatus } from '~/types/survey'
 /**
  * アンケート詳細画面の表示モード。
  *
- * - `draft`: DRAFT の作成者・ADMIN+ 向けプレビュー
+ * - `draft`: DRAFT のプレビュー。設問追加・公開などの管理導線は画面側が詳細応答の
+ *   `viewerCanManage`（BE の管理操作認可と同一判定。作成者 or ADMIN／MANAGE_SURVEYS 保有
+ *   DEPUTY_ADMIN）で出し分ける。**ロール名で出し分けてはならない**（CMP-041）
  * - `response`: 回答フォーム（SurveyResponseForm）
  * - `results`: 集計パネル
  * - `results-withheld-privacy`: 匿名＋リアルタイム＋少数回答のため集計を伏せている説明
@@ -116,7 +118,9 @@ export function resolveSurveyDisplayMode(input: SurveyDisplayModeInput): SurveyD
     resultsForbidden,
   } = input
 
-  // DRAFT は作成者・ADMIN+ 向けのプレビュー画面
+  // DRAFT はプレビュー画面。ここでは「下書きである」ことだけを表し、管理導線（設問追加・公開）の
+  // 出し分けは画面側が viewerCanManage で行う（CMP-041）。この関数に認可判定を持ち込むと、
+  // BE の判定点と二重の正本ができて食い違う。
   if (status === 'DRAFT') return 'draft'
 
   if (canViewResults) {

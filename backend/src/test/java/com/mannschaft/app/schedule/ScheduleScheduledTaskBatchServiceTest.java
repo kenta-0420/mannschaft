@@ -124,7 +124,7 @@ class ScheduleScheduledTaskBatchServiceTest {
             given(scheduledTaskRepository.findById(task.getId())).willReturn(Optional.of(task));
 
             SurveyResponse surveyResponse = SurveyResponse.builder().id(555L).build();
-            SurveyDetailResponse detail = SurveyDetailResponse.of(surveyResponse, List.of(), true);
+            SurveyDetailResponse detail = SurveyDetailResponse.of(surveyResponse, List.of(), true, true, true);
             given(surveyService.createSurvey(eq("TEAM"), eq(SCOPE_ID), eq(CREATED_BY), any()))
                     .willReturn(detail);
 
