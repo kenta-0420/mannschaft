@@ -436,8 +436,19 @@ public class NotificationHelper {
      * 受信者リストが呼び出し側で事前認可済みの配信母集団である点は {@link #notifyAllPreAuthorized}
      * と同じで、{@link #notifyAllLocalized} との違いは locale 別に本文を組み立てる点のみ。</p>
      *
+     * <p><b>是正（Codex 検分・PR #2873）</b>: 当初実装は受信者ごとに {@link #notifyPreAuthorized}
+     * （1 件 1 save）を呼ぶループだったため、locale の N+1 は防げていても fan-out 抜本改修 P1
+     * （{@link #notifyAllPreAuthorized} のチャンク単位バルク INSERT）から外れ、より重い
+     * 「通知永続化・配信の N+1」を作り込んでいた。受信者を locale ごとにグループ化し、各グループを
+     * {@link #notifyAllPreAuthorized}（バルク版）へ渡すことで、実在ロケール数（高々 7 種）分の
+     * バルク呼び出しに畳む。</p>
+     *
      * @param userIds          配信母集団で事前認可済みの受信者リスト
-     * @param bodyBuilder      (userId, locale) → タイトル・本文 を組み立てる関数
+     * @param bodyBuilder      (userId, locale) → タイトル・本文 を組み立てる関数。呼び出し元 3 箇所
+     *                         （SurveyPublishNotificationListener/SurveyRemindService/SurveyService）は
+     *                         いずれも {@code userId} を使わず {@code locale} のみで文面を決めるため、
+     *                         locale 単位で 1 回だけ組み立てて安全（呼び出し側の userId 依存が
+     *                         生じた場合は本メソッドの locale グループ化と両立しなくなるため要再検討）。
      */
     public void notifyAllPreAuthorizedLocalized(List<Long> userIds, String notificationType,
                                                 String sourceType, Long sourceId,
@@ -450,22 +461,24 @@ public class NotificationHelper {
         // locale を一括解決（N+1 防止）。
         Map<Long, String> locales = userLocaleCache.getLocales(userIds);
 
-        int successCount = 0;
+        // 受信者を locale ごとにグループ化し、各グループをバルク経路（notifyAllPreAuthorized）へ渡す。
+        Map<String, List<Long>> byLocale = new java.util.LinkedHashMap<>();
         for (Long userId : userIds) {
-            try {
-                Locale locale = Locale.forLanguageTag(locales.getOrDefault(userId, "ja"));
-                LocalizedMessage message = bodyBuilder.build(userId, locale);
-                notifyPreAuthorized(userId, notificationType, NotificationPriority.NORMAL,
-                        message.title(), message.body(),
-                        sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
-                successCount++;
-            } catch (Exception e) {
-                log.warn("通知送信失敗（継続）: userId={}, type={}, error={}",
-                        userId, notificationType, e.getMessage());
-            }
+            String localeTag = locales.getOrDefault(userId, "ja");
+            byLocale.computeIfAbsent(localeTag, k -> new java.util.ArrayList<>()).add(userId);
         }
-        log.info("一括通知送信(配信認可済・locale別): type={}, userCount={}, successCount={}",
-                notificationType, userIds.size(), successCount);
+
+        for (Map.Entry<String, List<Long>> entry : byLocale.entrySet()) {
+            Locale locale = Locale.forLanguageTag(entry.getKey());
+            List<Long> group = entry.getValue();
+            // locale ごとに 1 回だけ本文を組み立てる（userId は使われない前提。上記 javadoc 参照）。
+            LocalizedMessage message = bodyBuilder.build(group.get(0), locale);
+            notifyAllPreAuthorized(group, notificationType, NotificationPriority.NORMAL,
+                    message.title(), message.body(),
+                    sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+        }
+        log.info("一括通知送信(配信認可済・locale別): type={}, userCount={}, localeGroupCount={}",
+                notificationType, userIds.size(), byLocale.size());
     }
 
     /** {@link #notifyAllLocalized} が受信者ごとに組み立てるタイトル・本文の組。 */

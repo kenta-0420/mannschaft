@@ -107,11 +107,18 @@ public class MemberInfoUpdateReminderBatchService {
                             (a, b) -> a));
 
             // Issue #2715 CMP-055 ロットC-5: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
-            Map<Long, String> teamLocales = userLocaleCache.getLocales(
-                    memberships.stream()
-                            .map(MembershipEntity::getUserId)
-                            .filter(java.util.Objects::nonNull)
-                            .toList());
+            // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+            Map<Long, String> teamLocales;
+            try {
+                teamLocales = userLocaleCache.getLocales(
+                        memberships.stream()
+                                .map(MembershipEntity::getUserId)
+                                .filter(java.util.Objects::nonNull)
+                                .toList());
+            } catch (Exception e) {
+                log.warn("locale 一括解決に失敗（既定 locale で継続）: teamId={}, error={}", teamId, e.getMessage());
+                teamLocales = Map.of();
+            }
 
             // 5. 各メンバーについて通知判定
             for (MembershipEntity membership : memberships) {

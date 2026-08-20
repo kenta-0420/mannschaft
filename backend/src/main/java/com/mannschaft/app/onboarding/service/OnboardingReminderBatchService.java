@@ -62,8 +62,15 @@ public class OnboardingReminderBatchService {
                 .findByStatusAndDeadlineAtBefore(OnboardingProgressStatus.IN_PROGRESS, now);
 
         // Issue #2715 CMP-055 ロットC-5: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
-        Map<Long, String> overdueLocales = userLocaleCache.getLocales(
-                overdue.stream().map(OnboardingProgressEntity::getUserId).toList());
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> overdueLocales;
+        try {
+            overdueLocales = userLocaleCache.getLocales(
+                    overdue.stream().map(OnboardingProgressEntity::getUserId).toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続、期限超過分）: error={}", e.getMessage());
+            overdueLocales = Map.of();
+        }
 
         for (OnboardingProgressEntity progress : overdue) {
             if (isAlreadyRemindedToday(progress, today)) {
@@ -94,8 +101,15 @@ public class OnboardingReminderBatchService {
         List<OnboardingProgressEntity> inProgress = progressRepository
                 .findByStatusAndDeadlineAtBetween(OnboardingProgressStatus.IN_PROGRESS, now, now.plusDays(30));
 
-        Map<Long, String> reminderLocales = userLocaleCache.getLocales(
-                inProgress.stream().map(OnboardingProgressEntity::getUserId).toList());
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> reminderLocales;
+        try {
+            reminderLocales = userLocaleCache.getLocales(
+                    inProgress.stream().map(OnboardingProgressEntity::getUserId).toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続、期限前分）: error={}", e.getMessage());
+            reminderLocales = Map.of();
+        }
 
         for (OnboardingProgressEntity progress : inProgress) {
             if (isAlreadyRemindedToday(progress, today)) {

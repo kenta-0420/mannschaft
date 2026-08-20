@@ -138,6 +138,47 @@ class ActionMemoReminderBatchServiceTest {
         }
 
         @Test
+        @DisplayName("execute_locale一括解決が例外を投げても既定localeで通知処理が継続する")
+        void execute_locale一括解決が例外を投げても既定localeで通知処理が継続する() {
+            // Issue #2715 CMP-055 ロットC-6 Codex 検分是正（PR #2873）: getLocales がループの外・
+            // 無防備な状態で呼ばれていると、この一括解決だけで全受信者分の通知処理が丸ごと止まっていた。
+            // given
+            LocalTime targetTime = LocalTime.of(9, 0);
+            LocalDate today = LocalDate.of(2026, 5, 4);
+            UserActionMemoSettingsEntity settings = UserActionMemoSettingsEntity.builder()
+                    .userId(1L)
+                    .reminderEnabled(true)
+                    .reminderTime(targetTime)
+                    .build();
+
+            given(settingsRepository.findByReminderEnabledTrueAndReminderTimeIsNotNull())
+                    .willReturn(List.of(settings));
+            given(userLocaleCache.getLocales(any()))
+                    .willThrow(new RuntimeException("simulated locale cache failure"));
+
+            // when
+            service.executeAt(targetTime, today);
+
+            // then: locale 一括解決が失敗しても既定 locale ("ja") で通知処理は継続する
+            verify(notificationService, times(1)).createNotification(
+                    eq(1L),
+                    eq("ACTION_MEMO_REMINDER"),
+                    eq(NotificationPriority.NORMAL),
+                    eq("行動メモのリマインド"),
+                    eq("今日の行動メモを記録しましょう"),
+                    eq("ACTION_MEMO"),
+                    eq(null),
+                    eq(NotificationScopeType.PERSONAL),
+                    eq(1L),
+                    contains("/action-memo?date="),
+                    eq(null)
+            );
+            verify(auditLogService, times(1)).record(
+                    "ACTION_MEMO_REMINDER_BATCH", null, null, null, null, null, null, null,
+                    "{\"targets\":1,\"notified\":1}");
+        }
+
+        @Test
         @DisplayName("execute_時刻不一致_通知が送られない")
         void execute_時刻不一致_通知が送られない() {
             // given

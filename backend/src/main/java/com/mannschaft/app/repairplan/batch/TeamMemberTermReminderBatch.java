@@ -70,8 +70,15 @@ public class TeamMemberTermReminderBatch {
         }
 
         // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
-        Map<Long, String> locales = userLocaleCache.getLocales(
-                targets.stream().map(TeamMemberTerm::getUserId).toList());
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(
+                    targets.stream().map(TeamMemberTerm::getUserId).toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+            locales = Map.of();
+        }
 
         int notified = 0;
         for (TeamMemberTerm term : targets) {
