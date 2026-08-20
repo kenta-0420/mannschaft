@@ -114,6 +114,32 @@ public class CalendarLayerService {
         return layers;
     }
 
+    /**
+     * 本人が<b>明示的に色を設定した</b>レイヤーだけを {@code "{scopeType}:{scopeId}"} → 色 の Map で返す
+     * （F03.19 §4.7・優先1 の解決に使う）。
+     *
+     * <p>{@code /my/calendar} と個人予定一覧の色解決は、この <b>1 回</b>の読み取り結果を
+     * メモリ上で引く（ループ内で Repository を呼ばない）。色未設定（{@code color IS NULL}）の行は
+     * 自動色にフォールバックすべきなので Map に載せない — 「キーが無い＝優先1 は不成立」で
+     * 呼び出し側の分岐を一段減らす。</p>
+     *
+     * <p>設定の読み取り経路を本メソッドに集約することで、レイヤー設定を読むクエリが
+     * サービスごとに増殖するのを防ぐ（W1-b で作った窓口をそのまま使う）。</p>
+     */
+    @Transactional(readOnly = true)
+    public Map<String, String> findUserLayerColors(Long userId) {
+        Map<String, String> colors = new HashMap<>();
+        if (userId == null) {
+            return colors;
+        }
+        for (UserCalendarLayerSettingEntity s : repository.findByUserId(userId)) {
+            if (s.getColor() != null) {
+                colors.put(settingKey(s.getScopeType(), s.getScopeId()), s.getColor());
+            }
+        }
+        return colors;
+    }
+
     // ------------------------------------------------------------------
     // §4.4 PATCH /me/calendar-layers/{scopeType}/{scopeId}
     // ------------------------------------------------------------------
