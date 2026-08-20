@@ -2161,5 +2161,15 @@
     "submit": "Transfer",
     "successTitle": "Ownership transferred",
     "successDetail": "Admin rights have moved to the new owner."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Feature not available",
+      "body": "This feature is not available yet. Returning to your dashboard."
+    },
+    "error": {
+      "fetchFailedTitle": "Could not check feature availability",
+      "fetchFailedBody": "We could not check whether this feature is available because of a network error. Please try again later."
+    }
   }
 }
