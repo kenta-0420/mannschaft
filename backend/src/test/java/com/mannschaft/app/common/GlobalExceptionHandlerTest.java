@@ -7,6 +7,10 @@ import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import com.mannschaft.app.gdpr.GdprErrorCode;
+import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
+import com.mannschaft.app.payment.PaymentErrorCode;
+import com.mannschaft.app.social.SocialErrorCode;
+import com.mannschaft.app.succession.SuccessionErrorCode;
 import com.mannschaft.app.skill.SkillErrorCode;
 import com.mannschaft.app.webhook.WebhookErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -1778,6 +1782,67 @@ class GlobalExceptionHandlerTest {
             assertThat(resp.getBody().getError().getCode()).isEqualTo("COMMON_001");
             verify(service, never()).recordBackendException(any(), any(HttpServletRequest.class), any());
             verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
+        }
+    }
+
+    // ========================================
+    // 存在オラクル（不在 / 越境のステータス一致）
+    // ========================================
+
+    @Nested
+    @DisplayName("存在オラクル封じ — 不在と越境が同一ステータス（404）で応答する")
+    class ExistenceOracleParity {
+
+        /**
+         * 「不在」と「越境（他人のリソース）」でステータスが割れると、
+         * 攻撃者は応答の差だけで ID の実在を判別できる（存在オラクル）。
+         * PARKING_020 起点の「越境は存在秘匿で 404」の流儀に揃っていることを検証する。
+         *
+         * <p>一致だけを見ると「両方 500」「両方 200」でも通ってしまうため、
+         * 404 そのものを固定する絶対値アサーションを必ず併存させる。</p>
+         */
+        private void assertOracleClosed(ErrorCode absent, ErrorCode crossTenant) {
+            HttpStatus absentStatus = globalExceptionHandler.resolveHttpStatus(absent);
+            HttpStatus crossStatus = globalExceptionHandler.resolveHttpStatus(crossTenant);
+
+            assertThat(absentStatus)
+                    .as("不在側（%s）は 404 で存在秘匿すること", absent.getCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(crossStatus)
+                    .as("越境側（%s）は 404 で存在秘匿すること", crossTenant.getCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(crossStatus)
+                    .as("不在（%s）と越境（%s）でステータスが割れると ID の実在が判別できる",
+                            absent.getCode(), crossTenant.getCode())
+                    .isEqualTo(absentStatus);
+        }
+
+        @Test
+        @DisplayName("支払い領収書: PAYMENT_029（不在）と PAYMENT_030（越境）がともに 404")
+        void 支払い領収書の存在オラクルが閉じている() {
+            assertOracleClosed(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND,
+                    PaymentErrorCode.PAYMENT_ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("承継誓約: SUCCESSION_003（不在）と SUCCESSION_008（越境）がともに 404")
+        void 承継誓約の存在オラクルが閉じている() {
+            assertOracleClosed(SuccessionErrorCode.COVENANT_NOT_FOUND,
+                    SuccessionErrorCode.COVENANT_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("求人QRトークン: JOB_CONTRACT_NOT_FOUND（不在）と JOB_PERMISSION_DENIED（越境）がともに 404")
+        void 求人契約の存在オラクルが閉じている() {
+            assertOracleClosed(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND,
+                    JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+        }
+
+        @Test
+        @DisplayName("チーム友だち可視性: SOCIAL_106（不在）と SOCIAL_107（越境）がともに 404")
+        void チーム友だち可視性の存在オラクルが閉じている() {
+            assertOracleClosed(SocialErrorCode.FRIEND_RELATION_NOT_FOUND,
+                    SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY);
         }
     }
 }

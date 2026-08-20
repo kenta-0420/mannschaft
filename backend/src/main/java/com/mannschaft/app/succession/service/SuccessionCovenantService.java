@@ -236,7 +236,8 @@ public class SuccessionCovenantService {
         SuccessionCovenantEntity entity = covenantRepository.findById(covenantId)
                 .orElseThrow(() -> new BusinessException(SuccessionErrorCode.COVENANT_NOT_FOUND));
 
-        // 本人のみ撤回可
+        // 本人のみ撤回可。他人の誓約 ID への越境は 403 ではなく不在と同じ 404
+        // （COVENANT_FORBIDDEN は 404 に写像済み）で返し、誓約 ID の実在を秘匿する。
         if (!entity.getSignerUserId().equals(currentUserId)) {
             throw new BusinessException(SuccessionErrorCode.COVENANT_FORBIDDEN);
         }
@@ -277,6 +278,8 @@ public class SuccessionCovenantService {
                 .findByIdAndOrganizationIdAndDeletedAtIsNull(covenantId, organizationId)
                 .orElseThrow(() -> new BusinessException(SuccessionErrorCode.COVENANT_NOT_FOUND));
 
+        // 本人でも組織 ADMIN でもない場合は 404（COVENANT_NOT_FOUND と同一ステータス）。
+        // 403 に割ると、同一組織内の他人の誓約 ID の実在が応答差から判別できてしまう。
         boolean isSelf = entity.getSignerUserId().equals(currentUserId);
         boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, organizationId, "ORGANIZATION");
         if (!isSelf && !isAdmin) {

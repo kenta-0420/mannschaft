@@ -35,7 +35,21 @@ public enum SuccessionErrorCode implements ErrorCode {
     /** 既に撤回済みの誓約を再撤回しようとした */
     COVENANT_ALREADY_REVOKED("SUCCESSION_007", "既に撤回済みの誓約です", Severity.WARN),
 
-    /** 誓約の操作権限がない（本人 / ADMIN 以外） */
+    /**
+     * 誓約の操作権限がない（本人 / ADMIN 以外）（404）。
+     *
+     * <p><b>これは「意味が割れている」のではなく意図的な集約である。分割してはならない。</b>
+     * 本コードは (1) 他人が署名した誓約 ID への越境アクセス と (2) 本人でも組織 ADMIN でもない者による権限拒否 の両方に使われる。この2つを別コード・別ステータスに分けると、応答の差から
+     * 「そのIDのリソースは実在する」ことを外部から判定できる存在オラクルになる。</p>
+     *
+     * <p><b>ステータスは404固定。</b>不在（{@link #COVENANT_NOT_FOUND}）と同一の404に畳むことで秘匿を達成する。
+     * このコードベースには PARKING_020 を起点とする「越境は存在秘匿で404」の流儀が確立しており
+     * （equipment/membership/todo/corkboard/pointcard/skill で実装済み）、それに揃えた。
+     * かつては 403 を返しており、不在（404）と越境（403）でステータスが割れて存在オラクルになっていた。
+     * 「403に戻すべきでは」と迷った場合は、この理由を思い出すこと。
+     * （{@code GlobalExceptionHandlerTest.ExistenceOracleParity} が
+     * 「不在と越境の応答が一致すること」を契約として固定している）。</p>
+     */
     COVENANT_FORBIDDEN("SUCCESSION_008", "この誓約に対する権限がありません", Severity.WARN),
 
     /** 事前登録レコードが見つからない */

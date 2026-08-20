@@ -73,7 +73,8 @@ public class SuccessionCovenantController {
      * 誓約撤回（本人のみ）。
      */
     // 認可根治済み: SuccessionCovenantService#revokeCovenant が
-    // entity.getSignerUserId().equals(currentUserId) で本人所有を検証する（COVENANT_FORBIDDEN）。
+    // entity.getSignerUserId().equals(currentUserId) で本人所有を検証する
+    // （COVENANT_FORBIDDEN。存在秘匿のため 404 で応答し、不在と区別できないようにしている）。
     @AuthorizedInService
     @PostMapping("/api/v1/succession/covenants/{id}/revoke")
     @Operation(summary = "入居時誓約の撤回（本人のみ）")

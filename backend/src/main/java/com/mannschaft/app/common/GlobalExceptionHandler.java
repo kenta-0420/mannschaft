@@ -332,7 +332,7 @@ public class GlobalExceptionHandler {
             Map.entry("SOCIAL_104", HttpStatus.NOT_FOUND),         // FRIEND_TARGET_TEAM_NOT_FOUND
             Map.entry("SOCIAL_105", HttpStatus.FORBIDDEN),         // FRIEND_INSUFFICIENT_PERMISSION
             Map.entry("SOCIAL_106", HttpStatus.NOT_FOUND),         // FRIEND_RELATION_NOT_FOUND
-            Map.entry("SOCIAL_107", HttpStatus.FORBIDDEN),         // FRIEND_VISIBILITY_ADMIN_ONLY
+            Map.entry("SOCIAL_107", HttpStatus.NOT_FOUND),         // FRIEND_VISIBILITY_ADMIN_ONLY（越境の存在秘匿で 404。SOCIAL_106 と同値）
             Map.entry("SOCIAL_109", HttpStatus.FORBIDDEN),         // FRIEND_FEATURE_DISABLED
             // F01.5 フレンドフォルダ
             Map.entry("SOCIAL_110", HttpStatus.NOT_FOUND),         // FRIEND_FOLDER_NOT_FOUND
@@ -384,7 +384,7 @@ public class GlobalExceptionHandler {
             Map.entry("JOB_ALREADY_APPLIED", HttpStatus.CONFLICT),
             Map.entry("JOB_APPLICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("JOB_CONTRACT_NOT_FOUND", HttpStatus.NOT_FOUND),
-            Map.entry("JOB_PERMISSION_DENIED", HttpStatus.FORBIDDEN),
+            Map.entry("JOB_PERMISSION_DENIED", HttpStatus.NOT_FOUND),   // 越境の存在秘匿で 404（JOB_CONTRACT_NOT_FOUND と同値）
             // F13.1 Phase 13.1.2: QR チェックイン／アウト
             Map.entry("JOB_QR_TOKEN_INVALID_SIGNATURE", HttpStatus.UNAUTHORIZED),
             Map.entry("JOB_QR_TOKEN_WRONG_WORKER", HttpStatus.FORBIDDEN),
@@ -1271,7 +1271,7 @@ public class GlobalExceptionHandler {
             Map.entry("SUCCESSION_003", HttpStatus.NOT_FOUND),           // COVENANT_NOT_FOUND（IDOR 秘匿 → 404）
             Map.entry("SUCCESSION_005", HttpStatus.CONFLICT),            // COVENANT_ALREADY_SIGNED（多重署名の状態競合 → 409）
             Map.entry("SUCCESSION_007", HttpStatus.CONFLICT),            // COVENANT_ALREADY_REVOKED（状態競合 → 409）
-            Map.entry("SUCCESSION_008", HttpStatus.FORBIDDEN),           // COVENANT_FORBIDDEN（本人/ADMIN以外 → 403）
+            Map.entry("SUCCESSION_008", HttpStatus.NOT_FOUND),           // COVENANT_FORBIDDEN（越境の存在秘匿で 404。SUCCESSION_003 と同値）
             Map.entry("SUCCESSION_009", HttpStatus.NOT_FOUND),           // PRE_REGISTRATION_NOT_FOUND（organizationId 束縛・IDOR 秘匿 → 404）
             Map.entry("SUCCESSION_010", HttpStatus.NOT_FOUND),           // UNSEAL_REQUEST_NOT_FOUND（organizationId 束縛・IDOR 秘匿 → 404）
             Map.entry("SUCCESSION_011", HttpStatus.CONFLICT),            // PRE_REGISTRATION_NOT_SEALED（状態遷移前提未達 → 409）
@@ -1504,7 +1504,7 @@ public class GlobalExceptionHandler {
             // ReceiptController / ReceiptService は「払い手または受益者本人のみ取得可・第三者は拒否」と
             // 宣言しているが、両コードが未登録のため Severity.WARN 既定の 400 が返っていた。
             Map.entry("PAYMENT_029", HttpStatus.NOT_FOUND),              // MEMBER_PAYMENT_NOT_FOUND（存在秘匿 → 404）
-            Map.entry("PAYMENT_030", HttpStatus.FORBIDDEN),              // PAYMENT_ACCESS_DENIED（払い手/受益者以外 → 403）
+            Map.entry("PAYMENT_030", HttpStatus.NOT_FOUND),              // PAYMENT_ACCESS_DENIED（越境の存在秘匿で 404。PAYMENT_029 と同値）
             // 認可根治戦役 第2波（金銭）: 領収書マイページは自分宛の領収書のみ取得可。
             // ReceiptMyService は findByIdAndRecipientUserId で宛先本人に絞って引き当てるため、
             // 他人の receiptId は「不在」と区別せず 404 で秘匿するのが宣言どおりの挙動。

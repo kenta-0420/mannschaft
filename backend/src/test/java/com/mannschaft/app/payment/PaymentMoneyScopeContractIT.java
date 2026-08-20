@@ -135,13 +135,15 @@ class PaymentMoneyScopeContractIT extends AbstractMySqlIntegrationTest {
     class MemberPaymentReceipt {
 
         @Test
-        @DisplayName("第三者は他人の会費領収書を取得できない（払い手・受益者本人は取得できる）")
+        @DisplayName("第三者は他人の会費領収書を取得できない — 不在と同じ 404 で秘匿（払い手・受益者本人は取得できる）")
         void 第三者は会費領収書を取得できない() throws Exception {
             Long paymentId = insertPaidMemberPayment();
 
+            // 越境は 403 ではなく 404。不在（下のテスト）と同一ステータスに揃えることで
+            // 応答差から支払い記録 ID の実在を判別できないようにしている（存在オラクル封じ）。
             setAuthentication(outsiderId);
             mockMvc.perform(get("/api/v1/member-payments/{id}/receipt", paymentId))
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value(PAYMENT_ACCESS_DENIED));
 
             setAuthentication(payerId);
