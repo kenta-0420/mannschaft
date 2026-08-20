@@ -492,8 +492,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: SHIFT
+      gate_key: FEATURE_SHIFT_ENABLED
+      route_keywords: ["shift"]
     blockers:
+      - "β公開前に FEATURE_SHIFT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -503,8 +505,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: MATCHING
-    blockers: []
+      gate_key: FEATURE_MATCHING_ENABLED
+      route_keywords: ["matching", "match-analytics", "/jobs"]
+    blockers:
+      - "β公開前に FEATURE_MATCHING_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: null
 
   - feature_key: billing-payment
@@ -513,8 +517,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: BILLING_PAYMENT
+      gate_key: FEATURE_BILLING_PAYMENT_ENABLED
+      route_keywords: ["billing", "payment", "contract", "wallet", "invoice", "fee-statement"]
     blockers:
+      - "β公開前に FEATURE_BILLING_PAYMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -524,8 +530,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: FEATURE_PROMOTION_ENABLED
+      route_keywords: ["ad-", "ads/", "advertis", "signage", "promotion", "campaign"]
     blockers:
+      - "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -535,8 +543,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: MARKET
-    blockers: []
+      gate_key: FEATURE_MARKET_ENABLED
+      route_keywords: ["market"]
+    blockers:
+      - "β公開前に FEATURE_MARKET_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: null
 
   - feature_key: workflow-forms
@@ -545,8 +555,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_WORKFLOW_FORMS_ENABLED
+      route_keywords: ["workflow", "/forms"]
+    blockers:
+      - "β公開前に FEATURE_WORKFLOW_FORMS_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: null
 
   - feature_key: facility
@@ -555,8 +567,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_FACILITY_ENABLED
+      route_keywords: ["facilit", "equipment", "parking"]
+    blockers:
+      - "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: null
 
   - feature_key: property-repairplan
@@ -565,8 +579,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: PROPERTY_REPAIRPLAN
-    blockers: []
+      gate_key: FEATURE_PROPERTY_REPAIRPLAN_ENABLED
+      route_keywords: ["property", "repair"]
+    blockers:
+      - "β公開前に FEATURE_PROPERTY_REPAIRPLAN_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: "唯一AOP Gateあり（RequireRepairPlanModule）"
 
   - feature_key: family-care
@@ -575,8 +591,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: FAMILY_CARE
-    blockers: []
+      gate_key: FEATURE_FAMILY_CARE_ENABLED
+      route_keywords: ["families", "care-link", "guardianship", "school-attendance"]
+    blockers:
+      - "β公開前に FEATURE_FAMILY_CARE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: null
 
   - feature_key: weather-health
@@ -595,8 +613,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_SKILL_RESUME_ENABLED
+      route_keywords: ["resume", "/skills"]
+    blockers:
+      - "β公開前に FEATURE_SKILL_RESUME_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: null
 
   - feature_key: recruitment
@@ -605,8 +625,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: RECRUITMENT
-    blockers: []
+      gate_key: FEATURE_RECRUITMENT_ENABLED
+      route_keywords: ["recruit"]
+    blockers:
+      - "β公開前に FEATURE_RECRUITMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: null
 
   - feature_key: succession-proxy
@@ -615,8 +637,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_SUCCESSION_PROXY_ENABLED
+      route_keywords: ["succession", "proxy"]
+    blockers:
+      - "β公開前に FEATURE_SUCCESSION_PROXY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: null
 
   - feature_key: gdpr-disclosure
@@ -625,8 +649,10 @@ records:
     release:
       beta: 内部限定
       deploy_safety: 不明
-      gate_key: null
+      gate_key: FEATURE_GDPR_DISCLOSURE_ENABLED
+      route_keywords: ["gdpr"]
     blockers:
+      - "β公開前に FEATURE_GDPR_DISCLOSURE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
       - "CMP-102: cleanupExpiredExportsバッチが失敗中（Issue #2856）"
     notes: "基盤扱いすべきか要判断"
 
@@ -636,8 +662,10 @@ records:
     release:
       beta: 内部限定
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_MODERATION_INCIDENT_ENABLED
+      route_keywords: ["moderation", "incident"]
+    blockers:
+      - "β公開前に FEATURE_MODERATION_INCIDENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: "運用基盤"
 
   - feature_key: webhook-sync
@@ -646,8 +674,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: WEBHOOK_SYNC
+      gate_key: FEATURE_WEBHOOK_SYNC_ENABLED
+      route_keywords: ["webhook", "sync"]
     blockers:
+      - "β公開前に FEATURE_WEBHOOK_SYNC_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -657,8 +687,10 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_TRANSLATION_SEARCH_ENABLED
+      route_keywords: ["translation", "analytics"]
+    blockers:
+      - "β公開前に FEATURE_TRANSLATION_SEARCH_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: null
 
   - feature_key: gamification
@@ -667,6 +699,26 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
-    blockers: []
+      gate_key: FEATURE_GAMIFICATION_ENABLED
+      route_keywords: ["gamification", "supporter"]
+    blockers:
+      - "β公開前に FEATURE_GAMIFICATION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
     notes: null
+
+# ============================================================================
+# route ガードの除外ページ（隔離対象機能に属するが、意図的に束縛しないもの）
+# ============================================================================
+#
+# 番人 FeatureGatePageCoverageGuardTest が frontend/app/pages/ を走査し、
+# 隔離対象機能の route_keywords に一致するページが GATE_ROUTE_MAP で覆われているかを検査する。
+# ここに列挙したパスだけがその検査から除外される。**除外には必ず理由を書くこと**
+# （理由が空のエントリは番人が red にする）。
+#
+# 実在しないパス・既に覆われたパスが残っていても番人が red にする（陳腐化防止）。
+route_coverage_exclusions:
+  - path: "/ads/unsubscribe"
+    reason: "広告配信停止。definePageMeta({ auth: false }) の未ログイン導線であり、
+      メール内リンクから第三者が踏む。ここを塞ぐと配信停止そのものが不能になる（法令・信頼性の観点でも塞げない）。"
+  - path: "/care-links/invitations/[token]"
+    reason: "見守り招待の受諾。definePageMeta({ auth: false }) の未ログイン導線であり、
+      招待された側はまだアカウントを持たないことがある。塞ぐと招待受諾が成立しない。"

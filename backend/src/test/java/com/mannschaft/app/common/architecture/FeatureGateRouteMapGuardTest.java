@@ -269,14 +269,97 @@ class FeatureGateRouteMapGuardTest {
         assertThat(violations.get(0)).startsWith("(iii)").contains("SHIFT");
     }
 
-    /** backend/ 実行・リポジトリルート実行の両方に対応してリポジトリ相対パスを解決する。 */
-    private static Path resolveFromRepoRoot(Path relative) {
+
+    /** {@code GATE_ROUTE_MAP} の全プレフィクス（配列要素）を宣言順に抽出する。 */
+    static List<String> extractPrefixes(String ts) {
+        Matcher block = GATE_ROUTE_MAP_BLOCK.matcher(ts);
+        List<String> prefixes = new ArrayList<>();
+        if (!block.find()) return prefixes;
+        Matcher entry = Pattern.compile("(?m)^\\s{2}([A-Z][A-Z0-9_]*)\\s*:\\s*\\[([^\\]]*)\\]")
+                .matcher(block.group(1));
+        while (entry.find()) {
+            Matcher lit = Pattern.compile("'([^']+)'").matcher(entry.group(2));
+            while (lit.find()) {
+                prefixes.add(lit.group(1));
+            }
+        }
+        return prefixes;
+    }
+
+    /** db/migration 配下の SQL から feature_flags に seed されている flag_key を集める。 */
+    static Set<String> seededFlagKeys(Path migrationDir) throws IOException {
+        Set<String> keys = new LinkedHashSet<>();
+        if (!Files.isDirectory(migrationDir)) return keys;
+        try (java.util.stream.Stream<Path> walk = Files.walk(migrationDir)) {
+            for (Path f : walk.filter(Files::isRegularFile)
+                    .filter(x -> x.getFileName().toString().endsWith(".sql")).toList()) {
+                String sql = Files.readString(f, StandardCharsets.UTF_8);
+                if (!sql.toLowerCase(java.util.Locale.ROOT).contains("feature_flags")) continue;
+                Matcher m = Pattern.compile("'(FEATURE_[A-Z0-9_]+)'").matcher(sql);
+                while (m.find()) {
+                    keys.add(m.group(1));
+                }
+            }
+        }
+        return keys;
+    }
+
+    @Test
+    @DisplayName("GATE_ROUTE_MAP の gate_key が feature_flags に seed 済みであること（恒久 deny 防止）")
+    void gateKeyに対応するフラグ行が実在する() throws IOException {
+        Path tsPath = resolveFromRepoRoot(FEATURE_GATES_TS_RELATIVE);
+        Path migrationDir = resolveFromRepoRoot(
+                Paths.get("backend", "src", "main", "resources", "db", "migration"));
+
+        assertThat(Files.isRegularFile(tsPath)).as("route 束縛表が見つからない: " + tsPath).isTrue();
+        assertThat(Files.isDirectory(migrationDir))
+                .as("Flyway migration ディレクトリが見つからない: " + migrationDir).isTrue();
+
+        String ts = Files.readString(tsPath, StandardCharsets.UTF_8);
+        Matcher blockMatcher = GATE_ROUTE_MAP_BLOCK.matcher(ts);
+        assertThat(blockMatcher.find()).as("GATE_ROUTE_MAP を切り出せなかった").isTrue();
+        Matcher entryMatcher = GATE_KEY_ENTRY.matcher(blockMatcher.group(1));
+
+        Set<String> seeded = seededFlagKeys(migrationDir);
+        List<String> violations = new ArrayList<>();
+
+        while (entryMatcher.find()) {
+            String gateKey = entryMatcher.group(1);
+            if (!gateKey.matches("FEATURE_[A-Z0-9_]+_ENABLED")) {
+                violations.add("gate_key が既存の flag_key 命名規約 FEATURE_{NAME}_ENABLED に従っていない: "
+                        + gateKey + " — gate_key は feature_flags.flag_key と同一文字列である必要がある");
+            }
+            if (!seeded.contains(gateKey)) {
+                violations.add("gate_key に対応する feature_flags の行が seed されていない: " + gateKey
+                        + " — 行が無いキーは isEnabled() の `?? false` で恒久 deny になり、"
+                        + "しかも管理コンソールの PUT /{flagKey} が findByFlagKey で 404 になるため"
+                        + "ON にする手段も無い。db/migration に seed を追加すること");
+            }
+        }
+
+        if (violations.isEmpty()) return;
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("route ガードの gate_key とフィーチャーフラグ実体が対応していません。\n")
+                .append("違反一覧:\n");
+        for (String v : violations) sb.append("  x ").append(v).append("\n");
+        assertThat(violations).as(sb.toString()).isEmpty();
+    }
+
+    /**
+     * backend/ 実行・リポジトリルート実行の両方に対応してリポジトリ相対パスを解決する。
+     *
+     * <p>ファイルだけでなく<b>ディレクトリも解決対象</b>にする（FE のページディレクトリや
+     * Flyway migration ディレクトリを渡すため。isRegularFile だけで判定すると
+     * ディレクトリが常に未解決になり、番人が「見つからない」で落ちる）。</p>
+     */
+    static Path resolveFromRepoRoot(Path relative) {
         for (Path candidate : new Path[]{
                 relative,
                 Paths.get("..").resolve(relative),
                 Paths.get("backend").resolve(relative),
         }) {
-            if (Files.isRegularFile(candidate)) {
+            if (Files.exists(candidate)) {
                 return candidate;
             }
         }

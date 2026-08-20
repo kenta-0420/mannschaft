@@ -3,6 +3,7 @@ import {
   GATE_ROUTE_MAP,
   GATE_FALLBACK_PATH,
   matchGateKey,
+  prefixCovers,
   buildGateRouteRules,
   decideGate,
 } from '~/constants/featureGates'
@@ -19,10 +20,11 @@ describe('featureGates 定数と純関数', () => {
     expect(keys.length).toBeGreaterThan(0)
     expect(new Set(keys).size).toBe(keys.length)
     for (const key of keys) {
-      expect(key).toMatch(/^[A-Z][A-Z0-9_]*$/)
+      expect(key).toMatch(/^FEATURE_[A-Z0-9_]+_ENABLED$/)
       expect(GATE_ROUTE_MAP[key]!.length).toBeGreaterThan(0)
       for (const prefix of GATE_ROUTE_MAP[key]!) {
-        expect(prefix).toMatch(/^\/[a-z0-9-]+(\/[a-z0-9-]+)*$/)
+        // 静的セグメントは kebab、動的セグメントは `*`（1セグメントちょうど）。
+        expect(prefix).toMatch(/^\/([a-z0-9-]+|\*)(\/([a-z0-9-]+|\*))*$/)
       }
     }
   })
@@ -33,15 +35,15 @@ describe('featureGates 定数と純関数', () => {
   })
 
   it('(AC-5) 完全一致とサブパスは一致する', () => {
-    expect(matchGateKey('/shift')).toBe('SHIFT')
-    expect(matchGateKey('/shift/')).toBe('SHIFT')
-    expect(matchGateKey('/shift/123')).toBe('SHIFT')
-    expect(matchGateKey('/shift/123/edit')).toBe('SHIFT')
+    expect(matchGateKey('/shift')).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey('/shift/')).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey('/shift/123')).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey('/shift/123/edit')).toBe('FEATURE_SHIFT_ENABLED')
   })
 
   it('(AC-5) 隣接名を巻き込まない（/todo が /todo-memo・/todos を巻き込まない相当）', () => {
     // 実登録されている /market を使った境界検証
-    expect(matchGateKey('/market')).toBe('MARKET')
+    expect(matchGateKey('/market')).toBe('FEATURE_MARKET_ENABLED')
     expect(matchGateKey('/marketing')).toBeNull()
     expect(matchGateKey('/markets')).toBeNull()
     expect(matchGateKey('/market-research')).toBeNull()
@@ -61,44 +63,104 @@ describe('featureGates 定数と純関数', () => {
     expect(matchGateKey(GATE_FALLBACK_PATH)).toBeNull()
   })
 
-  it('(AC-8) 全ガード対象プレフィクスに ssr:false の routeRule が生成される', () => {
+  it('(AC-8) 静的プレフィクスには ssr:false の routeRule が生成される', () => {
     const rules = buildGateRouteRules()
     for (const prefixes of Object.values(GATE_ROUTE_MAP)) {
-      for (const prefix of prefixes) {
+      for (const prefix of prefixes.filter((p) => !p.includes('*'))) {
         expect(rules[prefix]).toEqual({ ssr: false })
         expect(rules[`${prefix}/**`]).toEqual({ ssr: false })
       }
     }
   })
 
+  it('動的セグメントを含むプレフィクスは routeRules に出さない（slug-redirect の SSR 301 を壊さない）', () => {
+    const rules = buildGateRouteRules()
+    for (const key of Object.keys(rules)) {
+      expect(key).not.toContain('*/')
+    }
+    // /teams/** を丸ごと ssr:false にするとチーム配下の SSR 301 が壊れるため、出さない。
+    expect(rules['/teams/**']).toBeUndefined()
+    expect(rules['/organizations/**']).toBeUndefined()
+  })
+
+  it('動的セグメントは1セグメントちょうどに一致する', () => {
+    expect(prefixCovers('/teams/*/shifts', '/teams/my-team/shifts')).toBe(true)
+    expect(prefixCovers('/teams/*/shifts', '/teams/my-team/shifts/1/board')).toBe(true)
+    expect(prefixCovers('/teams/*/shifts', '/teams/my-team/settings')).toBe(false)
+    expect(prefixCovers('/teams/*/shifts', '/teams/shifts')).toBe(false)
+    expect(matchGateKey('/teams/my-team/shifts')).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey('/teams/my-team/settings/shift')).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey('/teams/my-team/members')).toBeNull()
+  })
+
+  it('御裁可1: 入口以外の素通りページも覆われている', () => {
+    expect(matchGateKey('/my/shift')).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey('/my/shifts')).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey('/my/shift-availability')).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey('/admin/shift-budget/alerts')).toBe('FEATURE_SHIFT_ENABLED')
+    expect(matchGateKey('/settings/billing')).toBe('FEATURE_BILLING_PAYMENT_ENABLED')
+    expect(matchGateKey('/wallet/cards/new')).toBe('FEATURE_BILLING_PAYMENT_ENABLED')
+    expect(matchGateKey('/me/jobs')).toBe('FEATURE_MATCHING_ENABLED')
+    expect(matchGateKey('/me/recruitment-feed')).toBe('FEATURE_RECRUITMENT_ENABLED')
+    expect(matchGateKey('/me/care-links/invite-watcher')).toBe('FEATURE_FAMILY_CARE_ENABLED')
+    expect(matchGateKey('/me/ad-deliveries')).toBe('FEATURE_PROMOTION_ENABLED')
+    expect(matchGateKey('/my/resume/1/preview')).toBe('FEATURE_SKILL_RESUME_ENABLED')
+    expect(matchGateKey('/settings/calendar-sync')).toBe('FEATURE_WEBHOOK_SYNC_ENABLED')
+  })
+
+  it('未ログイン導線と中核機能は束縛しない', () => {
+    // 配信停止・招待受諾は auth:false の公開導線（台帳 route_coverage_exclusions で宣言済み）。
+    expect(matchGateKey('/ads/unsubscribe')).toBeNull()
+    expect(matchGateKey('/care-links/invitations/abc123')).toBeNull()
+    // 探索・検索は中核機能なので隔離しない。
+    expect(matchGateKey('/search')).toBeNull()
+    expect(matchGateKey('/teams/search')).toBeNull()
+    expect(matchGateKey('/organizations/search')).toBeNull()
+    expect(matchGateKey('/dashboard')).toBeNull()
+    expect(matchGateKey('/teams/my-team')).toBeNull()
+  })
+
   it('(AC-8) SSR ではフラグを評価できないため ssr-defer を返す（素通り=pass にしない）', () => {
     const decision = decideGate({
       path: '/shift/1',
       isServer: true,
+      isAuthenticated: true,
       publicLoaded: false,
       enabled: () => {
         throw new Error('SSR ではフラグを評価してはならない')
       },
     })
-    expect(decision).toEqual({ action: 'ssr-defer', gateKey: 'SHIFT' })
+    expect(decision).toEqual({ action: 'ssr-defer' })
   })
 
   it('ガード対象外パスは SSR/CSR とも pass', () => {
-    expect(decideGate({ path: '/dashboard', isServer: true, publicLoaded: false, enabled: () => false }))
+    expect(decideGate({ path: '/dashboard', isServer: true, isAuthenticated: true, publicLoaded: false, enabled: () => false }))
       .toEqual({ action: 'pass' })
-    expect(decideGate({ path: '/dashboard', isServer: false, publicLoaded: false, enabled: () => false }))
+    expect(decideGate({ path: '/dashboard', isServer: false, isAuthenticated: true, publicLoaded: false, enabled: () => false }))
       .toEqual({ action: 'pass' })
+  })
+
+  it('未認証のガード対象パスは pass（後段の auth に委ねる。503 に化けさせない）', () => {
+    expect(decideGate({
+      path: '/contracts/123',
+      isServer: false,
+      isAuthenticated: false,
+      publicLoaded: false,
+      enabled: () => {
+        throw new Error('未認証ではフラグを評価してはならない')
+      },
+    })).toEqual({ action: 'pass' })
   })
 
   it('未取得のガード対象パスは ensure（fail-open にしない）', () => {
-    expect(decideGate({ path: '/market', isServer: false, publicLoaded: false, enabled: () => true }))
-      .toEqual({ action: 'ensure', gateKey: 'MARKET' })
+    expect(decideGate({ path: '/market', isServer: false, isAuthenticated: true, publicLoaded: false, enabled: () => true }))
+      .toEqual({ action: 'ensure' })
   })
 
   it('取得済みなら enabled の真偽で pass / deny に分かれる', () => {
-    expect(decideGate({ path: '/market', isServer: false, publicLoaded: true, enabled: () => true }))
+    expect(decideGate({ path: '/market', isServer: false, isAuthenticated: true, publicLoaded: true, enabled: () => true }))
       .toEqual({ action: 'pass' })
-    expect(decideGate({ path: '/market', isServer: false, publicLoaded: true, enabled: () => false }))
-      .toEqual({ action: 'deny', gateKey: 'MARKET' })
+    expect(decideGate({ path: '/market', isServer: false, isAuthenticated: true, publicLoaded: true, enabled: () => false }))
+      .toEqual({ action: 'deny', gateKey: 'FEATURE_MARKET_ENABLED' })
   })
 })

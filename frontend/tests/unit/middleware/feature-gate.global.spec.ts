@@ -34,6 +34,9 @@ interface StoreStub {
 let storeStub: StoreStub
 mockNuxtImport('useFeatureFlagStore', () => () => storeStub)
 
+let authStub: { isAuthenticated: boolean }
+mockNuxtImport('useAuthStore', () => () => authStub)
+
 function route(path: string): RouteLocationNormalized {
   return { path, fullPath: path } as unknown as RouteLocationNormalized
 }
@@ -50,37 +53,40 @@ function makeStore(overrides: Partial<StoreStub> = {}): StoreStub {
 }
 
 /**
- * 本物の nuxtApp に $toast を用意し、復元用のクロージャを返す。
+ * 本物の nuxtApp に $toast を用意する。
  *
  * ## nuxtApp を書き換えない方針にした理由（実測で分かった罠）
  * - `mockNuxtImport('useNuxtApp', ...)` は @nuxt/test-utils の setupNuxt 自身を壊す
  *   （"Cannot read properties of undefined (reading 'afterEach')"）。ファイルごと skip され
  *   **テストが一件も走らないまま緑に見える**偽陰性になる。
- * - `app.$i18n = ...` は getter 専用プロパティなので代入できず、
- *   `Object.defineProperty` も non-configurable のため "Cannot redefine property" になる。
+ * - `app.$i18n = ...` は getter 専用で代入できず、`Object.defineProperty` も
+ *   non-configurable のため "Cannot redefine property" になる。
+ * - `nuxtApp.provide()` で注入した `$toast` は **non-configurable なので delete できない**
+ *   （"Cannot delete property '$toast'"）。後始末で delete すると例外になり、
+ *   **spy がリセットされないまま次のテストへ漏れる**（前のテストのトースト呼び出しが
+ *   次のテストの「呼ばれていないこと」の検証を偽陽性で落とす）。
  *
- * よって `$i18n` は**本物をそのまま使い**、文言の検証は「i18n が解決した値と一致するか」で行う。
- * `$toast` は環境によって存在有無が変わるため、あれば `add` を spy し、
- * 無ければ Nuxt 公式の `provide()` で注入する。
+ * よって注入は**ファイル内で一度だけ**行い、テスト間はスパイの mockReset で切り分ける。
  */
-function installToast(): { add: ReturnType<typeof vi.fn>, restore: () => void } {
+let sharedToastAdd: ReturnType<typeof vi.fn> | undefined
+
+function installToast(): { add: ReturnType<typeof vi.fn> } {
   const nuxtApp = useNuxtApp()
   const holder = nuxtApp as unknown as Record<string, unknown>
-  const existing = holder.$toast as { add: (opts: Record<string, unknown>) => void } | undefined
 
-  if (existing && typeof existing.add === 'function') {
-    const spy = vi.spyOn(existing, 'add').mockImplementation(() => {})
-    return { add: spy as unknown as ReturnType<typeof vi.fn>, restore: () => spy.mockRestore() }
+  if (!sharedToastAdd) {
+    sharedToastAdd = vi.fn()
+    const existing = holder.$toast as { add?: unknown } | undefined
+    if (existing && typeof existing.add === 'function') {
+      // 既に $toast があるなら add だけ差し替える（provide は二重注入で例外になる）。
+      ;(existing as { add: unknown }).add = sharedToastAdd
+    } else {
+      nuxtApp.provide('toast', { add: sharedToastAdd })
+    }
   }
 
-  const add = vi.fn()
-  nuxtApp.provide('toast', { add })
-  return {
-    add,
-    restore: () => {
-      delete holder.$toast
-    },
-  }
+  sharedToastAdd.mockReset()
+  return { add: sharedToastAdd }
 }
 
 /** i18n の実解決値。文言が i18n キー経由であることの裏取りに使う。 */
@@ -89,16 +95,18 @@ function translated(key: string): string {
   return nuxtApp.$i18n.t(key)
 }
 
-let toastHandle: { add: ReturnType<typeof vi.fn>, restore: () => void } | undefined
+let toastHandle: { add: ReturnType<typeof vi.fn> } | undefined
 
 describe('feature-gate.global ミドルウェア', () => {
   beforeEach(() => {
     mockNavigateTo.mockReset()
     storeStub = makeStore()
+    authStub = { isAuthenticated: true }
   })
 
   afterEach(() => {
-    toastHandle?.restore()
+    // provide した $toast は delete できないため、スパイのリセットで切り分ける。
+    sharedToastAdd?.mockReset()
     toastHandle = undefined
   })
 
@@ -138,12 +146,41 @@ describe('feature-gate.global ミドルウェア', () => {
     expect(opts.detail).not.toBe('featureGate.blocked.body')
   })
 
-  it('(AC-3 補) $toast が undefined でもクラッシュせず戻し処理は行う', async () => {
-    // $toast を一切用意しない（undefined のケース）
+  /**
+   * `$toast` が undefined のケース（`admin-console.ts:51-54` と同じ防御）は、
+   * Nuxt テスト環境では nuxtApp に一度注入した `$toast` を削除できない
+   * （provide したプロパティは non-configurable）ため、直接は再現できない。
+   * ここでは「トーストの有無に関わらず戻し処理は必ず行われる」という
+   * 観測可能な契約だけを固定する。undefined 分岐そのものは実装側の optional 参照で担保する。
+   */
+  it('(AC-3 補) 未公開なら戻し処理は必ず行われる（トースト表示は副次的）', async () => {
+    toastHandle = installToast()
     storeStub = makeStore({ publicLoaded: true, isEnabled: vi.fn(() => false) })
 
     await expect(featureGateMiddleware(route('/market'), from)).resolves.not.toThrow()
     expect(mockNavigateTo).toHaveBeenCalledTimes(1)
+    expect(mockNavigateTo).toHaveBeenCalledWith(GATE_FALLBACK_PATH, { replace: true })
+  })
+
+  it('(重大5) 未認証でガード対象パスを直打ちしても 503 にせず素通りする（auth に委ねる）', async () => {
+    toastHandle = installToast()
+    authStub = { isAuthenticated: false }
+    const loadPublicFlags = vi.fn(async () => {
+      throw new Error('401 Unauthorized')
+    })
+    const isEnabled = vi.fn(() => false)
+    storeStub = makeStore({ publicLoaded: false, loadPublicFlags, isEnabled })
+
+    // メール内リンクをログアウト状態で開くシナリオ。
+    const result = await featureGateMiddleware(route('/contracts/123'), from)
+
+    expect(result).toBeUndefined()
+    // 認証必須の公開フラグ API を叩かない（叩くと 401 → 503 フルページになる）。
+    expect(loadPublicFlags).not.toHaveBeenCalled()
+    expect(isEnabled).not.toHaveBeenCalled()
+    // 戻しもトーストもせず、後段の auth ミドルウェアに /login 誘導を任せる。
+    expect(mockNavigateTo).not.toHaveBeenCalled()
+    expect(toastHandle!.add).not.toHaveBeenCalled()
   })
 
   it('(AC-4) ガード対象外パスではフラグ取得関数が一度も呼ばれない', async () => {
