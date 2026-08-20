@@ -24,7 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 
 /**
- * <b>数字→大文字境界（{@code s3Key} / {@code r2ObjectKey}）を持つ Entity フィールドの物理列名を
+ * <b>物理命名戦略の導出が曖昧なフィールド（{@code s3Key} / {@code r2ObjectKey} / {@code alertSent30d} /
+ * {@code positionX} / {@code nickname1} / {@code p256dhKey}）の物理列名を
  * 実 Flyway スキーマに対して検証する結合テスト（Issue #2856）。</b>
  *
  * <h2>なぜ通常のテストで検出できないか</h2>
@@ -53,7 +54,7 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 @Testcontainers
 @Transactional
 @EnabledIf("com.mannschaft.app.common.schema.EntityDigitBoundaryColumnFlywaySchemaIT#isDockerAvailable")
-@DisplayName("数字→大文字境界フィールドの物理列名 Flyway 実スキーマ整合テスト")
+@DisplayName("命名戦略が曖昧なフィールドの物理列名 Flyway 実スキーマ整合テスト")
 class EntityDigitBoundaryColumnFlywaySchemaIT {
 
     /** Flyway スキーマ適用用 MySQL コンテナ（tmpfs は WSL2 VHD 遅延回避）。 */
@@ -135,9 +136,17 @@ class EntityDigitBoundaryColumnFlywaySchemaIT {
             "EquipmentItemEntity, s3Key",
             "KbImageUploadEntity, s3Key",
             "ResidentDocumentEntity, s3Key",
-            "TimetableSlotUserNoteAttachmentEntity, r2ObjectKey"
+            "TimetableSlotUserNoteAttachmentEntity, r2ObjectKey",
+            "CorkboardGroupEntity, positionX",
+            "CorkboardGroupEntity, positionY",
+            "NotificationCreditPurchaseEntity, alertSent30d",
+            "NotificationCreditPurchaseEntity, alertSent7d",
+            "UserEntity, nickname2",
+            "OrganizationEntity, nickname1",
+            "TeamEntity, nickname1",
+            "PushSubscriptionEntity, p256dhKey"
     })
-    @DisplayName("数字→大文字境界フィールドの JPQL 射影が実 Flyway スキーマで成功する")
+    @DisplayName("命名戦略が曖昧なフィールドの JPQL 射影が実 Flyway スキーマで成功する")
     void digitBoundaryColumnsMatchFlywaySchema(String entityName, String fieldName) {
         String jpql = "select e." + fieldName + " from " + entityName + " e";
         assertThatCode(() -> em.createQuery(jpql).setMaxResults(1).getResultList())
