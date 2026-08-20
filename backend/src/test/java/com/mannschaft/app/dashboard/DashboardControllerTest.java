@@ -764,16 +764,40 @@ class DashboardControllerTest {
         void getActivity_正常_200() {
             // Given
             given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
-            given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any()))
-                    .willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
+            given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any(), any()))
+                    .willReturn(com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse.empty());
 
             // When
-            ResponseEntity<ApiResponse<List<com.mannschaft.app.dashboard.dto.ActivityFeedResponse>>> response =
+            ResponseEntity<ApiResponse<com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse>> response =
                     dashboardController.getActivity(null, 10);
 
             // Then
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(response.getBody().getData()).isNotNull();
+            assertThat(response.getBody().getData().getItems()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC-21: 所属チームIDだけでなく所属組織IDもスコープとして Service へ渡される")
+        void ac21_organizationScopeIsDerived() {
+            // Given: チーム所属は無く、組織ロールのみを持つユーザー。
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of(ORG_ID));
+            given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any(), any()))
+                    .willReturn(com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse.empty());
+
+            // When
+            dashboardController.getActivity(null, 10);
+
+            // Then: 組織スコープが導出され Service へ渡っている
+            // （従来は findTeamIdsByUserId のみで、ORGANIZATION の活動が原理的に0件だった）。
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<Long>> orgCaptor = ArgumentCaptor.forClass(List.class);
+            verify(activityFeedService).getActivityFeed(
+                    eq(USER_ID), any(), any(Integer.class), any(), orgCaptor.capture());
+            assertThat(orgCaptor.getValue()).containsExactly(ORG_ID);
+            verify(userRoleRepository).findOrganizationIdsByUserId(USER_ID);
         }
     }
 

@@ -284,37 +284,21 @@ paths = [
 ]
 
 # -----------------------------------------------------------------------------
-# .claude/settings.local.json の本物の秘密（2026-03-30 / 2026-06-24 混入）
+# 既知の混入（2コミット・要ローテーション）
 # -----------------------------------------------------------------------------
-# 中身は MANNSCHAFT_HMAC_KEY と JWT secret の実値（base64）。
-# コミット 6b3a2922（2026-03-30, backend配下）と aaf2d7c2（2026-06-24, ルート）で
-# 公開履歴に入った。既に .gitignore 済みで現ツリーには残っておらず、本番鍵は
-# Secrets Manager から注入される構成のため、殿の裁可した対処方針は
-# 「履歴書き換えはせずローテーションで無力化」である（殿裁可 2026-08-12）。
+# 開発用の署名鍵が過去に2コミットで公開履歴へ入った。既に .gitignore 済みで現ツリーには
+# 残っておらず、本番鍵は Secrets Manager から注入される構成のため、マスターの裁可した
+# 対処方針は「履歴書き換えはせずローテーションで無力化」である（裁可 2026-08-12）。
+# 詳細な所在（行番号等）は本リポジトリが公開運用のためここには書かない。
+# 本番前チェックリスト側に「本番鍵は必ず新規生成する」として記録済み。
 #
 # gitleaks 8.28.0 の設定スキーマ（config/allowlist.go, config/config.go を実査）には
 # フィンガープリント単位のallowlistフィールドは存在しない（Commits/Paths/RegexTarget/
 # Regexes/StopWords/Conditionのみ。フィンガープリントはレポート同士の重複排除
 # ---baseline-pathで使う概念であり、.gitleaks.toml側のallowlist構文には無い）。
 # 「1コミットの1ファイル」という粒度は commits + paths の condition = "AND" で
-# 表現でき、実質的にフィンガープリント指定と同じ効果（この2コミットのこの2ファイルの
-# 該当箇所のみを除外し、settings.local.json 自体は他コミット・将来のコミットに
-# 対して監視を継続する）が得られるため、これを採用する。
-#
-# 対象フィンガープリント（gitleaksレポートのFingerprintフィールド。値そのものは
-# 含まない。監査用に列挙）:
-#   aaf2d7c2f04667b43261d8357843a4acecc48e27:.claude/settings.local.json:generic-api-key:135
-#   aaf2d7c2f04667b43261d8357843a4acecc48e27:.claude/settings.local.json:generic-api-key:137
-#   aaf2d7c2f04667b43261d8357843a4acecc48e27:.claude/settings.local.json:generic-api-key:138
-#   aaf2d7c2f04667b43261d8357843a4acecc48e27:.claude/settings.local.json:generic-api-key:139 (x2)
-#   aaf2d7c2f04667b43261d8357843a4acecc48e27:.claude/settings.local.json:generic-api-key:141
-#   aaf2d7c2f04667b43261d8357843a4acecc48e27:.claude/settings.local.json:generic-api-key:154
-#   6b3a2922d7c83d9f191b0567d0e8a0363d9ec38f:backend/.claude/settings.local.json:generic-api-key:135
-#   6b3a2922d7c83d9f191b0567d0e8a0363d9ec38f:backend/.claude/settings.local.json:generic-api-key:137
-#   6b3a2922d7c83d9f191b0567d0e8a0363d9ec38f:backend/.claude/settings.local.json:generic-api-key:138
-#   6b3a2922d7c83d9f191b0567d0e8a0363d9ec38f:backend/.claude/settings.local.json:generic-api-key:139 (x2)
-#   6b3a2922d7c83d9f191b0567d0e8a0363d9ec38f:backend/.claude/settings.local.json:generic-api-key:141
-#   6b3a2922d7c83d9f191b0567d0e8a0363d9ec38f:backend/.claude/settings.local.json:generic-api-key:154
+# 表現でき、実質的にフィンガープリント指定と同じ効果が得られるため、これを採用する。
+# 下の commits はこの機構の動作に必須であり、削除すると除外が壊れる。
 # -----------------------------------------------------------------------------
 
 [[allowlists]]

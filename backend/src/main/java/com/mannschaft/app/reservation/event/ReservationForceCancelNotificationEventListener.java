@@ -1,15 +1,18 @@
 package com.mannschaft.app.reservation.event;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 /**
@@ -41,12 +44,20 @@ public class ReservationForceCancelNotificationEventListener {
     /** 通知 sourceType（F00 visibility / 受信権の判定キー・予約ドメイン共通）。 */
     static final String SOURCE_TYPE = "RESERVATION";
 
-    private static final DateTimeFormatter SLOT_AT_FORMAT = DateTimeFormatter.ofPattern("M月d日 HH:mm");
-
     private final NotificationHelper notificationHelper;
+
+    /** Issue #2715 ロットC-3: 受信者 locale の解決（D-5: auth の UserRepository を直接呼ばない）。 */
+    private final UserLocaleCache userLocaleCache;
+
+    /** Issue #2715 ロットC-3: 通知件名・本文を受信者 locale で組み立てるために用いる。 */
+    private final MessageSource messageSource;
 
     /**
      * 強行キャンセルイベントを受信し、申込者へ「管理者により予約がキャンセルされた」旨を通知する。
+     *
+     * <p>受信者は 1 イベントにつき 1 名（{@link ReservationForceCancelledByBlockEvent#getUserId()}）
+     * のため、locale 解決はここでは単発 {@link UserLocaleCache#getLocale(Long)} で十分であり
+     * バルク API は不要（N+1 の懸念自体が生じない・ループ無し）。</p>
      *
      * @param event 強行キャンセルイベント
      */
@@ -54,11 +65,15 @@ public class ReservationForceCancelNotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onForceCancelled(ReservationForceCancelledByBlockEvent event) {
         try {
+            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(event.getUserId()));
+            String title = messageSource.getMessage(
+                    "notification.reservation.forceCancelled.title", null,
+                    "ご予約がキャンセルされました", locale);
             notificationHelper.notify(
                     event.getUserId(),
                     NOTIFICATION_TYPE,
-                    "ご予約がキャンセルされました",
-                    buildBody(event),
+                    title,
+                    buildBody(event, locale),
                     SOURCE_TYPE,
                     event.getReservationId(),
                     NotificationScopeType.TEAM,
@@ -80,22 +95,54 @@ public class ReservationForceCancelNotificationEventListener {
      *
      * <p>Issue #2543: グループ予約の兄弟行まで含め、<b>そのユーザーについて実際にキャンセルされた
      * 枠を全て列挙</b>する。「枠が 1 つ消えた」ように見える本文と実際の消失数の不一致を防ぐ。</p>
+     *
+     * <p>Issue #2715 ロットC-3: 受信者 locale で組み立てる。</p>
      */
-    private String buildBody(ReservationForceCancelledByBlockEvent event) {
+    private String buildBody(ReservationForceCancelledByBlockEvent event, Locale locale) {
         String slotList = event.getCancelledSlots().stream()
-                .map(this::formatSlot)
+                .map(slot -> formatSlot(slot, locale))
                 .collect(Collectors.joining("、"));
         String reason = event.getBlockReason() != null && !event.getBlockReason().isBlank()
-                ? "（" + event.getBlockReason() + "）" : "";
-        return String.format(
-                "以下のご予約は、この時間帯が毎週の予約不可時間%sに設定されたためキャンセルとなりました。"
-                        + "ご不便をおかけして申し訳ありません。別の時間帯でのご予約をご検討ください。\n%s",
-                reason, slotList);
+                ? messageSource.getMessage(
+                        "notification.reservation.forceCancelled.reasonSuffix",
+                        new Object[]{event.getBlockReason()}, "（" + event.getBlockReason() + "）", locale)
+                : "";
+        return messageSource.getMessage(
+                "notification.reservation.forceCancelled.body",
+                new Object[]{reason, slotList},
+                "以下のご予約は、この時間帯が毎週の予約不可時間" + reason + "に設定されたためキャンセルとなりました。"
+                        + "ご不便をおかけして申し訳ありません。別の時間帯でのご予約をご検討ください。\n" + slotList,
+                locale);
     }
 
-    private String formatSlot(ReservationForceCancelledByBlockEvent.CancelledSlot slot) {
-        String slotAt = slot.slotStartAt() != null ? slot.slotStartAt().format(SLOT_AT_FORMAT) : "お申し込み";
-        String title = slot.slotTitle() != null ? slot.slotTitle() : "ご予約";
-        return String.format("%s の「%s」", slotAt, title);
+    private String formatSlot(ReservationForceCancelledByBlockEvent.CancelledSlot slot, Locale locale) {
+        String slotAt = slot.slotStartAt() != null
+                ? slot.slotStartAt().format(resolveSlotAtFormatter(locale))
+                : messageSource.getMessage(
+                        "notification.reservation.forceCancelled.defaultSlotAt", null, "お申し込み", locale);
+        String title = slot.slotTitle() != null
+                ? slot.slotTitle()
+                : messageSource.getMessage(
+                        "notification.reservation.common.defaultSlotTitle", null, "ご予約", locale);
+        return messageSource.getMessage(
+                "notification.reservation.forceCancelled.slotFormat",
+                new Object[]{slotAt, title}, slotAt + " の「" + title + "」", locale);
+    }
+
+    /**
+     * 枠開始日時の表記パターンを受信者 locale で解決する（Codex検分是正・PR #2861 P2）。
+     *
+     * <p>以前は {@code DateTimeFormatter.ofPattern("M月d日 HH:mm")} を固定で使っており、
+     * en/de/es 受信者にも本文中の日時表記だけ日本語（「9月1日 10:00」）が残っていた。
+     * {@code notification.reservation.forceCancelled.slotAtPattern} キーから locale ごとの
+     * パターン文字列を取得し {@link DateTimeFormatter#ofPattern(String, Locale)} で組み立てる。</p>
+     *
+     * <p><b>時刻の値そのものは変更しない</b>（{@code LocalDateTime} はタイムゾーン非依存であり、
+     * ここで行うのはあくまで文字列表記のロケール化）。テナント TZ 対応は別戦役 CMP-023 の範囲。</p>
+     */
+    private DateTimeFormatter resolveSlotAtFormatter(Locale locale) {
+        String pattern = messageSource.getMessage(
+                "notification.reservation.forceCancelled.slotAtPattern", null, "M月d日 HH:mm", locale);
+        return DateTimeFormatter.ofPattern(pattern, locale);
     }
 }
