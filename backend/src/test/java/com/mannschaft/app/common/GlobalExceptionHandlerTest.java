@@ -1519,14 +1519,28 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
-        @DisplayName("意図的な集約は 400 のまま（分割すると存在オラクルになるため）: SKILL_003 / SIGNAGE_002")
-        void 意図的に畳んだコードは400のまま() {
+        @DisplayName("意図的な集約でも集約先ステータスは文脈依存: SKILL_003は404・SIGNAGE_002は400")
+        void 意図的に畳んだコードの集約先ステータスは対比対象の有無で決まる() {
+            // SKILL_003（越境アクセス・権限拒否の集約）は、対比される「不在」側が
+            // SKILL_001/SKILL_002で404を返す。集約先を400のままにすると、不在（404）と
+            // 越境（400）でステータスが割れ、応答の違いだけで対象IDが他スコープに実在するかを
+            // 判別できる存在オラクルになる。そのため集約先も404に揃えた
+            // （PARKING_020を起点とする「越境は存在秘匿で404」の流儀に統一）。
+            // 「複数の理由を1コードに畳めば秘匿できる」は誤りで、畳んだ先のステータスが
+            // 不在側と一致して初めて秘匿が成立する。
             assertThat(globalExceptionHandler.resolveHttpStatus(SkillErrorCode.SKILL_003))
-                    .as("他スコープの存在秘匿と権限拒否を意図的に畳んでいる。分けると存在オラクルになる")
-                    .isEqualTo(HttpStatus.BAD_REQUEST);
+                    .as("越境アクセス・権限拒否の集約。不在側（SKILL_001/002）と同じ404に揃えて秘匿する")
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+
+            // SIGNAGE_002は『不在／無効化済み／期限切れ』を集約しているが、この3者はそもそも
+            // 対比される「不在は404・その他は別ステータス」という設計になっておらず、
+            // 3者とも同一コード・同一ステータス（400）で応答することそのものが契約
+            // （SignageAccessTokenService#validateTokenのjavadoc、SignageScopeContractITが
+            // 3状況とも400を固定）。skillのような404/400の分裂が存在しないため、
+            // 今回の是正の対象外であり400のまま変更しない。
             assertThat(globalExceptionHandler.resolveHttpStatus(
                     com.mannschaft.app.signage.SignageErrorCode.SIGNAGE_002))
-                    .as("トークンの『不在／無効化済み／期限切れ』を意図的に畳んでいる")
+                    .as("不在／無効化済み／期限切れを同一コード・同一ステータス(400)に畳む契約。変更対象外")
                     .isEqualTo(HttpStatus.BAD_REQUEST);
         }
 
