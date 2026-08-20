@@ -1495,6 +1495,10 @@
       "back_to_dashboard": "Volver al panel",
       "retry": "Reintentar",
       "slow_loading": "La carga está tardando más de lo esperado"
+    },
+    "unsavedChanges": {
+      "title": "Cambios sin guardar",
+      "confirmLeave": "Tienes cambios sin guardar. Si sales de esta página, se perderá lo que has introducido. ¿Continuar?"
     }
   },
   "teamHub": {

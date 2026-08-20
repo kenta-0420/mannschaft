@@ -33,6 +33,7 @@ async function saveHandle() {
   try {
     const result = await contactApi.updateMyHandle(handle.value)
     currentHandle.value = result.data.contactHandle
+    syncUnsavedBaseline()
     notification.success('@ハンドルを設定しました')
   } catch (e) {
     captureQuiet(e, { context: 'ProfileSettings: ハンドル保存' })
@@ -49,16 +50,43 @@ const profile = ref({
   avatarUrl: null as string | null,
 })
 
+/** サーバーに保存済みの値（離脱ガードのスナップショット元）。Issue #2857 */
+const savedProfile = ref({ nickname: '', phoneNumber: '' })
+
+/**
+ * 未保存の変更がある状態での離脱に警告を出す（Issue #2857）。
+ * アバターは即時アップロードで確定するため対象外。
+ */
+const { isDirty: hasUnsavedChanges, resetBaseline } = useUnsavedChangesGuard(
+  () => ({
+    nickname: profile.value.nickname,
+    phoneNumber: profile.value.phoneNumber,
+    handle: handle.value,
+  }),
+  { enabled: () => !loading.value },
+)
+
+/** 保存済みの値でスナップショットを張り直す（初期読込後・保存成功後に呼ぶ） */
+function syncUnsavedBaseline() {
+  resetBaseline({
+    nickname: savedProfile.value.nickname,
+    phoneNumber: savedProfile.value.phoneNumber,
+    handle: currentHandle.value ?? '',
+  })
+}
+
 onMounted(async () => {
   try {
     const res = await api<{ data: typeof profile.value }>('/api/v1/users/me')
     profile.value = res.data
+    savedProfile.value = { nickname: res.data.nickname, phoneNumber: res.data.phoneNumber }
   } catch {
     notification.error('プロフィール情報の取得に失敗しました')
   } finally {
     loading.value = false
   }
   await fetchHandle()
+  syncUnsavedBaseline()
 })
 
 async function saveProfile() {
@@ -71,6 +99,11 @@ async function saveProfile() {
         phoneNumber: profile.value.phoneNumber,
       },
     })
+    savedProfile.value = {
+      nickname: profile.value.nickname,
+      phoneNumber: profile.value.phoneNumber,
+    }
+    syncUnsavedBaseline()
     notification.success('プロフィールを更新しました')
   } catch {
     notification.error('プロフィールの更新に失敗しました')
@@ -105,6 +138,11 @@ async function uploadAvatar(event: Event) {
 <template>
   <div class="mx-auto max-w-2xl">
     <PageHeader title="プロフィール設定" />
+
+    <!-- 未保存の変更がある間だけ表示する注意書き（Issue #2857） -->
+    <Message v-if="hasUnsavedChanges" severity="warn" :closable="false" class="mb-4">
+      {{ $t('common.unsavedChanges.confirmLeave') }}
+    </Message>
 
     <PageLoading v-if="loading" />
 

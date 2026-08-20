@@ -1495,6 +1495,10 @@
       "back_to_dashboard": "返回仪表板",
       "retry": "重试",
       "slow_loading": "加载时间较长，请稍候"
+    },
+    "unsavedChanges": {
+      "title": "未保存的更改",
+      "confirmLeave": "您有未保存的更改。离开此页面将丢失已输入的内容。要继续吗？"
     }
   },
   "teamHub": {

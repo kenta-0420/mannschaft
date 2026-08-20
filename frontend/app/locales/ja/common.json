@@ -1495,6 +1495,10 @@
       "back_to_dashboard": "ダッシュボードへ戻る",
       "retry": "再試行",
       "slow_loading": "読み込みに時間がかかっています"
+    },
+    "unsavedChanges": {
+      "title": "未保存の変更",
+      "confirmLeave": "保存されていない変更があります。このページを離れると入力内容は失われます。よろしいですか？"
     }
   },
   "teamHub": {
