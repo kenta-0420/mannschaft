@@ -491,16 +491,18 @@ public class NotificationHelper {
         // notifyAllPreAuthorized 内部で DB 層例外が起きた場合の rollback-only までは守らない
         // （同一トランザクション内であれば残る＝根治は Issue #2834 / CMP-056 の範囲）。
         //
-        // Codex 三巡目是正（PR #2873）: notifyAllPreAuthorized は insertAndDispatchChunk の失敗を
-        // チャンク単位で握って正常 return する best-effort 契約のため、「例外が飛ばなかった」ことは
-        // 「配信できた」ことの証明にならない（配信が全滅しても例外は飛ばない）。よって
-        // 「例外なく呼び出せたグループ数」を messageBuiltGroupCount / messageBuildFailedGroupCount
-        // として区別し、実際の配信欠落は notifyAllPreAuthorized の戻り値（失敗受信者数）を
-        // deliveredRecipientCount / failedRecipientCount として別集計する。
+        // Codex 三巡目・四巡目是正を経て評価（PR #2873）: 当初は notifyAllPreAuthorized の戻り値
+        // （失敗受信者数）を deliveredRecipientCount / failedRecipientCount として再集計していたが、
+        // これは notifyAllPreAuthorized 自身が既に自前のログ（failedRecipients）・チャンク失敗の
+        // log.error・Micrometer メトリクス（chunk_failed）で正確に報告している値の再集計に過ぎず、
+        // 新しい一次情報を持たないまま実装ミスの発生源になっていた（3巡目: 全滅を成功に誤集計、
+        // 4巡目: null 受信者を成功に誤集計）。そのため配信の成否そのものはここでは数えず、
+        // 下位（notifyAllPreAuthorized 側）のログ・メトリクスへ委ねる。
+        // 一方 messageBuiltGroupCount / messageBuildFailedGroupCount は、失敗が「locale の文面組み立て
+        // （bodyBuilder＝MessageFormat エラー等）」側か「DB INSERT」側かという、下位層には持ち得ない
+        // 一次情報を捉えるため残す。
         int messageBuiltGroupCount = 0;
         int messageBuildFailedGroupCount = 0;
-        int deliveredRecipientCount = 0;
-        int failedRecipientCount = 0;
         for (Map.Entry<String, List<Long>> entry : byLocale.entrySet()) {
             List<Long> group = entry.getValue();
             try {
@@ -508,26 +510,23 @@ public class NotificationHelper {
                 // locale ごとに 1 回だけ本文を組み立てる（userId は使われない前提。上記 javadoc 参照）。
                 LocalizedMessage message = bodyBuilder.build(group.get(0), locale);
                 messageBuiltGroupCount++;
-                int failedInGroup = notifyAllPreAuthorized(group, notificationType, NotificationPriority.NORMAL,
+                notifyAllPreAuthorized(group, notificationType, NotificationPriority.NORMAL,
                         message.title(), message.body(),
                         sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
-                failedRecipientCount += failedInGroup;
-                deliveredRecipientCount += group.size() - failedInGroup;
             } catch (Exception e) {
-                // bodyBuilder（MessageFormat エラー等）の失敗はグループ全体が未着手のため、
-                // 受信者全員を失敗として計上する。
+                // bodyBuilder（MessageFormat エラー等）の失敗はグループ全体が未着手のまま次へ進む。
                 messageBuildFailedGroupCount++;
-                failedRecipientCount += group.size();
                 log.warn("locale グループの通知送信失敗（継続）: type={}, locale={}, recipientCount={}, error={}",
                         notificationType, entry.getKey(), group.size(), e.getMessage(), e);
             }
         }
+        // 配信の成否（届いた/欠落した件数）はここでは数えない: notifyAllPreAuthorized が自前のログ
+        // （failedRecipients）・チャンク失敗の log.error・Micrometer メトリクスで既に正確に報告している。
         log.info("一括通知送信(配信認可済・locale別): type={}, userCount={}, effectiveRecipientCount={}, "
-                        + "localeGroupCount={}, messageBuiltGroupCount={}, messageBuildFailedGroupCount={}, "
-                        + "deliveredRecipientCount={}, failedRecipientCount={}",
+                        + "localeGroupCount={}, messageBuiltGroupCount={}, messageBuildFailedGroupCount={}"
+                        + "（配信結果は notifyAllPreAuthorized 側のログ・メトリクス参照）",
                 notificationType, userIds.size(), recipients.size(), byLocale.size(),
-                messageBuiltGroupCount, messageBuildFailedGroupCount,
-                deliveredRecipientCount, failedRecipientCount);
+                messageBuiltGroupCount, messageBuildFailedGroupCount);
     }
 
     /** {@link #notifyAllLocalized} が受信者ごとに組み立てるタイトル・本文の組。 */

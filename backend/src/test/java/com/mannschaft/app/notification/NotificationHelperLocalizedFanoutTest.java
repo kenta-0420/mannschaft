@@ -192,9 +192,16 @@ class NotificationHelperLocalizedFanoutTest {
     }
 
     @Test
-    @DisplayName("あるlocaleグループの配信が全滅しても、成功として誤集計しない（Codex三巡目是正）")
-    void localeグループの配信全滅は成功として誤集計されない() {
-        // given: ja/en の2 locale。en グループの insertAndDispatchChunk だけ例外を投げる＝配信全滅。
+    @DisplayName("あるlocaleグループのチャンクINSERTが失敗しても、他のlocaleグループの配信呼び出しはスキップされない")
+    void localeグループ単位のチャンク失敗は他グループの配信をスキップしない() {
+        // 検分是正の整理（PR #2873・計装評価）: 本メソッドはもはや配信結果（届いた/欠落した件数）を
+        // 自前集計しない（notifyAllPreAuthorized が既にログ・メトリクスで正確に報告しているため）。
+        // よってこのテストの責務は「配信件数の正確性」ではなく「あるグループの内部失敗が原因で
+        // 後続グループの配信呼び出しがスキップされないこと」に絞る。
+        //
+        // given: ja/en の2 locale。en グループの insertAndDispatchChunk だけ例外を投げる
+        // （notifyAllPreAuthorized 側の best-effort でチャンク単位に握られる想定＝
+        // NotificationHelperBestEffortTest が担保する契約そのものはここでは再検証しない）。
         List<Long> recipients = List.of(1L, 2L);
         Map<Long, String> locales = Map.of(1L, "ja", 2L, "en");
         given(userLocaleCache.getLocales(recipients)).willReturn(locales);
@@ -210,7 +217,7 @@ class NotificationHelperLocalizedFanoutTest {
                 .given(bulkFanoutService).insertAndDispatchChunk(
                         anyList(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
-        // when: bodyBuilder 自体は例外を投げない（= 旧実装なら successGroupCount++ されてしまう状況）。
+        // when
         notificationHelper.notifyAllPreAuthorizedLocalized(
                 recipients,
                 "SURVEY_CREATED",
@@ -219,18 +226,20 @@ class NotificationHelperLocalizedFanoutTest {
                 "/surveys/1", 3L,
                 (userId, locale) -> new NotificationHelper.LocalizedMessage("t", "b"));
 
-        // then: 末尾ログが実際の欠落（failedRecipientCount=1）を報告し、
-        // 「例外なく呼び出せた」だけの messageBuiltGroupCount を「成功」と詐称していないことを検証する。
-        assertThat(logAppender.list)
-                .as("配信全滅（en グループ）が failedRecipientCount へ正しく反映される")
-                .anySatisfy(event -> assertThat(event.getFormattedMessage())
-                        .contains("failedRecipientCount=1")
-                        .contains("deliveredRecipientCount=1"));
+        // then: en グループのチャンクが内部失敗しても、ja グループの配信呼び出しは実行される
+        // （グループ単位で丸ごとスキップされない）。
+        verify(bulkFanoutService, times(1)).insertAndDispatchChunk(
+                argThatEquals(List.of(1L)), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(bulkFanoutService, times(1)).insertAndDispatchChunk(
+                argThatEquals(List.of(2L)), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    @DisplayName("null受信者は配信成功として誤集計されない（Codex四巡目是正）")
-    void null受信者は配信成功として誤集計されない() {
+    @DisplayName("null受信者はgetLocales・配信グループ化の基準から除外される（Codex四巡目是正）")
+    void null受信者はgetLocalesと配信グループ化の基準から除外される() {
+        // これは計装（配信件数の再集計）ではなく正しさの検証: グループ化・getLocales の基準を
+        // notifyAllPreAuthorized の null 除外契約と揃えることが目的のため、計装削除後も残す。
+        //
         // given: null を含む受信者リスト。List.of は null を許さないため Arrays.asList を使う。
         // 有効受信者は 1L(ja) / 2L(en) の2件。
         java.util.List<Long> userIds = Arrays.asList(1L, null, 2L);
@@ -247,20 +256,22 @@ class NotificationHelperLocalizedFanoutTest {
                 "/surveys/1", 3L,
                 (userId, locale) -> new NotificationHelper.LocalizedMessage("t", "b"));
 
-        // then: 末尾ログの deliveredRecipientCount は null を除いた有効受信者数（2件）と一致する
-        // （null 受信者ぶんを「配信成功」として誤計上しない）。
-        assertThat(logAppender.list)
-                .as("null 受信者を除いた有効受信者数だけが deliveredRecipientCount へ反映される")
-                .anySatisfy(event -> assertThat(event.getFormattedMessage())
-                        .contains("deliveredRecipientCount=2")
-                        .contains("failedRecipientCount=0")
-                        .contains("effectiveRecipientCount=2"));
-        // getLocales には null を除いた有効受信者だけが渡る（下流の集計基準と揃える）。
+        // then: getLocales には null を除いた有効受信者だけが渡る（下流の集計基準と揃える）。
         verify(userLocaleCache, times(1)).getLocales(effectiveRecipients);
+        // 配信グループにも null は含まれない（1L・2L それぞれ 1 件ずつのグループとして配信される）。
+        verify(bulkFanoutService, times(1)).insertAndDispatchChunk(
+                argThatEquals(List.of(1L)), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(bulkFanoutService, times(1)).insertAndDispatchChunk(
+                argThatEquals(List.of(2L)), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        // 末尾ログの effectiveRecipientCount（null 除外後の有効受信者数）が正しいことも確認する。
+        assertThat(logAppender.list)
+                .as("null 受信者を除いた有効受信者数（2件）が effectiveRecipientCount へ反映される")
+                .anySatisfy(event -> assertThat(event.getFormattedMessage())
+                        .contains("effectiveRecipientCount=2"));
     }
 
     @Test
-    @DisplayName("受信者が全員nullの場合、insertAndDispatchChunkは一度も呼ばれずdeliveredRecipientCount=0になる")
+    @DisplayName("受信者が全員nullの場合、getLocales・insertAndDispatchChunkは一度も呼ばれない")
     void 受信者が全員nullの場合は配信も集計もされない() {
         // given: 全員 null のリスト。
         java.util.List<Long> userIds = Arrays.asList((Long) null, null);
