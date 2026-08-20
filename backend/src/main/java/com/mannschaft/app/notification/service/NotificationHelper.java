@@ -468,17 +468,35 @@ public class NotificationHelper {
             byLocale.computeIfAbsent(localeTag, k -> new java.util.ArrayList<>()).add(userId);
         }
 
+        // Codex 再検分是正（PR #2873）: locale グループ化により、元の受信者ごとの try/catch
+        // （best-effort）が失われ、ある locale の bodyBuilder（MessageFormat エラー等の非DB例外）が
+        // 一度失敗すると後続の locale グループへ処理が進まず、呼び出し元の @Transactional
+        // （SurveyRemindService#remind / SurveyService#extendDeadline 等）を巻き添えにしていた。
+        // グループ単位で try/catch し、失敗を握って次のグループへ継続する（欠落は log.warn で可視化）。
+        // この catch が実際に止められるのは MessageFormat エラー等の非DB例外であり、
+        // notifyAllPreAuthorized 内部で DB 層例外が起きた場合の rollback-only までは守らない
+        // （同一トランザクション内であれば残る＝根治は Issue #2834 / CMP-056 の範囲）。
+        int successGroupCount = 0;
+        int failedGroupCount = 0;
         for (Map.Entry<String, List<Long>> entry : byLocale.entrySet()) {
-            Locale locale = Locale.forLanguageTag(entry.getKey());
-            List<Long> group = entry.getValue();
-            // locale ごとに 1 回だけ本文を組み立てる（userId は使われない前提。上記 javadoc 参照）。
-            LocalizedMessage message = bodyBuilder.build(group.get(0), locale);
-            notifyAllPreAuthorized(group, notificationType, NotificationPriority.NORMAL,
-                    message.title(), message.body(),
-                    sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+            try {
+                Locale locale = Locale.forLanguageTag(entry.getKey());
+                List<Long> group = entry.getValue();
+                // locale ごとに 1 回だけ本文を組み立てる（userId は使われない前提。上記 javadoc 参照）。
+                LocalizedMessage message = bodyBuilder.build(group.get(0), locale);
+                notifyAllPreAuthorized(group, notificationType, NotificationPriority.NORMAL,
+                        message.title(), message.body(),
+                        sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+                successGroupCount++;
+            } catch (Exception e) {
+                failedGroupCount++;
+                log.warn("locale グループの通知送信失敗（継続）: type={}, locale={}, recipientCount={}, error={}",
+                        notificationType, entry.getKey(), entry.getValue().size(), e.getMessage(), e);
+            }
         }
-        log.info("一括通知送信(配信認可済・locale別): type={}, userCount={}, localeGroupCount={}",
-                notificationType, userIds.size(), byLocale.size());
+        log.info("一括通知送信(配信認可済・locale別): type={}, userCount={}, localeGroupCount={}, "
+                        + "successGroupCount={}, failedGroupCount={}",
+                notificationType, userIds.size(), byLocale.size(), successGroupCount, failedGroupCount);
     }
 
     /** {@link #notifyAllLocalized} が受信者ごとに組み立てるタイトル・本文の組。 */

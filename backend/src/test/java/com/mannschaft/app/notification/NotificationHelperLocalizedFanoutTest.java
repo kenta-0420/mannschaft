@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.BDDMockito.given;
@@ -104,6 +105,43 @@ class NotificationHelperLocalizedFanoutTest {
         verify(bulkFanoutService, times(1)).insertAndDispatchChunk(
                 argThatEquals(jaUsers), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         verify(bulkFanoutService, times(1)).insertAndDispatchChunk(
+                argThatEquals(enUsers), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("特定localeのbodyBuilderが例外を投げても伝播せず、残りlocaleグループへは配信が継続する（Codex再検分是正）")
+    void 特定localeのbodyBuilder失敗は伝播せず残りのlocaleグループは継続する() {
+        // given: ja/en/zh の3 locale。en の bodyBuilder だけ MessageFormat エラー等を模した例外を投げる。
+        List<Long> jaUsers = List.of(1L);
+        List<Long> enUsers = List.of(2L);
+        List<Long> zhUsers = List.of(3L);
+        List<Long> recipients = List.of(1L, 2L, 3L);
+        Map<Long, String> locales = Map.of(1L, "ja", 2L, "en", 3L, "zh");
+        given(userLocaleCache.getLocales(recipients)).willReturn(locales);
+
+        // when / then: ①例外がメソッド外へ伝播しない
+        assertThatCode(() -> notificationHelper.notifyAllPreAuthorizedLocalized(
+                recipients,
+                "SURVEY_CREATED",
+                "SURVEY", 1L,
+                NotificationScopeType.ORGANIZATION, 2L,
+                "/surveys/1", 3L,
+                (userId, locale) -> {
+                    if ("en".equals(locale.toLanguageTag())) {
+                        throw new IllegalArgumentException("simulated MessageFormat failure for en");
+                    }
+                    return new NotificationHelper.LocalizedMessage("t", "b");
+                }))
+                .as("locale グループ単位の catch により、呼び出し元（@Transactional な業務処理）を巻き添えにしない")
+                .doesNotThrowAnyException();
+
+        // ②残り2ロケール（ja/zh）への配信は実行される
+        verify(bulkFanoutService, times(1)).insertAndDispatchChunk(
+                argThatEquals(jaUsers), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(bulkFanoutService, times(1)).insertAndDispatchChunk(
+                argThatEquals(zhUsers), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        // en グループは bodyBuilder で失敗しているため insertAndDispatchChunk まで到達しない
+        verify(bulkFanoutService, never()).insertAndDispatchChunk(
                 argThatEquals(enUsers), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
