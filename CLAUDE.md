@@ -70,7 +70,7 @@
 
 ### Dynamic Workflows との連携（出陣・検分の高速化／コスト最適化）
 
-`/出陣`・`/検分` は Dynamic Workflows で足軽の並列起動を表現できる（オプトイン。機械的タスクは sonnet/haiku・低 effort、難所は opus・high に固定。コミット/マージは `gh`）。詳細: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)。
+`/出陣`・`/検分 claude` は Dynamic Workflows で足軽の並列起動を表現できる（`/検分` の既定検分者は `codex` で、Codex による独立検分が走る。Workflow 検分を使うには `claude` を明示する）（オプトイン。機械的タスクは sonnet/haiku・低 effort、難所は opus・high に固定。コミット/マージは `gh`）。詳細: [`docs/development/daimyo_workflow_migration.md`](docs/development/daimyo_workflow_migration.md)。
 
 ### 例外（メインディレクトリで直接やってよい作業）
 
