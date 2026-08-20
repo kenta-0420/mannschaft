@@ -2028,12 +2028,19 @@ public class GlobalExceptionHandler {
             // 409。SKILL_001 は「カテゴリ不在」「名称重複」「非アクティブカテゴリ」の3意味で割れて
             // いたため、不在（404・SKILL_001 に限定）／名称重複（409・SKILL_009）／非アクティブ
             // （409・SKILL_010）に分割した。
-            // SKILL_003（他スコープの存在秘匿と本人以外操作の権限拒否）は*意図的な集約*であり
-            // 分割しない。分ければ「そのカテゴリ/資格は他スコープに実在する」ことを外部に教える
-            // 存在オラクルになる。既存の MemberSkillScopeContractIT が 400 を契約として固定して
-            // おり、既定 WARN=400 のままが正しい（畳み込みで秘匿を達成する設計）。
+            // SKILL_003（スコープ越境の拒否／本人でもADMINでもない場合の権限拒否）は
+            // PARKING_020 に起点を持つ「越境は存在秘匿で404」の流儀に揃え、404固定とする
+            // （equipment/membership/todo/corkboard/pointcard で既に同じ流儀を採用）。
+            // かつては WARN=400 の既定のままだったため、404（SKILL_001/002＝不在）と
+            // 400（SKILL_003＝越境）でステータスが割れ、攻撃者が応答の違いだけで
+            // 「そのIDが実在するか」を判別できる存在オラクルになっていた（CMP-052想定）。
+            // 越境も権限拒否も「対象の存在自体を隠す」という同じ目的のため、不在と同一の
+            // 404に畳むのが正しい（不在側を400にする逆方向は選ばない）。
+            // 契約は MemberSkillScopeContractIT / SkillCategoryScopeContractIT が
+            // 「不在と越境の応答が一致すること」として固定している。
             Map.entry("SKILL_001", HttpStatus.NOT_FOUND),                   // カテゴリ不在
             Map.entry("SKILL_002", HttpStatus.NOT_FOUND),                   // 資格不在
+            Map.entry("SKILL_003", HttpStatus.NOT_FOUND),                   // スコープ越境・権限拒否（存在秘匿）
             Map.entry("SKILL_009", HttpStatus.CONFLICT),                    // カテゴリ名称の重複
             Map.entry("SKILL_010", HttpStatus.CONFLICT),                    // 非アクティブカテゴリへの登録
             Map.entry("SKILL_005", HttpStatus.CONFLICT),                    // 同一資格の重複登録
