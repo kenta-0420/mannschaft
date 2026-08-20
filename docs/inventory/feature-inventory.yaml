@@ -33,6 +33,13 @@
 # 5. β解禁の判断が付き、ドメイン行（layer=ドメイン）を能力粒度へ展開する際は、
 #    ドメイン行を削除し、能力粒度の複数レコードに置き換える。
 # 6. gate_key は SCREAMING_SNAKE・あれば一意（AOP Gate 等の実装キーとの対応）。省略可。
+#    **gate_key の唯一の発行元は本ファイルである**（Gate 基盤工事②）。FE の route 束縛表
+#    frontend/app/constants/featureGates.ts の GATE_ROUTE_MAP はここに無いキーを使えず、
+#    番人 FeatureGateRouteMapGuardTest が双方向の整合を CI で検証する。
+# 7. 隔離対象（release.beta が β限定/内部限定/停止）の行に gate_key を発行したら、
+#    GATE_ROUTE_MAP に URL パスプレフィクスを束縛しなければ番人が red になる。
+#    専用の top-level route を持たない機能は gate_key を null のままにしておく
+#    （route 層の隔離対象外であることを台帳上で明示する意味になる）。
 #
 records:
   # ==========================================================================
@@ -485,7 +492,7 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: SHIFT
     blockers:
       - "バッチ・リスナーの停止判定未確認"
     notes: null
@@ -496,7 +503,7 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: MATCHING
     blockers: []
     notes: null
 
@@ -506,7 +513,7 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: BILLING_PAYMENT
     blockers:
       - "バッチ・リスナーの停止判定未確認"
     notes: null
@@ -528,7 +535,7 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: MARKET
     blockers: []
     notes: null
 
@@ -558,7 +565,7 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: PROPERTY_REPAIRPLAN
     blockers: []
     notes: "唯一AOP Gateあり（RequireRepairPlanModule）"
 
@@ -568,7 +575,7 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: FAMILY_CARE
     blockers: []
     notes: null
 
@@ -598,7 +605,7 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: RECRUITMENT
     blockers: []
     notes: null
 
@@ -639,7 +646,7 @@ records:
     release:
       beta: 停止
       deploy_safety: 不明
-      gate_key: null
+      gate_key: WEBHOOK_SYNC
     blockers:
       - "バッチ・リスナーの停止判定未確認"
     notes: null

@@ -3,6 +3,15 @@ import { defineStore } from 'pinia'
 export const useFeatureFlagStore = defineStore('featureFlags', () => {
   const flags = ref<Record<string, boolean>>({})
   const loaded = ref(false)
+  /**
+   * 公開フラグ読取API（loadPublicFlags）で取得済みかどうか（Gate 基盤工事②で追加）。
+   *
+   * loaded は admin API 経由の loadFlags でも true になるため、システム管理者が
+   * 管理コンソールを開いた後は「公開フラグ未取得なのに取得済みに見える」状態が起こる。
+   * route ガード middleware は「未取得なら素通りさせず遅延取得する」判定に使うため、
+   * 公開フラグの取得完了だけを表す独立したフラグが必要になる。
+   */
+  const publicLoaded = ref(false)
 
   /**
    * システム管理者向け: admin API から全フラグ（description等含む）を取得する。
@@ -37,11 +46,12 @@ export const useFeatureFlagStore = defineStore('featureFlags', () => {
       ...Object.fromEntries(publicFlags.map((f) => [f.flagKey, f.enabled])),
     }
     loaded.value = true
+    publicLoaded.value = true
   }
 
   function isEnabled(flagKey: string): boolean {
     return flags.value[flagKey] ?? false
   }
 
-  return { flags, loaded, loadFlags, loadPublicFlags, isEnabled }
+  return { flags, loaded, publicLoaded, loadFlags, loadPublicFlags, isEnabled }
 })

@@ -2157,5 +2157,15 @@
     "submit": "转让",
     "successTitle": "已转让所有者",
     "successDetail": "管理员权限已移交给新所有者。"
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "该功能尚未开放",
+      "body": "此功能当前不可用，将返回仪表板。"
+    },
+    "error": {
+      "fetchFailedTitle": "无法确认功能开放状态",
+      "fetchFailedBody": "由于网络错误，无法确认该功能是否已开放。请稍后重试。"
+    }
   }
 }

@@ -2157,5 +2157,15 @@
     "submit": "Transferir",
     "successTitle": "Propiedad transferida",
     "successDetail": "Los permisos de administrador se han transferido al nuevo propietario."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Función no disponible",
+      "body": "Esta función aún no está disponible. Volviendo al panel."
+    },
+    "error": {
+      "fetchFailedTitle": "No se pudo comprobar la disponibilidad de la función",
+      "fetchFailedBody": "No se pudo comprobar si esta función está disponible debido a un error de red. Inténtalo de nuevo más tarde."
+    }
   }
 }
