@@ -83,6 +83,40 @@ describe('featureGates 定数と純関数', () => {
     expect(rules['/organizations/**']).toBeUndefined()
   })
 
+  /**
+   * SSR 抑止の守備範囲が「全域」ではないことを、件数比ごと固定する。
+   *
+   * routeRules に出せるのは静的プレフィクスのみで、動的セグメントを含む経路は
+   * **SSR 抑止も middleware 判定も掛からず**、クライアント側判定だけに依存する
+   * （middleware は SSR では ssr-defer で一切判定しない）。
+   * この非対称性は doc に明記してあるが、内訳が変わったのに doc が古いまま残ることを
+   * 防ぐため、テストでも固定しておく。
+   * 束縛を増減させた場合はこの期待値と doc の両方を必ず更新すること。
+   */
+  it('SSR 抑止が掛かるのは静的プレフィクスのみで、動的セグメント経路は対象外である', () => {
+    const all = Object.values(GATE_ROUTE_MAP).flat()
+    const dynamic = all.filter((p) => p.includes('*'))
+    const staticOnly = all.filter((p) => !p.includes('*'))
+
+    // 実測の内訳（doc・PR 本文・Issue と数値を揃えてある）。
+    expect(all).toHaveLength(91)
+    expect(staticOnly).toHaveLength(47)
+    expect(dynamic).toHaveLength(44)
+
+    const rules = buildGateRouteRules()
+    // 静的プレフィクスは 1 件につき `/x` と `/x/**` の 2 エントリを生む。
+    expect(Object.keys(rules)).toHaveLength(staticOnly.length * 2)
+
+    // 動的プレフィクスは 1 件も routeRules に現れない = SSR 抑止の対象外。
+    for (const prefix of dynamic) {
+      expect(rules[prefix]).toBeUndefined()
+      expect(rules[`${prefix}/**`]).toBeUndefined()
+    }
+
+    // 「約半分が抑止対象外」という認識が崩れていないことの歯止め。
+    expect(dynamic.length).toBeGreaterThan(all.length * 0.4)
+  })
+
   it('動的セグメントは1セグメントちょうどに一致する', () => {
     expect(prefixCovers('/teams/*/shifts', '/teams/my-team/shifts')).toBe(true)
     expect(prefixCovers('/teams/*/shifts', '/teams/my-team/shifts/1/board')).toBe(true)

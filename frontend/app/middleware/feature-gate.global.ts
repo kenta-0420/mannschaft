@@ -19,9 +19,8 @@ import { GATE_FALLBACK_PATH, decideGate } from '~/constants/featureGates'
  *   旧 slug → 新 slug の本物の HTTP 301 を邪魔しない）。
  * - クライアント: feature-gate のみ動作する（`slug-redirect` は `!import.meta.server` で即 return）。
  *
- * さらに `buildGateRouteRules()` は動的セグメントを含むプレフィクスを routeRules に出さない。
- * `/teams/**` を `ssr: false` にすると `slug-redirect` が SSR でしか返せない本物の 301 が
- * 丸ごと壊れるためで、これは技術的制約（Nitro は `[slug]` を解さない）と設計判断の両方による。
+ * さらに `buildGateRouteRules()` は動的セグメントを含むプレフィクスを routeRules に出さない
+ * （理由と、その結果 SSR 抑止が及ばない範囲については下の「SSR」節を参照）。
  *
  * ## 拒否時の挙動（「伝えて戻す」）
  * `navigateTo` で {@link GATE_FALLBACK_PATH} へ戻し、`$toast` でエラーを伝える。
@@ -36,12 +35,31 @@ import { GATE_FALLBACK_PATH, decideGate } from '~/constants/featureGates'
  * 「権限不足（正常な false）と取得失敗を厳格に区別する」作法に倣う。
  * 「未公開扱いで弾く」も「公開扱いで通す」もしない（症状を隠さない）。
  *
- * ## SSR
+ * ## SSR — 抑止は「静的プレフィクスのみ」であり全域ではない
  * SSR ではフラグを取得できない（公開フラグ API は localStorage のトークンに依存し、
- * ①の plugin は `.client` 限定）。ここでは判定せず `ssr-defer` として抜け、
- * **未公開コンテンツの SSR 出力自体は nuxt.config の routeRules（`ssr: false`）が防ぐ**
- * （`buildGateRouteRules()`）。素通り（fail-open）でも全機能未公開扱い（コアページまで
- * 弾く fail-closed の誤爆）でもない三値判定になっている。
+ * ①の plugin は `.client` 限定）。よってここでは判定せず `ssr-defer` として抜ける。
+ * 素通り（fail-open）でも全機能未公開扱い（コアページまで弾く fail-closed の誤爆）でもない
+ * 三値判定になっている。
+ *
+ * <b>ただし SSR 出力の抑止は全域には掛かっていない。</b>
+ * `buildGateRouteRules()` が `ssr: false` を出せるのは<b>動的セグメントを含まない
+ * 静的プレフィクスのみ</b>（実測 91 中 47 件）。残る 44 件（`/teams/{slug}/…`・
+ * `/organizations/{slug}/…` 系）は Nitro が `[slug]` を解さないため routeRules に出しておらず、
+ * <b>SSR 抑止の対象外</b>である。この 44 経路は
+ * <b>routeRules による SSR 抑止も middleware 判定も掛からず、
+ * ハイドレーション後のクライアント側判定だけに依存する。</b>
+ *
+ * 帰結として、<b>フラグを閉じた状態では未公開機能の「画面の外枠」（見出し・ラベル・空の表）が
+ * SSR 出力に露出しうる</b>。該当ページは `middleware: 'auth'` を持ちデータ取得も
+ * `onMounted` のクライアント限定なので、載るのはデータではなく枠に留まる。
+ * seed 済みフラグが全て有効な現時点では実際に漏れるものは無く、
+ * <b>この穴が効いてくるのは β公開時にフラグを閉じた後</b>である。
+ * 追跡: docs/inventory/feature-inventory.yaml の各対象行の blockers と Issue #2888。
+ *
+ * なぜ `/teams/**` まで広げないか: 広げると `slug-redirect.global.ts` が SSR 実行時にのみ
+ * 返せる本物の HTTP 301（旧 slug → 新 slug）が丸ごと壊れる。SEO・ブックマーク継承という
+ * 出荷済みの契約を壊す代償の方が、枠の露出より大きいと判断した（判断であり、防げているという
+ * 主張ではない）。
  */
 export default defineNuxtRouteMiddleware(async (to) => {
   const store = useFeatureFlagStore()

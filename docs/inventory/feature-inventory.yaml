@@ -36,6 +36,10 @@
 #    **gate_key の唯一の発行元は本ファイルである**（Gate 基盤工事②）。FE の route 束縛表
 #    frontend/app/constants/featureGates.ts の GATE_ROUTE_MAP はここに無いキーを使えず、
 #    番人 FeatureGateRouteMapGuardTest が双方向の整合を CI で検証する。
+# 6-b. β公開前の閉栓（gate_key のフラグを無効化する作業）を行う前に、
+#    Issue #2888「slug 配下のガード対象が SSR で隔離されない（91中44プレフィクス）」を
+#    必ず解消すること。閉じた瞬間に未公開機能の画面の外枠が SSR 出力へ露出するため。
+#    各対象行の blockers にも同じ紐付けを書いてある。
 # 7. 隔離対象（release.beta が β限定/内部限定/停止）の行に gate_key を発行したら、
 #    GATE_ROUTE_MAP に URL パスプレフィクスを束縛しなければ番人が red になる。
 #    専用の top-level route を持たない機能は gate_key を null のままにしておく
@@ -495,7 +499,7 @@ records:
       gate_key: FEATURE_SHIFT_ENABLED
       route_keywords: ["shift"]
     blockers:
-      - "β公開前に FEATURE_SHIFT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_SHIFT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -508,7 +512,7 @@ records:
       gate_key: FEATURE_MATCHING_ENABLED
       route_keywords: ["matching", "match-analytics", "/jobs"]
     blockers:
-      - "β公開前に FEATURE_MATCHING_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_MATCHING_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: billing-payment
@@ -520,7 +524,7 @@ records:
       gate_key: FEATURE_BILLING_PAYMENT_ENABLED
       route_keywords: ["billing", "payment", "contract", "wallet", "invoice", "fee-statement"]
     blockers:
-      - "β公開前に FEATURE_BILLING_PAYMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_BILLING_PAYMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -533,7 +537,7 @@ records:
       gate_key: FEATURE_PROMOTION_ENABLED
       route_keywords: ["ad-", "ads/", "advertis", "signage", "promotion", "campaign"]
     blockers:
-      - "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -546,7 +550,7 @@ records:
       gate_key: FEATURE_MARKET_ENABLED
       route_keywords: ["market"]
     blockers:
-      - "β公開前に FEATURE_MARKET_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_MARKET_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: workflow-forms
@@ -558,7 +562,7 @@ records:
       gate_key: FEATURE_WORKFLOW_FORMS_ENABLED
       route_keywords: ["workflow", "/forms"]
     blockers:
-      - "β公開前に FEATURE_WORKFLOW_FORMS_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_WORKFLOW_FORMS_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: facility
@@ -570,7 +574,7 @@ records:
       gate_key: FEATURE_FACILITY_ENABLED
       route_keywords: ["facilit", "equipment", "parking"]
     blockers:
-      - "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: property-repairplan
@@ -582,7 +586,7 @@ records:
       gate_key: FEATURE_PROPERTY_REPAIRPLAN_ENABLED
       route_keywords: ["property", "repair"]
     blockers:
-      - "β公開前に FEATURE_PROPERTY_REPAIRPLAN_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_PROPERTY_REPAIRPLAN_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: "唯一AOP Gateあり（RequireRepairPlanModule）"
 
   - feature_key: family-care
@@ -594,7 +598,7 @@ records:
       gate_key: FEATURE_FAMILY_CARE_ENABLED
       route_keywords: ["families", "care-link", "guardianship", "school-attendance"]
     blockers:
-      - "β公開前に FEATURE_FAMILY_CARE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_FAMILY_CARE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: weather-health
@@ -616,7 +620,7 @@ records:
       gate_key: FEATURE_SKILL_RESUME_ENABLED
       route_keywords: ["resume", "/skills"]
     blockers:
-      - "β公開前に FEATURE_SKILL_RESUME_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_SKILL_RESUME_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: recruitment
@@ -628,7 +632,7 @@ records:
       gate_key: FEATURE_RECRUITMENT_ENABLED
       route_keywords: ["recruit"]
     blockers:
-      - "β公開前に FEATURE_RECRUITMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_RECRUITMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: succession-proxy
@@ -640,7 +644,7 @@ records:
       gate_key: FEATURE_SUCCESSION_PROXY_ENABLED
       route_keywords: ["succession", "proxy"]
     blockers:
-      - "β公開前に FEATURE_SUCCESSION_PROXY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_SUCCESSION_PROXY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: gdpr-disclosure
@@ -652,7 +656,7 @@ records:
       gate_key: FEATURE_GDPR_DISCLOSURE_ENABLED
       route_keywords: ["gdpr"]
     blockers:
-      - "β公開前に FEATURE_GDPR_DISCLOSURE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_GDPR_DISCLOSURE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "CMP-102: cleanupExpiredExportsバッチが失敗中（Issue #2856）"
     notes: "基盤扱いすべきか要判断"
 
@@ -665,7 +669,7 @@ records:
       gate_key: FEATURE_MODERATION_INCIDENT_ENABLED
       route_keywords: ["moderation", "incident"]
     blockers:
-      - "β公開前に FEATURE_MODERATION_INCIDENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_MODERATION_INCIDENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: "運用基盤"
 
   - feature_key: webhook-sync
@@ -677,7 +681,7 @@ records:
       gate_key: FEATURE_WEBHOOK_SYNC_ENABLED
       route_keywords: ["webhook", "sync"]
     blockers:
-      - "β公開前に FEATURE_WEBHOOK_SYNC_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_WEBHOOK_SYNC_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
       - "バッチ・リスナーの停止判定未確認"
     notes: null
 
@@ -690,7 +694,7 @@ records:
       gate_key: FEATURE_TRANSLATION_SEARCH_ENABLED
       route_keywords: ["translation", "analytics"]
     blockers:
-      - "β公開前に FEATURE_TRANSLATION_SEARCH_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_TRANSLATION_SEARCH_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
   - feature_key: gamification
@@ -702,7 +706,7 @@ records:
       gate_key: FEATURE_GAMIFICATION_ENABLED
       route_keywords: ["gamification", "supporter"]
     blockers:
-      - "β公開前に FEATURE_GAMIFICATION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）"
+      - "β公開前に FEATURE_GAMIFICATION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
     notes: null
 
 # ============================================================================

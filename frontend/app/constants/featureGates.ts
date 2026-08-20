@@ -222,26 +222,42 @@ export function matchGateKey(path: string): string | null {
 }
 
 /**
- * ガード対象パスを SSR 対象外（クライアント描画のみ）にする Nitro の routeRules を組み立てる。
+ * ガード対象パスのうち<b>静的プレフィクスだけ</b>を SSR 対象外（クライアント描画のみ）にする
+ * Nitro の routeRules を組み立てる。
  *
  * SSR 実行時はフラグを取得できない（公開フラグ API は localStorage のトークンに依存し、
- * ①の plugin は `.client` 限定）。ここで `ssr: false` にしておくことで、
- * **フラグが未確定な状態で未公開ページの HTML がサーバーから出力されること自体を防ぐ**。
- * middleware 側の `ssr-defer` はこの routeRules と対になっている。
+ * ①の plugin は `.client` 限定）。`ssr: false` にしたパスについては、
+ * フラグが未確定な状態で未公開ページの HTML がサーバーから出力されることを防げる。
  *
- * ## 動的セグメントを含むプレフィクスは対象外にする（技術的制約と設計判断の両方）
+ * <h2>守備範囲は全域ではない（過大に読まないこと）</h2>
+ * <b>`*`（動的セグメント）を含むプレフィクスは routeRules に出さないため、SSR 抑止が掛からない。</b>
+ * 実測の内訳は次のとおりで、<b>およそ半分が抑止の対象外</b>である。
+ * <ul>
+ *   <li>静的プレフィクス（`ssr: false` を出す） … 47 件</li>
+ *   <li>動的プレフィクス（<b>出さない = SSR 抑止なし</b>） … 44 件（`/teams/{slug}/…`・
+ *       `/organizations/{slug}/…` 系がまるごと該当）</li>
+ * </ul>
+ * この 44 経路は <b>routeRules による SSR 抑止も middleware 判定も掛からない</b>
+ * （middleware は SSR では `ssr-defer` で一切判定しないため）。
+ * 隔離は<b>ハイドレーション後のクライアント側判定だけに依存する</b>。
+ *
+ * 帰結: <b>フラグを閉じた状態では、未公開機能の「画面の外枠」（見出し・ラベル・空の表）が
+ * SSR 出力に露出しうる。</b>該当ページは `middleware: 'auth'` を持ち、データ取得も
+ * `onMounted` のクライアント限定なので載るのはデータではなく枠に留まる。
+ * seed 済みフラグが全て有効な現時点では実際に漏れるものは無く、
+ * <b>この穴が効いてくるのは β公開時にフラグを閉じた後</b>である。
+ * 追跡: docs/inventory/feature-inventory.yaml の各対象行の blockers と Issue #2888。
+ *
+ * <h2>なぜ `/teams/**` まで広げないのか（判断であって、防げているという主張ではない）</h2>
  * Nitro の routeRules は Vue Router の動的セグメント（`[slug]`）を解さないため、
  * `/teams/{slug}/shifts` を表現するには `/teams/**` まで広げるしかない。しかしそれは
- * **チーム配下の全ページの SSR を止める**ことを意味し、
+ * <b>チーム配下の全ページの SSR を止める</b>ことを意味し、
  * `slug-redirect.global.ts` が SSR 実行時にのみ返せる「本物の HTTP 301」（旧 slug → 新 slug）を
- * 丸ごと壊す。SEO・ブックマークの継承という出荷済みの契約を壊す代償は、
- * 「未公開ページの静的シェルが SSR HTML に載る」ことより明らかに大きい。
+ * 丸ごと壊す。SEO・ブックマークの継承という出荷済みの契約を壊す代償の方が、
+ * 枠の露出より大きいと判断した。
  *
- * よって `*` を含まない静的プレフィクスのみ `ssr: false` にする。
- * 動的セグメントを含むパスはクライアント側の判定（middleware）だけで塞ぐ。
- * なお本プロジェクトは「404 で存在を秘匿しない」方針であり（`admin-console.ts`）、
- * SSR シェルに機能の存在が現れること自体は秘匿対象ではない。
- * SSR では認証トークンが無く実データも取得できないため、載るのは静的な枠のみである。
+ * この非対称性は {@code tests/unit/constants/featureGates.spec.ts} が件数比ごと固定している
+ * （静的/動的の内訳が変わったらテストが落ちて気付けるようにするため）。
  */
 export function buildGateRouteRules(): Record<string, { ssr: false }> {
   const rules: Record<string, { ssr: false }> = {}
@@ -267,7 +283,9 @@ export type GateDecision =
  *
  * - 対象外パス → `pass`（フラグストアに一切触れない = happy-path 非干渉）
  * - SSR → `ssr-defer`。SSR では判定材料が無いので「通す」も「弾く」もしない。
- *   未公開コンテンツの出力自体は {@link buildGateRouteRules} の `ssr: false` が防ぐ。
+ *   SSR 出力の抑止は {@link buildGateRouteRules} の `ssr: false` が担うが、
+ *   <b>それが掛かるのは静的プレフィクスのみ</b>で、動的セグメントを含む経路は抑止対象外である
+ *   （詳細と帰結は {@link buildGateRouteRules} の doc を参照）。
  * - **未認証 → `pass`**。公開フラグ API は認証必須なので、ここで取得を試みると 401 になり
  *   「取得失敗 = 503 フルページ」に化ける。未ログインでメール内リンク（例 `/contracts/123`）を
  *   開いた利用者が /login へ誘導されず 503 に叩き落とされる事故になるため、判定せず
