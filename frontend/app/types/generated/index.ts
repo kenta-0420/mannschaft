@@ -42055,6 +42055,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feature-flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開フィーチャーフラグ一覧取得 */
+        get: operations["getPublicFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/families/{teamId}/members/{userId}/personal-timetables": {
         parameters: {
             query?: never;
@@ -77503,6 +77520,22 @@ export interface components {
         };
         ApiResponseListPermissionResponse: {
             data?: components["schemas"]["PermissionResponse"][];
+        };
+        ApiResponseListPublicFeatureFlagResponse: {
+            data?: components["schemas"]["PublicFeatureFlagResponse"][];
+        };
+        /** @description 公開フィーチャーフラグ */
+        PublicFeatureFlagResponse: {
+            /**
+             * @description 有効フラグ
+             * @example true
+             */
+            enabled?: boolean;
+            /**
+             * @description フラグキー
+             * @example FEATURE_NEW_UI
+             */
+            flagKey?: string;
         };
         ApiResponseListFamilyPersonalTimetableResponse: {
             data?: components["schemas"]["FamilyPersonalTimetableResponse"][];
@@ -158509,6 +158542,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PagedResponseFeedbackResponse"];
+                };
+            };
+        };
+    };
+    getPublicFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicFeatureFlagResponse"];
                 };
             };
         };

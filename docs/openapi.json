@@ -2175,6 +2175,10 @@
       "description": "F03.10 スケジュール代理出席 API"
     },
     {
+      "name": "フィーチャーフラグ（公開）",
+      "description": "一般ユーザー向け公開フラグ読取API"
+    },
+    {
       "name": "履歴書・職務経歴書",
       "description": "F01.10 履歴書バージョン CRUD・複製・出力"
     },
@@ -135634,6 +135638,27 @@
         }
       }
     },
+    "/api/v1/feature-flags": {
+      "get": {
+        "tags": [
+          "フィーチャーフラグ（公開）"
+        ],
+        "summary": "公開フィーチャーフラグ一覧取得",
+        "operationId": "getPublicFlags",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListPublicFeatureFlagResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/families/{teamId}/members/{userId}/personal-timetables": {
       "get": {
         "tags": [
@@ -229169,6 +229194,33 @@
             "items": {
               "$ref": "#/components/schemas/PermissionResponse"
             }
+          }
+        }
+      },
+      "ApiResponseListPublicFeatureFlagResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PublicFeatureFlagResponse"
+            }
+          }
+        }
+      },
+      "PublicFeatureFlagResponse": {
+        "type": "object",
+        "description": "公開フィーチャーフラグ",
+        "properties": {
+          "enabled": {
+            "type": "boolean",
+            "description": "有効フラグ",
+            "example": true
+          },
+          "flagKey": {
+            "type": "string",
+            "description": "フラグキー",
+            "example": "FEATURE_NEW_UI"
           }
         }
       },
