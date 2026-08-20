@@ -429,6 +429,13 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             return false;
         }
 
+        // 上位条件（scope 軸を貫通する「管理者相当」）。既定は false のため既存 Resolver の挙動は不変。
+        // status 軸（visibleByStatus）・§11.6 親 ORG 連鎖ガードはいずれも本判定より手前で
+        // 確定しているため、ここを OR で開いても DRAFT / ARCHIVED / 非アクティブ組織は貫通しない。
+        if (privilegedViewerBypass(row, viewerUserId, snapshot, additionalAxisContext)) {
+            return true;
+        }
+
         return visibleByLevel(row, viewerUserId, snapshot, level, additionalAxisContext)
                 && visibleByAdditionalAxis(row, viewerUserId, snapshot, level, additionalAxisContext);
     }
@@ -712,6 +719,27 @@ public abstract class AbstractContentVisibilityResolver<V extends Enum<V>, P ext
             P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, StandardVisibility level,
             Object additionalAxisContext) {
         return visibleByAdditionalAxis(row, viewerUserId, snapshot, level);
+    }
+
+    /**
+     * scope 軸（{@link StandardVisibility} の閾値評価）と追加軸を<strong>まとめて貫通</strong>する
+     * 「上位条件」フック（既定: 貫通なし＝常に {@code false}）。
+     *
+     * <p>{@link #visibleByAdditionalAxis} は AND 合成であるため<strong>締める方向にしか働けず</strong>、
+     * 「特定の閲覧者は visibility 値に関わらず可視」という仕様（例: F05.4 アンケートの
+     * 「当該スコープの管理者相当と結果閲覧者名簿の登録者は {@code results_visibility} を無視して閲覧可」）を
+     * 表現できない。本フックはその<strong>開ける方向</strong>の唯一の合流点である。</p>
+     *
+     * <p><strong>貫通しない軸</strong>: status 軸（{@link #visibleByStatus}）と §11.6 親 ORG 連鎖ガードは
+     * 本フックより手前で確定しているため、{@code DRAFT} / {@code ARCHIVED} / 親組織非アクティブは
+     * 上位条件でも開かない（未公開コンテンツを漏らさないための境界）。</p>
+     *
+     * <p>DB アクセスを行ってはならない（snapshot・row・{@link #prepareAdditionalAxisContext} で
+     * 先読み済みの context のみで純メモリ判定すること）。</p>
+     */
+    protected boolean privilegedViewerBypass(
+            P row, Long viewerUserId, UserScopeRoleSnapshot snapshot, Object additionalAxisContext) {
+        return false;
     }
 
     /** filterAccessible / decide の SQL 集計ヘルパ: 直接所属判定が必要なスコープ集合。 */

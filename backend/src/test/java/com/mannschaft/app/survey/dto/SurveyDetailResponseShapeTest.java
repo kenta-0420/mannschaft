@@ -42,7 +42,13 @@ class SurveyDetailResponseShapeTest {
      * 一覧に載せない理由は {@link #ac6_fieldsMatchSurveyResponsePlusQuestions()} の javadoc を参照。
      * 追加する場合はここに明示的に列挙すること（無断追加は AC-6 が落とす）。</p>
      */
-    private static final List<String> VIEWER_SCOPED_FIELDS = List.of("viewerCanViewResults");
+    private static final List<String> VIEWER_SCOPED_FIELDS = List.of(
+            "viewerCanViewResults",
+            // CMP-041: 管理操作可否・チーム別内訳可否。FE がロール名で操作ボタンを出し分けると
+            // 権限を持たない DEPUTY_ADMIN に「押すと 403 になるボタン」が見えるため、
+            // viewerCanViewResults と同じ作法で BE の判定点から載せる。
+            "viewerCanManage",
+            "viewerCanViewTeamBreakdown");
 
     /**
      * AC-1 / AC-3 / AC-4 — 作成・詳細取得・複製はいずれも本 DTO を返す。

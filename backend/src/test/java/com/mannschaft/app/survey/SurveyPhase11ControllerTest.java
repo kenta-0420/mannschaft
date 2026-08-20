@@ -135,7 +135,7 @@ class SurveyPhase11ControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 given(teamService.resolveTeamId(SCOPE_ID)).willReturn(SCOPE_ID_LONG);
-                SurveyDetailResponse detail = SurveyDetailResponse.of(null, List.of(), true);
+                SurveyDetailResponse detail = SurveyDetailResponse.of(null, List.of(), true, true, true);
                 // Controller が resolveScopeType で "teams" → "TEAM" に正準化してから Service を呼ぶ
                 given(surveyService.duplicateSurvey(
                         org.mockito.ArgumentMatchers.eq(CANONICAL_SCOPE_TYPE),

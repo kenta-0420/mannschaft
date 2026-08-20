@@ -458,6 +458,68 @@ public class AccessControlService {
         throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
+    /**
+     * ADMIN、または指定 Permission を持つ DEPUTY_ADMIN かを判定する（TEAM / ORGANIZATION 両対応・CMP-041）。
+     *
+     * <p>{@link #checkAdminOrHasPermission} は {@code ORGANIZATION} 以外を
+     * {@link IllegalArgumentException} で撥ねるため、TEAM・ORGANIZATION の両方に立つ機能
+     * （アンケート等、設計書の「ADMIN+」）では使えない。本メソッドは同じ意味論のまま
+     * scopeType でリポジトリのクエリを振り分ける。既存メソッドは一切変更していない。</p>
+     *
+     * <p>挙動:</p>
+     * <ul>
+     *   <li>ADMIN は無条件で許可（{@link #isAdmin}）</li>
+     *   <li>DEPUTY_ADMIN は次のいずれかを満たす場合のみ許可:
+     *     <ul>
+     *       <li>{@code role_permissions} に {@code is_default=1} で permission が登録されている</li>
+     *       <li>{@code permission_groups} 経由で permission が個別付与されている</li>
+     *     </ul>
+     *   </li>
+     *   <li>それ以外（MEMBER / SUPPORTER / 非メンバー / 天井登録のみの DEPUTY_ADMIN）は false</li>
+     * </ul>
+     *
+     * <p><b>SYSTEM_ADMIN の扱い</b>: 既存の {@link #isAdminOrAbove} は
+     * {@code ADMIN_ROLES = Set.of("ADMIN", "DEPUTY_ADMIN")}（:52）との照合であり SYSTEM_ADMIN を
+     * 含まない。本メソッドも同様に SYSTEM_ADMIN を特別扱いしない（必要な経路は
+     * {@link #isSystemAdmin} / {@link #checkSystemAdmin} を別途併用する既存作法に従う）。</p>
+     *
+     * @param userId         操作者ユーザー ID
+     * @param scopeId        チーム ID または組織 ID
+     * @param scopeType      {@code "TEAM"} または {@code "ORGANIZATION"}
+     * @param permissionName 必要な Permission 名（例: {@code "MANAGE_SURVEYS"}）
+     * @return 許可なら true
+     * @throws IllegalArgumentException scopeType が TEAM / ORGANIZATION 以外の場合
+     */
+    public boolean hasAdminOrPermissionInScope(
+            Long userId, Long scopeId, String scopeType, String permissionName) {
+        boolean team = "TEAM".equals(scopeType);
+        if (!team && !"ORGANIZATION".equals(scopeType)) {
+            throw new IllegalArgumentException(
+                    "hasAdminOrPermissionInScope は TEAM / ORGANIZATION のみ対応します: " + scopeType);
+        }
+        // 1. ADMIN なら無条件許可
+        if (isAdmin(userId, scopeId, scopeType)) {
+            return true;
+        }
+        // 2. DEPUTY_ADMIN かつ Permission 保有なら許可
+        return team
+                ? userRoleRepository.existsDeputyAdminWithPermissionInTeam(userId, scopeId, permissionName)
+                : userRoleRepository.existsDeputyAdminWithPermissionInOrganization(userId, scopeId, permissionName);
+    }
+
+    /**
+     * {@link #hasAdminOrPermissionInScope} の例外版。違反時は 403（COMMON_002）。
+     *
+     * @throws BusinessException        権限なしの場合（COMMON_002）
+     * @throws IllegalArgumentException scopeType が TEAM / ORGANIZATION 以外の場合
+     */
+    public void checkAdminOrHasPermissionInScope(
+            Long userId, Long scopeId, String scopeType, String permissionName) {
+        if (!hasAdminOrPermissionInScope(userId, scopeId, scopeType, permissionName)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
     // ========================================
     // SYSTEM_ADMIN 判定
     // ========================================

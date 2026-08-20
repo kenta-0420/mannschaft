@@ -272,12 +272,16 @@ function adaptDetail(
   wire: SurveyDetailWire['data'],
   hasResponded: boolean,
 ): SurveyDetailResponse['data'] {
-  const { questions, viewerCanViewResults, ...survey } = wire
+  const { questions, viewerCanViewResults, viewerCanManage, viewerCanViewTeamBreakdown, ...survey } =
+    wire
   return {
     ...adaptSurvey(survey),
     questions: (questions ?? []).map(adaptQuestion),
     hasResponded,
     viewerCanViewResults,
+    // CMP-041: 管理操作可否も同じ理由で明示的に写す（undeclared passthrough を作らない）。
+    viewerCanManage,
+    viewerCanViewTeamBreakdown,
   }
 }
 

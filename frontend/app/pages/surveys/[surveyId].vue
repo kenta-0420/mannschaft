@@ -12,6 +12,11 @@ import {
   shouldShowRespondCta,
   type SurveyDisplayMode,
 } from '~/utils/surveyDisplayMode'
+import {
+  canManageSurvey,
+  canRemindSurvey,
+  canViewSurveyTeamBreakdown,
+} from '~/utils/surveyViewerCapabilities'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -40,10 +45,7 @@ if (!scopeType || !scopeId || !Number.isFinite(surveyId)) {
   await navigateTo('/')
 }
 
-// scopeId が確定してから RoleAccess をロード
-const roleScope = scopeType === 'TEAM' ? 'team' : 'organization'
 const scopeTypeStrict = scopeType as 'TEAM' | 'ORGANIZATION'
-const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess(roleScope, scopeId)
 
 const survey = ref<SurveyDetailResponse['data'] | null>(null)
 const loading = ref(true)
@@ -108,25 +110,38 @@ const isCreator = computed(() => {
   return survey.value.audit?.createdBy === currentUserId.value
 })
 
-/** ADMIN+（ADMIN または SYSTEM_ADMIN）の判定 */
-const isAdminPlus = computed(() => isAdmin.value)
+/**
+ * 管理操作を行えるか（CMP-041）。
+ *
+ * 定義は BE と同一で「**作成者 または ADMIN／MANAGE_SURVEYS を持つ DEPUTY_ADMIN**」である。
+ * かつてはここで FE のロール判定（役職名だけを見る composable）を使い、コメントにも
+ * 「ADMIN+（ADMIN または SYSTEM_ADMIN）」という **BE 仕様とは異なる定義**を書いていた。
+ * BE が管理操作を MANAGE_SURVEYS 保有 DEPUTY_ADMIN へ委任した結果、その判定のままでは
+ * 「権限を持たない副管理者にボタンは見えるが、押すと 403」という状態になる。
+ *
+ * よって FE は認可ロジックを持たず、詳細応答の `viewerCanManage` に従う。この値は管理系 API が
+ * 403 を投げるのと**同じ判定点**（`SurveyAccessGuard#canManage`）から得ている
+ * （先例: `viewerCanViewResults`・Issue #2779）。
+ *
+ * 欠けている応答は fail-closed（操作させない）に倒す。
+ */
+const canManage = computed(() => canManageSurvey(survey.value))
 
 /**
  * F05.4 (B) チーム別内訳パネルの表示ガード。
  *
- * 出欠側（EventDetailPanel の AttendanceTeamBreakdownPanel ガード = isAdminOrDeputy）および
- * BE 認可（checkAdminOrAbove = ADMIN/DEPUTY_ADMIN 許可）と判定を一致させる。
- * isAdminPlus（DEPUTY 除外）のままだと DEPUTY 組織管理者がアンケ内訳パネルだけ
- * 見られない過小露出（漏洩でなく UX 欠落）になるため DEPUTY を含める。
- * MEMBER/SUPPORTER/GUEST は引き続き非表示（漏洩を新たに作らない）。
+ * チーム別内訳は組織の管理ビューであり、BE（SurveyResultService#getTeamBreakdown）は
+ * **作成者高速パスを持たず** ADMIN／MANAGE_SURVEYS 保有 DEPUTY_ADMIN のみを通す。
+ * したがって canManage（作成者を含む）ではなく、専用の viewerCanViewTeamBreakdown に従う。
+ * MEMBER/SUPPORTER/GUEST は引き続き非表示（漏洩を新たに作らない）。こちらも fail-closed。
  */
-const canViewTeamBreakdown = computed(() => isAdminOrDeputy.value)
+const canViewTeamBreakdown = computed(() => canViewSurveyTeamBreakdown(survey.value))
 
 /** 回答者セクションの開閉状態（初期は閉じた状態） */
 const showRespondents = ref(false)
 
-/** 督促送信可否（ADMIN+ かつ 公開中のみ） */
-const canRemind = computed(() => isAdminPlus.value && survey.value?.status === 'PUBLISHED')
+/** 督促送信可否（管理操作可 かつ 公開中のみ。BE: SurveyRemindService#remind と同一粒度） */
+const canRemind = computed(() => canRemindSurvey(survey.value, survey.value?.status))
 
 /**
  * 結果閲覧権限の判定。
@@ -138,7 +153,7 @@ const canViewResults = computed(() => {
   const s = survey.value
   if (!s) return false
   if (isCreator.value) return true
-  if (isAdminPlus.value) return true
+  if (canManage.value) return true
   switch (s.policy?.resultsVisibility) {
     case 'CREATOR_ONLY':
       return false
@@ -350,7 +365,6 @@ async function onSubmitted() {
 onMounted(async () => {
   await Promise.all([
     fetchDetail(),
-    loadPermissions(),
     // 掲示板スレッド情報を取得（404 の場合は null のまま = 表示しない）
     getSurveyThread(surveyId).then((thread) => {
       bulletinThread.value = thread
@@ -408,9 +422,9 @@ onMounted(async () => {
         {{ survey.content.description }}
       </p>
 
-      <!-- 操作ボタン群（作成者 or ADMIN+） -->
+      <!-- 操作ボタン群（BE の管理操作認可と同一判定 = viewerCanManage） -->
       <div
-        v-if="(isCreator || isAdminPlus) && (survey.status === 'PUBLISHED' || survey.status === 'DRAFT')"
+        v-if="canManage && (survey.status === 'PUBLISHED' || survey.status === 'DRAFT')"
         class="mb-4 flex flex-wrap gap-2"
       >
         <Button
@@ -455,8 +469,8 @@ onMounted(async () => {
           </p>
         </div>
 
-        <!-- 作成者・ADMIN+: 設問追加 & 公開 -->
-        <div v-if="isCreator || isAdminPlus">
+        <!-- 管理操作可（作成者 or 権限保有管理者）: 設問追加 & 公開 -->
+        <div v-if="canManage">
           <!-- インライン設問エディタ -->
           <div class="mb-4 rounded-lg border border-surface-200 bg-surface-0 p-4 dark:border-surface-700 dark:bg-surface-800">
             <p class="mb-3 text-sm font-medium text-surface-700 dark:text-surface-200">
@@ -601,9 +615,9 @@ onMounted(async () => {
         </p>
       </div>
 
-      <!-- F05.4 (B) チーム別内訳（組織スコープ + ADMIN/DEPUTY_ADMIN）。
+      <!-- F05.4 (B) チーム別内訳（組織スコープ + ADMIN／MANAGE_SURVEYS 保有 DEPUTY_ADMIN）。
            認可は BE 側 org-ADMIN+ 限定 EP。ここでは出し分けの一次フィルタとして
-           組織スコープ + canViewTeamBreakdown（出欠側・BE 認可と一致した DEPUTY 含む判定）を
+           組織スコープ + canViewTeamBreakdown（BE の内訳 EP 認可と同一の viewerCanViewTeamBreakdown）を
            要求する（403 時はパネル内で明示表示）。 -->
       <section
         v-if="canViewTeamBreakdown && scopeType === 'ORGANIZATION'"
@@ -617,9 +631,9 @@ onMounted(async () => {
         </Card>
       </section>
 
-      <!-- 回答者セクション（作成者 or ADMIN+ のみ） -->
+      <!-- 回答者セクション（管理操作可のみ。BE: SurveyResponseService の認可と同一粒度） -->
       <section
-        v-if="isAdminPlus || isCreator"
+        v-if="canManage"
         data-testid="survey-respondents-section"
         class="mt-6"
       >

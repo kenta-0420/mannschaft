@@ -177,7 +177,7 @@ class SurveyRemindServiceTest {
         // Given: 作成者ではない別ユーザーだが ADMIN 権限あり
         SurveyEntity survey = createRemindableSurvey();
         given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
-        given(accessControlService.isAdminOrAbove(OTHER_USER_ID, SCOPE_ID, SCOPE_TYPE))
+        given(accessControlService.hasAdminOrPermissionInScope(OTHER_USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
                 .willReturn(true);
         given(targetRepository.findBySurveyId(SURVEY_ID)).willReturn(List.of(buildTarget(200L)));
         given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
@@ -202,7 +202,7 @@ class SurveyRemindServiceTest {
         // Given
         SurveyEntity survey = createRemindableSurvey();
         given(surveyRepository.findById(SURVEY_ID)).willReturn(Optional.of(survey));
-        given(accessControlService.isAdminOrAbove(OTHER_USER_ID, SCOPE_ID, SCOPE_TYPE))
+        given(accessControlService.hasAdminOrPermissionInScope(OTHER_USER_ID, SCOPE_ID, SCOPE_TYPE, "MANAGE_SURVEYS"))
                 .willReturn(false);
 
         // When & Then

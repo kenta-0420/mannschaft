@@ -40,6 +40,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class SurveyAccessGuard {
 
+    /** CMP-041: ADMIN+ 委任判定に用いる permission 名。 */
+    private static final String PERMISSION_MANAGE_SURVEYS = "MANAGE_SURVEYS";
+
     private final SurveyRepository surveyRepository;
     private final AccessControlService accessControlService;
 
@@ -106,12 +109,49 @@ public class SurveyAccessGuard {
      * {@code survey.getScopeType()}）由来であり、パス変数は用いない。</p>
      */
     private void checkCreatorOrAdmin(Long userId, SurveyEntity survey) {
-        boolean isCreator = survey.getCreatedBy() != null && survey.getCreatedBy().equals(userId);
-        if (isCreator) {
-            return;
-        }
-        if (!accessControlService.isAdminOrAbove(userId, survey.getScopeId(), survey.getScopeType())) {
+        if (!canManage(userId, survey)) {
             throw new BusinessException(SurveyErrorCode.OPERATION_PERMISSION_DENIED);
         }
+    }
+
+    /**
+     * 「この利用者はこのアンケートを管理操作できるか」の<b>唯一の判定点</b>（CMP-041）。
+     *
+     * <p>403 を投げる {@link #checkCanManage} 自身がこのメソッドを使うため、詳細応答の
+     * {@code viewerCanManage} にそのまま載せれば「ボタンは見えるのに押すと 403」という
+     * 食い違いを構造的に起こせなくなる（先例: {@code SurveyResultAccessGuard} と
+     * {@code viewerCanViewResults}・Issue #2779）。</p>
+     *
+     * @param userId 閲覧者ユーザー ID（{@code null} 可 = 未認証）
+     * @param survey 対象アンケート（{@code null} 可）
+     * @return 管理操作できるなら {@code true}
+     */
+    public boolean canManage(Long userId, SurveyEntity survey) {
+        if (survey == null || userId == null) {
+            return false;
+        }
+        if (survey.getCreatedBy() != null && survey.getCreatedBy().equals(userId)) {
+            return true;
+        }
+        return hasSurveyAdminPermission(userId, survey);
+    }
+
+    /**
+     * 当該アンケートのスコープで ADMIN、または {@code MANAGE_SURVEYS} を持つ DEPUTY_ADMIN か（CMP-041）。
+     *
+     * <p>作成者高速パスを<b>持たない</b>点が {@link #canManage} との違いである。チーム別内訳
+     * （{@code SurveyResultService#getTeamBreakdown}）のように、作成者であることを条件に含めない
+     * 管理ビュー専用ゲートと判定を揃えるために用いる。</p>
+     *
+     * @param userId 閲覧者ユーザー ID（{@code null} 可 = 未認証）
+     * @param survey 対象アンケート（{@code null} 可）
+     * @return ADMIN または権限保有 DEPUTY_ADMIN なら {@code true}
+     */
+    public boolean hasSurveyAdminPermission(Long userId, SurveyEntity survey) {
+        if (survey == null || userId == null) {
+            return false;
+        }
+        return accessControlService.hasAdminOrPermissionInScope(
+                userId, survey.getScopeId(), survey.getScopeType(), PERMISSION_MANAGE_SURVEYS);
     }
 }

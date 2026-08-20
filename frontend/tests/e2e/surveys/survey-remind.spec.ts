@@ -80,7 +80,7 @@ function buildPublishedSurveyForAdmin() {
 /** {@link useRoleAccess} の me/permissions モック。roleName を切替可能。 */
 async function mockMePermissions(
   page: Page,
-  roleName: 'SYSTEM_ADMIN' | 'ADMIN' | 'MEMBER',
+  roleName: 'SYSTEM_ADMIN' | 'ADMIN' | 'DEPUTY_ADMIN' | 'MEMBER',
 ): Promise<void> {
   await page.route(`**/api/v1/teams/${TEAM_ID}/me/permissions`, async (route) => {
     await route.fulfill({
@@ -160,7 +160,7 @@ test.describe('SURVEY-003: 督促送信（詳細ページ → 回答者セクシ
   test('SURVEY-003-1: 成功 — showSuccess + 一覧再取得', async ({ page }) => {
     const survey = buildPublishedSurveyForAdmin()
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true, { canManage: true, canViewTeamBreakdown: true }) },
       respondentsById: { [SURVEY_ID]: RESPONDENTS },
       remindResponse: {
         ok: true,
@@ -202,7 +202,7 @@ test.describe('SURVEY-003: 督促送信（詳細ページ → 回答者セクシ
   test('SURVEY-003-2: クールダウン中 — showError + 一覧不変', async ({ page }) => {
     const survey = buildPublishedSurveyForAdmin()
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true, { canManage: true, canViewTeamBreakdown: true }) },
     })
 
     // GET /respondents 回数を計測しつつ常に同じ一覧を返す。
@@ -260,7 +260,7 @@ test.describe('SURVEY-003: 督促送信（詳細ページ → 回答者セクシ
   test('SURVEY-003-3: 上限超過 — showError + 一覧不変', async ({ page }) => {
     const survey = buildPublishedSurveyForAdmin()
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true, { canManage: true, canViewTeamBreakdown: true }) },
     })
 
     let respondentsGetCount = 0
@@ -330,7 +330,7 @@ test.describe('SURVEY-003-4: 詳細ページで回答者セクション開閉', 
 
     const survey = buildPublishedSurveyForAdmin()
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true, { canManage: true, canViewTeamBreakdown: true }) },
       respondentsById: { [SURVEY_ID]: RESPONDENTS },
     })
 
@@ -377,7 +377,7 @@ test.describe('SURVEY-003-4: 詳細ページで回答者セクション開閉', 
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true, { canManage: false, canViewTeamBreakdown: false }) },
       respondentsById: { [SURVEY_ID]: RESPONDENTS },
     })
 
@@ -390,6 +390,59 @@ test.describe('SURVEY-003-4: 詳細ページで回答者セクション開閉', 
     // 回答者セクションは作成者でも ADMIN+ でもないため非表示
     await expect(page.locator('[data-testid="survey-respondents-section"]')).toHaveCount(0)
     await expect(page.locator('[data-testid="survey-respondents-toggle"]')).toHaveCount(0)
+  })
+
+  /**
+   * CMP-041 AC-27 — MANAGE_SURVEYS を持たない副管理者に管理導線を出さない。
+   *
+   * BE は survey の管理操作を「ADMIN または MANAGE_SURVEYS 保有 DEPUTY_ADMIN」へ締めた。
+   * FE がロール名（DEPUTY_ADMIN であること）で出し分けていた頃は、権限を持たない副管理者に
+   * 回答者セクション・締切ボタンが見えるのに押すと 403 になっていた。
+   * ここでは BE が `viewerCanManage: false` を返す状況を再現し、導線が出ないことを固定する。
+   */
+  test('SURVEY-003-4c: MANAGE_SURVEYS を持たない DEPUTY_ADMIN には管理導線が出ない（CMP-041 AC-27）', async ({
+    page,
+  }) => {
+    await setupAuth(page, {
+      userId: MEMBER_ID,
+      displayName: 'deputy-without-permission',
+      role: 'DEPUTY_ADMIN',
+      scopeType: 'TEAM',
+      scopeId: TEAM_ID,
+    })
+    // ロール名は DEPUTY_ADMIN。かつての FE 判定ならこれだけで管理導線が出てしまう。
+    await mockMePermissions(page, 'DEPUTY_ADMIN')
+
+    const survey = buildSurvey({
+      id: SURVEY_ID,
+      scopeType: 'TEAM',
+      scopeId: String(TEAM_ID),
+      status: 'PUBLISHED',
+      resultsVisibility: 'ALL_MEMBERS',
+      allowMultipleSubmissions: false,
+      hasResponded: false,
+      createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
+    })
+    await mockSurveyApi(page, {
+      detailById: {
+        [SURVEY_ID]: buildSurveyDetail(
+          survey,
+          [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })],
+          true,
+          // BE の判定（MANAGE_SURVEYS 未保有のため管理操作は 403）
+          { canManage: false, canViewTeamBreakdown: false },
+        ),
+      },
+      respondentsById: { [SURVEY_ID]: RESPONDENTS },
+    })
+
+    await gotoSurveyDetail(page, SURVEY_ID, 'team', TEAM_ID)
+    await waitForSurveyDetail(page, SURVEY_ID)
+
+    await expect(page.getByTestId('survey-detail-page')).toBeVisible()
+    // 回答者セクション（＝督促導線の入口）・締切ボタンのいずれも出ない
+    await expect(page.locator('[data-testid="survey-respondents-section"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="survey-close-button"]')).toHaveCount(0)
   })
 })
 

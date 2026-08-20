@@ -410,10 +410,16 @@ class SurveyVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTe
                 ReferenceType.SURVEY, List.of(s1, s2, s3), viewerUserId);
         assertThat(viewerSet).containsExactlyInAnyOrder(s2, s3);
 
-        // adminUserId → s1(ADMIN) と s2(締切後) のみ
+        // adminUserId → 全件。s1 は ADMIN 閾値、s2 は締切後、s3 は名簿に無いが
+        // 設計書 F05.4 L116 / L1625-1628 の上位条件（優先順 2 = ADMIN+ は results_visibility を
+        // 無視してフルアクセス）で貫通する（CMP-041 五番隊で明示化）。
+        // 「名簿判定はロール閾値と直交する」という不変条件は、上の viewerUserId（一般 MEMBER）の
+        // アサーションが引き続き固定している（名簿に無い s1 は見えない）。
         Set<Long> adminSet = checker.filterAccessible(
                 ReferenceType.SURVEY, List.of(s1, s2, s3), adminUserId);
-        assertThat(adminSet).containsExactlyInAnyOrder(s1, s2);
+        assertThat(adminSet)
+                .as("ADMIN は上位条件により VIEWERS_ONLY も貫通する")
+                .containsExactlyInAnyOrder(s1, s2, s3);
 
         // sysAdmin → 全件（高速パス）
         Set<Long> sysAdminSet = checker.filterAccessible(

@@ -372,10 +372,24 @@ class SurveyVisibilityResolverAlwaysAudienceBatchIT extends AbstractMySqlIntegra
     }
 
     /**
-     * AC-9: 組織横断のバッチでも、F00 設計書 §9 の SQL 本数上限（7 本）を超えない。
+     * AC-9: 組織横断のバッチでも、SQL 本数上限（8 本）を超えない。
+     *
+     * <p><b>上限を 7 → 8 に改めた根拠（CMP-041 五番隊）</b>: 可視性の上位条件に
+     * 「{@code MANAGE_SURVEYS} を持つ DEPUTY_ADMIN」が加わり
+     * （{@code SurveyVisibilityResolver#resolveManageSurveysScopes}）、
+     * <b>スコープ種別ごとにバルク 1 本</b>の先読みが増えた。本ケースは組織スコープのみのため
+     * 増分はちょうど 1 本で、実測 7 → 8 本である。増えた 1 本は
+     * {@code SELECT DISTINCT ur.organization_id ... WHERE ur.organization_id IN (?,?,?,?)} で、
+     * 4 組織が 1 本に畳まれている（組織数に比例しないことは
+     * {@code SurveyManageSurveysAuthzIT} の AC-26 が 1 スコープ vs 5 スコープの本数一致で固定）。
+     * TEAM と ORGANIZATION が混在するバッチでは種別ごとに 1 本ずつで最大 +2 本となる。</p>
+     *
+     * <p>本アサーションは {@code SqlIntentCounter} が実際に捕捉していることを前提とする。
+     * 「0 本だから上限以下」で素通りしないよう、まず捕捉件数が 0 でないことを確認する
+     * （Issue #2782 の前科）。</p>
      */
     @Test
-    @DisplayName("AC-9 組織横断バッチでも SQL 本数上限（7 本）を超えない")
+    @DisplayName("AC-9 組織横断バッチでも SQL 本数上限（8 本）を超えない")
     void ac9_batchStaysWithinSqlBudget() {
         List<Long> surveyIds = List.of(
                 insertOrgAlwaysSurvey("2782-ac9-0", rootOrgIds[0], false),
@@ -389,8 +403,12 @@ class SurveyVisibilityResolverAlwaysAudienceBatchIT extends AbstractMySqlIntegra
         checker.filterAccessible(ReferenceType.SURVEY, surveyIds, memberUserId);
 
         assertThat(SqlIntentCounter.totalCount())
-                .as("AC-9: 設計書 §9 の上限 7 本。発行 SQL=%s", SqlIntentCounter.capturedSqls())
-                .isLessThanOrEqualTo(7);
+                .as("計器の生存証明: 非空バッチで 0 本なら上限アサーションは無意味である")
+                .isGreaterThan(0);
+        assertThat(SqlIntentCounter.totalCount())
+                .as("AC-9: 上限 8 本（CMP-041 で権限先読み 1 本を追加）。発行 SQL=%s",
+                        SqlIntentCounter.capturedSqls())
+                .isLessThanOrEqualTo(8);
     }
 
     // =========================================================================

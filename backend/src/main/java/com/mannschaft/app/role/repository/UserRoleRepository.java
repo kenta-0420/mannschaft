@@ -647,6 +647,150 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             @Param("permissionName") String permissionName);
 
     /**
+     * 指定ユーザーが指定チームで「DEPUTY_ADMIN ロールを持ち、かつ指定 Permission を保有している」かを判定する
+     * （CMP-041: アンケートの ADMIN+ 判定を TEAM スコープでも成立させるため新設）。
+     *
+     * <p>{@link #existsDeputyAdminWithPermissionInOrganization(Long, Long, String)} の TEAM 版であり、
+     * 判定の意味論は完全に同一である（絞り込み列が {@code ur.organization_id} →
+     * {@code ur.team_id}、権限グループのスコープ列が {@code pg.organization_id} →
+     * {@code pg.team_id} に変わるだけ）。</p>
+     *
+     * <p><b>{@code is_default} の扱い</b>: role_permissions 経路は ORGANIZATION 版と同じく
+     * {@code rp.is_default = 1} の行のみを実付与とみなす。本リポジトリの権限グループ併用クエリ 3 本のうち
+     * {@link #findDeputyAdminUserIdsByTeamIdAndPermission} だけがこの絞り込みを欠いており
+     * （Issue #2817 / CMP-046 として起票済み）、その非対称をここで再生産しないためである。
+     * {@code is_default=0} の「天井登録のみ」を許可すると、権限を個別付与していない副管理者全員が
+     * 通ってしまう。</p>
+     *
+     * <p><b>権限グループ経路のスコープ（Issue #2797）</b>: 割当表 {@code user_permission_groups} は
+     * チーム列を持たないため、{@code permission_groups} を JOIN して
+     * {@code pg.team_id = ur.team_id} で絞る。論理削除済みグループを生かさないよう
+     * {@code pg.deleted_at IS NULL} も明示する（{@code @SQLRestriction} は native に効かない）。</p>
+     *
+     * @see #countDeputyAdminWithPermissionInTeam(Long, Long, String)
+     */
+    default boolean existsDeputyAdminWithPermissionInTeam(
+            Long userId,
+            Long teamId,
+            String permissionName) {
+        return countDeputyAdminWithPermissionInTeam(userId, teamId, permissionName) > 0;
+    }
+
+    /**
+     * {@link #existsDeputyAdminWithPermissionInTeam(Long, Long, String)} の native 実装。
+     *
+     * <p>native の {@code COUNT(*) > 0} は MySQL では BIGINT を返すため、戻り値を {@code boolean} で
+     * 受けると {@code ClassCastException: Long cannot be cast to Boolean} で必ず死ぬ。
+     * ORGANIZATION 版と同じく {@code long} で受けて Java 側で {@code > 0} 比較する。
+     * 直接呼ばず上記 default メソッドを経由すること。</p>
+     */
+    @Query(value =
+            "SELECT COUNT(*) FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE ur.user_id = :userId " +
+            "  AND ur.team_id = :teamId " +
+            "  AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND ( " +
+            "    EXISTS ( " +
+            "      SELECT 1 FROM role_permissions rp " +
+            "      JOIN permissions p ON p.id = rp.permission_id " +
+            "      WHERE rp.role_id = ur.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
+            "    ) OR EXISTS ( " +
+            "      SELECT 1 FROM user_permission_groups upg " +
+            "      JOIN permission_groups pg ON pg.id = upg.group_id " +
+            "      JOIN permission_group_permissions pgp ON pgp.group_id = pg.id " +
+            "      JOIN permissions p2 ON p2.id = pgp.permission_id " +
+            "      WHERE upg.user_id = ur.user_id " +
+            "        AND pg.team_id = ur.team_id " +
+            "        AND pg.deleted_at IS NULL " +
+            "        AND p2.name = :permissionName " +
+            "    ) " +
+            "  )",
+            nativeQuery = true)
+    long countDeputyAdminWithPermissionInTeam(
+            @Param("userId") Long userId,
+            @Param("teamId") Long teamId,
+            @Param("permissionName") String permissionName);
+
+    /**
+     * 指定ユーザーが「DEPUTY_ADMIN かつ指定 Permission 保有」となる<b>チーム ID をバルクで</b>返す
+     * （CMP-041 五番隊: 可視性 Resolver の上位条件をバッチ 1 本で先読みするため新設）。
+     *
+     * <p>述語の意味論は単票版 {@link #countDeputyAdminWithPermissionInTeam(Long, Long, String)} と
+     * <b>完全に同一</b>で、違いは {@code ur.team_id = :teamId} が {@code IN (:teamIds)} になり、
+     * COUNT ではなく合致した {@code team_id} を返す点だけである。
+     * {@code rp.is_default = 1} の絞り込みも同一に保つ（落とすと権限を個別付与していない
+     * 副管理者全員が通る。Issue #2817 / CMP-046 の非対称を再生産しないため）。</p>
+     *
+     * <p>スコープ数に比例した SQL 発行（N+1）を避けるのが新設の目的であるため、
+     * 呼び出し側は<b>バッチ内の distinct なチーム ID をまとめて 1 回だけ</b>渡すこと。</p>
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.team_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE ur.user_id = :userId " +
+            "  AND ur.team_id IN (:teamIds) " +
+            "  AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND ( " +
+            "    EXISTS ( " +
+            "      SELECT 1 FROM role_permissions rp " +
+            "      JOIN permissions p ON p.id = rp.permission_id " +
+            "      WHERE rp.role_id = ur.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
+            "    ) OR EXISTS ( " +
+            "      SELECT 1 FROM user_permission_groups upg " +
+            "      JOIN permission_groups pg ON pg.id = upg.group_id " +
+            "      JOIN permission_group_permissions pgp ON pgp.group_id = pg.id " +
+            "      JOIN permissions p2 ON p2.id = pgp.permission_id " +
+            "      WHERE upg.user_id = ur.user_id " +
+            "        AND pg.team_id = ur.team_id " +
+            "        AND pg.deleted_at IS NULL " +
+            "        AND p2.name = :permissionName " +
+            "    ) " +
+            "  )",
+            nativeQuery = true)
+    List<Long> findDeputyAdminPermittedTeamIds(
+            @Param("userId") Long userId,
+            @Param("teamIds") Collection<Long> teamIds,
+            @Param("permissionName") String permissionName);
+
+    /**
+     * 指定ユーザーが「DEPUTY_ADMIN かつ指定 Permission 保有」となる<b>組織 ID をバルクで</b>返す
+     * （CMP-041 五番隊。{@link #findDeputyAdminPermittedTeamIds} の ORGANIZATION 版）。
+     *
+     * <p>述語の意味論は単票版
+     * {@link #countDeputyAdminWithPermissionInOrganization(Long, Long, String)} と完全に同一である
+     * （{@code rp.is_default = 1}・権限グループの {@code pg.organization_id = ur.organization_id} と
+     * {@code pg.deleted_at IS NULL} を含めて同一）。</p>
+     */
+    @Query(value =
+            "SELECT DISTINCT ur.organization_id FROM user_roles ur " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE ur.user_id = :userId " +
+            "  AND ur.organization_id IN (:organizationIds) " +
+            "  AND r.name = 'DEPUTY_ADMIN' " +
+            "  AND ( " +
+            "    EXISTS ( " +
+            "      SELECT 1 FROM role_permissions rp " +
+            "      JOIN permissions p ON p.id = rp.permission_id " +
+            "      WHERE rp.role_id = ur.role_id AND p.name = :permissionName AND rp.is_default = 1 " +
+            "    ) OR EXISTS ( " +
+            "      SELECT 1 FROM user_permission_groups upg " +
+            "      JOIN permission_groups pg ON pg.id = upg.group_id " +
+            "      JOIN permission_group_permissions pgp ON pgp.group_id = pg.id " +
+            "      JOIN permissions p2 ON p2.id = pgp.permission_id " +
+            "      WHERE upg.user_id = ur.user_id " +
+            "        AND pg.organization_id = ur.organization_id " +
+            "        AND pg.deleted_at IS NULL " +
+            "        AND p2.name = :permissionName " +
+            "    ) " +
+            "  )",
+            nativeQuery = true)
+    List<Long> findDeputyAdminPermittedOrganizationIds(
+            @Param("userId") Long userId,
+            @Param("organizationIds") Collection<Long> organizationIds,
+            @Param("permissionName") String permissionName);
+
+    /**
      * 指定組織の ADMIN/DEPUTY_ADMIN ユーザーIDリストを取得する（F08.7 Phase 9-δ 通知用）。
      */
     @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
