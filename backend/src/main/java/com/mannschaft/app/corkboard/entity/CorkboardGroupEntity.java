@@ -30,11 +30,11 @@ public class CorkboardGroupEntity extends BaseEntity {
     @Builder.Default
     private Boolean isCollapsed = false;
 
-    @Column(nullable = false)
+    @Column(name = "position_x", nullable = false)
     @Builder.Default
     private Integer positionX = 0;
 
-    @Column(nullable = false)
+    @Column(name = "position_y", nullable = false)
     @Builder.Default
     private Integer positionY = 0;
 

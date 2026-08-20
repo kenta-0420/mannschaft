@@ -43,7 +43,7 @@ public class DataExportEntity extends BaseEntity {
     private String progressStep;
 
     /** S3オブジェクトキー（COMPLETED後に設定） */
-    @Column(length = 500)
+    @Column(name = "s3_key", length = 500)
     private String s3Key;
 
     /** ZIPファイルサイズ（バイト）（DBカラム名: file_size_bytes） */
