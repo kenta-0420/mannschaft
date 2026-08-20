@@ -1,6 +1,9 @@
 import { computed, getCurrentScope, onScopeDispose, ref, toValue } from 'vue'
-import type { ComputedRef, MaybeRefOrGetter, Ref } from 'vue'
+import type { ComputedRef, MaybeRefOrGetter } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
+// 周囲の composable は Nuxt の auto-import で useI18n を使うが、ここでは明示 import する。
+// この composable は Nuxt app context を持たない happy-dom 環境のユニットテストからも
+// 読み込まれるため、auto-import の解決に依存させない。
 import { useI18n } from 'vue-i18n'
 
 /**
@@ -34,8 +37,6 @@ export interface UseUnsavedChangesGuardOptions<T> {
   message?: MaybeRefOrGetter<string>
   /** ガードを有効にするか（既定 true）。読み込み中は false にする等の用途 */
   enabled?: MaybeRefOrGetter<boolean>
-  /** ルート離脱ガードを張るか（既定 true）。beforeunload だけ欲しい場合に false */
-  guardRouteLeave?: boolean
   /** 確認ダイアログ。既定は {@code window.confirm} */
   confirm?: (message: string) => boolean
   /** スナップショットの直列化方法（既定 {@code JSON.stringify}） */
@@ -57,11 +58,18 @@ export interface UseUnsavedChangesGuardReturn<T> {
    * ルート離脱ガードの実体であり、独自の遷移（プログラム遷移など）からも呼べる
    */
   confirmLeave: () => boolean
-  /** 現在のスナップショット（直列化済み文字列）。デバッグ・テスト用 */
-  baseline: Ref<string>
 }
 
 const isBrowser = (): boolean => typeof window !== 'undefined'
+
+/**
+ * JSON.stringify の replacer。null / undefined を空文字に正規化する。
+ * サーバーが null を返すフィールド（未設定の表示名など）を入力欄で空にしただけで
+ * 永久に dirty になるのを防ぐ。
+ */
+function normalizeNullish(_key: string, value: unknown): unknown {
+  return value === null || value === undefined ? '' : value
+}
 
 export function useUnsavedChangesGuard<T>(
   source: MaybeRefOrGetter<T>,
@@ -70,9 +78,10 @@ export function useUnsavedChangesGuard<T>(
   const {
     message,
     enabled = true,
-    guardRouteLeave = true,
     confirm,
-    serialize = (value: T): string => JSON.stringify(value) ?? '',
+    // 既定の直列化。null/undefined は空文字に寄せる
+    // （nickname が null のサーバー値と、入力欄で空にした '' を同一視するため）
+    serialize = (value: T): string => JSON.stringify(value, normalizeNullish) ?? '',
   } = options
 
   const baseline = ref<string>(serialize(toValue(source)))
@@ -112,26 +121,30 @@ export function useUnsavedChangesGuard<T>(
     return askConfirm()
   }
 
-  // ブラウザの離脱（リロード・タブを閉じる・外部リンク）
+  // ブラウザの離脱（リロード・タブを閉じる・外部リンク）。
+  // 解除できない状況（effect scope 外）では登録もしない。
+  // 登録だけして解除できないと、リスナーが window に残って source getter を
+  // 握り続け、無関係な全ページで離脱警告が出るリークになる。
   if (isBrowser()) {
+    if (!getCurrentScope()) {
+      throw new Error(
+        'useUnsavedChangesGuard はコンポーネントの setup（effect scope 内）で呼ぶこと。'
+        + ' scope 外では beforeunload リスナーを解除できずリークする。',
+      )
+    }
     const onBeforeUnload = (event: BeforeUnloadEvent): void => {
       if (!isDirty.value) return
-      // 仕様上、preventDefault と returnValue の両方を立てる必要がある
+      // 現代ブラウザは preventDefault だけで確認ダイアログが出る
       event.preventDefault()
-      event.returnValue = ''
     }
     window.addEventListener('beforeunload', onBeforeUnload)
-    if (getCurrentScope()) {
-      onScopeDispose(() => {
-        window.removeEventListener('beforeunload', onBeforeUnload)
-      })
-    }
+    onScopeDispose(() => {
+      window.removeEventListener('beforeunload', onBeforeUnload)
+    })
   }
 
   // Nuxt（vue-router）のルート離脱
-  if (guardRouteLeave) {
-    onBeforeRouteLeave(() => confirmLeave())
-  }
+  onBeforeRouteLeave(() => confirmLeave())
 
-  return { isDirty, markAsSaved, resetBaseline, confirmLeave, baseline }
+  return { isDirty, markAsSaved, resetBaseline, confirmLeave }
 }

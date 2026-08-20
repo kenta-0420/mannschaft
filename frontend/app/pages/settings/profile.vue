@@ -82,11 +82,13 @@ onMounted(async () => {
     savedProfile.value = { nickname: res.data.nickname, phoneNumber: res.data.phoneNumber }
   } catch {
     notification.error('プロフィール情報の取得に失敗しました')
-  } finally {
-    loading.value = false
   }
   await fetchHandle()
+  // スナップショットを張り終えるまで loading を下ろさない。
+  // 先に下ろすと離脱ガードが有効化され、ハンドル取得の通信待ちの間だけ
+  // 「空の baseline vs サーバー値」で無入力なのに dirty と判定されてしまう。
   syncUnsavedBaseline()
+  loading.value = false
 })
 
 async function saveProfile() {
@@ -141,7 +143,8 @@ async function uploadAvatar(event: Event) {
 
     <!-- 未保存の変更がある間だけ表示する注意書き（Issue #2857） -->
     <Message v-if="hasUnsavedChanges" severity="warn" :closable="false" class="mb-4">
-      {{ $t('common.unsavedChanges.confirmLeave') }}
+      <span class="font-medium">{{ $t('common.unsavedChanges.title') }}</span>
+      <span class="ml-2">{{ $t('common.unsavedChanges.confirmLeave') }}</span>
     </Message>
 
     <PageLoading v-if="loading" />
