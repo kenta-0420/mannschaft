@@ -133,8 +133,15 @@ public class MembershipEntity {
     @Setter
     private Long leftBy;
 
-    /** アーカイブ周期の通し番号。archived_at を非 NULL にするたびに +1（§9.4.1.1）。 */
-    @Column(name = "archive_generation", nullable = false)
+    /**
+     * アーカイブ周期の通し番号。archived_at を非 NULL にするたびに +1（§9.4.1.1）。
+     *
+     * <p>test プロファイルの DDL は Flyway ではなく本 Entity から生成される（ddl-auto=create）ため、
+     * migration に書いた {@code DEFAULT 0} は test には反映されない。{@code columnDefinition} で
+     * 生成 DDL 側にも既定値を明示し、既存の IT が {@code memberships} へ直接 INSERT する際に
+     * この列を省略しても strict モードで拒否されないようにする。</p>
+     */
+    @Column(name = "archive_generation", nullable = false, columnDefinition = "INT NOT NULL DEFAULT 0")
     @Setter
     @Builder.Default
     private Integer archiveGeneration = 0;
