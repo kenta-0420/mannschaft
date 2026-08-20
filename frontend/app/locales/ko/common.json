@@ -1495,6 +1495,10 @@
       "back_to_dashboard": "대시보드로 돌아가기",
       "retry": "다시 시도",
       "slow_loading": "로딩이 지연되고 있습니다"
+    },
+    "unsavedChanges": {
+      "title": "저장되지 않은 변경 사항",
+      "confirmLeave": "저장되지 않은 변경 사항이 있습니다. 이 페이지를 벗어나면 입력한 내용이 사라집니다. 계속하시겠습니까?"
     }
   },
   "teamHub": {
