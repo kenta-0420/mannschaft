@@ -259,12 +259,12 @@ public class NotificationHelper {
      * @param actionUrl        アクションURL
      * @param actorId          実行者ID
      */
-    public void notifyAllPreAuthorized(List<Long> userIds, String notificationType, NotificationPriority priority,
+    public int notifyAllPreAuthorized(List<Long> userIds, String notificationType, NotificationPriority priority,
                                        String title, String body,
                                        String sourceType, Long sourceId,
                                        NotificationScopeType scopeType, Long scopeId,
                                        String actionUrl, Long actorId) {
-        notifyAllPreAuthorized(userIds, notificationType, priority, title, body,
+        return notifyAllPreAuthorized(userIds, notificationType, priority, title, body,
                 sourceType, sourceId, scopeType, scopeId, actionUrl, actorId, null);
     }
 
@@ -285,18 +285,18 @@ public class NotificationHelper {
      * @see #notifyAllPreAuthorized(List, String, NotificationPriority, String, String, String, Long,
      *      NotificationScopeType, Long, String, Long)
      */
-    public void notifyAllPreAuthorized(List<Long> userIds, String notificationType, NotificationPriority priority,
+    public int notifyAllPreAuthorized(List<Long> userIds, String notificationType, NotificationPriority priority,
                                        String title, String body,
                                        String sourceType, Long sourceId,
                                        NotificationScopeType scopeType, Long scopeId,
                                        String actionUrl, Long actorId, Long organizationId) {
         if (userIds == null || userIds.isEmpty()) {
-            return;
+            return 0;
         }
         // best-effort: null 受信者は除外（NOT NULL 違反で 1 件ずつ落ちていた現行挙動と同じ最終結果）。
         List<Long> recipients = userIds.stream().filter(Objects::nonNull).toList();
         if (recipients.isEmpty()) {
-            return;
+            return 0;
         }
 
         int total = 0;
@@ -320,6 +320,11 @@ public class NotificationHelper {
         }
         log.info("一括通知送信(配信認可済・バルク): type={}, userCount={}, chunkSize={}, failedRecipients={}（visibility絞込なし）",
                 notificationType, total, FANOUT_CHUNK_SIZE, failedRecipients);
+        // Codex 三巡目是正（PR #2873）: 呼び出し元（notifyAllPreAuthorizedLocalized 等）が
+        // 「例外が飛ばなかった＝成功」と誤集計しないよう、実際の失敗件数を返す
+        // （insertAndDispatchChunk はチャンク単位で失敗を握って正常 return する best-effort 契約のため、
+        // 呼び出し元は戻り値でしか欠落を判定できない）。
+        return failedRecipients;
     }
 
     /**
@@ -343,12 +348,12 @@ public class NotificationHelper {
      * @see #notifyAllPreAuthorized(List, String, NotificationPriority, String, String, String, Long,
      *      NotificationScopeType, Long, String, Long)
      */
-    public void notifyAllPreAuthorized(List<Long> userIds, String notificationType,
+    public int notifyAllPreAuthorized(List<Long> userIds, String notificationType,
                                        String title, String body,
                                        String sourceType, Long sourceId,
                                        NotificationScopeType scopeType, Long scopeId,
                                        String actionUrl, Long actorId) {
-        notifyAllPreAuthorized(userIds, notificationType, NotificationPriority.NORMAL, title, body,
+        return notifyAllPreAuthorized(userIds, notificationType, NotificationPriority.NORMAL, title, body,
                 sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
     }
 
@@ -476,27 +481,44 @@ public class NotificationHelper {
         // この catch が実際に止められるのは MessageFormat エラー等の非DB例外であり、
         // notifyAllPreAuthorized 内部で DB 層例外が起きた場合の rollback-only までは守らない
         // （同一トランザクション内であれば残る＝根治は Issue #2834 / CMP-056 の範囲）。
-        int successGroupCount = 0;
-        int failedGroupCount = 0;
+        //
+        // Codex 三巡目是正（PR #2873）: notifyAllPreAuthorized は insertAndDispatchChunk の失敗を
+        // チャンク単位で握って正常 return する best-effort 契約のため、「例外が飛ばなかった」ことは
+        // 「配信できた」ことの証明にならない（配信が全滅しても例外は飛ばない）。よって
+        // 「例外なく呼び出せたグループ数」を messageBuiltGroupCount / messageBuildFailedGroupCount
+        // として区別し、実際の配信欠落は notifyAllPreAuthorized の戻り値（失敗受信者数）を
+        // deliveredRecipientCount / failedRecipientCount として別集計する。
+        int messageBuiltGroupCount = 0;
+        int messageBuildFailedGroupCount = 0;
+        int deliveredRecipientCount = 0;
+        int failedRecipientCount = 0;
         for (Map.Entry<String, List<Long>> entry : byLocale.entrySet()) {
+            List<Long> group = entry.getValue();
             try {
                 Locale locale = Locale.forLanguageTag(entry.getKey());
-                List<Long> group = entry.getValue();
                 // locale ごとに 1 回だけ本文を組み立てる（userId は使われない前提。上記 javadoc 参照）。
                 LocalizedMessage message = bodyBuilder.build(group.get(0), locale);
-                notifyAllPreAuthorized(group, notificationType, NotificationPriority.NORMAL,
+                messageBuiltGroupCount++;
+                int failedInGroup = notifyAllPreAuthorized(group, notificationType, NotificationPriority.NORMAL,
                         message.title(), message.body(),
                         sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
-                successGroupCount++;
+                failedRecipientCount += failedInGroup;
+                deliveredRecipientCount += group.size() - failedInGroup;
             } catch (Exception e) {
-                failedGroupCount++;
+                // bodyBuilder（MessageFormat エラー等）の失敗はグループ全体が未着手のため、
+                // 受信者全員を失敗として計上する。
+                messageBuildFailedGroupCount++;
+                failedRecipientCount += group.size();
                 log.warn("locale グループの通知送信失敗（継続）: type={}, locale={}, recipientCount={}, error={}",
-                        notificationType, entry.getKey(), entry.getValue().size(), e.getMessage(), e);
+                        notificationType, entry.getKey(), group.size(), e.getMessage(), e);
             }
         }
         log.info("一括通知送信(配信認可済・locale別): type={}, userCount={}, localeGroupCount={}, "
-                        + "successGroupCount={}, failedGroupCount={}",
-                notificationType, userIds.size(), byLocale.size(), successGroupCount, failedGroupCount);
+                        + "messageBuiltGroupCount={}, messageBuildFailedGroupCount={}, "
+                        + "deliveredRecipientCount={}, failedRecipientCount={}",
+                notificationType, userIds.size(), byLocale.size(),
+                messageBuiltGroupCount, messageBuildFailedGroupCount,
+                deliveredRecipientCount, failedRecipientCount);
     }
 
     /** {@link #notifyAllLocalized} が受信者ごとに組み立てるタイトル・本文の組。 */

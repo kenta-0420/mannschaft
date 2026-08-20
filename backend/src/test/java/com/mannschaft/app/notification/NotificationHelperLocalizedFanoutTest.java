@@ -1,8 +1,13 @@
 package com.mannschaft.app.notification;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.service.NotificationBulkFanoutService;
 import com.mannschaft.app.notification.service.NotificationHelper;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +24,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -48,6 +55,25 @@ class NotificationHelperLocalizedFanoutTest {
 
     @InjectMocks
     private NotificationHelper notificationHelper;
+
+    /**
+     * Codex 三巡目是正（PR #2873）: {@code notifyAllPreAuthorized} がチャンク失敗を握って
+     * 正常 return する best-effort 契約であることを踏まえ、「例外が飛ばなかった＝成功」と
+     * 誤集計していないかをログ出力で検証するための appender。
+     */
+    private ListAppender<ILoggingEvent> logAppender;
+
+    @BeforeEach
+    void attachLogAppender() {
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        ((Logger) LoggerFactory.getLogger(NotificationHelper.class)).addAppender(logAppender);
+    }
+
+    @AfterEach
+    void detachLogAppender() {
+        ((Logger) LoggerFactory.getLogger(NotificationHelper.class)).detachAppender(logAppender);
+    }
 
     @Test
     @DisplayName("複数localeの受信者100件でも、insertAndDispatchChunk呼び出しはlocale数（3回）に留まる")
@@ -143,6 +169,62 @@ class NotificationHelperLocalizedFanoutTest {
         // en グループは bodyBuilder で失敗しているため insertAndDispatchChunk まで到達しない
         verify(bulkFanoutService, never()).insertAndDispatchChunk(
                 argThatEquals(enUsers), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("notifyAllPreAuthorizedはチャンク失敗件数を戻り値で返す（best-effort契約は変えない）")
+    void notifyAllPreAuthorizedはチャンク失敗件数を戻り値で返す() {
+        // given: insertAndDispatchChunk が例外を投げる＝配信全滅。best-effort契約どおり例外は外へ伝播しない。
+        List<Long> recipients = List.of(1L, 2L, 3L);
+        org.mockito.BDDMockito.willThrow(new RuntimeException("simulated chunk insert failure"))
+                .given(bulkFanoutService).insertAndDispatchChunk(
+                        anyList(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        // when
+        int failedRecipients = notificationHelper.notifyAllPreAuthorized(
+                recipients, "SURVEY_CREATED", NotificationPriority.NORMAL,
+                "タイトル", "本文", "SURVEY", 1L,
+                NotificationScopeType.ORGANIZATION, 2L, "/surveys/1", 3L);
+
+        // then: 例外は投げないが、戻り値で欠落を正確に返す。
+        assertThat(failedRecipients).isEqualTo(3);
+    }
+
+    @Test
+    @DisplayName("あるlocaleグループの配信が全滅しても、成功として誤集計しない（Codex三巡目是正）")
+    void localeグループの配信全滅は成功として誤集計されない() {
+        // given: ja/en の2 locale。en グループの insertAndDispatchChunk だけ例外を投げる＝配信全滅。
+        List<Long> recipients = List.of(1L, 2L);
+        Map<Long, String> locales = Map.of(1L, "ja", 2L, "en");
+        given(userLocaleCache.getLocales(recipients)).willReturn(locales);
+
+        org.mockito.BDDMockito.willAnswer(invocation -> {
+                    @SuppressWarnings("unchecked")
+                    List<Long> chunk = invocation.getArgument(0);
+                    if (chunk.contains(2L)) {
+                        throw new RuntimeException("simulated chunk insert failure for en group");
+                    }
+                    return null;
+                })
+                .given(bulkFanoutService).insertAndDispatchChunk(
+                        anyList(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+        // when: bodyBuilder 自体は例外を投げない（= 旧実装なら successGroupCount++ されてしまう状況）。
+        notificationHelper.notifyAllPreAuthorizedLocalized(
+                recipients,
+                "SURVEY_CREATED",
+                "SURVEY", 1L,
+                NotificationScopeType.ORGANIZATION, 2L,
+                "/surveys/1", 3L,
+                (userId, locale) -> new NotificationHelper.LocalizedMessage("t", "b"));
+
+        // then: 末尾ログが実際の欠落（failedRecipientCount=1）を報告し、
+        // 「例外なく呼び出せた」だけの messageBuiltGroupCount を「成功」と詐称していないことを検証する。
+        assertThat(logAppender.list)
+                .as("配信全滅（en グループ）が failedRecipientCount へ正しく反映される")
+                .anySatisfy(event -> assertThat(event.getFormattedMessage())
+                        .contains("failedRecipientCount=1")
+                        .contains("deliveredRecipientCount=1"));
     }
 
     private static List<Long> argThatEquals(List<Long> expected) {
