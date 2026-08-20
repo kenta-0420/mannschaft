@@ -63,7 +63,12 @@ const { isDirty: hasUnsavedChanges, resetBaseline } = useUnsavedChangesGuard(
     phoneNumber: profile.value.phoneNumber,
     handle: handle.value,
   }),
-  { enabled: () => !loading.value },
+  {
+    // 初期値はサーバーから非同期に取るため、スナップショットを張るまで dirty 判定を止める。
+    // これにより「loading を下ろす順序」に依存せず、無入力で警告が出る窓が構造的に消える。
+    deferInitialSnapshot: true,
+    enabled: () => !loading.value,
+  },
 )
 
 /** 保存済みの値でスナップショットを張り直す（初期読込後・保存成功後に呼ぶ） */

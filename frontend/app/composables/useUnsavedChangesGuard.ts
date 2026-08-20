@@ -37,6 +37,18 @@ export interface UseUnsavedChangesGuardOptions<T> {
   message?: MaybeRefOrGetter<string>
   /** ガードを有効にするか（既定 true）。読み込み中は false にする等の用途 */
   enabled?: MaybeRefOrGetter<boolean>
+  /**
+   * 初期スナップショットを setup 時に取らず、最初の {@link UseUnsavedChangesGuardReturn#resetBaseline}
+   * （または {@link UseUnsavedChangesGuardReturn#markAsSaved}）まで遅らせるか（既定 false）。
+   *
+   * <p>初期値をサーバーから非同期に取る画面で true にする。スナップショットを張るまで
+   * {@code isDirty} が false に固定されるため、「読み込み完了フラグを下ろす順序」に
+   * 依存せず、無入力なのに dirty と判定される窓が構造的に消える。</p>
+   *
+   * <p>{@code enabled} とは抑止の理由が別なので併用してよい
+   * （{@code enabled}=「今はガードしたくない」／こちらは「まだ基準値が無い」）。</p>
+   */
+  deferInitialSnapshot?: boolean
   /** 確認ダイアログ。既定は {@code window.confirm} */
   confirm?: (message: string) => boolean
   /** スナップショットの直列化方法（既定 {@code JSON.stringify}） */
@@ -66,6 +78,12 @@ const isBrowser = (): boolean => typeof window !== 'undefined'
  * JSON.stringify の replacer。null / undefined を空文字に正規化する。
  * サーバーが null を返すフィールド（未設定の表示名など）を入力欄で空にしただけで
  * 永久に dirty になるのを防ぐ。
+ *
+ * <p><b>平坦な文字列フォームを前提とする。</b> 素の {@code JSON.stringify} では
+ * {@code {a: undefined, b: 1}} と {@code {b: 1}} は同値だが、この replacer を通すと
+ * 前者は {@code {"a":"","b":1}} になり非同値になる。逆に「未設定（null）」と
+ * 「空文字」を区別したい値（クリア済みの日付など）を入れ子で持つフォームでは、
+ * 差分が黙って潰れる。そうした形を扱う呼び出し元は {@code serialize} を明示せよ。</p>
  */
 function normalizeNullish(_key: string, value: unknown): unknown {
   return value === null || value === undefined ? '' : value
@@ -78,21 +96,28 @@ export function useUnsavedChangesGuard<T>(
   const {
     message,
     enabled = true,
+    deferInitialSnapshot = false,
     confirm,
     // 既定の直列化。null/undefined は空文字に寄せる
     // （nickname が null のサーバー値と、入力欄で空にした '' を同一視するため）
     serialize = (value: T): string => JSON.stringify(value, normalizeNullish) ?? '',
   } = options
 
-  const baseline = ref<string>(serialize(toValue(source)))
+  const baseline = ref<string>(deferInitialSnapshot ? '' : serialize(toValue(source)))
+
+  /** 比較の基準となるスナップショットが確定しているか（deferInitialSnapshot 用） */
+  const hasBaseline = ref<boolean>(!deferInitialSnapshot)
 
   const isDirty = computed<boolean>(() => {
+    // 基準値がまだ無い＝比較しようがない。読み込み中の抑止（enabled）とは別の理由
+    if (!hasBaseline.value) return false
     if (!toValue(enabled)) return false
     return serialize(toValue(source)) !== baseline.value
   })
 
   function resetBaseline(value?: T): void {
     baseline.value = serialize(value === undefined ? toValue(source) : value)
+    hasBaseline.value = true
   }
 
   function markAsSaved(): void {

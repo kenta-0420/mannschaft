@@ -33,6 +33,8 @@ import {
  * - AC-2: 保存後（markAsSaved / resetBaseline）はスナップショットが更新され警告が出ない
  * - AC-3: dirty なときだけルート離脱（onBeforeRouteLeave 実発火）と beforeunload が警告する
  * - AC-4: 警告文言は既定で i18n（common.unsavedChanges.confirmLeave）から解決される
+ * - AC-5: deferInitialSnapshot 指定時は最初の resetBaseline まで dirty にならない
+ *         （初期読込中の偽陽性を、ページ側の記述順序に依存せず構造的に防ぐ）
  */
 
 interface Form {
@@ -151,6 +153,49 @@ describe('useUnsavedChangesGuard', () => {
     enabled.value = true
     await nextTick()
     expect(api.isDirty.value).toBe(true)
+  })
+
+  it('AC-5: deferInitialSnapshot 中は初期読込で値が入っても dirty にならない（順序非依存）', async () => {
+    // 初期読込前の空フォーム。enabled は最初から true にして、
+    // 「loading を下ろす順序」に依存しないことを示す
+    const form = ref<Form>({ nickname: '', phoneNumber: '' })
+    const { api } = await mountGuard(form, { ...testMessage, deferInitialSnapshot: true })
+
+    // サーバーから初期値が届いた（＝ユーザーは何も入力していない）
+    form.value = { nickname: '太郎', phoneNumber: '090-0000-0000' }
+    await nextTick()
+    expect(api.isDirty.value).toBe(false)
+
+    // ブラウザ離脱の警告も出ない
+    const duringLoad = new Event('beforeunload', { cancelable: true })
+    window.dispatchEvent(duringLoad)
+    expect(duringLoad.defaultPrevented).toBe(false)
+
+    // スナップショットを張った後は通常どおり dirty を検知する
+    api.resetBaseline()
+    await nextTick()
+    expect(api.isDirty.value).toBe(false)
+
+    form.value = { ...form.value, nickname: '次郎' }
+    await nextTick()
+    expect(api.isDirty.value).toBe(true)
+  })
+
+  it('AC-5: deferInitialSnapshot 中はルート離脱ガードも確認を出さない', async () => {
+    const form = ref<Form>({ nickname: '', phoneNumber: '' })
+    const confirm = vi.fn<(message: string) => boolean>(() => false)
+    const { router } = await mountGuard(form, {
+      ...testMessage,
+      deferInitialSnapshot: true,
+      confirm,
+    })
+
+    form.value = { nickname: '太郎', phoneNumber: '090-0000-0000' }
+    await nextTick()
+
+    await router.push('/other')
+    expect(confirm).not.toHaveBeenCalled()
+    expect(router.currentRoute.value.path).toBe('/other')
   })
 
   it('AC-1: サーバー値が null のフィールドを空にしただけでは dirty にならない', async () => {
