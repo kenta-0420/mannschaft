@@ -23,12 +23,18 @@ export const GATE_FALLBACK_PATH = '/dashboard'
  * gate_key → ガード対象の URL パスプレフィクス。
  *
  * 台帳で隔離対象（`release.beta` が β限定 / 内部限定 / 停止）かつ `gate_key` が発行済みの機能は、
- * ここに必ず束縛が必要（番人 (ii) が検出する）。逆に専用の top-level route を持たない機能は
- * 台帳側の `gate_key` を null のままにしておく（route 層の対象外であることを台帳上で明示する）。
+ * ここに必ず束縛が必要（番人 `FeatureGateRouteMapGuardTest` の (ii) が検出する）。
+ * 実ページを1枚も持たない機能だけ台帳側の `gate_key` を null のままにする
+ * （現時点では weather-health のみ）。
  *
- * **公開ページ（`definePageMeta({ auth: false })`）は束縛しない。**
+ * **入口だけでなく所属ページを網羅すること。** `/shift` を1本書いても `/my/shift` や
+ * `/teams/{slug}/shifts` は覆われない。番人 `FeatureGatePageCoverageGuardTest` が
+ * `frontend/app/pages/` を走査し、台帳の `release.route_keywords` に一致するのに
+ * 覆われていないページを red にする。
+ *
+ * **束縛しないページは台帳の `route_coverage_exclusions` に理由付きで宣言する。**
  * 配信停止（`/ads/unsubscribe`）や招待受諾（`/care-links/invitations/[token]`）は
- * 未ログインの第三者が踏む導線であり、機能の隔離とは目的が異なるため対象外とした。
+ * `definePageMeta({ auth: false })` の未ログイン導線であり、塞ぐと機能自体が成立しないため除外した。
  */
 export const GATE_ROUTE_MAP: Record<string, string[]> = {
   FEATURE_SHIFT_ENABLED: [
