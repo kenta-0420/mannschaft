@@ -2,6 +2,9 @@ package com.mannschaft.app.schedule.repository;
 
 import com.mannschaft.app.schedule.entity.UserCalendarLayerSettingEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,4 +31,30 @@ public interface UserCalendarLayerSettingRepository extends JpaRepository<UserCa
 
     /** §4.4 の行数上限（1000件未満）チェック用。 */
     long countByUserId(Long userId);
+
+    /**
+     * §10.4【R9】チーム／組織の<b>削除</b>に伴う後始末。
+     *
+     * <p>当該スコープの設定行を<b>全ユーザー分</b>物理削除する。
+     * <b>脱退では呼ばない</b>（脱退時は行を残し、再加入で色が復活する — R9）。</p>
+     *
+     * @return 削除した行数
+     */
+    @Modifying
+    @Query("DELETE FROM UserCalendarLayerSettingEntity s "
+            + "WHERE s.scopeType = :scopeType AND s.scopeId = :scopeId")
+    int deleteByScopeTypeAndScopeId(@Param("scopeType") String scopeType,
+                                    @Param("scopeId") Long scopeId);
+
+    /**
+     * §10.4【R9】ユーザー退会（即時匿名化）に伴う後始末。
+     *
+     * <p>当該ユーザーの設定行を<b>全スコープ分</b>物理削除する。色設定は個人の嗜好情報であり、
+     * 匿名化後のユーザーに紐づけて残す意味が無い。</p>
+     *
+     * @return 削除した行数
+     */
+    @Modifying
+    @Query("DELETE FROM UserCalendarLayerSettingEntity s WHERE s.userId = :userId")
+    int deleteByUserId(@Param("userId") Long userId);
 }
