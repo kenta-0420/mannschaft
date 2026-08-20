@@ -34,22 +34,31 @@ class NotificationLotC5C6MessageKeysTest {
         return ms;
     }
 
-    /** ロットC-5/C-6 で新規追加した鍵一覧（title/body 単位。args は各鍵の呼び出し箇所の引数個数に合わせたダミー値）。 */
+    /**
+     * ロットC-5/C-6 で新規追加した鍵一覧（title/body 単位。args は各鍵の呼び出し箇所の引数個数に合わせたダミー値）。
+     *
+     * <p>args にはあえて日本語を含めない（ASCII のダミー値のみを使う）。args は呼び出し箇所が実行時に
+     * 渡す動的な値（アンケート名・氏名・日時の整形済み文字列等）であり、AC-7 が検出したいのは
+     * <b>テンプレート側</b>の未翻訳漏れであって、ユーザー入力や日時整形結果（呼び出し元で既に
+     * locale 別にフォーマット済み）に日本語が含まれること自体はここでの検出対象ではない。
+     * 日本語を含む args を使うと、テンプレートが正しく英訳されていても
+     * 「args に含まれる日本語」が誤検出され、テストが常に赤くなる（実際に発生・修正済み）。</p>
+     */
     private static List<Object[]> keysWithArgs() {
         return List.of(
-                new Object[]{"notification.survey.published.title", new Object[]{"アンケートA"}},
-                new Object[]{"notification.survey.published.body", new Object[]{"アンケートA"}},
+                new Object[]{"notification.survey.published.title", new Object[]{"Survey A"}},
+                new Object[]{"notification.survey.published.body", new Object[]{"Survey A"}},
                 new Object[]{"notification.survey.remind.title", new Object[]{}},
-                new Object[]{"notification.survey.remind.body", new Object[]{"アンケートA"}},
+                new Object[]{"notification.survey.remind.body", new Object[]{"Survey A"}},
                 new Object[]{"notification.survey.deadlineExtended.title", new Object[]{}},
-                new Object[]{"notification.survey.deadlineExtended.body", new Object[]{"アンケートA", "2026年9月1日 10:00"}},
+                new Object[]{"notification.survey.deadlineExtended.body", new Object[]{"Survey A", "Sep 1, 2026 10:00"}},
                 new Object[]{"notification.onboarding.reminder.title", new Object[]{}},
                 new Object[]{"notification.onboarding.reminder.body", new Object[]{}},
-                new Object[]{"notification.onboarding.reminder.deadlineBody", new Object[]{"2026年9月1日"}},
+                new Object[]{"notification.onboarding.reminder.deadlineBody", new Object[]{"Sep 1, 2026"}},
                 new Object[]{"notification.onboarding.overdue.title", new Object[]{}},
                 new Object[]{"notification.onboarding.overdue.body", new Object[]{}},
                 new Object[]{"notification.memberinfo.updateReminder.title", new Object[]{}},
-                new Object[]{"notification.memberinfo.updateReminder.body", new Object[]{"連絡先"}},
+                new Object[]{"notification.memberinfo.updateReminder.body", new Object[]{"Contact Info"}},
                 new Object[]{"notification.actionmemo.reminder.title", new Object[]{}},
                 new Object[]{"notification.actionmemo.reminder.body", new Object[]{}},
                 new Object[]{"notification.admin.batchCompleted.title", new Object[]{"BATCH_X"}},
@@ -64,16 +73,16 @@ class NotificationLotC5C6MessageKeysTest {
                 new Object[]{"notification.analytics.backfillCompleted.body",
                         new Object[]{"job1", "2026-01-01", "2026-01-31"}},
                 new Object[]{"notification.chat.inquiryReceived.title", new Object[]{}},
-                new Object[]{"notification.chat.inquiryReceived.body", new Object[]{"山田太郎", "サポート"}},
+                new Object[]{"notification.chat.inquiryReceived.body", new Object[]{"Taro Yamada", "Support"}},
                 new Object[]{"notification.circulation.reminder.title", new Object[]{}},
-                new Object[]{"notification.circulation.reminder.body", new Object[]{"回覧文書A"}},
+                new Object[]{"notification.circulation.reminder.body", new Object[]{"Document A"}},
                 new Object[]{"notification.contact.common.defaultActorName", new Object[]{}},
                 new Object[]{"notification.contact.inviteUsed.title", new Object[]{}},
-                new Object[]{"notification.contact.inviteUsed.body", new Object[]{"田中花子"}},
+                new Object[]{"notification.contact.inviteUsed.body", new Object[]{"Hanako Tanaka"}},
                 new Object[]{"notification.contact.requestReceived.title", new Object[]{}},
-                new Object[]{"notification.contact.requestReceived.body", new Object[]{"田中花子"}},
+                new Object[]{"notification.contact.requestReceived.body", new Object[]{"Hanako Tanaka"}},
                 new Object[]{"notification.contact.requestAccepted.title", new Object[]{}},
-                new Object[]{"notification.contact.requestAccepted.body", new Object[]{"田中花子"}},
+                new Object[]{"notification.contact.requestAccepted.body", new Object[]{"Hanako Tanaka"}},
                 new Object[]{"notification.digest.completed.title", new Object[]{}},
                 new Object[]{"notification.digest.completed.body", new Object[]{}},
                 new Object[]{"notification.digest.failed.title", new Object[]{}},
@@ -82,20 +91,20 @@ class NotificationLotC5C6MessageKeysTest {
                 new Object[]{"notification.inbox.snoozeRevival.body", new Object[]{}},
                 new Object[]{"notification.quickmemo.reminder.title", new Object[]{}},
                 new Object[]{"notification.quickmemo.reminder.body", new Object[]{3}},
-                new Object[]{"notification.recruitment.friendListing.title", new Object[]{"募集A"}},
-                new Object[]{"notification.recruitment.friendListing.body", new Object[]{"募集A"}},
+                new Object[]{"notification.recruitment.friendListing.title", new Object[]{"Listing A"}},
+                new Object[]{"notification.recruitment.friendListing.body", new Object[]{"Listing A"}},
                 new Object[]{"notification.reflection.recallReminder.title", new Object[]{}},
-                new Object[]{"notification.reflection.recallReminder.body", new Object[]{"テーマA"}},
+                new Object[]{"notification.reflection.recallReminder.body", new Object[]{"Theme A"}},
                 new Object[]{"notification.repairplan.termReminder.title", new Object[]{}},
                 new Object[]{"notification.repairplan.termReminder.body",
-                        new Object[]{"2026年4月1日", "2027年3月31日", 25}},
+                        new Object[]{"Apr 1, 2026", "Mar 31, 2027", 25}},
                 new Object[]{"notification.safetycheck.reminder.title", new Object[]{}},
                 new Object[]{"notification.safetycheck.reminder.body", new Object[]{}},
                 new Object[]{"notification.todo.milestoneUnlocked.title", new Object[]{}},
                 new Object[]{"notification.todo.milestoneForceUnlocked.title", new Object[]{}},
-                new Object[]{"notification.todo.milestoneUnlocked.body", new Object[]{"マイルストーンA"}},
+                new Object[]{"notification.todo.milestoneUnlocked.body", new Object[]{"Milestone A"}},
                 new Object[]{"notification.todo.handoff.title", new Object[]{}},
-                new Object[]{"notification.todo.handoff.body", new Object[]{"山田太郎", "TODO-1", "進行中"}}
+                new Object[]{"notification.todo.handoff.body", new Object[]{"Taro Yamada", "TODO-1", "In Progress"}}
         );
     }
 
