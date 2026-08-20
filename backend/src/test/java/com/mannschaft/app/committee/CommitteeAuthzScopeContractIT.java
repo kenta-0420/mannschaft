@@ -6,6 +6,7 @@ import com.mannschaft.app.committee.entity.CommitteeInvitationEntity;
 import com.mannschaft.app.committee.entity.CommitteeMemberEntity;
 import com.mannschaft.app.committee.entity.CommitteeRole;
 import com.mannschaft.app.committee.entity.CommitteeStatus;
+import com.mannschaft.app.committee.error.CommitteeErrorCode;
 import com.mannschaft.app.committee.repository.CommitteeInvitationRepository;
 import com.mannschaft.app.committee.repository.CommitteeMemberRepository;
 import com.mannschaft.app.committee.repository.CommitteeRepository;
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -511,6 +513,95 @@ class CommitteeAuthzScopeContractIT extends AbstractMySqlIntegrationTest {
                             committeeAId, recordId))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.activityRecordId").value(recordId));
+        }
+
+        // ─────────────────────────────────────────────────────────────
+        // 存在オラクル封じ（越境は不在と同一ステータス 404）
+        //
+        // confirmMinutes は活動記録が不在なら COMMITTEE_NOT_FOUND、他委員会スコープの記録なら
+        // MINUTES_NOT_COMMITTEE_SCOPE を投げる。両者のステータスが割れると、正当な CHAIR が
+        // recordId を列挙するだけで「他委員会の議事録が実在するか」を応答差から判別できる。
+        // 下の2ケースは 404 の絶対値を各々固定し、さらに両者の一致も突き合わせる
+        // （一致だけを見ると「両方 500」でも通る偽 green になるため絶対値の併存が必須）。
+        // ─────────────────────────────────────────────────────────────
+
+        /**
+         * 不在 recordId の確定は 404（存在オラクルの基準側）。
+         *
+         * <p><b>非空虚性</b>: chairA は委員会 A の CHAIR であり
+         * {@code requireCommitteeRole} を通過する。認可で弾かれた 403 ではないことを
+         * エラーコードで併せて固定する。</p>
+         */
+        @Test
+        @DisplayName("不在recordIdの議事録確定は404（COMMITTEE_NOT_FOUND）")
+        void 不在recordIdの議事録確定は404() throws Exception {
+            setAuthentication(chairAId);
+            mockMvc.perform(patch("/api/v1/committees/{id}/activity-records/{recordId}/confirm",
+                            committeeAId, 999_999_999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(CommitteeErrorCode.NOT_FOUND.getCode()));
+        }
+
+        /**
+         * 他委員会の recordId の確定は 404（不在と同一ステータスで存在秘匿）かつ DB 上不変。
+         *
+         * <p><b>非空虚性</b>: chairA は委員会 A の CHAIR なので認可ゲートは通過し、
+         * 記録自体も実在する。スコープ突合だけが他委員会の議事録の確定を防いでいる。</p>
+         */
+        @Test
+        @DisplayName("越境recordId（他委員会）の議事録確定は404かつDB上DRAFTのまま")
+        void 越境recordIdの議事録確定は404() throws Exception {
+            Long recordBId = insertCommitteeActivityRecord(committeeBId, chairBId);
+
+            setAuthentication(chairAId);
+            mockMvc.perform(patch("/api/v1/committees/{id}/activity-records/{recordId}/confirm",
+                            committeeAId, recordBId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.error.code")
+                            .value(CommitteeErrorCode.MINUTES_NOT_COMMITTEE_SCOPE.getCode()));
+
+            em.flush();
+            em.clear();
+
+            String fieldValues = (String) em.createNativeQuery(
+                            "SELECT field_values FROM activity_results WHERE id = :id")
+                    .setParameter("id", recordBId)
+                    .getSingleResult();
+            assertThat(fieldValues)
+                    .as("越境確定で委員会Bの議事録が CONFIRMED に書き換えられてはならない")
+                    .contains("DRAFT")
+                    .doesNotContain("CONFIRMED");
+        }
+
+        /**
+         * 不在と越境で同一ステータスであること（存在オラクルが閉じていることの直接照合）。
+         *
+         * <p>上の2ケースはそれぞれ 404 の絶対値を固定しているが、両者が同一であること自体を
+         * 1つのテストで突き合わせておくと、片方だけが将来書き換えられた際に意図が残る。</p>
+         */
+        @Test
+        @DisplayName("不在recordIdと越境recordIdは同一ステータスで応答する（存在オラクル封じ）")
+        void 不在と越境は同一ステータス() throws Exception {
+            Long recordBId = insertCommitteeActivityRecord(committeeBId, chairBId);
+
+            setAuthentication(chairAId);
+            int absentStatus = mockMvc.perform(
+                            patch("/api/v1/committees/{id}/activity-records/{recordId}/confirm",
+                                    committeeAId, 999_999_999L))
+                    .andReturn().getResponse().getStatus();
+
+            setAuthentication(chairAId);
+            int crossStatus = mockMvc.perform(
+                            patch("/api/v1/committees/{id}/activity-records/{recordId}/confirm",
+                                    committeeAId, recordBId))
+                    .andReturn().getResponse().getStatus();
+
+            assertThat(absentStatus).as("不在側は 404 で存在秘匿すること").isEqualTo(404);
+            assertThat(crossStatus).as("越境側は 404 で存在秘匿すること").isEqualTo(404);
+            assertThat(crossStatus)
+                    .as("不在と越境でステータスが割れると recordId の実在が判別できる")
+                    .isEqualTo(absentStatus);
         }
     }
 

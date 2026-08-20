@@ -3,6 +3,8 @@ package com.mannschaft.app.common;
 import com.mannschaft.app.billing.EntitlementNotEntitledDetails;
 import com.mannschaft.app.billing.FeatureNotEntitledException;
 import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
+import com.mannschaft.app.bulletin.BulletinErrorCode;
+import com.mannschaft.app.committee.error.CommitteeErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
@@ -10,8 +12,10 @@ import com.mannschaft.app.gdpr.GdprErrorCode;
 import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
 import com.mannschaft.app.matching.MatchingErrorCode;
 import com.mannschaft.app.payment.PaymentErrorCode;
+import com.mannschaft.app.recruitment.RecruitmentErrorCode;
 import com.mannschaft.app.social.SocialErrorCode;
 import com.mannschaft.app.succession.SuccessionErrorCode;
+import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.skill.SkillErrorCode;
 import com.mannschaft.app.webhook.WebhookErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -1863,5 +1867,44 @@ class GlobalExceptionHandlerTest {
             assertOracleClosed(MatchingErrorCode.PROPOSAL_NOT_FOUND,
                     MatchingErrorCode.INSUFFICIENT_PERMISSION);
         }
+
+        @Test
+        @DisplayName("掲示板保管庫フォルダ: BULLETIN_016（不在）と BULLETIN_020（越境）がともに 404")
+        void 保管庫フォルダの存在オラクルが閉じている() {
+            // BulletinArchiveFolderService#validateFolderInScope / createFolder の親フォルダ検証は、
+            // フォルダが不在なら ARCHIVE_FOLDER_NOT_FOUND、他スコープなら ARCHIVE_FOLDER_SCOPE_MISMATCH。
+            // ステータスが割れると他テナントのフォルダ UUID の実在が応答差から判別できる。
+            assertOracleClosed(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND,
+                    BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH);
+        }
+
+        @Test
+        @DisplayName("委員会議事録: COMMITTEE_NOT_FOUND（不在）と COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE（越境）がともに 404")
+        void 委員会議事録の存在オラクルが閉じている() {
+            // CommitteeMinutesService#confirmMinutes は活動記録が不在なら NOT_FOUND、
+            // 他委員会・非委員会スコープの記録なら MINUTES_NOT_COMMITTEE_SCOPE を投げる。
+            assertOracleClosed(CommitteeErrorCode.NOT_FOUND,
+                    CommitteeErrorCode.MINUTES_NOT_COMMITTEE_SCOPE);
+        }
+
+        @Test
+        @DisplayName("募集テンプレート: RECRUITMENT_313（不在）と RECRUITMENT_314（越境）がともに 404")
+        void 募集テンプレートの存在オラクルが閉じている() {
+            // RecruitmentListingService#createFromTemplate はテンプレートが不在なら TEMPLATE_NOT_FOUND、
+            // 他スコープのテンプレートなら TEMPLATE_SCOPE_MISMATCH。
+            assertOracleClosed(RecruitmentErrorCode.TEMPLATE_NOT_FOUND,
+                    RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
+        }
+
+        @Test
+        @DisplayName("非公開村: VILLAGE_001（不在）と VILLAGE_002（非公開）がともに 404")
+        void 非公開村の存在オラクルが閉じている() {
+            // UNLISTED 村は検索結果から意図的に除外され「存在を隠す」設計であるにもかかわらず、
+            // VillageService#get が非村人に対して 403 を返すと、不在の 404 との差で存在が漏れる。
+            // （PUBLIC 村の VILLAGE_024 は存在自体が公開情報のため 403 のままで正しい）
+            assertOracleClosed(VillageErrorCode.VILLAGE_NOT_FOUND,
+                    VillageErrorCode.VILLAGE_UNLISTED);
+        }
     }
 }
+

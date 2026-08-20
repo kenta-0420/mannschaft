@@ -26,7 +26,16 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_001: 村が存在しない / 削除 / 凍結済み（404、IDOR 対策で統一） */
     VILLAGE_NOT_FOUND("VILLAGE_001", "村が見つかりません", Severity.WARN),
 
-    /** VILLAGE_002: UNLISTED 村に非村人がアクセス（403） */
+    /**
+     * VILLAGE_002: UNLISTED 村に非村人がアクセス。
+     *
+     * <p><b>非公開村の存在秘匿のため 404 固定</b>。UNLISTED 村は検索結果から意図的に除外され
+     * 「存在を隠す」設計であり、403 を返すと不在（{@link #VILLAGE_NOT_FOUND} = 404）との差で
+     * 村 ID の実在が漏れる（存在オラクル）。</p>
+     *
+     * <p>なお PUBLIC 村は検索で誰でも見つけられ存在自体が公開情報のため、非村人アクセス時の
+     * {@code VILLAGE_024}（MODERATION_FORBIDDEN）は 403 のままが正しい。ここへ巻き込まないこと。</p>
+     */
     VILLAGE_UNLISTED("VILLAGE_002", "この村は非公開です", Severity.WARN),
 
     /**

@@ -273,7 +273,10 @@ public class RecruitmentListingService {
         RecruitmentTemplateEntity template = templateRepository.findActiveById(templateId)
                 .orElseThrow(() -> new BusinessException(RecruitmentErrorCode.TEMPLATE_NOT_FOUND));
 
-        // テンプレートのスコープと一致することを確認
+        // テンプレートのスコープと一致することを確認。
+        // 越境は TEMPLATE_SCOPE_MISMATCH = 404 で、不在（TEMPLATE_NOT_FOUND = 404）と同一ステータス。
+        // 従来は本コードが ERROR_CODE_STATUS_MAP 未登録で既定 400 に落ちており、templateId の列挙で
+        // 他スコープのテンプレートの実在が判別できた（存在オラクル）。
         if (template.getScopeType() != scopeType || !template.getScopeId().equals(scopeId)) {
             throw new BusinessException(RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
         }
