@@ -52,7 +52,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 不変条件）と実効性を実 DB で裏取りする補完として残す（役割分担）。</p>
  *
  * <h2>検出範囲（＝この番人が拾えるもの）</h2>
- * <p>次の 4 メソッドの呼び出しについて、<b>末尾引数</b>（= 権限名）を解決する。
+ * <p>次のメソッドの呼び出しについて、<b>末尾引数</b>（= 権限名）を解決する。
  * 引数個数が下表と一致するものだけを対象とし、同名別シグネチャの誤検出を避ける。</p>
  * <ul>
  *   <li>{@code AccessControlService.checkPermission(userId, scopeId, scopeType, permissionName)}</li>
@@ -60,8 +60,24 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       — {@code AccessControlService} / {@code RoleService} / {@code PermissionGroupService}
  *       （いずれも 4 引数・末尾が権限名）</li>
  *   <li>{@code AccessControlService.checkAdminOrHasPermission(userId, scopeId, scopeType, permissionName)}</li>
+ *   <li>{@code AccessControlService.hasAdminOrPermissionInScope(userId, scopeId, scopeType, permissionName)}
+ *       — CMP-041 で新設した「ADMIN もしくは Permission 保有 DEPUTY_ADMIN」判定の汎用入口</li>
+ *   <li>{@code AccessControlService.checkAdminOrHasPermissionInScope(userId, scopeId, scopeType, permissionName)}
+ *       — 同上の例外版</li>
  *   <li>{@code UserRoleRepository.existsDeputyAdminWithPermissionInOrganization(userId, organizationId, permissionName)}</li>
+ *   <li>{@code UserRoleRepository.existsDeputyAdminWithPermissionInTeam(userId, teamId, permissionName)}</li>
+ *   <li>{@code UserRoleRepository.findDeputyAdminPermittedTeamIds(userId, teamIds, permissionName)} /
+ *       {@code findDeputyAdminPermittedOrganizationIds(userId, organizationIds, permissionName)}
+ *       — CMP-041 五番隊のバルククエリ</li>
+ *   <li>{@code PermissionScopeQueryService.findPermittedTeamIds(userId, teamIds, permissionName)} /
+ *       {@code findPermittedOrganizationIds(userId, organizationIds, permissionName)}
+ *       — 同バルククエリの role ドメイン側 Service 入口</li>
  * </ul>
+ *
+ * <p><b>対象に足す基準</b>: 「権限名を<b>末尾引数</b>で受け取り、その名前でカタログ照合する認可入口」で
+ * あること。新しい認可メソッド・バルククエリを追加したら、必ずここへ登録すること。
+ * 登録を忘れると走査対象外となり、誤記された権限名を渡しても CI は緑のままになる
+ * （CMP-041 検分で実際に発生：新設 2 メソッドが走査対象から漏れていた）。</p>
  * <p>末尾引数は「文字列リテラル直書き」と「{@code static final String} 定数参照」の 2 通りを解決する
  * （定数は production ソース全体から {@code static final String NAME = "リテラル"} を集めて
  * 単純名で引く）。</p>
@@ -77,7 +93,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       <b>件数と場所を一覧として可視化</b>する（黙って捨てない）。</li>
  *   <li><b>連結・三項・メソッド呼び出しで組み立てられる名前</b> — 同上の理由で未解決に落ちる。</li>
  *   <li><b>同じ単純名の定数が複数の値を持つ場合</b> — 曖昧なため未解決として扱う。</li>
- *   <li><b>上記 4 メソッド以外の経路</b> — 例えば SQL 直書きで {@code permissions.name} を
+ *   <li><b>{@link #TARGET_METHODS} 以外の経路</b> — 例えば SQL 直書きで {@code permissions.name} を
  *       比較するクエリや、FE が権限名を持つ箇所。</li>
  *   <li><b>逆向き（カタログにあるがコードが使っていない権限）</b> — 本番人の関心外。
  *       未使用の権限は害が無く、権限一覧 UI の分類としては正当に存在しうる。</li>
@@ -96,15 +112,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PermissionNameCatalogGuardTest {
 
     /** 対象メソッド名 → 期待引数個数（末尾が権限名であるシグネチャのみを対象にする）。 */
-    static final Map<String, Integer> TARGET_METHODS = Map.of(
-            "checkPermission", 4,
-            "hasPermission", 4,
-            "checkAdminOrHasPermission", 4,
-            "existsDeputyAdminWithPermissionInOrganization", 3);
+    static final Map<String, Integer> TARGET_METHODS = Map.ofEntries(
+            Map.entry("checkPermission", 4),
+            Map.entry("hasPermission", 4),
+            Map.entry("checkAdminOrHasPermission", 4),
+            // CMP-041 第一陣で新設した「ADMIN or Permission 保有 DEPUTY_ADMIN」判定の汎用入口
+            Map.entry("hasAdminOrPermissionInScope", 4),
+            Map.entry("checkAdminOrHasPermissionInScope", 4),
+            Map.entry("existsDeputyAdminWithPermissionInOrganization", 3),
+            Map.entry("existsDeputyAdminWithPermissionInTeam", 3),
+            // CMP-041 五番隊のバルククエリ（Repository 直・Service 経由の双方）
+            Map.entry("findDeputyAdminPermittedTeamIds", 3),
+            Map.entry("findDeputyAdminPermittedOrganizationIds", 3),
+            Map.entry("findPermittedTeamIds", 3),
+            Map.entry("findPermittedOrganizationIds", 3));
 
     /**
      * 走査が空振り（＝無害に見える偽の緑）になっていないことを守る下限。
-     * 実測 40 件超。呼び出しが激減したら番人自身の故障を疑うべきなので、余裕を持たせた下限で固定する。
+     * 実測 40 件超（CMP-041 で対象メソッドを 4 → 11 に拡張し、さらに増えた）。
+     * 呼び出しが激減したら番人自身の故障を疑うべきなので、余裕を持たせた下限で固定する。
+     * <b>下げてはならない</b>（下げることは走査の空振りを許すことと同義）。
      */
     private static final int MIN_RESOLVED_USAGES = 25;
 
@@ -113,7 +140,23 @@ class PermissionNameCatalogGuardTest {
             "com.mannschaft.app.school.service.ClassHomeroomService", "VIEW_ATTENDANCE",
             "com.mannschaft.app.committee.service.CommitteeService", "MANAGE_COMMITTEE",
             "com.mannschaft.app.jobmatching.policy.JobPolicy", "jobs.manage",
-            "com.mannschaft.app.social.service.TeamFriendsService", "MANAGE_FRIEND_TEAMS");
+            "com.mannschaft.app.social.service.TeamFriendsService", "MANAGE_FRIEND_TEAMS",
+            // CMP-041: 新規に走査対象へ加えたメソッド群の実呼び出し
+            "com.mannschaft.app.survey.service.SurveyAccessGuard", "MANAGE_SURVEYS",
+            "com.mannschaft.app.survey.service.SurveyResultService", "MANAGE_SURVEYS",
+            "com.mannschaft.app.survey.visibility.SurveyVisibilityResolver", "MANAGE_SURVEYS");
+
+    /**
+     * <b>メソッド単位</b>の生存証明（CMP-041）。{@link #TARGET_METHODS} へ名前を足しただけでは
+     * 「足したつもり」で実際には一件も拾えていない可能性がある。ここに挙げたメソッドについて
+     * 実ソース上の解決済み呼び出しが最低 1 件あることを要求し、走査対象の追加が
+     * <b>効いていること</b>を機械的に示す。
+     */
+    private static final Map<String, String> ANCHOR_METHOD_USAGES = Map.of(
+            "hasAdminOrPermissionInScope", "MANAGE_SURVEYS",
+            "checkAdminOrHasPermissionInScope", "MANAGE_SURVEYS",
+            "findPermittedTeamIds", "MANAGE_SURVEYS",
+            "findPermittedOrganizationIds", "MANAGE_SURVEYS");
 
     // ────────────────────────────────────────────────────────────
     // 本体
@@ -155,6 +198,12 @@ class PermissionNameCatalogGuardTest {
                 assertThat(scan.resolved())
                         .as("%s の %s 使用箇所を走査が拾えていること", fqcn, permission)
                         .anyMatch(u -> u.fqcn().equals(fqcn) && u.permissionName().equals(permission)));
+
+        ANCHOR_METHOD_USAGES.forEach((method, permission) ->
+                assertThat(scan.resolved())
+                        .as("%s(..., \"%s\") の実呼び出しを走査が拾えていること"
+                                + "（TARGET_METHODS へ足しただけで効いていない状態を防ぐ）", method, permission)
+                        .anyMatch(u -> u.method().equals(method) && u.permissionName().equals(permission)));
     }
 
     @Test
@@ -237,7 +286,7 @@ class PermissionNameCatalogGuardTest {
             "^(?:@[^\\s]+\\s+)*[A-Za-z_$][\\w$.<>,\\[\\]\\s?]*\\s+[A-Za-z_$][\\w$]*$");
 
     /**
-     * production ソース（FQCN → 原文）を走査し、対象 4 メソッドへ渡された権限名を収集する。
+     * production ソース（FQCN → 原文）を走査し、{@link #TARGET_METHODS} へ渡された権限名を収集する。
      *
      * @param sources FQCN → Java ソース原文
      */

@@ -149,6 +149,105 @@ class PermissionNameCatalogGuardScanningLogicTest {
                 .containsExactly("GHOST_MULTILINE");
     }
 
+    @Test
+    @DisplayName("陽性: CMP-041 で新設した hasAdminOrPermissionInScope の未登録権限名を検出する")
+    void detectsUnregisteredNameInHasAdminOrPermissionInScope() {
+        String code = """
+                package com.mannschaft.app.example;
+                class SyntheticService {
+                    private static final String PERMISSION_GHOST = "GHOST_IN_SCOPE";
+                    boolean can(Long userId, SurveyEntity survey) {
+                        return accessControlService.hasAdminOrPermissionInScope(
+                                userId, survey.getScopeId(), survey.getScopeType(), PERMISSION_GHOST);
+                    }
+                }
+                """;
+
+        assertThat(PermissionNameCatalogGuardTest.deadUsages(CATALOG,
+                PermissionNameCatalogGuardTest.scanSources(Map.of(FQCN, code))))
+                .singleElement()
+                .satisfies(u -> {
+                    assertThat(u.permissionName()).isEqualTo("GHOST_IN_SCOPE");
+                    assertThat(u.method()).isEqualTo("hasAdminOrPermissionInScope");
+                });
+    }
+
+    @Test
+    @DisplayName("陽性: CMP-041 で新設した checkAdminOrHasPermissionInScope の未登録権限名を検出する")
+    void detectsUnregisteredNameInCheckAdminOrHasPermissionInScope() {
+        String code = """
+                package com.mannschaft.app.example;
+                class SyntheticService {
+                    void act(Long userId, SurveyEntity survey) {
+                        accessControlService.checkAdminOrHasPermissionInScope(
+                                userId, survey.getScopeId(), survey.getScopeType(), "GHOST_CHECK_IN_SCOPE");
+                    }
+                }
+                """;
+
+        assertThat(PermissionNameCatalogGuardTest.deadUsages(CATALOG,
+                PermissionNameCatalogGuardTest.scanSources(Map.of(FQCN, code))))
+                .singleElement()
+                .satisfies(u -> {
+                    assertThat(u.permissionName()).isEqualTo("GHOST_CHECK_IN_SCOPE");
+                    assertThat(u.method()).isEqualTo("checkAdminOrHasPermissionInScope");
+                });
+    }
+
+    @Test
+    @DisplayName("陽性: TEAM 版 exists / バルククエリ（Repository・Service 双方）の未登録権限名も検出する")
+    void detectsUnregisteredNameInBulkAndTeamScopedQueries() {
+        String code = """
+                package com.mannschaft.app.example;
+                class SyntheticService {
+                    boolean single(Long userId, Long teamId) {
+                        return userRoleRepository.existsDeputyAdminWithPermissionInTeam(
+                                userId, teamId, "GHOST_TEAM_EXISTS");
+                    }
+                    Set<Long> bulkRepoTeam(Long userId, Collection<Long> teamIds) {
+                        return userRoleRepository.findDeputyAdminPermittedTeamIds(
+                                userId, teamIds, "GHOST_BULK_REPO_TEAM");
+                    }
+                    Set<Long> bulkRepoOrg(Long userId, Collection<Long> orgIds) {
+                        return userRoleRepository.findDeputyAdminPermittedOrganizationIds(
+                                userId, orgIds, "GHOST_BULK_REPO_ORG");
+                    }
+                    Set<Long> bulkServiceTeam(Long userId, Collection<Long> teamIds) {
+                        return permissionScopeQueryService.findPermittedTeamIds(
+                                userId, teamIds, "GHOST_BULK_SVC_TEAM");
+                    }
+                    Set<Long> bulkServiceOrg(Long userId, Collection<Long> orgIds) {
+                        return permissionScopeQueryService.findPermittedOrganizationIds(
+                                userId, orgIds, "GHOST_BULK_SVC_ORG");
+                    }
+                }
+                """;
+
+        assertThat(PermissionNameCatalogGuardTest.deadUsages(CATALOG,
+                PermissionNameCatalogGuardTest.scanSources(Map.of(FQCN, code))))
+                .extracting(PermissionNameCatalogGuardTest.PermissionUsage::permissionName)
+                .containsExactlyInAnyOrder(
+                        "GHOST_TEAM_EXISTS",
+                        "GHOST_BULK_REPO_TEAM",
+                        "GHOST_BULK_REPO_ORG",
+                        "GHOST_BULK_SVC_TEAM",
+                        "GHOST_BULK_SVC_ORG");
+    }
+
+    @Test
+    @DisplayName("走査対象表: CMP-041 で新設した認可入口がすべて TARGET_METHODS に登録されている")
+    void newlyAddedAuthorizationEntryPointsAreRegisteredAsTargets() {
+        assertThat(PermissionNameCatalogGuardTest.TARGET_METHODS)
+                .as("認可入口を新設したら TARGET_METHODS へ足すこと。忘れると誤記が CI をすり抜ける")
+                .containsEntry("hasAdminOrPermissionInScope", 4)
+                .containsEntry("checkAdminOrHasPermissionInScope", 4)
+                .containsEntry("existsDeputyAdminWithPermissionInTeam", 3)
+                .containsEntry("findDeputyAdminPermittedTeamIds", 3)
+                .containsEntry("findDeputyAdminPermittedOrganizationIds", 3)
+                .containsEntry("findPermittedTeamIds", 3)
+                .containsEntry("findPermittedOrganizationIds", 3);
+    }
+
     // ────────────────────────────────────────────────────────────
     // 陰性対照: 検出してはならないもので誤検出しない
     // ────────────────────────────────────────────────────────────
