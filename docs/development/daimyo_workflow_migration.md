@@ -92,7 +92,7 @@ Workflow は自走するので、`軍議→裁可→出陣→裁可→検分→�
 
 ---
 
-## 6. `/検分` Workflow 骨格（参考実装）
+## 6. `/検分 claude` Workflow 骨格（参考実装）
 
 ```js
 export const meta = {
