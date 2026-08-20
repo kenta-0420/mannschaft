@@ -1,6 +1,8 @@
 package com.mannschaft.app.membership.entity;
 
+import com.mannschaft.app.membership.domain.ArchiveReason;
 import com.mannschaft.app.membership.domain.LeaveReason;
+import com.mannschaft.app.membership.domain.LeftTrigger;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import jakarta.persistence.Column;
@@ -96,6 +98,46 @@ public class MembershipEntity {
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    // ─── F14.3 住民ライフイベント（逝去・転出）アーカイブ（V187 で追加）────────
+
+    /** アーカイブ在籍の開始日時。NULL = 通常在籍。 */
+    @Column(name = "archived_at")
+    @Setter
+    private LocalDateTime archivedAt;
+
+    /** アーカイブの事由。archived_at 等と同期する（CHECK 制約・§5.2.0 の導出規則）。 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "archive_reason", length = 10)
+    @Setter
+    private ArchiveReason archiveReason;
+
+    /** 記録した理事の user_id。CHECK 制約の対象外で NULL を許容する（§5.2 参照）。 */
+    @Column(name = "archived_by")
+    @Setter
+    private Long archivedBy;
+
+    /** 自動退会の予定日時。移行時に確定して書く（§5.2.1）。 */
+    @Column(name = "archive_expires_at")
+    @Setter
+    private LocalDateTime archiveExpiresAt;
+
+    /** 退会の主体（自動か人か）。left_at と同時に必須（CHECK 制約で保証）。 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "left_trigger", length = 24)
+    @Setter
+    private LeftTrigger leftTrigger;
+
+    /** 退会させた操作者の user_id。自動退会では NULL。 */
+    @Column(name = "left_by")
+    @Setter
+    private Long leftBy;
+
+    /** アーカイブ周期の通し番号。archived_at を非 NULL にするたびに +1（§9.4.1.1）。 */
+    @Column(name = "archive_generation", nullable = false)
+    @Setter
+    @Builder.Default
+    private Integer archiveGeneration = 0;
 
     @PrePersist
     protected void onCreate() {

@@ -146,6 +146,16 @@ public class ResidentRegistryEntity extends BaseEntity {
     /** 推定年齢（0〜200、自己申告ベース）。 */
     private Integer ageEstimated;
 
+    // ─── F14.3 住民ライフイベント（逝去・転出）アーカイブ（V187 で追加）────────
+    /**
+     * 転出を記録／取り消した実行者の user_id（クロスドメイン弱参照・FKなし）。
+     * death_status_changed_by と対称（§5.2.0.1）。
+     */
+    private Long moveOutChangedBy;
+
+    /** 転出の記録操作が行われた日時。move_out_date（業務上の転出日）とは別の事実。 */
+    private LocalDateTime moveOutChangedAt;
+
     /**
      * 死亡状態を更新する（F09.15）。
      *
