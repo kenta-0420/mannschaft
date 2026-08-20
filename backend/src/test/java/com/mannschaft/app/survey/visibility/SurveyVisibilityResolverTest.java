@@ -555,8 +555,11 @@ class SurveyVisibilityResolverTest {
                     .thenReturn(new UserScopeRoleSnapshot(false,
                             Map.of(new ScopeKey("TEAM", 100L), "ADMIN"),
                             Map.of(), Set.of(), Set.of()));
-            when(surveyResponseRepository.existsBySurveyIdAndUserId(eq(2L), eq(5L)))
-                    .thenReturn(true);
+            // 回答履歴は stub しない。閲覧者は当該スコープの ADMIN であり、設計書 F05.4 L1625-1628 の
+            // 上位条件（優先順 2 = ADMIN+ は results_visibility を無視してフルアクセス）で
+            // AFTER_RESPONSE も短絡するため、surveyResponseRepository には到達しない
+            // （stub すると Mockito の UnnecessaryStubbingException で落ちる）。
+            // 本テストの目的は「バッチで Repository / Membership を 1 回ずつしか呼ばない」ことの固定である。
 
             Set<Long> result = resolver.filterAccessible(List.of(1L, 2L), 5L);
 
