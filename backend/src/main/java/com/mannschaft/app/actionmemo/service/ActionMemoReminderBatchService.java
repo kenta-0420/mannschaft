@@ -5,12 +5,14 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.actionmemo.repository.UserActionMemoSettingsRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,8 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * F02.5 行動メモ リマインド通知バッチ（Phase 6-2）。
@@ -52,6 +56,8 @@ public class ActionMemoReminderBatchService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * スケジュール起動エントリポイント（毎分実行）。
@@ -83,6 +89,18 @@ public class ActionMemoReminderBatchService {
             return;
         }
 
+        // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で
+        // 継続する。ループ外で無防備に呼ぶと、この一括解決だけで全受信者分の通知処理が丸ごと止まる。
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(
+                    allSettings.stream().map(UserActionMemoSettingsEntity::getUserId).toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+            locales = Map.of();
+        }
+
         int notified = 0;
         int totalTargets = 0;
         for (UserActionMemoSettingsEntity settings : allSettings) {
@@ -97,12 +115,18 @@ public class ActionMemoReminderBatchService {
 
             totalTargets++;
             try {
+                Locale locale = Locale.forLanguageTag(
+                        locales.getOrDefault(settings.getUserId(), "ja"));
                 notificationService.createNotification(
                         settings.getUserId(),
                         "ACTION_MEMO_REMINDER",
                         NotificationPriority.NORMAL,
-                        "行動メモのリマインド",
-                        "今日の行動メモを記録しましょう",
+                        messageSource.getMessage(
+                                "notification.actionmemo.reminder.title", null,
+                                "行動メモのリマインド", locale),
+                        messageSource.getMessage(
+                                "notification.actionmemo.reminder.body", null,
+                                "今日の行動メモを記録しましょう", locale),
                         "ACTION_MEMO",
                         null,
                         NotificationScopeType.PERSONAL,
@@ -152,15 +176,30 @@ public class ActionMemoReminderBatchService {
         }
 
         String todayStr = today.toString(); // "YYYY-MM-DD"
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(
+                    targets.stream().map(UserActionMemoSettingsEntity::getUserId).toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+            locales = Map.of();
+        }
         int notified = 0;
         for (UserActionMemoSettingsEntity settings : targets) {
             try {
+                Locale locale = Locale.forLanguageTag(
+                        locales.getOrDefault(settings.getUserId(), "ja"));
                 notificationService.createNotification(
                         settings.getUserId(),
                         "ACTION_MEMO_REMINDER",
                         NotificationPriority.NORMAL,
-                        "行動メモのリマインド",
-                        "今日の行動メモを記録しましょう",
+                        messageSource.getMessage(
+                                "notification.actionmemo.reminder.title", null,
+                                "行動メモのリマインド", locale),
+                        messageSource.getMessage(
+                                "notification.actionmemo.reminder.body", null,
+                                "今日の行動メモを記録しましょう", locale),
                         "ACTION_MEMO",
                         null,
                         NotificationScopeType.PERSONAL,
