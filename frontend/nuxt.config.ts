@@ -90,7 +90,7 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match'],
+    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match', 'composables/returnStayPlan'],
   },
 
   devServer: {
