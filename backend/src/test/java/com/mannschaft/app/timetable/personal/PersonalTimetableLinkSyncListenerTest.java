@@ -113,8 +113,12 @@ class PersonalTimetableLinkSyncListenerTest {
     }
 
     private static PersonalTimetableEntity buildPersonal() {
+        return buildPersonalOwnedBy(USER_ID);
+    }
+
+    private static PersonalTimetableEntity buildPersonalOwnedBy(Long ownerUserId) {
         PersonalTimetableEntity p = PersonalTimetableEntity.builder()
-                .userId(USER_ID)
+                .userId(ownerUserId)
                 .name("test")
                 .status(PersonalTimetableStatus.ACTIVE)
                 .effectiveFrom(LocalDate.of(2026, 1, 1))
@@ -383,6 +387,8 @@ class PersonalTimetableLinkSyncListenerTest {
         // 取消対象1件のみでも findAllById をモックする。
         given(personalSlotRepository.findAllById(List.of(SLOT_ID)))
                 .willReturn(List.of(buildSlot("MON", 3)));
+        // マスター検分指摘の安全弁: 受信者が personalTimetableId の所有者であることの検証に必要。
+        given(personalTimetableRepository.findById(PT_ID)).willReturn(Optional.of(buildPersonal()));
 
         listener.onChangeDeleted(new TimetableChangeDeletedEvent(CHANGE_ID, TT_ID));
 
@@ -399,5 +405,34 @@ class PersonalTimetableLinkSyncListenerTest {
         assertThat(request.sourceType()).isEqualTo("PERSONAL_TIMETABLE_SYNC_REVOKED");
         assertThat(request.sourceId()).isEqualTo(PT_ID);
         assertThat(request.actionUrl()).isEqualTo("/me/personal-timetable/" + PT_ID);
+    }
+
+    @Test
+    @DisplayName("マスター検分指摘の安全弁: 受信者が personalTimetableId の所有者と一致しない場合、取消通知は作られない"
+            + "（sourceType=PERSONAL_TIMETABLE_SYNC_REVOKED は NotificationSourceTypeMapper 未登録のため"
+            + "visibility ガードを素通りする。ガード不在下で受信者導出が壊れても無条件通過させない安全弁の検証）")
+    void 受信者と所有者が不一致なら取消通知は作られない() {
+        ScheduleEntity sch = ScheduleEntity.builder()
+                .userId(USER_ID).title("[休講] ドイツ語Ⅰ")
+                .startAt(java.time.LocalDateTime.of(2026, 5, 4, 13, 0))
+                .externalRef("F03.15:" + CHANGE_ID + ":" + SLOT_ID)
+                .build();
+        given(scheduleRepository.findByExternalRefPrefix("F03.15:" + CHANGE_ID + ":%"))
+                .willReturn(List.of(sch));
+        given(scheduleRepository.save(any(ScheduleEntity.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        given(personalSlotRepository.findAllById(List.of(SLOT_ID)))
+                .willReturn(List.of(buildSlot("MON", 3)));
+
+        // personalTimetableId(PT_ID) の所有者は別ユーザー（USER_ID とは異なる）に差し替える。
+        given(personalTimetableRepository.findById(PT_ID))
+                .willReturn(Optional.of(buildPersonalOwnedBy(999L)));
+
+        listener.onChangeDeleted(new TimetableChangeDeletedEvent(CHANGE_ID, TT_ID));
+
+        // スケジュールの論理削除自体は継続される（安全弁は通知だけを止める）。
+        verify(scheduleRepository).save(any(ScheduleEntity.class));
+        // 本丸: 受信者(USER_ID) と所有者(999L) が不一致のため、取消通知は publish されない。
+        verify(eventPublisher, never()).publishEvent(any(PersonalTimetableSyncNotificationEvent.class));
     }
 }

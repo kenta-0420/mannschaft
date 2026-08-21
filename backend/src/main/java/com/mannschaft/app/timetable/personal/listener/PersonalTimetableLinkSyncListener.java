@@ -98,6 +98,20 @@ import java.util.Optional;
  * 倒れる。遷移先も削除済み予定詳細ではなく個人時間割詳細（{@code /me/personal-timetable/{id}}）
  * とする。将来 {@code PERSONAL_TIMETABLE} 用 Resolver が実装された時点で、この sourceType を
  * {@code PERSONAL_TIMETABLE} + Resolver 経由へ置き換えること。</p>
+ *
+ * <h2>⚠ 未マッピング sourceType は visibility ガードを素通りする（マスター検分指摘・意図的な選択と明記）</h2>
+ * <p>{@code NotificationService#isAccessible} は {@code NotificationSourceTypeMapper.resolve(sourceType)}
+ * が空（＝未マッピング）の場合、{@code visibilityChecker.canView} を呼ばずに無条件で {@code true} を
+ * 返す（fail-soft）。よって {@code "PERSONAL_TIMETABLE_SYNC_REVOKED"} は<b>ガードそのものを経由しない
+ * pass-through</b>であり、「deny されないから安全」ではなく「そもそもチェックされていない」。
+ * Resolver 新設（{@code PersonalTimetableVisibility.FAMILY_SHARED} の共有先チーム軸を含む正しい実装が
+ * 必要で、{@code FamilyPersonalTimetableService} が {@code memberships} ではなく
+ * {@code user_roles} ＋ family テンプレチーム判定という F00 標準と異なる権限源を使っている実態を
+ * 踏まえると本 PR の型確立スコープを超える）は見送り、代わりに
+ * {@link #buildRevokedNotificationRequest} 内で<b>受信者が sourceId（personalTimetableId）の
+ * 所有者本人であることをコードで明示検証</b>し、一致しない場合は通知を作らない安全弁を置く
+ * （ガード不在下で受信者導出ロジックが将来壊れても無条件通過させないため）。
+ * 残務は {@code docs/task-list.md} CMP-056 行に記録する。</p>
  */
 @Slf4j
 @Component
@@ -401,6 +415,22 @@ public class PersonalTimetableLinkSyncListener {
         if (personalTimetableId == null) {
             log.warn("取消通知の personalTimetableId を復元できずスキップ: scheduleId={}, externalRef={}",
                     sch.getId(), sch.getExternalRef());
+            return null;
+        }
+
+        // 安全弁（マスター検分指摘・Issue #2834）: sourceType=PERSONAL_TIMETABLE_SYNC_REVOKED は
+        // NotificationSourceTypeMapper に未登録のため NotificationService#isAccessible の
+        // visibility ガードを素通りする（意図的な選択。javadoc参照）。ガードが無い以上、
+        // 受信者がその personalTimetableId の所有者本人であることをここで明示的に検証し、
+        // 一致しなければ通知を作らない（fail-closed）。これにより「受信者の導出が将来壊れても
+        // 何も止めない」状態を避ける。
+        Long ownerUserId = personalTimetableRepository.findById(personalTimetableId)
+                .map(PersonalTimetableEntity::getUserId)
+                .orElse(null);
+        if (ownerUserId == null || !ownerUserId.equals(sch.getUserId())) {
+            log.warn("取消通知の受信者が personalTimetableId の所有者と一致しないためスキップ: "
+                            + "scheduleId={}, recipientUserId={}, personalTimetableId={}, ownerUserId={}",
+                    sch.getId(), sch.getUserId(), personalTimetableId, ownerUserId);
             return null;
         }
 
