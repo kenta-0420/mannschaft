@@ -135,6 +135,7 @@ const PERSONAL_DATA_WIDGET_KEYS = new Set([
   'my-recruitments',             // Phase2 F03.11 参加予定（WidgetMyRecruitments・自前カード）
   'my-corkboard',                // F09.8.1 マイコルクボード（WidgetMyCorkboard・内容のみ→外枠必要）
   'village-lobby-digest',        // F17.1 井戸端ダイジェスト（WidgetVillageLobbyDigest・内容のみ→外枠必要）
+  'return-stay-plan',
 ])
 
 function isDataWidget(key: string): boolean {
@@ -264,8 +265,8 @@ function onDragEnd() {
 
         <div
           v-for="(w, index) in visibleWidgets"
-          :key="w.key"
           v-show="w.key !== 'event-dismissal-reminder' || dismissalHasContent"
+          :key="w.key"
           class="group relative flex h-full flex-col cursor-default transition-all"
           :class="[
             (w.key === 'notices' || w.key === 'my-calendar') ? 'col-span-1 md:col-span-2' : 'col-span-1',
@@ -306,6 +307,7 @@ function onDragEnd() {
             <WidgetNotices v-else-if="w.key === 'notices'" />
             <!-- 今後の予定 -->
             <WidgetUpcomingEvents v-else-if="w.key === 'upcoming-events'" />
+            <WidgetReturnStayPlan v-else-if="w.key === 'return-stay-plan'" />
             <!-- 個人TODO -->
             <WidgetPersonalTodo v-else-if="w.key === 'personal-todo'" />
             <!-- F02.10: 天気 -->

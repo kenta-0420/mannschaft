@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification.fanout.perf;
 
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
@@ -93,7 +94,8 @@ class NotificationFanoutOrgShardCrashResumeIT extends AbstractMySqlIntegrationTe
         String type = "FANOUT_SHARD_CRASH_AC6";
         UUID sourceEvent = UUID.randomUUID();
         jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(seed.organizationId()),
-                type, sourceEvent, seed.organizationId(), "AC-6 シャードクラッシュ再開", "本文",
+                type, sourceEvent, seed.organizationId(),FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-6 シャードクラッシュ再開"},
                 NotificationPriority.NORMAL, "FANOUT_SHARD_IT", null, "/x", null, true);
 
         // enqueue は O(1)（親 1 行・shard_count=0）。クラッシュ注入の前段でシャードを確定・分割する
@@ -207,11 +209,13 @@ class NotificationFanoutOrgShardCrashResumeIT extends AbstractMySqlIntegrationTe
         }
 
         @Override
-        public void insertAndDispatchChunk(List<Long> recipients, String notificationType,
-                                           NotificationPriority priority, String title, String body,
+        // Issue #2871: ワーカーは受信者ごとに文面が異なる版を呼ぶようになったため、
+        // スパイもそちらを override しないと本物が素通りしてクラッシュを模擬できない（偽 green になる）。
+        public void insertAndDispatchChunk(List<RecipientMessage> rows, String notificationType,
+                                           NotificationPriority priority,
                                            String sourceType, Long sourceId, NotificationScopeType scopeType,
                                            Long scopeId, String actionUrl, Long actorId, Long organizationId) {
-            super.insertAndDispatchChunk(recipients, notificationType, priority, title, body,
+            super.insertAndDispatchChunk(rows, notificationType, priority,
                     sourceType, sourceId, scopeType, scopeId, actionUrl, actorId, organizationId);
             int n = callCount.incrementAndGet();
             if (n == crashAtChunk) {

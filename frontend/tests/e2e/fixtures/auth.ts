@@ -46,21 +46,31 @@ export async function loginViaApi(
     systemRole: string | null
     timezone: string | null
   }
+  const accessTokenCookie = (await page.context().cookies())
+    .find(cookie => cookie.name === 'access_token')
+  if (!accessTokenCookie || accessTokenCookie.expires <= 0) {
+    throw new Error('API ログイン成功後の access_token Cookie に有効期限がありません')
+  }
+  const tokenExpiresAt = accessTokenCookie.expires * 1000
 
   // アプリのオリジンへ遷移してから localStorage を書き込む（オリジンに紐づくため）。
   // useAuthStore は currentUser の有無で isAuthenticated を判定する。
   await page.goto('/')
   await page.evaluate(
-    (user) => {
+    ({ user, expiresAt }) => {
       localStorage.setItem('currentUser', JSON.stringify(user))
+      localStorage.setItem('tokenExpiresAt', String(expiresAt))
     },
     {
-      id: me.id,
-      email: me.email,
-      fullName: `${me.lastName} ${me.firstName}`,
-      profileImageUrl: me.avatarUrl,
-      systemRole: me.systemRole ?? undefined,
-      timezone: me.timezone ?? undefined,
+      user: {
+        id: me.id,
+        email: me.email,
+        fullName: `${me.lastName} ${me.firstName}`,
+        profileImageUrl: me.avatarUrl,
+        systemRole: me.systemRole ?? undefined,
+        timezone: me.timezone ?? undefined,
+      },
+      expiresAt: tokenExpiresAt,
     },
   )
 }
