@@ -25,7 +25,7 @@
 #     `mv -T` はカーネルの rename(2) を直接使うため、ロック名が既に存在する
 #     （＝非空ディレクトリ）場合は ENOTEMPTY で失敗する＝atomic な「先客あり」判定になる。
 #   - stale奪取: 生存判定は「ロック内 PID が死んでいるか」のみを条件とする
-#     （生存中は経過時間に関わらず奪取しない。待つのは取得できない時間全体で最大180分）。
+#     （生存中は経過時間に関わらず奪取しない。待つのは取得できない実経過時間で最大180分）。
 #     奪取も同じ `mv -T` で隔離名へ改名を試みるが、判定〜改名の間にも別プロセスが
 #     先に奪取・再取得している「多重奪取」の極小窓は理論上残る。これを完全には塞がず、
 #     【設計判断】改名成功後に隔離先の info を再読し、判定時点のスナップショット
@@ -36,8 +36,15 @@
 #     であるため、完全な排他の証明までは求めず上記の緩和策で十分と判断し受容する。
 #     ただし復元自体が失敗した場合は握りつぶさずエラー終了する（fail-safe）。
 #   - 解放: 自分の PID+TOKEN が info と一致する場合のみ、同じ `mv -T` 隔離方式で解放する。
-#   - 恒久エラー検知: mv -T が失敗したのに LOCK_DIR が存在しない/ファイルである等、
-#     「先客あり」以外の異常が連続して起きた場合は原因不明のまま待ち続けず即エラー終了する。
+#   - 恒久エラー検知: 「先客あり」以外の異常（取得側の mv 失敗で LOCK_DIR 不在、
+#     奪取側の隔離 mv 失敗が繰り返される等）が連続して起きた場合は原因不明のまま
+#     待ち続けず即エラー終了する。取得側と奪取側は別カウンタで管理し、
+#     どちらか一方の正常系がもう一方の異常カウントを打ち消さないようにする。
+#   - 残骸掃除: 一時/隔離ディレクトリ名には隔離実行時刻（epoch秒）を埋め込み、
+#     起動時のベストエフォート掃除は名前中の時刻で1日超のものだけを対象にする
+#     （mtime 依存にすると、奪取直後でまだ使用中の隔離ディレクトリを他プロセスの
+#     起動時掃除が誤って削除しうるため）。時刻を埋め込んでいない旧形式の残骸は
+#     無条件で掃除対象とする。
 #
 set -u
 
@@ -54,12 +61,14 @@ LOCK_DIR="${LOCK_ROOT}/turnstile.lock.d"
 
 POLL_INTERVAL_SEC=15
 LOG_EVERY_SEC=60
-MAX_WAIT_SEC=$((180 * 60))       # 180分。ロックを取得できない経過時間全体の上限（原因を問わない）
-MAX_ABNORMAL_STREAK=5            # 「先客あり」以外の異常が連続した場合の即時エラー閾値
-STALE_TMP_AGE_MIN=1440           # 残骸掃除の対象年齢（分）。1440分＝1日
+# 180分（恒久値）。テスト時のみ TURNSTILE_MAX_WAIT_SEC で一時的に短縮できる
+MAX_WAIT_SEC="${TURNSTILE_MAX_WAIT_SEC:-$((180 * 60))}"
+MAX_ABNORMAL_STREAK=5             # 「先客あり」以外の異常が連続した場合の即時エラー閾値
+STALE_TMP_AGE_SEC=86400           # 残骸掃除の対象年齢（秒）。86400秒＝1日
 
 TOKEN="$$-$(date +%s%N 2>/dev/null || date +%s)-$RANDOM"
 LOCK_HELD=0
+START_EPOCH="$(date +%s)"
 
 if ! mkdir -p "${LOCK_ROOT}" 2>/dev/null; then
     echo "[turnstile] エラー: ロック置き場 ${LOCK_ROOT} を作成できません" >&2
@@ -96,18 +105,47 @@ verify_info_complete() {
     [ -n "${pid}" ] && [ -n "${time}" ] && [ -n "${token}" ]
 }
 
+# 一時/隔離ディレクトリの命名規則: .turnstile.<kind>.<epoch>.<pid>.<rand>.<rand>
+# <kind> は tmp(取得中) / stale(奪取隔離) / release(解放隔離)
+make_scratch_dir_name() {
+    local kind="$1"
+    echo "${LOCK_ROOT}/.turnstile.${kind}.$(now_epoch).$$.${RANDOM}.${RANDOM}"
+}
+
 # 残骸（クラッシュ等で取り残された一時/隔離ディレクトリ）をベストエフォートで掃除する。
-# 削除失敗は握りつぶさず警告を1行出す（軽微5の是正）。
+# 名前に埋め込まれた epoch で1日超のものだけを対象にする（mtimeは使わない。
+# 奪取直後でまだ使用中の隔離ディレクトリを誤削除しないため）。
+# epoch を持たない旧形式名は無条件で掃除対象とする。
+# 削除失敗は握りつぶさず警告を1行出す。
 cleanup_stale_temp_dirs() {
-    local d
+    local d base epoch age now
+    now="$(now_epoch)"
+
     while IFS= read -r d; do
         [ -z "${d}" ] && continue
+        base="$(basename "${d}")"
+
+        # 期待形式: .turnstile.<kind>.<epoch>.<pid>.<rand>.<rand>
+        epoch="$(echo "${base}" | cut -d. -f4)"
+
+        case "${epoch}" in
+            ''|*[!0-9]*)
+                # epoch が数値でない＝旧形式名。無条件で掃除対象
+                ;;
+            *)
+                age=$((now - epoch))
+                if [ "${age}" -le "${STALE_TMP_AGE_SEC}" ]; then
+                    # まだ新しい（使用中の可能性がある）ので今回はスキップ
+                    continue
+                fi
+                ;;
+        esac
+
         if ! rm -rf "${d}" 2>/dev/null; then
             echo "[turnstile] 警告: 残骸ディレクトリの削除に失敗しました: ${d}" >&2
         fi
     done < <(find "${LOCK_ROOT}" -maxdepth 1 -mindepth 1 \
-        \( -name '.turnstile.tmp.*' -o -name '.turnstile.stale.*' -o -name '.turnstile.release.*' \) \
-        -mmin "+${STALE_TMP_AGE_MIN}" 2>/dev/null)
+        \( -name '.turnstile.tmp.*' -o -name '.turnstile.stale.*' -o -name '.turnstile.release.*' \) 2>/dev/null)
 }
 
 # LOCK_DIR が通常ファイル等、ディレクトリ以外の異常な状態でないか検査する
@@ -118,18 +156,34 @@ check_lock_dir_sane() {
     fi
 }
 
-ABNORMAL_STREAK=0
+# 取得側（try_acquire_once）の「先客あり以外の異常」連続カウンタ
+ACQUIRE_ABNORMAL_STREAK=0
+# 奪取側（try_reclaim_stale_lock）の「隔離できない異常」連続カウンタ
+# 取得側の正常系がこちらをリセットしてしまわないよう、カウンタを分離する
+RECLAIM_ABNORMAL_STREAK=0
 
-record_abnormal() {
-    ABNORMAL_STREAK=$((ABNORMAL_STREAK + 1))
-    if [ "${ABNORMAL_STREAK}" -ge "${MAX_ABNORMAL_STREAK}" ]; then
-        echo "[turnstile] エラー: 「先客あり」以外の異常（権限/IO等の可能性）が${ABNORMAL_STREAK}回連続しました。原因を確認してください: $1" >&2
+record_acquire_abnormal() {
+    ACQUIRE_ABNORMAL_STREAK=$((ACQUIRE_ABNORMAL_STREAK + 1))
+    if [ "${ACQUIRE_ABNORMAL_STREAK}" -ge "${MAX_ABNORMAL_STREAK}" ]; then
+        echo "[turnstile] エラー: 取得処理で「先客あり」以外の異常（権限/IO等の可能性）が${ACQUIRE_ABNORMAL_STREAK}回連続しました。原因を確認してください: $1" >&2
         exit 1
     fi
 }
 
-record_normal() {
-    ABNORMAL_STREAK=0
+record_acquire_normal() {
+    ACQUIRE_ABNORMAL_STREAK=0
+}
+
+record_reclaim_abnormal() {
+    RECLAIM_ABNORMAL_STREAK=$((RECLAIM_ABNORMAL_STREAK + 1))
+    if [ "${RECLAIM_ABNORMAL_STREAK}" -ge "${MAX_ABNORMAL_STREAK}" ]; then
+        echo "[turnstile] エラー: staleと判定したロックの隔離/奪取に${RECLAIM_ABNORMAL_STREAK}回連続で失敗しました。原因を確認してください: $1" >&2
+        exit 1
+    fi
+}
+
+record_reclaim_normal() {
+    RECLAIM_ABNORMAL_STREAK=0
 }
 
 # 一意な一時ディレクトリに info を書き、mv -T でロック名へ改名を試みる。
@@ -137,11 +191,12 @@ record_normal() {
 try_acquire_once() {
     check_lock_dir_sane
 
-    local tmp="${LOCK_ROOT}/.turnstile.tmp.$$.$RANDOM.$RANDOM"
+    local tmp
+    tmp="$(make_scratch_dir_name tmp)"
 
     if ! mkdir "${tmp}" 2>/dev/null; then
         # 一意名のはずだが万一衝突したら失敗として扱い、上位で少し待って再試行させる
-        record_abnormal "一時ディレクトリ作成失敗: ${tmp}"
+        record_acquire_abnormal "一時ディレクトリ作成失敗: ${tmp}"
         return 1
     fi
 
@@ -160,16 +215,16 @@ try_acquire_once() {
 
     if mv -T "${tmp}" "${LOCK_DIR}" 2>/dev/null; then
         LOCK_HELD=1
-        record_normal
+        record_acquire_normal
         return 0
     fi
 
     # 改名失敗。LOCK_DIR が存在すれば「先客あり」の正常な競合、
     # 存在しないのに失敗した場合は権限/IO等の恒久異常の疑いがある
     if [ -d "${LOCK_DIR}" ]; then
-        record_normal
+        record_acquire_normal
     else
-        record_abnormal "mv -T 失敗（LOCK_DIR不在）: ${tmp} -> ${LOCK_DIR}"
+        record_acquire_abnormal "mv -T 失敗（LOCK_DIR不在）: ${tmp} -> ${LOCK_DIR}"
     fi
 
     rm -rf "${tmp}" 2>/dev/null
@@ -194,9 +249,13 @@ try_reclaim_stale_lock() {
     fi
 
     # PID が死んでいる（info が壊れて PID が読めない場合も stale とみなす）
-    local isolate="${LOCK_ROOT}/.turnstile.stale.$$.$RANDOM.$RANDOM"
+    local isolate
+    isolate="$(make_scratch_dir_name stale)"
     if ! mv -T "${LOCK_DIR}" "${isolate}" 2>/dev/null; then
-        # 改名に失敗＝他プロセスが先に奪取済み、または既に解放済み。奪取競争に負けたとして通常待機へ
+        # 改名に失敗＝他プロセスが先に奪取済み、または既に解放済み。
+        # 奪取競争に負けただけなら正常だが、staleと判定したのに繰り返し隔離できない場合は
+        # 恒久異常の疑いがあるため別カウンタで検知する
+        record_reclaim_abnormal "mv -T 失敗（隔離できず）: ${LOCK_DIR} -> ${isolate}"
         return 1
     fi
 
@@ -211,6 +270,7 @@ try_reclaim_stale_lock() {
     if [ "${reread_pid}" != "${snap_pid}" ] || [ "${reread_token}" != "${snap_token}" ]; then
         echo "[turnstile] 多重奪取の競合を検知（世代不一致）。ロックを元に戻して通常待機へ戻ります" >&2
         if mv -T "${isolate}" "${LOCK_DIR}" 2>/dev/null; then
+            record_reclaim_normal
             return 1
         else
             echo "[turnstile] エラー: 競合検知後のロック復元に失敗しました。手動確認が必要です: ${isolate}" >&2
@@ -220,16 +280,17 @@ try_reclaim_stale_lock() {
 
     echo "[turnstile] ロック保持プロセス PID=${snap_pid:-不明} は既に終了しているため強制奪取します" >&2
     rm -rf "${isolate}" 2>/dev/null
+    record_reclaim_normal
     return 0
 }
 
 acquire_lock() {
-    local waited=0
-    local last_log=0
+    local elapsed last_log=0
 
     while true; do
-        if [ "${waited}" -ge "${MAX_WAIT_SEC}" ]; then
-            echo "[turnstile] エラー: ロックを${MAX_WAIT_SEC}秒(180分)取得できませんでした。原因を問わず上限に達したため終了します。人間の確認が必要です" >&2
+        elapsed=$(( $(now_epoch) - START_EPOCH ))
+        if [ "${elapsed}" -ge "${MAX_WAIT_SEC}" ]; then
+            echo "[turnstile] エラー: ロックを${MAX_WAIT_SEC}秒(実経過時間ベース)取得できませんでした。原因を問わず上限に達したため終了します。人間の確認が必要です" >&2
             exit 1
         fi
 
@@ -238,17 +299,17 @@ acquire_lock() {
         fi
 
         if try_reclaim_stale_lock; then
-            # 奪取に成功したので即座に取得を再試行する（sleepなしでよい）
+            # 奪取に成功したので即座に取得を再試行する（sleepなしでよい）。
+            # ループ先頭に戻るため、次のイテレーションで必ず上限チェックを通る
             continue
         fi
 
-        if [ "${waited}" -eq 0 ] || [ $((waited - last_log)) -ge "${LOG_EVERY_SEC}" ]; then
-            echo "[turnstile] 他のビルドが進行中のため待機中... (${waited}秒経過)" >&2
-            last_log="${waited}"
+        if [ "${elapsed}" -eq 0 ] || [ $((elapsed - last_log)) -ge "${LOG_EVERY_SEC}" ]; then
+            echo "[turnstile] 他のビルドが進行中のため待機中... (${elapsed}秒経過)" >&2
+            last_log="${elapsed}"
         fi
 
         sleep "${POLL_INTERVAL_SEC}"
-        waited=$((waited + POLL_INTERVAL_SEC))
     done
 }
 
@@ -267,7 +328,8 @@ release_lock() {
     cur_token="$(read_info_field "${LOCK_DIR}" TOKEN)"
 
     if [ "${cur_pid}" = "$$" ] && [ "${cur_token}" = "${TOKEN}" ]; then
-        local isolate="${LOCK_ROOT}/.turnstile.release.$$.$RANDOM.$RANDOM"
+        local isolate
+        isolate="$(make_scratch_dir_name release)"
         if mv -T "${LOCK_DIR}" "${isolate}" 2>/dev/null; then
             rm -rf "${isolate}" 2>/dev/null
         fi
