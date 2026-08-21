@@ -193,6 +193,21 @@ public class CalendarLayerService {
      */
     public CalendarLayerResponse updateLayer(Long userId, String scopeType, Long scopeId,
                                              CalendarLayerUpdateRequest request) {
+        // 認可ガードはラムダの外・public 入口の冒頭に置く（本メソッドがそれ）。理由は3つ:
+        // (a) 本プロジェクトの方針として認可ガードは public 入口へ置く
+        //     （backend/.claudecode.md・AuthzControllerGuardArchTest 系の番人が前提とする配置）。
+        // (b) ここより後ろは transactionTemplate.execute(status -> ...) のラムダ経由になり、
+        //     ArchUnit の静的呼び出しグラフはラムダ境界を越えて到達判定できない。認可チェックを
+        //     ラムダの内側（旧 updateLayerBody 冒頭）に置いていたため、コントローラから
+        //     checkAffiliation への到達が検出できず AuthzControllerGuardArchTest が
+        //     誤って「認可シグナル無し」を報告していた（実行時の認可自体は生きていたが、
+        //     番人の指摘は静的検査として正当）。
+        // (c) 所属検証はデッドロック時の再試行対象にすべき処理ではない
+        //     （所属関係はトランザクション内で変化しないため、リトライのたびにやり直す意味がない）。
+        String type = validateScope(scopeType, scopeId);
+        long id = normalizedScopeId(type, scopeId);
+        checkAffiliation(userId, type, id);
+
         // デッドロック（欠陥①）はロックの粒度をいくら絞っても原理上は残る
         // （ギャップロックは互換なので、複数トランザクションが同じ空範囲を同時に確保しうる）。
         // よって「デッドロックを起こさない」のではなく「デッドロックしたら新しいトランザクションで
@@ -210,7 +225,7 @@ public class CalendarLayerService {
             attempt++;
             try {
                 return transactionTemplate.execute(status ->
-                        updateLayerBody(userId, scopeType, scopeId, request));
+                        updateLayerBody(userId, type, id, request));
             } catch (DeadlockLoserDataAccessException | CannotAcquireLockException e) {
                 if (attempt >= MAX_UPDATE_LAYER_ATTEMPTS) {
                     // リトライを尽くしても解消しない場合は握りつぶさずそのまま上げる（対処療法禁止）。
@@ -238,14 +253,13 @@ public class CalendarLayerService {
      * {@link #updateLayer} の本体（1トランザクション分）。デッドロック時は呼び出し元が
      * 新しいトランザクションでリトライできるよう、ここでは例外を握りつぶさずそのまま投げる
      * （対処療法禁止・CLAUDE.md）。
+     *
+     * <p>スコープの検証・正規化・所属検証は呼び出し元 {@link #updateLayer} が
+     * ラムダの外（public 入口）で済ませている。ここでは正規化済みの {@code type}/{@code id}
+     * をそのまま使い、再検証はしない（理由は {@link #updateLayer} のコメント参照）。</p>
      */
-    private CalendarLayerResponse updateLayerBody(Long userId, String scopeType, Long scopeId,
+    private CalendarLayerResponse updateLayerBody(Long userId, String type, long id,
                                              CalendarLayerUpdateRequest request) {
-        String type = validateScope(scopeType, scopeId);
-        long id = normalizedScopeId(type, scopeId);
-        // 認可: 非所属スコープの設定は作らせない（存在秘匿のため存在／非存在を区別しない）。
-        checkAffiliation(userId, type, id);
-
         CalendarLayerUpdateRequest body =
                 request != null ? request : new CalendarLayerUpdateRequest(null, null);
         String normalizedColor = validateAndNormalizeColor(body.color());
