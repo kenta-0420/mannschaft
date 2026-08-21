@@ -136,6 +136,10 @@ function formatMemberDate(dateStr: string): string {
 }
 
 onMounted(() => loadMembers())
+watch(
+  () => [props.scopeType, props.scopeId],
+  () => loadMembers(),
+)
 onBeforeUnmount(() => memberController?.abort())
 
 defineExpose({ refresh: loadMembers, changeRole: onChangeRole })

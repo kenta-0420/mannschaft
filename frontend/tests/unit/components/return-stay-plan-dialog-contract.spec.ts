@@ -22,4 +22,10 @@ describe('return/stay detail dialogs', () => {
       expect(source).toContain('height: 100vh')
     }
   })
+
+  it('reloads and cancels stale member data when the team scope changes', () => {
+    expect(memberTable).toContain('() => [props.scopeType, props.scopeId]')
+    expect(memberTable).toContain('() => loadMembers()')
+    expect(memberTable).toContain('memberController?.abort()')
+  })
 })

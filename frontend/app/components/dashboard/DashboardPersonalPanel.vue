@@ -265,8 +265,8 @@ function onDragEnd() {
 
         <div
           v-for="(w, index) in visibleWidgets"
-              v-show="w.key !== 'event-dismissal-reminder' || dismissalHasContent"
-              :key="w.key"
+          v-show="w.key !== 'event-dismissal-reminder' || dismissalHasContent"
+          :key="w.key"
           class="group relative flex h-full flex-col cursor-default transition-all"
           :class="[
             (w.key === 'notices' || w.key === 'my-calendar') ? 'col-span-1 md:col-span-2' : 'col-span-1',
