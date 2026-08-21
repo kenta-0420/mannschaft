@@ -121,6 +121,15 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
 
     private Long persistRoleIfNeeded() {
         if (memberRoleId == null) {
+            // 冪等化: roles はグローバル参照テーブルのため、既存の 'MEMBER' があれば再利用する
+            // （盲目的 INSERT は UNIQUE 制約違反になる。CI shard 再編成で同一 JVM 内の
+            //  同居テストが変わり得るため、存在確認なしの INSERT は禁止）。
+            List<?> found = em.createNativeQuery("SELECT id FROM roles WHERE name = 'MEMBER'")
+                    .getResultList();
+            if (!found.isEmpty()) {
+                memberRoleId = ((Number) found.get(0)).longValue();
+                return memberRoleId;
+            }
             RoleEntity role = RoleEntity.builder()
                     .name("MEMBER")
                     .displayName("メンバー")
@@ -128,6 +137,7 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
                     .isSystem(true)
                     .build();
             em.persist(role);
+            em.flush();
             memberRoleId = role.getId();
         }
         return memberRoleId;
@@ -135,6 +145,13 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
 
     private Long persistAdminRoleIfNeeded() {
         if (adminRoleId == null) {
+            // 冪等化: roles はグローバル参照テーブルのため、既存の 'ADMIN' があれば再利用する。
+            List<?> found = em.createNativeQuery("SELECT id FROM roles WHERE name = 'ADMIN'")
+                    .getResultList();
+            if (!found.isEmpty()) {
+                adminRoleId = ((Number) found.get(0)).longValue();
+                return adminRoleId;
+            }
             RoleEntity role = RoleEntity.builder()
                     .name("ADMIN")
                     .displayName("管理者")
@@ -142,6 +159,7 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
                     .isSystem(true)
                     .build();
             em.persist(role);
+            em.flush();
             adminRoleId = role.getId();
         }
         return adminRoleId;

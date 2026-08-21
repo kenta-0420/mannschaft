@@ -67,8 +67,11 @@ class ScheduleVisibilityResolverIntegrationTest extends AbstractMySqlIntegration
         // テスト間永続するグローバル参照テーブル。同一 shard 内の非トランザクションテストが commit した
         // 'MEMBER' が残存していると無条件 INSERT は roles.UK(name) に衝突する（Duplicate entry 'MEMBER'）。
         // ON DUPLICATE KEY UPDATE で「在れば no-op・無ければ INSERT」にし、shard 構成に依らず堅牢化する。
+        // 冪等化: roles はグローバル参照テーブルのため INSERT IGNORE で二重INSERTを無害化する
+        // （同一 name の重複INSERTは UNIQUE 制約違反になる。CI shard 再編成で同一 JVM 内の
+        // 同居テストが変わり得るため、盲目的 INSERT は禁止。既存行があれば黙って再利用する）。
         em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                         + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW()) "
                         + "ON DUPLICATE KEY UPDATE id = id")
                 .executeUpdate();

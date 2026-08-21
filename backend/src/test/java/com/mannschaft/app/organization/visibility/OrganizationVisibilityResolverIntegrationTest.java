@@ -55,12 +55,15 @@ class OrganizationVisibilityResolverIntegrationTest extends AbstractMySqlIntegra
     @BeforeEach
     void setUp() {
         // roles 挿入
+        // 冪等化: roles はグローバル参照テーブルのため INSERT IGNORE で二重INSERTを無害化する
+        // （同一 name の重複INSERTは UNIQUE 制約違反になる。CI shard 再編成で同一 JVM 内の
+        // 同居テストが変わり得るため、盲目的 INSERT は禁止。既存行があれば黙って再利用する）。
         em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                         + "VALUES ('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW())")
                 .executeUpdate();
         em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                "INSERT IGNORE INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
                         + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
                 .executeUpdate();
         em.flush();
