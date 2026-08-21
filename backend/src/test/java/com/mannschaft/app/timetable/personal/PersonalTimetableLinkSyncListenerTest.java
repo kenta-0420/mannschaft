@@ -11,6 +11,8 @@ import com.mannschaft.app.timetable.personal.entity.PersonalTimetableEntity;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetablePeriodEntity;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableSettingsEntity;
 import com.mannschaft.app.timetable.personal.entity.PersonalTimetableSlotEntity;
+import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
+import com.mannschaft.app.timetable.personal.event.PersonalTimetableSyncNotificationEvent;
 import com.mannschaft.app.timetable.personal.listener.PersonalTimetableLinkSyncListener;
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetablePeriodRepository;
 import com.mannschaft.app.timetable.personal.repository.PersonalTimetableRepository;
@@ -25,6 +27,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.lang.reflect.Field;
 import java.time.LocalDate;
@@ -34,7 +37,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -59,12 +61,12 @@ class PersonalTimetableLinkSyncListenerTest {
     @Mock private TimetableChangeRepository timetableChangeRepository;
     @Mock private TimetableSlotRepository timetableSlotRepository;
     @Mock private ScheduleRepository scheduleRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private PersonalTimetableLinkSyncListener listener;
 
     @BeforeEach
     void setUp() {
-        // notificationHelper は Optional 注入なので null のまま動かす
         listener = new PersonalTimetableLinkSyncListener(
                 personalSlotRepository,
                 personalTimetableRepository,
@@ -72,7 +74,20 @@ class PersonalTimetableLinkSyncListenerTest {
                 settingsRepository,
                 timetableChangeRepository,
                 timetableSlotRepository,
-                scheduleRepository);
+                scheduleRepository,
+                eventPublisher);
+    }
+
+    /**
+     * {@link #eventPublisher} へ publish された唯一の {@link PersonalTimetableSyncNotificationEvent}
+     * から通知配送要求一覧を取り出すヘルパー（Issue #2834 / CMP-056 型確立: 通知は
+     * {@code NotificationHelper} 直接呼び出しではなく AFTER_COMMIT イベント publish に置き換わった）。
+     */
+    private List<NotificationDeliveryRequest> capturedNotificationRequests() {
+        ArgumentCaptor<PersonalTimetableSyncNotificationEvent> captor =
+                ArgumentCaptor.forClass(PersonalTimetableSyncNotificationEvent.class);
+        verify(eventPublisher).publishEvent(captor.capture());
+        return captor.getValue().requests();
     }
 
     private static PersonalTimetableSlotEntity buildSlot(String dow, int period) {
@@ -235,12 +250,9 @@ class PersonalTimetableLinkSyncListenerTest {
         com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache =
                 org.mockito.Mockito.mock(com.mannschaft.app.common.i18n.UserLocaleCache.class);
         given(userLocaleCache.getLocale(USER_ID)).willReturn("en");
-        com.mannschaft.app.notification.service.NotificationHelper notificationHelper =
-                org.mockito.Mockito.mock(com.mannschaft.app.notification.service.NotificationHelper.class);
 
         setPrivateField(listener, "userLocaleCache", userLocaleCache);
         setPrivateField(listener, "messageSource", realMessageSource);
-        setPrivateField(listener, "notificationHelper", notificationHelper);
 
         LocalDate target = LocalDate.of(2026, 5, 4);
         TimetableChangeEntity change = buildChange(TimetableChangeType.CANCEL, target, 3);
@@ -263,13 +275,15 @@ class PersonalTimetableLinkSyncListenerTest {
         listener.onChangeCreated(new TimetableChangeCreatedEvent(
                 CHANGE_ID, TT_ID, null, TimetableChangeType.CANCEL, target, true, true));
 
-        org.mockito.ArgumentCaptor<String> titleCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
-        org.mockito.ArgumentCaptor<String> bodyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
-        verify(notificationHelper).notify(
-                any(), eq("TIMETABLE_CHANGE_SYNCED"), titleCaptor.capture(), bodyCaptor.capture(),
-                any(), any(), any(), any(), any(), any());
-        assertThat(titleCaptor.getValue()).contains("Cancelled").doesNotContain("{0}");
-        assertThat(bodyCaptor.getValue()).doesNotContain("{0}").doesNotContain("{1}");
+        // Issue #2834 / CMP-056: 通知は NotificationHelper 直接呼び出しではなく
+        // AFTER_COMMIT で配送される PersonalTimetableSyncNotificationEvent の publish に置き換わった。
+        // 「サービス（本リスナー第1段）がイベントを publish すること」をここで検証する。
+        List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
+        assertThat(requests).hasSize(1);
+        NotificationDeliveryRequest request = requests.get(0);
+        assertThat(request.notificationType()).isEqualTo("TIMETABLE_CHANGE_SYNCED");
+        assertThat(request.title()).contains("Cancelled").doesNotContain("{0}");
+        assertThat(request.body()).doesNotContain("{0}").doesNotContain("{1}");
     }
 
     private static void setPrivateField(Object target, String fieldName, Object value)
@@ -305,11 +319,8 @@ class PersonalTimetableLinkSyncListenerTest {
                 org.mockito.Mockito.mock(com.mannschaft.app.common.i18n.UserLocaleCache.class);
         given(userLocaleCache.getLocale(USER_ID))
                 .willThrow(new org.springframework.dao.DataAccessResourceFailureException("DB down"));
-        com.mannschaft.app.notification.service.NotificationHelper notificationHelper =
-                org.mockito.Mockito.mock(com.mannschaft.app.notification.service.NotificationHelper.class);
 
         setPrivateField(listener, "userLocaleCache", userLocaleCache);
-        setPrivateField(listener, "notificationHelper", notificationHelper);
 
         LocalDate target = LocalDate.of(2026, 5, 4);
         TimetableChangeEntity change = buildChange(TimetableChangeType.CANCEL, target, 3);
@@ -340,8 +351,9 @@ class PersonalTimetableLinkSyncListenerTest {
                 CHANGE_ID, TT_ID, null, TimetableChangeType.CANCEL, target, true, true));
 
         verify(scheduleRepository).save(any(ScheduleEntity.class));
-        verify(notificationHelper, never()).notify(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        // 通知の組み立て（locale解決）に失敗した場合、その1コマ分の通知は隔離されて publish されない。
+        // 「リスナーが通知を呼ぶこと」の裏返し（呼ばれない）を検証する。
+        verify(eventPublisher, never()).publishEvent(any(PersonalTimetableSyncNotificationEvent.class));
     }
 
     @Test
@@ -354,12 +366,9 @@ class PersonalTimetableLinkSyncListenerTest {
         com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache =
                 org.mockito.Mockito.mock(com.mannschaft.app.common.i18n.UserLocaleCache.class);
         given(userLocaleCache.getLocale(USER_ID)).willReturn("en");
-        com.mannschaft.app.notification.service.NotificationHelper notificationHelper =
-                org.mockito.Mockito.mock(com.mannschaft.app.notification.service.NotificationHelper.class);
 
         setPrivateField(listener, "userLocaleCache", userLocaleCache);
         setPrivateField(listener, "messageSource", realMessageSource);
-        setPrivateField(listener, "notificationHelper", notificationHelper);
 
         ScheduleEntity sch = ScheduleEntity.builder()
                 .userId(USER_ID).title("[休講] ドイツ語Ⅰ")
@@ -377,14 +386,18 @@ class PersonalTimetableLinkSyncListenerTest {
 
         listener.onChangeDeleted(new TimetableChangeDeletedEvent(CHANGE_ID, TT_ID));
 
-        org.mockito.ArgumentCaptor<String> bodyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
-        verify(notificationHelper).notify(
-                any(), eq("TIMETABLE_CHANGE_REVOKED"), any(), bodyCaptor.capture(),
-                any(), any(), any(), any(), any(), any());
-        assertThat(bodyCaptor.getValue())
+        List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
+        assertThat(requests).hasSize(1);
+        NotificationDeliveryRequest request = requests.get(0);
+        assertThat(request.notificationType()).isEqualTo("TIMETABLE_CHANGE_REVOKED");
+        assertThat(request.body())
                 .contains("2026-05-04")
                 .doesNotContain("{0}")
                 .doesNotContain("{1}")
                 .doesNotContain("[休講]");
+        // AC-5: 取消通知は削除済み SCHEDULE を参照しない。生存中の personalTimetableId を参照する。
+        assertThat(request.sourceType()).isEqualTo("PERSONAL_TIMETABLE_SYNC_REVOKED");
+        assertThat(request.sourceId()).isEqualTo(PT_ID);
+        assertThat(request.actionUrl()).isEqualTo("/me/personal-timetable/" + PT_ID);
     }
 }

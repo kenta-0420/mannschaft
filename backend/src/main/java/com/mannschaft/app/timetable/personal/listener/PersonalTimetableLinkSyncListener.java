@@ -199,9 +199,16 @@ public class PersonalTimetableLinkSyncListener {
                 sch.softDelete();
                 scheduleRepository.save(sch);
                 if (sch.getUserId() != null) {
-                    NotificationDeliveryRequest request = buildRevokedNotificationRequest(sch, slotsBySlotId);
-                    if (request != null) {
-                        notificationRequests.add(request);
+                    try {
+                        NotificationDeliveryRequest request = buildRevokedNotificationRequest(sch, slotsBySlotId);
+                        if (request != null) {
+                            notificationRequests.add(request);
+                        }
+                    } catch (Exception ex) {
+                        // 通知組み立て失敗は当該スケジュールだけを隔離する（他の取消対象の
+                        // softDelete/save・通知には影響させない）。
+                        log.warn("取消通知の組み立てに失敗（継続）: scheduleId={}, userId={}, error={}",
+                                sch.getId(), sch.getUserId(), ex.getMessage());
                     }
                 }
             }
@@ -350,24 +357,32 @@ public class PersonalTimetableLinkSyncListener {
         // F04.3 通知（受信者 locale に従って件名を組み立てる。Issue #2715 ロットB）。
         // 通知先スケジュールは本メソッド内で今まさに save したエイリブな行のため、
         // sourceType=SCHEDULE のまま Resolver ガードを通しても問題ない。
-        Locale locale = resolveLocale(personal.getUserId());
-        String notifTitle = buildSyncedNotificationTitle(change, slot, locale);
-        String notifBody = messageSource != null
-                ? messageSource.getMessage(
-                        "notification.timetable.personalLink.synced.body",
-                        new Object[]{slot.getSubjectName(), targetDate.toString()},
-                        slot.getSubjectName() + "（" + targetDate + "）", locale)
-                : slot.getSubjectName() + "（" + targetDate + "）";
-        return new NotificationDeliveryRequest(
-                personal.getUserId(),
-                SYNCED_NOTIFICATION_TYPE,
-                NotificationPriority.NORMAL,
-                notifTitle,
-                notifBody,
-                "SCHEDULE", entity.getId(),
-                NotificationScopeType.PERSONAL, personal.getUserId(),
-                "/schedules/" + (entity.getId() == null ? "" : entity.getId()),
-                null);
+        // 通知の組み立て失敗（locale解決の DataAccessException 等）はこの1コマ分だけ隔離し、
+        // 他のリンク済みコマの反映処理・通知には影響させない（PR #2809 検分差し戻し①と同じ隔離範囲）。
+        try {
+            Locale locale = resolveLocale(personal.getUserId());
+            String notifTitle = buildSyncedNotificationTitle(change, slot, locale);
+            String notifBody = messageSource != null
+                    ? messageSource.getMessage(
+                            "notification.timetable.personalLink.synced.body",
+                            new Object[]{slot.getSubjectName(), targetDate.toString()},
+                            slot.getSubjectName() + "（" + targetDate + "）", locale)
+                    : slot.getSubjectName() + "（" + targetDate + "）";
+            return new NotificationDeliveryRequest(
+                    personal.getUserId(),
+                    SYNCED_NOTIFICATION_TYPE,
+                    NotificationPriority.NORMAL,
+                    notifTitle,
+                    notifBody,
+                    "SCHEDULE", entity.getId(),
+                    NotificationScopeType.PERSONAL, personal.getUserId(),
+                    "/schedules/" + (entity.getId() == null ? "" : entity.getId()),
+                    null);
+        } catch (Exception ex) {
+            log.warn("同期通知の組み立てに失敗（継続）: userId={}, error={}",
+                    personal.getUserId(), ex.getMessage());
+            return null;
+        }
     }
 
     /**
