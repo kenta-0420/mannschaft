@@ -1,6 +1,7 @@
 package com.mannschaft.app.notification.fanout;
 
 import com.mannschaft.app.common.batch.BatchEndpointExempt;
+import com.mannschaft.app.common.i18n.DeliveryLocales;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationBulkFanoutService;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,10 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -61,6 +65,8 @@ public class NotificationFanoutWorker {
     private final FanoutRecipientSourceRegistry recipientSourceRegistry;
     private final NotificationFanoutJobService jobService;
     private final NotificationBulkFanoutService bulkFanoutService;
+    /** ロケール別・描画済み文面の子表リポジトリ（Issue #2871）。 */
+    private final NotificationFanoutJobMessageRepository jobMessageRepository;
 
     /**
      * 5 秒間隔で実行可能ジョブを 1 周回処理する。
@@ -172,35 +178,44 @@ public class NotificationFanoutWorker {
             if (job.getShardCount() < 1) {
                 job.setShardCount((short) 1);
             }
+            // Issue #2871: ロケール別の描画済み文面をジョブ 1 件につき 1 回だけ読む（高々 6 行）。
+            // チャンクごと・受信者ごとに引かない（チャンク数にも受信者数にも比例させない）。
+            Map<String, NotificationFanoutJobMessage> messagesByLocale = loadMessages(job.getId());
             while (true) {
                 long cursor = job.getCursorSubjectId();
-                // 常に 4 引数版で受信者供給する。VILLAGE / TEAM は既定実装が include_supporters を無視して
-                // 3 引数版へ委譲するため挙動不変。ORGANIZATION のみトグルを keyset クエリへ運搬する（Wave-2）。
-                // include_supporters は非 NULL 列（DEFAULT TRUE）。防御的に NULL は true 扱い（旧 VILLAGE 行の全員配信を保つ）。
+                // include_supporters は非 NULL 列（DEFAULT TRUE）。防御的に NULL は true 扱い
+                //（旧 VILLAGE 行の全員配信を保つ）。
                 boolean includeSupporters = !Boolean.FALSE.equals(job.getIncludeSupporters());
-                // シャード対応 6 引数版で受信者供給する（CMP-001⑤）。
+                // 受信者の取得条件は FanoutPageRequest 1 つに集約されている（Issue #2871）。
                 // 各シャードジョブ（shard_index=0..N-1・shard_count=N）は自分のモジュロ区画
-                // （subject_id % shardCount == shardIndex）だけを配信し、シャード間で重複しない。
-                // shard_count=1 のジョブは 6 引数既定実装がそのまま 4 引数版へ委譲＝既存挙動不変。
-                List<Long> page = source.nextPage(job.getScopeRef(), cursor, CHUNK_SIZE, includeSupporters,
-                        job.getShardIndex(), job.getShardCount());
+                //（subject_id % shardCount == shardIndex）だけを配信し、シャード間で重複しない。
+                // shard_count=1 のジョブは各実装が従来どおり非シャード版クエリを引く＝既存挙動不変。
+                List<FanoutRecipient> page = source.nextPage(new FanoutPageRequest(
+                        job.getScopeRef(), cursor, CHUNK_SIZE, includeSupporters,
+                        job.getShardIndex(), job.getShardCount()));
                 if (page.isEmpty()) {
                     jobService.markDone(job.getId());
                     break;
                 }
                 // P1 バルク INSERT ＋ チャンクコミット ＋ 専用プール配信を再利用。
                 // 通知行の per-row スコープは現行の村行事還流と同一（SYSTEM / scopeId=null）。
+                //
+                // Issue #2871: 行ごとに title / body を差し替える。notifications への多値 INSERT は
+                // 元から 1 行 14 列で title / body を per-row に持っており、共有引数になっていたのは
+                // Java 側の API だけだった。よって INSERT 文数・トランザクション数は
+                // 「1 チャンクにつき 1」のまま（受信者数にもロケール数にも比例しない・AC-3）。
                 bulkFanoutService.insertAndDispatchChunk(
-                        page,
+                        toRows(page, messagesByLocale),
                         job.getNotificationType(), job.getPriority(),
-                        job.getTitle(), job.getBody(),
                         job.getSourceType(), job.getSourceId(),
                         NotificationScopeType.SYSTEM, null,
                         job.getActionUrl(), job.getActorId(), job.getOrganizationId());
 
-                long newCursor = page.get(page.size() - 1);
+                // 再開カーソルは user_id ただ 1 本のまま（locale はカーソルに含めない・AC-4）。
+                long newCursor = page.get(page.size() - 1).userId();
                 long added = page.size();
                 // in-memory カーソル前進（ループ終了条件）＋ 独立コミットで耐久化（クラッシュ再開の要・AC-2）。
+                // 順序は「INSERT 確定 → カーソル前進」を厳守する（逆にすると欠落する）。
                 job.setCursorSubjectId(newCursor);
                 jobService.advanceCursor(job.getId(), newCursor, added);
             }
@@ -210,5 +225,57 @@ public class NotificationFanoutWorker {
                     job.getId(), job.getScopeType(), job.getScopeRef(), job.getCursorSubjectId(), ex);
             jobService.recordFailure(job.getId(), ex.getClass().getSimpleName() + ": " + ex.getMessage(), MAX_RETRY);
         }
+    }
+
+    /**
+     * ジョブのロケール別・描画済み文面を読み込む（Issue #2871）。
+     *
+     * <p>ジョブ 1 件につき 1 回だけ呼ぶ。戻りは高々 6 エントリ。</p>
+     *
+     * <p>文面が 1 行も無いジョブは<b>配信してはならない</b>。enqueue は親ジョブと文面 6 行を同一 TX で
+     * 確定するため通常は起こらないが、万一起きた場合に「空タイトルで配信する」と、利用者には意味不明の
+     * 通知が届いたうえログにも何も残らない（最悪の握り潰し）。ここで例外を投げて
+     * {@code recordFailure} → リトライ／DEAD_LETTER の可視な経路へ落とす。</p>
+     */
+    private Map<String, NotificationFanoutJobMessage> loadMessages(java.util.UUID jobId) {
+        List<NotificationFanoutJobMessage> rows = jobMessageRepository.findByJobId(jobId);
+        if (rows.isEmpty()) {
+            throw new IllegalStateException(
+                    "fan-out ジョブにロケール別文面が 1 行も無い（enqueue が壊れている）: jobId=" + jobId);
+        }
+        Map<String, NotificationFanoutJobMessage> byLocale = new HashMap<>();
+        for (NotificationFanoutJobMessage row : rows) {
+            byLocale.put(row.getLocale(), row);
+        }
+        return byLocale;
+    }
+
+    /**
+     * 受信者ページを「受信者ごとの user_id ＋ title ＋ body」の行リストへ写す（Issue #2871）。
+     *
+     * <p>{@link FanoutRecipient} の locale は {@code DeliveryLocales} で 6 種のいずれかに正規化済みだが、
+     * 万一その locale の文面行が欠けていた場合は既定ロケール（{@code ja}）の行へ落とす。ここで例外を
+     * 投げてチャンクごと落とすより、既定言語で確実に届けるほうが「欠落なし」の不変条件に忠実である。
+     * 文面がまったく無い（既定すら無い）場合は {@link #loadMessages} が先に例外で止めている。</p>
+     */
+    private static List<NotificationBulkFanoutService.RecipientMessage> toRows(
+            List<FanoutRecipient> page, Map<String, NotificationFanoutJobMessage> messagesByLocale) {
+        NotificationFanoutJobMessage fallback = messagesByLocale.get(DeliveryLocales.DEFAULT_TAG);
+        List<NotificationBulkFanoutService.RecipientMessage> rows = new ArrayList<>(page.size());
+        for (FanoutRecipient recipient : page) {
+            NotificationFanoutJobMessage message = messagesByLocale.get(recipient.locale());
+            if (message == null) {
+                message = fallback;
+            }
+            if (message == null) {
+                // 既定ロケールの行すら無い＝loadMessages を通り抜けた想定外。握り潰さず露見させる。
+                throw new IllegalStateException(
+                        "受信者の配信ロケールに対応する文面が無く既定ロケールの文面も無い: locale="
+                                + recipient.locale());
+            }
+            rows.add(new NotificationBulkFanoutService.RecipientMessage(
+                    recipient.userId(), message.getTitle(), message.getBody()));
+        }
+        return rows;
     }
 }

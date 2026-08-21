@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift.event;
 
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.membership.fanout.TeamFanoutRecipientSource;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
@@ -93,7 +94,9 @@ class ShiftPublishedEventTest {
                     eq("SHIFT_PUBLISHED"),
                     any(UUID.class),                               // 冪等キー
                     isNull(),                                      // organizationId: org 非依存
-                    any(String.class), any(String.class),
+                    // Issue #2871: シフト公開は可変部分が無く全文がアプリの文言。
+                    // 文面種別だけを渡し、引数は空配列。
+                    eq(FanoutMessageKind.SHIFT_PUBLISHED), eq(new String[0]),
                     eq(NotificationPriority.NORMAL),
                     eq("SHIFT_SCHEDULE"), eq(SCHEDULE_ID),
                     eq("/shifts/schedules/" + SCHEDULE_ID),
@@ -106,8 +109,7 @@ class ShiftPublishedEventTest {
             ShiftPublishedEvent event = new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, TRIGGERED_BY, PUBLISHED_AT);
             willThrow(new RuntimeException("fan-out 一時障害"))
                     .given(fanoutJobService).enqueue(
-                            any(), any(), any(), any(), any(),
-                            any(), any(), any(), any(), any(), any(), any());
+                            any(), any(), any(), any(), any(),any(FanoutMessageKind.class), any(String[].class), any(), any(), any(), any(), any());
 
             // 状態遷移は既に確定済み。fan-out 失敗はここで握られ、リスナーの外へは伝播しない。
             assertThatCode(() -> listener.onShiftPublished(event)).doesNotThrowAnyException();
@@ -124,8 +126,7 @@ class ShiftPublishedEventTest {
 
             ArgumentCaptor<UUID> uuidCaptor = ArgumentCaptor.forClass(UUID.class);
             verify(fanoutJobService, times(2)).enqueue(
-                    any(), any(), any(), uuidCaptor.capture(), any(),
-                    any(), any(), any(), any(), any(), any(), any());
+                    any(), any(), any(), uuidCaptor.capture(), any(),any(FanoutMessageKind.class), any(String[].class), any(), any(), any(), any(), any());
 
             // 二度の発火が同一 source_event_uuid を運ぶ → uk_fanout_idempotency で 1 ジョブに収束する。
             org.assertj.core.api.Assertions.assertThat(uuidCaptor.getAllValues())
@@ -145,8 +146,7 @@ class ShiftPublishedEventTest {
 
             ArgumentCaptor<UUID> uuidCaptor = ArgumentCaptor.forClass(UUID.class);
             verify(fanoutJobService, times(2)).enqueue(
-                    any(), any(), any(), uuidCaptor.capture(), any(),
-                    any(), any(), any(), any(), any(), any(), any());
+                    any(), any(), any(), uuidCaptor.capture(), any(),any(FanoutMessageKind.class), any(String[].class), any(), any(), any(), any(), any());
 
             // 別 publishedAt ゆえ別 UUID → uk_fanout_idempotency に衝突せず新ジョブが立ち再通知される。
             org.assertj.core.api.Assertions.assertThat(uuidCaptor.getAllValues())
