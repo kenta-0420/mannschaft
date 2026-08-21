@@ -1,5 +1,6 @@
 package com.mannschaft.app.notification;
 
+import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
@@ -64,16 +65,32 @@ class NotificationHelperLocalizedFanoutTest {
      */
     private ListAppender<ILoggingEvent> logAppender;
 
+    /**
+     * このテストが検証する {@code log.info} は実効ログレベルに依存する。
+     * {@code test} プロファイルの root レベルは WARN のため、同一 gradle テストフォーク内で
+     * 先に {@code @ActiveProfiles("test")} の {@code @SpringBootTest} が走ると root が WARN に
+     * 書き換わり、その状態が後続のプレーン単体テスト（本クラス）へ持ち越されて INFO ログが
+     * 握りつぶされる。ローカルで本クラス単体を実行すると Spring コンテキストが起動しないため
+     * 再現せず、すり抜けの温床になる。よってテスト側で明示的に INFO へ設定し、他テストへの
+     * 副作用を残さないよう元のレベルへ確実に復元する。
+     */
+    private Level originalLogLevel;
+
     @BeforeEach
     void attachLogAppender() {
+        Logger logger = (Logger) LoggerFactory.getLogger(NotificationHelper.class);
+        originalLogLevel = logger.getLevel();
+        logger.setLevel(Level.INFO);
         logAppender = new ListAppender<>();
         logAppender.start();
-        ((Logger) LoggerFactory.getLogger(NotificationHelper.class)).addAppender(logAppender);
+        logger.addAppender(logAppender);
     }
 
     @AfterEach
     void detachLogAppender() {
-        ((Logger) LoggerFactory.getLogger(NotificationHelper.class)).detachAppender(logAppender);
+        Logger logger = (Logger) LoggerFactory.getLogger(NotificationHelper.class);
+        logger.detachAppender(logAppender);
+        logger.setLevel(originalLogLevel);
     }
 
     @Test
