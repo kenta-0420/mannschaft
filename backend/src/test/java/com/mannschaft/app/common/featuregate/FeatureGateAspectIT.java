@@ -78,16 +78,32 @@ class FeatureGateAspectIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private CacheManager cacheManager;
 
-    /** (AC-12) キャッシュはロールバック対象外のため各テスト前後で明示クリアする。 */
+    /**
+     * (AC-12) キャッシュはロールバック対象外のため各テスト前後で明示クリアする。
+     *
+     * <p><b>DB 側は {@code deleteAll()} で掃除しない</b>（CI実測で踏んだ罠）。
+     * このクラスは {@code @Transactional} でテストメソッドごとにロールバックされるため、
+     * DB 側の後始末はロールバックに任せれば十分であり、{@code deleteAll()} は本来不要である。
+     * それどころか {@code FLAG}（{@code FEATURE_SHIFT_ENABLED}）は
+     * {@code V187.20260820092252__seed_feature_gate_flags.sql} で実 DB に既に seed 済みであり、
+     * {@code deleteAll()} は該当行の DELETE を <b>persistence context の action queue に積むだけ</b>
+     * で即時実行しない。Hibernate の flush 実行順序はエンティティ種別に関わらず
+     * 「挿入 → 更新 → 削除」の固定順であるため、その後 {@code insertFlag} が新規行として
+     * INSERT を積むと、次の flush（クエリ発火時の auto-flush 等）で
+     * <b>先に積まれていたはずの DELETE より先に INSERT が実行され</b>、
+     * seed 済みの同一 {@code flag_key} と衝突して
+     * {@code DataIntegrityViolationException}（Duplicate entry）になる
+     * （実測: CI の {@code Test (shard 5)} で AC-12 が実際にこの経路で落ちた）。
+     * 根治として {@link #insertFlag(boolean)} を「既存行があれば更新、無ければ挿入」の
+     * upsert に変更し、そもそも DB 側のクリアを不要にした。</p>
+     */
     @BeforeEach
     void setUp() {
-        featureFlagRepository.deleteAll();
         clearFlagCaches();
     }
 
     @AfterEach
     void tearDown() {
-        featureFlagRepository.deleteAll();
         clearFlagCaches();
     }
 
@@ -100,12 +116,21 @@ class FeatureGateAspectIT extends AbstractMySqlIntegrationTest {
         }
     }
 
+    /**
+     * {@code FLAG}（seed 済みキー）の有効/無効を設定する。
+     *
+     * <p>seed 済みの実キーで検証する価値を保つため、キーそのものはダミーへ差し替えない。
+     * その代わり「既存行があれば更新、無ければ挿入」の upsert にして、
+     * seed 済み行との一意制約衝突（実測: AC-12 で発生した Duplicate entry）を構造的に回避する。</p>
+     */
     private void insertFlag(boolean enabled) {
-        featureFlagRepository.save(FeatureFlagEntity.builder()
-                .flagKey(FLAG)
-                .isEnabled(enabled)
-                .description("Gate基盤工事③ 試練用フラグ")
-                .build());
+        FeatureFlagEntity entity = featureFlagRepository.findByFlagKey(FLAG)
+                .orElseGet(() -> FeatureFlagEntity.builder()
+                        .flagKey(FLAG)
+                        .description("Gate基盤工事③ 試練用フラグ")
+                        .build());
+        entity.updateFlag(enabled, null);
+        featureFlagRepository.save(entity);
     }
 
     // ===============================================================
@@ -120,10 +145,9 @@ class FeatureGateAspectIT extends AbstractMySqlIntegrationTest {
         insertFlag(false);
         assertThat(featureFlagService.isEnabled(FLAG)).isFalse();
 
-        // 明示クリア後に行を差し替えると、キャッシュではなく DB の新値が読まれる
-        featureFlagRepository.deleteAll();
-        clearFlagCaches();
+        // DB の値を差し替えてから明示クリアすると、キャッシュではなく DB の新値が読まれる
         insertFlag(true);
+        clearFlagCaches();
 
         assertThat(featureFlagService.isEnabled(FLAG))
                 .as("キャッシュがクリアされていれば true（クリア漏れなら前の false が返る）")
