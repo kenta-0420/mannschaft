@@ -18,6 +18,11 @@
 #     - main ブランチ保護 Ruleset の必須チェック「Compile & Test」は従来どおり 1 個。
 #     - docs-only PR は detect で backend_changed=false → shard skip → ゲート success。
 #     - shard が 1 つでも失敗すればゲート fail。
+# 2026-08-21: shard の振り分けを「完全修飾クラス名の安定ハッシュ」から、
+#   backend/src/test/resources/shard-weights.properties（実測秒数）を使った
+#   貪欲法の重み付け振り分けへ改良（build.gradle.kts 側の変更のみ・matrix構成は不変）。
+#   重み表に無いクラス・重み表自体が無い場合は従来の安定ハッシュへ自動フォールバックする。
+#   詳細: backend/.claudecode.md §31、再生成は backend/scripts/regen-shard-weights.sh。
 # 2026-06-20: D-5 番人 grep ガード追加 — @Builder(toBuilder=true) は @Retention(SOURCE)
 #   のため ArchUnit（バイトコード解析）では検知不能。ソースレベルの bash grep で
 #   BaseEntity 継承クラスへの @Builder(toBuilder=true) 残存を CI で検出する。

@@ -290,10 +290,24 @@ tasks.withType<Test> {
     //  「1 件でも検出したら fail」する恒久 ArchRule へ格上げしたため不要になり撤去した。）
 
     // =====================================================================
-    // CI テストシャーディング（backend CI 高速化②）
+    // CI テストシャーディング（backend CI 高速化② → 実行時間ベースの重み付け振り分けへ改良）
     // ---------------------------------------------------------------------
-    // -Pshard.total=N -Pshard.index=i（0 始まり）を受け取り、テストクラスを
-    // 「完全修飾クラス名の安定ハッシュ % total == index」で機械的に N 分割する。
+    // -Pshard.total=N -Pshard.index=i（0 始まり）を受け取り、テストクラスを N 分割する。
+    //
+    // 【振り分けアルゴリズム】
+    //   backend/src/test/resources/shard-weights.properties（クラス単位の実測秒数、
+    //   backend/scripts/regen-shard-weights.sh で生成）が存在する場合:
+    //     貪欲法（bin packing の Longest Processing Time first）で決定論的に割り付ける。
+    //     全トップレベルクラスを重い順にソートし、その時点で合計時間が最小の shard へ
+    //     順に割り当てる。重み表に無いクラス（新規テスト等）は末尾に回し、
+    //     従来の安定ハッシュ（String.hashCode % total）で shard を決める
+    //     （＝重み表が古くても新規テストは必ずどれか 1 shard にだけ割り当たる）。
+    //   重み表ファイル自体が存在しない場合:
+    //     全クラスが従来の安定ハッシュ方式にフォールバックする（旧動作と完全に同じ）。
+    //
+    //   いずれの経路でも「1 クラス＝ちょうど 1 shard」が保証される
+    //   （貪欲法・フォールバックとも関数は決定論的かつ全域で定義されるため、
+    //    取りこぼし・重複割り当ては構造的に起こり得ない）。
     //
     // - プロパティ未指定時は何も除外しない＝全テスト実行（現状動作を完全維持）。
     // - GitHub Actions の matrix で各 shard を別ランナーへ割り当て、壁時計を縮める。
@@ -306,7 +320,10 @@ tasks.withType<Test> {
     // path 例: "com/mannschaft/app/user/UserServiceTest.class"
     //   → 末尾 ".class" を除き "/" を "." に変換して完全修飾名を得る。
     //   → ネストクラス（"Foo$Bar.class"）はトップレベルと同じ shard に乗せるため、
-    //     '$' より前のトップレベル名でハッシュする（取りこぼし・分断を防ぐ）。
+    //     '$' より前のトップレベル名でハッシュ／重み参照する（取りこぼし・分断を防ぐ）。
+    //
+    // 【重み表の再生成】テストクラスが大幅に増減した時に
+    //   backend/scripts/regen-shard-weights.sh を実行（詳細は同スクリプト参照）。
     // =====================================================================
     val shardTotal = (project.findProperty("shard.total") as String?)?.toIntOrNull()
     val shardIndex = (project.findProperty("shard.index") as String?)?.toIntOrNull()
@@ -314,6 +331,56 @@ tasks.withType<Test> {
         require(shardIndex in 0 until shardTotal) {
             "shard.index ($shardIndex) は 0..${shardTotal - 1} の範囲でなければならない（shard.total=$shardTotal）"
         }
+
+        // 安定ハッシュ関数（フォールバック用・従来と同一）
+        fun hashBucket(fqcnTopLevel: String): Int =
+            ((fqcnTopLevel.hashCode().toLong() and 0xFFFFFFFFL) % shardTotal).toInt()
+
+        // 重み表の読み込み（存在しなければ空 map → 全クラスがハッシュへフォールバック）
+        val weightsFile = file("src/test/resources/shard-weights.properties")
+        val weights: Map<String, Double> = if (weightsFile.exists()) {
+            weightsFile.readLines()
+                .asSequence()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("#") }
+                .mapNotNull { line ->
+                    val idx = line.indexOf('=')
+                    if (idx < 0) return@mapNotNull null
+                    val key = line.substring(0, idx).trim()
+                    val value = line.substring(idx + 1).trim().toDoubleOrNull() ?: return@mapNotNull null
+                    key to value
+                }
+                .toMap()
+        } else {
+            emptyMap()
+        }
+
+        // 貪欲法で「重み表に載っているクラス」だけを事前に shard 割り付けする。
+        // 重い順にソートし、その時点で合計時間が最小の shard へ割り当てる
+        // （Longest Processing Time first；理論上界は最適解の 4/3 倍）。
+        val weightedBucketOf: Map<String, Int> = if (weights.isNotEmpty()) {
+            val shardTotals = DoubleArray(shardTotal)
+            val assignment = LinkedHashMap<String, Int>()
+            weights.entries
+                .sortedByDescending { it.value }
+                .forEach { (fqcn, seconds) ->
+                    var minIdx = 0
+                    for (i in 1 until shardTotal) {
+                        if (shardTotals[i] < shardTotals[minIdx]) minIdx = i
+                    }
+                    assignment[fqcn] = minIdx
+                    shardTotals[minIdx] += seconds
+                }
+            logger.lifecycle(
+                "[shard] 重み表 ${weightsFile.name} を読み込み ${weights.size} クラスを貪欲法で割り付けた。" +
+                    "shard 別合計(秒): " + shardTotals.mapIndexed { i, t -> "$i=${"%.1f".format(t)}" }.joinToString(", ")
+            )
+            assignment
+        } else {
+            logger.lifecycle("[shard] 重み表が見つからないため全クラスを安定ハッシュへフォールバックする")
+            emptyMap()
+        }
+
         logger.lifecycle("[shard] テストを $shardTotal 分割し index=$shardIndex のみ実行する")
         exclude { element ->
             // ディレクトリは除外判定対象外（false=含める）
@@ -325,8 +392,9 @@ tasks.withType<Test> {
                 .removeSuffix(".class")
                 .replace('/', '.')
                 .substringBefore('$')
-            // String.hashCode を Long 化して非負正規化 → 安定・決定論的
-            val bucket = ((fqcnTopLevel.hashCode().toLong() and 0xFFFFFFFFL) % shardTotal).toInt()
+            // 重み表に載っていれば貪欲法の割り付け結果を、無ければ安定ハッシュを使う
+            // （新規テスト・重み表未生成時のフォールバック。必ずどれか 1 shard に決まる）。
+            val bucket = weightedBucketOf[fqcnTopLevel] ?: hashBucket(fqcnTopLevel)
             // 自分の shard 以外を除外（true=除外）
             bucket != shardIndex
         }
@@ -407,6 +475,112 @@ tasks.register<Test>("perfTest") {
     classpath = sourceSets["test"].runtimeClasspath
     // 通常の check/build には載せない（明示実行のみ）。
     shouldRunAfter(tasks.named("test"))
+}
+
+// =============================================================================
+// verifyShardCoverage: CI テストシャード重み付け振り分けの取りこぼし検証タスク
+// -----------------------------------------------------------------------------
+// 「1 クラスが必ずどれか 1 shard にだけ割り当たる」ことをコンパイル済みテスト
+// クラス全件に対して実際に計算し、shard.total と重み表の有無（あり／なしの両方）
+// で検証する。build.gradle.kts 側のシャード振り分けロジックと同じ計算を
+// ここで独立に再現し、「クラス総数 == 6 shard の割当数合計」を assert する。
+//
+// 使い方: cd backend && ./gradlew verifyShardCoverage -Pshard.total=6
+// （testClasses への依存によりコンパイルは自動で行われる）
+// =============================================================================
+tasks.register("verifyShardCoverage") {
+    group = "verification"
+    description = "重み表あり／なしの両方で、全テストクラスが shard 0..N-1 のいずれか1つだけに割り当たることを検証する"
+    dependsOn(tasks.named("testClasses"))
+    doLast {
+        val total = (project.findProperty("shard.total") as String?)?.toIntOrNull() ?: 6
+        require(total > 1) { "shard.total は 2 以上を指定すること（現在: $total）" }
+
+        fun hashBucket(fqcnTopLevel: String): Int =
+            ((fqcnTopLevel.hashCode().toLong() and 0xFFFFFFFFL) % total).toInt()
+
+        // コンパイル済みテストクラス全件からトップレベル FQCN の集合を得る
+        val classesDirs = sourceSets["test"].output.classesDirs.files
+        val fqcns = LinkedHashSet<String>()
+        classesDirs.forEach { dir ->
+            if (!dir.exists()) return@forEach
+            dir.walkTopDown()
+                .filter { it.isFile && it.name.endsWith(".class") }
+                .forEach { f ->
+                    val rel = f.relativeTo(dir).path.replace(File.separatorChar, '.')
+                    val fqcnTopLevel = rel.removeSuffix(".class").substringBefore('$')
+                    fqcns.add(fqcnTopLevel)
+                }
+        }
+        val classTotal = fqcns.size
+        logger.lifecycle("[verifyShardCoverage] コンパイル済みテストクラス総数（トップレベル）: $classTotal")
+
+        fun verify(label: String, weights: Map<String, Double>) {
+            val weightedBucketOf: Map<String, Int> = if (weights.isNotEmpty()) {
+                val shardTotals = DoubleArray(total)
+                val assignment = LinkedHashMap<String, Int>()
+                weights.entries
+                    .sortedByDescending { it.value }
+                    .forEach { (fqcn, seconds) ->
+                        var minIdx = 0
+                        for (i in 1 until total) {
+                            if (shardTotals[i] < shardTotals[minIdx]) minIdx = i
+                        }
+                        assignment[fqcn] = minIdx
+                        shardTotals[minIdx] += seconds
+                    }
+                assignment
+            } else {
+                emptyMap()
+            }
+
+            val counts = IntArray(total)
+            val seen = HashSet<String>()
+            fqcns.forEach { fqcn ->
+                val bucket = weightedBucketOf[fqcn] ?: hashBucket(fqcn)
+                require(bucket in 0 until total) { "不正な bucket 値: $bucket for $fqcn" }
+                counts[bucket]++
+                seen.add(fqcn)
+            }
+            val sum = counts.sum()
+            logger.lifecycle(
+                "[verifyShardCoverage] [$label] shard別割当数: " +
+                    counts.mapIndexed { i, c -> "$i=$c" }.joinToString(", ") +
+                    " / 合計=$sum / クラス総数=$classTotal / 重複除去後の割当済みクラス数=${seen.size}"
+            )
+            require(sum == classTotal) {
+                "[$label] 割当数合計($sum) がクラス総数($classTotal) と一致しない（取りこぼし/重複の疑い）"
+            }
+            require(seen.size == classTotal) {
+                "[$label] 割当済みクラス数(${seen.size}) がクラス総数($classTotal) と一致しない"
+            }
+        }
+
+        // (a) 重み表なし＝全クラスが安定ハッシュにフォールバックするケース
+        verify("重み表なし（ハッシュのみ）", emptyMap())
+
+        // (b) 重み表ありのケース（実ファイルを読み込む。存在しなければ空 map として同じ検証を再実行）
+        val weightsFile = file("src/test/resources/shard-weights.properties")
+        val weights: Map<String, Double> = if (weightsFile.exists()) {
+            weightsFile.readLines()
+                .asSequence()
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("#") }
+                .mapNotNull { line ->
+                    val idx = line.indexOf('=')
+                    if (idx < 0) return@mapNotNull null
+                    val key = line.substring(0, idx).trim()
+                    val value = line.substring(idx + 1).trim().toDoubleOrNull() ?: return@mapNotNull null
+                    key to value
+                }
+                .toMap()
+        } else {
+            emptyMap()
+        }
+        verify("重み表あり（貪欲法＋新規クラスはハッシュへフォールバック）", weights)
+
+        logger.lifecycle("[verifyShardCoverage] OK: 重み表あり／なし双方で取りこぼし・重複なしを確認した")
+    }
 }
 
 tasks.jacocoTestReport {
