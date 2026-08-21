@@ -61,8 +61,26 @@ LOCK_DIR="${LOCK_ROOT}/turnstile.lock.d"
 
 POLL_INTERVAL_SEC=15
 LOG_EVERY_SEC=60
-# 180分（恒久値）。テスト時のみ TURNSTILE_MAX_WAIT_SEC で一時的に短縮できる
-MAX_WAIT_SEC="${TURNSTILE_MAX_WAIT_SEC:-$((180 * 60))}"
+# 180分（恒久値・上限）。テスト時のみ TURNSTILE_MAX_WAIT_SEC で一時的に短縮できるが、
+# 正の整数以外・または既定値超過は警告のうえ既定値へフォールバックする（重大1是正: 恒久上限180分を保証）
+DEFAULT_MAX_WAIT_SEC=$((180 * 60))
+MAX_WAIT_SEC="${TURNSTILE_MAX_WAIT_SEC:-${DEFAULT_MAX_WAIT_SEC}}"
+case "${MAX_WAIT_SEC}" in
+    ''|*[!0-9]*)
+        echo "[turnstile] 警告: TURNSTILE_MAX_WAIT_SEC='${MAX_WAIT_SEC}' は正の整数ではないため既定値${DEFAULT_MAX_WAIT_SEC}秒を使用します" >&2
+        MAX_WAIT_SEC="${DEFAULT_MAX_WAIT_SEC}"
+        ;;
+    0)
+        echo "[turnstile] 警告: TURNSTILE_MAX_WAIT_SEC=0 は不正なため既定値${DEFAULT_MAX_WAIT_SEC}秒を使用します" >&2
+        MAX_WAIT_SEC="${DEFAULT_MAX_WAIT_SEC}"
+        ;;
+    *)
+        if [ "${MAX_WAIT_SEC}" -gt "${DEFAULT_MAX_WAIT_SEC}" ]; then
+            echo "[turnstile] 警告: TURNSTILE_MAX_WAIT_SEC=${MAX_WAIT_SEC} は既定上限${DEFAULT_MAX_WAIT_SEC}秒(180分)を超えるため既定値へフォールバックします" >&2
+            MAX_WAIT_SEC="${DEFAULT_MAX_WAIT_SEC}"
+        fi
+        ;;
+esac
 MAX_ABNORMAL_STREAK=5             # 「先客あり」以外の異常が連続した場合の即時エラー閾値
 STALE_TMP_AGE_SEC=86400           # 残骸掃除の対象年齢（秒）。86400秒＝1日
 
@@ -252,10 +270,22 @@ try_reclaim_stale_lock() {
     local isolate
     isolate="$(make_scratch_dir_name stale)"
     if ! mv -T "${LOCK_DIR}" "${isolate}" 2>/dev/null; then
-        # 改名に失敗＝他プロセスが先に奪取済み、または既に解放済み。
-        # 奪取競争に負けただけなら正常だが、staleと判定したのに繰り返し隔離できない場合は
-        # 恒久異常の疑いがあるため別カウンタで検知する
-        record_reclaim_abnormal "mv -T 失敗（隔離できず）: ${LOCK_DIR} -> ${isolate}"
+        # 改名失敗。中2の是正: LOCK_DIR の現況を再確認し、正常な競争負けと
+        # 恒久異常を区別する。(a) LOCK_DIR が既に消えている、または
+        # (b) LOCK_DIR の TOKEN が判定時スナップショットと異なる（＝別プロセスが
+        # 既に奪取・再取得して世代が進んでいた）場合は正常な競争負けとしてカウントしない。
+        # 同一世代のまま LOCK_DIR が残っているのに mv が失敗した場合のみ恒久異常とみなす
+        if [ ! -d "${LOCK_DIR}" ]; then
+            return 1
+        fi
+
+        local cur_token_after
+        cur_token_after="$(read_info_field "${LOCK_DIR}" TOKEN)"
+        if [ "${cur_token_after}" != "${snap_token}" ]; then
+            return 1
+        fi
+
+        record_reclaim_abnormal "mv -T 失敗（同一世代のまま隔離できず）: ${LOCK_DIR} -> ${isolate}"
         return 1
     fi
 
