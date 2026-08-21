@@ -20,6 +20,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -73,12 +75,21 @@ class CalendarLayerServiceTest {
     private AccessControlService accessControlService;
     @Mock
     private NameResolverService nameResolverService;
+    @Mock
+    private TransactionTemplate transactionTemplate;
 
     @InjectMocks
     private CalendarLayerService service;
 
     @BeforeEach
     void setUp() {
+        // updateLayer はデッドロック限定リトライのため TransactionTemplate 経由で本体を呼ぶ。
+        // 単体テストでは実トランザクション境界は不要なので、コールバックをその場で1回呼ぶだけにする。
+        lenient().when(transactionTemplate.execute(org.mockito.ArgumentMatchers.<TransactionCallback<Object>>any()))
+                .thenAnswer(inv -> {
+                    TransactionCallback<?> callback = inv.getArgument(0);
+                    return callback.doInTransaction(null);
+                });
         // 所属集合は AccessControlService の共通窓口（user_roles ∪ memberships）から得る。
         // MEMBERSHIP_ONLY_TEAM は membership 専属の所属を模す（R3・AC-10b2）。
         lenient().when(accessControlService.findAffiliatedScopeIds(ME, "TEAM"))

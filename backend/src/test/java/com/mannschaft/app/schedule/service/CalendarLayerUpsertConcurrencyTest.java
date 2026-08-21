@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.ByteBuffer;
 import java.util.HashSet;
@@ -77,6 +79,7 @@ class CalendarLayerUpsertConcurrencyTest {
     private UserCalendarLayerSettingRepository repository;
     private AccessControlService accessControlService;
     private NameResolverService nameResolverService;
+    private TransactionTemplate transactionTemplate;
     private CalendarLayerService service;
 
     @BeforeEach
@@ -148,7 +151,17 @@ class CalendarLayerUpsertConcurrencyTest {
             return e;
         }).when(repository).save(any(UserCalendarLayerSettingEntity.class));
 
-        service = new CalendarLayerService(repository, accessControlService, nameResolverService);
+        // 単体テストでは実トランザクション境界は不要。TransactionTemplate はコールバックを
+        // その場で1回呼ぶだけのスタブにする（本番の「デッドロック時に新しいトランザクションで
+        // 取り直す」挙動は実 DB を使う CalendarLayerUpsertConcurrencyIT が裏取りする）。
+        transactionTemplate = mock(TransactionTemplate.class);
+        lenient().when(transactionTemplate.execute(org.mockito.ArgumentMatchers.<TransactionCallback<Object>>any()))
+                .thenAnswer(inv -> {
+                    TransactionCallback<?> callback = inv.getArgument(0);
+                    return callback.doInTransaction(null);
+                });
+
+        service = new CalendarLayerService(repository, accessControlService, nameResolverService, transactionTemplate);
     }
 
     @Test

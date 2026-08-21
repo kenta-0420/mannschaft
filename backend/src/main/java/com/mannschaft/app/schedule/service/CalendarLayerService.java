@@ -11,8 +11,11 @@ import com.mannschaft.app.schedule.dto.CalendarLayerUpdateRequest;
 import com.mannschaft.app.schedule.entity.UserCalendarLayerSettingEntity;
 import com.mannschaft.app.schedule.repository.UserCalendarLayerSettingRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -63,6 +66,14 @@ public class CalendarLayerService {
     private final UserCalendarLayerSettingRepository repository;
     private final AccessControlService accessControlService;
     private final NameResolverService nameResolverService;
+
+    /**
+     * {@link #updateLayer} のデッドロック限定リトライで使う。1回の再試行ごとに
+     * 新しいトランザクションを開始する必要があり、{@code @Transactional} の自己呼び出しは
+     * プロキシを経由せず効かないため、明示的に {@code TransactionTemplate} を使う
+     * （{@code ReservationGroupService} と同じ流儀）。
+     */
+    private final TransactionTemplate transactionTemplate;
 
     // ------------------------------------------------------------------
     // §4.3 GET /me/calendar-layers
@@ -154,9 +165,81 @@ public class CalendarLayerService {
      * 現在値を維持する（色を変えただけで {@code hidden} が巻き戻る P2 違反を作らない）。
      * 設定行がまだ無い場合は作成し、送られなかった項目は既定値
      * （{@code color=null}＝自動色 / {@code hidden=false}）で埋める。</p>
+     *
+     * <h3>直前の修繕（46988b57d）が生んだ2つの欠陥とその根治</h3>
+     *
+     * <p><b>欠陥①（デッドロック）</b>: {@code countByUserIdForUpdate}（{@code SELECT COUNT(*) ...
+     * WHERE user_id = ? FOR UPDATE}）は、その user_id の行がまだ0件のとき「空範囲」に
+     * ギャップロックを張る。InnoDB のギャップロックは<b>互いに互換</b>（排他しない）ため、
+     * 異なるスコープへの2並行 PATCH は両方ともこの空ギャップのロックを取得でき、両方が
+     * 件数チェック（0 &lt; 1000）を通過してしまう。その直後、それぞれの
+     * {@code insertIfAbsent}（INSERT）が張る insert intention lock が<b>相手のギャップロックに
+     * 阻まれ</b>、循環待ちでデッドロックする。ギャップロック方式は「複数トランザクションが
+     * 同時に同じ空範囲を『空いている』と見なせてしまう」性質そのものが原因であり、
+     * ロックの粒度をいくら調整しても解消しない族の欠陥である
+     * （根治は下記のリトライ・{@link #updateLayer(Long, String, Long, CalendarLayerUpdateRequest)}）。</p>
+     *
+     * <p><b>欠陥②（誤 409）</b>: 旧実装は行の有無をロック取得<b>前</b>の通常 SELECT
+     * （スナップショット読み）で判定していた。本番 MySQL は REPEATABLE-READ であり、
+     * 通常の SELECT はトランザクション冒頭のスナップショットを見続けるため、上限付近
+     * （例: 999件）で同一スコープへ2並行 PATCH が来ると、後着は「先着がその後コミットした行」を
+     * 見られないまま新規作成の分岐へ入り、{@code countByUserIdForUpdate} で待たされたのち
+     * 件数1000を見て {@code CALENDAR_LAYER_LIMIT_EXCEEDED}（409）を返す。しかし対象行は
+     * 先着によって<b>既に存在する</b>ので、これは §10.1「既存行の更新は行数上限に関係なく
+     * 成功する」への違反である。根治は「ロック区間に入ってから対象キーを現在読み取りで
+     * 再確認する」こと — {@link UserCalendarLayerSettingRepository#findForUpdateByUserIdAndScopeTypeAndScopeId}
+     * は {@code FOR UPDATE} なので最新のコミット済みバージョンを読め、行が存在すれば
+     * 上限判定を一切行わず既存行更新経路へ分岐できる。</p>
      */
-    @Transactional
     public CalendarLayerResponse updateLayer(Long userId, String scopeType, Long scopeId,
+                                             CalendarLayerUpdateRequest request) {
+        // デッドロック（欠陥①）はロックの粒度をいくら絞っても原理上は残る
+        // （ギャップロックは互換なので、複数トランザクションが同じ空範囲を同時に確保しうる）。
+        // よって「デッドロックを起こさない」のではなく「デッドロックしたら新しいトランザクションで
+        // 取り直す」方針を採る。
+        //
+        // なぜ @Retryable + @Transactional を同一メソッドへ重ねる案（quickmemo の前例）を
+        // 採らなかったか: その前例は「呼び出し元が別クラス」なので Spring AOP プロキシを必ず経由するが、
+        // 本メソッドは同一クラス内の updateLayerBody を呼ぶ自己呼び出し（{@code this.xxx()}）になる。
+        // 自己呼び出しは両アノテーションの動的プロキシを一切経由しないため、@Retryable はおろか
+        // @Transactional 自体も効かなくなる（Spring の既知の落とし穴）。よってここでは
+        // TransactionTemplate（{@code ReservationGroupService} と同じ流儀）による明示ループで
+        // 「例外を検知 → 新しいトランザクションで取り直す」を実装する。
+        int attempt = 0;
+        while (true) {
+            attempt++;
+            try {
+                return transactionTemplate.execute(status ->
+                        updateLayerBody(userId, scopeType, scopeId, request));
+            } catch (DeadlockLoserDataAccessException | CannotAcquireLockException e) {
+                if (attempt >= MAX_UPDATE_LAYER_ATTEMPTS) {
+                    // リトライを尽くしても解消しない場合は握りつぶさずそのまま上げる（対処療法禁止）。
+                    throw e;
+                }
+                // 短いバックオフを挟んでから、新しいトランザクションで取り直す。
+                sleepBeforeRetry(attempt);
+            }
+        }
+    }
+
+    /** {@link #updateLayer} のリトライ上限（デッドロック時のみ）。 */
+    private static final int MAX_UPDATE_LAYER_ATTEMPTS = 3;
+
+    /** デッドロック再試行前の短いバックオフ（ミリ秒。指数的に伸ばす）。 */
+    private static void sleepBeforeRetry(int attempt) {
+        try {
+            Thread.sleep(50L * (1L << (attempt - 1)));
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * {@link #updateLayer} の本体（1トランザクション分）。デッドロック時は呼び出し元が
+     * 新しいトランザクションでリトライできるよう、ここでは例外を握りつぶさずそのまま投げる
+     * （対処療法禁止・CLAUDE.md）。
+     */
+    private CalendarLayerResponse updateLayerBody(Long userId, String scopeType, Long scopeId,
                                              CalendarLayerUpdateRequest request) {
         String type = validateScope(scopeType, scopeId);
         long id = normalizedScopeId(type, scopeId);
@@ -167,6 +250,8 @@ public class CalendarLayerService {
                 request != null ? request : new CalendarLayerUpdateRequest(null, null);
         String normalizedColor = validateAndNormalizeColor(body.color());
 
+        // 初期チェックは通常の SELECT（スナップショット読み）— ロック区間に入らない高速経路の最適化に過ぎない。
+        // ここで存在しなくても、ロック区間に入ってから必ず現在読み取りで再確認する（欠陥②対策）。
         Optional<UserCalendarLayerSettingEntity> existing =
                 repository.findByUserIdAndScopeTypeAndScopeId(userId, type, id);
 
@@ -175,22 +260,34 @@ public class CalendarLayerService {
             // 既存行の更新は行数上限に関係なく成功する（§10.1）。
             entity = existing.get();
         } else {
-            // 件数チェックと新規行作成を「ユーザー単位」で直列化する（並行 PATCH による上限すり抜け対策）。
-            //
-            // 採った手段: countByUserId ではなく countByUserIdForUpdate（SELECT COUNT(*) ... FOR UPDATE）。
-            // 理由は本番 MySQL が REPEATABLE-READ であること — 通常の SELECT COUNT はスナップショット読みなので、
-            // 同一ユーザーが異なるスコープへ同時に PATCH すると両トランザクションが揃って「999 件（＝作ってよい）」
-            // という同じスナップショットを見てしまい、両方が新規行を作って上限を超える（uk_user_calendar_layer は
-            // スコープごとに別キーなのでユニーク制約では検出できない）。これは createRowAtomically が対処する
-            // 「同一スコープへの競合」とは別の族の欠陥であり、INSERT IGNORE 側の対処だけでは塞がらない。
-            // FOR UPDATE（現在読み取り）に切り替えることで、uk_user_calendar_layer の左端インデックス
-            // （user_id）上のレコード・ギャップロックがこの user_id の範囲にのみ張られ、他ユーザーを巻き込まずに
-            // 同一ユーザーの並行 PATCH だけを先着のコミットまでブロックして直列化する。
-            // ロック順序: 本ロック → insertIfAbsent の固定順のみを使うため、新たなデッドロックは生まれない。
-            if (repository.countByUserIdForUpdate(userId) >= MAX_LAYER_SETTINGS_PER_USER) {
-                throw new BusinessException(ScheduleErrorCode.CALENDAR_LAYER_LIMIT_EXCEEDED);
+            // ロック区間に入ってから対象キーを現在読み取りで再確認する（欠陥②の根治）。
+            // 通常の findBy...（スナップショット読み）では、REPEATABLE-READ の下で並行トランザクションの
+            // コミットが見えないため、「先着が既に作った行」を見落として誤って新規作成・上限判定に進んでしまう。
+            // FOR UPDATE は現在読み取りなので、ここで存在が確定すれば上限判定は一切行わず既存行更新へ回す。
+            Optional<UserCalendarLayerSettingEntity> lockedExisting =
+                    repository.findForUpdateByUserIdAndScopeTypeAndScopeId(userId, type, id);
+            if (lockedExisting.isPresent()) {
+                entity = lockedExisting.get();
+            } else {
+                // ここに来るのは「本当にまだ行が無い」ときだけ。件数チェックと新規行作成を
+                // 「ユーザー単位」で直列化する（並行 PATCH による上限すり抜け対策）。
+                //
+                // 採った手段: countByUserId ではなく countByUserIdForUpdate（SELECT COUNT(*) ... FOR UPDATE）。
+                // 理由は本番 MySQL が REPEATABLE-READ であること — 通常の SELECT COUNT はスナップショット読みなので、
+                // 同一ユーザーが異なるスコープへ同時に PATCH すると両トランザクションが揃って「999 件（＝作ってよい）」
+                // という同じスナップショットを見てしまい、両方が新規行を作って上限を超える（uk_user_calendar_layer は
+                // スコープごとに別キーなのでユニーク制約では検出できない）。
+                //
+                // ただしこの FOR UPDATE 自体が空範囲へのギャップロックを張るため、異なるスコープへの2並行
+                // PATCH が同時にこの空ギャップを確保でき、直後の insertIfAbsent 同士がデッドロックしうる
+                // （欠陥①・クラスコメント参照）。ギャップロックは互換なので、ロックの粒度をここでどう絞っても
+                // 原理的に解消できない。よってここでは塞ぐことを諦め、デッドロックが起きたら
+                // updateLayer が新しいトランザクションでリトライすることで最終的な整合性を担保する。
+                if (repository.countByUserIdForUpdate(userId) >= MAX_LAYER_SETTINGS_PER_USER) {
+                    throw new BusinessException(ScheduleErrorCode.CALENDAR_LAYER_LIMIT_EXCEEDED);
+                }
+                entity = createRowAtomically(userId, type, id);
             }
-            entity = createRowAtomically(userId, type, id);
         }
 
         // 部分更新: null は「変更しない」。

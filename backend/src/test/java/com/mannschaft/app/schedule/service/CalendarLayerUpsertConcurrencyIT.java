@@ -215,6 +215,117 @@ class CalendarLayerUpsertConcurrencyIT extends AbstractMySqlIntegrationTest {
                 .isEqualTo(CalendarLayerService.MAX_LAYER_SETTINGS_PER_USER);
     }
 
+    @Test
+    @DisplayName("〔欠陥①〕行0件の状態から異なるスコープへ2並行PATCHしてもデッドロックせず両方成功する")
+    void concurrentPatch_zeroRows_differentScopes_bothSucceedWithoutDeadlock() throws Exception {
+        // 修正前（countByUserIdForUpdate の空範囲ギャップロックが互換のため、両トランザクションが
+        // 揃って通過→直後の insertIfAbsent 同士が循環待ちでデッドロック）は、ここで片方が
+        // DeadlockLoserDataAccessException で落ちていた（500）。
+        //
+        // ここでは newTx() で外側から包まず、service.updateLayer を各スレッドから直接呼ぶ。
+        // updateLayer は自前の TransactionTemplate でトランザクション境界を作るため、
+        // デッドロックで一方が失敗しても「新しいトランザクションでの取り直し」が実際に機能する
+        // ことまで検証できる（外側の tx に包むと、外側が rollback-only になり
+        // リトライしても取り直せない）。
+        userRoleRepository.save(UserRoleEntity.builder().userId(ME).roleId(3L).teamId(TEAM_A).build());
+        userRoleRepository.save(UserRoleEntity.builder().userId(ME).roleId(3L).teamId(TEAM_B).build());
+
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch go = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> f1 = pool.submit(() -> {
+                ready.countDown();
+                awaitQuietly(go);
+                service.updateLayer(ME, "TEAM", TEAM_A, new CalendarLayerUpdateRequest("#111111", null));
+            });
+            Future<?> f2 = pool.submit(() -> {
+                ready.countDown();
+                awaitQuietly(go);
+                service.updateLayer(ME, "TEAM", TEAM_B, new CalendarLayerUpdateRequest("#222222", null));
+            });
+            ready.await(30, TimeUnit.SECONDS);
+            go.countDown();
+            // 修正後は両方成功する。デッドロックが残っていれば、リトライを尽くした末に
+            // DeadlockLoserDataAccessException（または CannotAcquireLockException）でここが落ちる。
+            f1.get(30, TimeUnit.SECONDS);
+            f2.get(30, TimeUnit.SECONDS);
+        } finally {
+            pool.shutdownNow();
+        }
+
+        List<UserCalendarLayerSettingEntity> rows = newTx().execute(status -> repository.findByUserId(ME));
+        assertThat(rows).hasSize(2);
+        assertThat(rows).extracting(UserCalendarLayerSettingEntity::getScopeId)
+                .containsExactlyInAnyOrder(TEAM_A, TEAM_B);
+    }
+
+    @Test
+    @DisplayName("〔欠陥②〕上限直前・同一スコープへの後着PATCHは誤って409にならず既存行更新になる")
+    void concurrentPatch_nearLimit_sameScope_lateArrivalUpdatesExistingRow() throws Exception {
+        // 999 件まで埋める（TEAM_A / TEAM_B は空けておく）。
+        long prefillCount = CalendarLayerService.MAX_LAYER_SETTINGS_PER_USER - 1;
+        newTx().executeWithoutResult(status -> {
+            List<UserCalendarLayerSettingEntity> filler = new ArrayList<>();
+            Instant now = Instant.now();
+            for (long i = 0; i < prefillCount; i++) {
+                filler.add(UserCalendarLayerSettingEntity.builder()
+                        .userId(ME)
+                        .scopeType("TEAM")
+                        .scopeId(500_000L + i)
+                        .color(null)
+                        .hidden(false)
+                        .createdAt(now)
+                        .updatedAt(now)
+                        .build());
+            }
+            repository.saveAll(filler);
+            userRoleRepository.save(UserRoleEntity.builder().userId(ME).roleId(3L).teamId(TEAM_A).build());
+        });
+
+        assertThatCode(() -> newTx().executeWithoutResult(status -> {
+            // 1) T2: 行が無い時点で SELECT を流し、この T2 のスナップショットを確定させる（同一スコープ TEAM_A）。
+            Optional<UserCalendarLayerSettingEntity> before =
+                    repository.findByUserIdAndScopeTypeAndScopeId(ME, "TEAM", TEAM_A);
+            assertThat(before).isEmpty();
+
+            // 2) 先着 T1（別スレッド・別トランザクション）が同じ TEAM_A へ PATCH し、
+            //    これで丁度 1000 件目としてコミットする。
+            ExecutorService pool = Executors.newSingleThreadExecutor();
+            try {
+                pool.submit(() -> service.updateLayer(ME, "TEAM", TEAM_A,
+                                new CalendarLayerUpdateRequest("#111111", null)))
+                        .get(30, TimeUnit.SECONDS);
+            } catch (Exception e) {
+                throw new IllegalStateException("先着トランザクションの実行に失敗した", e);
+            } finally {
+                pool.shutdownNow();
+            }
+
+            // 3) T2 のまま同一スコープへ PATCH。修正前は countByUserIdForUpdate が件数1000を見て
+            //    CALENDAR_LAYER_LIMIT_EXCEEDED（409）を返していた（対象行は既に存在するのに、である）。
+            //    修正後はロック区間での再確認（FOR UPDATE）が先着の行を検出し、上限判定を経由せず
+            //    既存行更新として通す。
+            service.updateLayer(ME, "TEAM", TEAM_A, new CalendarLayerUpdateRequest("#222222", null));
+        })).doesNotThrowAnyException();
+
+        // 新規行は増えていない（＝上限どおり1000件のまま）。かつ T2 の色が最終的に反映されている
+        // （後着の更新が本当に効いたことの確認。単に例外が飛ばなかっただけでは根治の証拠にならない）。
+        newTx().executeWithoutResult(status -> {
+            long finalCount = repository.countByUserId(ME);
+            assertThat(finalCount)
+                    .as("後着は新規行を作らず既存行を更新するはずなので、件数は上限どおり")
+                    .isEqualTo(CalendarLayerService.MAX_LAYER_SETTINGS_PER_USER);
+
+            Optional<UserCalendarLayerSettingEntity> teamA =
+                    repository.findByUserIdAndScopeTypeAndScopeId(ME, "TEAM", TEAM_A);
+            assertThat(teamA).isPresent();
+            assertThat(teamA.get().getColor())
+                    .as("後着（T2）の色が既存行更新として反映されているはず")
+                    .isEqualTo("#222222");
+        });
+    }
+
     /**
      * Future の完了を待ち、{@code CALENDAR_LAYER_LIMIT_EXCEEDED} による失敗だけは許容する。
      * それ以外の例外（500 等）はテストを落とす。
