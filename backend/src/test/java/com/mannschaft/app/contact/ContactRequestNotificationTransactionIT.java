@@ -161,12 +161,32 @@ class ContactRequestNotificationTransactionIT extends AbstractMySqlIntegrationTe
         return body;
     }
 
+    /**
+     * ACTIVE な users 行を1件作成し id を返す。
+     *
+     * <p>マスター検分指摘（2026-08-21・CI shard4赤）: {@code UserEntity} は
+     * {@code @Column(nullable = false)} かつ {@code @Builder.Default} を持たないフィールドを
+     * builder で省略すると null のまま INSERT され、Flyway の実 DDL（{@code V1.001} 他）の
+     * NOT NULL 制約に落ちる。テストプロファイル（{@code ddl-auto: create}）はスキーマを
+     * Entity 由来で生成するため、この不整合はローカルの test プロファイルでは再現せず、
+     * 実 DB（Testcontainers 経由の本 IT）で初めて顕在化した
+     * （{@code feedback_test_ddl_create_schema_from_entity_not_flyway} と同型の罠）。</p>
+     *
+     * <p>{@code UserEntity} 全フィールドを {@code @Column(nullable=false)} かつ
+     * {@code @Builder.Default} 無しで洗い出した結果（実測）、builder で明示すべきは
+     * 以下の8フィールドのみ（他はすべて {@code @Builder.Default} を持つ）:
+     * {@code email} / {@code lastName} / {@code firstName} / {@code displayName} /
+     * {@code isSearchable} / {@code locale} / {@code timezone} / {@code status}。</p>
+     */
     private Long insertUser(String email) {
         return transactionTemplate.execute(tx -> userRepository.save(UserEntity.builder()
                 .email(email)
                 .lastName("通知試験")
                 .firstName("太郎")
                 .displayName("通知試験ユーザー")
+                .isSearchable(true)
+                .locale("ja")
+                .timezone("Asia/Tokyo")
                 .status(UserEntity.UserStatus.ACTIVE)
                 .build()).getId());
     }
