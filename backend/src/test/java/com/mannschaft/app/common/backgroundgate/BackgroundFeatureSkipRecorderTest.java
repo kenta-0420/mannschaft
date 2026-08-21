@@ -8,11 +8,18 @@ import org.mockito.ArgumentCaptor;
 
 import org.springframework.dao.DataAccessResourceFailureException;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -202,6 +209,119 @@ class BackgroundFeatureSkipRecorderTest {
 
         verify(batchJobLogService, times(2))
                 .recordFeaturePolicyOutcome(eq(JOB), eq(true), anyString());
+    }
+
+    // ===============================================================
+    // AC-8g / AC-8h: 直列化と pending 再試行（Codex 検分2巡目 P2-1 / P2-2）
+    // ===============================================================
+
+    @Test
+    @DisplayName("(AC-8g) 同一ジョブへの並行呼び出しでも遷移は1回しか保存されない（二重記録しない）")
+    void ac8g_同一ジョブの並行呼び出しで二重に保存されない() throws Exception {
+        // 保存に実測可能な所要時間を持たせ、「読んでから書くまで」の窓を実際に開ける。
+        // 窓が無いと逐次実行と区別が付かず、直列化していない実装でも偶然通ってしまう。
+        doAnswer(invocation -> {
+            Thread.sleep(100);
+            return null;
+        }).when(batchJobLogService).recordFeaturePolicyOutcome(anyString(), anyBoolean(), anyString());
+
+        int threads = 16;
+        CountDownLatch ready = new CountDownLatch(threads);
+        CountDownLatch start = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(threads);
+        AtomicInteger recordedTrue = new AtomicInteger();
+        ExecutorService pool = Executors.newFixedThreadPool(threads);
+        try {
+            for (int i = 0; i < threads; i++) {
+                pool.submit(() -> {
+                    ready.countDown();
+                    try {
+                        start.await();
+                        if (recorder.recordIfStateChanged(JOB, true, REASON)) {
+                            recordedTrue.incrementAndGet();
+                        }
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        done.countDown();
+                    }
+                });
+            }
+            assertThat(ready.await(10, TimeUnit.SECONDS)).isTrue();
+            start.countDown();
+            assertThat(done.await(30, TimeUnit.SECONDS))
+                    .as("並行呼び出しがデッドロックせず全て終了すること")
+                    .isTrue();
+        } finally {
+            pool.shutdownNow();
+        }
+
+        verify(batchJobLogService, times(1))
+                .recordFeaturePolicyOutcome(eq(JOB), eq(true), anyString());
+        assertThat(recordedTrue.get())
+                .as("ConcurrentHashMap は個々の操作しか原子化しない。read→保存→write を"
+                        + "ジョブ単位で直列化しないと、全スレッドが同じ previous を読んで"
+                        + "同一の遷移を何度も保存する")
+                .isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("(AC-8h) 保存失敗後に状態が反転して呼ばれても、失われた遷移が記録される")
+    void ac8h_状態が反転しても失敗した遷移は失われない() {
+        doThrow(new DataAccessResourceFailureException("batch_job_logs へ書き込めない"))
+                .doNothing()
+                .when(batchJobLogService)
+                .recordFeaturePolicyOutcome(anyString(), anyBoolean(), anyString());
+
+        // 1回目: 停止（skipped=true）の記録が落ちる。
+        assertThat(recorder.recordIfStateChanged(JOB, true, REASON)).isFalse();
+
+        // 2回目: 再有効化され状態が反転した（skipped=false）。
+        assertThat(recorder.recordIfStateChanged(JOB, false, null))
+                .as("失敗した遷移を「前回状態」だけで表現すると、状態が反転した瞬間に"
+                        + "「初期状態と同じ」と判定され、停止と再開の両方が永久に欠落する")
+                .isTrue();
+
+        // 停止（true）は再試行され、再開（false）も記録されること。
+        verify(batchJobLogService, times(2))
+                .recordFeaturePolicyOutcome(eq(JOB), eq(true), anyString());
+        verify(batchJobLogService, times(1))
+                .recordFeaturePolicyOutcome(eq(JOB), eq(false), anyString());
+    }
+
+    @Test
+    @DisplayName("(AC-8i) 反転後の再試行が済んだら、以降は状態が確定して積み増さない")
+    void ac8i_反転後の再試行が済めば状態は確定する() {
+        doThrow(new DataAccessResourceFailureException("batch_job_logs へ書き込めない"))
+                .doNothing()
+                .when(batchJobLogService)
+                .recordFeaturePolicyOutcome(anyString(), anyBoolean(), anyString());
+
+        recorder.recordIfStateChanged(JOB, true, REASON);   // 失敗（pending=true）
+        recorder.recordIfStateChanged(JOB, false, null);    // pending 再試行 + 反転の記録
+
+        assertThat(recorder.recordIfStateChanged(JOB, false, null))
+                .as("再試行が済んだ後も pending が残っていると、毎回記録され AC-9 が壊れる")
+                .isFalse();
+
+        verify(batchJobLogService, times(3))
+                .recordFeaturePolicyOutcome(anyString(), anyBoolean(), anyString());
+    }
+
+    @Test
+    @DisplayName("(AC-8j) pending はジョブ単位で独立している（別ジョブの再試行に混線しない）")
+    void ac8j_pendingはジョブ単位で独立である() {
+        doThrow(new DataAccessResourceFailureException("batch_job_logs へ書き込めない"))
+                .doNothing()
+                .when(batchJobLogService)
+                .recordFeaturePolicyOutcome(eq(JOB), anyBoolean(), anyString());
+
+        assertThat(recorder.recordIfStateChanged(JOB, true, REASON)).isFalse();
+
+        // 別ジョブは JOB の pending に影響されず、自分の初回遷移だけを記録する。
+        assertThat(recorder.recordIfStateChanged(OTHER_JOB, true, REASON)).isTrue();
+        verify(batchJobLogService, times(1))
+                .recordFeaturePolicyOutcome(eq(OTHER_JOB), eq(true), anyString());
     }
 
     // ===============================================================
