@@ -33,6 +33,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -238,8 +239,8 @@ class DashboardServiceTest {
             given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
                     .willReturn(List.of());
             given(chatChannelMemberRepository.findByUserId(USER_ID)).willReturn(List.of());
-            given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                    .willReturn(List.of());
+            given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                    .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
 
             // When
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");
@@ -250,6 +251,33 @@ class DashboardServiceTest {
             assertThat(result.getUnreadThreads()).isNotNull();
             assertThat(result.getRecentActivity()).isNotNull();
             assertThat(result.getPersonalCalendar()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("AC-22: ダッシュボード初期表示も同一の getActivityFeed 経路を通り、所属組織IDが渡る")
+        void ac22_dashboardRouteUsesSameFeedEntryPointWithOrgIds() {
+            // Given: 可視性フィルタは ActivityFeedService 側に一元化されているため、
+            // 「同じ入口を、同じスコープ引数で呼ぶ」ことが2経路の同値性の証明になる。
+            stubPersonalDashboardCommon();
+            stubScopeCoverage();
+
+            given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
+                    .willReturn(List.of());
+            given(chatChannelMemberRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of(77L));
+            given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                    .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
+
+            // When
+            dashboardService.getPersonalDashboard(USER_ID, "ALL");
+
+            // Then: ウィジェット単体経路と同じ ActivityFeedService.getActivityFeed を通り、
+            // かつ所属組織IDが渡っている（従来はチームIDのみで ORGANIZATION の活動が0件だった）。
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<Long>> orgCaptor = ArgumentCaptor.forClass(List.class);
+            verify(activityFeedService).getActivityFeed(
+                    eq(USER_ID), isNull(), anyInt(), any(), orgCaptor.capture());
+            assertThat(orgCaptor.getValue()).containsExactly(77L);
         }
 
         @Test
@@ -432,8 +460,8 @@ class DashboardServiceTest {
                     .userId(USER_ID).channelId(2L).unreadCount(5).build();
             given(chatChannelMemberRepository.findByUserId(USER_ID))
                     .willReturn(List.of(chatMember1, chatMember2));
-            given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                    .willReturn(List.of());
+            given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                    .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
 
             // When
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");

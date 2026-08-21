@@ -248,8 +248,8 @@ class DashboardServiceAdditionalTest {
             given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
                     .willReturn(List.of(post));
             given(chatChannelMemberRepository.findByUserId(USER_ID)).willReturn(List.of());
-            given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any()))
-                    .willReturn(List.of());
+            given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any(), any()))
+                    .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
 
             // When
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");

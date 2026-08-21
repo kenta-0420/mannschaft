@@ -1,6 +1,7 @@
 package com.mannschaft.app.inbox.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.inbox.InboxNotificationTypes;
 import com.mannschaft.app.inbox.entity.InboxItemStateEntity;
 import com.mannschaft.app.inbox.repository.InboxItemStateRepository;
@@ -9,12 +10,15 @@ import com.mannschaft.app.notification.service.NotificationHelper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * F04.11 Phase3 ②：スヌーズ復帰 push 再通知バッチ。
@@ -51,11 +55,13 @@ public class InboxSnoozeRevivalBatchService {
     /** 1 回の実行で処理する最大件数（暴走防止）。次回 5 分後に残りを拾う。 */
     private static final int BATCH_LIMIT = 500;
 
-    /** 復帰 push のタイトル。 */
-    private static final String PUSH_TITLE = "あとで見るがそろそろ";
+    /** 復帰 push のタイトル（ロケール鍵。日本語はフォールバック用デフォルト値）。 */
+    private static final String PUSH_TITLE_KEY = "notification.inbox.snoozeRevival.title";
+    private static final String PUSH_TITLE_DEFAULT = "あとで見るがそろそろ";
 
-    /** 復帰 push の本文。 */
-    private static final String PUSH_BODY = "スヌーズした通知の時間になりました。インボックスで確認しましょう。";
+    /** 復帰 push の本文（ロケール鍵。日本語はフォールバック用デフォルト値）。 */
+    private static final String PUSH_BODY_KEY = "notification.inbox.snoozeRevival.body";
+    private static final String PUSH_BODY_DEFAULT = "スヌーズした通知の時間になりました。インボックスで確認しましょう。";
 
     /** 復帰 push のタップ遷移先（受信箱へ）。 */
     private static final String ACTION_URL = "/inbox";
@@ -69,6 +75,8 @@ public class InboxSnoozeRevivalBatchService {
 
     private final InboxItemStateRepository itemStateRepository;
     private final NotificationHelper notificationHelper;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * 復帰期限到来済みのスヌーズ項目へ復帰 push を送る（5 分毎・JST）。
@@ -85,15 +93,27 @@ public class InboxSnoozeRevivalBatchService {
         }
         log.info("[InboxSnoozeRevivalBatch] 復帰 push 対象: {}件", due.size());
 
+        // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(
+                    due.stream().map(InboxItemStateEntity::getUserId).toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+            locales = Map.of();
+        }
+
         int sent = 0;
         for (InboxItemStateEntity row : due) {
             try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(row.getUserId(), "ja"));
                 // 専用種別で push（通知行は作るが、インボックス受信箱からは除外される）。
                 notificationHelper.notify(
                         row.getUserId(),
                         InboxNotificationTypes.INBOX_SNOOZE_REVIVAL,
-                        PUSH_TITLE,
-                        PUSH_BODY,
+                        messageSource.getMessage(PUSH_TITLE_KEY, null, PUSH_TITLE_DEFAULT, locale),
+                        messageSource.getMessage(PUSH_BODY_KEY, null, PUSH_BODY_DEFAULT, locale),
                         PUSH_SOURCE_TYPE,
                         null,                              // sourceId: 集約行を生まないため持たない
                         NotificationScopeType.PERSONAL,

@@ -49,6 +49,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -102,6 +103,8 @@ public class CirculationService {
 
     /** Phase 11 第三陣 3-A: 手動リマインド送信に使用。 */
     private final NotificationService notificationService;
+    private final MessageSource messageSource;
+    private final com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
 
     /**
      * 管理操作の per-scope 認可に使用する（2026-05-29 fixup）。
@@ -133,10 +136,9 @@ public class CirculationService {
      * @return 文書レスポンスのページ
      */
     public Page<DocumentResponse> listDocuments(String scopeType, Long scopeId, String status, Pageable pageable) {
-        // ① F00 漏洩根治: 一覧はスコープ所属者のみ。非所属は COMMON_002。
-        // GET /api/v1/teams/{teamId}/circulations（org 版含む）は .anyRequest().authenticated() のみで
-        // 認可ゲートが無く、認証済みなら非会員でも他チームの回覧タイトル/作成者/押印数を 200 で列挙できる
-        // （詳細取得 getDocument は recipients ACL で保護されているのに一覧だけ素通りだった）。
+        // ① F00: 一覧はスコープ所属者のみ。非所属は COMMON_002。
+        // 詳細取得 getDocument と同様、一覧側にもスコープ所属検証を適用し、
+        // 非会員が他チームの回覧タイトル/作成者/押印数を列挙できないようにする。
         // checkMembershipOrDescendant(..., true) = 会員/応援者/(ORGANIZATION 時)配下ツリー所属を許可し、
         // 非所属のみ弾く。Bean 不在のテスト構成では accessControlService が null 注入されガードはスキップされる。
         if (accessControlService != null) {
@@ -859,19 +861,43 @@ public class CirculationService {
 
         int remindedCount = 0;
         if (notificationService != null) {
+            // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+            // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+            java.util.Map<Long, String> locales;
+            try {
+                locales = userLocaleCache.getLocales(
+                        pendings.stream().map(CirculationRecipientEntity::getUserId).toList());
+            } catch (Exception e) {
+                log.warn("locale 一括解決に失敗（既定 locale で継続）: documentId={}, error={}", documentId, e.getMessage());
+                locales = java.util.Map.of();
+            }
             for (CirculationRecipientEntity recipient : pendings) {
-                notificationService.createNotification(
-                        recipient.getUserId(),
-                        "CIRCULATION_REMINDER",
-                        NotificationPriority.NORMAL,
-                        "回覧の未確認があります",
-                        "「" + entity.getTitle() + "」の押印をお願いします。",
-                        "CIRCULATION_DOCUMENT", documentId,
-                        scopeTypeToNotificationScope(entity.getScopeType()),
-                        entity.getScopeId(),
-                        "/circulations/" + documentId,
-                        actorId);
-                remindedCount++;
+                try {
+                    java.util.Locale locale = java.util.Locale.forLanguageTag(
+                            locales.getOrDefault(recipient.getUserId(), "ja"));
+                    notificationService.createNotification(
+                            recipient.getUserId(),
+                            "CIRCULATION_REMINDER",
+                            NotificationPriority.NORMAL,
+                            messageSource.getMessage(
+                                    "notification.circulation.reminder.title", null,
+                                    "回覧の未確認があります", locale),
+                            messageSource.getMessage(
+                                    "notification.circulation.reminder.body",
+                                    new Object[]{entity.getTitle()},
+                                    "「" + entity.getTitle() + "」の押印をお願いします。", locale),
+                            "CIRCULATION_DOCUMENT", documentId,
+                            scopeTypeToNotificationScope(entity.getScopeType()),
+                            entity.getScopeId(),
+                            "/circulations/" + documentId,
+                            actorId);
+                    remindedCount++;
+                } catch (Exception e) {
+                    // 通知失敗を隔離し、他の受信者への配信を継続する
+                    // （非DB例外・MessageFormatエラー等を隔離するもので、本処理の巻き戻りは防がない）。
+                    log.warn("回覧リマインド送信失敗（継続）: documentId={}, userId={}, error={}",
+                            documentId, recipient.getUserId(), e.getMessage());
+                }
             }
         }
         log.info("回覧手動リマインド送信: documentId={}, count={}, actorId={}", documentId, remindedCount, actorId);

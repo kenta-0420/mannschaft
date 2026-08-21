@@ -3,6 +3,7 @@ package com.mannschaft.app.safetycheck.service;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -25,6 +26,7 @@ import com.mannschaft.app.safetycheck.repository.SafetyResponseRepository;
 import com.mannschaft.app.safetycheck.SafetyResponseStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -52,6 +54,8 @@ public class SafetyCheckService {
     private final UserRoleRepository userRoleRepository;
     private final NameResolverService nameResolverService;
     private final NotificationHelper notificationHelper;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
     private final AccessControlService accessControlService;
 
     /**
@@ -308,11 +312,24 @@ public class SafetyCheckService {
 
         // 未回答者にリマインド通知を送信
         // NOTE: 全メンバーから回答済みを除いた未回答者への通知は、メンバー一覧取得実装後に拡張
-        notificationHelper.notify(userId, "SAFETY_CHECK_REMINDER", NotificationPriority.URGENT,
-                "安否確認リマインド", "安否確認に未回答です。至急回答をお願いします。",
-                "SAFETY_CHECK", safetyCheckId,
-                NotificationScopeType.valueOf(entity.getScopeType().name()), entity.getScopeId(),
-                "/safety-checks/" + safetyCheckId, userId);
+        try {
+            java.util.Locale locale = java.util.Locale.forLanguageTag(userLocaleCache.getLocale(userId));
+            notificationHelper.notify(userId, "SAFETY_CHECK_REMINDER", NotificationPriority.URGENT,
+                    messageSource.getMessage(
+                            "notification.safetycheck.reminder.title", null, "安否確認リマインド", locale),
+                    messageSource.getMessage(
+                            "notification.safetycheck.reminder.body", null,
+                            "安否確認に未回答です。至急回答をお願いします。", locale),
+                    "SAFETY_CHECK", safetyCheckId,
+                    NotificationScopeType.valueOf(entity.getScopeType().name()), entity.getScopeId(),
+                    "/safety-checks/" + safetyCheckId, userId);
+        } catch (Exception e) {
+            // 通知失敗を隔離する（非DB例外・MessageFormatエラー等が対象。本処理の巻き戻りは防がない。
+            // NotificationService.createNotification は本メソッドと同一トランザクションに参加するため、
+            // DB層例外はrollback-onlyが残り本処理ごと巻き戻る。根治はIssue #2834/CMP-056の範囲）。
+            log.warn("安否確認リマインド送信失敗: safetyCheckId={}, userId={}, error={}",
+                    safetyCheckId, userId, e.getMessage());
+        }
         log.info("リマインド送信: safetyCheckId={}, sentBy={}", safetyCheckId, userId);
     }
 

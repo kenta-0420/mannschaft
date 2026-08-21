@@ -28,11 +28,9 @@ import com.mannschaft.app.common.SecurityUtils;
 /**
  * フォームプリセットコントローラー。SYSTEM_ADMIN向けプリセット管理APIを提供する。
  *
- * <p>認可根治戦役 Wave3-B4: 従来 {@code /api/v1/admin/form-presets/**} は
- * {@code SecurityConfig} の SYSTEM_ADMIN requestMatcher にも登録されておらず、
- * かつ Controller/Service いずれにも認可チェックが無かったため、認証済みなら
- * 誰でもシステムプリセットを CRUD できる全体無防備状態だった。
- * {@link AccessControlService#checkSystemAdmin} で根治する。</p>
+ * <p>認可根治戦役 Wave3-B4: {@code /api/v1/admin/form-presets/**} は
+ * {@code SecurityConfig} の SYSTEM_ADMIN requestMatcher に登録し、
+ * {@link AccessControlService#checkSystemAdmin} で認可を適用する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/admin/form-presets")

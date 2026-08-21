@@ -4,6 +4,8 @@ import type {
   TimelinePostResponse,
   TimelineEditHistory,
   TimelineScopeType,
+  TimelineMute,
+  TimelineMutedType,
 } from '~/types/timeline'
 
 interface FeedParams {
@@ -171,15 +173,27 @@ export function useTimelineApi() {
 
   // === Mutes ===
   async function getMutes() {
-    return api('/api/v1/timeline/mutes')
+    return api<{ data: TimelineMute[] }>('/api/v1/timeline/mutes')
   }
 
-  async function addMute(body: Record<string, unknown>) {
-    return api('/api/v1/timeline/mutes', { method: 'POST', body })
+  async function addMute(params: { mutedType: TimelineMutedType, mutedId: number }) {
+    // BE @RequestBody はcamelCase（プロジェクト規約）
+    return api<{ data: TimelineMute }>('/api/v1/timeline/mutes', {
+      method: 'POST',
+      body: { mutedType: params.mutedType, mutedId: params.mutedId },
+    })
   }
 
-  async function removeMute(body: Record<string, unknown>) {
-    return api('/api/v1/timeline/mutes', { method: 'DELETE', body })
+  /**
+   * ミュート解除。
+   *
+   * BE の `DELETE /api/v1/timeline/mutes` は **クエリパラメータ** `mutedType` / `mutedId`（ともに必須）を
+   * 受け取る（`docs/openapi.json` の `removeMute`）。以前はリクエストボディで送っていたため
+   * BE に必須パラメータが届かず必ず失敗する死んだ呼び出しになっていた（呼び出し元ゼロで露見していなかった）。
+   */
+  async function removeMute(params: { mutedType: TimelineMutedType, mutedId: number }) {
+    const qs = buildQuery({ mutedType: params.mutedType, mutedId: params.mutedId })
+    return api(`/api/v1/timeline/mutes?${qs}`, { method: 'DELETE' })
   }
 
   // === Poll ===

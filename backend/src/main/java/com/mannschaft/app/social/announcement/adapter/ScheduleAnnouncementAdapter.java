@@ -57,6 +57,8 @@ public class ScheduleAnnouncementAdapter implements AnnouncementChannelAdapter {
                 visibility,          // ScheduleVisibility に対応する文字列（scope 軸）
                 minViewRole,         // MinViewRole に対応する文字列（role 軸）
                 null,                // minResponseRole（デフォルト）
+                null,                // targetMode: デフォルト ALL_MEMBERS
+                null,                // targetUserIds
                 false,               // attendanceRequired（告知ウィザードでは false）
                 null,                // attendanceDeadline
                 null,                // commentOption

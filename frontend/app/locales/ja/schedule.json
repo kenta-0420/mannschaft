@@ -210,6 +210,24 @@
         "notFound": "コメントが見つかりません"
       }
     },
+    "targetAudience": {
+      "label": "予定の対象者",
+      "allMembers": "全員",
+      "selectMembers": "メンバーを選択",
+      "memberPlaceholder": "対象メンバーを選択",
+      "more": "ほか{count}名",
+      "selectedCount": "対象 {count}名",
+      "invalidSelection": "対象メンバーを1〜500名選択してください"
+    },
+    "memberColor": {
+      "column": "予定の色",
+      "auto": "自動",
+      "reset": "自動色に戻す",
+      "updated": "メンバーの予定色を更新しました",
+      "resetDone": "メンバーの予定色を自動に戻しました",
+      "updateFailed": "メンバーの予定色を更新できませんでした",
+      "colorLabel": "{name} の予定の色"
+    },
     "todo_load_error": {
       "summary": "TODOの読み込みに失敗しました",
       "detail": "TODOをカレンダーに表示できませんでした。予定は表示されています。時間をおいて再読み込みしてください。"

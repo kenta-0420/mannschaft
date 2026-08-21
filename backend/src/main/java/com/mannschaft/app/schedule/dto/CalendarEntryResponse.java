@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * カレンダーエントリーレスポンスDTO。横断カレンダー表示用。
@@ -27,6 +28,9 @@ public class CalendarEntryResponse {
     CalendarTimeDto    time;     // startAt, endAt, allDay
     CalendarScopeDto   scope;    // scopeType, scopeId, scopeName, scopeIconUrl
     String             myAttendanceStatus;
+    String             targetMode;
+    Integer            targetCount;
+    List<ScheduleTargetResponse.TargetMember> targets;
 
     /**
      * カレンダーエントリの内容。
@@ -56,6 +60,11 @@ public class CalendarEntryResponse {
 
     /** チーム・組織のアイコン画像URL。未設定またはPERSONALスコープの場合はnull。 */
     public record CalendarScopeDto(String scopeType, Long scopeId, String scopeName,
-                                   String scopeIconUrl) {
+                                   String scopeIconUrl, String scopeSlug) {
+
+        /** 既存呼び出し元との後方互換。PERSONAL・外部enricherはslugを持たなくてもよい。 */
+        public CalendarScopeDto(String scopeType, Long scopeId, String scopeName, String scopeIconUrl) {
+            this(scopeType, scopeId, scopeName, scopeIconUrl, null);
+        }
     }
 }

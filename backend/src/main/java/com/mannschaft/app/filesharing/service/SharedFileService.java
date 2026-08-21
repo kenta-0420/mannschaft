@@ -157,12 +157,10 @@ public class SharedFileService {
     /**
      * フォルダ内のファイル一覧を取得する。
      *
-     * <p><b>IDOR 封鎖（情報漏洩根治）</b>: 先頭で {@link SharedFolderQueryService#authorizeFolderViewById}
-     * を通し、フォルダスコープ別の閲覧認可を当てる。従来は {@link FolderScopeAccessGuard} のみを呼んでおり、
-     * 大会以外（TEAM / ORGANIZATION / PERSONAL）では認可が no-op（素通り）だったため、folderId を渡す
-     * だけで他チーム・他人のファイルメタが取得できた。QueryService へ一本化することで、
+     * <p><b>IDOR 封鎖</b>: 先頭で {@link SharedFolderQueryService#authorizeFolderViewById}
+     * を通し、フォルダスコープ別の閲覧認可を当てる。QueryService へ一本化することで、
      * PERSONAL=本人以外404（存在隠蔽）/ TEAM・ORG=非メンバー403 / 大会=連絡スペース認可（guard 委譲）を
-     * 適用する。</p>
+     * 全スコープに一貫して適用する。</p>
      *
      * @param folderId フォルダID
      * @param userId   操作ユーザーID（未認証は呼び出し元 Controller で 401 となるため非 null 想定）
@@ -220,7 +218,7 @@ public class SharedFileService {
      * <p><b>IDOR 封鎖（情報漏洩根治）</b>: まず {@link #findFileOrThrow} でファイル実在を確認（不在は 404）し、
      * 次に解決した folderId で {@link SharedFolderQueryService#authorizeFolderViewById} を通す。順序は
      * 「fileId 実在確認（404）→ フォルダ認可（TEAM/ORG 非メンバー403 / 他人 PERSONAL 404）」を保ち、存在秘匿の
-     * 一貫性を担保する。従来は {@link FolderScopeAccessGuard} のみで大会以外が素通りしていた漏洩の根治。</p>
+     * 一貫性を担保する。</p>
      *
      * @param fileId ファイルID
      * @param userId 操作ユーザーID

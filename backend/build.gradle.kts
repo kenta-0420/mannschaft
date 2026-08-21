@@ -525,8 +525,9 @@ openApi {
     // ddl-auto:create-drop + 全 Entity 構築で 5 分前後かかり、さらに初回 /v3/api-docs
     // スキャンが ~1 分かかるため、300 秒では起動完了直後にタイムアウトする
     // （worktree のコールド環境で実測: 起動完了 ~300s + 初回スキャン ~57s）。
-    // 余裕を持って 600 秒に設定する（CI 運用は廃止しローカル生成のみのため、長めの待機で問題ない）。
-    waitTimeInSeconds.set(600)
+    // 余裕を持って 1800 秒に設定する（CI 運用は廃止しローカル生成のみのため、長めの待機で問題ない。
+    // 2026-08-20 実測: 並行セッションでgradleデーモン6個ビジーの高負荷時、600秒では起動が間に合わずタイムアウトした）。
+    waitTimeInSeconds.set(1800)
     customBootRun {
         // args.add は springdoc-openapi-gradle-plugin では機能しないため jvmArgs で -D オプションを使用する
         jvmArgs.add("-Dspring.profiles.active=openapi-gen")

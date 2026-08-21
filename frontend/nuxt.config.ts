@@ -1,4 +1,5 @@
 import Aura from '@primeuix/themes/aura'
+import { buildGateRouteRules } from './app/constants/featureGates'
 
 // ──────────────────────────────────────────────────────────────────────────
 // セキュリティヘッダー / CSP（nuxt-security）
@@ -9,8 +10,6 @@ import Aura from '@primeuix/themes/aura'
 // E2E プロキシ（NUXT_API_PROXY=true）時は API が Nuxt 同一オリジン経由になるため 'self' で足りる。
 // 本番（Cloudflare 経由 FE/BE 同一オリジン構成）では NUXT_PUBLIC_API_BASE='' (空文字) で運用する。
 const apiBase = process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080'
-const apiProxyEnabled = process.env.NUXT_API_PROXY === 'true'
-const apiProxyTarget = process.env.NUXT_API_PROXY_TARGET ?? 'http://127.0.0.1:8080'
 
 // CSP 違反レポートの送信先（report-uri）。
 // バックエンド受信エンドポイント `POST /api/v1/security/csp-reports`（permitAll・PR #1274）へ向ける。
@@ -91,13 +90,7 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: [
-      'composables',
-      'composables/jobs',
-      'composables/wallet-group-show',
-      'composables/match',
-      'composables/returnStayPlan',
-    ],
+    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match'],
   },
 
   devServer: {
@@ -410,7 +403,7 @@ export default defineNuxtConfig({
     // 設計書: docs/security/03_security_headers_and_csp.md §2.1（apiBase 二層構成）
     internalApiBase: process.env.NUXT_INTERNAL_API_BASE ?? 'http://localhost:8080',
     public: {
-      apiBase: apiProxyEnabled ? '' : apiBase,
+      apiBase: process.env.NUXT_PUBLIC_API_BASE ?? 'http://localhost:8080',
       // フロントエンドのベース URL（canonical / hreflang / JSON-LD 等の SEO 用）。
       // NUXT_PUBLIC_API_BASE=''（同一オリジン構成）では apiBase から FE の origin を
       // 逆算できないため、専用の環境変数で明示する。
@@ -432,9 +425,17 @@ export default defineNuxtConfig({
 
   // E2E テスト時（NUXT_API_PROXY=true 環境変数）は API を Nuxt サーバー経由でプロキシする。
   // これにより CORS プリフライト問題を回避し、Playwright のルートインターセプトが確実に機能する。
-  routeRules: apiProxyEnabled ? {
-    '/api/v1/**': { proxy: `${apiProxyTarget}/api/v1/**` },
-  } : {},
+  routeRules: {
+    // 未公開機能（Gate 基盤工事②）のガード対象パスは SSR 対象外にする。
+    // SSR 実行時は公開フラグを取得できない（localStorage のトークンに依存）ため、
+    // フラグ未確定のまま未公開ページの HTML がサーバーから出力されるのを防ぐ
+    // （route ガード middleware feature-gate.global.ts の ssr-defer と対になっている）。
+    // 対応表は app/constants/featureGates.ts が単一の正（YAML パーサ依存・コード生成は無し）。
+    ...buildGateRouteRules(),
+    ...(process.env.NUXT_API_PROXY === 'true'
+      ? { '/api/v1/**': { proxy: `${apiBase}/api/v1/**` } }
+      : {}),
+  },
 
   // ──────────────────────────────────────────────────────────────────────
   // dev 限定: CSP 違反レポート (report-uri) を BE(:8080) へフォワードする。
@@ -447,7 +448,7 @@ export default defineNuxtConfig({
   // NUXT_API_PROXY=true（E2E 全 API プロキシ）時は routeRules 側が全 /api/v1/** を担うため二重化を避けて無効化。
   nitro: {
     devProxy:
-      apiProxyEnabled
+      process.env.NUXT_API_PROXY === 'true'
         ? {}
         : {
             '/api/v1/security/csp-reports': {
@@ -534,7 +535,6 @@ export default defineNuxtConfig({
           'ja/parental-consent.json',
           'ja/billing.json',
           'ja/global_nav.json',
-          'ja/return_stay_plan.json',
         ],
       },
       {
@@ -608,7 +608,6 @@ export default defineNuxtConfig({
           'en/parental-consent.json',
           'en/billing.json',
           'en/global_nav.json',
-          'en/return_stay_plan.json',
         ],
       },
       {
@@ -682,7 +681,6 @@ export default defineNuxtConfig({
           'zh/parental-consent.json',
           'zh/billing.json',
           'zh/global_nav.json',
-          'zh/return_stay_plan.json',
         ],
       },
       {
@@ -756,7 +754,6 @@ export default defineNuxtConfig({
           'ko/parental-consent.json',
           'ko/billing.json',
           'ko/global_nav.json',
-          'ko/return_stay_plan.json',
         ],
       },
       {
@@ -830,7 +827,6 @@ export default defineNuxtConfig({
           'es/parental-consent.json',
           'es/billing.json',
           'es/global_nav.json',
-          'es/return_stay_plan.json',
         ],
       },
       {
@@ -904,7 +900,6 @@ export default defineNuxtConfig({
           'de/parental-consent.json',
           'de/billing.json',
           'de/global_nav.json',
-          'de/return_stay_plan.json',
         ],
       },
     ],

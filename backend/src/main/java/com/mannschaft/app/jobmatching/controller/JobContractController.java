@@ -92,7 +92,7 @@ public class JobContractController {
      * <p><b>認可の所在</b>: {@code JobContractService#findById}
      * （{@code jobmatching/service/JobContractService.java:284}）が対象契約を実体としてロードし、
      * {@code isParticipant}（同 {@code :315}）で契約の {@code requester_user_id} /
-     * {@code worker_user_id} と認証主体の一致を検証する。不一致は {@code JOB_PERMISSION_DENIED}（403）。</p>
+     * {@code worker_user_id} と認証主体の一致を検証する。不一致は {@code JOB_PERMISSION_DENIED}（404。越境の存在秘匿）。</p>
      */
     @AuthorizedInService
     @GetMapping("/contracts/{id}")
@@ -114,7 +114,7 @@ public class JobContractController {
      * （{@code jobmatching/service/JobContractService.java:186}）が対象契約を実体としてロードし、
      * {@code JobPolicy#canReportCompletion}（{@code jobmatching/policy/JobPolicy.java:139}）で
      * 契約の {@code worker_user_id} と認証主体の一致を検証する。不一致は
-     * {@code JOB_PERMISSION_DENIED}（403）。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
+     * {@code JOB_PERMISSION_DENIED}（404。越境の存在秘匿）。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
      */
     @AuthorizedInService
     @PostMapping("/contracts/{id}/report-completion")
@@ -136,7 +136,7 @@ public class JobContractController {
      * （{@code jobmatching/service/JobContractService.java:214}）が対象契約を実体としてロードし、
      * {@code JobPolicy#canApproveCompletion}（{@code jobmatching/policy/JobPolicy.java:153}）で
      * 契約の {@code requester_user_id} と認証主体の一致を検証する。不一致は
-     * {@code JOB_PERMISSION_DENIED}（403）。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
+     * {@code JOB_PERMISSION_DENIED}（404。越境の存在秘匿）。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
      */
     @AuthorizedInService
     @PostMapping("/contracts/{id}/approve-completion")
@@ -155,7 +155,7 @@ public class JobContractController {
      * （{@code jobmatching/service/JobContractService.java:233}）が対象契約を実体としてロードし、
      * {@code JobPolicy#canApproveCompletion}（{@code jobmatching/policy/JobPolicy.java:153}）で
      * 契約の {@code requester_user_id} と認証主体の一致を検証する。不一致は
-     * {@code JOB_PERMISSION_DENIED}（403）。検証は差し戻し回数の加算より<b>前</b>に位置する。</p>
+     * {@code JOB_PERMISSION_DENIED}（404。越境の存在秘匿）。検証は差し戻し回数の加算より<b>前</b>に位置する。</p>
      */
     @AuthorizedInService
     @PostMapping("/contracts/{id}/reject-completion")
@@ -179,7 +179,7 @@ public class JobContractController {
      * （{@code jobmatching/service/JobContractService.java:265}）が対象契約を実体としてロードし、
      * {@code isParticipant}（同 {@code :315}）で契約の {@code requester_user_id} /
      * {@code worker_user_id} と認証主体の一致を検証する。不一致は
-     * {@code JOB_PERMISSION_DENIED}（403）。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
+     * {@code JOB_PERMISSION_DENIED}（404。越境の存在秘匿）。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
      */
     @AuthorizedInService
     @PostMapping("/contracts/{id}/cancel")

@@ -259,12 +259,12 @@ public class NotificationHelper {
      * @param actionUrl        アクションURL
      * @param actorId          実行者ID
      */
-    public void notifyAllPreAuthorized(List<Long> userIds, String notificationType, NotificationPriority priority,
+    public int notifyAllPreAuthorized(List<Long> userIds, String notificationType, NotificationPriority priority,
                                        String title, String body,
                                        String sourceType, Long sourceId,
                                        NotificationScopeType scopeType, Long scopeId,
                                        String actionUrl, Long actorId) {
-        notifyAllPreAuthorized(userIds, notificationType, priority, title, body,
+        return notifyAllPreAuthorized(userIds, notificationType, priority, title, body,
                 sourceType, sourceId, scopeType, scopeId, actionUrl, actorId, null);
     }
 
@@ -285,18 +285,18 @@ public class NotificationHelper {
      * @see #notifyAllPreAuthorized(List, String, NotificationPriority, String, String, String, Long,
      *      NotificationScopeType, Long, String, Long)
      */
-    public void notifyAllPreAuthorized(List<Long> userIds, String notificationType, NotificationPriority priority,
+    public int notifyAllPreAuthorized(List<Long> userIds, String notificationType, NotificationPriority priority,
                                        String title, String body,
                                        String sourceType, Long sourceId,
                                        NotificationScopeType scopeType, Long scopeId,
                                        String actionUrl, Long actorId, Long organizationId) {
         if (userIds == null || userIds.isEmpty()) {
-            return;
+            return 0;
         }
         // best-effort: null 受信者は除外（NOT NULL 違反で 1 件ずつ落ちていた現行挙動と同じ最終結果）。
         List<Long> recipients = userIds.stream().filter(Objects::nonNull).toList();
         if (recipients.isEmpty()) {
-            return;
+            return 0;
         }
 
         int total = 0;
@@ -320,6 +320,11 @@ public class NotificationHelper {
         }
         log.info("一括通知送信(配信認可済・バルク): type={}, userCount={}, chunkSize={}, failedRecipients={}（visibility絞込なし）",
                 notificationType, total, FANOUT_CHUNK_SIZE, failedRecipients);
+        // Codex 三巡目是正（PR #2873）: 呼び出し元（notifyAllPreAuthorizedLocalized 等）が
+        // 「例外が飛ばなかった＝成功」と誤集計しないよう、実際の失敗件数を返す
+        // （insertAndDispatchChunk はチャンク単位で失敗を握って正常 return する best-effort 契約のため、
+        // 呼び出し元は戻り値でしか欠落を判定できない）。
+        return failedRecipients;
     }
 
     /**
@@ -343,12 +348,12 @@ public class NotificationHelper {
      * @see #notifyAllPreAuthorized(List, String, NotificationPriority, String, String, String, Long,
      *      NotificationScopeType, Long, String, Long)
      */
-    public void notifyAllPreAuthorized(List<Long> userIds, String notificationType,
+    public int notifyAllPreAuthorized(List<Long> userIds, String notificationType,
                                        String title, String body,
                                        String sourceType, Long sourceId,
                                        NotificationScopeType scopeType, Long scopeId,
                                        String actionUrl, Long actorId) {
-        notifyAllPreAuthorized(userIds, notificationType, NotificationPriority.NORMAL, title, body,
+        return notifyAllPreAuthorized(userIds, notificationType, NotificationPriority.NORMAL, title, body,
                 sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
     }
 
@@ -426,6 +431,102 @@ public class NotificationHelper {
         }
         log.info("一括通知送信(locale別): type={}, userCount={}（visibility絞込後）, successCount={}",
                 notificationType, filtered.size(), successCount);
+    }
+
+    /**
+     * 配信認可済み受信者リストへ、受信者ごとに locale の異なる本文で一括通知を作成・配信する。
+     *
+     * <p>Issue #2715 CMP-055 ロットC-5: {@link #notifyAllPreAuthorized} と同様に
+     * {@link #filterAccessibleRecipients}（canView 絞り込み）を<b>通さない</b>。
+     * 受信者リストが呼び出し側で事前認可済みの配信母集団である点は {@link #notifyAllPreAuthorized}
+     * と同じで、{@link #notifyAllLocalized} との違いは locale 別に本文を組み立てる点のみ。</p>
+     *
+     * <p><b>是正（Codex 検分・PR #2873）</b>: 当初実装は受信者ごとに {@link #notifyPreAuthorized}
+     * （1 件 1 save）を呼ぶループだったため、locale の N+1 は防げていても fan-out 抜本改修 P1
+     * （{@link #notifyAllPreAuthorized} のチャンク単位バルク INSERT）から外れ、より重い
+     * 「通知永続化・配信の N+1」を作り込んでいた。受信者を locale ごとにグループ化し、各グループを
+     * {@link #notifyAllPreAuthorized}（バルク版）へ渡すことで、実在ロケール数（高々 7 種）分の
+     * バルク呼び出しに畳む。</p>
+     *
+     * @param userIds          配信母集団で事前認可済みの受信者リスト
+     * @param bodyBuilder      (userId, locale) → タイトル・本文 を組み立てる関数。呼び出し元 3 箇所
+     *                         （SurveyPublishNotificationListener/SurveyRemindService/SurveyService）は
+     *                         いずれも {@code userId} を使わず {@code locale} のみで文面を決めるため、
+     *                         locale 単位で 1 回だけ組み立てて安全（呼び出し側の userId 依存が
+     *                         生じた場合は本メソッドの locale グループ化と両立しなくなるため要再検討）。
+     */
+    public void notifyAllPreAuthorizedLocalized(List<Long> userIds, String notificationType,
+                                                String sourceType, Long sourceId,
+                                                NotificationScopeType scopeType, Long scopeId,
+                                                String actionUrl, Long actorId,
+                                                LocalizedMessageBuilder bodyBuilder) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        // Codex 四巡目是正（PR #2873）: notifyAllPreAuthorized は先頭で null 受信者を除外し
+        // （NOT NULL 違反で 1 件ずつ落ちていた現行挙動と同じ最終結果）、null のみのグループは
+        // 1 件も INSERT せず failedRecipients=0 で正常 return する。グループ化より前に
+        // null を除外しておかないと、下流の集計基準（有効受信者数）とここでの group.size()
+        // （null 込みの元の要素数）がズレ、null 受信者を「配信成功」扱いで誤計上してしまう。
+        List<Long> recipients = userIds.stream().filter(java.util.Objects::nonNull).toList();
+        if (recipients.isEmpty()) {
+            return;
+        }
+        // locale を一括解決（N+1 防止）。
+        Map<Long, String> locales = userLocaleCache.getLocales(recipients);
+
+        // 受信者を locale ごとにグループ化し、各グループをバルク経路（notifyAllPreAuthorized）へ渡す。
+        Map<String, List<Long>> byLocale = new java.util.LinkedHashMap<>();
+        for (Long userId : recipients) {
+            String localeTag = locales.getOrDefault(userId, "ja");
+            byLocale.computeIfAbsent(localeTag, k -> new java.util.ArrayList<>()).add(userId);
+        }
+
+        // Codex 再検分是正（PR #2873）: locale グループ化により、元の受信者ごとの try/catch
+        // （best-effort）が失われ、ある locale の bodyBuilder（MessageFormat エラー等の非DB例外）が
+        // 一度失敗すると後続の locale グループへ処理が進まず、呼び出し元の @Transactional
+        // （SurveyRemindService#remind / SurveyService#extendDeadline 等）を巻き添えにしていた。
+        // グループ単位で try/catch し、失敗を握って次のグループへ継続する（欠落は log.warn で可視化）。
+        // この catch が実際に止められるのは MessageFormat エラー等の非DB例外であり、
+        // notifyAllPreAuthorized 内部で DB 層例外が起きた場合の rollback-only までは守らない
+        // （同一トランザクション内であれば残る＝根治は Issue #2834 / CMP-056 の範囲）。
+        //
+        // Codex 三巡目・四巡目是正を経て評価（PR #2873）: 当初は notifyAllPreAuthorized の戻り値
+        // （失敗受信者数）を deliveredRecipientCount / failedRecipientCount として再集計していたが、
+        // これは notifyAllPreAuthorized 自身が既に自前のログ（failedRecipients）・チャンク失敗の
+        // log.error・Micrometer メトリクス（chunk_failed）で正確に報告している値の再集計に過ぎず、
+        // 新しい一次情報を持たないまま実装ミスの発生源になっていた（3巡目: 全滅を成功に誤集計、
+        // 4巡目: null 受信者を成功に誤集計）。そのため配信の成否そのものはここでは数えず、
+        // 下位（notifyAllPreAuthorized 側）のログ・メトリクスへ委ねる。
+        // 一方 messageBuiltGroupCount / messageBuildFailedGroupCount は、失敗が「locale の文面組み立て
+        // （bodyBuilder＝MessageFormat エラー等）」側か「DB INSERT」側かという、下位層には持ち得ない
+        // 一次情報を捉えるため残す。
+        int messageBuiltGroupCount = 0;
+        int messageBuildFailedGroupCount = 0;
+        for (Map.Entry<String, List<Long>> entry : byLocale.entrySet()) {
+            List<Long> group = entry.getValue();
+            try {
+                Locale locale = Locale.forLanguageTag(entry.getKey());
+                // locale ごとに 1 回だけ本文を組み立てる（userId は使われない前提。上記 javadoc 参照）。
+                LocalizedMessage message = bodyBuilder.build(group.get(0), locale);
+                messageBuiltGroupCount++;
+                notifyAllPreAuthorized(group, notificationType, NotificationPriority.NORMAL,
+                        message.title(), message.body(),
+                        sourceType, sourceId, scopeType, scopeId, actionUrl, actorId);
+            } catch (Exception e) {
+                // bodyBuilder（MessageFormat エラー等）の失敗はグループ全体が未着手のまま次へ進む。
+                messageBuildFailedGroupCount++;
+                log.warn("locale グループの通知送信失敗（継続）: type={}, locale={}, recipientCount={}, error={}",
+                        notificationType, entry.getKey(), group.size(), e.getMessage(), e);
+            }
+        }
+        // 配信の成否（届いた/欠落した件数）はここでは数えない: notifyAllPreAuthorized が自前のログ
+        // （failedRecipients）・チャンク失敗の log.error・Micrometer メトリクスで既に正確に報告している。
+        log.info("一括通知送信(配信認可済・locale別): type={}, userCount={}, effectiveRecipientCount={}, "
+                        + "localeGroupCount={}, messageBuiltGroupCount={}, messageBuildFailedGroupCount={}"
+                        + "（配信結果は notifyAllPreAuthorized 側のログ・メトリクス参照）",
+                notificationType, userIds.size(), recipients.size(), byLocale.size(),
+                messageBuiltGroupCount, messageBuildFailedGroupCount);
     }
 
     /** {@link #notifyAllLocalized} が受信者ごとに組み立てるタイトル・本文の組。 */

@@ -32,6 +32,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -102,8 +103,25 @@ class SurveyServiceTest {
     @Mock
     private com.mannschaft.app.survey.service.SurveyResultAccessGuard resultAccessGuard;
 
+    /** Issue #2715 CMP-055 lot C-5: newly added i18n dependencies. */
+    @Mock private MessageSource messageSource;
+
     @InjectMocks
     private SurveyService surveyService;
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     private static final Long SURVEY_ID = 100L;
     private static final Long SCOPE_ID = 1L;
@@ -411,17 +429,16 @@ class SurveyServiceTest {
             verify(organizationMembershipService).resolveOrgDistributionUserIds(SCOPE_ID, false);
             // (B) レグ番人: 締切延長通知も publish/remind と同形に notifyAllPreAuthorized で送られ、
             // canView 絞り込みを通さない（配下/直属一般メンバーへ誤 deny で届かないことを担保）。
-            verify(notificationHelper).notifyAllPreAuthorized(
+            verify(notificationHelper).notifyAllPreAuthorizedLocalized(
                     org.mockito.ArgumentMatchers.eq(java.util.List.of(11L, 22L, 33L)),
-                    org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.anyString(),
                     org.mockito.ArgumentMatchers.eq(SURVEY_ID),
                     org.mockito.ArgumentMatchers.any(),
                     org.mockito.ArgumentMatchers.eq(SCOPE_ID),
                     org.mockito.ArgumentMatchers.anyString(),
-                    org.mockito.ArgumentMatchers.eq(USER_ID));
+                    org.mockito.ArgumentMatchers.eq(USER_ID),
+                    any());
             // 旧 canView ゲート付き notifyAll は使わないことも明示（取りこぼし非回帰）。
             verify(notificationHelper, org.mockito.Mockito.never()).notifyAll(
                     org.mockito.ArgumentMatchers.anyList(),

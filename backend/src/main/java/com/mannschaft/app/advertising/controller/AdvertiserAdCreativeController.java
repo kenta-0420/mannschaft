@@ -48,9 +48,8 @@ public class AdvertiserAdCreativeController {
     /**
      * ADMIN 以上であること、かつパス上の {@code campaignId} が当該組織の広告主に帰属することを検証する。
      *
-     * <p>F09.19.1（既知 IDOR の閉塞）: 従来は {@code checkAdminOrAbove} のみで {@code campaignId} の帰属を
-     * 未検証のまま Service へ渡していた。組織 A の ADMIN が自組織 URL に組織 B のキャンペーン ID を指定した
-     * create/list/update/delete が素通しになるため、campaign→scope の帰属不一致は 403（存在有無を問わず）とする。</p>
+     * <p>F09.19.1（既知 IDOR の閉塞）: {@code checkAdminOrAbove} に加え {@code campaignId} の帰属も検証する。
+     * campaign→scope の帰属不一致は 403（存在有無を問わず）とする。</p>
      */
     private void verifyCampaignAccess(Long organizationId, Long campaignId) {
         Long userId = SecurityUtils.getCurrentUserId();

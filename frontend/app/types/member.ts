@@ -6,6 +6,7 @@ export interface MemberResponse {
   avatarUrl: string | null
   roleName: RoleName
   joinedAt: string
+  calendarColor?: string | null
 }
 
 export interface RoleChangeRequest {

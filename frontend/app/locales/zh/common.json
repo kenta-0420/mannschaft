@@ -259,7 +259,8 @@
     "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
     "SCHEDULE_KEEP_009": "この操作はできません",
     "SCHEDULE_KEEP_010": "キープの上限に達しました",
-    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません"
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "已达到隐藏上限（200 个）。请先取消一些不需要的隐藏。"
   },
   "annual_plan": {
     "title": "年度行事计划",
@@ -491,7 +492,38 @@
       "PUBLIC": "在想什么？"
     },
     "submitLabel": "发布",
-    "pollOptionsCount": "{count}个选项"
+    "pollOptionsCount": "{count}个选项",
+    "deliveryScope": {
+      "label": "投放范围",
+      "options": {
+        "DIRECT": "仅本团体的成员",
+        "CHILDREN": "包含下一级子团体",
+        "DESCENDANTS": "下属的所有团体"
+      },
+      "hints": {
+        "DIRECT": "仅显示在本团体成员的时间线上。",
+        "CHILDREN": "同时显示给本团体正下方子团体的成员。",
+        "DESCENDANTS": "显示给本团体下属所有团体的成员。"
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "隐藏该团队的帖子",
+        "ORGANIZATION": "隐藏该团体的帖子"
+      },
+      "targetType": {
+        "TEAM": "团队",
+        "ORGANIZATION": "团体"
+      },
+      "muted": "已隐藏 {name} 的帖子",
+      "undo": "撤销",
+      "unmuted": "已恢复显示",
+      "chip": "已隐藏：{count} 个",
+      "dialogTitle": "已隐藏的对象",
+      "emptyList": "没有已隐藏的对象。",
+      "unmuteAction": "恢复显示",
+      "unknownTarget": "{type}（ID: {id}）"
+    }
   },
   "gallery": {
     "title": "相册",
@@ -1463,6 +1495,10 @@
       "back_to_dashboard": "返回仪表板",
       "retry": "重试",
       "slow_loading": "加载时间较长，请稍候"
+    },
+    "unsavedChanges": {
+      "title": "未保存的更改",
+      "confirmLeave": "您有未保存的更改。离开此页面将丢失已输入的内容。要继续吗？"
     }
   },
   "teamHub": {
@@ -2109,5 +2145,31 @@
   "comingSoon": {
     "title": "即将推出",
     "description": "此功能目前正在开发中。请稍后再来查看。"
+  },
+  "transferOwnership": {
+    "sectionTitle": "转让所有者",
+    "sectionDescription": "将管理员（所有者）权限移交给其他成员。转让后您将成为副管理员，无法再执行仅限管理员的操作。",
+    "openButton": "转让所有者",
+    "dialogTitle": "转让所有者",
+    "warning": "此操作无法撤销。转让后管理员权限将归新所有者所有，只有新所有者才能再转回。",
+    "targetLabel": "新所有者",
+    "targetPlaceholder": "选择成员",
+    "noCandidates": "没有可转让的成员。",
+    "confirmLabel": "请输入“{name}”以确认",
+    "confirmMismatch": "名称不一致。",
+    "cancel": "取消",
+    "submit": "转让",
+    "successTitle": "已转让所有者",
+    "successDetail": "管理员权限已移交给新所有者。"
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "该功能尚未开放",
+      "body": "此功能当前不可用，将返回仪表板。"
+    },
+    "error": {
+      "fetchFailedTitle": "无法确认功能开放状态",
+      "fetchFailedBody": "由于网络错误，无法确认该功能是否已开放。请稍后重试。"
+    }
   }
 }

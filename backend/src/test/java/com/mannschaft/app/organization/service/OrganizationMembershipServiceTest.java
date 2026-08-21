@@ -14,6 +14,7 @@ import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.dto.MemberResponse;
@@ -89,6 +90,9 @@ class OrganizationMembershipServiceTest {
 
     @Mock
     private MediaUrlResolver mediaUrlResolver;
+
+    @Mock
+    private ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
 
     @InjectMocks
     private OrganizationMembershipService organizationMembershipService;

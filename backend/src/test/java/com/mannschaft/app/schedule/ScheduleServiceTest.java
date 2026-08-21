@@ -1,10 +1,15 @@
 package com.mannschaft.app.schedule;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.dashboard.ActivityEvent;
+import com.mannschaft.app.dashboard.ActivityType;
+import com.mannschaft.app.dashboard.ScopeType;
+import com.mannschaft.app.dashboard.TargetType;
 import com.mannschaft.app.schedule.dto.CalendarEntryResponse;
 import com.mannschaft.app.schedule.dto.CreateScheduleRequest;
 import com.mannschaft.app.schedule.dto.ScheduleResponse;
@@ -17,20 +22,25 @@ import com.mannschaft.app.schedule.service.ScheduleRecurrenceService;
 import com.mannschaft.app.schedule.service.ScheduleReminderService;
 import com.mannschaft.app.schedule.service.ScheduleScheduledTaskService;
 import com.mannschaft.app.schedule.service.ScheduleService;
+import com.mannschaft.app.schedule.service.ScheduleTargetService;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -39,6 +49,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -81,6 +92,16 @@ class ScheduleServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    /**
+     * F03.18: {@code detail} JSON のシリアライズに使う。実 ObjectMapper を spy として使い、
+     * 通常テストでは実際にシリアライズさせつつ、AC-10 のみ {@code writeValueAsString} を
+     * 例外化するモックへ差し替える（{@link ReflectionTestUtils}）。
+     */
+    @Spy
+    private ObjectMapper objectMapper = new ObjectMapper();
+    @Mock
+    private ScheduleTargetService scheduleTargetService;
 
     @InjectMocks
     private ScheduleService scheduleService;
@@ -318,7 +339,8 @@ class ScheduleServiceTest {
             // then
             assertThat(result.getContent().title()).isEqualTo("練習");
             verify(scheduleRepository).save(any(ScheduleEntity.class));
-            verify(eventPublisher).publishEvent(any(Object.class));
+            // F03.18: ScheduleCreatedEvent（既存）+ ActivityEvent（AC-01）の2件発行される
+            verify(eventPublisher, times(2)).publishEvent(any(Object.class));
         }
 
         @Test
@@ -406,7 +428,8 @@ class ScheduleServiceTest {
             scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
 
             // then
-            verify(eventPublisher).publishEvent(any(Object.class));
+            // F03.18: ScheduleUpdatedEvent（既存）+ ActivityEvent（AC-02。タイトルのみ変更のため差分あり）の2件発行される
+            verify(eventPublisher, times(2)).publishEvent(any(Object.class));
         }
 
         @Test
@@ -475,6 +498,8 @@ class ScheduleServiceTest {
             // then
             assertThat(entity.getDeletedAt()).isNotNull();
             verify(scheduleRepository).save(any(ScheduleEntity.class));
+            // F03.18: 削除は既存イベント発行が無いため ActivityEvent の1件のみ発行される（AC-04）
+            verify(eventPublisher, times(1)).publishEvent(any(Object.class));
         }
 
         @Test
@@ -531,7 +556,8 @@ class ScheduleServiceTest {
 
             // then
             assertThat(entity.getStatus()).isEqualTo(ScheduleStatus.CANCELLED);
-            verify(eventPublisher).publishEvent(any(Object.class));
+            // F03.18: ScheduleCancelledEvent（既存）+ ActivityEvent（AC-04）の2件発行される
+            verify(eventPublisher, times(2)).publishEvent(any(Object.class));
         }
 
         @Test
@@ -591,6 +617,8 @@ class ScheduleServiceTest {
             assertThat(result.getContent().title()).isEqualTo("練習");
             assertThat(result.getContent().status()).isEqualTo("SCHEDULED");
             verify(scheduleRepository).save(any(ScheduleEntity.class));
+            // F03.18: 複製は新規作成扱いのため SCHEDULE_CREATED の ActivityEvent が1件発行される（§5.1）
+            verify(eventPublisher, times(1)).publishEvent(any(Object.class));
         }
     }
 
@@ -978,6 +1006,289 @@ class ScheduleServiceTest {
             assertThat(result).hasSize(1);
             assertThat(result.get(0).getContent().title()).isEqualTo("個人予定");
             verify(queryService).getMyCalendar(USER_ID, START, END);
+        }
+    }
+
+    // ========================================
+    // F03.18: アクティビティフィード発行（ScheduleService は発行元のみ担当。
+    // ActivityFeedService/ActivityFeedRepository/DashboardController は対象外）
+    // ========================================
+
+    /**
+     * {@code eventPublisher.publishEvent} へ渡された全イベントのうち、最後に発行された
+     * {@link ActivityEvent} を取り出す。
+     */
+    private ActivityEvent captureLastActivityEvent() {
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.atLeastOnce()).publishEvent(captor.capture());
+        return captor.getAllValues().stream()
+                .filter(ActivityEvent.class::isInstance)
+                .map(ActivityEvent.class::cast)
+                .reduce((first, second) -> second)
+                .orElseThrow(() -> new AssertionError("ActivityEvent が発行されていません"));
+    }
+
+    /** 発行された全イベントのうち {@link ActivityEvent} の件数を数える。 */
+    private long countPublishedActivityEvents() {
+        ArgumentCaptor<Object> captor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher, org.mockito.Mockito.atLeastOnce()).publishEvent(captor.capture());
+        return captor.getAllValues().stream().filter(ActivityEvent.class::isInstance).count();
+    }
+
+    @Nested
+    @DisplayName("F03.18 アクティビティフィード発行")
+    class ActivityFeedPublishing {
+
+        private static final Long PARENT_ID = 2L;
+
+        @Test
+        @DisplayName("AC-01: チーム予定の作成でSCHEDULE_CREATEDが1行発行され、detail.title=タイトル・detail.fields=[]")
+        void AC01_予定作成_SCHEDULE_CREATEDが1行発行される() throws Exception {
+            // given
+            CreateScheduleRequest req = new CreateScheduleRequest(
+                    "練習", "通常練習", "体育館", START_ODT, END_ODT, Boolean.FALSE, "PRACTICE",
+                    null, null, null, Boolean.TRUE, null, null, null, null, null, null, null,
+                    null, null, false, false);
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID);
+
+            // then
+            ActivityEvent event = captureLastActivityEvent();
+            assertThat(event.getActivityType()).isEqualTo(ActivityType.SCHEDULE_CREATED);
+            assertThat(event.getScopeType()).isEqualTo(ScopeType.TEAM);
+            assertThat(event.getScopeId()).isEqualTo(TEAM_ID);
+            assertThat(event.getTargetType()).isEqualTo(TargetType.SCHEDULE);
+
+            Map<?, ?> detail = objectMapper.readValue(event.getDetail(), Map.class);
+            assertThat(detail.get("title")).isEqualTo("練習");
+            assertThat((List<?>) detail.get("fields")).isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC-07: PERSONALスコープの予定作成ではActivityEventを発行しない")
+        void AC07_PERSONALスコープ作成_発行されない() {
+            // given
+            CreateScheduleRequest req = new CreateScheduleRequest(
+                    "個人練習", null, null, START_ODT, END_ODT, Boolean.FALSE, "PRACTICE",
+                    null, null, null, Boolean.FALSE, null, null, null, null, null, null, null,
+                    null, null, false, false);
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            scheduleService.createSchedule(req, USER_ID, "PERSONAL", USER_ID);
+
+            // then: ScheduleCreatedEvent の1件のみ（ActivityEvent は含まれない）
+            assertThat(countPublishedActivityEvents()).isZero();
+        }
+
+        @Test
+        @DisplayName("AC-02: タイトルのみ変更でSCHEDULE_UPDATED・fieldsはtitleのみ（startAt/endAt/isAllDayを含まない）")
+        void AC02_タイトルのみ変更_SCHEDULE_UPDATEDでfieldsはtitleのみ() {
+            // given
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    "更新後タイトル", null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
+
+            // when
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
+
+            // then
+            ActivityEvent event = captureLastActivityEvent();
+            assertThat(event.getActivityType()).isEqualTo(ActivityType.SCHEDULE_UPDATED);
+            assertThat(event.getDetail()).doesNotContain("\"startAt\"", "\"endAt\"", "\"isAllDay\"");
+            assertThat(event.getDetail()).contains("\"field\":\"title\"");
+        }
+
+        @Test
+        @DisplayName("AC-03: 開始日時変更でSCHEDULE_RESCHEDULED。タイトルも同時変更でもtypeはRESCHEDULEDのまま・両方fieldsに入る")
+        void AC03_開始日時変更_SCHEDULE_RESCHEDULEDで両方の差分を含む() {
+            // given
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            OffsetDateTime newStart = START_ODT.plusHours(1); // END_ODT(12:00)より前を維持
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    "延期後タイトル", null, null, newStart, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
+
+            // when
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
+
+            // then
+            ActivityEvent event = captureLastActivityEvent();
+            assertThat(event.getActivityType()).isEqualTo(ActivityType.SCHEDULE_RESCHEDULED);
+            assertThat(event.getDetail()).contains("\"field\":\"startAt\"");
+            assertThat(event.getDetail()).contains("\"field\":\"title\"");
+        }
+
+        @Test
+        @DisplayName("AC-04: deleteSchedule単体でSCHEDULE_CANCELLEDが1行のみ・title=削除直前・fields=[]")
+        void AC04_deleteSchedule単体_SCHEDULE_CANCELLEDが1行のみ() {
+            // given
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            scheduleService.deleteSchedule(SCHEDULE_ID, "THIS_ONLY", USER_ID);
+
+            // then
+            assertThat(countPublishedActivityEvents()).isEqualTo(1);
+            ActivityEvent event = captureLastActivityEvent();
+            assertThat(event.getActivityType()).isEqualTo(ActivityType.SCHEDULE_CANCELLED);
+            assertThat(event.getDetail()).contains("\"title\":\"練習\"");
+            assertThat(event.getDetail()).contains("\"fields\":[]");
+        }
+
+        @Test
+        @DisplayName("AC-04: cancelScheduleでもSCHEDULE_CANCELLEDが1行のみ・title=キャンセル直前・fields=[]")
+        void AC04_cancelSchedule_SCHEDULE_CANCELLEDが1行のみ() {
+            // given
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            scheduleService.cancelSchedule(SCHEDULE_ID, USER_ID);
+
+            // then: ScheduleCancelledEvent(既存) + ActivityEvent(1件) の計2件中、ActivityEventは1件のみ
+            assertThat(countPublishedActivityEvents()).isEqualTo(1);
+            ActivityEvent event = captureLastActivityEvent();
+            assertThat(event.getActivityType()).isEqualTo(ActivityType.SCHEDULE_CANCELLED);
+            assertThat(event.getDetail()).contains("\"title\":\"練習\"");
+            assertThat(event.getDetail()).contains("\"fields\":[]");
+        }
+
+        @Test
+        @DisplayName("AC-05: 差分ゼロのno-op更新はフィード行が1行も増えない")
+        void AC05_差分ゼロのno_op更新_フィード行が増えない() {
+            // given: 全フィールドnull = 変更なし
+            ScheduleEntity entity = createTeamScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    null, null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
+
+            // when
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
+
+            // then: ScheduleUpdatedEvent（既存）は発行されるが ActivityEvent は増えない
+            assertThat(countPublishedActivityEvents()).isZero();
+        }
+
+        @Test
+        @DisplayName("AC-06: descriptionのみ変更ではfields={field:description,changed:true}のみ・before/afterキーはJSON上に存在しない")
+        void AC06_description変更_値を載せずchangedのみ記録する() {
+            // given
+            ScheduleEntity entity = createTeamScheduleEntity().toBuilder()
+                    .description("旧・非公開の連絡先情報").build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    null, "新・機微な議題テキスト", null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
+
+            // when
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "THIS_ONLY", USER_ID);
+
+            // then
+            ActivityEvent event = captureLastActivityEvent();
+            String json = event.getDetail();
+            // 値そのものは絶対に載せない（漏洩面の是正・AC-06最重要）
+            assertThat(json).doesNotContain("旧・非公開の連絡先情報", "新・機微な議題テキスト", "\"before\"", "\"after\"");
+            assertThat(json).contains("\"field\":\"description\"", "\"changed\":true");
+        }
+
+        @Test
+        @DisplayName("AC-08: updateScope=ALLの一括更新は子N件でもフィード行1行のみ・affectedCount=N・targetIdは起点予定")
+        void AC08_一括更新ALL_1行のみでaffectedCountがN() {
+            // given: SCHEDULE_ID は子、PARENT_ID が親（子3件と仮定）
+            ScheduleEntity child = createTeamScheduleEntity().toBuilder()
+                    .id(SCHEDULE_ID).parentScheduleId(PARENT_ID).build();
+            ScheduleEntity parentAfterUpdate = createTeamScheduleEntity().toBuilder()
+                    .id(PARENT_ID).title("更新後(全体)").build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
+            given(scheduleRepository.findById(PARENT_ID)).willReturn(Optional.of(parentAfterUpdate));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(scheduleRepository.countByParentScheduleId(PARENT_ID)).willReturn(3L);
+            UpdateScheduleRequest req = new UpdateScheduleRequest(
+                    "更新後(全体)", null, null, null, null, null, null, null, null, null,
+                    null, null, null, null, null, null, null, null, null);
+
+            // when
+            scheduleService.updateSchedule(SCHEDULE_ID, req, "ALL", USER_ID);
+
+            // then
+            assertThat(countPublishedActivityEvents()).isEqualTo(1);
+            ActivityEvent event = captureLastActivityEvent();
+            assertThat(event.getTargetId()).isEqualTo(PARENT_ID);
+            assertThat(event.getDetail()).contains("\"affectedCount\":3");
+        }
+
+        @Test
+        @DisplayName("AC-08: updateScope=ALLの一括削除は子N件でもフィード行1行のみ・affectedCount=N・targetIdは親")
+        void AC08_一括削除ALL_1行のみでaffectedCountがN() {
+            // given
+            ScheduleEntity child = createTeamScheduleEntity().toBuilder()
+                    .id(SCHEDULE_ID).parentScheduleId(PARENT_ID).build();
+            ScheduleEntity parent = createTeamScheduleEntity().toBuilder()
+                    .id(PARENT_ID).title("親予定").build();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(child));
+            given(scheduleRepository.findById(PARENT_ID)).willReturn(Optional.of(parent));
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+            given(scheduleRepository.countByParentScheduleId(PARENT_ID)).willReturn(4L);
+
+            // when
+            scheduleService.deleteSchedule(SCHEDULE_ID, "ALL", USER_ID);
+
+            // then
+            assertThat(countPublishedActivityEvents()).isEqualTo(1);
+            ActivityEvent event = captureLastActivityEvent();
+            assertThat(event.getActivityType()).isEqualTo(ActivityType.SCHEDULE_CANCELLED);
+            assertThat(event.getTargetId()).isEqualTo(PARENT_ID);
+            assertThat(event.getDetail()).contains("\"title\":\"親予定\"", "\"affectedCount\":4");
+        }
+
+        @Test
+        @DisplayName("AC-10: detail JSON化に失敗しても予定本体の作成は成功して返る（本体を巻き込まない）")
+        void AC10_JSON化失敗_予定本体の作成は成功する() throws Exception {
+            // given: writeValueAsString を例外化したモックへ差し替える
+            ObjectMapper failingMapper = org.mockito.Mockito.mock(ObjectMapper.class);
+            given(failingMapper.writeValueAsString(any()))
+                    .willThrow(new com.fasterxml.jackson.core.JsonParseException(null, "強制失敗"));
+            ReflectionTestUtils.setField(scheduleService, "objectMapper", failingMapper);
+
+            CreateScheduleRequest req = new CreateScheduleRequest(
+                    "練習", null, null, START_ODT, END_ODT, Boolean.FALSE, "PRACTICE",
+                    null, null, null, Boolean.TRUE, null, null, null, null, null, null, null,
+                    null, null, false, false);
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // when
+            ScheduleResponse result = scheduleService.createSchedule(req, TEAM_ID, "TEAM", USER_ID);
+
+            // then: 予定本体は正常に作成・保存される（例外は伝播しない）
+            assertThat(result.getContent().title()).isEqualTo("練習");
+            verify(scheduleRepository).save(any(ScheduleEntity.class));
+            // ActivityEvent は発行されない（JSON化失敗によりスキップ）が ScheduleCreatedEvent は発行される
+            assertThat(countPublishedActivityEvents()).isZero();
         }
     }
 }

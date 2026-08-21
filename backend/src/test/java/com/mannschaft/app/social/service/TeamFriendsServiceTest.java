@@ -20,18 +20,23 @@ import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.timeline.entity.TimelinePostEntity;
 import com.mannschaft.app.timeline.repository.TimelinePostRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
+import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -86,12 +91,28 @@ class TeamFriendsServiceTest {
     @Mock
     private TeamFriendVisibilityService teamFriendVisibilityService;
 
+    @Mock
+    private MessageSource mockMessageSource;
+
     @InjectMocks
     private TeamFriendsService teamFriendsService;
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final Long TARGET_TEAM_ID = 20L;
+
+    /**
+     * Issue #2715 ロットC-3: フレンドチーム通知の locale 別本文組み立てを検証するため、
+     * 実物の {@link MessageSource} で {@code messageSource} フィールドを上書きする
+     * （モックで引数をそのまま返す形では鍵欠落・フォーマット崩れを検出できないため）。
+     */
+    @BeforeEach
+    void setUpRealMessageSource() {
+        ReloadableResourceBundleMessageSource ms = new ReloadableResourceBundleMessageSource();
+        ms.setBasename("classpath:messages");
+        ms.setDefaultEncoding("UTF-8");
+        ReflectionTestUtils.setField(teamFriendsService, "messageSource", ms);
+    }
 
     // ========================================
     // follow
@@ -202,18 +223,25 @@ class TeamFriendsServiceTest {
             assertThat(result.getTeamFriendId()).isEqualTo(1L);
             verify(teamFriendRepository).save(any(TeamFriendEntity.class));
             // 両チームの ADMIN へ FRIEND_ESTABLISHED 通知が 2 回送信される（自チーム + 相手チーム）
-            verify(notificationHelper, times(2)).notifyAll(
+            ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> builderCaptor =
+                    ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
+            verify(notificationHelper, times(2)).notifyAllLocalized(
                     anyList(),
                     eq("FRIEND_ESTABLISHED"),
-                    anyString(),
-                    anyString(),
                     eq("TEAM_FRIEND"),
                     eq(1L),
                     eq(NotificationScopeType.FRIEND_TEAM),
                     anyLong(),
                     anyString(),
-                    eq(USER_ID)
+                    eq(USER_ID),
+                    builderCaptor.capture()
             );
+            // 受信者 locale=en のとき件名・本文が英語で組み立てられ、プレースホルダが残らないことを検証する
+            NotificationHelper.LocalizedMessage enMessage =
+                    builderCaptor.getAllValues().get(0).build(2L, Locale.ENGLISH);
+            assertThat(enMessage.title()).doesNotContain("{0}").contains("相手チーム").isEqualTo(
+                    "You are now friend teams with 相手チーム");
+            assertThat(enMessage.body()).doesNotContain("{0}");
         }
     }
 
@@ -257,18 +285,23 @@ class TeamFriendsServiceTest {
             verify(friendContentForwardRepository, never())
                     .findByForwardingTeamIdAndIsRevokedFalseOrderByForwardedAtDesc(anyLong(), any());
             // 両チームの ADMIN へ FRIEND_DISSOLVED 通知が 2 回送信される（自チーム + 相手チーム）
-            verify(notificationHelper, times(2)).notifyAll(
+            ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> builderCaptor =
+                    ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
+            verify(notificationHelper, times(2)).notifyAllLocalized(
                     anyList(),
                     eq("FRIEND_DISSOLVED"),
-                    anyString(),
-                    anyString(),
                     eq("TEAM_FRIEND"),
                     eq(friend.getId()),
                     eq(NotificationScopeType.FRIEND_TEAM),
                     anyLong(),
                     anyString(),
-                    eq(USER_ID)
+                    eq(USER_ID),
+                    builderCaptor.capture()
             );
+            NotificationHelper.LocalizedMessage enMessage =
+                    builderCaptor.getAllValues().get(0).build(2L, Locale.ENGLISH);
+            assertThat(enMessage.title()).doesNotContain("{0}").isEqualTo(
+                    "The friend team relationship with 相手チーム has been dissolved");
         }
 
         @Test

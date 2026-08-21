@@ -2,6 +2,7 @@ package com.mannschaft.app.timeline.dto;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.mannschaft.app.timeline.PostDeliveryScope;
 import com.mannschaft.app.timeline.PostStatus;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -67,6 +68,15 @@ public class CreatePostRequest {
     private final UUID scopeVillageId;
 
     /**
+     * 配下配信範囲（省略可）。null の場合は {@link PostDeliveryScope#DIRECT}（現行挙動）。
+     *
+     * <p>ORGANIZATION スコープの投稿でのみ実効を持つ。チームには階層が無いため
+     * TEAM/PUBLIC/PERSONAL/VILLAGE で指定されても配信範囲は変わらない
+     * （値自体は保存されるが、フィード・可視性判定のどの述語にも寄与しない）。</p>
+     */
+    private final PostDeliveryScope deliveryScope;
+
+    /**
      * 既存呼び出し元（システム内部・テスト）との後方互換のため、{@code scopeId} を
      * {@code Long} で受け取る 10 引数コンストラクタを残す。内部では {@code String} に変換して保持する。
      * 新規実装では {@link #CreatePostRequest(String, String, String, String, Long, Long, Long,
@@ -118,7 +128,8 @@ public class CreatePostRequest {
             @JsonProperty("poll") CreatePollRequest poll,
             @JsonProperty("attachments") List<CreateAttachmentRequest> attachments,
             @JsonProperty("status") PostStatus status,
-            @JsonProperty("scopeVillageId") UUID scopeVillageId) {
+            @JsonProperty("scopeVillageId") UUID scopeVillageId,
+            @JsonProperty("deliveryScope") PostDeliveryScope deliveryScope) {
         this.content = content;
         this.scopeType = scopeType;
         this.scopeId = scopeId;
@@ -131,6 +142,29 @@ public class CreatePostRequest {
         this.attachments = attachments;
         this.status = status;
         this.scopeVillageId = scopeVillageId;
+        this.deliveryScope = deliveryScope;
+    }
+
+    /**
+     * 12 引数版の後方互換コンストラクタ（{@code deliveryScope} 未指定＝{@code DIRECT} 相当）。
+     *
+     * <p>{@code @JsonCreator} は 13 引数版<b>ちょうど1つ</b>に付与すること
+     * （全 final フィールド + 複数コンストラクタで Jackson が creator を特定できず 500 になるため）。</p>
+     */
+    public CreatePostRequest(String content, String scopeType, String scopeId, String postedAsType,
+                             Long postedAsId, Long parentId, Long repostOfId,
+                             LocalDateTime scheduledAt, CreatePollRequest poll,
+                             List<CreateAttachmentRequest> attachments, PostStatus status,
+                             UUID scopeVillageId) {
+        this(content, scopeType, scopeId, postedAsType, postedAsId, parentId, repostOfId,
+                scheduledAt, poll, attachments, status, scopeVillageId, null);
+    }
+
+    /**
+     * 配下配信範囲のデフォルト値を返す。null の場合は {@link PostDeliveryScope#DIRECT}。
+     */
+    public PostDeliveryScope getDeliveryScopeOrDefault() {
+        return deliveryScope != null ? deliveryScope : PostDeliveryScope.DIRECT;
     }
 
     /**
