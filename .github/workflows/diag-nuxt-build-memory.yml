@@ -1,0 +1,189 @@
+# ⚠️ これは診断用の一時ワークフローです。
+# 目的: `nuxt build` が JavaScript heap OOM で落ちる原因を特定するための計測専用。
+# 原因が特定でき次第、このファイルは削除すること（修正PRには含めない）。
+#
+# 計測方針:
+#   - Docker を介さず、CIランナー上で直接 `npm ci` → `nuxt build` を実行する
+#     （失敗するDockerレイヤ内で計測すると成果物が回収できないため）。
+#   - Node に --max-old-space-size / --heapsnapshot-near-heap-limit=1 / --diagnostic-dir を付与。
+#   - ビルドと並走する軽量プロセスで rss/heapUsed/heapTotal/external/arrayBuffers を
+#     5秒間隔でCSVへ記録する。
+#   - ビルドの標準出力・標準エラーを丸ごと保存する。
+#   - if: always() でログ・メモリ記録・ヒープスナップショットをartifact化する。
+#
+# 公開リポジトリ注意: ヒープスナップショットには文字列（環境変数値・ソース文字列等）が
+# 含まれうる。artifactは短いリテンションで保持し、内容の公開判断は殿が行うこと。
+
+name: "[診断用/一時] Nuxtビルドメモリ計測"
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - worktree-agent-a25e48c5e440b1407
+
+jobs:
+  measure-build-memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: リポジトリ取得
+        uses: actions/checkout@v4
+
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: 診断用ディレクトリ準備
+        run: |
+          mkdir -p "${{ github.workspace }}/diag-out/heapsnapshots"
+          mkdir -p "${{ github.workspace }}/diag-out/logs"
+
+      - name: 依存関係インストール (npm ci)
+        working-directory: frontend
+        run: npm ci
+
+      - name: ランナー情報記録（メモリ・CPU）
+        run: |
+          echo "=== free -h ===" | tee "${{ github.workspace }}/diag-out/logs/runner-info.txt"
+          free -h | tee -a "${{ github.workspace }}/diag-out/logs/runner-info.txt"
+          echo "=== nproc ===" | tee -a "${{ github.workspace }}/diag-out/logs/runner-info.txt"
+          nproc | tee -a "${{ github.workspace }}/diag-out/logs/runner-info.txt"
+          echo "=== node -v ===" | tee -a "${{ github.workspace }}/diag-out/logs/runner-info.txt"
+          node -v | tee -a "${{ github.workspace }}/diag-out/logs/runner-info.txt"
+
+      - name: メモリ記録プロセスをバックグラウンドで起動
+        run: |
+          cat > "${{ github.workspace }}/diag-out/mem-monitor.sh" <<'EOF'
+          #!/usr/bin/env bash
+          # 5秒間隔で「nuxt build」を含むnodeプロセス群のrss合計と、
+          # 代表プロセスのメモリ内訳をログする（軽量: ps 呼び出しのみ）。
+          OUT="$1"
+          echo "elapsed_sec,timestamp,node_proc_count,total_rss_kb,top_rss_kb,top_pid,top_cmd" > "$OUT"
+          START=$(date +%s)
+          while true; do
+            NOW=$(date +%s)
+            ELAPSED=$((NOW - START))
+            TS=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+            # node/nuxt/vite/nitro 関連プロセスを対象に rss(KB) を集計
+            PS_LINES=$(ps -eo pid,rss,comm,args | grep -E 'node|nuxt|vite|nitro' | grep -v grep || true)
+            COUNT=$(echo "$PS_LINES" | grep -c . || true)
+            TOTAL_RSS=$(echo "$PS_LINES" | awk '{sum+=$2} END {print sum+0}')
+            TOP_LINE=$(echo "$PS_LINES" | sort -k2 -n -r | head -1)
+            TOP_RSS=$(echo "$TOP_LINE" | awk '{print $2+0}')
+            TOP_PID=$(echo "$TOP_LINE" | awk '{print $1+0}')
+            TOP_CMD=$(echo "$TOP_LINE" | awk '{$1="";$2="";print}' | sed 's/^ *//' | tr ',' ';' | cut -c1-120)
+            echo "${ELAPSED},${TS},${COUNT},${TOTAL_RSS},${TOP_RSS},${TOP_PID},\"${TOP_CMD}\"" >> "$OUT"
+            sleep 5
+          done
+          EOF
+          chmod +x "${{ github.workspace }}/diag-out/mem-monitor.sh"
+          nohup "${{ github.workspace }}/diag-out/mem-monitor.sh" \
+            "${{ github.workspace }}/diag-out/logs/mem-monitor.csv" \
+            > "${{ github.workspace }}/diag-out/logs/mem-monitor-stdout.log" 2>&1 &
+          echo $! > "${{ github.workspace }}/diag-out/mem-monitor.pid"
+          echo "mem-monitor PID: $(cat "${{ github.workspace }}/diag-out/mem-monitor.pid")"
+
+      - name: 詳細メモリ記録（Node別プロセス heapUsed 等、5秒間隔）
+        run: |
+          cat > "${{ github.workspace }}/diag-out/node-mem-sampler.js" <<'EOF'
+          // 自プロセス自身のメモリ（rss/heapUsed/heapTotal/external/arrayBuffers）を
+          // 5秒間隔でCSVへ記録するだけの軽量常駐プロセス。
+          // ビルド本体には手を加えず、別プロセスとして並走させる。
+          const fs = require('fs');
+          const out = process.argv[2];
+          fs.writeFileSync(out, 'elapsed_sec,timestamp,rss_mb,heapTotal_mb,heapUsed_mb,external_mb,arrayBuffers_mb\n');
+          const start = Date.now();
+          function toMB(b) { return (b / 1024 / 1024).toFixed(2); }
+          setInterval(() => {
+            const m = process.memoryUsage();
+            const elapsed = ((Date.now() - start) / 1000).toFixed(1);
+            const ts = new Date().toISOString();
+            fs.appendFileSync(out, `${elapsed},${ts},${toMB(m.rss)},${toMB(m.heapTotal)},${toMB(m.heapUsed)},${toMB(m.external)},${toMB(m.arrayBuffers || 0)}\n`);
+          }, 5000);
+          EOF
+          nohup node "${{ github.workspace }}/diag-out/node-mem-sampler.js" \
+            "${{ github.workspace }}/diag-out/logs/self-proc-mem.csv" \
+            > "${{ github.workspace }}/diag-out/logs/node-mem-sampler-stdout.log" 2>&1 &
+          echo $! > "${{ github.workspace }}/diag-out/node-mem-sampler.pid"
+
+      - name: "nuxt build 実行（Docker外・計測オプション付き）"
+        id: build
+        working-directory: frontend
+        env:
+          NUXT_PUBLIC_API_BASE: http://localhost:8080
+          NUXT_INTERNAL_API_BASE: http://localhost:8080
+          NODE_OPTIONS: >-
+            --max-old-space-size=8192
+            --heapsnapshot-near-heap-limit=1
+            --diagnostic-dir=${{ github.workspace }}/diag-out/heapsnapshots
+        run: |
+          set +e
+          BUILD_START=$(date +%s)
+          echo "build start epoch: $BUILD_START" | tee "${{ github.workspace }}/diag-out/logs/build-timing.txt"
+          npx nuxt build 2>&1 | tee "${{ github.workspace }}/diag-out/logs/nuxt-build-full.log"
+          BUILD_EXIT=${PIPESTATUS[0]}
+          BUILD_END=$(date +%s)
+          echo "build end epoch: $BUILD_END" | tee -a "${{ github.workspace }}/diag-out/logs/build-timing.txt"
+          echo "build duration sec: $((BUILD_END - BUILD_START))" | tee -a "${{ github.workspace }}/diag-out/logs/build-timing.txt"
+          echo "build exit code: $BUILD_EXIT" | tee -a "${{ github.workspace }}/diag-out/logs/build-timing.txt"
+          echo "exit_code=$BUILD_EXIT" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: メモリ記録プロセス停止
+        if: always()
+        run: |
+          if [ -f "${{ github.workspace }}/diag-out/mem-monitor.pid" ]; then
+            kill "$(cat "${{ github.workspace }}/diag-out/mem-monitor.pid")" 2>/dev/null || true
+          fi
+          if [ -f "${{ github.workspace }}/diag-out/node-mem-sampler.pid" ]; then
+            kill "$(cat "${{ github.workspace }}/diag-out/node-mem-sampler.pid")" 2>/dev/null || true
+          fi
+
+      - name: ヒープスナップショットのサイズ確認・圧縮
+        if: always()
+        run: |
+          SNAP_DIR="${{ github.workspace }}/diag-out/heapsnapshots"
+          if [ -d "$SNAP_DIR" ] && [ "$(ls -A "$SNAP_DIR" 2>/dev/null)" ]; then
+            echo "=== heapsnapshot files ===" | tee "${{ github.workspace }}/diag-out/logs/heapsnapshot-info.txt"
+            ls -lh "$SNAP_DIR" | tee -a "${{ github.workspace }}/diag-out/logs/heapsnapshot-info.txt"
+            du -sh "$SNAP_DIR" | tee -a "${{ github.workspace }}/diag-out/logs/heapsnapshot-info.txt"
+            tar -czf "${{ github.workspace }}/diag-out/heapsnapshots.tar.gz" -C "$SNAP_DIR" .
+            ls -lh "${{ github.workspace }}/diag-out/heapsnapshots.tar.gz" | tee -a "${{ github.workspace }}/diag-out/logs/heapsnapshot-info.txt"
+          else
+            echo "no heapsnapshot generated" | tee "${{ github.workspace }}/diag-out/logs/heapsnapshot-info.txt"
+          fi
+
+      - name: ビルド結果サマリ表示
+        if: always()
+        run: |
+          echo "=== build-timing.txt ==="
+          cat "${{ github.workspace }}/diag-out/logs/build-timing.txt" || true
+          echo "=== nuxt-build-full.log tail 200行 ==="
+          tail -n 200 "${{ github.workspace }}/diag-out/logs/nuxt-build-full.log" || true
+          echo "=== mem-monitor.csv tail 20行 ==="
+          tail -n 20 "${{ github.workspace }}/diag-out/logs/mem-monitor.csv" || true
+          echo "=== self-proc-mem.csv tail 20行 ==="
+          tail -n 20 "${{ github.workspace }}/diag-out/logs/self-proc-mem.csv" || true
+
+      - name: artifact アップロード（ログ・メモリ記録）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuxt-build-memory-logs
+          path: |
+            diag-out/logs/
+            diag-out/mem-monitor.sh
+            diag-out/node-mem-sampler.js
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: artifact アップロード（ヒープスナップショット・圧縮済み）
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuxt-build-heapsnapshot
+          path: diag-out/heapsnapshots.tar.gz
+          retention-days: 7
+          if-no-files-found: ignore
