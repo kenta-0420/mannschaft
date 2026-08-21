@@ -37,4 +37,19 @@ public final class FanoutRecipientRowMapper {
         }
         return recipients;
     }
+
+    /**
+     * {@code [user_id, locale]} の行リストから user_id だけを取り出す。
+     *
+     * <p>受信者ソースの keyset クエリを「母集団が正しいか」の観点だけで検証する箇所
+     * （ID の集合・順序・ページ境界を見るテスト）向け。locale はそこでの関心事ではないため、
+     * 検証コードに {@code row[0]} のキャストを撒かずに済むよう共通化する。</p>
+     */
+    public static List<Long> userIdsOf(List<Object[]> rows) {
+        List<Long> ids = new ArrayList<>(rows.size());
+        for (Object[] row : rows) {
+            ids.add(row[0] == null ? null : ((Number) row[0]).longValue());
+        }
+        return ids;
+    }
 }

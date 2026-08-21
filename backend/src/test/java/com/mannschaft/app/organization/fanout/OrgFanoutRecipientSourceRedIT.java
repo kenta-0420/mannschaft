@@ -5,6 +5,7 @@ import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSource;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSourceRegistry;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJob;
@@ -144,8 +145,8 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedOrgMember(childOrg, uChild, "ACTIVE", false);
         seedTeamMember(team, uTeam, "ACTIVE", false);
 
-        List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                rootOrg, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
+        List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                rootOrg, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
 
         log.info("[AC-2] 供給={}（期待 昇順 [{},{},{}]）", page, uDirect, uChild, uTeam);
         assertThat(page)
@@ -172,10 +173,10 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedMembership(mixed, ScopeType.ORGANIZATION, org, RoleKind.SUPPORTER);
         seedMembership(mixed, ScopeType.ORGANIZATION, org, RoleKind.MEMBER);
 
-        List<Long> excluded = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, false, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
-        List<Long> included = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
+        List<Long> excluded = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                org, false, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
+        List<Long> included = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
 
         log.info("[AC-3] false={} true={}", excluded, included);
         assertThat(excluded)
@@ -204,8 +205,8 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedOrgMember(org, deleted, "ACTIVE", true);
         seedOrgMember(org, active2, "ACTIVE", false);
 
-        List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
+        List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
 
         log.info("[AC-4] 供給={}（期待 ACTIVE未削除のみ [{},{}]）", page, active1, active2);
         assertThat(page)
@@ -226,8 +227,8 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
 
         // 「SUPPORTER を除外して配信したい」意図の enqueue。13 引数版で includeSupporters=false を運搬し、
         // ジョブ列 include_supporters に false が保存される。
-        jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(org), type, sourceEvent, null,
-                "AC-5 include_supporters 運搬", "本文", NotificationPriority.NORMAL, "ORG_FANOUT_IT", null, "/x", null,
+        jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(org), type, sourceEvent, null,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-5 include_supporters 運搬"}, NotificationPriority.NORMAL, "ORG_FANOUT_IT", null, "/x", null,
                 false);
 
         NotificationFanoutJob job = jobRepository
@@ -248,7 +249,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     @DisplayName("AC-5(土台) include_supporters 列は false を DB 往復で保持する（V175 列存在の土台）")
     void ac5_includeSupportersColumnRoundTrips() {
         long org = 9_215L;
-        NotificationFanoutJob saved = jobRepository.save(
+        NotificationFanoutJob saved = saveWithMessages(
                 newOrgJob(org, "ORG_FANOUT_IT_AC5B", 0L, Boolean.FALSE));
 
         NotificationFanoutJob reloaded = jobRepository.findById(saved.getId()).orElseThrow();
@@ -269,7 +270,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         long org = createOrg(null);
         String type = "ORG_FANOUT_IT_AC7";
         List<Long> members = seedOrgMembers(org, seed, 6);
-        jobRepository.save(newOrgJob(org, type, 0L, Boolean.TRUE));
+        saveWithMessages(newOrgJob(org, type, 0L, Boolean.TRUE));
 
         // Registry が解決した OrgFanoutRecipientSource が nextPage で供給したメンバーへバルク配信する。
         // processReady は内部で例外を握るため、配信0件になった場合もテスト自体は error にならず
@@ -291,7 +292,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
     void ac8_emptyOrgCompletesAsDone() {
         long org = createOrg(null); // メンバーを seed しない（0件）
         String type = "ORG_FANOUT_IT_AC8";
-        NotificationFanoutJob job = jobRepository.save(newOrgJob(org, type, 0L, Boolean.TRUE));
+        NotificationFanoutJob job = saveWithMessages(newOrgJob(org, type, 0L, Boolean.TRUE));
 
         // nextPage が空を返し markDone に到達する。
         worker.processReady();
@@ -315,12 +316,12 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         long u2 = members.get(1);
         long u4 = members.get(3);
 
-        List<Long> firstPage = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, 0L, 2, PageRequest.of(0, 2));
-        List<Long> secondPage = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, u2, 2, PageRequest.of(0, 2));
-        List<Long> afterLast = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, u4, 2, PageRequest.of(0, 2));
+        List<Long> firstPage = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                org, true, MAX_DEPTH, 0L, 2, PageRequest.of(0, 2)));
+        List<Long> secondPage = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                org, true, MAX_DEPTH, u2, 2, PageRequest.of(0, 2)));
+        List<Long> afterLast = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                org, true, MAX_DEPTH, u4, 2, PageRequest.of(0, 2)));
 
         log.info("[AC-9] page1={} page2={} afterLast={}", firstPage, secondPage, afterLast);
         assertThat(firstPage).as("AC-9: limit=2 ちょうどで先頭2件").containsExactly(members.get(0), members.get(1));
@@ -343,7 +344,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
             insertNotification(members.get(i), type);
         }
         long cursor = members.get(k - 1); // 処理済み末尾（k件目）の user_id
-        NotificationFanoutJob job = jobRepository.save(newOrgJob(org, type, cursor, Boolean.TRUE));
+        NotificationFanoutJob job = saveWithMessages(newOrgJob(org, type, cursor, Boolean.TRUE));
 
         // cursor より後の (N-k) 件のみ供給し、合計 N・欠落なし・DONE で完走する。
         worker.processReady();
@@ -370,7 +371,7 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         String type = "ORG_FANOUT_IT_AC11";
         List<Long> aMembers = seedOrgMembers(orgA, seedA, 3);
         List<Long> bMembers = seedOrgMembers(orgB, seedB, 3);
-        jobRepository.save(newOrgJob(orgA, type, 0L, Boolean.TRUE)); // orgA のみ対象
+        saveWithMessages(newOrgJob(orgA, type, 0L, Boolean.TRUE)); // orgA のみ対象
 
         // orgA ツリーの現役メンバーのみに配信し、orgB へは混入しない。
         worker.processReady();
@@ -392,10 +393,10 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         String type = "ORG_FANOUT_IT_AC12";
         UUID sourceEvent = UUID.randomUUID();
 
-        jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(org), type, sourceEvent, null,
-                "AC-12 冪等", "本文", NotificationPriority.NORMAL, "ORG_FANOUT_IT", null, "/x", null);
-        jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(org), type, sourceEvent, null,
-                "AC-12 冪等", "本文", NotificationPriority.NORMAL, "ORG_FANOUT_IT", null, "/x", null);
+        jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(org), type, sourceEvent, null,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-12 冪等"}, NotificationPriority.NORMAL, "ORG_FANOUT_IT", null, "/x", null);
+        jobService.enqueue(OrgFanoutRecipientSource.SCOPE_TYPE, String.valueOf(org), type, sourceEvent, null,FanoutMessageKind.VILLAGE_EVENT_ADDED,
+                    new String[]{"AC-12 冪等"}, NotificationPriority.NORMAL, "ORG_FANOUT_IT", null, "/x", null);
 
         Optional<NotificationFanoutJob> found = jobRepository
                 .findByScopeTypeAndScopeRefAndNotificationTypeAndSourceEventUuid(
@@ -425,8 +426,8 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         long cursor = 0L;
         int firstChunkSize = -1;
         while (true) {
-            List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                    org, true, MAX_DEPTH, cursor, chunk, PageRequest.of(0, chunk));
+            List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                    org, true, MAX_DEPTH, cursor, chunk, PageRequest.of(0, chunk)));
             if (firstChunkSize < 0) {
                 firstChunkSize = page.size();
             }
@@ -459,8 +460,8 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         long cycleMember = base(seed) + 1;
         seedOrgMember(selfCycleOrg, cycleMember, "ACTIVE", false);
 
-        List<Long> cyclePage = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                selfCycleOrg, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
+        List<Long> cyclePage = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                selfCycleOrg, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
         log.info("[AC-14①] self-cycle 供給={}", cyclePage);
         assertThat(cyclePage)
                 .as("AC-14①: 自己参照サイクルでも maxDepth で停止し、メンバーを重複なく1件返す（無限ループしない）")
@@ -477,8 +478,8 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedOrgMember(c1, uC1, "ACTIVE", false);
         seedOrgMember(c2, uC2, "ACTIVE", false);
 
-        List<Long> depth1 = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                root, true, 1, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
+        List<Long> depth1 = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                root, true, 1, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
         log.info("[AC-14②] maxDepth=1 供給={}（c2 メンバー {} は非展開の想定）", depth1, uC2);
         assertThat(depth1)
                 .as("AC-14②: maxDepth=1 は root と直下 c1 のみ展開し、深い c2 メンバーは含めない")
@@ -504,8 +505,8 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         seedTeamMember(activeTeam, uActive, "ACTIVE", false);
         seedTeamMember(pendingTeam, uPending, "ACTIVE", false);
 
-        List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT));
+        List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                org, true, MAX_DEPTH, 0L, LARGE_LIMIT, PageRequest.of(0, LARGE_LIMIT)));
 
         log.info("[AC-15] 供給={}（uActive={} のみ・uPending={} は除外の想定）", page, uActive, uPending);
         assertThat(page)
@@ -621,7 +622,6 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
                 .scopeType(OrgFanoutRecipientSource.SCOPE_TYPE)
                 .scopeRef(String.valueOf(orgId))
                 .notificationType(type)
-                .title("ORG fan-out IT")
                 .priority(NotificationPriority.NORMAL)
                 .sourceType("ORG_FANOUT_IT")
                 .status(NotificationFanoutJobStatus.PENDING)
@@ -664,4 +664,33 @@ class OrgFanoutRecipientSourceRedIT extends AbstractMySqlIntegrationTest {
         }
         return total;
     }
+
+    /**
+     * Issue #2871: ワーカーはジョブのロケール別文面（子表）を読んでから配信する。
+     *
+     * <p>本番では enqueue が「親ジョブ 1 行＋文面 6 行」を同一トランザクションで確定するため、
+     * 文面の無いジョブは存在しない。IT だけがジョブ行を直接組み立てているので、
+     * ここで同じ前提（6 配信ロケールぶんの文面）を用意する。</p>
+     */
+    private com.mannschaft.app.notification.fanout.NotificationFanoutJob saveWithMessages(
+            com.mannschaft.app.notification.fanout.NotificationFanoutJob job) {
+        com.mannschaft.app.notification.fanout.NotificationFanoutJob saved = jobRepository.save(job);
+        jobRepository.flush();
+        java.util.List<com.mannschaft.app.notification.fanout.NotificationFanoutJobMessage> rows =
+                new java.util.ArrayList<>();
+        for (String tag : com.mannschaft.app.common.i18n.DeliveryLocales.TAGS) {
+            rows.add(com.mannschaft.app.notification.fanout.NotificationFanoutJobMessage.builder()
+                    .jobId(saved.getId())
+                    .locale(tag)
+                    .title("IT-title-" + tag)
+                    .body("IT-body-" + tag)
+                    .build());
+        }
+        fanoutJobMessageRepositoryForIt.saveAll(rows);
+        return saved;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.mannschaft.app.notification.fanout.NotificationFanoutJobMessageRepository
+            fanoutJobMessageRepositoryForIt;
 }
