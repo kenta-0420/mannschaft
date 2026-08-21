@@ -2398,12 +2398,15 @@ public class GlobalExceptionHandler {
             Map.entry("CORKBOARD_005", HttpStatus.CONFLICT),
             //  - RECEIPT_004（キューアイテムが見つからない）は ID+スコープ一本クエリの単純な
             //    not-found。同型の TEAM_001/ORG_001/TIMELINE_001/ADMIN_FB_001 と同様に 404 へ揃える。
-            Map.entry("RECEIPT_004", HttpStatus.NOT_FOUND)
+            Map.entry("RECEIPT_004", HttpStatus.NOT_FOUND),
             //  - CONFIRMABLE_NOTIFICATION_SEND_FAILED は STATUS_MAP ではなく
             //    ConfirmableNotificationErrorCode 側の Severity を ERROR→WARN に是正した
             //    （根本原因が定義側の誤分類のため、対処療法である STATUS_MAP 登録はしない）。
             //  - STORAGE_003（DELETE_FAILED）も同様に StorageErrorCode 側の Severity を WARN→ERROR に
             //    是正した（兄弟の STORAGE_001/002/004 と同じ外部ストレージ障害のため）。
+            // Gate 基盤工事③: @RequireFeature ゲート拒否は Severity.WARN 既定の 400 ではなく
+            // 403 FORBIDDEN（マスター裁可済み）。
+            Map.entry("FEATURE_GATE_001", HttpStatus.FORBIDDEN)
     );
 
     /**
