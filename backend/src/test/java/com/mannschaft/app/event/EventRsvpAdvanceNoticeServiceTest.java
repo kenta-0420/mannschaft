@@ -20,11 +20,8 @@ import com.mannschaft.app.family.dto.CareLinkResponse;
 import com.mannschaft.app.family.service.CareAbsentAlertBatchService;
 import com.mannschaft.app.family.service.CareEventNotificationService;
 import com.mannschaft.app.family.service.CareLinkService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
-import com.mannschaft.app.notification.service.NotificationDispatchService;
-import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.event.event.EventAdvanceNoticeNotificationEvent;
+import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,6 +30,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -47,7 +45,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.lenient;
@@ -92,16 +89,13 @@ class EventRsvpAdvanceNoticeServiceTest {
         private CareLinkService careLinkService;
 
         @Mock
-        private NotificationService notificationService;
-
-        @Mock
-        private NotificationDispatchService notificationDispatchService;
-
-        @Mock
         private UserLocaleCache userLocaleCache;
 
         @Mock
         private MessageSource messageSource;
+
+        @Mock
+        private ApplicationEventPublisher eventPublisher;
 
         @InjectMocks
         private EventRsvpService rsvpService;
@@ -117,8 +111,22 @@ class EventRsvpAdvanceNoticeServiceTest {
             // （未スタブだと null 返却/NPE で通知が握りつぶされ、既存テストが偽装的に失敗する）。
             lenient().when(userLocaleCache.getLocales(any())).thenReturn(Map.of());
             lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
-            lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
+            lenient().when(messageSource.getMessage(org.mockito.ArgumentMatchers.anyString(), any(),
+                            org.mockito.ArgumentMatchers.anyString(), any(Locale.class)))
                     .thenAnswer(invocation -> invocation.getArgument(2));
+        }
+
+        /**
+         * {@link #eventPublisher} へ publish された唯一の {@link EventAdvanceNoticeNotificationEvent}
+         * から通知配送要求一覧を取り出すヘルパー（Issue #2834 / CMP-056 型確立: 通知は
+         * {@code NotificationService#createNotification} 直接呼び出しではなく AFTER_COMMIT イベント
+         * publish に置き換わった）。
+         */
+        private List<NotificationDeliveryRequest> capturedNotificationRequests() {
+            ArgumentCaptor<EventAdvanceNoticeNotificationEvent> captor =
+                    ArgumentCaptor.forClass(EventAdvanceNoticeNotificationEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            return captor.getValue().requests();
         }
 
         /** 実物の MessageSource（messages*.properties）を差し込む（Issue #2715 テスト方針）。 */
@@ -130,23 +138,17 @@ class EventRsvpAdvanceNoticeServiceTest {
         }
 
         @Test
-        @DisplayName("submitLateNotice_正常: 遅刻連絡 → RSVP更新 + 主催者通知呼び出し確認")
+        @DisplayName("submitLateNotice_正常: 遅刻連絡 → RSVP更新 + 主催者向け通知イベントpublish確認")
         void submitLateNotice_正常() {
             // Arrange
             EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
             EventEntity event = buildEvent(EVENT_ID, OPERATOR);  // 主催者 = OPERATOR
             UserEntity user = buildUser(USER_ID, "テスト太郎");
-            NotificationEntity notification = buildNotification(OPERATOR);
 
             given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
             given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
                     .willReturn(Optional.of(rsvp));
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            given(notificationService.createNotification(
-                    anyLong(), anyString(), any(NotificationPriority.class),
-                    anyString(), anyString(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), anyString(), anyLong()))
-                    .willReturn(notification);
             // 操作者が見守り者でない場合: getActiveWatchers は空を返す
             given(careLinkService.getActiveWatchers(USER_ID, "RSVP")).willReturn(List.of());
 
@@ -164,33 +166,27 @@ class EventRsvpAdvanceNoticeServiceTest {
 
             // RSVP に遅刻分数が保存されたことを確認
             verify(rsvpResponseRepository).save(rsvp);
-            // 主催者へ通知が送信されたことを確認。F03.12 Phase11: actionUrl は /teams/{teamId}/events/{eventId}
+            // Issue #2834 / CMP-056: 「サービスがイベントを publish すること」を検証する
+            // （実生成はリスナー側の責務のため、ここでは createNotification を直接検証しない）。
             String expectedActionUrl = "/teams/" + TEAM_ID + "/events/" + EVENT_ID;
-            verify(notificationService).createNotification(
-                    eq(OPERATOR), anyString(), any(NotificationPriority.class),
-                    anyString(), anyString(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), eq(expectedActionUrl), anyLong());
-            verify(notificationDispatchService).dispatch(notification);
+            List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
+            assertThat(requests).hasSize(1);
+            assertThat(requests.get(0).recipientUserId()).isEqualTo(OPERATOR);
+            assertThat(requests.get(0).actionUrl()).isEqualTo(expectedActionUrl);
         }
 
         @Test
-        @DisplayName("submitAbsenceNotice_正常: 欠席連絡 → RSVP更新 + 主催者通知呼び出し確認")
+        @DisplayName("submitAbsenceNotice_正常: 欠席連絡 → RSVP更新 + 主催者向け通知イベントpublish確認")
         void submitAbsenceNotice_正常() {
             // Arrange
             EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
             EventEntity event = buildEvent(EVENT_ID, OPERATOR);
             UserEntity user = buildUser(USER_ID, "テスト花子");
-            NotificationEntity notification = buildNotification(OPERATOR);
 
             given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
             given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
                     .willReturn(Optional.of(rsvp));
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            given(notificationService.createNotification(
-                    anyLong(), anyString(), any(NotificationPriority.class),
-                    anyString(), anyString(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), anyString(), anyLong()))
-                    .willReturn(notification);
             given(careLinkService.getActiveWatchers(USER_ID, "RSVP")).willReturn(List.of());
 
             AbsenceNoticeRequest req = new AbsenceNoticeRequest(USER_ID, "SICK", "発熱のため");
@@ -206,12 +202,10 @@ class EventRsvpAdvanceNoticeServiceTest {
 
             // RSVP に欠席理由が保存されたことを確認
             verify(rsvpResponseRepository).save(rsvp);
-            // 主催者へ通知が送信されたことを確認
-            verify(notificationService).createNotification(
-                    eq(OPERATOR), anyString(), any(NotificationPriority.class),
-                    anyString(), anyString(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), anyString(), anyLong());
-            verify(notificationDispatchService).dispatch(notification);
+            // Issue #2834 / CMP-056: 「サービスがイベントを publish すること」を検証する。
+            List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
+            assertThat(requests).hasSize(1);
+            assertThat(requests.get(0).recipientUserId()).isEqualTo(OPERATOR);
         }
 
         @Test
@@ -242,32 +236,22 @@ class EventRsvpAdvanceNoticeServiceTest {
             EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
             EventEntity event = buildEvent(EVENT_ID, OPERATOR);
             UserEntity user = buildUser(USER_ID, "テスト太郎");
-            NotificationEntity notification = buildNotification(OPERATOR);
 
             given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
             given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
                     .willReturn(Optional.of(rsvp));
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
             given(userLocaleCache.getLocale(OPERATOR)).willReturn("en");
-            given(notificationService.createNotification(
-                    anyLong(), anyString(), any(NotificationPriority.class),
-                    anyString(), anyString(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), anyString(), anyLong()))
-                    .willReturn(notification);
             given(careLinkService.getActiveWatchers(USER_ID, "RSVP")).willReturn(List.of());
 
             LateNoticeRequest req = new LateNoticeRequest(USER_ID, 30, "電車が遅れています");
 
             rsvpService.submitLateNotice(EVENT_ID, TEAM_ID, OPERATOR, req);
 
-            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
-            ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
-            verify(notificationService).createNotification(
-                    eq(OPERATOR), anyString(), any(NotificationPriority.class),
-                    titleCaptor.capture(), bodyCaptor.capture(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), anyString(), anyLong());
-            assertThat(titleCaptor.getValue()).isEqualTo("Late arrival notice");
-            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").doesNotContain("{1}")
+            List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
+            assertThat(requests).hasSize(1);
+            assertThat(requests.get(0).title()).isEqualTo("Late arrival notice");
+            assertThat(requests.get(0).body()).doesNotContain("{0}").doesNotContain("{1}")
                     .contains("テスト太郎").contains("30");
         }
 
@@ -278,32 +262,22 @@ class EventRsvpAdvanceNoticeServiceTest {
             EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
             EventEntity event = buildEvent(EVENT_ID, OPERATOR);
             UserEntity user = buildUser(USER_ID, "テスト花子");
-            NotificationEntity notification = buildNotification(OPERATOR);
 
             given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
             given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
                     .willReturn(Optional.of(rsvp));
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
             given(userLocaleCache.getLocale(OPERATOR)).willReturn("en");
-            given(notificationService.createNotification(
-                    anyLong(), anyString(), any(NotificationPriority.class),
-                    anyString(), anyString(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), anyString(), anyLong()))
-                    .willReturn(notification);
             given(careLinkService.getActiveWatchers(USER_ID, "RSVP")).willReturn(List.of());
 
             AbsenceNoticeRequest req = new AbsenceNoticeRequest(USER_ID, "SICK", "発熱のため");
 
             rsvpService.submitAbsenceNotice(EVENT_ID, TEAM_ID, OPERATOR, req);
 
-            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
-            ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
-            verify(notificationService).createNotification(
-                    eq(OPERATOR), anyString(), any(NotificationPriority.class),
-                    titleCaptor.capture(), bodyCaptor.capture(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), anyString(), anyLong());
-            assertThat(titleCaptor.getValue()).isEqualTo("Absence notice");
-            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").doesNotContain("{1}")
+            List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
+            assertThat(requests).hasSize(1);
+            assertThat(requests.get(0).title()).isEqualTo("Absence notice");
+            assertThat(requests.get(0).body()).doesNotContain("{0}").doesNotContain("{1}")
                     .contains("テスト花子").contains("SICK");
         }
 
@@ -313,7 +287,6 @@ class EventRsvpAdvanceNoticeServiceTest {
             EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
             EventEntity event = buildEvent(EVENT_ID, OPERATOR);
             UserEntity user = buildUser(USER_ID, "テスト太郎");
-            NotificationEntity notification = buildNotification(OPERATOR);
             Long watcher1 = 301L;
             Long watcher2 = 302L;
 
@@ -321,11 +294,6 @@ class EventRsvpAdvanceNoticeServiceTest {
             given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
                     .willReturn(Optional.of(rsvp));
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            given(notificationService.createNotification(
-                    anyLong(), anyString(), any(NotificationPriority.class),
-                    anyString(), anyString(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), anyString(), anyLong()))
-                    .willReturn(notification);
             // OPERATOR 自身が見守り者の1人（＝代理送信）で、他に watcher1/watcher2 がいる
             given(careLinkService.getActiveWatchers(USER_ID, "RSVP"))
                     .willReturn(List.of(OPERATOR, watcher1, watcher2));
@@ -338,17 +306,19 @@ class EventRsvpAdvanceNoticeServiceTest {
             verify(userLocaleCache, times(1)).getLocales(any());
             verify(userLocaleCache, never()).getLocale(eq(watcher1));
             verify(userLocaleCache, never()).getLocale(eq(watcher2));
-            // 主催者(OPERATOR) + 見守り者2名（OPERATOR自身は除外）で計3件通知
-            verify(notificationService, times(3)).createNotification(
-                    anyLong(), anyString(), any(NotificationPriority.class),
-                    anyString(), anyString(), anyString(), anyLong(),
-                    any(NotificationScopeType.class), anyLong(), anyString(), anyLong());
+            // AC-7 の裏付け: 主催者(OPERATOR) + 見守り者2名（OPERATOR自身は除外）で計3件が
+            // 1つの EventAdvanceNoticeNotificationEvent にまとめて publish される
+            // （リスナー側が Runner を1件ずつ呼ぶことで受信者間の巻き添えを防ぐ・番人はリスナーテストで検証）。
+            List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
+            assertThat(requests).hasSize(3);
+            assertThat(requests).extracting(NotificationDeliveryRequest::recipientUserId)
+                    .containsExactlyInAnyOrder(OPERATOR, watcher1, watcher2);
         }
 
         @Test
-        @DisplayName("submitLateNotice: 通知経路（locale解決）が例外を投げても、隔離try以降のメソッド処理は例外を伝播させず続行する"
-                + "（モックによるユニットテストのため実DBトランザクションのrollback-only挙動は検証していない。"
-                + "createNotificationが同一トランザクションに参加する経路でのDB層例外はIssue #2834/CMP-056の対象）")
+        @DisplayName("submitLateNotice: 通知組み立て（locale解決）が例外を投げても、隔離try以降のメソッド処理は例外を伝播させず続行する"
+                + "（Issue #2834 / CMP-056: 通知は createNotification を直接呼ばずイベント publish のみのため、"
+                + "本ケースでは rsvp の save が既にコミット対象として確定済みの状態で通知組み立てのみ失敗する）")
         void submitLateNotice_通知経路の非DB例外は隔離tryで捕捉され後続処理へ伝播しない() {
             EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
             EventEntity event = buildEvent(EVENT_ID, OPERATOR);
@@ -358,22 +328,21 @@ class EventRsvpAdvanceNoticeServiceTest {
             given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
                     .willReturn(Optional.of(rsvp));
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            // 通知経路（locale解決）で例外を発生させる（隔離tryが捕捉する「非DB例外」の一例）
+            // 通知組み立て経路（locale解決）で例外を発生させる（隔離tryが捕捉する「非DB例外」の一例）
             given(userLocaleCache.getLocale(OPERATOR)).willThrow(new RuntimeException("locale解決失敗"));
+            given(careLinkService.getActiveWatchers(USER_ID, "RSVP")).willReturn(List.of());
 
             LateNoticeRequest req = new LateNoticeRequest(USER_ID, 30, null);
 
             AdvanceNoticeResponse response = rsvpService.submitLateNotice(EVENT_ID, TEAM_ID, OPERATOR, req);
 
             // 例外は submitLateNotice の呼び出し元へ伝播せず、メソッドは正常にレスポンスを返す。
-            // ただし本テストはモック環境であり、実DBの@Transactional・rollback-only挙動は再現・検証していない。
             assertThat(response.getNoticeType()).isEqualTo("LATE");
             assertThat(response.getExpectedArrivalMinutesLate()).isEqualTo(30);
             verify(rsvpResponseRepository).save(rsvp);
-            // 通知は送信されない（locale解決の時点で失敗し隔離tryに握られる）
-            verify(notificationService, never()).createNotification(
-                    anyLong(), anyString(), any(), anyString(), anyString(), anyString(), any(),
-                    any(), any(), anyString(), any());
+            // 通知イベントは publish されない（locale解決の時点で失敗し隔離tryに握られ、主催者分の
+            // 要求が積まれないため requests が空になり publish 自体がスキップされる）。
+            verify(eventPublisher, never()).publishEvent(any(EventAdvanceNoticeNotificationEvent.class));
         }
     }
 
@@ -513,20 +482,6 @@ class EventRsvpAdvanceNoticeServiceTest {
     private UserEntity buildUser(Long userId, String displayName) {
         return UserEntity.builder()
                 .displayName(displayName)
-                .build();
-    }
-
-    private NotificationEntity buildNotification(Long userId) {
-        return NotificationEntity.builder()
-                .userId(userId)
-                .notificationType("EVENT_LATE_ARRIVAL_NOTICE")
-                .title("遅刻連絡")
-                .body("テスト通知")
-                .priority(com.mannschaft.app.notification.NotificationPriority.NORMAL)
-                .sourceType("EVENT")
-                .sourceId(1L)
-                .scopeType(NotificationScopeType.TEAM)
-                .scopeId(10L)
                 .build();
     }
 

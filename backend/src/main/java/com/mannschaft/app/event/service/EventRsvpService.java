@@ -364,20 +364,27 @@ public class EventRsvpService {
                                                     String bodyKey, Object[] bodyArgs, String defaultBody) {
         List<NotificationDeliveryRequest> requests = new ArrayList<>();
 
-        // 主催者へ通知
+        // 主催者へ通知。件名・本文の組み立て（locale解決・MessageSource）で例外が起きても、
+        // この1件だけを隔離し（notifyOrganizer 相当）、後続の見守り者通知・呼び出し元（rsvp の
+        // save 済みトランザクション）へは伝播させない。
         Long organizerUserId = event.getCreatedBy();
         if (organizerUserId != null) {
-            Locale organizerLocale = Locale.forLanguageTag(userLocaleCache.getLocale(organizerUserId));
-            String title = messageSource.getMessage(titleKey, null, defaultTitle, organizerLocale);
-            String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, organizerLocale);
-            requests.add(new NotificationDeliveryRequest(
-                    organizerUserId,
-                    type.name(),
-                    NotificationPriority.NORMAL,
-                    title, body,
-                    "EVENT", event.getId(),
-                    NotificationScopeType.TEAM, teamId,
-                    "/teams/" + teamId + "/events/" + event.getId(), operatorUserId));
+            try {
+                Locale organizerLocale = Locale.forLanguageTag(userLocaleCache.getLocale(organizerUserId));
+                String title = messageSource.getMessage(titleKey, null, defaultTitle, organizerLocale);
+                String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, organizerLocale);
+                requests.add(new NotificationDeliveryRequest(
+                        organizerUserId,
+                        type.name(),
+                        NotificationPriority.NORMAL,
+                        title, body,
+                        "EVENT", event.getId(),
+                        NotificationScopeType.TEAM, teamId,
+                        "/teams/" + teamId + "/events/" + event.getId(), operatorUserId));
+            } catch (Exception ex) {
+                log.warn("主催者向け事前連絡通知の組み立てに失敗（継続）: eventId={}, organizerUserId={}, error={}",
+                        eventId, organizerUserId, ex.getMessage());
+            }
         }
 
         // 操作者がケア対象者の見守り者かどうかを確認し、そうであれば他の見守り者にも通知する（代理申告の共有）
@@ -386,22 +393,27 @@ public class EventRsvpService {
             // 見守り者の locale をバルク解決（N+1 防止・AC-3）
             Map<Long, String> watcherLocales = userLocaleCache.getLocales(allWatcherIds);
 
-            // 操作者自身を除いた他の見守り者へ通知を送る
+            // 操作者自身を除いた他の見守り者へ通知を送る（1名の組み立て失敗を隔離し、他の見守り者へ伝播させない）
             for (Long watcherId : allWatcherIds) {
                 if (watcherId.equals(operatorUserId)) continue;
 
-                Locale watcherLocale = Locale.forLanguageTag(watcherLocales.getOrDefault(watcherId, "ja"));
-                String title = messageSource.getMessage(titleKey, null, defaultTitle, watcherLocale);
-                String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, watcherLocale);
+                try {
+                    Locale watcherLocale = Locale.forLanguageTag(watcherLocales.getOrDefault(watcherId, "ja"));
+                    String title = messageSource.getMessage(titleKey, null, defaultTitle, watcherLocale);
+                    String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, watcherLocale);
 
-                requests.add(new NotificationDeliveryRequest(
-                        watcherId,
-                        type.name(),
-                        NotificationPriority.NORMAL,
-                        title, body,
-                        "EVENT", eventId,
-                        NotificationScopeType.PERSONAL, watcherId,
-                        "/teams/" + teamId + "/events/" + eventId, operatorUserId));
+                    requests.add(new NotificationDeliveryRequest(
+                            watcherId,
+                            type.name(),
+                            NotificationPriority.NORMAL,
+                            title, body,
+                            "EVENT", eventId,
+                            NotificationScopeType.PERSONAL, watcherId,
+                            "/teams/" + teamId + "/events/" + eventId, operatorUserId));
+                } catch (Exception ex) {
+                    log.warn("見守り者向け事前連絡通知の組み立てに失敗（継続）: eventId={}, watcherId={}, error={}",
+                            eventId, watcherId, ex.getMessage());
+                }
             }
         }
 
