@@ -2,6 +2,7 @@ package com.mannschaft.app.returnstayplan.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.returnstayplan.service.ReturnStayPlanAccessGuard;
 import com.mannschaft.app.returnstayplan.service.ReturnStayPlanService;
 import jakarta.validation.constraints.Size;
 import java.util.List;
@@ -20,17 +21,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReturnStayPlanTeamController {
 
     private final ReturnStayPlanService service;
+    private final ReturnStayPlanAccessGuard accessGuard;
 
-    public ReturnStayPlanTeamController(ReturnStayPlanService service) {
+    public ReturnStayPlanTeamController(
+            ReturnStayPlanService service, ReturnStayPlanAccessGuard accessGuard) {
         this.service = service;
+        this.accessGuard = accessGuard;
     }
 
     @GetMapping("/return-stay-plans")
     public ResponseEntity<ApiResponse<MemberPlanItems>> listForMembers(
             @PathVariable String slug,
             @RequestParam @Size(min = 1, max = 400) List<Long> memberIds) {
-        var plans = service.listVisiblePlansForMembers(
-                SecurityUtils.getCurrentUserId(), slug, memberIds);
+        Long viewerUserId = SecurityUtils.getCurrentUserId();
+        accessGuard.requireAuthorizedTeamId(slug, viewerUserId);
+        var plans = service.listVisiblePlansForMembers(viewerUserId, slug, memberIds);
         var items = memberIds.stream()
                 .map(memberId -> new MemberPlanItem(memberId, plans.get(memberId)))
                 .toList();
@@ -41,8 +46,10 @@ public class ReturnStayPlanTeamController {
     public ResponseEntity<ApiResponse<List<ReturnStayPlanService.TeamPlanView>>> listForMember(
             @PathVariable String slug,
             @PathVariable Long memberId) {
-        return ResponseEntity.ok(ApiResponse.of(service.listVisiblePlansForMember(
-                SecurityUtils.getCurrentUserId(), slug, memberId)));
+        Long viewerUserId = SecurityUtils.getCurrentUserId();
+        accessGuard.requireAuthorizedTeamId(slug, viewerUserId);
+        return ResponseEntity.ok(ApiResponse.of(
+                service.listVisiblePlansForMember(viewerUserId, slug, memberId)));
     }
 
     public record MemberPlanItems(List<MemberPlanItem> items) { }
