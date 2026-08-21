@@ -11,16 +11,18 @@ import com.mannschaft.app.contact.dto.ContactUserDto;
 import com.mannschaft.app.contact.dto.SendContactRequestBody;
 import com.mannschaft.app.contact.dto.SendContactRequestResponse;
 import com.mannschaft.app.contact.entity.ContactRequestEntity;
+import com.mannschaft.app.contact.event.ContactRequestNotificationEvent;
 import com.mannschaft.app.contact.repository.ContactRequestBlockRepository;
 import com.mannschaft.app.contact.repository.ContactRequestRepository;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,10 +48,11 @@ public class ContactRequestService {
     private final UserRepository userRepository;
     private final ChatContactFolderItemRepository folderItemRepository;
     private final ContactService contactService;
-    private final NotificationService notificationService;
     private final MessageSource messageSource;
     private final UserLocaleCache userLocaleCache;
     private final MediaUrlResolver mediaUrlResolver;
+    /** Issue #2834 / CMP-056: 通知は業務コミット後に発火する（業務サービスから Runner を直接呼ばない）。 */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 連絡先申請を送信する。
@@ -258,68 +261,66 @@ public class ContactRequestService {
                 .build();
     }
 
+    /**
+     * 申請受信通知を発火する（Issue #2834 / CMP-056）。
+     *
+     * <p>{@code createNotification} を直接呼ばず、{@link ContactRequestNotificationEvent} を
+     * publish するだけに留める。本メソッド自体は {@code sendRequest} の業務トランザクションの
+     * <b>内側</b>で呼ばれるが、実際の通知生成は {@code ContactRequestNotificationListener} が
+     * {@code AFTER_COMMIT} で受け取ってから行う。これにより「申請 INSERT がコミットされる前に
+     * visibility ガードが該当行を見つけられず deny する」事故を防ぐ（AC-3 実証ケース）。</p>
+     */
     private void sendRequestReceivedNotification(Long requesterId, Long targetId, Long requestId) {
-        try {
-            UserEntity requester = userRepository.findById(requesterId).orElse(null);
-            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(targetId));
-            String defaultName = messageSource.getMessage(
-                    "notification.contact.common.defaultActorName", null, "ユーザー", locale);
-            String requesterName = requester != null
-                    ? requester.getLastName() + " " + requester.getFirstName() : defaultName;
-            notificationService.createNotification(
-                    targetId,
-                    "CONTACT_REQUEST_RECEIVED",
-                    NotificationPriority.NORMAL,
-                    messageSource.getMessage(
-                            "notification.contact.requestReceived.title", null, "連絡先申請", locale),
-                    messageSource.getMessage(
-                            "notification.contact.requestReceived.body",
-                            new Object[]{requesterName},
-                            requesterName + " さんから連絡先申請が届きました", locale),
-                    "CONTACT_REQUEST",
-                    requestId,
-                    NotificationScopeType.PERSONAL,
-                    targetId,
-                    "/settings/contact-requests",
-                    requesterId
-            );
-        } catch (Exception e) {
-            // 通知失敗を隔離する（非DB例外・MessageFormatエラー等が対象。本処理の巻き戻りは防がない）。
-            log.warn("連絡先申請受信通知の送信に失敗しました: targetId={}, requestId={}, error={}",
-                    targetId, requestId, e.getMessage());
-        }
+        UserEntity requester = userRepository.findById(requesterId).orElse(null);
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(targetId));
+        String defaultName = messageSource.getMessage(
+                "notification.contact.common.defaultActorName", null, "ユーザー", locale);
+        String requesterName = requester != null
+                ? requester.getLastName() + " " + requester.getFirstName() : defaultName;
+        eventPublisher.publishEvent(new ContactRequestNotificationEvent(new NotificationDeliveryRequest(
+                targetId,
+                "CONTACT_REQUEST_RECEIVED",
+                NotificationPriority.NORMAL,
+                messageSource.getMessage(
+                        "notification.contact.requestReceived.title", null, "連絡先申請", locale),
+                messageSource.getMessage(
+                        "notification.contact.requestReceived.body",
+                        new Object[]{requesterName},
+                        requesterName + " さんから連絡先申請が届きました", locale),
+                "CONTACT_REQUEST",
+                requestId,
+                NotificationScopeType.PERSONAL,
+                targetId,
+                "/settings/contact-requests",
+                requesterId)));
     }
 
+    /**
+     * 申請承認通知を発火する（Issue #2834 / CMP-056）。{@link #sendRequestReceivedNotification} と同型。
+     */
     private void sendRequestAcceptedNotification(Long actorId, Long targetId, Long requestId) {
-        try {
-            UserEntity actor = userRepository.findById(actorId).orElse(null);
-            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(targetId));
-            String defaultName = messageSource.getMessage(
-                    "notification.contact.common.defaultActorName", null, "ユーザー", locale);
-            String actorName = actor != null
-                    ? actor.getLastName() + " " + actor.getFirstName() : defaultName;
-            notificationService.createNotification(
-                    targetId,
-                    "CONTACT_REQUEST_ACCEPTED",
-                    NotificationPriority.NORMAL,
-                    messageSource.getMessage(
-                            "notification.contact.requestAccepted.title", null,
-                            "連絡先申請が承認されました", locale),
-                    messageSource.getMessage(
-                            "notification.contact.requestAccepted.body",
-                            new Object[]{actorName},
-                            actorName + " さんが連絡先申請を承認しました", locale),
-                    "CONTACT_REQUEST",
-                    requestId,
-                    NotificationScopeType.PERSONAL,
-                    targetId,
-                    "/chat",
-                    actorId
-            );
-        } catch (Exception e) {
-            // 通知失敗を隔離する（非DB例外・MessageFormatエラー等が対象。本処理の巻き戻りは防がない）。
-            log.warn("連絡先申請承認通知の送信に失敗しました: targetId={}, requestId={}, error={}",
-                    targetId, requestId, e.getMessage());
-        }
+        UserEntity actor = userRepository.findById(actorId).orElse(null);
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(targetId));
+        String defaultName = messageSource.getMessage(
+                "notification.contact.common.defaultActorName", null, "ユーザー", locale);
+        String actorName = actor != null
+                ? actor.getLastName() + " " + actor.getFirstName() : defaultName;
+        eventPublisher.publishEvent(new ContactRequestNotificationEvent(new NotificationDeliveryRequest(
+                targetId,
+                "CONTACT_REQUEST_ACCEPTED",
+                NotificationPriority.NORMAL,
+                messageSource.getMessage(
+                        "notification.contact.requestAccepted.title", null,
+                        "連絡先申請が承認されました", locale),
+                messageSource.getMessage(
+                        "notification.contact.requestAccepted.body",
+                        new Object[]{actorName},
+                        actorName + " さんが連絡先申請を承認しました", locale),
+                "CONTACT_REQUEST",
+                requestId,
+                NotificationScopeType.PERSONAL,
+                targetId,
+                "/chat",
+                actorId)));
     }
 }
