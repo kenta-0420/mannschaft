@@ -17,8 +17,6 @@ import java.lang.annotation.Target;
  * （SCREAMING_SNAKE、例 {@code FEATURE_SHIFT_ENABLED}）であり、
  * 棚卸し台帳 {@code docs/inventory/feature-inventory.yaml} の {@code release.gate_key} と同一文字列である。
  * 台帳の kebab な {@code feature_key} や課金の {@code feature_catalog.feature_key} とは別系統。</p>
- *
- * <p>⚠️ 試練の骨格。属性定義のみを置いてあり、実際のガード挙動は出陣で実装する。</p>
  */
 @Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)

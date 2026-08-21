@@ -11,8 +11,6 @@ import lombok.RequiredArgsConstructor;
  * {@code ERROR_CODE_STATUS_MAP} で <b>403 FORBIDDEN</b> にマップする（マスター裁可済み）。
  * 未登録のままだと {@code Severity.WARN} 既定の 400 に静かに落ちるため、
  * 登録は必須である（番人 {@code ErrorCodeHttpStatusDeclarationGuardTest} が検出する）。</p>
- *
- * <p>⚠️ 試練の骨格。定義のみを置いてあり、{@code ERROR_CODE_STATUS_MAP} への登録は出陣で行う。</p>
  */
 @Getter
 @RequiredArgsConstructor

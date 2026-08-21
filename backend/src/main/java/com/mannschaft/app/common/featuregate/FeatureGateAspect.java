@@ -1,13 +1,19 @@
 package com.mannschaft.app.common.featuregate;
 
 import com.mannschaft.app.admin.service.FeatureFlagService;
+import com.mannschaft.app.common.BusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.aop.support.AopUtils;
+import org.springframework.core.annotation.AnnotationUtils;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+
+import java.lang.reflect.Method;
 
 /**
  * {@link RequireFeature} 付きメソッドに対する事前ガード AOP（Gate 基盤工事③）。
@@ -16,17 +22,6 @@ import org.springframework.stereotype.Component;
  * （既定 {@code Ordered.LOWEST_PRECEDENCE}）より十分先に走らせる。
  * これによりトランザクション開始前に拒否が確定し、拒否時に DB 書き込みが一切発生しない
  * （金型: {@code RepairPlanModuleGuardAspect}）。</p>
- *
- * <p>⚠️⚠️ <b>試練の骨格である。本アドバイスは意図的に「何もしない」</b>。
- * これにより受け入れ条件 AC-2〜AC-4・AC-10 の試練が red になる。
- * 出陣で以下を実装すること（本コメントごと清掃する）:</p>
- * <ol>
- *   <li>メソッドレベル → クラスレベルの順で {@link RequireFeature} を解決する
- *       （メソッドレベルがクラスレベルより優先。AC-4）</li>
- *   <li>{@link FeatureFlagService#isEnabled(String)} を {@code value()} の全キーに対して評価し、
- *       1 つでも false なら {@code BusinessException(FEATURE_GATE_001)} を投げる（AND 判定。AC-10）</li>
- *   <li>行が無い未知キーは {@code isEnabled} が false を返すためフェイルクローズになる（AC-3）</li>
- * </ol>
  */
 @Aspect
 @Component
@@ -40,7 +35,30 @@ public class FeatureGateAspect {
     @Around("@annotation(com.mannschaft.app.common.featuregate.RequireFeature)"
             + " || @within(com.mannschaft.app.common.featuregate.RequireFeature)")
     public Object gate(ProceedingJoinPoint pjp) throws Throwable {
-        // 試練の骨格: 何もせず素通しする。出陣でフラグ判定を実装する。
+        MethodSignature signature = (MethodSignature) pjp.getSignature();
+        Method method = signature.getMethod();
+        // JDK プロキシではインターフェースのメソッドが渡るためアノテーションが取れない。
+        // 実装クラスの対応メソッドを解決してから探す。
+        Method targetMethod = AopUtils.getMostSpecificMethod(method, pjp.getTarget().getClass());
+
+        // メソッドレベル → クラスレベルの順でアノテーションを探す（メソッドレベルが優先）。
+        RequireFeature annotation = AnnotationUtils.findAnnotation(targetMethod, RequireFeature.class);
+        if (annotation == null) {
+            annotation = AnnotationUtils.findAnnotation(pjp.getTarget().getClass(), RequireFeature.class);
+        }
+
+        if (annotation != null) {
+            for (String key : annotation.value()) {
+                // 行が無い未知キーは isEnabled が false を返す＝フェイルクローズ。
+                if (!featureFlagService.isEnabled(key)) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("FeatureGateAspect: 拒否 method={}, key={}", method.getName(), key);
+                    }
+                    throw new BusinessException(FeatureGateErrorCode.FEATURE_GATE_001);
+                }
+            }
+        }
+
         return pjp.proceed();
     }
 }
