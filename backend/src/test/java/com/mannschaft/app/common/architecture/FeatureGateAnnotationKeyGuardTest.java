@@ -40,16 +40,18 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <b>文字列リテラル必須</b>とする（金型: {@code BatchMarkerAnnotationGuardTest} の
  * 「理由がその場に読めること」と同じ思想）。<b>免除リストは設けない</b>。</p>
  *
- * <h2>実在判定の突き合わせ先 — seed が唯一の正</h2>
- * <p>「実在する」の判定基準は {@code backend/src/main/resources/db/migration} の
- * {@code feature_flags} seed に<b>行が存在すること</b>のみである。
- * 棚卸し台帳 {@code docs/inventory/feature-inventory.yaml} の {@code release.gate_key}
- * は gate_key の唯一の発行元ではあるが、台帳に載っているだけでは
- * {@code FeatureFlagService.isEnabled} が見る {@code feature_flags} テーブルに行が無く、
- * <b>台帳にしか無いキーを指定すると CI は緑のまま本番だけ恒久 deny になる</b>
- * （実測: 台帳の非 null な gate_key 18件のうち {@code PERSONAL_PROFILE} だけが
- * feature_flags seed に存在しない。Codex 検分指摘②）。
- * よって「台帳 ∪ seed」の和集合で許可してはならず、<b>seed 集合への所属を必須</b>とする。</p>
+ * <h2>実在判定の突き合わせ先 — 台帳と seed の積集合</h2>
+ * <p>三段の役割で整理する: <b>台帳＝発行元</b>（release.gate_key の唯一の発行元。
+ * Gate 基盤工事②） / <b>seed＝実行可能な実体</b>（{@code feature_flags} に行が無い
+ * キーは {@code FeatureFlagService.isEnabled} が {@code orElse(false)} で恒久 false
+ * を返す） / <b>{@code @RequireFeature}・GATE_ROUTE_MAP＝利用箇所</b>。
+ * 台帳だけの和集合で許すと、台帳にしか無いキーを指定した場合に CI は緑のまま
+ * 本番だけ恒久 deny になる（実測: 台帳の是正前は非 null な gate_key 18件のうち
+ * {@code PERSONAL_PROFILE} だけが feature_flags seed に存在せず、この事故の実例だった。
+ * 台帳側は是正済み（{@code gate_key: null} に変更）。Codex 検分指摘②）。
+ * 逆に seed だけの和集合で許すと、台帳に無い（廃止済み・書き間違いの）古いフラグキーを
+ * {@code @RequireFeature} から使えてしまい、「台帳が gate_key の唯一の発行元」という
+ * 規約が守れない。よって<b>台帳と seed の両方に存在すること（積集合）を必須</b>とする。</p>
  *
  * <h2>走査対象は src/main のみ</h2>
  * <p>テストコードは AOP 検証用のダミーキー（{@code FEATURE_NO_SUCH_ROW_ENABLED} 等）を
@@ -120,30 +122,72 @@ class FeatureGateAnnotationKeyGuardTest {
     }
 
     @Test
-    @DisplayName("陽性対照: 台帳にしか無いキー（PERSONAL_PROFILE）は既知扱いされず番人に落とされる（検分指摘②）")
-    void 陽性対照_台帳のみのキーは既知扱いされない() throws IOException {
-        Set<String> knownKeys = knownFlagKeys();
+    @DisplayName("陽性対照(i): seed にはあるが台帳に無い合成キーは既知扱いされず番人に落とされる")
+    void 陽性対照_seedのみの合成キーは既知扱いされない() {
+        String seedOnlyKey = "FEATURE_SYNTHETIC_SEED_ONLY_ENABLED";
+        Set<String> inventoryKeys = Set.of("FEATURE_SYNTHETIC_BOTH_ENABLED");
+        Set<String> seedKeys = Set.of("FEATURE_SYNTHETIC_BOTH_ENABLED", seedOnlyKey);
+        Set<String> knownKeys = intersectKnownFlagKeys(inventoryKeys, seedKeys);
 
-        assertThat(inventoryGateKeys())
-                .as("この陽性対照は PERSONAL_PROFILE が台帳側に実在することが前提")
-                .contains("PERSONAL_PROFILE");
         assertThat(knownKeys)
-                .as("PERSONAL_PROFILE は feature_flags seed に行が無いため、"
-                        + "台帳との和集合を取っていれば既知扱いされてしまう。"
-                        + "seed 集合を必須にした是正後は既知扱いされてはならない")
-                .doesNotContain("PERSONAL_PROFILE");
+                .as("seed にしか無いキーは積集合に含まれてはならない"
+                        + "（台帳に無いキーを @RequireFeature から使えると"
+                        + "「台帳が gate_key の唯一の発行元」の規約が守れない）")
+                .doesNotContain(seedOnlyKey);
 
         List<String> violations = analyze(List.of(new Source("Synthetic.java",
                 "class Synthetic {\n"
-                        + "  @RequireFeature(\"PERSONAL_PROFILE\")\n"
+                        + "  @RequireFeature(\"" + seedOnlyKey + "\")\n"
                         + "  void a() {}\n"
                         + "}\n")), knownKeys);
 
         assertThat(violations)
-                .as("台帳にしかないキー PERSONAL_PROFILE を指定した検体は番人に落とされなければならない"
+                .as("seed にしかない合成キーを指定した検体は番人に落とされなければならない")
+                .hasSize(1);
+        assertThat(violations.get(0)).contains("実在しないフラグキー").contains(seedOnlyKey);
+    }
+
+    @Test
+    @DisplayName("陽性対照(ii): 台帳にはあるが seed に無い合成キーは既知扱いされず番人に落とされる")
+    void 陽性対照_台帳のみの合成キーは既知扱いされない() {
+        String inventoryOnlyKey = "FEATURE_SYNTHETIC_INVENTORY_ONLY_ENABLED";
+        Set<String> inventoryKeys = Set.of("FEATURE_SYNTHETIC_BOTH_ENABLED", inventoryOnlyKey);
+        Set<String> seedKeys = Set.of("FEATURE_SYNTHETIC_BOTH_ENABLED");
+        Set<String> knownKeys = intersectKnownFlagKeys(inventoryKeys, seedKeys);
+
+        assertThat(knownKeys)
+                .as("台帳にしか無いキーは積集合に含まれてはならない"
+                        + "（feature_flags に行が無く isEnabled() が恒久 false を返すため）")
+                .doesNotContain(inventoryOnlyKey);
+
+        List<String> violations = analyze(List.of(new Source("Synthetic.java",
+                "class Synthetic {\n"
+                        + "  @RequireFeature(\"" + inventoryOnlyKey + "\")\n"
+                        + "  void a() {}\n"
+                        + "}\n")), knownKeys);
+
+        assertThat(violations)
+                .as("台帳にしかない合成キーを指定した検体は番人に落とされなければならない"
                         + "（落ちなければ CI 緑のまま本番で恒久 deny になる）")
                 .hasSize(1);
-        assertThat(violations.get(0)).contains("実在しないフラグキー").contains("PERSONAL_PROFILE");
+        assertThat(violations.get(0)).contains("実在しないフラグキー").contains(inventoryOnlyKey);
+    }
+
+    @Test
+    @DisplayName("正例: 台帳と seed の双方にある合成キーは既知扱いされ違反にならない")
+    void 正例_双方にある合成キーは既知扱いされる() {
+        String bothKey = "FEATURE_SYNTHETIC_BOTH_ENABLED";
+        Set<String> knownKeys = intersectKnownFlagKeys(Set.of(bothKey), Set.of(bothKey));
+
+        assertThat(knownKeys).contains(bothKey);
+
+        List<String> violations = analyze(List.of(new Source("Synthetic.java",
+                "class Synthetic {\n"
+                        + "  @RequireFeature(\"" + bothKey + "\")\n"
+                        + "  void a() {}\n"
+                        + "}\n")), knownKeys);
+
+        assertThat(violations).isEmpty();
     }
 
     @Test
@@ -294,15 +338,25 @@ class FeatureGateAnnotationKeyGuardTest {
     /**
      * 実在すると認める既知フラグキー集合。
      *
-     * <p>{@code db/migration} の {@code feature_flags} seed のみを正とする（seed 集合必須）。
-     * 台帳の gate_key との和集合は取らない — 台帳にしか無いキーは
-     * {@code feature_flags} に行が無く、isEnabled() が恒久 false を返すため
-     * （Codex 検分指摘②。台帳との整合自体は
-     * {@link #既知フラグキーを台帳とseedの双方から収集できている()} で別途裏取りする）。</p>
+     * <p>台帳（発行元）と seed（実行可能な実体）の<b>積集合</b>のみを正とする。
+     * 台帳だけにあるキーは {@code feature_flags} に行が無く isEnabled() が恒久 false を
+     * 返すため許可できず、seed だけにあるキーは「台帳が唯一の発行元」の規約に反するため
+     * 許可できない（詳細はクラス Javadoc）。</p>
      */
     static Set<String> knownFlagKeys() throws IOException {
-        return new LinkedHashSet<>(FeatureGateRouteMapGuardTest.seededFlagKeys(
-                FeatureGateRouteMapGuardTest.resolveFromRepoRoot(MIGRATION_RELATIVE)));
+        Set<String> inventoryKeys = inventoryGateKeys();
+        Set<String> seedKeys = FeatureGateRouteMapGuardTest.seededFlagKeys(
+                FeatureGateRouteMapGuardTest.resolveFromRepoRoot(MIGRATION_RELATIVE));
+        return intersectKnownFlagKeys(inventoryKeys, seedKeys);
+    }
+
+    /**
+     * 台帳集合と seed 集合の積集合を返す純関数（合成入力での自己検証用に切り出してある）。
+     */
+    static Set<String> intersectKnownFlagKeys(Set<String> inventoryKeys, Set<String> seedKeys) {
+        Set<String> result = new LinkedHashSet<>(inventoryKeys);
+        result.retainAll(seedKeys);
+        return result;
     }
 
     /** 棚卸し台帳の {@code release.gate_key}（null 以外）を集める。 */
