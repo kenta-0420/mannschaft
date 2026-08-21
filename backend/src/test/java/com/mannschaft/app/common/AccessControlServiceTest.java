@@ -890,6 +890,25 @@ class AccessControlServiceTest {
         }
 
         @Test
+        @DisplayName("SYSTEM_ADMIN（プラットフォームロール）→ 組織未所属でもgetRoleName=SYSTEM_ADMIN")
+        void systemAdminは組織未所属でも最優先ロールになる() {
+            // Given: SYSTEM_ADMIN は team_id / organization_id がともに null のため、
+            // スコープ別 user_roles と memberships のどちらにも現れない。
+            given(userRoleRepository.existsSystemAdminByUserId(USER_ID)).willReturn(1L);
+            given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(role("ADMIN")));
+
+            // When / Then: サイドバー等のスコープUIでもプラットフォーム権限を認識できる。
+            assertThat(accessControlService.getRoleName(USER_ID, SCOPE_ID, "ORGANIZATION"))
+                    .isEqualTo("SYSTEM_ADMIN");
+            assertThat(accessControlService.hasRoleOrAbove(
+                    USER_ID, SCOPE_ID, "ORGANIZATION", "ADMIN"))
+                    .isTrue();
+            verify(userRoleRepository, never())
+                    .findByUserIdAndOrganizationId(USER_ID, SCOPE_ID);
+            verifyNoInteractions(membershipRepository);
+        }
+
+        @Test
         @DisplayName("memberships 専属 MEMBER → getRoleName=MEMBER / hasRoleOrAbove(MEMBER)=true")
         void memberships専属MEMBER() {
             // Given: user_roles には行が無い（V60.010 で MEMBER 行は削除済み）
