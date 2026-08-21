@@ -22,6 +22,21 @@ import java.lang.reflect.Method;
  * （既定 {@code Ordered.LOWEST_PRECEDENCE}）より十分先に走らせる。
  * これによりトランザクション開始前に拒否が確定し、拒否時に DB 書き込みが一切発生しない
  * （金型: {@code RepairPlanModuleGuardAspect}）。</p>
+ *
+ * <h2>{@code @RequireFeature} をインターフェースへ付与してはならない（Codex 検分指摘①）</h2>
+ * <p>pointcut は {@code @annotation()}・{@code @within()}・
+ * {@code execution(@RequireFeature * *(..))} を併用しているが、Spring AOP の pointcut
+ * マッチングは内部で {@code ClassUtils.getMostSpecificMethod(method, targetClass)}
+ * により<b>実装クラス側のオーバーライドメソッド</b>へ解決してから注釈の有無を判定する。
+ * Java の注釈はインターフェースからオーバーライドメソッドへ継承されないため、
+ * {@code @RequireFeature} をインターフェース（型またはメソッド）にのみ付与すると、
+ * <b>JDK 動的プロキシ・CGLIB のどちらでも pointcut が一致せず本 Aspect が一切発火しない</b>
+ * （{@code FeatureGateAspectTest} の AC-13a〜d で実測固定済み）。</p>
+ * <p>下記のインターフェース側メソッド／宣言クラスへのアノテーション解決フォールバックは
+ * 防御多層化として残しているが、<b>pointcut 自体が発火しない以上、この解決コードには
+ * 到達しない</b>。したがってこの迂回を根治する唯一の手段は
+ * {@code RequireFeatureInterfaceGuardTest}（インターフェースへの付与自体を CI で拒否する）
+ * であり、実装クラス（またはその public メソッド）にのみ付与すること。</p>
  */
 @Aspect
 @Component
@@ -33,7 +48,8 @@ public class FeatureGateAspect {
     private final FeatureFlagService featureFlagService;
 
     @Around("@annotation(com.mannschaft.app.common.featuregate.RequireFeature)"
-            + " || @within(com.mannschaft.app.common.featuregate.RequireFeature)")
+            + " || @within(com.mannschaft.app.common.featuregate.RequireFeature)"
+            + " || execution(@com.mannschaft.app.common.featuregate.RequireFeature * *(..))")
     public Object gate(ProceedingJoinPoint pjp) throws Throwable {
         MethodSignature signature = (MethodSignature) pjp.getSignature();
         Method method = signature.getMethod();
@@ -42,9 +58,21 @@ public class FeatureGateAspect {
         Method targetMethod = AopUtils.getMostSpecificMethod(method, pjp.getTarget().getClass());
 
         // メソッドレベル → クラスレベルの順でアノテーションを探す（メソッドレベルが優先）。
+        // targetMethod（実装クラス側）で見つからない場合に備え、signature 側のメソッド
+        // （インターフェースにのみ付与されたケースを含む）とその宣言クラスからも解決を試みる
+        // （防御多層化）。ただし本 Aspect のクラス Javadoc に記載の通り、インターフェースにのみ
+        // 付与された場合は pointcut 自体が一致せずこの advice が発火しないため、実際にはこの
+        // フォールバックへ到達しない。インターフェース付与は RequireFeatureInterfaceGuardTest
+        // が CI で拒否する。
         RequireFeature annotation = AnnotationUtils.findAnnotation(targetMethod, RequireFeature.class);
         if (annotation == null) {
             annotation = AnnotationUtils.findAnnotation(pjp.getTarget().getClass(), RequireFeature.class);
+        }
+        if (annotation == null) {
+            annotation = AnnotationUtils.findAnnotation(method, RequireFeature.class);
+        }
+        if (annotation == null) {
+            annotation = AnnotationUtils.findAnnotation(method.getDeclaringClass(), RequireFeature.class);
         }
 
         if (annotation != null) {

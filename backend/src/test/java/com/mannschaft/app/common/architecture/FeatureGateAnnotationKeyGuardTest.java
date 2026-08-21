@@ -40,14 +40,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <b>文字列リテラル必須</b>とする（金型: {@code BatchMarkerAnnotationGuardTest} の
  * 「理由がその場に読めること」と同じ思想）。<b>免除リストは設けない</b>。</p>
  *
- * <h2>実在判定の突き合わせ先</h2>
- * <ul>
- *   <li>棚卸し台帳 {@code docs/inventory/feature-inventory.yaml} の {@code release.gate_key}
- *       — gate_key の唯一の発行元</li>
- *   <li>{@code backend/src/main/resources/db/migration} の {@code feature_flags} seed
- *       — 実際に行が存在するキー</li>
- * </ul>
- * <p>どちらにも無いキーは「実在しない」とみなす。</p>
+ * <h2>実在判定の突き合わせ先 — seed が唯一の正</h2>
+ * <p>「実在する」の判定基準は {@code backend/src/main/resources/db/migration} の
+ * {@code feature_flags} seed に<b>行が存在すること</b>のみである。
+ * 棚卸し台帳 {@code docs/inventory/feature-inventory.yaml} の {@code release.gate_key}
+ * は gate_key の唯一の発行元ではあるが、台帳に載っているだけでは
+ * {@code FeatureFlagService.isEnabled} が見る {@code feature_flags} テーブルに行が無く、
+ * <b>台帳にしか無いキーを指定すると CI は緑のまま本番だけ恒久 deny になる</b>
+ * （実測: 台帳の非 null な gate_key 18件のうち {@code PERSONAL_PROFILE} だけが
+ * feature_flags seed に存在しない。Codex 検分指摘②）。
+ * よって「台帳 ∪ seed」の和集合で許可してはならず、<b>seed 集合への所属を必須</b>とする。</p>
  *
  * <h2>走査対象は src/main のみ</h2>
  * <p>テストコードは AOP 検証用のダミーキー（{@code FEATURE_NO_SUCH_ROW_ENABLED} 等）を
@@ -115,6 +117,33 @@ class FeatureGateAnnotationKeyGuardTest {
                 .as("本番ソースの走査件数が少なすぎる（CWD またはソースルートの想定が崩れている）: "
                         + MAIN_SOURCE_ROOT.toAbsolutePath())
                 .isGreaterThan(500);
+    }
+
+    @Test
+    @DisplayName("陽性対照: 台帳にしか無いキー（PERSONAL_PROFILE）は既知扱いされず番人に落とされる（検分指摘②）")
+    void 陽性対照_台帳のみのキーは既知扱いされない() throws IOException {
+        Set<String> knownKeys = knownFlagKeys();
+
+        assertThat(inventoryGateKeys())
+                .as("この陽性対照は PERSONAL_PROFILE が台帳側に実在することが前提")
+                .contains("PERSONAL_PROFILE");
+        assertThat(knownKeys)
+                .as("PERSONAL_PROFILE は feature_flags seed に行が無いため、"
+                        + "台帳との和集合を取っていれば既知扱いされてしまう。"
+                        + "seed 集合を必須にした是正後は既知扱いされてはならない")
+                .doesNotContain("PERSONAL_PROFILE");
+
+        List<String> violations = analyze(List.of(new Source("Synthetic.java",
+                "class Synthetic {\n"
+                        + "  @RequireFeature(\"PERSONAL_PROFILE\")\n"
+                        + "  void a() {}\n"
+                        + "}\n")), knownKeys);
+
+        assertThat(violations)
+                .as("台帳にしかないキー PERSONAL_PROFILE を指定した検体は番人に落とされなければならない"
+                        + "（落ちなければ CI 緑のまま本番で恒久 deny になる）")
+                .hasSize(1);
+        assertThat(violations.get(0)).contains("実在しないフラグキー").contains("PERSONAL_PROFILE");
     }
 
     @Test
@@ -262,12 +291,18 @@ class FeatureGateAnnotationKeyGuardTest {
     // 既知フラグキーの収集
     // ===================================================================
 
-    /** 台帳の gate_key ∪ db/migration の feature_flags seed。 */
+    /**
+     * 実在すると認める既知フラグキー集合。
+     *
+     * <p>{@code db/migration} の {@code feature_flags} seed のみを正とする（seed 集合必須）。
+     * 台帳の gate_key との和集合は取らない — 台帳にしか無いキーは
+     * {@code feature_flags} に行が無く、isEnabled() が恒久 false を返すため
+     * （Codex 検分指摘②。台帳との整合自体は
+     * {@link #既知フラグキーを台帳とseedの双方から収集できている()} で別途裏取りする）。</p>
+     */
     static Set<String> knownFlagKeys() throws IOException {
-        Set<String> keys = new LinkedHashSet<>(inventoryGateKeys());
-        keys.addAll(FeatureGateRouteMapGuardTest.seededFlagKeys(
+        return new LinkedHashSet<>(FeatureGateRouteMapGuardTest.seededFlagKeys(
                 FeatureGateRouteMapGuardTest.resolveFromRepoRoot(MIGRATION_RELATIVE)));
-        return keys;
     }
 
     /** 棚卸し台帳の {@code release.gate_key}（null 以外）を集める。 */
