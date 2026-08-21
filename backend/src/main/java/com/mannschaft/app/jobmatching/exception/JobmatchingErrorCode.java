@@ -62,6 +62,15 @@ public enum JobmatchingErrorCode implements ErrorCode {
      */
     JOB_PERMISSION_DENIED("JOB_PERMISSION_DENIED", "この操作を行う権限がありません", Severity.WARN),
 
+    /**
+     * 求人の新規作成権限がない（403）。
+     *
+     * <p>これは {@link #JOB_PERMISSION_DENIED} とは別物である。求人 ID を一切引かない汎用の権限拒否であり、
+     * 秘匿すべきリソース ID が存在しないため、ID 越境の 404 化（存在秘匿）の対象にはならない。
+     * したがってステータスは 403 のまま据え置く。</p>
+     */
+    JOB_CREATE_PERMISSION_DENIED("JOB_CREATE_PERMISSION_DENIED", "求人を作成する権限がありません", Severity.WARN),
+
     /** 指定された公開範囲は MVP 未対応 */
     JOB_VIS_NOT_SUPPORTED("JOB_VIS_NOT_SUPPORTED", "指定された公開範囲は現在サポートされていません", Severity.WARN),
 

@@ -96,7 +96,16 @@ public enum SuccessionErrorCode implements ErrorCode {
     LEGAL_FILING_NOT_FOUND("SUCCESSION_021", "法的手続きレコードが見つかりません", Severity.WARN),
 
     /** 証拠パッケージがまだ生成されていない */
-    EVIDENCE_NOT_READY("SUCCESSION_022", "証拠パッケージがまだ生成されていません。先に buildEvidencePackage を実行してください", Severity.WARN);
+    EVIDENCE_NOT_READY("SUCCESSION_022", "証拠パッケージがまだ生成されていません。先に buildEvidencePackage を実行してください", Severity.WARN),
+
+    /**
+     * 誓約一覧取得の権限がない（403）。
+     *
+     * <p>これは {@link #COVENANT_FORBIDDEN} とは別物である。組織スコープの一覧取得であり、
+     * 秘匿すべき個別の誓約 ID を一切引かない汎用の権限拒否であるため、
+     * ID 越境の 404 化（存在秘匿）の対象にはならない。したがってステータスは 403 のまま据え置く。</p>
+     */
+    COVENANT_LIST_FORBIDDEN("SUCCESSION_023", "誓約一覧を取得する権限がありません", Severity.WARN);
 
     private final String code;
     private final String message;

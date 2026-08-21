@@ -1906,5 +1906,37 @@ class GlobalExceptionHandlerTest {
                     VillageErrorCode.VILLAGE_UNLISTED);
         }
     }
+
+    // ========================================
+    // 汎用の権限拒否（IDを引かないため404化しない・403のまま）
+    // ========================================
+
+    @Nested
+    @DisplayName("汎用の権限拒否 — ID越境ではないため404化せず403のまま")
+    class GenericPermissionDeniedStaysForbidden {
+
+        /**
+         * ID を一切引かない汎用の権限拒否は、秘匿すべきリソース ID が存在しないため
+         * 存在オラクル対策（404化）の対象外であり、403のまま据え置く。
+         * ExistenceOracleParity（ID越境は404）と対になる、意図的な非対称の固定。
+         */
+        @Test
+        @DisplayName("求人作成: JOB_CREATE_PERMISSION_DENIED は 403（求人IDが存在しないため404化しない）")
+        void 求人作成の権限拒否は403のまま() {
+            HttpStatus status = globalExceptionHandler.resolveHttpStatus(
+                    JobmatchingErrorCode.JOB_CREATE_PERMISSION_DENIED);
+
+            assertThat(status).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("承継誓約一覧: COVENANT_LIST_FORBIDDEN は 403（個別誓約IDが存在しないため404化しない）")
+        void 承継誓約一覧の権限拒否は403のまま() {
+            HttpStatus status = globalExceptionHandler.resolveHttpStatus(
+                    SuccessionErrorCode.COVENANT_LIST_FORBIDDEN);
+
+            assertThat(status).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+    }
 }
 

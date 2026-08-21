@@ -396,6 +396,7 @@ public class GlobalExceptionHandler {
             Map.entry("JOB_APPLICATION_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("JOB_CONTRACT_NOT_FOUND", HttpStatus.NOT_FOUND),
             Map.entry("JOB_PERMISSION_DENIED", HttpStatus.NOT_FOUND),   // 越境の存在秘匿で 404（JOB_CONTRACT_NOT_FOUND と同値）
+            Map.entry("JOB_CREATE_PERMISSION_DENIED", HttpStatus.FORBIDDEN), // IDを引かない汎用の権限拒否 → 403据え置き
             // F13.1 Phase 13.1.2: QR チェックイン／アウト
             Map.entry("JOB_QR_TOKEN_INVALID_SIGNATURE", HttpStatus.UNAUTHORIZED),
             Map.entry("JOB_QR_TOKEN_WRONG_WORKER", HttpStatus.FORBIDDEN),
@@ -1304,6 +1305,7 @@ public class GlobalExceptionHandler {
             Map.entry("SUCCESSION_018", HttpStatus.CONFLICT),            // ESCALATION_FROZEN（凍結中の操作拒否 → 409）
             Map.entry("SUCCESSION_019", HttpStatus.CONFLICT),            // ESCALATION_ALREADY_FINAL_STAGE（状態競合 → 409）
             Map.entry("SUCCESSION_022", HttpStatus.CONFLICT),            // EVIDENCE_NOT_READY（前提未達の状態競合 → 409）
+            Map.entry("SUCCESSION_023", HttpStatus.FORBIDDEN),           // COVENANT_LIST_FORBIDDEN（IDを引かない汎用の権限拒否 → 403据え置き）
             // 認可根治戦役 Wave 2 トランシェ2B: F09.3 parking の *_NOT_FOUND は、対象エンティティが
             // 自スコープ外（BOLA）の場合にも同一コードで返す存在秘匿の要。Severity.WARN 既定の 400 のままだと
             // IDOR 秘匿の慣例（他ドメイン同様）に反するため 404 へ上書きする。

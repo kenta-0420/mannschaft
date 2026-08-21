@@ -295,7 +295,7 @@ public class SuccessionCovenantService {
     public Page<SuccessionCovenantResponse> listOrgCovenants(
             Long organizationId, Pageable pageable, Long currentUserId) {
         if (!accessControlService.isAdminOrAbove(currentUserId, organizationId, "ORGANIZATION")) {
-            throw new BusinessException(SuccessionErrorCode.COVENANT_FORBIDDEN);
+            throw new BusinessException(SuccessionErrorCode.COVENANT_LIST_FORBIDDEN);
         }
         return covenantRepository
                 .findByOrganizationIdAndDeletedAtIsNull(organizationId, pageable)
