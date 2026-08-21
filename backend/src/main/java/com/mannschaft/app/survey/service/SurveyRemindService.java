@@ -19,6 +19,7 @@ import com.mannschaft.app.survey.repository.SurveyResponseRepository;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +55,7 @@ public class SurveyRemindService {
     private final AccessControlService accessControlService;
     private final NotificationHelper notificationHelper;
     private final OrganizationMembershipService organizationMembershipService;
+    private final MessageSource messageSource;
 
     /**
      * 未回答者へ督促通知を送信する（F05.4 督促 API）。
@@ -121,17 +123,26 @@ public class SurveyRemindService {
                 ? NotificationScopeType.TEAM
                 : NotificationScopeType.ORGANIZATION;
         if (!unansweredUserIds.isEmpty()) {
-            notificationHelper.notifyAllPreAuthorized(
+            // Issue #2715 CMP-055 ロットC-5: 受信者 locale に応じて件名・本文を組み立てる
+            // （notifyAllPreAuthorizedLocalized は notifyAllPreAuthorized 同様 canView 絞り込みを通さない）。
+            notificationHelper.notifyAllPreAuthorizedLocalized(
                     unansweredUserIds,
                     SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
-                    "アンケート未回答のお知らせ",
-                    "「" + survey.getTitle() + "」が未回答です。回答にご協力ください。",
                     "SURVEY",
                     surveyId,
                     notifScope,
                     survey.getScopeId(),
                     "/surveys/" + surveyId,
-                    currentUserId);
+                    currentUserId,
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                            messageSource.getMessage(
+                                    "notification.survey.remind.title", null,
+                                    "アンケート未回答のお知らせ", locale),
+                            messageSource.getMessage(
+                                    "notification.survey.remind.body",
+                                    new Object[]{survey.getTitle()},
+                                    "「" + survey.getTitle() + "」が未回答です。回答にご協力ください。",
+                                    locale)));
         }
 
         // カウンタ更新

@@ -120,17 +120,12 @@ class FlywayFromScratchMigrationTest {
      *
      * <p>乖離の内訳（左が Hibernate が発行する列名、括弧内が Flyway 実列名）:</p>
      * <ul>
-     *   <li><b>{@code s3Key} / {@code positionX} / {@code r2ObjectKey} 系（8 件）</b> —
-     *       Spring Boot の {@code CamelCaseToUnderscoresNamingStrategy} は
-     *       「小文字の直後の大文字」でのみ {@code _} を挿入するため、
-     *       数字の直後の大文字（{@code s3Key} → {@code s3key}）や末尾の大文字
-     *       （{@code positionX} → {@code positionx}）では区切られない。
-     *       Flyway 側は {@code s3_key} / {@code position_x} / {@code r2_object_key} で作られている。
-     *       {@code ProxyInputConsentEntity} は同じ罠を踏んで
-     *       {@code @Column(name = "scanned_document_s3_key")} で是正済み（同じ対処が正解）。</li>
-     *   <li><b>{@code notification_credit_purchases}（2 件）</b> —
-     *       Flyway 実列は {@code alert_sent_30d} / {@code alert_sent_7d} だが、
-     *       Entity フィールド {@code alertSent30d} は {@code alert_sent30d} にマップされる。</li>
+     *   <li><b>命名戦略の数字 / 末尾大文字の罠（旧 11 件・2026-08-20 に Issue #2856 で全額返済）</b> —
+     *       {@code s3Key} → {@code s3key} / {@code positionX} → {@code positionx} /
+     *       {@code r2ObjectKey} → {@code r2object_key} / {@code alertSent30d} → {@code alert_sent30d}。
+     *       いずれも Entity 側に {@code @Column(name=...)} を明示して是正済みのため台帳から削除した。
+     *       再発は {@code common.architecture.EntityDigitBoundaryColumnNameGuardTest}（静的走査）と
+     *       {@code common.schema.EntityDigitBoundaryColumnFlywaySchemaIT}（実 Flyway スキーマ）が防ぐ。</li>
      *   <li><b>{@code circulation_recipients}（3 件）</b> —
      *       V9.175 のコメントは「V9.171 で追加済み」と書いているが、
      *       V9.171 は {@code create_name_disclosure_change_logs} で無関係。実際にはどこにも存在しない。</li>
@@ -149,18 +144,6 @@ class FlywayFromScratchMigrationTest {
      * </ul>
      */
     private static final Set<String> KNOWN_UNPAID_DRIFT = Set.of(
-        // --- 命名戦略の数字/末尾大文字の罠（Entity 側に @Column(name=...) を足すのが正解）---
-        "chart_photos.s3key",                                 // 実列: s3_key
-        "data_exports.s3key",                                 // 実列: s3_key
-        "direct_mail_image_uploads.s3key",                    // 実列: s3_key
-        "equipment_items.s3key",                              // 実列: s3_key
-        "kb_image_uploads.s3key",                             // 実列: s3_key
-        "resident_documents.s3key",                           // 実列: s3_key
-        "corkboard_groups.positionx",                         // 実列: position_x
-        "corkboard_groups.positiony",                         // 実列: position_y
-        "timetable_slot_user_note_attachments.r2object_key",  // 実列: r2_object_key
-        "notification_credit_purchases.alert_sent30d",        // 実列: alert_sent_30d
-        "notification_credit_purchases.alert_sent7d",         // 実列: alert_sent_7d
         // --- migration そのものが存在しない（Flyway 側に列を足すのが正解）---
         "circulation_recipients.skip_reason",
         "circulation_recipients.skipped_by",

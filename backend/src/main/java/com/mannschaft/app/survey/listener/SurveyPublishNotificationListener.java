@@ -13,6 +13,7 @@ import com.mannschaft.app.survey.event.SurveyPublishedEvent;
 import com.mannschaft.app.survey.repository.SurveyTargetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -57,6 +58,7 @@ public class SurveyPublishNotificationListener {
     private final SurveyTargetRepository surveyTargetRepository;
     private final NotificationHelper notificationHelper;
     private final NotificationFanoutJobService fanoutJobService;
+    private final MessageSource messageSource;
 
     /**
      * アンケート公開イベントを受信して配信母集団へ公開通知を送信する。
@@ -72,6 +74,10 @@ public class SurveyPublishNotificationListener {
                 // 組織スコープ×ALL: 受信者を展開せず耐久 fan-out ジョブを 1 件 enqueue（O(1)）。
                 // 配下チーム展開・応援者トグル適用・ACTIVE/未削除の母集団条件はワーカー（OrgFanoutRecipientSource）が
                 // keyset クエリで処理する。
+                // Issue #2715 CMP-055 ロットC-5: このジョブは描画済みの title/body を enqueue し、
+                // 受信者はワーカー（NotificationFanoutWorker）が後から展開するため、受信者ごとの i18n は
+                // 構造的に不可能。ジョブのペイロード形式を変える設計変更は Issue #2871 の範囲であり、
+                // 本ロットでは対象外とする（手を付けない）。
                 fanoutJobService.enqueue(
                         OrgFanoutRecipientSource.SCOPE_TYPE,               // 戦略キー: ORGANIZATION
                         String.valueOf(event.getScopeId()),                // scope_ref: 組織 ID 文字列
@@ -99,19 +105,27 @@ public class SurveyPublishNotificationListener {
                     ? NotificationScopeType.TEAM
                     : NotificationScopeType.ORGANIZATION;
             // 配信＝受信権 統一（関所(1)通知 / E: ResultsVisibility 誤用是正）:
-            // recipients は resolveRecipients が配信母集団として確定済みのため、notifyAllPreAuthorized で
-            // canView 絞り込み（SURVEY の結果閲覧 ResultsVisibility 軸を含む）を通さない。
-            notificationHelper.notifyAllPreAuthorized(
+            // recipients は resolveRecipients が配信母集団として確定済みのため、canView 絞り込み
+            // （SURVEY の結果閲覧 ResultsVisibility 軸を含む）を通さない
+            // notifyAllPreAuthorizedLocalized（Issue #2715 CMP-055 ロットC-5で追加）を使う。
+            notificationHelper.notifyAllPreAuthorizedLocalized(
                     recipients,
                     SurveyNotificationType.SURVEY_CREATED.name(),
-                    "新しいアンケートが公開されました",
-                    "「" + event.getTitle() + "」が公開されました。回答にご協力ください。",
                     "SURVEY",
                     event.getSurveyId(),
                     notifScope,
                     event.getScopeId(),
                     "/surveys/" + event.getSurveyId(),
-                    event.getActorId());
+                    event.getActorId(),
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                            messageSource.getMessage(
+                                    "notification.survey.published.title", null,
+                                    "新しいアンケートが公開されました", locale),
+                            messageSource.getMessage(
+                                    "notification.survey.published.body",
+                                    new Object[]{event.getTitle()},
+                                    "「" + event.getTitle() + "」が公開されました。回答にご協力ください。",
+                                    locale)));
             log.info("アンケート公開通知送信: surveyId={}, recipientCount={}",
                     event.getSurveyId(), recipients.size());
         } catch (Exception e) {

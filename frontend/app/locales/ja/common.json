@@ -1495,6 +1495,10 @@
       "back_to_dashboard": "ダッシュボードへ戻る",
       "retry": "再試行",
       "slow_loading": "読み込みに時間がかかっています"
+    },
+    "unsavedChanges": {
+      "title": "未保存の変更",
+      "confirmLeave": "保存されていない変更があります。このページを離れると入力内容は失われます。よろしいですか？"
     }
   },
   "teamHub": {
@@ -2157,5 +2161,15 @@
     "submit": "譲渡する",
     "successTitle": "オーナーを譲渡しました",
     "successDetail": "管理者権限が新しいオーナーへ移りました。"
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "非公開の機能です",
+      "body": "この機能は現在ご利用いただけません。ダッシュボードに戻ります。"
+    },
+    "error": {
+      "fetchFailedTitle": "機能の公開状態を確認できませんでした",
+      "fetchFailedBody": "通信エラーのため機能の公開状態を確認できませんでした。しばらくしてから再度お試しください。"
+    }
   }
 }

@@ -3,6 +3,7 @@ package com.mannschaft.app.contact.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.contact.ContactErrorCode;
 import com.mannschaft.app.contact.dto.ContactRequestResponse;
@@ -19,17 +20,21 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
  * 連絡先申請サービス。
  */
+@Slf4j
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
@@ -42,6 +47,8 @@ public class ContactRequestService {
     private final ChatContactFolderItemRepository folderItemRepository;
     private final ContactService contactService;
     private final NotificationService notificationService;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
     private final MediaUrlResolver mediaUrlResolver;
 
     /**
@@ -252,38 +259,67 @@ public class ContactRequestService {
     }
 
     private void sendRequestReceivedNotification(Long requesterId, Long targetId, Long requestId) {
-        UserEntity requester = userRepository.findById(requesterId).orElse(null);
-        String requesterName = requester != null ? requester.getLastName() + " " + requester.getFirstName() : "ユーザー";
-        notificationService.createNotification(
-                targetId,
-                "CONTACT_REQUEST_RECEIVED",
-                NotificationPriority.NORMAL,
-                "連絡先申請",
-                requesterName + " さんから連絡先申請が届きました",
-                "CONTACT_REQUEST",
-                requestId,
-                NotificationScopeType.PERSONAL,
-                targetId,
-                "/settings/contact-requests",
-                requesterId
-        );
+        try {
+            UserEntity requester = userRepository.findById(requesterId).orElse(null);
+            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(targetId));
+            String defaultName = messageSource.getMessage(
+                    "notification.contact.common.defaultActorName", null, "ユーザー", locale);
+            String requesterName = requester != null
+                    ? requester.getLastName() + " " + requester.getFirstName() : defaultName;
+            notificationService.createNotification(
+                    targetId,
+                    "CONTACT_REQUEST_RECEIVED",
+                    NotificationPriority.NORMAL,
+                    messageSource.getMessage(
+                            "notification.contact.requestReceived.title", null, "連絡先申請", locale),
+                    messageSource.getMessage(
+                            "notification.contact.requestReceived.body",
+                            new Object[]{requesterName},
+                            requesterName + " さんから連絡先申請が届きました", locale),
+                    "CONTACT_REQUEST",
+                    requestId,
+                    NotificationScopeType.PERSONAL,
+                    targetId,
+                    "/settings/contact-requests",
+                    requesterId
+            );
+        } catch (Exception e) {
+            // 通知失敗を隔離する（非DB例外・MessageFormatエラー等が対象。本処理の巻き戻りは防がない）。
+            log.warn("連絡先申請受信通知の送信に失敗しました: targetId={}, requestId={}, error={}",
+                    targetId, requestId, e.getMessage());
+        }
     }
 
     private void sendRequestAcceptedNotification(Long actorId, Long targetId, Long requestId) {
-        UserEntity actor = userRepository.findById(actorId).orElse(null);
-        String actorName = actor != null ? actor.getLastName() + " " + actor.getFirstName() : "ユーザー";
-        notificationService.createNotification(
-                targetId,
-                "CONTACT_REQUEST_ACCEPTED",
-                NotificationPriority.NORMAL,
-                "連絡先申請が承認されました",
-                actorName + " さんが連絡先申請を承認しました",
-                "CONTACT_REQUEST",
-                requestId,
-                NotificationScopeType.PERSONAL,
-                targetId,
-                "/chat",
-                actorId
-        );
+        try {
+            UserEntity actor = userRepository.findById(actorId).orElse(null);
+            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(targetId));
+            String defaultName = messageSource.getMessage(
+                    "notification.contact.common.defaultActorName", null, "ユーザー", locale);
+            String actorName = actor != null
+                    ? actor.getLastName() + " " + actor.getFirstName() : defaultName;
+            notificationService.createNotification(
+                    targetId,
+                    "CONTACT_REQUEST_ACCEPTED",
+                    NotificationPriority.NORMAL,
+                    messageSource.getMessage(
+                            "notification.contact.requestAccepted.title", null,
+                            "連絡先申請が承認されました", locale),
+                    messageSource.getMessage(
+                            "notification.contact.requestAccepted.body",
+                            new Object[]{actorName},
+                            actorName + " さんが連絡先申請を承認しました", locale),
+                    "CONTACT_REQUEST",
+                    requestId,
+                    NotificationScopeType.PERSONAL,
+                    targetId,
+                    "/chat",
+                    actorId
+            );
+        } catch (Exception e) {
+            // 通知失敗を隔離する（非DB例外・MessageFormatエラー等が対象。本処理の巻き戻りは防がない）。
+            log.warn("連絡先申請承認通知の送信に失敗しました: targetId={}, requestId={}, error={}",
+                    targetId, requestId, e.getMessage());
+        }
     }
 }

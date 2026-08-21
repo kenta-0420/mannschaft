@@ -1495,6 +1495,10 @@
       "back_to_dashboard": "Zurück zum Dashboard",
       "retry": "Erneut versuchen",
       "slow_loading": "Das Laden dauert länger als erwartet"
+    },
+    "unsavedChanges": {
+      "title": "Ungespeicherte Änderungen",
+      "confirmLeave": "Es gibt ungespeicherte Änderungen. Wenn Sie diese Seite verlassen, gehen Ihre Eingaben verloren. Fortfahren?"
     }
   },
   "teamHub": {
@@ -2157,5 +2161,15 @@
     "submit": "Übertragen",
     "successTitle": "Eigentum übertragen",
     "successDetail": "Die Administratorrechte wurden an die neue Eigentümerin bzw. den neuen Eigentümer übertragen."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Funktion nicht verfügbar",
+      "body": "Diese Funktion ist derzeit nicht verfügbar. Sie werden zum Dashboard zurückgeleitet."
+    },
+    "error": {
+      "fetchFailedTitle": "Verfügbarkeit der Funktion konnte nicht geprüft werden",
+      "fetchFailedBody": "Aufgrund eines Netzwerkfehlers konnte nicht geprüft werden, ob diese Funktion verfügbar ist. Bitte versuchen Sie es später erneut."
+    }
   }
 }
