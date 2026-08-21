@@ -31,11 +31,15 @@
 #
 #   4. Delete the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets.
 #
-#   注意: 上記手順どおり AWS_ACCESS_KEY_ID を削除すると、下の "Check AWS credentials"
-#   ステップ（門番）は AWS_ACCESS_KEY_ID が空であることを唯一の判定条件としており、
-#   secret が無ければ常に skip=true としてデプロイを丸ごとスキップしてしまう。
-#   OIDC へ移行する場合は、この門番の判定条件も OIDC 向けに合わせて変更すること
-#   （本ファイルの門番の実装自体は今回変更していない）。
+#   注意: 下の "Check AWS credentials" ステップ（門番）は、実際にワークフロー内で
+#   参照している secret（AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / ECR_REPOSITORY /
+#   ECS_CLUSTER / ECS_SERVICE / ECS_TASK_DEFINITION / ECS_CONTAINER_NAME の7つ。
+#   AWS_ACCOUNT_ID はこの OIDC 手順内でのみ使う想定で、現行ステップでは未参照）が
+#   「全て未設定→skip」「全て設定済み→デプロイ」「一部だけ設定済み→ジョブ失敗」の
+#   3通りで判定する。上記手順どおり AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY を削除して
+#   OIDC へ移行すると、この2つが欠けた「一部だけ設定済み」状態になりジョブが失敗する。
+#   OIDC へ移行する場合は、この門番の判定対象・実行ステップの両方を OIDC 向けに
+#   合わせて変更すること（本ファイルの門番の実装自体は今回 OIDC 対応はしていない）。
 # =============================================================================
 
 name: Frontend — Build & Deploy
@@ -73,18 +77,46 @@ jobs:
       # このステップは checkout より前に走るため、job の defaults.run.working-directory
       # である ./frontend はまだ存在しない。ここだけ working-directory を明示的にリポジトリ
       # 直下（.）へ戻す。
+      # デプロイに必要な secret が「全て未設定」なら意図的な無効化とみなしスキップ、
+      # 「全て設定済み」ならデプロイへ進む。「一部だけ設定済み」は設定ミスであり、
+      # 対処療法（黙ってスキップ）で症状を隠さず、ジョブを失敗させて気付けるようにする
+      # （本プロジェクトの禁止事項「対処療法でバグを切り抜けること」に該当するため）。
+      # 対象は本ワークフロー内で実際に参照している secret のみ（AWS_ACCOUNT_ID は
+      # 冒頭コメントの OIDC 移行手順にのみ登場し、現行の実行ステップでは参照していない
+      # ため対象外）。値そのものはログに出さず、secret 名と設定済み／未設定の別だけを出す。
       - name: Check AWS credentials
         id: aws-check
         working-directory: .
         run: |
-          if [ -z "$AWS_KEY" ]; then
+          missing=()
+          present=()
+          for name in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY ECR_REPOSITORY ECS_CLUSTER ECS_SERVICE ECS_TASK_DEFINITION ECS_CONTAINER_NAME; do
+            value_var="SECRET_${name}"
+            if [ -z "${!value_var}" ]; then
+              missing+=("$name")
+            else
+              present+=("$name")
+            fi
+          done
+
+          if [ "${#present[@]}" -eq 0 ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "::warning::AWS credentials not configured — skipping deploy"
-          else
+          elif [ "${#missing[@]}" -eq 0 ]; then
             echo "skip=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "::error::デプロイ用 secret が一部だけ設定されています（設定ミスの疑い）。未設定: ${missing[*]}"
+            exit 1
           fi
         env:
-          AWS_KEY: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          SECRET_AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          SECRET_AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          SECRET_ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          SECRET_ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
+          SECRET_ECS_SERVICE: ${{ secrets.ECS_SERVICE }}
+          SECRET_ECS_TASK_DEFINITION: ${{ secrets.ECS_TASK_DEFINITION }}
+          SECRET_ECS_CONTAINER_NAME: ${{ secrets.ECS_CONTAINER_NAME }}
 
       - name: Checkout source
         if: steps.aws-check.outputs.skip != 'true'
