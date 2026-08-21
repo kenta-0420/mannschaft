@@ -339,12 +339,26 @@ jobs:
   # if: always() で常に起動し（shard が skip/失敗しても必ず走る）、必須チェックが
   # 確実に生成されるようにする。
   #
+  # 【2026-08-21 是正・既存の gate 偽 green 穴も併せて是正】
+  #   旧ロジックは「backend_changed != 'true' なら無条件で success」としていたが、
+  #   detect ジョブ自体が failure/cancelled した場合も outputs.backend_changed は
+  #   空文字（≠ 'true'）になり、この分岐に落ちて「docs-only だから skip」と誤認して
+  #   緑になっていた。この穴は shard-coverage-guard 新設以前から gate に存在していた
+  #   既存の弱点であり、今回まとめて是正する。加えて、backend_changed == 'true' の
+  #   経路で shard / lint / shard-coverage-guard が `skipped`（走るべきなのに走らな
+  #   かった）だった場合も、旧ロジックの `!= 'success'` 判定自体は既に fail 側に落ちる
+  #   はずだが、detect 失敗経由の誤認 success を防いだ副次効果として、ここでも
+  #   明示的に「期待して走るべきジョブが skipped なら失敗」であることをコメントで
+  #   明記しておく。
+  #
   # 判定ロジック（steps の中で評価）:
-  #   (1) detect.backend_changed != 'true'（docs-only 等）
-  #       → shard は skip 済み。テスト不要なので success（exit 0）。
-  #   (2) needs.shard.result == 'success'（全 shard 成功）
-  #       → success（exit 0）。
-  #   (3) それ以外（needs.shard.result が failure / cancelled）
+  #   (0) needs.detect.result != 'success'（detect 自体が failure/cancelled/skipped）
+  #       → backend_changed の値に関わらず判定不能。fail（exit 1）。
+  #   (1) detect.result == 'success' かつ backend_changed != 'true'（docs-only 等）
+  #       → shard 系は正しく skip 済み。テスト不要なので success（exit 0）。
+  #   (2) backend_changed == 'true' で 全 shard + lint + shard-coverage-guard が
+  #       success（skipped/failure/cancelled のいずれでもない）→ success（exit 0）。
+  #   (3) それ以外（failure / cancelled / 走るべきなのに skipped 等の異常）
   #       → fail（exit 1）。
   #
   # ※ GitHub Actions では matrix ジョブを needs に指定すると、needs.<job>.result は
@@ -361,28 +375,44 @@ jobs:
       - name: 集約結果を判定
         run: |
           set -e
+          DETECT_RESULT="${{ needs.detect.result }}"
           CHANGED="${{ needs.detect.outputs.backend_changed }}"
           SHARD_RESULT="${{ needs.shard.result }}"
           LINT_RESULT="${{ needs.lint.result }}"
           COVERAGE_GUARD_RESULT="${{ needs.shard-coverage-guard.result }}"
-          echo "[INFO] detect.backend_changed        = ${CHANGED}"
-          echo "[INFO] needs.shard.result             = ${SHARD_RESULT}"
-          echo "[INFO] needs.lint.result              = ${LINT_RESULT}"
+          echo "[INFO] needs.detect.result            = ${DETECT_RESULT}"
+          echo "[INFO] detect.backend_changed          = ${CHANGED}"
+          echo "[INFO] needs.shard.result              = ${SHARD_RESULT}"
+          echo "[INFO] needs.lint.result               = ${LINT_RESULT}"
           echo "[INFO] needs.shard-coverage-guard.result = ${COVERAGE_GUARD_RESULT}"
 
-          # (1) backend 無変更（docs-only 等）: shard / lint / shard-coverage-guard は skip 済み → テスト不要で success
+          # (0) detect 自体が success でない（failure/cancelled/skipped）→ 判定不能につき fail。
+          #     ここを通さないと、detect 失敗時に outputs.backend_changed が空文字になり
+          #     「backend 無変更」と誤認して shard 系が全て skip のまま緑になってしまう
+          #     （新設した shard-coverage-guard を含む全検証が走らずに Compile & Test が
+          #      success になる偽 green 穴。今回まとめて是正）。
+          if [ "${DETECT_RESULT}" != "success" ]; then
+            echo "[NG] detect が success ではない（結果: ${DETECT_RESULT}）。backend_changed の値は" \
+                 "信頼できず、shard/lint/shard-coverage-guard の要否も判定不能。CI を再実行せよ。"
+            exit 1
+          fi
+
+          # (1) detect success かつ backend 無変更（docs-only 等）: shard / lint / shard-coverage-guard は
+          #     意図的に skip 済み → テスト不要で success
           if [ "${CHANGED}" != "true" ]; then
             echo "[OK] backend に変更なし（docs-only 等）。shard / lint / shard-coverage-guard をスキップし success とする。"
             exit 0
           fi
 
-          # (2) 全 shard + lint + shard-coverage-guard が成功 → success
+          # (2) backend_changed == 'true' の経路: 全 shard + lint + shard-coverage-guard が
+          #     厳密に success（skipped/failure/cancelled のいずれでもない）→ success
           if [ "${SHARD_RESULT}" = "success" ] && [ "${LINT_RESULT}" = "success" ] && [ "${COVERAGE_GUARD_RESULT}" = "success" ]; then
             echo "[OK] 全 shard + lint + shard-coverage-guard が success。Compile & Test は success。"
             exit 0
           fi
 
-          # (3) それ以外（failure / cancelled / skipped-but-changed 等の異常） → fail
+          # (3) それ以外（failure / cancelled / 走るべきなのに skipped 等の異常） → fail
+          #     shard-coverage-guard が skipped のまま緑にはならない（走らない番人は無意味なため）。
           echo "[NG] shard=${SHARD_RESULT}, lint=${LINT_RESULT}, shard-coverage-guard=${COVERAGE_GUARD_RESULT} — いずれかが success ではない。Compile & Test を失敗とする。"
           exit 1
 
