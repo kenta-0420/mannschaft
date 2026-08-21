@@ -7,12 +7,14 @@ import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.repository.BatchJobLogRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -29,6 +31,19 @@ public class BatchJobLogService {
 
     private final BatchJobLogRepository batchJobLogRepository;
     private final AdminMapper adminMapper;
+
+    /**
+     * 業務ローカル時刻の壁時計（{@code ClockConfig#wallClock}）。
+     * {@code batch_job_logs.started_at} / {@code finished_at} と同一の時間基準。
+     *
+     * <p>既定の {@code Clock} Bean は UTC 固定（{@code ClockConfig#utcClock}）であり、
+     * JVM 既定ゾーン基準の壁時計として書かれている {@code LocalDateTime} 列と
+     * 直接比較するとオフセット分（JST なら 9 時間）ずれる。そのため
+     * {@code @Qualifier("wallClock")} で明示的に壁時計を選ぶ
+     * （金型: {@code BlogScheduledPublishBatchService} / {@code BlogPostRevisionService}）。</p>
+     */
+    @Qualifier("wallClock")
+    private final Clock wallClock;
 
     /**
      * バッチジョブログ一覧を取得する。
@@ -111,13 +126,20 @@ public class BatchJobLogService {
      * 向きは {@code errorMessage} の文面で読み取れるようにする
      * （再開後の実際の実行は {@code BatchExecutionAspect} が別行として記録する）。</p>
      *
+     * <h2>時刻は壁時計 Clock から取る</h2>
+     * <p>{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md} の方針により、
+     * 引数なしの {@code LocalDateTime.now()} は新規に増やさない（番人 {@code DateTimeAndZoneGuardTest} /
+     * CMP-023 の凍結台帳は<b>返済対象の技術負債</b>であって、件数を積み増す先ではない）。
+     * {@code started_at} / {@code finished_at} は JVM 既定ゾーン基準の壁時計として書かれた
+     * {@code LocalDateTime} 列なので、UTC 固定の既定 Clock ではなく {@link #wallClock} を用いる。</p>
+     *
      * @param jobName ジョブ名
      * @param skipped スキップへ移った記録なら {@code true}、実行へ戻った記録なら {@code false}
      * @param reason  理由（無効だったフラグキーを含む人間可読の文字列。再開時は null 可）
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFeaturePolicyOutcome(String jobName, boolean skipped, String reason) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(wallClock);
         BatchJobLogEntity entity = BatchJobLogEntity.builder()
                 .jobName(jobName)
                 .status(BatchJobStatus.SKIPPED)
