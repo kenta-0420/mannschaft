@@ -118,13 +118,16 @@ public class BatchJobLogService {
      * 1 行だけ残すこと（FAILED にしてはならない。運用が障害と誤読し、
      * {@code BatchFailedEvent} の通知と区別が付かなくなる）。</p>
      *
-     * <h2>どちらの向きの遷移も {@link BatchJobStatus#SKIPPED} で記録する</h2>
+     * <h2>向きを status に載せる（読み戻せることが要件である）</h2>
      * <p>本メソッドが書く行は<b>実行そのものではなく、実行しなかった／再開したという境界の目印</b>である。
-     * SUCCESS を使うと {@code processedCount=0} の実行が 1 回あったように読め、実績を捏造する。
-     * FAILED を使うと運用が障害と誤読し {@code BatchFailedEvent} の通知と区別が付かなくなる。
-     * どちらも「この行は実行ではない」ことを表せないため、両方向とも SKIPPED とし、
-     * 向きは {@code errorMessage} の文面で読み取れるようにする
-     * （再開後の実際の実行は {@code BatchExecutionAspect} が別行として記録する）。</p>
+     * 停止は {@link BatchJobStatus#SKIPPED}、再開は {@link BatchJobStatus#RESUMED} とする。</p>
+     *
+     * <p><b>両方向を同じ status にしてはならない。</b>
+     * {@code BackgroundFeatureSkipRecorder} は「直近 1 行」を読んで前回状態を判定するため、
+     * 向きが status から読み取れないと状態判定そのものが成り立たない。
+     * SUCCESS は {@code processedCount=0} の実行が 1 回あったように読めて実績を捏造し、
+     * FAILED は運用が障害と誤読して {@code BatchFailedEvent} の通知と区別が付かなくなるため、
+     * いずれも使わない（再開後の実際の実行は {@code BatchExecutionAspect} が別行として記録する）。</p>
      *
      * <h2>時刻は壁時計 Clock から取る</h2>
      * <p>{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md} の方針により、
@@ -142,7 +145,7 @@ public class BatchJobLogService {
         LocalDateTime now = LocalDateTime.now(wallClock);
         BatchJobLogEntity entity = BatchJobLogEntity.builder()
                 .jobName(jobName)
-                .status(BatchJobStatus.SKIPPED)
+                .status(skipped ? BatchJobStatus.SKIPPED : BatchJobStatus.RESUMED)
                 .startedAt(now)
                 .finishedAt(now)
                 .processedCount(0)
