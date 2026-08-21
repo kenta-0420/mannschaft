@@ -49,6 +49,7 @@ public class VillagePinService {
     private final UserVillagePinRepository pinRepository;
     private final VillageRepository villageRepository;
     private final MediaUrlResolver mediaUrlResolver;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // 一覧取得
@@ -95,7 +96,7 @@ public class VillagePinService {
      */
     @Transactional
     public PinResponse pin(Long userId, UUID villageId) {
-        VillageEntity village = loadActiveVillage(villageId);
+        VillageEntity village = loadActiveVillage(villageId, userId);
 
         if (pinRepository.findByUserIdAndVillageId(userId, villageId).isPresent()) {
             throw new BusinessException(VillageErrorCode.VILLAGE_PIN_ALREADY_EXISTS);
@@ -239,12 +240,15 @@ public class VillagePinService {
     // ========================================================================
 
     /**
-     * アクティブ村（未削除・未凍結）を取得する。
-     * 設計書 §10 に従い、削除済み / 凍結済み / 存在しない場合は IDOR 対策で一律 404 を返す。
+     * 閲覧可能かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>従来の実装は不在・削除済み・凍結済みをまとめて 404 に畳んでいたため、
+     * 凍結も 404 とする {@link VillageAccessGate#loadReadableVillage} へ委譲して挙動を揃える。
+     * 加えて、非公開(UNLISTED)村を非村人が叩いた場合も実在しない村 ID と同一の
+     * {@code VILLAGE_NOT_FOUND} となり、村の存在が漏れなくなる。</p>
      */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        return villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadReadableVillage(villageId, actorUserId);
     }
 
     /**

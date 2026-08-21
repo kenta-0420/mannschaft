@@ -22,7 +22,6 @@ import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageCalendarEventLogRepository;
 import com.mannschaft.app.village.repository.VillageCalendarEventRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -73,7 +72,6 @@ public class VillageCalendarService {
     private static final int DEFAULT_LOG_PAGE_SIZE = 20;
     private static final int MAX_LOG_PAGE_SIZE = 100;
 
-    private final VillageRepository villageRepository;
     private final VillageCalendarEventRepository calendarRepository;
     private final VillageMembershipRepository membershipRepository;
     // F17.2 Wave1 ④歳時記×村史の年輪
@@ -83,6 +81,7 @@ public class VillageCalendarService {
     private final VillageNicknameResolver villageNicknameResolver;
     /** F17.2 Wave2 ①: 行事→村フィード自動還流イベントの発行（AFTER_COMMIT リスナーが購読・§3.3.1）。 */
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // 作成
@@ -100,7 +99,7 @@ public class VillageCalendarService {
     public CalendarEventResponse createEvent(UUID villageId,
                                               CalendarEventCreateRequest request,
                                               Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireModerator(villageId, actorUserId);
 
         validateDateRange(request.eventDate(), request.eventEndDate());
@@ -142,7 +141,7 @@ public class VillageCalendarService {
                                               UUID eventId,
                                               CalendarEventUpdateRequest request,
                                               Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireModerator(villageId, actorUserId);
 
         VillageCalendarEventEntity entity = loadActiveEvent(villageId, eventId);
@@ -192,7 +191,7 @@ public class VillageCalendarService {
      */
     @Transactional
     public void deleteEvent(UUID villageId, UUID eventId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireModerator(villageId, actorUserId);
 
         VillageCalendarEventEntity entity = loadActiveEvent(villageId, eventId);
@@ -216,7 +215,7 @@ public class VillageCalendarService {
      */
     @Transactional(readOnly = true)
     public CalendarEventListResponse listEventsByMonth(UUID villageId, int year, int month, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillager(villageId, actorUserId);
 
         if (month < 1 || month > 12) {
@@ -234,7 +233,7 @@ public class VillageCalendarService {
      */
     @Transactional(readOnly = true)
     public CalendarEventResponse getEvent(UUID villageId, UUID eventId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillager(villageId, actorUserId);
         VillageCalendarEventEntity entity = loadActiveEvent(villageId, eventId);
         return CalendarEventResponse.from(entity);
@@ -265,17 +264,16 @@ public class VillageCalendarService {
     // 共通ヘルパ
     // ========================================================================
 
-    /** 有効な村を取得する（削除/凍結済みは VILLAGE_001 / VILLAGE_027 で扱う）。 */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     /**
@@ -320,7 +318,7 @@ public class VillageCalendarService {
     @Transactional
     public CalendarEventLogResponse addLog(UUID villageId, UUID eventId,
                                            CalendarEventLogCreateRequest request, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         loadActiveEvent(villageId, eventId);   // 村跨ぎ IDOR は CALENDAR_EVENT_NOT_FOUND（404）
         requireVillager(villageId, actorUserId);
 
@@ -348,7 +346,7 @@ public class VillageCalendarService {
     @Transactional(readOnly = true)
     public List<CalendarEventLogResponse> listLogs(UUID villageId, UUID eventId, Integer year,
                                                    Long actorUserId, Pageable pageable) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         loadActiveEvent(villageId, eventId);
         requireVillager(villageId, actorUserId);
 
@@ -379,7 +377,7 @@ public class VillageCalendarService {
      */
     @Transactional
     public void deleteLog(UUID villageId, UUID eventId, UUID logId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         loadActiveEvent(villageId, eventId);
         requireVillager(villageId, actorUserId);
 
