@@ -34,6 +34,12 @@ import java.lang.reflect.Method;
  * 意図した停止が障害として運用に通知される。既存のフラグ判定 4 箇所も全て
  * 「黙ってスキップ」流儀であり、本 Aspect もそれに揃える。</p>
  *
+ * <h2>記録の失敗はバッチの障害にしない</h2>
+ * <p>{@link BackgroundFeatureSkipRecorder} の呼び出しは捕捉する。記録は停止判断に付随する
+ * 情報であり、その失敗を再スローすると {@code BatchExecutionAspect} が FAILED を書き
+ * {@code BatchFailedEvent} を飛ばすため、記録できなかっただけの回が「障害」として運用に
+ * 通知される。捕捉した例外は握り潰さずスタックトレース付きで WARN に残す。</p>
+ *
  * <h2>スキップ時の戻り値</h2>
  * <p>戻り値型の<b>既定値</b>（{@code int} なら 0、参照型なら null、{@code void} なら null）を返す。
  * {@code BatchExecutionAspect} は {@code int}/{@code long} の戻り値を {@code processedCount} に
@@ -77,10 +83,23 @@ public class BackgroundFeaturePolicyAspect {
 
         if (policy.mode() == BackgroundFeatureMode.SKIP_WHEN_DISABLED) {
             // スキップ／実行の状態が変わった時だけ batch_job_logs に 1 行残す（AC-8〜AC-10）。
-            skipRecorder.recordIfStateChanged(
-                    jobNameOf(targetMethod),
-                    skipped,
-                    skipped ? disabledKey + " が無効のためスキップしました" : null);
+            //
+            // BackgroundFeatureSkipRecorder 自身も記録失敗を隔離するが、AC-2 の「例外を投げずに
+            // 正常終了」という保証を協力者の行儀に依存させない（記録は付随的な情報であり、
+            // その失敗が停止判断そのものを障害に変えてはならない）。ここで再スローすると
+            // BatchExecutionAspect が batch_job_logs に FAILED を書き BatchFailedEvent を飛ばすため、
+            // 「意図した停止」が「障害」として運用に通知される。捕捉が正当なのはこの理由による。
+            // 握り潰しではない: 捕捉した例外はスタックトレース付きで WARN に残す。
+            try {
+                skipRecorder.recordIfStateChanged(
+                        jobNameOf(targetMethod),
+                        skipped,
+                        skipped ? disabledKey + " が無効のためスキップしました" : null);
+            } catch (RuntimeException ex) {
+                log.warn("BackgroundFeaturePolicy の状態遷移記録が例外で失敗した"
+                        + "（記録のみ失敗。停止判断は継続する）: method={}, skipped={}",
+                        targetMethod.getName(), skipped, ex);
+            }
         }
 
         if (!skipped) {

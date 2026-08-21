@@ -10,7 +10,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -136,6 +139,50 @@ class BackgroundFeaturePolicyAspectTest {
 
         assertThatCode(svc::voidFlag).doesNotThrowAnyException();
         assertThat(target.voidInvocations).isZero();
+    }
+
+    // ===============================================================
+    // AC-2d: 記録の失敗がスキップを障害に変えないこと（Codex 検分 P2）
+    //
+    // AC-2 の「例外を投げずに正常終了」は、協力者（SkipRecorder）が約束を守ることに
+    // 依存させてはならない。記録は付随的な情報であり、その失敗が停止判断そのものを
+    // 障害に変えると、BatchExecutionAspect が FAILED を書き BatchFailedEvent が飛ぶ。
+    // ===============================================================
+
+    @Test
+    @DisplayName("(AC-2d) 記録が例外を投げてもスキップは例外を投げずに正常終了する")
+    void ac2d_記録が失敗してもスキップは正常終了する() {
+        when(featureFlagService.isEnabled(FLAG_A)).thenReturn(false);
+        doThrow(new IllegalStateException("batch_job_logs へ書き込めない"))
+                .when(skipRecorder).recordIfStateChanged(anyString(), anyBoolean(), any());
+
+        SkipSample target = new SkipSample();
+        SkipSample svc = proxy(target);
+
+        assertThatCode(svc::singleFlag)
+                .as("記録できなかっただけの回が、BatchExecutionAspect によって FAILED として"
+                        + "記録され BatchFailedEvent で運用に通知されてはならない")
+                .doesNotThrowAnyException();
+
+        assertThat(target.invocations)
+                .as("記録に失敗しても、フラグが無効である以上は本体を実行してはならない")
+                .isZero();
+    }
+
+    @Test
+    @DisplayName("(AC-2e) 記録が例外を投げてもフラグ有効時の本体実行は妨げられない")
+    void ac2e_記録が失敗しても本体実行は妨げられない() {
+        when(featureFlagService.isEnabled(FLAG_A)).thenReturn(true);
+        doThrow(new IllegalStateException("batch_job_logs へ書き込めない"))
+                .when(skipRecorder).recordIfStateChanged(anyString(), anyBoolean(), any());
+
+        SkipSample target = new SkipSample();
+        SkipSample svc = proxy(target);
+
+        assertThat(svc.singleFlag())
+                .as("記録は付随的な情報であり、その失敗がバッチ本体の実行を止めてはならない")
+                .isEqualTo(SkipSample.PROCESSED);
+        assertThat(target.invocations).isEqualTo(1);
     }
 
     // ===============================================================
