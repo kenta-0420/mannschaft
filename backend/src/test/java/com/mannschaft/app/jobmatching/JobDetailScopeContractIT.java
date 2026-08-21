@@ -176,19 +176,31 @@ class JobDetailScopeContractIT extends AbstractMySqlIntegrationTest {
     class GetApplication {
 
         @Test
-        @DisplayName("非権限: 応募と無関係の同チーム第三者は403（自己PRの覗き見を阻止）")
-        void 非権限は403() throws Exception {
+        @DisplayName("非権限: 応募と無関係の同チーム第三者は404（自己PRの覗き見を阻止・存在も秘匿）")
+        void 非権限は404() throws Exception {
             setAuth(otherMemberTeamAId);
             mockMvc.perform(get("/api/v1/applications/{id}", applicationId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
         }
 
         @Test
-        @DisplayName("越境BOLA: teamBのADMINがid直打ちで他チームの応募を閲覧しようとすると403")
-        void 越境BOLAは403() throws Exception {
+        @DisplayName("越境BOLA: teamBのADMINがid直打ちで他チームの応募を閲覧しようとしても、不在時と同じ404")
+        void 越境BOLAは404() throws Exception {
             setAuth(adminTeamBId);
             mockMvc.perform(get("/api/v1/applications/{id}", applicationId))
-                    .andExpect(status().isForbidden());
+                    .andExpect(status().isNotFound());
+        }
+
+        @Test
+        @DisplayName("存在オラクル: 不在の応募IDも越境の応募IDも同じ404（応答差で実在を判別できない）")
+        void 不在と越境は同一応答() throws Exception {
+            setAuth(adminTeamBId);
+            // 越境（実在するが他チームの応募）
+            mockMvc.perform(get("/api/v1/applications/{id}", applicationId))
+                    .andExpect(status().isNotFound());
+            // 不在（存在しない応募ID）
+            mockMvc.perform(get("/api/v1/applications/{id}", 999_999_999L))
+                    .andExpect(status().isNotFound());
         }
 
         @Test
