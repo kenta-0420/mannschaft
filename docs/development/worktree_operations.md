@@ -90,7 +90,9 @@ rmdir .claude/worktrees/agent-* 2>/dev/null || true
   ./scripts/gradle-turnstile.sh ./gradlew build
   ./scripts/gradle-turnstile.sh ./gradlew test
   ```
-  - `mkdir` によるアトミックなロックディレクトリ（`$GRADLE_USER_HOME/turnstile.lock.d`、既定 `C:/gradle-home`）で排他制御する
+  - ロック置き場はマシン全体で固定の1箇所（`${LOCALAPPDATA:-$HOME}/gradle-turnstile`）。worktree ごとの `GRADLE_USER_HOME` には依存しない（直列化の単位はマシンなのでロックも1つでよい）
+  - 取得は「一意な一時ディレクトリに info(PID/TIME/TOKEN) を書いてから `mv -T` でロック名へ改名」方式でアトミックに行う（mkdir直後の空ディレクトリが見える隙間を作らない）
   - 先客がいる場合は15秒間隔でポーリングして待機（1分毎に状況を出力）
-  - ロック保持プロセスが死んでいる、または取得から90分超過している場合は stale とみなし強制奪取する
-  - compileJava のみ等の軽量タスクや単発の `./gradlew help` はこのスクリプトを経由する必要はない
+  - stale 奪取の条件は**ロック保持プロセスの PID が死んでいること**のみ（生存中は経過時間に関わらず奪取しない）。生存中の先客を待つ時間には上限180分を設け、超過時はエラー終了して人間の確認に委ねる
+  - **heavy**（このスクリプト経由が必須）: `test` / `build` / `bootJar` / `check` / `compileJava` / `compileTestJava` を含む実行
+  - **軽量**（対象外）: `help` / `tasks` / `properties` / `--status` / `--stop` 等
