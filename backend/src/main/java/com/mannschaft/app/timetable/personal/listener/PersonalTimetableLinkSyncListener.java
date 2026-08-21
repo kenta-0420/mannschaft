@@ -85,8 +85,9 @@ import java.util.Optional;
  * {@code ScheduleVisibilityResolver} の status ガード（{@code DELETED → 誰も不可視}）に必ず deny
  * される。<b>候補として検討した {@code sourceType=PERSONAL_TIMETABLE} は、
  * {@code NotificationSourceTypeMapper} には登録済みだが {@code ContentVisibilityChecker} に対応する
- * Resolver が未実装（{@code ContentVisibilityChecker} 起動ログで resolver 一覧を実測確認：
- * 7 Resolver のいずれも {@code PERSONAL_TIMETABLE} を持たない）</b>ため、これを使うと
+ * Resolver が未実装（{@code implements ContentVisibilityResolver} /
+ * {@code extends AbstractContentVisibilityResolver} を grep で実測確認：登録済み Resolver 25個の
+ * いずれも {@code referenceType() == PERSONAL_TIMETABLE} を返さない）</b>ため、これを使うと
  * {@code decide()} が常に {@code UNSPECIFIED → UNSUPPORTED_REFERENCE_TYPE} で fail-closed deny となり、
  * 削除済みかどうかに関わらず<b>全通知が恒久的に消える</b>（旧実装より悪化する）。
  * 本 PR のスコープは通知トランザクション分離の型確立であり Resolver 新設は含まないため、
