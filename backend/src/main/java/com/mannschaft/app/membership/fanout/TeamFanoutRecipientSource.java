@@ -2,7 +2,10 @@ package com.mannschaft.app.membership.fanout;
 
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.notification.fanout.FanoutPageRequest;
+import com.mannschaft.app.notification.fanout.FanoutRecipient;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSource;
+import com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
@@ -43,12 +46,19 @@ public class TeamFanoutRecipientSource implements FanoutRecipientSource {
     }
 
     @Override
-    public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
+    public List<FanoutRecipient> nextPage(FanoutPageRequest request) {
+        if (!request.isSingleShard()) {
+            // TEAM はシャード分割に非対応（enqueue が shard_count=1 でしか発行しない）。
+            // 万一到達したら握り潰さず露見させる。
+            throw new UnsupportedOperationException(
+                    SCOPE_TYPE + " はシャード分割に非対応（shard_count>1 で呼ばれた）");
+        }
         // scope_ref にはチーム ID を文字列で格納しているため long へ復元する（多型スコープ参照）。
-        long scopeId = Long.parseLong(scopeRef);
+        long scopeId = Long.parseLong(request.scopeRef());
         // 現役判定（left_at IS NULL）と scope_id 等値絞り込みはリポジトリのクエリに閉じ込め、
-        // 被覆索引 idx_membership_fanout_keyset で 1 チャンクぶんの user_id を昇順に返す。
-        return membershipRepository.findActiveUserIdsByScopeKeyset(
-                ScopeType.TEAM, scopeId, cursorSubjectId, PageRequest.of(0, limit));
+        // 被覆索引 idx_membership_fanout_keyset で 1 チャンクぶんの [user_id, locale] を昇順に返す。
+        // includeSupporters は TEAM では母集団に影響しない（従来の 3 引数版と同じ挙動）。
+        return FanoutRecipientRowMapper.toRecipients(membershipRepository.findActiveUserIdsByScopeKeyset(
+                ScopeType.TEAM, scopeId, request.cursorSubjectId(), PageRequest.of(0, request.limit())));
     }
 }

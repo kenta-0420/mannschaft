@@ -40,7 +40,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VillageEventFeedRefluxService {
 
-    private static final int NOTIFICATION_BODY_LIMIT = 1000;
+    // Issue #2871: 通知本文の切り詰めは FanoutMessageRenderer がコードポイント境界で行うようになったため、
+    // ここにあった NOTIFICATION_BODY_LIMIT（素の substring による切り詰め）は撤去した。
+    // 素の substring はサロゲートペアの途中で切って壊れた文字を作りうる。
     private static final String SOURCE_TYPE = "VILLAGE_EVENT";
 
     private final TimelinePostService timelinePostService;
@@ -90,18 +92,26 @@ public class VillageEventFeedRefluxService {
         // fan-out 抜本改修 P2: 受信者を展開せず耐久ジョブを 1 件 enqueue するだけ（O(1)）。
         // 重い受信者ページング＋バルク INSERT はワーカーへ移譲し、クラッシュ再開可能に配信する。
         try {
-            String body = buildContent(type, eventTitle);
-            String truncatedBody =
-                    body.length() > NOTIFICATION_BODY_LIMIT ? body.substring(0, NOTIFICATION_BODY_LIMIT) : body;
-
+            // Issue #2871: 通知だけを i18n 化する。ここでは描画済み文字列を渡さず「文面種別＋行事名」を渡し、
+            // enqueue が 6 配信ロケールぶんの文面を描画して子表へ保存する。
+            //
+            // ⚠ タイムライン投稿（上の createSystemVillagePost）とは<b>意図的に別経路</b>である。
+            //   投稿は村人全員が同じ 1 本を読む「村の掲示板」であり、受信者ごとに言語を変えることが
+            //   そもそもできない（1 行のレコードに 1 つの本文しか無い）。したがって投稿は従来どおり
+            //   buildContent の日本語リテラルを使い続け、通知だけを受信者ごとに描画する。
+            //   両者を 1 つの関数から作ると「投稿を翻訳しようとして全村人の掲示板がバラバラになる」か
+            //   「通知の翻訳を諦める」かのどちらかに倒れるため、経路を分けたままにしてある。
+            //
+            //   切り詰め（本文 1000）も FanoutMessageRenderer 側でコードポイント境界で行うため、
+            //   ここでの substring による切り詰めは不要になった（サロゲートペアを割らない）。
             fanoutJobService.enqueue(
                     VillageFanoutRecipientSource.SCOPE_TYPE,   // 戦略キー: VILLAGE
                     villageId.toString(),                       // scope_ref: 村 UUID 文字列
                     type.name(),
                     sourceEventUuid,
                     null,                                        // organizationId: 村行事は org 非依存
-                    "村の行事案内",
-                    truncatedBody,
+                    messageKindOf(type),
+                    new String[]{eventTitle == null ? "" : eventTitle},  // 利用者が書いた行事名（翻訳しない）
                     NotificationPriority.NORMAL,
                     SOURCE_TYPE, null,
                     actionUrl, null);
@@ -113,7 +123,15 @@ public class VillageEventFeedRefluxService {
         }
     }
 
-    /** 種別ごとの本文（i18n 表示名は FE 側で解決するため、ここは要約テキストを積む）。 */
+    /**
+     * 種別ごとの<b>タイムライン投稿本文</b>（村の掲示板に 1 本だけ積まれるシステム投稿）。
+     *
+     * <p><b>これは通知の本文ではない。</b> 投稿は村人全員が同じ 1 レコードを読むため、
+     * 受信者ごとに言語を変えるという概念が成立しない（1 行に 1 つの本文しか持てない）。
+     * よってここは Issue #2871 の i18n 化の対象外で、従来どおり日本語のリテラルを組み立てる。
+     * 受信者ごとに言語が変わるのは通知側だけであり、そちらは {@link #messageKindOf} で
+     * 文面種別に写して fan-out の enqueue へ渡している。</p>
+     */
     private String buildContent(VillageEventNotificationType type, String eventTitle) {
         String title = eventTitle == null ? "" : eventTitle;
         return switch (type) {
@@ -121,6 +139,25 @@ public class VillageEventFeedRefluxService {
             case EVENT_UPCOMING -> "明日「" + title + "」が開催されます";
             case MEETUP_CONFIRMED -> "寄合「" + title + "」の日程が決まりました";
             case FESTIVAL_STARTED -> "お祭り「" + title + "」が始まりました";
+        };
+    }
+
+    /**
+     * 村行事の通知種別を fan-out の文面種別へ写す（Issue #2871）。
+     *
+     * <p>4 分岐を「引数」ではなく「別のキー」で表すのは、行事追加 / 明日開催 / 寄合日程確定 / 祭り開始が
+     * 語順・文意・助詞まで異なる別テンプレートだからである。種別を引数として properties へ渡すと
+     * properties 側に分岐ロジックを持ち込むことになる。引数は行事名ただ 1 つに保つ。</p>
+     */
+    private static com.mannschaft.app.notification.fanout.FanoutMessageKind messageKindOf(
+            VillageEventNotificationType type) {
+        return switch (type) {
+            case EVENT_CREATED -> com.mannschaft.app.notification.fanout.FanoutMessageKind.VILLAGE_EVENT_ADDED;
+            case EVENT_UPCOMING -> com.mannschaft.app.notification.fanout.FanoutMessageKind.VILLAGE_EVENT_TOMORROW;
+            case MEETUP_CONFIRMED ->
+                    com.mannschaft.app.notification.fanout.FanoutMessageKind.VILLAGE_MEETING_CONFIRMED;
+            case FESTIVAL_STARTED ->
+                    com.mannschaft.app.notification.fanout.FanoutMessageKind.VILLAGE_FESTIVAL_STARTED;
         };
     }
 }

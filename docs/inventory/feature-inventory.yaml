@@ -63,7 +63,7 @@ records:
     release:
       beta: コア
       deploy_safety: 不明
-      gate_key: PERSONAL_PROFILE
+      gate_key: null
     blockers:
       - "CMP-103: 入力途中離脱で入力消失・未保存警告なし（Issue #2857）"
     notes: null

@@ -952,7 +952,16 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
      * @param maxDepth          再帰展開の最大深さ（サイクル防止上限・通常 32）
      * @param cursor            直前チャンク末尾の user_id（初回は {@code 0L} 等の最小値未満を渡す）
      * @param pageable          チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
-     * @return {@code user_id > cursor} の配信対象ユーザー ID を昇順に最大 chunk 件（重複なし）
+     * @return {@code user_id > cursor} の配信対象の {@code [user_id, locale]} を昇順に最大 chunk 件（重複なし）
+     *
+     * <h2>Issue #2871: locale の同時取得（母集団・実行計画とも不変）</h2>
+     * <p>両枝とも元から {@code JOIN users} 済みであり、追加したのは射影の 1 列（{@code u.locale} /
+     * {@code u2.locale}）だけである。{@code SELECT DISTINCT} に locale が加わっても、locale は
+     * users の<b>主キー等値結合</b>で決まる＝user_id に関数従属するため、重複排除の結果行数は変わらず、
+     * 枝内 {@code LIMIT :chunk} が数える行数も変わらない（枝ごとの打ち切り件数の意味を壊さない）。
+     * 20 万行での EXPLAIN ANALYZE 実測でも、両枝の {@code LIMIT}・covering index range scan・
+     * users の {@code eq_ref} 単行ルックアップはすべて維持され、新しい filesort / temporary は
+     * 発生しなかった（詳細は PR 本文）。</p>
      */
     @Query(value =
             "WITH RECURSIVE org_tree (id, depth) AS ( " +
@@ -963,11 +972,11 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
+            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid, cand.locale AS locale FROM ( " +
             // 各枝が「カーソル以降の自枝の先頭 chunk 件」だけを返す。母集団条件（生存ユーザー・
             // 純 SUPPORTER 除外）も枝内へ入れる。外側に残すと枝の LIMIT が「絞られる前の行」を
             // 数えてしまい、全滅したページで空が返って呼び出し側のループが早期終了する（配信漏れ）。
-            "  ( SELECT DISTINCT ur.user_id AS user_id FROM user_roles ur " +
+            "  ( SELECT DISTINCT ur.user_id AS user_id, u.locale AS locale FROM user_roles ur " +
             "      JOIN users u ON u.id = ur.user_id " +
             "      WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "        AND ur.user_id > :cursor " +
@@ -992,7 +1001,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "        ) ) " +
             "      ORDER BY user_id ASC LIMIT :chunk ) " +
             "  UNION " +
-            "  ( SELECT DISTINCT ms0.user_id AS user_id FROM memberships ms0 " +
+            "  ( SELECT DISTINCT ms0.user_id AS user_id, u2.locale AS locale FROM memberships ms0 " +
             "      JOIN users u2 ON u2.id = ms0.user_id " +
             "      WHERE u2.deleted_at IS NULL AND u2.status = 'ACTIVE' " +
             "        AND ms0.left_at IS NULL AND ms0.user_id > :cursor " +
@@ -1019,7 +1028,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             ") cand " +
             "ORDER BY uid ASC",
             nativeQuery = true)
-    List<Long> findDistributionUserIdsForOrganizationRecursiveKeyset(
+    List<Object[]> findDistributionUserIdsForOrganizationRecursiveKeyset(
             @Param("organizationId") Long organizationId,
             @Param("includeSupporters") boolean includeSupporters,
             @Param("maxDepth") int maxDepth,
@@ -1070,10 +1079,10 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "      JOIN org_tree p ON c.parent_organization_id = p.id " +
             "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
             ") " +
-            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid FROM ( " +
+            "SELECT DISTINCT CAST(cand.user_id AS SIGNED) AS uid, cand.locale AS locale FROM ( " +
             // 非シャード版と同型。カーソル・シャード述語・母集団条件をすべて枝内に置いた上で
             // 各枝が「自枝の先頭 chunk 件」だけを返す（外側に残すと枝の LIMIT が絞られる前の行を数える）。
-            "  ( SELECT DISTINCT ur.user_id AS user_id FROM user_roles ur " +
+            "  ( SELECT DISTINCT ur.user_id AS user_id, u.locale AS locale FROM user_roles ur " +
             "      JOIN users u ON u.id = ur.user_id " +
             "      WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
             "        AND ur.user_id > :cursor " +
@@ -1099,7 +1108,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "        ) ) " +
             "      ORDER BY user_id ASC LIMIT :chunk ) " +
             "  UNION " +
-            "  ( SELECT DISTINCT ms0.user_id AS user_id FROM memberships ms0 " +
+            "  ( SELECT DISTINCT ms0.user_id AS user_id, u2.locale AS locale FROM memberships ms0 " +
             "      JOIN users u2 ON u2.id = ms0.user_id " +
             "      WHERE u2.deleted_at IS NULL AND u2.status = 'ACTIVE' " +
             "        AND ms0.left_at IS NULL AND ms0.user_id > :cursor " +
@@ -1127,7 +1136,7 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             ") cand " +
             "ORDER BY uid ASC",
             nativeQuery = true)
-    List<Long> findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
+    List<Object[]> findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
             @Param("organizationId") Long organizationId,
             @Param("includeSupporters") boolean includeSupporters,
             @Param("maxDepth") int maxDepth,

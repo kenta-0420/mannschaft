@@ -77,11 +77,16 @@ public class NotificationBulkFanoutService {
      * 受信者チャンク（呼び出し側でチャンクサイズに刻み済み・null 除去済み）を、
      * 1 トランザクションでバルク INSERT し、専用プールで一括配信する。
      *
+     * <p>チャンク全体で同一の title / body を使う版。{@link #insertAndDispatchChunk(List, String,
+     * NotificationPriority, String, Long, NotificationScopeType, Long, String, Long, Long)}
+     * （受信者ごとに文面が異なる版）へ委譲するだけであり、INSERT 文数・トランザクション数は同じ
+     * 「1 チャンクにつき 1」である。</p>
+     *
      * @param recipients       受信者 user_id チャンク（非 null・非空・null 要素を含まないこと）
      * @param notificationType 通知種別
      * @param priority         優先度
-     * @param title            タイトル
-     * @param body             本文
+     * @param title            タイトル（チャンク全体で共通）
+     * @param body             本文（チャンク全体で共通）
      * @param sourceType       ソース種別
      * @param sourceId         ソースID（NULL 可）
      * @param scopeType        通知スコープ種別
@@ -99,19 +104,60 @@ public class NotificationBulkFanoutService {
         if (recipients == null || recipients.isEmpty()) {
             return;
         }
+        List<RecipientMessage> rows = new ArrayList<>(recipients.size());
+        for (Long userId : recipients) {
+            rows.add(new RecipientMessage(userId, title, body));
+        }
+        insertAndDispatchChunk(rows, notificationType, priority, sourceType, sourceId,
+                scopeType, scopeId, actionUrl, actorId, organizationId);
+    }
+
+    /**
+     * <b>受信者ごとに title / body が異なる</b>チャンクを、1 トランザクションでバルク INSERT し、
+     * 専用プールで一括配信する（Issue #2871）。
+     *
+     * <h2>なぜロケール別に分割しなくてよいのか（AC-3）</h2>
+     * <p>{@code notifications} への多値 INSERT は元から 1 行 14 列で title / body を<b>per-row に</b>
+     * 持っている（{@link #ROW_PLACEHOLDERS}）。共有引数になっていたのは Java 側の API だけだった。
+     * したがって 6 ロケールが混在するチャンクでも、発行する INSERT は<b>1 文</b>・トランザクションも
+     * <b>1 個</b>のままである（受信者数にもロケール数にも比例しない）。</p>
+     *
+     * <p>受信者を locale ごとにグループ分けして 6 回 INSERT する案は却下した。現状 190 件/秒で SLO 未達の
+     * 局面で書き込み経路を 1→最大 6 に細分化するのは不適であり、さらに at-least-once の重複上限
+     * （クラッシュ時に再送されうる件数）がチャンク単位で崩れる。</p>
+     *
+     * @param rows             受信者ごとの user_id ＋ title ＋ body（非 null・非空）
+     * @param notificationType 通知種別
+     * @param priority         優先度
+     * @param sourceType       ソース種別
+     * @param sourceId         ソースID（NULL 可）
+     * @param scopeType        通知スコープ種別
+     * @param scopeId          通知スコープID（NULL 可）
+     * @param actionUrl        アクションURL
+     * @param actorId          実行者ID（NULL 可）
+     * @param organizationId   組織ID（NULL 可・テナント絞り込み布石）
+     */
+    public void insertAndDispatchChunk(List<RecipientMessage> rows,
+                                       String notificationType, NotificationPriority priority,
+                                       String sourceType, Long sourceId,
+                                       NotificationScopeType scopeType, Long scopeId,
+                                       String actionUrl, Long actorId, Long organizationId) {
+        if (rows == null || rows.isEmpty()) {
+            return;
+        }
         LocalDateTime now = LocalDateTime.now();
         NotificationPriority effectivePriority = priority == null ? NotificationPriority.NORMAL : priority;
 
         // INSERT 値の素材となる通知（id は未採番＝null）。バルク INSERT 後に DB 採番 id を戻す。
-        List<NotificationEntity> seeds = new ArrayList<>(recipients.size());
-        for (Long userId : recipients) {
+        List<NotificationEntity> seeds = new ArrayList<>(rows.size());
+        for (RecipientMessage row : rows) {
             seeds.add(NotificationEntity.builder()
-                    .userId(userId)
+                    .userId(row.userId())
                     .organizationId(organizationId)
                     .notificationType(notificationType)
                     .priority(effectivePriority)
-                    .title(title)
-                    .body(body)
+                    .title(row.title())
+                    .body(row.body())
                     .sourceType(sourceType)
                     .sourceId(sourceId)
                     .scopeType(scopeType)
@@ -133,6 +179,15 @@ public class NotificationBulkFanoutService {
 
         // --- 専用プールで一括配信（@Async・N+1 消滅済みチャンク配信）---
         dispatchService.dispatchBatch(toDispatch);
+    }
+
+    /**
+     * バルク INSERT する 1 行ぶん（受信者 ＋ その受信者に配る文面）。
+     *
+     * <p>Issue #2871 でロケール別配信に対応するために導入。従来は「受信者 ID のリスト ＋ 共有の
+     * title/body」という API だったため、受信者ごとに文面を変える表現力が Java 側に無かった。</p>
+     */
+    public record RecipientMessage(Long userId, String title, String body) {
     }
 
     /**

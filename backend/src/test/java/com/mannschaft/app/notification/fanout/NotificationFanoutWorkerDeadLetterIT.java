@@ -76,7 +76,7 @@ class NotificationFanoutWorkerDeadLetterIT extends AbstractMySqlIntegrationTest 
     @Test
     @DisplayName("AC-A 未登録 scope_type のジョブは無限 RUNNING ループにならず有限回で DEAD_LETTER に落ちる")
     void acA_unregisteredScopeReachesDeadLetterNotStuckRunning() {
-        NotificationFanoutJob job = jobRepository.save(
+        NotificationFanoutJob job = saveWithMessages(
                 newSplitPendingJob(UNREGISTERED_SCOPE, 30_001L, "DL_IT_A", UUID.randomUUID()));
 
         AtomicReference<Exception> escaped = new AtomicReference<>();
@@ -107,7 +107,7 @@ class NotificationFanoutWorkerDeadLetterIT extends AbstractMySqlIntegrationTest 
     @Test
     @DisplayName("AC-B resolveAndSplitShards が例外を投げるジョブも recordFailure 経由で DEAD_LETTER に落ちる")
     void acB_splitFailureReachesDeadLetterNotStuckRunning() {
-        NotificationFanoutJob job = jobRepository.save(
+        NotificationFanoutJob job = saveWithMessages(
                 newSplitPendingJob(SPLIT_FAIL_SCOPE, 30_002L, "DL_IT_B", UUID.randomUUID()));
 
         AtomicReference<Exception> escaped = new AtomicReference<>();
@@ -140,7 +140,7 @@ class NotificationFanoutWorkerDeadLetterIT extends AbstractMySqlIntegrationTest 
     @DisplayName("AC-C 登録済み scope_type の正常ジョブは従来どおり DONE 化する（回帰なし）")
     void acC_normalJobStillCompletesDone() {
         long scopeId = 30_003L;
-        NotificationFanoutJob job = jobRepository.save(
+        NotificationFanoutJob job = saveWithMessages(
                 newSplitPendingJob(NORMAL_SCOPE, scopeId, "DL_IT_C", UUID.randomUUID()));
 
         worker.processOne(jobRepository.findById(job.getId()).orElseThrow());
@@ -193,7 +193,6 @@ class NotificationFanoutWorkerDeadLetterIT extends AbstractMySqlIntegrationTest 
                 .scopeType(scopeType)
                 .scopeRef(String.valueOf(scopeId))
                 .notificationType(type)
-                .title("CMP-030 " + type)
                 .priority(NotificationPriority.NORMAL)
                 .sourceType("DL_IT")
                 .status(NotificationFanoutJobStatus.PENDING)
@@ -228,13 +227,17 @@ class NotificationFanoutWorkerDeadLetterIT extends AbstractMySqlIntegrationTest 
                 }
 
                 @Override
-                public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
+                public List<FanoutRecipient> nextPage(FanoutPageRequest request) {
+                    String scopeRef = request.scopeRef();
+                    long cursorSubjectId = request.cursorSubjectId();
+                    int limit = request.limit();
                     long base = recipientBase(Long.parseLong(scopeRef));
-                    java.util.List<Long> page = new java.util.ArrayList<>();
+                    // Issue #2871: 受信者は user_id ＋ locale の組。擬似ソースは既定ロケールで返す。
+                    java.util.List<FanoutRecipient> page = new java.util.ArrayList<>();
                     for (int i = 1; i <= NORMAL_RECIPIENTS && page.size() < limit; i++) {
                         long id = base + i;
                         if (id > cursorSubjectId) {
-                            page.add(id);
+                            page.add(new FanoutRecipient(id, "ja"));
                         }
                     }
                     return page;
@@ -251,7 +254,10 @@ class NotificationFanoutWorkerDeadLetterIT extends AbstractMySqlIntegrationTest 
                 }
 
                 @Override
-                public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
+                public List<FanoutRecipient> nextPage(FanoutPageRequest request) {
+                    String scopeRef = request.scopeRef();
+                    long cursorSubjectId = request.cursorSubjectId();
+                    int limit = request.limit();
                     return List.of(); // 到達しない（分割で失敗する）。
                 }
 
@@ -262,4 +268,33 @@ class NotificationFanoutWorkerDeadLetterIT extends AbstractMySqlIntegrationTest 
             };
         }
     }
+
+    /**
+     * Issue #2871: ワーカーはジョブのロケール別文面（子表）を読んでから配信する。
+     *
+     * <p>本番では enqueue が「親ジョブ 1 行＋文面 6 行」を同一トランザクションで確定するため、
+     * 文面の無いジョブは存在しない。IT だけがジョブ行を直接組み立てているので、
+     * ここで同じ前提（6 配信ロケールぶんの文面）を用意する。</p>
+     */
+    private com.mannschaft.app.notification.fanout.NotificationFanoutJob saveWithMessages(
+            com.mannschaft.app.notification.fanout.NotificationFanoutJob job) {
+        com.mannschaft.app.notification.fanout.NotificationFanoutJob saved = jobRepository.save(job);
+        jobRepository.flush();
+        java.util.List<com.mannschaft.app.notification.fanout.NotificationFanoutJobMessage> rows =
+                new java.util.ArrayList<>();
+        for (String tag : com.mannschaft.app.common.i18n.DeliveryLocales.TAGS) {
+            rows.add(com.mannschaft.app.notification.fanout.NotificationFanoutJobMessage.builder()
+                    .jobId(saved.getId())
+                    .locale(tag)
+                    .title("IT-title-" + tag)
+                    .body("IT-body-" + tag)
+                    .build());
+        }
+        fanoutJobMessageRepositoryForIt.saveAll(rows);
+        return saved;
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    private com.mannschaft.app.notification.fanout.NotificationFanoutJobMessageRepository
+            fanoutJobMessageRepositoryForIt;
 }

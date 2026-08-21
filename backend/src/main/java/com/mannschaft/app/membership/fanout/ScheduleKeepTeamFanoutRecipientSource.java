@@ -1,6 +1,9 @@
 package com.mannschaft.app.membership.fanout;
 
 import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.notification.fanout.FanoutPageRequest;
+import com.mannschaft.app.notification.fanout.FanoutRecipient;
+import com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper;
 import com.mannschaft.app.notification.fanout.FanoutRecipientSource;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -46,15 +49,22 @@ public class ScheduleKeepTeamFanoutRecipientSource implements FanoutRecipientSou
     }
 
     @Override
-    public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
+    public List<FanoutRecipient> nextPage(FanoutPageRequest request) {
+        if (!request.isSingleShard()) {
+            // SCHEDULE_KEEP_TEAM はシャード分割に非対応（enqueue が shard_count=1 でしか発行しない）。
+            throw new UnsupportedOperationException(
+                    SCOPE_TYPE + " はシャード分割に非対応（shard_count>1 で呼ばれた）");
+        }
         // scope_ref = "teamId:actorId:creatorId" を復元する（多型スコープ参照）。
-        String[] parts = scopeRef.split(":", -1);
+        String[] parts = request.scopeRef().split(":", -1);
         long teamId = Long.parseLong(parts[0]);
         long actorId = parts.length > 1 && !parts[1].isEmpty() ? Long.parseLong(parts[1]) : NO_EXCLUSION;
         long creatorId = parts.length > 2 && !parts[2].isEmpty() ? Long.parseLong(parts[2]) : NO_EXCLUSION;
         // MEMBER 以上（role_kind='MEMBER'）の現役・ACTIVE・未削除メンバーから操作者・作成者を除き、
-        // 被覆索引で index-only の keyset ページングにより 1 チャンクぶんの user_id を昇順に返す。
-        return membershipRepository.findMemberAndAboveTeamUserIdsByKeysetExcluding(
-                teamId, actorId, creatorId, cursorSubjectId, PageRequest.of(0, limit));
+        // 被覆索引で keyset ページングにより 1 チャンクぶんの [user_id, locale] を昇順に返す。
+        return FanoutRecipientRowMapper.toRecipients(
+                membershipRepository.findMemberAndAboveTeamUserIdsByKeysetExcluding(
+                        teamId, actorId, creatorId, request.cursorSubjectId(),
+                        PageRequest.of(0, request.limit())));
     }
 }

@@ -118,14 +118,18 @@ public class ScheduleKeepNotificationService {
         if (scope.type() == ScheduleKeepScopeType.TEAM) {
             long excludedCreator = creatorId == null ? 0L : creatorId;
             String scopeRef = scope.id() + ":" + actorUserId + ":" + excludedCreator;
+            // Issue #2871: fan-out 経路は描画済み文字列ではなく「文面種別＋利用者が書いた中身」を運ぶ。
+            // 引数はキープ（予定）のタイトル 1 つで、title/body 双方の枠に同じものを差し込む。
+            // ※ 上の作成者向け直送（publishConverted）は受信者が 1 名に確定しているため従来どおり
+            //    ここで組み立てた日本語の title/body をそのまま使う（fan-out とは別経路）。
             scheduleKeepFanoutJobService.enqueue(
                     ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE,
                     scopeRef,
                     NOTIFICATION_TYPE_CONVERTED,
                     keep.getId(),
                     null,
-                    title,
-                    body,
+                    com.mannschaft.app.notification.fanout.FanoutMessageKind.SCHEDULE_KEEP_CONVERTED,
+                    new String[]{keep.getTitle()},   // 利用者が書いたキープ名（翻訳しない）
                     NotificationPriority.NORMAL,
                     SOURCE_TYPE_SCHEDULE,
                     schedule.getId(),
