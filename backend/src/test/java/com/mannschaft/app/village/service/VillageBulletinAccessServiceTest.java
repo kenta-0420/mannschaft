@@ -69,7 +69,7 @@ class VillageBulletinAccessServiceTest {
     void setUp() {
         gate = new VillageAccessGate(villageRepository, membershipRepository, accessControlService);
         service = new VillageBulletinAccessService(
-                villageRepository, membershipRepository, postingIdentityService, accessControlService);
+                membershipRepository, postingIdentityService, accessControlService, gate);
     }
 
     private static final UUID VILLAGE_ID = UUID.fromString("00000000-0000-0000-0000-0000000000aa");

@@ -63,7 +63,8 @@ class VillageCharterAccessServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new VillageCharterAccessService(villageRepository, membershipRepository, accessControlService);
+        service = new VillageCharterAccessService(
+                new VillageAccessGate(villageRepository, membershipRepository, accessControlService));
     }
 
     private VillageEntity village(VillageVisibility visibility, LocalDateTime deletedAt, LocalDateTime archivedAt) {
