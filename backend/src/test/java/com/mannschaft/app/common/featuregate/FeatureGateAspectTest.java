@@ -53,8 +53,9 @@ class FeatureGateAspectTest {
      * 実運用の AOP プロキシは JDK 動的プロキシではなくクラスベースである。
      * この場合、実行される join point は実装クラス側のオーバーライドメソッドであり、
      * インターフェースにのみ付与されたアノテーションは override へ継承されない。
-     * AC-13 の「(A) の限界」を実測するために使う（{@link #proxy(Object)} は JDK 動的プロキシで
-     * 挙動が異なる — 詳細は AC-13 のクラスコメントを参照）。</p>
+     * AC-13（RequireFeatureInterfaceGuardTest が禁じる形態を Aspect 単独では捕捉できない
+     * ことの記録）で CGLIB 側の実測に使う（{@link #proxy(Object)} は JDK 動的プロキシ側の実測用
+     * — 詳細は AC-13 のコメントブロックを参照）。</p>
      */
     private <T> T proxyClassBased(T target) {
         AspectJProxyFactory factory = new AspectJProxyFactory(target);
@@ -234,11 +235,12 @@ class FeatureGateAspectTest {
     }
 
     // ===============================================================
-    // AC-13: インターフェースにのみ @RequireFeature を付与した場合の挙動
+    // AC-13: RequireFeatureInterfaceGuardTest が禁じる形態（@RequireFeature の
+    // インターフェース付与）が、FeatureGateAspect 単独では捕捉できないことの記録
     // （Codex 検分指摘①）
     //
     // 実測結果（本テストで固定）: Spring AOP のプロキシ経由呼び出しでは、@annotation() /
-    // @within() / execution(@RequireFeature ...) いずれの pointcut も、内部で
+    // @within() いずれの pointcut も、内部で
     // ClassUtils.getMostSpecificMethod(method, targetClass) により「実装クラス側の
     // オーバーライドメソッド」へ解決してから注釈の有無を判定する。Java の注釈は
     // インターフェースからオーバーライドメソッドへ継承されないため、この解決結果には
@@ -246,81 +248,91 @@ class FeatureGateAspectTest {
     // どちらでも同じであり、以下 AC-13a〜d で両方式について実証している
     // （proxyTargetClass=false / true の双方で「拒否されず本体が実行されてしまう」ことを固定）。
     //
-    // つまり pointcut・アノテーション解決側の是正（FeatureGateAspect に追加した
-    // execution(@RequireFeature * *(..)) およびインターフェース側メソッド／宣言クラスへの
-    // フォールバック解決）だけでは、この迂回を閉じきれない。これは実装として誤りではなく、
-    // Spring AOP がプロキシ経由で動く以上の構造的な限界であり、根治するには
-    // 「@RequireFeature をインターフェースへ付与すること自体を発生させない」しかない。
-    // よって (B) RequireFeatureInterfaceGuardTest が本迂回に対する唯一の実効的な防御であり、
-    // 本テストは「(B) がなぜ必須なのか」を実測で裏付ける陽性対照として存在する。
-    // 意図的に固定した既知の残存ギャップなので、assertion を反転させて
-    // 「直った」ことにしたり削除したりしてはならない。
+    // pointcut 表現をどう書き足しても（execution() 追加やアノテーション解決の
+    // フォールバック追加を含め）この構造的な限界は回避できないと実測で確認済みのため、
+    // FeatureGateAspect 側にはそれらのコードを持たせていない
+    // （検分の裁定により、到達しない防御コードは削除した）。
+    // 根治するには「@RequireFeature をインターフェースへ付与すること自体を発生させない」
+    // しかなく、RequireFeatureInterfaceGuardTest（ArchUnit・CI で機械的に拒否）が
+    // 本迂回に対する唯一の実効的な防御である。
+    //
+    // 本テストは「Aspect 単独ではこの形態を捕捉できず、番人が唯一の防御である」ことを
+    // 実測で裏付ける記録として存在する。これはバグを是認するテストではない
+    // （@RequireFeature のインターフェース付与自体が RequireFeatureInterfaceGuardTest に
+    // より禁止形態であり、この禁止を破って書けば CI が落ちる）。意図的に固定した記録なので、
+    // assertion を反転させて「直った」ことにしたり削除したりしてはならない。
     // ===============================================================
 
     @Test
-    @DisplayName("(AC-13a/JDK・既知の残存ギャップ) JDK動的プロキシでもインターフェースの"
-            + "メソッド付与だけでは pointcut がマッチせず本体が実行されてしまう")
-    void ac13a_JDKプロキシでもインターフェースメソッド付与だけではゲートが効かない() {
+    @DisplayName("(AC-13a/JDK・番人が禁じる形態の記録) JDK動的プロキシでは"
+            + "インターフェースのメソッド付与単体だと Aspect が捕捉できず本体が実行されてしまう"
+            + "（この形態自体は RequireFeatureInterfaceGuardTest が CI で禁止する）")
+    void ac13a_JDKプロキシでもインターフェースメソッド付与単体ではAspectが捕捉できない() {
         when(featureFlagService.isEnabled(FLAG_A)).thenReturn(false);
 
         InterfaceMethodLevelServiceImpl target = new InterfaceMethodLevelServiceImpl();
         InterfaceMethodLevelService svc = proxy(target);
 
         assertThat(svc.gated())
-                .as("既知の残存ギャップ: pointcut 側の是正だけではインターフェースのみへの"
+                .as("Aspect 単独では捕捉できない形態の記録: pointcut はインターフェースのみへの"
                         + "付与を捕捉できず、フラグ無効でも本体が実行されてしまう。"
-                        + "だからこそ (B) で付与自体を禁止する")
+                        + "この形態自体を RequireFeatureInterfaceGuardTest が CI で禁止する")
                 .isEqualTo("EXECUTED");
         assertThat(target.invocations).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("(AC-13b/JDK・既知の残存ギャップ) JDK動的プロキシでもインターフェース型"
-            + "付与だけでは pointcut がマッチせず本体が実行されてしまう")
-    void ac13b_JDKプロキシでもインターフェース型付与だけではゲートが効かない() {
+    @DisplayName("(AC-13b/JDK・番人が禁じる形態の記録) JDK動的プロキシでは"
+            + "インターフェース型付与単体だと Aspect が捕捉できず本体が実行されてしまう"
+            + "（この形態自体は RequireFeatureInterfaceGuardTest が CI で禁止する）")
+    void ac13b_JDKプロキシでもインターフェース型付与単体ではAspectが捕捉できない() {
         when(featureFlagService.isEnabled(FLAG_A)).thenReturn(false);
 
         InterfaceTypeLevelServiceImpl target = new InterfaceTypeLevelServiceImpl();
         InterfaceTypeLevelService svc = proxy(target);
 
         assertThat(svc.gated())
-                .as("既知の残存ギャップ: pointcut 側の是正だけではインターフェース型への"
+                .as("Aspect 単独では捕捉できない形態の記録: pointcut はインターフェース型への"
                         + "付与を捕捉できず、フラグ無効でも本体が実行されてしまう。"
-                        + "だからこそ (B) で付与自体を禁止する")
+                        + "この形態自体を RequireFeatureInterfaceGuardTest が CI で禁止する")
                 .isEqualTo("EXECUTED");
         assertThat(target.invocations).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("(AC-13c/CGLIB・既知の残存ギャップ) クラスベースプロキシでは"
-            + "インターフェースのメソッド付与だけでは pointcut がマッチせず本体が実行されてしまう")
-    void ac13c_CGLIBプロキシではインターフェースメソッド付与だけではゲートが効かない() {
+    @DisplayName("(AC-13c/CGLIB・番人が禁じる形態の記録) クラスベースプロキシでは"
+            + "インターフェースのメソッド付与単体だと Aspect が捕捉できず本体が実行されてしまう"
+            + "（この形態自体は RequireFeatureInterfaceGuardTest が CI で禁止する）")
+    void ac13c_CGLIBプロキシではインターフェースメソッド付与単体ではAspectが捕捉できない() {
         when(featureFlagService.isEnabled(FLAG_A)).thenReturn(false);
 
         InterfaceMethodLevelServiceImpl target = new InterfaceMethodLevelServiceImpl();
         InterfaceMethodLevelService svc = proxyClassBased(target);
 
         // Spring Boot 既定（spring.aop.proxy-target-class=true）の CGLIB プロキシでも
-        // 同じ理由でゲートされない（本体が実行されてしまう）。
+        // 同じ理由で Aspect が捕捉できない（本体が実行されてしまう）。
         assertThat(svc.gated())
-                .as("既知の残存ギャップ: CGLIB プロキシ配下ではインターフェースへの付与だけでは"
-                        + "pointcut がマッチせずゲートされない。だからこそ (B) で付与自体を禁止する")
+                .as("Aspect 単独では捕捉できない形態の記録: CGLIB プロキシ配下でも"
+                        + "インターフェースへの付与単体では pointcut がマッチしない。"
+                        + "この形態自体を RequireFeatureInterfaceGuardTest が CI で禁止する")
                 .isEqualTo("EXECUTED");
         assertThat(target.invocations).isEqualTo(1);
     }
 
     @Test
-    @DisplayName("(AC-13d/CGLIB・既知の残存ギャップ) クラスベースプロキシでは"
-            + "インターフェース型付与だけでは pointcut がマッチせず本体が実行されてしまう")
-    void ac13d_CGLIBプロキシではインターフェース型付与だけではゲートが効かない() {
+    @DisplayName("(AC-13d/CGLIB・番人が禁じる形態の記録) クラスベースプロキシでは"
+            + "インターフェース型付与単体だと Aspect が捕捉できず本体が実行されてしまう"
+            + "（この形態自体は RequireFeatureInterfaceGuardTest が CI で禁止する）")
+    void ac13d_CGLIBプロキシではインターフェース型付与単体ではAspectが捕捉できない() {
         when(featureFlagService.isEnabled(FLAG_A)).thenReturn(false);
 
         InterfaceTypeLevelServiceImpl target = new InterfaceTypeLevelServiceImpl();
         InterfaceTypeLevelService svc = proxyClassBased(target);
 
         assertThat(svc.gated())
-                .as("既知の残存ギャップ: CGLIB プロキシ配下ではインターフェース型付与だけでは"
-                        + "pointcut がマッチせずゲートされない。だからこそ (B) で付与自体を禁止する")
+                .as("Aspect 単独では捕捉できない形態の記録: CGLIB プロキシ配下でも"
+                        + "インターフェース型付与単体では pointcut がマッチしない。"
+                        + "この形態自体を RequireFeatureInterfaceGuardTest が CI で禁止する")
                 .isEqualTo("EXECUTED");
         assertThat(target.invocations).isEqualTo(1);
     }
