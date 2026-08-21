@@ -74,7 +74,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *   <li>{@code BULLETIN_002}（THREAD_NOT_FOUND）→ <b>404</b></li>
  *   <li>{@code BULLETIN_003}（REPLY_NOT_FOUND）→ <b>404</b></li>
  *   <li>{@code BULLETIN_016}（ARCHIVE_FOLDER_NOT_FOUND）→ <b>404</b></li>
- *   <li>{@code BULLETIN_020}（ARCHIVE_FOLDER_SCOPE_MISMATCH）→ <b>409</b></li>
+ *   <li>{@code BULLETIN_020}（ARCHIVE_FOLDER_SCOPE_MISMATCH）→ <b>404</b>（越境の存在秘匿のため不在 BULLETIN_016 と同一ステータス）</li>
  *   <li>認可拒否は {@code CommonErrorCode.COMMON_002} が <b>403</b> で明示登録</li>
  * </ul>
  * <p>{@code BULLETIN_012}（PARENT_REPLY_MISMATCH）は {@code Severity.WARN} かつ
@@ -1216,24 +1216,24 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         /**
-         * AC-B45: 保管庫スレッド一覧に越境 folder_id を指定すると 409 で遮断され、
+         * AC-B45: 保管庫スレッド一覧に越境 folder_id を指定すると 404 で遮断され、
          * 他スコープのスレッドは返らないこと。
          *
          * <p><b>非空虚性の限界（正直な但し書き）</b>: この EP は
          * {@code validateFolderInScope} による明示検証に加え、取得クエリ自体が
          * {@code findByScopeTypeAndScopeIdAndIsArchivedTrueAndArchiveFolderId} と
          * スコープ済みである。したがって明示検証を外しても<b>データは漏れず 0 件</b>になる。
-         * 本ケースは「明示検証（409 契約）が外されていないこと」の固定であり、
+         * 本ケースは「明示検証（404 契約）が外されていないこと」の固定であり、
          * 漏洩そのものの回帰固定ではない。</p>
          */
         @Test
-        @DisplayName("AC-B45 保管庫一覧の越境folder_idは409で他スコープのスレッドは返らない")
-        void ac_b45_越境folderIdの保管庫一覧は409() throws Exception {
+        @DisplayName("AC-B45 保管庫一覧の越境folder_idは404で他スコープのスレッドは返らない")
+        void ac_b45_越境folderIdの保管庫一覧は404() throws Exception {
             setAuth(adminAId);
             String body = mockMvc.perform(
                             get("/api/v1/{scopeType}/{scopeId}/bulletin/archive/threads", "teams", teamAId)
                                     .param("folder_id", folderBId.toString()))
-                    .andExpect(status().isConflict())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH.getCode()))
                     .andReturn().getResponse().getContentAsString();
@@ -1269,21 +1269,21 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
         }
 
         /**
-         * AC-B47: 自スレッドを越境 folderId へ振り分けようとすると 409 で遮断され、DB 上で不変であること。
+         * AC-B47: 自スレッドを越境 folderId へ振り分けようとすると 404 で遮断され、DB 上で不変であること。
          *
          * <p><b>非空虚性</b>: スレッド側の帰属は正しいため {@code findThreadOrThrow} は通過する。
          * {@code validateFolderInScope} の {@code verifyScope} だけが、他テナントのフォルダ ID を
          * 自スレッドに書き込む（＝テナント間参照の混線）ことを防いでいる。</p>
          */
         @Test
-        @DisplayName("AC-B47 自スレッドを越境folderIdへ振り分けようとすると409かつDB上不変")
-        void ac_b47_越境folderIdへの振り分けは409() throws Exception {
+        @DisplayName("AC-B47 自スレッドを越境folderIdへ振り分けようとすると404かつDB上不変")
+        void ac_b47_越境folderIdへの振り分けは404() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(patch("/api/v1/{scopeType}/{scopeId}/bulletin/archive/threads/{threadId}/folder",
                             "teams", teamAId, archivedAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(moveFolderBody(folderBId))))
-                    .andExpect(status().isConflict())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH.getCode()));
 
@@ -1616,8 +1616,8 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
          * 他テナントのフォルダを親に持つフォルダの生成（テナント間参照の混線）を防いでいる。</p>
          */
         @Test
-        @DisplayName("AC-B66 保管庫フォルダ作成の越境parentFolderIdは409かつフォルダが作られない")
-        void ac_b66_越境parentFolderIdの作成は409() throws Exception {
+        @DisplayName("AC-B66 保管庫フォルダ作成の越境parentFolderIdは404かつフォルダが作られない")
+        void ac_b66_越境parentFolderIdの作成は404() throws Exception {
             long before = countFoldersInScope(ScopeType.TEAM, teamAId);
 
             setAuth(adminAId);
@@ -1625,7 +1625,7 @@ class BulletinScopeContractIT extends AbstractMySqlIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(
                                     createFolderBody("越境フォルダ", folderBId))))
-                    .andExpect(status().isConflict())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code")
                             .value(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH.getCode()));
 

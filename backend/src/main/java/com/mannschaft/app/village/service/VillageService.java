@@ -160,6 +160,11 @@ public class VillageService {
      *
      * <p>UNLISTED 村は村人または SYSTEM_ADMIN のみアクセス可。
      * 削除済み / 凍結済み村は 404 を返す（IDOR 対策）。</p>
+     *
+     * <p>UNLISTED 村への非村人アクセスも<b>不在と同じ 404</b>で応答する
+     * （{@link VillageErrorCode#VILLAGE_UNLISTED} を 404 でマップ登録済み）。UNLISTED は検索結果から
+     * 意図的に除外され「存在を隠す」設計であり、403 を返すと不在の 404 との差で村 ID の実在が
+     * 漏れる（存在オラクル）。相性プロファイル・村憲章など兄弟 EP も同じく 404 で秘匿している。</p>
      */
     public VillageResponse get(UUID villageId, Long requesterUserId) {
         VillageEntity entity = findActiveOrThrow(villageId);
@@ -167,7 +172,7 @@ public class VillageService {
         boolean isMember = isMember(villageId, requesterUserId);
         boolean isAdmin = accessControlService.isSystemAdmin(requesterUserId);
 
-        // UNLISTED 村の閲覧制限
+        // UNLISTED 村の閲覧制限（VILLAGE_UNLISTED は 404 = 不在と同一ステータスで存在秘匿）
         if (entity.getVisibility() == VillageVisibility.UNLISTED && !isMember && !isAdmin) {
             throw new BusinessException(VillageErrorCode.VILLAGE_UNLISTED);
         }
