@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.service;
 
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.membership.fanout.ScheduleKeepTeamFanoutRecipientSource;
@@ -114,7 +115,7 @@ class ScheduleKeepNotificationServiceTest {
         ArgumentCaptor<UUID> sourceEvent = ArgumentCaptor.forClass(UUID.class);
         ArgumentCaptor<Long> actorId = ArgumentCaptor.forClass(Long.class);
         verify(fanoutJobService).enqueue(scopeType.capture(), scopeRef.capture(), notifType.capture(),
-                sourceEvent.capture(), isNull(), anyString(), anyString(), any(NotificationPriority.class),
+                sourceEvent.capture(), isNull(),any(FanoutMessageKind.class), any(String[].class), any(NotificationPriority.class),
                 anyString(), anyLong(), anyString(), actorId.capture());
 
         assertThat(scopeType.getValue()).isEqualTo(ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE);
@@ -144,7 +145,7 @@ class ScheduleKeepNotificationServiceTest {
 
         verify(publisher, never()).publishConverted(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         verify(fanoutJobService).enqueue(eq(ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE), anyString(),
-                anyString(), any(UUID.class), isNull(), anyString(), anyString(), any(NotificationPriority.class),
+                anyString(), any(UUID.class), isNull(),any(FanoutMessageKind.class), any(String[].class), any(NotificationPriority.class),
                 anyString(), anyLong(), anyString(), eq(ACTOR_ID));
     }
 
@@ -161,7 +162,7 @@ class ScheduleKeepNotificationServiceTest {
         verifyNoInteractions(publisher);
         ArgumentCaptor<String> scopeRef = ArgumentCaptor.forClass(String.class);
         verify(fanoutJobService).enqueue(eq(ScheduleKeepTeamFanoutRecipientSource.SCOPE_TYPE), scopeRef.capture(),
-                anyString(), any(UUID.class), isNull(), anyString(), anyString(), any(NotificationPriority.class),
+                anyString(), any(UUID.class), isNull(),any(FanoutMessageKind.class), any(String[].class), any(NotificationPriority.class),
                 anyString(), anyLong(), anyString(), eq(ACTOR_ID));
         assertThat(scopeRef.getValue()).isEqualTo(TEAM_ID + ":" + ACTOR_ID + ":0");
     }
@@ -176,8 +177,7 @@ class ScheduleKeepNotificationServiceTest {
                 .thenReturn(true);
         when(teamService.getSlugById(TEAM_ID)).thenReturn("natsu");
         doThrow(new RuntimeException("enqueue 失敗（DB 一時障害）"))
-                .when(fanoutJobService).enqueue(anyString(), anyString(), anyString(), any(UUID.class), isNull(),
-                        anyString(), anyString(), any(NotificationPriority.class), anyString(), anyLong(),
+                .when(fanoutJobService).enqueue(anyString(), anyString(), anyString(), any(UUID.class), isNull(),any(FanoutMessageKind.class), any(String[].class), any(NotificationPriority.class), anyString(), anyLong(),
                         anyString(), anyLong());
 
         // best-effort: enqueue の失敗は呼び出し側（ScheduleKeepService）が握る契約のため、ここでは伝播してよい。
@@ -188,7 +188,6 @@ class ScheduleKeepNotificationServiceTest {
         InOrder order = inOrder(publisher, fanoutJobService);
         order.verify(publisher).publishConverted(eq(CREATOR_ID), anyString(), anyString(), anyString(),
                 anyString(), anyLong(), any(NotificationScopeType.class), anyLong(), anyString(), anyLong());
-        order.verify(fanoutJobService).enqueue(anyString(), anyString(), anyString(), any(UUID.class), isNull(),
-                anyString(), anyString(), any(NotificationPriority.class), anyString(), anyLong(), anyString(), anyLong());
+        order.verify(fanoutJobService).enqueue(anyString(), anyString(), anyString(), any(UUID.class), isNull(),any(FanoutMessageKind.class), any(String[].class), any(NotificationPriority.class), anyString(), anyLong(), anyString(), anyLong());
     }
 }

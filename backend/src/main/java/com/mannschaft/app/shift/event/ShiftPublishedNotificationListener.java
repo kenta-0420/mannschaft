@@ -2,6 +2,7 @@ package com.mannschaft.app.shift.event;
 
 import com.mannschaft.app.membership.fanout.TeamFanoutRecipientSource;
 import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,8 +52,10 @@ public class ShiftPublishedNotificationListener {
                     NOTIFICATION_TYPE,
                     sourceEventUuid(event.getScheduleId(), event.getPublishedAt()), // 冪等キー: 公開イベント（scheduleId×publishedAt）
                     null,                                        // organizationId: シフト公開は org 非依存
-                    "シフトが公開されました",
-                    "シフトスケジュールが確定・公開されました。内容を確認してください。",
+                    // Issue #2871: 描画済み日本語ではなく文面種別を渡す。シフト公開は可変部分が
+                    // 1 つも無く全文がアプリの文言のため、引数は空（枠だけを 6 ロケールへ翻訳する）。
+                    FanoutMessageKind.SHIFT_PUBLISHED,
+                    new String[0],
                     NotificationPriority.NORMAL,
                     SOURCE_TYPE, event.getScheduleId(),
                     "/shifts/schedules/" + event.getScheduleId(),

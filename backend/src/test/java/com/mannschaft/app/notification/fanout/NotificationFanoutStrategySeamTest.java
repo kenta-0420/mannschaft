@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
 /**
@@ -50,9 +51,14 @@ class NotificationFanoutStrategySeamTest {
         }
 
         @Override
-        public List<Long> nextPage(String scopeRef, long cursorSubjectId, int limit) {
+        public List<FanoutRecipient> nextPage(FanoutPageRequest request) {
             calls.incrementAndGet();
-            return all.stream().filter(id -> id > cursorSubjectId).limit(limit).toList();
+            return all.stream()
+                    .filter(id -> id > request.cursorSubjectId())
+                    .limit(request.limit())
+                    // Issue #2871: 受信者は user_id ＋ locale の組。擬似ソースは既定ロケールで返す。
+                    .map(id -> new FanoutRecipient(id, "ja"))
+                    .toList();
         }
     }
 
@@ -65,8 +71,10 @@ class NotificationFanoutStrategySeamTest {
         Optional<FanoutRecipientSource> resolved = registry.resolve(TEST_SCOPE);
 
         assertThat(resolved).as("擬似 scope_type がレジストリで解決できる（seam 存在の証明）").containsSame(fake);
-        assertThat(resolved.get().nextPage(SCOPE_REF, 0L, 10))
-                .as("擬似ソースはキーセットで受信者を返す").containsExactly(1L, 2L, 3L);
+        assertThat(resolved.get().nextPage(new FanoutPageRequest(SCOPE_REF, 0L, 10, true, 0, 1)))
+                .as("擬似ソースはキーセットで受信者を返す")
+                .extracting(FanoutRecipient::userId)
+                .containsExactly(1L, 2L, 3L);
     }
 
     @Test
@@ -77,14 +85,20 @@ class NotificationFanoutStrategySeamTest {
 
         NotificationFanoutJobService jobService = mock(NotificationFanoutJobService.class);
         NotificationBulkFanoutService bulkFanoutService = mock(NotificationBulkFanoutService.class);
-        NotificationFanoutWorker worker = new NotificationFanoutWorker(registry, jobService, bulkFanoutService);
+        // Issue #2871: ワーカーはロケール別文面の子表を引く。擬似ジョブぶんの 1 行を返すモックを渡す。
+        NotificationFanoutJobMessageRepository jobMessageRepository =
+                mock(NotificationFanoutJobMessageRepository.class);
+        given(jobMessageRepository.findByJobId(org.mockito.ArgumentMatchers.any()))
+                .willReturn(List.of(NotificationFanoutJobMessage.builder()
+                        .locale("ja").title("擬似 scope 配信").body(null).build()));
+        NotificationFanoutWorker worker =
+                new NotificationFanoutWorker(registry, jobService, bulkFanoutService, jobMessageRepository);
 
         NotificationFanoutJob job = NotificationFanoutJob.builder()
                 .sourceEventUuid(UUID.randomUUID())
                 .scopeType(TEST_SCOPE)
                 .scopeRef(SCOPE_REF)
                 .notificationType("TEST_TYPE")
-                .title("擬似 scope 配信")
                 .priority(NotificationPriority.NORMAL)
                 .status(NotificationFanoutJobStatus.PENDING)
                 .cursorSubjectId(0L)

@@ -191,6 +191,8 @@ public class AccessControlService {
      * <p>F00.5 で所属（memberships）と権限ロール（user_roles）が分離されたことに伴い、
      * 1 スコープに対するユーザーのロールは次の 2 系統に分散している:</p>
      * <ul>
+     *   <li><b>プラットフォームロール</b>: {@code user_roles} のスコープ未指定行
+     *       （SYSTEM_ADMIN）</li>
      *   <li><b>権限ロール</b>: {@code user_roles} 由来（ADMIN / DEPUTY_ADMIN / GUEST など）</li>
      *   <li><b>所属ロール</b>: {@code memberships.role_kind} 由来（MEMBER / SUPPORTER）</li>
      * </ul>
@@ -229,6 +231,12 @@ public class AccessControlService {
      * （= 既存テストのスタブ前提を壊さない）。</p>
      */
     private Optional<EffectiveRole> resolveEffectiveRole(Long userId, Long scopeId, String scopeType) {
+        // SYSTEM_ADMIN は team_id / organization_id がともに null のプラットフォームロール。
+        // スコープ別 findUserRole() では取得できないため、最強ロールとして先に解決する。
+        if (isSystemAdmin(userId)) {
+            return Optional.of(new EffectiveRole("SYSTEM_ADMIN", 1));
+        }
+
         EffectiveRole best = null;
 
         // 1) 権限ロール（user_roles 由来: ADMIN / DEPUTY_ADMIN / GUEST 等）
