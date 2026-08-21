@@ -30,6 +30,12 @@
 #            aws-region: ap-northeast-1
 #
 #   4. Delete the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets.
+#
+#   注意: 上記手順どおり AWS_ACCESS_KEY_ID を削除すると、下の "Check AWS credentials"
+#   ステップ（門番）は AWS_ACCESS_KEY_ID が空であることを唯一の判定条件としており、
+#   secret が無ければ常に skip=true としてデプロイを丸ごとスキップしてしまう。
+#   OIDC へ移行する場合は、この門番の判定条件も OIDC 向けに合わせて変更すること
+#   （本ファイルの門番の実装自体は今回変更していない）。
 # =============================================================================
 
 name: Frontend — Build & Deploy
@@ -64,8 +70,12 @@ jobs:
 
     steps:
       # AWS Secrets 未設定時はデプロイをスキップする。設定されれば自動的に実行される。
+      # このステップは checkout より前に走るため、job の defaults.run.working-directory
+      # である ./frontend はまだ存在しない。ここだけ working-directory を明示的にリポジトリ
+      # 直下（.）へ戻す。
       - name: Check AWS credentials
         id: aws-check
+        working-directory: .
         run: |
           if [ -z "$AWS_KEY" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -147,12 +157,17 @@ jobs:
             --query taskDefinition \
             > task-definition.json
 
+      # 直前のステップは run: なので defaults.run.working-directory（./frontend）が効き、
+      # frontend/task-definition.json に書き込まれる。しかし本ステップは uses: であり、
+      # defaults.run.working-directory は run: ステップにしか適用されない（GitHub の仕様）ため、
+      # ここでのパス基準はリポジトリ直下のまま。書き込み先と読み取り先を一致させるため、
+      # frontend/ を明示したパスを指定する。
       - name: Update ECS task definition with new image
         if: steps.aws-check.outputs.skip != 'true'
         id: task-def
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: task-definition.json
+          task-definition: frontend/task-definition.json
           container-name: ${{ secrets.ECS_CONTAINER_NAME }}
           image: ${{ steps.build-image.outputs.image }}
 
