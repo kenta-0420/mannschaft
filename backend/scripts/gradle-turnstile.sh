@@ -19,12 +19,13 @@
 #   ./scripts/gradle-turnstile.sh ./gradlew test
 #
 # ロック方式（TOCTOU対策）:
-#   - 取得: 一意な一時ディレクトリに info(PID/TIME/TOKEN) を書き、書込を検証してから
+#   - 取得: 一意な一時ディレクトリに info(PID/WINPID/CREATED/TIME/TOKEN) を書き、書込を検証してから
 #     `mv -T` でロック名へ改名する。ロック名が存在する時点で必ず info が揃っている
 #     （mkdir 直後に空ディレクトリが見える瞬間を作らない）。
 #     `mv -T` はカーネルの rename(2) を直接使うため、ロック名が既に存在する
 #     （＝非空ディレクトリ）場合は ENOTEMPTY で失敗する＝atomic な「先客あり」判定になる。
-#   - stale奪取: 生存判定は「ロック内 PID が死んでいるか」のみを条件とする
+#   - stale奪取: 生存判定は「ロック内の保持者が死んでいるか」のみを条件とする
+#     （Git Bash 上では kill -0 ではなく Windows 側の PID 照会を正とする。is_pid_alive のコメント参照）
 #     （生存中は経過時間に関わらず奪取しない。待つのは取得できない実経過時間で最大180分）。
 #     奪取も同じ `mv -T` で隔離名へ改名を試みるが、判定〜改名の間にも別プロセスが
 #     先に奪取・再取得している「多重奪取」の極小窓は理論上残る。これを完全には塞がず、
@@ -83,6 +84,7 @@ case "${MAX_WAIT_SEC}" in
 esac
 MAX_ABNORMAL_STREAK=5             # 「先客あり」以外の異常が連続した場合の即時エラー閾値
 STALE_TMP_AGE_SEC=86400           # 残骸掃除の対象年齢（秒）。86400秒＝1日
+LEGACY_STALE_AGE_SEC=$((6 * 3600))  # WINPID を持たない旧形式ロックを stale とみなす経過秒数（6時間）
 
 TOKEN="$$-$(date +%s%N 2>/dev/null || date +%s)-$RANDOM"
 LOCK_HELD=0
@@ -97,13 +99,110 @@ now_epoch() {
     date +%s
 }
 
+# 実行環境の判定。Git Bash(MSYS2) では $$ は MSYS の PID であり、
+# Windows のプロセス PID（WINPID）とは別の名前空間である。
+# 例（実測）: bash の $$=35213 に対し WINPID=28860。
+if [ -r "/proc/$$/winpid" ]; then
+    IS_MSYS=1
+    SELF_WINPID="$(cat "/proc/$$/winpid" 2>/dev/null)"
+else
+    IS_MSYS=0
+    SELF_WINPID="$$"
+fi
+[ -n "${SELF_WINPID}" ] || SELF_WINPID="$$"
+
+# Windows 側へ PID を照会する。標準出力は次のいずれか:
+#   DEAD            : その Windows PID のプロセスは存在しない
+#   ALIVE:<created> : 存在する（created は UTC の生成時刻 yyyyMMddHHmmss）
+#   （空文字）      : 照会自体ができなかった（PowerShell 不在等）
+# PowerShell に渡すコマンドにダブルクオートを含めない（MSYS の引用符変換事故を避ける）。
+win_query() {
+    local winpid="$1" ps_cmd
+    case "${winpid}" in
+        ''|*[!0-9]*) return 0 ;;
+    esac
+    ps_cmd="\$p = Get-CimInstance Win32_Process -Filter ('ProcessId=${winpid}') -ErrorAction SilentlyContinue; if (-not \$p) { 'DEAD' } else { 'ALIVE:' + \$p.CreationDate.ToUniversalTime().ToString('yyyyMMddHHmmss') }"
+    powershell.exe -NoProfile -NonInteractive -Command "${ps_cmd}" 2>/dev/null | tr -d '\r\n'
+}
+
+# 自分自身の生成時刻を控えておく（同じ PID 番号の使い回しを見分けるため）。
+# 取得できなければ空のままとし、判定側は「照合しない」に倒す。
+SELF_CREATED=""
+if [ "${IS_MSYS}" -eq 1 ]; then
+    __self_q="$(win_query "${SELF_WINPID}")"
+    case "${__self_q}" in
+        ALIVE:*) SELF_CREATED="${__self_q#ALIVE:}" ;;
+    esac
+    unset __self_q
+fi
+
+# ロック保持者が生存しているかを判定する。
+#
+# 【重要・実測に基づく】Git Bash の `kill -0` は Windows の PID に対しては機能しない。
+#   MSYS の PID 名前空間と Windows の PID 名前空間は別物であり、
+#   `kill -0 <n>` は「MSYS PID が n のプロセス」の有無しか見ていない。
+#   実測(2026-08-21): 現に生きている MSYS PID 群(34388/28697/25499/10720 等)は
+#   すべて `kill -0` が成功する一方、同じ番号を Windows の PID として
+#   `Get-CimInstance Win32_Process -Filter "ProcessId=<n>"` で照会すると全て not running だった。
+#   逆に、死んだビルドが記録した MSYS PID は番号が小さく再利用も速いため、
+#   無関係な別の bash に容易に一致し「常に生存」と誤判定される。
+#   その結果 stale 奪取が原理的に発動せず、死んだロックのせいで待機上限まで
+#   待たされる事故が起きた（実測835秒待機、手動でロックを退避して復旧）。
+#
+# よって MSYS 上では Windows 側の PID 照会を正とする。
+# 判定不能な場合は必ず「生存」に倒す（生きているビルドのロックを誤って
+# 奪うと、turnstile が防いでいる並列ビルド衝突が起きるため）。
+#
+# 引数: <MSYS PID> <WINPID> <CREATED> <TIME>
 is_pid_alive() {
-    local pid="$1"
-    if [ -z "${pid}" ]; then
-        return 1
+    local pid="$1" winpid="$2" created="$3" locktime="$4"
+
+    if [ "${IS_MSYS}" -ne 1 ]; then
+        # POSIX 環境では PID 名前空間が1つなので kill -0 が正しい
+        [ -n "${pid}" ] || return 1
+        kill -0 "${pid}" 2>/dev/null
+        return $?
     fi
-    # Git Bash では kill -0 が Windows PID に対しても機能する
-    kill -0 "${pid}" 2>/dev/null
+
+    if [ -z "${winpid}" ]; then
+        # WINPID を持たない旧形式のロック。Windows 側へ照会する術がないため、
+        # 誤って奪わないよう原則は「生存」とみなす。ただし永久に待ち続けると
+        # 本欠陥と同じ症状になるため、明らかに古い（LEGACY_STALE_AGE_SEC 超）場合のみ stale とみなす
+        local lage
+        case "${locktime}" in
+            ''|*[!0-9]*) return 0 ;;
+        esac
+        lage=$(( $(now_epoch) - locktime ))
+        if [ "${lage}" -gt "${LEGACY_STALE_AGE_SEC}" ]; then
+            echo "[turnstile] 旧形式(WINPID無し)のロックが${lage}秒経過しているため stale とみなします" >&2
+            return 1
+        fi
+        return 0
+    fi
+
+    local q
+    q="$(win_query "${winpid}")"
+    case "${q}" in
+        DEAD)
+            return 1
+            ;;
+        ALIVE:*)
+            local live_created="${q#ALIVE:}"
+            # 生成時刻を記録していない（旧形式）か、読めなかった場合は照合せず生存とみなす
+            if [ -z "${created}" ] || [ -z "${live_created}" ]; then
+                return 0
+            fi
+            if [ "${created}" = "${live_created}" ]; then
+                return 0
+            fi
+            # PID は一致するが生成時刻が違う（PID 使い回し）＝記録された主は既に死んでいる
+            return 1
+            ;;
+        *)
+            # 照会不能。安全側（生存とみなして待つ）へ倒す
+            return 0
+            ;;
+    esac
 }
 
 read_info_field() {
@@ -220,6 +319,8 @@ try_acquire_once() {
 
     {
         echo "PID=$$"
+        echo "WINPID=${SELF_WINPID}"
+        echo "CREATED=${SELF_CREATED}"
         echo "TIME=$(now_epoch)"
         echo "TOKEN=${TOKEN}"
     } > "${tmp}/info"
@@ -257,11 +358,15 @@ try_reclaim_stale_lock() {
         return 1
     fi
 
-    local snap_pid snap_token
+    local snap_pid snap_token snap_winpid snap_created snap_time
     snap_pid="$(read_info_field "${LOCK_DIR}" PID)"
     snap_token="$(read_info_field "${LOCK_DIR}" TOKEN)"
+    snap_winpid="$(read_info_field "${LOCK_DIR}" WINPID)"
+    snap_created="$(read_info_field "${LOCK_DIR}" CREATED)"
+    snap_time="$(read_info_field "${LOCK_DIR}" TIME)"
 
-    if [ -n "${snap_pid}" ] && is_pid_alive "${snap_pid}"; then
+    if { [ -n "${snap_pid}" ] || [ -n "${snap_winpid}" ]; } \
+        && is_pid_alive "${snap_pid}" "${snap_winpid}" "${snap_created}" "${snap_time}"; then
         # 生存中は経過時間に関わらず奪取しない（重大3の是正）
         return 1
     fi
