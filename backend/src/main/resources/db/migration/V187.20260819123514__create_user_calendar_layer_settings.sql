@@ -12,9 +12,9 @@
 CREATE TABLE user_calendar_layer_settings (
     id             BINARY(16)   NOT NULL          COMMENT 'UUIDv7 主キー',
 
-    user_id        BIGINT       NOT NULL          COMMENT '設定の所有者（論理参照・FK なし。本人以外は読み書き不可）',
+    user_id        BIGINT UNSIGNED NOT NULL       COMMENT '設定の所有者（論理参照・FK なし。本人以外は読み書き不可）',
     scope_type     VARCHAR(20)  NOT NULL          COMMENT 'レイヤー種別（PERSONAL / TEAM / ORGANIZATION）',
-    scope_id       BIGINT       NOT NULL DEFAULT 0
+    scope_id       BIGINT UNSIGNED NOT NULL DEFAULT 0
                                                   COMMENT 'レイヤー対象ID（TEAM=teams.id / ORGANIZATION=organizations.id / PERSONAL=0 センチネル。論理参照・FK なし）',
 
     color          CHAR(7)      NULL              COMMENT 'ユーザー指定色（#RRGGBB 大文字。NULL=自動色にフォールバック）',

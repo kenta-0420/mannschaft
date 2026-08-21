@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * ユーザー×カレンダーレイヤーの表示設定エンティティ（F03.19）。
@@ -59,15 +59,22 @@ public class UserCalendarLayerSettingEntity extends UuidV7Entity {
     @Column(name = "hidden", nullable = false)
     private Boolean hidden;
 
+    /**
+     * {@code LocalDateTime} でなく {@code Instant} を使う理由（{@code docs/architecture/datetime_policy_utc_instant_vs_wallclock.md}）:
+     * {@code created_at}/{@code updated_at} は「行為が発生した1点」を表す瞬間値であり、
+     * 前例 {@code ScheduleCommentEntity} に倣い {@code @PrePersist}/{@code @PreUpdate} ＋
+     * {@code Instant.now()} で扱う（番人 {@code DateTimeAndZoneGuardTest} は
+     * 引数なし {@code LocalDateTime.now()} と {@code LocalDateTime} フィールドを禁止する）。
+     */
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -82,6 +89,6 @@ public class UserCalendarLayerSettingEntity extends UuidV7Entity {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 }
