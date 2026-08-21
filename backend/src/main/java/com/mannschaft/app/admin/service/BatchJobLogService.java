@@ -96,6 +96,42 @@ public class BatchJobLogService {
     }
 
     /**
+     * {@code @BackgroundFeaturePolicy} による停止／再開を記録する（Gate 基盤工事④-A）。
+     *
+     * <p>{@code BackgroundFeatureSkipRecorder} が「状態が変わった時だけ」呼ぶ。
+     * 実行を試みて失敗したのではなく<b>意図して実行しなかった</b>ことが後から読み取れる形で
+     * 1 行だけ残すこと（FAILED にしてはならない。運用が障害と誤読し、
+     * {@code BatchFailedEvent} の通知と区別が付かなくなる）。</p>
+     *
+     * <h2>どちらの向きの遷移も {@link BatchJobStatus#SKIPPED} で記録する</h2>
+     * <p>本メソッドが書く行は<b>実行そのものではなく、実行しなかった／再開したという境界の目印</b>である。
+     * SUCCESS を使うと {@code processedCount=0} の実行が 1 回あったように読め、実績を捏造する。
+     * FAILED を使うと運用が障害と誤読し {@code BatchFailedEvent} の通知と区別が付かなくなる。
+     * どちらも「この行は実行ではない」ことを表せないため、両方向とも SKIPPED とし、
+     * 向きは {@code errorMessage} の文面で読み取れるようにする
+     * （再開後の実際の実行は {@code BatchExecutionAspect} が別行として記録する）。</p>
+     *
+     * @param jobName ジョブ名
+     * @param skipped スキップへ移った記録なら {@code true}、実行へ戻った記録なら {@code false}
+     * @param reason  理由（無効だったフラグキーを含む人間可読の文字列。再開時は null 可）
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordFeaturePolicyOutcome(String jobName, boolean skipped, String reason) {
+        LocalDateTime now = LocalDateTime.now();
+        BatchJobLogEntity entity = BatchJobLogEntity.builder()
+                .jobName(jobName)
+                .status(BatchJobStatus.SKIPPED)
+                .startedAt(now)
+                .finishedAt(now)
+                .processedCount(0)
+                .errorMessage(reason)
+                .build();
+        entity = batchJobLogRepository.save(entity);
+        log.info("バッチジョブ停止/再開を記録: id={}, jobName={}, skipped={}, reason={}",
+                entity.getId(), jobName, skipped, reason);
+    }
+
+    /**
      * バッチジョブの失敗を記録する。
      *
      * @param logEntity    ログエンティティ
