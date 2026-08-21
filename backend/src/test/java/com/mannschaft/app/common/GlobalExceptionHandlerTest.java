@@ -3,10 +3,19 @@ package com.mannschaft.app.common;
 import com.mannschaft.app.billing.EntitlementNotEntitledDetails;
 import com.mannschaft.app.billing.FeatureNotEntitledException;
 import com.mannschaft.app.billing.api.dto.FeatureNotEntitledErrorResponse;
+import com.mannschaft.app.bulletin.BulletinErrorCode;
+import com.mannschaft.app.committee.error.CommitteeErrorCode;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.service.ErrorReportNotifier;
 import com.mannschaft.app.errorreport.service.ErrorReportService;
 import com.mannschaft.app.gdpr.GdprErrorCode;
+import com.mannschaft.app.jobmatching.exception.JobmatchingErrorCode;
+import com.mannschaft.app.matching.MatchingErrorCode;
+import com.mannschaft.app.payment.PaymentErrorCode;
+import com.mannschaft.app.recruitment.RecruitmentErrorCode;
+import com.mannschaft.app.social.SocialErrorCode;
+import com.mannschaft.app.succession.SuccessionErrorCode;
+import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.skill.SkillErrorCode;
 import com.mannschaft.app.webhook.WebhookErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
@@ -1793,4 +1802,154 @@ class GlobalExceptionHandlerTest {
             verify(service, never()).recordBackendException(any(), anyString(), anyString(), anyString(), anyString(), any());
         }
     }
+
+    // ========================================
+    // 存在オラクル（不在 / 越境のステータス一致）
+    // ========================================
+
+    @Nested
+    @DisplayName("存在オラクル封じ — 不在と越境が同一ステータス（404）で応答する")
+    class ExistenceOracleParity {
+
+        /**
+         * 「不在」と「越境（他人のリソース）」でステータスが割れると、
+         * 攻撃者は応答の差だけで ID の実在を判別できる（存在オラクル）。
+         * PARKING_020 起点の「越境は存在秘匿で 404」の流儀に揃っていることを検証する。
+         *
+         * <p>一致だけを見ると「両方 500」「両方 200」でも通ってしまうため、
+         * 404 そのものを固定する絶対値アサーションを必ず併存させる。</p>
+         */
+        private void assertOracleClosed(ErrorCode absent, ErrorCode crossTenant) {
+            HttpStatus absentStatus = globalExceptionHandler.resolveHttpStatus(absent);
+            HttpStatus crossStatus = globalExceptionHandler.resolveHttpStatus(crossTenant);
+
+            assertThat(absentStatus)
+                    .as("不在側（%s）は 404 で存在秘匿すること", absent.getCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(crossStatus)
+                    .as("越境側（%s）は 404 で存在秘匿すること", crossTenant.getCode())
+                    .isEqualTo(HttpStatus.NOT_FOUND);
+            assertThat(crossStatus)
+                    .as("不在（%s）と越境（%s）でステータスが割れると ID の実在が判別できる",
+                            absent.getCode(), crossTenant.getCode())
+                    .isEqualTo(absentStatus);
+        }
+
+        @Test
+        @DisplayName("支払い領収書: PAYMENT_029（不在）と PAYMENT_030（越境）がともに 404")
+        void 支払い領収書の存在オラクルが閉じている() {
+            assertOracleClosed(PaymentErrorCode.MEMBER_PAYMENT_NOT_FOUND,
+                    PaymentErrorCode.PAYMENT_ACCESS_DENIED);
+        }
+
+        @Test
+        @DisplayName("承継誓約: SUCCESSION_003（不在）と SUCCESSION_008（越境）がともに 404")
+        void 承継誓約の存在オラクルが閉じている() {
+            assertOracleClosed(SuccessionErrorCode.COVENANT_NOT_FOUND,
+                    SuccessionErrorCode.COVENANT_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("求人QRトークン: JOB_CONTRACT_NOT_FOUND（不在）と JOB_PERMISSION_DENIED（越境）がともに 404")
+        void 求人契約の存在オラクルが閉じている() {
+            assertOracleClosed(JobmatchingErrorCode.JOB_CONTRACT_NOT_FOUND,
+                    JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+        }
+
+        @Test
+        @DisplayName("チーム友だち可視性: SOCIAL_106（不在）と SOCIAL_107（越境）がともに 404")
+        void チーム友だち可視性の存在オラクルが閉じている() {
+            assertOracleClosed(SocialErrorCode.FRIEND_RELATION_NOT_FOUND,
+                    SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY);
+        }
+
+        @Test
+        @DisplayName("マッチング募集: MATCHING_001（不在）と MATCHING_010（越境）がともに 404")
+        void マッチング募集の存在オラクルが閉じている() {
+            // MatchProposalService の listProposals/acceptProposal/rejectProposal/cancelProposal/
+            // agreeCancellation は、募集が不在なら REQUEST_NOT_FOUND、越境なら INSUFFICIENT_PERMISSION を
+            // 投げる。ステータスが割れると募集IDの実在が応答差から判別できる。
+            assertOracleClosed(MatchingErrorCode.REQUEST_NOT_FOUND,
+                    MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        @Test
+        @DisplayName("マッチング応募: MATCHING_002（不在）と MATCHING_010（越境）がともに 404")
+        void マッチング応募の存在オラクルが閉じている() {
+            // withdrawProposal は応募が不在なら PROPOSAL_NOT_FOUND、越境なら INSUFFICIENT_PERMISSION。
+            assertOracleClosed(MatchingErrorCode.PROPOSAL_NOT_FOUND,
+                    MatchingErrorCode.INSUFFICIENT_PERMISSION);
+        }
+
+        @Test
+        @DisplayName("掲示板保管庫フォルダ: BULLETIN_016（不在）と BULLETIN_020（越境）がともに 404")
+        void 保管庫フォルダの存在オラクルが閉じている() {
+            // BulletinArchiveFolderService#validateFolderInScope / createFolder の親フォルダ検証は、
+            // フォルダが不在なら ARCHIVE_FOLDER_NOT_FOUND、他スコープなら ARCHIVE_FOLDER_SCOPE_MISMATCH。
+            // ステータスが割れると他テナントのフォルダ UUID の実在が応答差から判別できる。
+            assertOracleClosed(BulletinErrorCode.ARCHIVE_FOLDER_NOT_FOUND,
+                    BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH);
+        }
+
+        @Test
+        @DisplayName("委員会議事録: COMMITTEE_NOT_FOUND（不在）と COMMITTEE_MINUTES_NOT_COMMITTEE_SCOPE（越境）がともに 404")
+        void 委員会議事録の存在オラクルが閉じている() {
+            // CommitteeMinutesService#confirmMinutes は活動記録が不在なら NOT_FOUND、
+            // 他委員会・非委員会スコープの記録なら MINUTES_NOT_COMMITTEE_SCOPE を投げる。
+            assertOracleClosed(CommitteeErrorCode.NOT_FOUND,
+                    CommitteeErrorCode.MINUTES_NOT_COMMITTEE_SCOPE);
+        }
+
+        @Test
+        @DisplayName("募集テンプレート: RECRUITMENT_313（不在）と RECRUITMENT_314（越境）がともに 404")
+        void 募集テンプレートの存在オラクルが閉じている() {
+            // RecruitmentListingService#createFromTemplate はテンプレートが不在なら TEMPLATE_NOT_FOUND、
+            // 他スコープのテンプレートなら TEMPLATE_SCOPE_MISMATCH。
+            assertOracleClosed(RecruitmentErrorCode.TEMPLATE_NOT_FOUND,
+                    RecruitmentErrorCode.TEMPLATE_SCOPE_MISMATCH);
+        }
+
+        @Test
+        @DisplayName("非公開村: VILLAGE_001（不在）と VILLAGE_002（非公開）がともに 404")
+        void 非公開村の存在オラクルが閉じている() {
+            // UNLISTED 村は検索結果から意図的に除外され「存在を隠す」設計であるにもかかわらず、
+            // VillageService#get が非村人に対して 403 を返すと、不在の 404 との差で存在が漏れる。
+            // （PUBLIC 村の VILLAGE_024 は存在自体が公開情報のため 403 のままで正しい）
+            assertOracleClosed(VillageErrorCode.VILLAGE_NOT_FOUND,
+                    VillageErrorCode.VILLAGE_UNLISTED);
+        }
+    }
+
+    // ========================================
+    // 汎用の権限拒否（IDを引かないため404化しない・403のまま）
+    // ========================================
+
+    @Nested
+    @DisplayName("汎用の権限拒否 — ID越境ではないため404化せず403のまま")
+    class GenericPermissionDeniedStaysForbidden {
+
+        /**
+         * ID を一切引かない汎用の権限拒否は、秘匿すべきリソース ID が存在しないため
+         * 存在オラクル対策（404化）の対象外であり、403のまま据え置く。
+         * ExistenceOracleParity（ID越境は404）と対になる、意図的な非対称の固定。
+         */
+        @Test
+        @DisplayName("求人作成: JOB_CREATE_PERMISSION_DENIED は 403（求人IDが存在しないため404化しない）")
+        void 求人作成の権限拒否は403のまま() {
+            HttpStatus status = globalExceptionHandler.resolveHttpStatus(
+                    JobmatchingErrorCode.JOB_CREATE_PERMISSION_DENIED);
+
+            assertThat(status).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("承継誓約一覧: COVENANT_LIST_FORBIDDEN は 403（個別誓約IDが存在しないため404化しない）")
+        void 承継誓約一覧の権限拒否は403のまま() {
+            HttpStatus status = globalExceptionHandler.resolveHttpStatus(
+                    SuccessionErrorCode.COVENANT_LIST_FORBIDDEN);
+
+            assertThat(status).isEqualTo(HttpStatus.FORBIDDEN);
+        }
+    }
 }
+

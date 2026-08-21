@@ -2,6 +2,7 @@ package com.mannschaft.app.onboarding.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.onboarding.OnboardingCompletionType;
@@ -53,6 +54,8 @@ public class OnboardingProgressService {
     private final OnboardingMapper mapper;
     private final DomainEventPublisher eventPublisher;
     private final NotificationHelper notificationHelper;
+    private final org.springframework.context.MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * オンボーディングを開始する。ACTIVEテンプレートで進捗を作成。
@@ -293,14 +296,33 @@ public class OnboardingProgressService {
         List<OnboardingProgressEntity> inProgress = progressRepository
                 .findByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, OnboardingProgressStatus.IN_PROGRESS);
 
+        // Issue #2715 CMP-055 ロットC-5: 受信者ごとに locale が異なるため、ループの外で
+        // UserLocaleCache#getLocales により一括解決する（N+1 防止）。
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(
+                    inProgress.stream().map(OnboardingProgressEntity::getUserId).toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+            locales = Map.of();
+        }
+
         int remindedCount = 0;
         for (OnboardingProgressEntity progress : inProgress) {
             try {
                 NotificationScopeType notifScope = "TEAM".equals(scopeType) ?
                         NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
+                java.util.Locale locale = java.util.Locale.forLanguageTag(
+                        locales.getOrDefault(progress.getUserId(), "ja"));
                 notificationHelper.notify(
                         progress.getUserId(), "ONBOARDING_REMINDER",
-                        "オンボーディングリマインド", "未完了のオンボーディングステップがあります。",
+                        messageSource.getMessage(
+                                "notification.onboarding.reminder.title", null,
+                                "オンボーディングリマインド", locale),
+                        messageSource.getMessage(
+                                "notification.onboarding.reminder.body", null,
+                                "未完了のオンボーディングステップがあります。", locale),
                         "ONBOARDING", progress.getId(), notifScope, scopeId,
                         "/onboarding/progress/" + progress.getId(), null);
                 remindedCount++;

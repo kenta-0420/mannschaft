@@ -134,7 +134,7 @@ public class BulletinArchiveFolderService {
      * 保管庫フォルダを作成する（設計書 §4 POST / §5）。
      *
      * <p>depth = 親.depth + 1（ルート 0）、depth &gt; 4 で 400。フォルダ数上限 200 超過で 409。
-     * 親フォルダの scope 越境で 409。並行性: スコープ行をロックして件数を計数し上限すり抜けを防ぐ。</p>
+     * 親フォルダの scope 越境で 404（不在と同一ステータスにして他テナントのフォルダ UUID の実在を秘匿）。並行性: スコープ行をロックして件数を計数し上限すり抜けを防ぐ。</p>
      */
     @Transactional
     public ArchiveFolderResponse createFolder(
@@ -347,7 +347,7 @@ public class BulletinArchiveFolderService {
     /**
      * フォルダの存在 + scope 一致を検証して返す（スレッド振り分け・archive 拡張から呼ぶ）。
      *
-     * @throws BusinessException 不存在（404）/ scope 越境（409）
+     * @throws BusinessException 不存在（404）/ scope 越境（404・存在秘匿のため不在と同一ステータス）
      */
     BulletinArchiveFolderEntity validateFolderInScope(ScopeType scopeType, Long scopeId, UUID folderId) {
         BulletinArchiveFolderEntity folder = folderRepository.findById(folderId)
@@ -366,6 +366,8 @@ public class BulletinArchiveFolderService {
     }
 
     private void verifyScope(BulletinArchiveFolderEntity folder, ScopeType scopeType, Long scopeId) {
+        // 越境は不在と同じ 404 に畳む（ARCHIVE_FOLDER_SCOPE_MISMATCH は 404 でマップ登録済み）。
+        // ステータスを割ると応答差から他テナントのフォルダ UUID の実在が判別できる（存在オラクル）。
         if (folder.getScopeType() != scopeType || !folder.getScopeId().equals(scopeId)) {
             throw new BusinessException(BulletinErrorCode.ARCHIVE_FOLDER_SCOPE_MISMATCH);
         }

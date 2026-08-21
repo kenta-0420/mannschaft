@@ -131,7 +131,8 @@ public class MatchProposalService {
         MatchRequestEntity matchRequest = requestRepository.findById(requestId)
                 .orElseThrow(() -> new BusinessException(MatchingErrorCode.REQUEST_NOT_FOUND));
 
-        // 応募者一覧は募集を出したチームの私的情報。所属者（SYSTEM_ADMIN 含む）のみ閲覧可・非所属は 403。
+        // 応募者一覧は募集を出したチームの私的情報。所属者（SYSTEM_ADMIN 含む）のみ閲覧可。
+        // 非所属は募集不在時（MATCHING_001）と同じ 404 で応答し、募集IDの実在を秘匿する（存在オラクル封じ）。
         if (!accessControlService.isSystemAdmin(currentUserId)
                 && !accessControlService.isMember(currentUserId, matchRequest.getTeamId(), "TEAM")) {
             throw new BusinessException(MatchingErrorCode.INSUFFICIENT_PERMISSION);

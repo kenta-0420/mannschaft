@@ -6,12 +6,14 @@ import com.mannschaft.app.quickmemo.entity.QuickMemoEntity;
 import com.mannschaft.app.quickmemo.repository.QuickMemoRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
@@ -47,8 +49,26 @@ class QuickMemoReminderBatchServiceTest {
     @Mock
     private AuditLogService auditLogService;
 
+    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
+    @Mock private UserLocaleCache userLocaleCache;
+    @Mock private MessageSource messageSource;
+
     @InjectMocks
     private QuickMemoReminderBatchService service;
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     @Nested
     @DisplayName("execute: リマインド対象なし")

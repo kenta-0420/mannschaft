@@ -80,7 +80,7 @@ public class UserEntity extends BaseEntity {
     @Builder.Default
     private OnlineVisibility onlineVisibility = OnlineVisibility.NOBODY;
 
-    @Column(length = 50)
+    @Column(name = "nickname2", length = 50)
     private String nickname2;
 
     @Column(nullable = false)

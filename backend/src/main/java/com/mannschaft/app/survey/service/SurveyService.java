@@ -70,6 +70,7 @@ public class SurveyService {
     private final AccessControlService accessControlService;
     private final UserRoleRepository userRoleRepository;
     private final NotificationHelper notificationHelper;
+    private final org.springframework.context.MessageSource messageSource;
     private final ApplicationEventPublisher eventPublisher;
     private final OrganizationMembershipService organizationMembershipService;
     /** 結果閲覧可否の唯一の判定点（結果取得 API の 403 と共用。Issue #2779）。 */
@@ -585,17 +586,35 @@ public class SurveyService {
         // 通さない。これにより締切延長通知が直属一般メンバー・配下チームメンバーへ誤 deny で届かない
         // (B) レグを根治する。
         if (!recipients.isEmpty()) {
-            notificationHelper.notifyAllPreAuthorized(
+            // Issue #2715 CMP-055 ロットC-5: 受信者 locale に応じて件名・本文・日時表記を組み立てる
+            // （notifyAllPreAuthorizedLocalized は notifyAllPreAuthorized 同様 canView 絞り込みを通さない）。
+            // AC-7: newDeadline の表記もパターンを locale 鍵に持たせてロケール化する
+            // （時刻の値自体は変えない。テナントTZ対応は別戦役 CMP-023 の範囲）。
+            notificationHelper.notifyAllPreAuthorizedLocalized(
                     recipients,
                     SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name(),
-                    "アンケート締切が延長されました",
-                    "「" + saved.getTitle() + "」の回答締切が " + newDeadline + " に延長されました。",
                     "SURVEY",
                     surveyId,
                     notifScope,
                     scopeId,
                     "/surveys/" + surveyId,
-                    currentUserId);
+                    currentUserId,
+                    (userId, locale) -> {
+                        String deadlinePattern = messageSource.getMessage(
+                                "notification.survey.deadlineExtended.deadlinePattern", null,
+                                "yyyy年M月d日 HH:mm", locale);
+                        String formattedDeadline = newDeadline.format(
+                                java.time.format.DateTimeFormatter.ofPattern(deadlinePattern, locale));
+                        return new NotificationHelper.LocalizedMessage(
+                                messageSource.getMessage(
+                                        "notification.survey.deadlineExtended.title", null,
+                                        "アンケート締切が延長されました", locale),
+                                messageSource.getMessage(
+                                        "notification.survey.deadlineExtended.body",
+                                        new Object[]{saved.getTitle(), formattedDeadline},
+                                        "「" + saved.getTitle() + "」の回答締切が " + formattedDeadline + " に延長されました。",
+                                        locale));
+                    });
         }
 
         log.info("アンケート締切延長: surveyId={}, newDeadline={}, by={}", surveyId, newDeadline, currentUserId);
