@@ -102,6 +102,37 @@ public interface UserCalendarLayerSettingRepository extends JpaRepository<UserCa
     long countByUserId(Long userId);
 
     /**
+     * §4.4 PATCH の<b>行数上限チェックをユーザー単位で直列化する</b>ための、ロック付きの件数取得。
+     *
+     * <p><b>なぜ {@link #countByUserId} をそのまま使えないか</b>: 本番 MySQL は
+     * {@code REPEATABLE-READ} であり、通常の {@code SELECT COUNT(*)} は一貫性読み取り
+     * （トランザクション冒頭のスナップショット）を見る。同一ユーザーへ<b>異なるスコープ</b>への
+     * PATCH が並行して来ると、両トランザクションが「まだ 999 件」という同じスナップショットを見て
+     * 揃って「1000 未満だから作ってよい」と判断し、両方が新規行を挿入して
+     * 上限（{@link com.mannschaft.app.schedule.service.CalendarLayerService#MAX_LAYER_SETTINGS_PER_USER}）
+     * を超えてしまう（{@code uk_user_calendar_layer} はスコープごとに別キーのため、この衝突を
+     * ユニーク制約は検出できない）。{@code INSERT IGNORE} ＋ {@code FOR UPDATE} 再取得
+     * （{@link #insertIfAbsent} / {@link #findForUpdateByUserIdAndScopeTypeAndScopeId}）は
+     * <b>同一スコープ</b>への競合しか塞がず、この「別スコープ×件数超過」の族は残る。</p>
+     *
+     * <p>本メソッドはネイティブ {@code SELECT COUNT(*) ... WHERE user_id = ? FOR UPDATE} で
+     * <b>現在読み取り（current read）</b>を行う。{@code FOR UPDATE} は
+     * {@code uk_user_calendar_layer(user_id, scope_type, scope_id)}（{@code user_id} が左端）を
+     * 使ったレコードロック＋ギャップロックを、この {@code user_id} の範囲にのみ張るため、
+     * 他ユーザーの PATCH は道連れにしない。同一ユーザーの並行 PATCH は後着がこの
+     * {@code FOR UPDATE} で先着のコミットまでブロックされ、件数チェック→新規行作成が
+     * 事実上直列化される。</p>
+     *
+     * <p><b>デッドロック順序</b>: 呼び出し元（{@code CalendarLayerService#updateLayer}）は
+     * 新規行を作る分岐でのみ本メソッドを呼び、必ず本ロックの取得 → {@link #insertIfAbsent} の順に
+     * 進む。ロックの種類・取得順が固定なので、既存行の更新経路（本ロックを取らない）と
+     * competing しても新たなデッドロックは生まれない。</p>
+     */
+    @Query(value = "SELECT COUNT(*) FROM user_calendar_layer_settings WHERE user_id = :userId FOR UPDATE",
+            nativeQuery = true)
+    long countByUserIdForUpdate(@Param("userId") Long userId);
+
+    /**
      * §10.4【R9】チーム／組織の<b>削除</b>に伴う後始末。
      *
      * <p>当該スコープの設定行を<b>全ユーザー分</b>物理削除する。

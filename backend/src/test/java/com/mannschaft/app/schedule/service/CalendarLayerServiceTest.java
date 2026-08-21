@@ -102,7 +102,7 @@ class CalendarLayerServiceTest {
         lenient().when(repository.findByUserId(any())).thenReturn(List.of());
         lenient().when(repository.findByUserIdAndScopeTypeAndScopeId(any(), anyString(), any()))
                 .thenReturn(Optional.empty());
-        lenient().when(repository.countByUserId(any())).thenReturn(0L);
+        lenient().when(repository.countByUserIdForUpdate(any())).thenReturn(0L);
         // 新規行は INSERT IGNORE で原子的に作る（1 = 自分が作れた）。
         // 並行 PATCH に負けた 0 のケースは CalendarLayerUpsertConcurrencyTest が受け持つ。
         lenient().when(repository.insertIfAbsent(any(), any(), anyString(), any())).thenReturn(1);
@@ -468,7 +468,7 @@ class CalendarLayerServiceTest {
         @Test
         @DisplayName("AC-10d: 設定行が 1000 件ある状態の新規レイヤー PATCH は 400 SCHEDULE_104（件数上限は既定の 400）")
         void AC10d_上限到達時の新規作成は400() {
-            when(repository.countByUserId(ME)).thenReturn(1000L);
+            when(repository.countByUserIdForUpdate(ME)).thenReturn(1000L);
 
             assertThatThrownBy(() -> service.updateLayer(
                     ME, "TEAM", MY_TEAM, new CalendarLayerUpdateRequest("#DC2626", null)))
@@ -482,7 +482,7 @@ class CalendarLayerServiceTest {
         @Test
         @DisplayName("AC-10d: 上限に達していても既存行の更新は成功する")
         void AC10d_上限到達でも既存行の更新は成功する() {
-            when(repository.countByUserId(ME)).thenReturn(1000L);
+            when(repository.countByUserIdForUpdate(ME)).thenReturn(1000L);
             when(repository.findByUserIdAndScopeTypeAndScopeId(ME, "TEAM", MY_TEAM))
                     .thenReturn(Optional.of(setting(ME, "TEAM", MY_TEAM, "#059669", false)));
 
@@ -496,7 +496,7 @@ class CalendarLayerServiceTest {
         @Test
         @DisplayName("999 件なら新規作成できる（上限は 1000 件未満）")
         void 上限直前は新規作成できる() {
-            when(repository.countByUserId(ME)).thenReturn(999L);
+            when(repository.countByUserIdForUpdate(ME)).thenReturn(999L);
 
             CalendarLayerResponse res = service.updateLayer(
                     ME, "TEAM", MY_TEAM, new CalendarLayerUpdateRequest("#DC2626", null));

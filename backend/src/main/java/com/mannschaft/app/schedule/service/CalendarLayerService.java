@@ -175,7 +175,19 @@ public class CalendarLayerService {
             // 既存行の更新は行数上限に関係なく成功する（§10.1）。
             entity = existing.get();
         } else {
-            if (repository.countByUserId(userId) >= MAX_LAYER_SETTINGS_PER_USER) {
+            // 件数チェックと新規行作成を「ユーザー単位」で直列化する（並行 PATCH による上限すり抜け対策）。
+            //
+            // 採った手段: countByUserId ではなく countByUserIdForUpdate（SELECT COUNT(*) ... FOR UPDATE）。
+            // 理由は本番 MySQL が REPEATABLE-READ であること — 通常の SELECT COUNT はスナップショット読みなので、
+            // 同一ユーザーが異なるスコープへ同時に PATCH すると両トランザクションが揃って「999 件（＝作ってよい）」
+            // という同じスナップショットを見てしまい、両方が新規行を作って上限を超える（uk_user_calendar_layer は
+            // スコープごとに別キーなのでユニーク制約では検出できない）。これは createRowAtomically が対処する
+            // 「同一スコープへの競合」とは別の族の欠陥であり、INSERT IGNORE 側の対処だけでは塞がらない。
+            // FOR UPDATE（現在読み取り）に切り替えることで、uk_user_calendar_layer の左端インデックス
+            // （user_id）上のレコード・ギャップロックがこの user_id の範囲にのみ張られ、他ユーザーを巻き込まずに
+            // 同一ユーザーの並行 PATCH だけを先着のコミットまでブロックして直列化する。
+            // ロック順序: 本ロック → insertIfAbsent の固定順のみを使うため、新たなデッドロックは生まれない。
+            if (repository.countByUserIdForUpdate(userId) >= MAX_LAYER_SETTINGS_PER_USER) {
                 throw new BusinessException(ScheduleErrorCode.CALENDAR_LAYER_LIMIT_EXCEEDED);
             }
             entity = createRowAtomically(userId, type, id);

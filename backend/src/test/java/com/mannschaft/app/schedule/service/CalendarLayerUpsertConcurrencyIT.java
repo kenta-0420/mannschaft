@@ -1,5 +1,7 @@
 package com.mannschaft.app.schedule.service;
 
+import com.mannschaft.app.role.entity.UserRoleEntity;
+import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.dto.CalendarLayerUpdateRequest;
 import com.mannschaft.app.schedule.entity.UserCalendarLayerSettingEntity;
 import com.mannschaft.app.schedule.repository.UserCalendarLayerSettingRepository;
@@ -15,9 +17,14 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -57,6 +64,8 @@ class CalendarLayerUpsertConcurrencyIT extends AbstractMySqlIntegrationTest {
     private static final Long ME = 990_319_001L;
     private static final String PERSONAL = "PERSONAL";
     private static final Long PERSONAL_SCOPE_ID = 0L;
+    private static final Long TEAM_A = 990_319_100L;
+    private static final Long TEAM_B = 990_319_101L;
 
     @Autowired
     private CalendarLayerService service;
@@ -70,6 +79,9 @@ class CalendarLayerUpsertConcurrencyIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private EntityManager entityManager;
 
+    @Autowired
+    private UserRoleRepository userRoleRepository;
+
     private TransactionTemplate newTx() {
         TransactionTemplate tt = new TransactionTemplate(txManager);
         tt.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
@@ -78,12 +90,18 @@ class CalendarLayerUpsertConcurrencyIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void cleanUp() {
-        newTx().executeWithoutResult(status -> repository.deleteByUserId(ME));
+        newTx().executeWithoutResult(status -> {
+            repository.deleteByUserId(ME);
+            userRoleRepository.deleteAll(userRoleRepository.findByUserIdAndTeamIdIsNotNull(ME));
+        });
     }
 
     @AfterEach
     void tearDown() {
-        newTx().executeWithoutResult(status -> repository.deleteByUserId(ME));
+        newTx().executeWithoutResult(status -> {
+            repository.deleteByUserId(ME);
+            userRoleRepository.deleteAll(userRoleRepository.findByUserIdAndTeamIdIsNotNull(ME));
+        });
     }
 
     @Test
@@ -122,6 +140,105 @@ class CalendarLayerUpsertConcurrencyIT extends AbstractMySqlIntegrationTest {
             assertThat(rows.get(0).getColor()).isEqualTo("#DC2626");
             assertThat(rows.get(0).getHidden()).isTrue();
         });
+    }
+
+    @Test
+    @DisplayName("〔陽性〕上限直前から2スレッドが別スコープへ同時 PATCH しても行数上限を超えない")
+    void concurrentPatch_nearLimit_differentScopes_doesNotExceedLimit() throws Exception {
+        // 上限（1000）の直前まで埋める。REPEATABLE READ 下でのプレーン SELECT による
+        // countByUserId の読み違いを再現するには、T1/T2 の両方が「まだ 999 件」という
+        // 同じスナップショットを引ける状態を先に作っておく必要がある。
+        long prefillCount = CalendarLayerService.MAX_LAYER_SETTINGS_PER_USER - 1;
+        newTx().executeWithoutResult(status -> {
+            List<UserCalendarLayerSettingEntity> filler = new ArrayList<>();
+            Instant now = Instant.now();
+            for (long i = 0; i < prefillCount; i++) {
+                filler.add(UserCalendarLayerSettingEntity.builder()
+                        .userId(ME)
+                        .scopeType("TEAM")
+                        .scopeId(500_000L + i)
+                        .color(null)
+                        .hidden(false)
+                        .createdAt(now)
+                        .updatedAt(now)
+                        .build());
+            }
+            repository.saveAll(filler);
+
+            // 新規に PATCH する 2 スコープへの所属を張っておく（checkAffiliation を通すため）。
+            userRoleRepository.save(UserRoleEntity.builder()
+                    .userId(ME).roleId(3L).teamId(TEAM_A).build());
+            userRoleRepository.save(UserRoleEntity.builder()
+                    .userId(ME).roleId(3L).teamId(TEAM_B).build());
+        });
+
+        long countBeforeRace = newTx().execute(status -> repository.countByUserId(ME));
+        assertThat(countBeforeRace).isEqualTo(prefillCount);
+
+        // T1・T2 は別スコープ（TEAM_A / TEAM_B）へ、どちらも新規行を作る PATCH を同時に打つ。
+        // countByUserId が現在読み取りで直列化されていなければ、両方が「999 件」を見て
+        // どちらも「1000 未満だから作ってよい」と判断し、合計 1001 件になってしまう。
+        CountDownLatch ready = new CountDownLatch(2);
+        CountDownLatch go = new CountDownLatch(1);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> f1 = pool.submit(() -> newTx().executeWithoutResult(status -> {
+                ready.countDown();
+                awaitQuietly(go);
+                service.updateLayer(ME, "TEAM", TEAM_A, new CalendarLayerUpdateRequest("#111111", null));
+            }));
+            Future<?> f2 = pool.submit(() -> newTx().executeWithoutResult(status -> {
+                ready.countDown();
+                awaitQuietly(go);
+                service.updateLayer(ME, "TEAM", TEAM_B, new CalendarLayerUpdateRequest("#222222", null));
+            }));
+            ready.await(30, TimeUnit.SECONDS);
+            go.countDown();
+            // 空き枠は 1 つしかない（prefill = 上限-1）ため、直列化されていれば片方は
+            // CALENDAR_LAYER_LIMIT_EXCEEDED で正しく弾かれる。それ自体は仕様どおりの結果であり、
+            // ここで検出したい欠陥（合計が上限を超える）ではない。想定外の例外だけを致命扱いする。
+            awaitTolerantOfLimitExceeded(f1);
+            awaitTolerantOfLimitExceeded(f2);
+        } finally {
+            pool.shutdownNow();
+        }
+
+        long finalCount = newTx().execute(status -> repository.countByUserId(ME));
+        assertThat(finalCount)
+                .as("並行 PATCH 後もユーザーの設定行数は上限（%d）を超えてはならない",
+                        CalendarLayerService.MAX_LAYER_SETTINGS_PER_USER)
+                .isLessThanOrEqualTo(CalendarLayerService.MAX_LAYER_SETTINGS_PER_USER);
+        // 直列化されていれば、空き枠 1 つに対して新規作成はちょうど 1 件だけ成功するはず
+        // （両方成功して超過するのが red、直列化なしで両方失敗するのも別の退行なので上限ちょうどを要求する）。
+        assertThat(finalCount)
+                .as("直列化により空き枠1つ分だけ新規作成が成功し、ちょうど上限に達するはず")
+                .isEqualTo(CalendarLayerService.MAX_LAYER_SETTINGS_PER_USER);
+    }
+
+    /**
+     * Future の完了を待ち、{@code CALENDAR_LAYER_LIMIT_EXCEEDED} による失敗だけは許容する。
+     * それ以外の例外（500 等）はテストを落とす。
+     */
+    private static void awaitTolerantOfLimitExceeded(Future<?> future) throws Exception {
+        try {
+            future.get(30, TimeUnit.SECONDS);
+        } catch (java.util.concurrent.ExecutionException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof com.mannschaft.app.common.BusinessException be
+                    && be.getErrorCode() == com.mannschaft.app.schedule.ScheduleErrorCode.CALENDAR_LAYER_LIMIT_EXCEEDED) {
+                return;
+            }
+            throw e;
+        }
+    }
+
+    private static void awaitQuietly(CountDownLatch latch) {
+        try {
+            latch.await(30, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(e);
+        }
     }
 
     /**
