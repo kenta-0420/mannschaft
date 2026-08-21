@@ -174,6 +174,53 @@ jobs:
           echo "[OK] @Builder(toBuilder=true) 違反なし（BaseEntity継承クラス）"
 
   # ---------------------------------------------------------------------------
+  # shard-coverage-guard: CI テストシャード重み付け振り分けの取りこぼし番人
+  #
+  # build.gradle.kts の verifyShardCoverage タスクを 1 回だけ実行する。
+  # 6 shard それぞれで重複実行すると無駄なため、gate 系の軽量ジョブとして独立させる
+  # （Testcontainers 不要・コンパイルのみで完結するため Docker 不要・数分で終わる）。
+  # 「重み表あり／なし双方で全テストクラスがちょうど1つの shard にのみ割り当たる」
+  # ことを、実際の Test.exclude フィルタと同一の判定関数（ShardAssignment.isIncluded）
+  # を通して検証する。壊れれば本ジョブが fail し、gate 経由で PR が赤くなる。
+  #
+  # detect.backend_changed が true のときだけ起動する（docs-only PR では skip）。
+  # ---------------------------------------------------------------------------
+  shard-coverage-guard:
+    name: Shard coverage guard
+    needs: detect
+    if: needs.detect.outputs.backend_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+
+      - name: Set up Gradle（依存＋ビルドキャッシュ。shard ジョブと同じキーを共有）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: Grant Gradle wrapper execute permission
+        run: chmod +x gradlew
+
+      - name: verifyShardCoverage（全shard.total値で取りこぼし・重複割当を検証）
+        run: >-
+          ./gradlew verifyShardCoverage --no-daemon --build-cache
+          -Pshard.total=${{ env.SHARD_TOTAL }}
+
+  # ---------------------------------------------------------------------------
   # shard: compile + test を 6 並列で実行する（Docker required for Testcontainers）
   #
   # matrix で shard=0..5 の 6 ランナーへ分散する。各 shard は build.gradle.kts の
@@ -306,7 +353,7 @@ jobs:
   # ---------------------------------------------------------------------------
   gate:
     name: Compile & Test
-    needs: [detect, shard, lint]
+    needs: [detect, shard, lint, shard-coverage-guard]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -317,24 +364,26 @@ jobs:
           CHANGED="${{ needs.detect.outputs.backend_changed }}"
           SHARD_RESULT="${{ needs.shard.result }}"
           LINT_RESULT="${{ needs.lint.result }}"
-          echo "[INFO] detect.backend_changed = ${CHANGED}"
-          echo "[INFO] needs.shard.result     = ${SHARD_RESULT}"
-          echo "[INFO] needs.lint.result      = ${LINT_RESULT}"
+          COVERAGE_GUARD_RESULT="${{ needs.shard-coverage-guard.result }}"
+          echo "[INFO] detect.backend_changed        = ${CHANGED}"
+          echo "[INFO] needs.shard.result             = ${SHARD_RESULT}"
+          echo "[INFO] needs.lint.result              = ${LINT_RESULT}"
+          echo "[INFO] needs.shard-coverage-guard.result = ${COVERAGE_GUARD_RESULT}"
 
-          # (1) backend 無変更（docs-only 等）: shard / lint は skip 済み → テスト不要で success
+          # (1) backend 無変更（docs-only 等）: shard / lint / shard-coverage-guard は skip 済み → テスト不要で success
           if [ "${CHANGED}" != "true" ]; then
-            echo "[OK] backend に変更なし（docs-only 等）。shard / lint をスキップし success とする。"
+            echo "[OK] backend に変更なし（docs-only 等）。shard / lint / shard-coverage-guard をスキップし success とする。"
             exit 0
           fi
 
-          # (2) 全 shard + lint が成功 → success
-          if [ "${SHARD_RESULT}" = "success" ] && [ "${LINT_RESULT}" = "success" ]; then
-            echo "[OK] 全 shard + lint が success。Compile & Test は success。"
+          # (2) 全 shard + lint + shard-coverage-guard が成功 → success
+          if [ "${SHARD_RESULT}" = "success" ] && [ "${LINT_RESULT}" = "success" ] && [ "${COVERAGE_GUARD_RESULT}" = "success" ]; then
+            echo "[OK] 全 shard + lint + shard-coverage-guard が success。Compile & Test は success。"
             exit 0
           fi
 
           # (3) それ以外（failure / cancelled / skipped-but-changed 等の異常） → fail
-          echo "[NG] shard=${SHARD_RESULT}, lint=${LINT_RESULT} — いずれかが success ではない。Compile & Test を失敗とする。"
+          echo "[NG] shard=${SHARD_RESULT}, lint=${LINT_RESULT}, shard-coverage-guard=${COVERAGE_GUARD_RESULT} — いずれかが success ではない。Compile & Test を失敗とする。"
           exit 1
 
 # =============================================================================
