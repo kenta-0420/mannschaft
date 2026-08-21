@@ -148,6 +148,22 @@ afterAll(() => {
 
 ---
 
+### 2.5 ログ出力を検証するテスト（`ListAppender`）はロガーの実効レベルを自ら設定・復元すること **【必須】**
+
+`ch.qos.logback.core.read.ListAppender` を対象クラスの `Logger` に付けてログ出力内容を検証する
+プレーンな単体テスト（Spring コンテキストを起動しないもの）は、`@BeforeEach` で**対象ロガーの
+実効レベルを明示的に設定**し、`@AfterEach` で**元のレベルへ確実に復元**すること（取得した
+`getLevel()` の戻り値をそのまま戻す。null なら null に戻し、継承状態へ戻す）。
+
+**理由**: `backend/build.gradle.kts` の `setForkEvery` により、同一 gradle テストフォーク内で複数
+のテストクラスが JVM を共有する。先に `@ActiveProfiles("test")` の `@SpringBootTest`（`test`
+プロファイルは `logback-spring.xml` で root レベルを WARN に設定）が走ると、その状態が同一フォーク
+内の後続のプレーン単体テストへ持ち越され、`log.info` 等が実効レベル未達で握りつぶされて
+`ListAppender` に何も届かない。**ローカルで対象クラス単体だけを実行すると Spring コンテキストが
+起動しないため再現せず、CI 特有の実行順依存ですり抜ける。**
+
+---
+
 ## 3. 結合テスト設計方針
 
 ### 3.1 アノテーションの使い分け
