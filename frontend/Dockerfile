@@ -34,6 +34,11 @@ ENV NUXT_PUBLIC_API_BASE=${NUXT_PUBLIC_API_BASE}
 ARG NUXT_INTERNAL_API_BASE=http://localhost:8080
 ENV NUXT_INTERNAL_API_BASE=${NUXT_INTERNAL_API_BASE}
 
+# nuxt build (vite/rollup) は既定の Node ヒープ上限では GitHub Actions ランナー上で
+# "JavaScript heap out of memory" となり停止する（frontend-ci.yml の typecheck ステップで
+# 既知の同種問題があり NODE_OPTIONS でヒープを引き上げている。Dockerfile 側も同じ根治対応）。
+ENV NODE_OPTIONS=--max-old-space-size=4096
+
 RUN npm run build
 
 # ============================================================
