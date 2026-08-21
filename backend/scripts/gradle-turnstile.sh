@@ -111,18 +111,40 @@ else
 fi
 [ -n "${SELF_WINPID}" ] || SELF_WINPID="$$"
 
+# 照会に使う PowerShell 実行ファイル。テストで照会失敗を注入するための差し替え口でもある。
+TURNSTILE_POWERSHELL="${TURNSTILE_POWERSHELL:-powershell.exe}"
+
 # Windows 側へ PID を照会する。標準出力は次のいずれか:
-#   DEAD            : その Windows PID のプロセスは存在しない
-#   ALIVE:<created> : 存在する（created は UTC の生成時刻 yyyyMMddHHmmss）
-#   （空文字）      : 照会自体ができなかった（PowerShell 不在等）
+#   DEAD            : 照会に成功し、その Windows PID のプロセスは存在しなかった（真に死亡）
+#   ALIVE:<created> : 存在する（created は UTC の生成時刻 yyyyMMddHHmmss。取得できなければ空）
+#   （空文字）      : 照会自体ができなかった（PowerShell 不在・CIM 障害・権限拒否・想定外出力）
+#
+# 【重要】「照会コマンド自体の失敗」と「照会成功だが該当 PID なし」は必ず区別する。
+#   以前は `-ErrorAction SilentlyContinue` で CIM のエラーを握り潰しており、
+#   権限拒否や CIM 障害でも $p が空になるため後続の分岐が 'DEAD' を出していた。
+#   その環境では生存中の保持者まで stale 扱いされ、並行起動した2本目が1本目の
+#   ロックを強制奪取して直列化が失われる（実測で再現済み）。
+#   そこで `-ErrorAction Stop` + try/catch とし、失敗時は専用の QUERY_FAILED を返して
+#   呼び出し側で「判定不能＝生存」へ倒す。エラーを握り潰さないこと自体が要件である。
+#
 # PowerShell に渡すコマンドにダブルクオートを含めない（MSYS の引用符変換事故を避ける）。
 win_query() {
-    local winpid="$1" ps_cmd
+    local winpid="$1" ps_cmd out
     case "${winpid}" in
         ''|*[!0-9]*) return 0 ;;
     esac
-    ps_cmd="\$p = Get-CimInstance Win32_Process -Filter ('ProcessId=${winpid}') -ErrorAction SilentlyContinue; if (-not \$p) { 'DEAD' } else { 'ALIVE:' + \$p.CreationDate.ToUniversalTime().ToString('yyyyMMddHHmmss') }"
-    powershell.exe -NoProfile -NonInteractive -Command "${ps_cmd}" 2>/dev/null | tr -d '\r\n'
+
+    ps_cmd="\$p = \$null; try { \$p = Get-CimInstance Win32_Process -Filter ('ProcessId=${winpid}') -ErrorAction Stop } catch { Write-Output 'QUERY_FAILED'; exit 3 }; if (\$null -eq \$p) { Write-Output 'DEAD'; exit 0 }; \$c = ''; try { if (\$p.CreationDate) { \$c = \$p.CreationDate.ToUniversalTime().ToString('yyyyMMddHHmmss') } } catch { \$c = '' }; Write-Output ('ALIVE:' + \$c); exit 0"
+
+    out="$("${TURNSTILE_POWERSHELL}" -NoProfile -NonInteractive -Command "${ps_cmd}" 2>/dev/null | tr -d '\r\n')"
+
+    # 想定した語彙のみを受理する。QUERY_FAILED・空・想定外の文字列はすべて
+    # 「照会できなかった」＝空文字（判定不能）として返す（DEAD へは決して落とさない）
+    case "${out}" in
+        DEAD)     echo DEAD ;;
+        ALIVE:*)  echo "${out}" ;;
+        *)        return 0 ;;
+    esac
 }
 
 # 自分自身の生成時刻を控えておく（同じ PID 番号の使い回しを見分けるため）。
@@ -199,7 +221,8 @@ is_pid_alive() {
             return 1
             ;;
         *)
-            # 照会不能。安全側（生存とみなして待つ）へ倒す
+            # 照会不能（PowerShell 不在・CIM 障害・権限拒否・想定外出力）。
+            # 「該当 PID なし＝真に死亡」とは区別され、必ず安全側（生存とみなして待つ）へ倒す
             return 0
             ;;
     esac
