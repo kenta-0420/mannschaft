@@ -3,7 +3,6 @@ package com.mannschaft.app.event.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.EventErrorCode;
 import com.mannschaft.app.event.dto.AbsenceNoticeRequest;
 import com.mannschaft.app.event.dto.AdvanceNoticeResponse;
@@ -16,23 +15,15 @@ import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventRsvpResponseEntity;
 import com.mannschaft.app.event.event.EventAdvanceNoticeNotificationEvent;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
-import com.mannschaft.app.family.EventCareNotificationType;
 import com.mannschaft.app.family.service.CareEventNotificationService;
-import com.mannschaft.app.family.service.CareLinkService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -52,12 +43,10 @@ public class EventRsvpService {
     private final UserRepository userRepository;
     private final EventService eventService;
     private final CareEventNotificationService careEventNotificationService;
-    private final CareLinkService careLinkService;
 
-    /** Issue #2715 CMP-055 ロットC-2: 受信者 locale 別に通知本文を組み立てるための依存。 */
-    private final UserLocaleCache userLocaleCache;
-    private final MessageSource messageSource;
-    /** Issue #2834 / CMP-056: 通知は業務コミット後に発火する（業務サービスから Runner を直接呼ばない）。 */
+    /** Issue #2834 / CMP-056: 通知は業務コミット後に発火する（業務サービスから Runner を直接呼ばない）。
+     * 見守り者解決（{@code CareLinkService}）・ロケール解決・件名/本文組み立ては
+     * {@code EventAdvanceNoticeNotificationListener}（AFTER_COMMIT）側の責務（Codex検分[P2]是正）。 */
     private final ApplicationEventPublisher eventPublisher;
 
     /**
@@ -223,15 +212,12 @@ public class EventRsvpService {
         String displayName = getUserDisplayName(targetUserId);
 
         // Issue #2834 / CMP-056: 通知は AFTER_COMMIT + REQUIRES_NEW + Async のリスナーへ委譲する。
-        // 本メソッドは通知配送要求を組み立てて publish するだけに留め、createNotification を直接
-        // 呼ばない（業務トランザクション内での DB 例外が本処理（rsvp の save）を巻き戻さないため）。
-        EventEntity event = eventService.findEventOrThrow(eventId);
-        publishAdvanceNoticeNotifications(event, teamId, operatorUserId, targetUserId, eventId,
-                EventCareNotificationType.EVENT_LATE_ARRIVAL_NOTICE,
-                "notification.event.rsvp.lateNotice.title", "遅刻連絡",
-                "notification.event.rsvp.lateNotice.body",
-                new Object[]{displayName, req.getExpectedArrivalMinutesLate()},
-                displayName + " が " + req.getExpectedArrivalMinutesLate() + "分遅刻予定です");
+        // 本メソッドは ID・数値のみを publish するだけに留め、createNotification は直接呼ばず、
+        // 文面組み立て（DB読み取り・MessageFormat）も業務トランザクションの内側では行わない
+        // （Codex検分[P2]是正: 組み立てもリスナー側=AFTER_COMMIT後に完全に移した）。
+        publishAdvanceNoticeNotification(eventId, teamId, operatorUserId, targetUserId,
+                EventAdvanceNoticeNotificationEvent.Kind.LATE,
+                req.getExpectedArrivalMinutesLate(), null);
 
         log.info("遅刻連絡送信: eventId={}, targetUserId={}, minutes={}, operatorUserId={}",
                 eventId, targetUserId, req.getExpectedArrivalMinutesLate(), operatorUserId);
@@ -277,13 +263,9 @@ public class EventRsvpService {
         String displayName = getUserDisplayName(targetUserId);
 
         // Issue #2834 / CMP-056: 通知は AFTER_COMMIT + REQUIRES_NEW + Async のリスナーへ委譲する。
-        EventEntity event = eventService.findEventOrThrow(eventId);
-        publishAdvanceNoticeNotifications(event, teamId, operatorUserId, targetUserId, eventId,
-                EventCareNotificationType.EVENT_ABSENCE_NOTICE,
-                "notification.event.rsvp.absenceNotice.title", "欠席連絡",
-                "notification.event.rsvp.absenceNotice.body",
-                new Object[]{displayName, req.getAbsenceReason()},
-                displayName + " が事前欠席連絡を送りました（理由: " + req.getAbsenceReason() + "）");
+        publishAdvanceNoticeNotification(eventId, teamId, operatorUserId, targetUserId,
+                EventAdvanceNoticeNotificationEvent.Kind.ABSENCE,
+                null, req.getAbsenceReason());
 
         log.info("欠席連絡送信: eventId={}, targetUserId={}, reason={}, operatorUserId={}",
                 eventId, targetUserId, req.getAbsenceReason(), operatorUserId);
@@ -336,90 +318,30 @@ public class EventRsvpService {
     // =========================================================
 
     /**
-     * 事前遅刻・欠席連絡の通知配送要求を組み立てて publish する（Issue #2834 / CMP-056）。
+     * 事前遅刻・欠席連絡の通知イベントを publish する（Issue #2834 / CMP-056）。
      *
-     * <p>主催者へは常に単発通知（{@link UserLocaleCache#getLocale}）、操作者がケア対象者の
-     * アクティブな見守り者である場合は他の見守り者へも通知する（{@link UserLocaleCache#getLocales}
-     * によるバルク解決で N+1 を防止する）。件名・本文は受信者ごとの locale で
-     * {@link MessageSource} から組み立てる。組み立てた要求は 1 つの
-     * {@link EventAdvanceNoticeNotificationEvent} にまとめて publish するだけに留め、
-     * {@code createNotification} は直接呼ばない（実生成は {@code AFTER_COMMIT} リスナーへ委譲）。</p>
+     * <p><b>Codex 独立検分 [P2]（2026-08-21）是正</b>: 以前は主催者・見守り者の解決やロケール解決・
+     * 件名/本文組み立てまで本メソッド（＝業務トランザクションの内側）で行い、組み立て済みの
+     * {@link NotificationDeliveryRequest} 一覧をイベントに積んでいた。組み立て中の DB 例外や
+     * {@code MessageFormat} 例外が {@code rsvp} の save を巻き戻す退行を生んでいたため、
+     * 現在は ID と数値のみを {@link EventAdvanceNoticeNotificationEvent} に積んで publish するだけに
+     * 留め、組み立ては {@code EventAdvanceNoticeNotificationListener}（AFTER_COMMIT）へ完全に移した。</p>
      *
-     * @param event          イベントエンティティ（主催者取得用）
-     * @param teamId         チームID（スコープID・actionUrl 構築用）
-     * @param operatorUserId 操作者ユーザーID（本人または見守り者の userId）
-     * @param targetUserId   ケア対象者（＝連絡対象）のユーザーID
-     * @param eventId        イベントID
-     * @param type           通知種別
-     * @param titleKey       件名のメッセージキー
-     * @param defaultTitle   件名のデフォルト文言（ja）
-     * @param bodyKey        本文のメッセージキー
-     * @param bodyArgs       本文のプレースホルダ引数
-     * @param defaultBody    本文のデフォルト文言（ja、フォールバック時にも使用）
+     * @param eventId                    イベントID
+     * @param teamId                     チームID
+     * @param operatorUserId             操作者ユーザーID（本人または見守り者の userId）
+     * @param targetUserId               ケア対象者（＝連絡対象）のユーザーID
+     * @param kind                       事前連絡種別（遅刻／欠席）
+     * @param expectedArrivalMinutesLate 遅刻予定分数（欠席時は {@code null}）
+     * @param absenceReason              欠席理由（遅刻時は {@code null}）
      */
-    private void publishAdvanceNoticeNotifications(EventEntity event, Long teamId, Long operatorUserId,
-                                                    Long targetUserId, Long eventId,
-                                                    EventCareNotificationType type,
-                                                    String titleKey, String defaultTitle,
-                                                    String bodyKey, Object[] bodyArgs, String defaultBody) {
-        List<NotificationDeliveryRequest> requests = new ArrayList<>();
-
-        // 主催者へ通知。件名・本文の組み立て（locale解決・MessageSource）で例外が起きても、
-        // この1件だけを隔離し（notifyOrganizer 相当）、後続の見守り者通知・呼び出し元（rsvp の
-        // save 済みトランザクション）へは伝播させない。
-        Long organizerUserId = event.getCreatedBy();
-        if (organizerUserId != null) {
-            try {
-                Locale organizerLocale = Locale.forLanguageTag(userLocaleCache.getLocale(organizerUserId));
-                String title = messageSource.getMessage(titleKey, null, defaultTitle, organizerLocale);
-                String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, organizerLocale);
-                requests.add(new NotificationDeliveryRequest(
-                        organizerUserId,
-                        type.name(),
-                        NotificationPriority.NORMAL,
-                        title, body,
-                        "EVENT", event.getId(),
-                        NotificationScopeType.TEAM, teamId,
-                        "/teams/" + teamId + "/events/" + event.getId(), operatorUserId));
-            } catch (Exception ex) {
-                log.warn("主催者向け事前連絡通知の組み立てに失敗（継続）: eventId={}, organizerUserId={}, error={}",
-                        eventId, organizerUserId, ex.getMessage());
-            }
-        }
-
-        // 操作者がケア対象者の見守り者かどうかを確認し、そうであれば他の見守り者にも通知する（代理申告の共有）
-        List<Long> allWatcherIds = careLinkService.getActiveWatchers(targetUserId, "RSVP");
-        if (allWatcherIds.contains(operatorUserId)) {
-            // 見守り者の locale をバルク解決（N+1 防止・AC-3）
-            Map<Long, String> watcherLocales = userLocaleCache.getLocales(allWatcherIds);
-
-            // 操作者自身を除いた他の見守り者へ通知を送る（1名の組み立て失敗を隔離し、他の見守り者へ伝播させない）
-            for (Long watcherId : allWatcherIds) {
-                if (watcherId.equals(operatorUserId)) continue;
-
-                try {
-                    Locale watcherLocale = Locale.forLanguageTag(watcherLocales.getOrDefault(watcherId, "ja"));
-                    String title = messageSource.getMessage(titleKey, null, defaultTitle, watcherLocale);
-                    String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, watcherLocale);
-
-                    requests.add(new NotificationDeliveryRequest(
-                            watcherId,
-                            type.name(),
-                            NotificationPriority.NORMAL,
-                            title, body,
-                            "EVENT", eventId,
-                            NotificationScopeType.PERSONAL, watcherId,
-                            "/teams/" + teamId + "/events/" + eventId, operatorUserId));
-                } catch (Exception ex) {
-                    log.warn("見守り者向け事前連絡通知の組み立てに失敗（継続）: eventId={}, watcherId={}, error={}",
-                            eventId, watcherId, ex.getMessage());
-                }
-            }
-        }
-
-        if (!requests.isEmpty()) {
-            eventPublisher.publishEvent(new EventAdvanceNoticeNotificationEvent(requests));
-        }
+    private void publishAdvanceNoticeNotification(Long eventId, Long teamId, Long operatorUserId,
+                                                   Long targetUserId,
+                                                   EventAdvanceNoticeNotificationEvent.Kind kind,
+                                                   Integer expectedArrivalMinutesLate, String absenceReason) {
+        eventPublisher.publishEvent(new EventAdvanceNoticeNotificationEvent(
+                eventId, teamId, operatorUserId, targetUserId, kind,
+                expectedArrivalMinutesLate, absenceReason));
     }
 
     private void validateRsvpMode(EventEntity event) {

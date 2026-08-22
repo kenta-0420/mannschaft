@@ -3,7 +3,6 @@ package com.mannschaft.app.event;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.dto.AbsenceNoticeRequest;
 import com.mannschaft.app.event.dto.AdvanceNoticeResponse;
 import com.mannschaft.app.event.dto.LateNoticeRequest;
@@ -21,7 +20,6 @@ import com.mannschaft.app.family.service.CareAbsentAlertBatchService;
 import com.mannschaft.app.family.service.CareEventNotificationService;
 import com.mannschaft.app.family.service.CareLinkService;
 import com.mannschaft.app.event.event.EventAdvanceNoticeNotificationEvent;
-import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -31,14 +29,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.MessageSource;
-import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -47,7 +41,6 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -86,15 +79,6 @@ class EventRsvpAdvanceNoticeServiceTest {
         private CareEventNotificationService careEventNotificationService;
 
         @Mock
-        private CareLinkService careLinkService;
-
-        @Mock
-        private UserLocaleCache userLocaleCache;
-
-        @Mock
-        private MessageSource messageSource;
-
-        @Mock
         private ApplicationEventPublisher eventPublisher;
 
         @InjectMocks
@@ -105,40 +89,27 @@ class EventRsvpAdvanceNoticeServiceTest {
         private static final Long USER_ID   = 100L;
         private static final Long OPERATOR  = 200L;
 
-        @org.junit.jupiter.api.BeforeEach
-        void setUpLocale() {
-            // Issue #2715 ロットC-2: 新規依存 UserLocaleCache/MessageSource の既定スタブ
-            // （未スタブだと null 返却/NPE で通知が握りつぶされ、既存テストが偽装的に失敗する）。
-            lenient().when(userLocaleCache.getLocales(any())).thenReturn(Map.of());
-            lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
-            lenient().when(messageSource.getMessage(org.mockito.ArgumentMatchers.anyString(), any(),
-                            org.mockito.ArgumentMatchers.anyString(), any(Locale.class)))
-                    .thenAnswer(invocation -> invocation.getArgument(2));
-        }
-
         /**
          * {@link #eventPublisher} へ publish された唯一の {@link EventAdvanceNoticeNotificationEvent}
-         * から通知配送要求一覧を取り出すヘルパー（Issue #2834 / CMP-056 型確立: 通知は
-         * {@code NotificationService#createNotification} 直接呼び出しではなく AFTER_COMMIT イベント
-         * publish に置き換わった）。
+         * を取り出すヘルパー。
+         *
+         * <p>Codex 独立検分 [P2]（2026-08-21）是正: 通知の文面組み立て（アクター名解決・ロケール解決・
+         * 件名/本文組み立て）は業務トランザクションの外（{@code EventAdvanceNoticeNotificationListener}
+         * の AFTER_COMMIT）へ移したため、{@code EventRsvpService} はもはや
+         * {@code UserLocaleCache} / {@code MessageSource} / {@code CareLinkService} に依存しない。
+         * よってここでは「サービスが業務上の事実（ID・数値）だけを積んだイベントを publish すること」
+         * のみを検証する。文面組み立て・見守り者解決・N+1防止のテストは
+         * {@code EventAdvanceNoticeNotificationListenerTest} 側に移した。</p>
          */
-        private List<NotificationDeliveryRequest> capturedNotificationRequests() {
+        private EventAdvanceNoticeNotificationEvent capturedEvent() {
             ArgumentCaptor<EventAdvanceNoticeNotificationEvent> captor =
                     ArgumentCaptor.forClass(EventAdvanceNoticeNotificationEvent.class);
             verify(eventPublisher).publishEvent(captor.capture());
-            return captor.getValue().requests();
-        }
-
-        /** 実物の MessageSource（messages*.properties）を差し込む（Issue #2715 テスト方針）。 */
-        private void useRealMessageSource() {
-            ResourceBundleMessageSource realMessageSource = new ResourceBundleMessageSource();
-            realMessageSource.setBasename("messages");
-            realMessageSource.setDefaultEncoding("UTF-8");
-            ReflectionTestUtils.setField(rsvpService, "messageSource", realMessageSource);
+            return captor.getValue();
         }
 
         @Test
-        @DisplayName("submitLateNotice_正常: 遅刻連絡 → RSVP更新 + 主催者向け通知イベントpublish確認")
+        @DisplayName("submitLateNotice_正常: 遅刻連絡 → RSVP更新 + 通知イベントpublish確認（IDのみを積む）")
         void submitLateNotice_正常() {
             // Arrange
             EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
@@ -149,8 +120,6 @@ class EventRsvpAdvanceNoticeServiceTest {
             given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
                     .willReturn(Optional.of(rsvp));
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            // 操作者が見守り者でない場合: getActiveWatchers は空を返す
-            given(careLinkService.getActiveWatchers(USER_ID, "RSVP")).willReturn(List.of());
 
             LateNoticeRequest req = new LateNoticeRequest(USER_ID, 30, "電車が遅れています");
 
@@ -166,17 +135,20 @@ class EventRsvpAdvanceNoticeServiceTest {
 
             // RSVP に遅刻分数が保存されたことを確認
             verify(rsvpResponseRepository).save(rsvp);
-            // Issue #2834 / CMP-056: 「サービスがイベントを publish すること」を検証する
-            // （実生成はリスナー側の責務のため、ここでは createNotification を直接検証しない）。
-            String expectedActionUrl = "/teams/" + TEAM_ID + "/events/" + EVENT_ID;
-            List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
-            assertThat(requests).hasSize(1);
-            assertThat(requests.get(0).recipientUserId()).isEqualTo(OPERATOR);
-            assertThat(requests.get(0).actionUrl()).isEqualTo(expectedActionUrl);
+            // Issue #2834 / CMP-056: 「サービスが業務上の事実(ID)だけを積んだイベントを publish すること」を検証する
+            // （文面組み立て・実生成はリスナー側の責務のため、ここでは検証しない）。
+            EventAdvanceNoticeNotificationEvent event2 = capturedEvent();
+            assertThat(event2.eventId()).isEqualTo(EVENT_ID);
+            assertThat(event2.teamId()).isEqualTo(TEAM_ID);
+            assertThat(event2.operatorUserId()).isEqualTo(OPERATOR);
+            assertThat(event2.targetUserId()).isEqualTo(USER_ID);
+            assertThat(event2.kind()).isEqualTo(EventAdvanceNoticeNotificationEvent.Kind.LATE);
+            assertThat(event2.expectedArrivalMinutesLate()).isEqualTo(30);
+            assertThat(event2.absenceReason()).isNull();
         }
 
         @Test
-        @DisplayName("submitAbsenceNotice_正常: 欠席連絡 → RSVP更新 + 主催者向け通知イベントpublish確認")
+        @DisplayName("submitAbsenceNotice_正常: 欠席連絡 → RSVP更新 + 通知イベントpublish確認（IDのみを積む）")
         void submitAbsenceNotice_正常() {
             // Arrange
             EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
@@ -187,7 +159,6 @@ class EventRsvpAdvanceNoticeServiceTest {
             given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
                     .willReturn(Optional.of(rsvp));
             given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            given(careLinkService.getActiveWatchers(USER_ID, "RSVP")).willReturn(List.of());
 
             AbsenceNoticeRequest req = new AbsenceNoticeRequest(USER_ID, "SICK", "発熱のため");
 
@@ -202,10 +173,13 @@ class EventRsvpAdvanceNoticeServiceTest {
 
             // RSVP に欠席理由が保存されたことを確認
             verify(rsvpResponseRepository).save(rsvp);
-            // Issue #2834 / CMP-056: 「サービスがイベントを publish すること」を検証する。
-            List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
-            assertThat(requests).hasSize(1);
-            assertThat(requests.get(0).recipientUserId()).isEqualTo(OPERATOR);
+            // Issue #2834 / CMP-056: 「サービスが業務上の事実(ID)だけを積んだイベントを publish すること」を検証する。
+            EventAdvanceNoticeNotificationEvent event2 = capturedEvent();
+            assertThat(event2.eventId()).isEqualTo(EVENT_ID);
+            assertThat(event2.targetUserId()).isEqualTo(USER_ID);
+            assertThat(event2.kind()).isEqualTo(EventAdvanceNoticeNotificationEvent.Kind.ABSENCE);
+            assertThat(event2.absenceReason()).isEqualTo("SICK");
+            assertThat(event2.expectedArrivalMinutesLate()).isNull();
         }
 
         @Test
@@ -223,126 +197,8 @@ class EventRsvpAdvanceNoticeServiceTest {
             org.assertj.core.api.Assertions.assertThatThrownBy(
                     () -> rsvpService.submitLateNotice(EVENT_ID, TEAM_ID, OPERATOR, req))
                     .isInstanceOf(BusinessException.class);
-        }
-
-        // ============================================================
-        // Issue #2715 CMP-055 ロットC-2: 通知本文の locale 別組み立て
-        // ============================================================
-
-        @Test
-        @DisplayName("submitLateNotice: 主催者 locale が en なら件名・本文が英語になる")
-        void submitLateNotice_主催者locale別に英語化される() {
-            useRealMessageSource();
-            EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
-            EventEntity event = buildEvent(EVENT_ID, OPERATOR);
-            UserEntity user = buildUser(USER_ID, "テスト太郎");
-
-            given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
-            given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
-                    .willReturn(Optional.of(rsvp));
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            given(userLocaleCache.getLocale(OPERATOR)).willReturn("en");
-            given(careLinkService.getActiveWatchers(USER_ID, "RSVP")).willReturn(List.of());
-
-            LateNoticeRequest req = new LateNoticeRequest(USER_ID, 30, "電車が遅れています");
-
-            rsvpService.submitLateNotice(EVENT_ID, TEAM_ID, OPERATOR, req);
-
-            List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
-            assertThat(requests).hasSize(1);
-            assertThat(requests.get(0).title()).isEqualTo("Late arrival notice");
-            assertThat(requests.get(0).body()).doesNotContain("{0}").doesNotContain("{1}")
-                    .contains("テスト太郎").contains("30");
-        }
-
-        @Test
-        @DisplayName("submitAbsenceNotice: 主催者 locale が en なら件名・本文が英語になる")
-        void submitAbsenceNotice_主催者locale別に英語化される() {
-            useRealMessageSource();
-            EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
-            EventEntity event = buildEvent(EVENT_ID, OPERATOR);
-            UserEntity user = buildUser(USER_ID, "テスト花子");
-
-            given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
-            given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
-                    .willReturn(Optional.of(rsvp));
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            given(userLocaleCache.getLocale(OPERATOR)).willReturn("en");
-            given(careLinkService.getActiveWatchers(USER_ID, "RSVP")).willReturn(List.of());
-
-            AbsenceNoticeRequest req = new AbsenceNoticeRequest(USER_ID, "SICK", "発熱のため");
-
-            rsvpService.submitAbsenceNotice(EVENT_ID, TEAM_ID, OPERATOR, req);
-
-            List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
-            assertThat(requests).hasSize(1);
-            assertThat(requests.get(0).title()).isEqualTo("Absence notice");
-            assertThat(requests.get(0).body()).doesNotContain("{0}").doesNotContain("{1}")
-                    .contains("テスト花子").contains("SICK");
-        }
-
-        @Test
-        @DisplayName("submitLateNotice: 見守り者への通知は locale をバルク解決する（N+1防止）")
-        void submitLateNotice_見守り者通知はバルク解決() {
-            EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
-            EventEntity event = buildEvent(EVENT_ID, OPERATOR);
-            UserEntity user = buildUser(USER_ID, "テスト太郎");
-            Long watcher1 = 301L;
-            Long watcher2 = 302L;
-
-            given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
-            given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
-                    .willReturn(Optional.of(rsvp));
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            // OPERATOR 自身が見守り者の1人（＝代理送信）で、他に watcher1/watcher2 がいる
-            given(careLinkService.getActiveWatchers(USER_ID, "RSVP"))
-                    .willReturn(List.of(OPERATOR, watcher1, watcher2));
-
-            LateNoticeRequest req = new LateNoticeRequest(USER_ID, 30, null);
-
-            rsvpService.submitLateNotice(EVENT_ID, TEAM_ID, OPERATOR, req);
-
-            // AC-3: N+1 防止 — バルク解決 (getLocales) が使われ、単体解決 (getLocale) は見守り者分呼ばれない。
-            verify(userLocaleCache, times(1)).getLocales(any());
-            verify(userLocaleCache, never()).getLocale(eq(watcher1));
-            verify(userLocaleCache, never()).getLocale(eq(watcher2));
-            // AC-7 の裏付け: 主催者(OPERATOR) + 見守り者2名（OPERATOR自身は除外）で計3件が
-            // 1つの EventAdvanceNoticeNotificationEvent にまとめて publish される
-            // （リスナー側が Runner を1件ずつ呼ぶことで受信者間の巻き添えを防ぐ・番人はリスナーテストで検証）。
-            List<NotificationDeliveryRequest> requests = capturedNotificationRequests();
-            assertThat(requests).hasSize(3);
-            assertThat(requests).extracting(NotificationDeliveryRequest::recipientUserId)
-                    .containsExactlyInAnyOrder(OPERATOR, watcher1, watcher2);
-        }
-
-        @Test
-        @DisplayName("submitLateNotice: 通知組み立て（locale解決）が例外を投げても、隔離try以降のメソッド処理は例外を伝播させず続行する"
-                + "（Issue #2834 / CMP-056: 通知は createNotification を直接呼ばずイベント publish のみのため、"
-                + "本ケースでは rsvp の save が既にコミット対象として確定済みの状態で通知組み立てのみ失敗する）")
-        void submitLateNotice_通知経路の非DB例外は隔離tryで捕捉され後続処理へ伝播しない() {
-            EventRsvpResponseEntity rsvp = buildRsvp(EVENT_ID, USER_ID);
-            EventEntity event = buildEvent(EVENT_ID, OPERATOR);
-            UserEntity user = buildUser(USER_ID, "テスト太郎");
-
-            given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
-            given(rsvpResponseRepository.findByEventIdAndUserId(EVENT_ID, USER_ID))
-                    .willReturn(Optional.of(rsvp));
-            given(userRepository.findById(USER_ID)).willReturn(Optional.of(user));
-            // 通知組み立て経路（locale解決）で例外を発生させる（隔離tryが捕捉する「非DB例外」の一例）
-            given(userLocaleCache.getLocale(OPERATOR)).willThrow(new RuntimeException("locale解決失敗"));
-            given(careLinkService.getActiveWatchers(USER_ID, "RSVP")).willReturn(List.of());
-
-            LateNoticeRequest req = new LateNoticeRequest(USER_ID, 30, null);
-
-            AdvanceNoticeResponse response = rsvpService.submitLateNotice(EVENT_ID, TEAM_ID, OPERATOR, req);
-
-            // 例外は submitLateNotice の呼び出し元へ伝播せず、メソッドは正常にレスポンスを返す。
-            assertThat(response.getNoticeType()).isEqualTo("LATE");
-            assertThat(response.getExpectedArrivalMinutesLate()).isEqualTo(30);
-            verify(rsvpResponseRepository).save(rsvp);
-            // 通知イベントは publish されない（locale解決の時点で失敗し隔離tryに握られ、主催者分の
-            // 要求が積まれないため requests が空になり publish 自体がスキップされる）。
-            verify(eventPublisher, never()).publishEvent(any(EventAdvanceNoticeNotificationEvent.class));
+            // RSVPが見つからない場合は通知イベントも publish されない。
+            verify(eventPublisher, never()).publishEvent(any());
         }
     }
 

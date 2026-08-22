@@ -3,7 +3,6 @@ package com.mannschaft.app.contact.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.contact.ContactErrorCode;
 import com.mannschaft.app.contact.dto.ContactRequestResponse;
@@ -16,20 +15,15 @@ import com.mannschaft.app.contact.repository.ContactRequestBlockRepository;
 import com.mannschaft.app.contact.repository.ContactRequestRepository;
 import com.mannschaft.app.dashboard.FolderItemType;
 import com.mannschaft.app.dashboard.repository.ChatContactFolderItemRepository;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -48,8 +42,6 @@ public class ContactRequestService {
     private final UserRepository userRepository;
     private final ChatContactFolderItemRepository folderItemRepository;
     private final ContactService contactService;
-    private final MessageSource messageSource;
-    private final UserLocaleCache userLocaleCache;
     private final MediaUrlResolver mediaUrlResolver;
     /** Issue #2834 / CMP-056: 通知は業務コミット後に発火する（業務サービスから Runner を直接呼ばない）。 */
     private final ApplicationEventPublisher eventPublisher;
@@ -269,58 +261,26 @@ public class ContactRequestService {
      * <b>内側</b>で呼ばれるが、実際の通知生成は {@code ContactRequestNotificationListener} が
      * {@code AFTER_COMMIT} で受け取ってから行う。これにより「申請 INSERT がコミットされる前に
      * visibility ガードが該当行を見つけられず deny する」事故を防ぐ（AC-3 実証ケース）。</p>
+     *
+     * <p><b>Codex 独立検分 [P2]（2026-08-21）是正</b>: 本メソッドは以前、アクター名解決
+     * （{@code userRepository.findById}）・ロケール解決（{@code userLocaleCache.getLocale}）・
+     * 件名/本文組み立て（{@code messageSource.getMessage}）まで業務トランザクションの内側で行い、
+     * 組み立て済みの {@code NotificationDeliveryRequest} をイベントに積んでいた。これでは
+     * 「配送だけ外、組み立ては内」という中途半端な状態になり、組み立て中の DB 例外や
+     * {@code MessageFormat} 例外が申請 INSERT を巻き戻す退行を生んでいた。現在は ID のみを
+     * publish し、組み立ては {@code ContactRequestNotificationListener}（AFTER_COMMIT）へ完全に
+     * 移した。</p>
      */
     private void sendRequestReceivedNotification(Long requesterId, Long targetId, Long requestId) {
-        UserEntity requester = userRepository.findById(requesterId).orElse(null);
-        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(targetId));
-        String defaultName = messageSource.getMessage(
-                "notification.contact.common.defaultActorName", null, "ユーザー", locale);
-        String requesterName = requester != null
-                ? requester.getLastName() + " " + requester.getFirstName() : defaultName;
-        eventPublisher.publishEvent(new ContactRequestNotificationEvent(new NotificationDeliveryRequest(
-                targetId,
-                "CONTACT_REQUEST_RECEIVED",
-                NotificationPriority.NORMAL,
-                messageSource.getMessage(
-                        "notification.contact.requestReceived.title", null, "連絡先申請", locale),
-                messageSource.getMessage(
-                        "notification.contact.requestReceived.body",
-                        new Object[]{requesterName},
-                        requesterName + " さんから連絡先申請が届きました", locale),
-                "CONTACT_REQUEST",
-                requestId,
-                NotificationScopeType.PERSONAL,
-                targetId,
-                "/settings/contact-requests",
-                requesterId)));
+        eventPublisher.publishEvent(new ContactRequestNotificationEvent(
+                ContactRequestNotificationEvent.Kind.REQUEST_RECEIVED, requesterId, targetId, requestId));
     }
 
     /**
      * 申請承認通知を発火する（Issue #2834 / CMP-056）。{@link #sendRequestReceivedNotification} と同型。
      */
     private void sendRequestAcceptedNotification(Long actorId, Long targetId, Long requestId) {
-        UserEntity actor = userRepository.findById(actorId).orElse(null);
-        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(targetId));
-        String defaultName = messageSource.getMessage(
-                "notification.contact.common.defaultActorName", null, "ユーザー", locale);
-        String actorName = actor != null
-                ? actor.getLastName() + " " + actor.getFirstName() : defaultName;
-        eventPublisher.publishEvent(new ContactRequestNotificationEvent(new NotificationDeliveryRequest(
-                targetId,
-                "CONTACT_REQUEST_ACCEPTED",
-                NotificationPriority.NORMAL,
-                messageSource.getMessage(
-                        "notification.contact.requestAccepted.title", null,
-                        "連絡先申請が承認されました", locale),
-                messageSource.getMessage(
-                        "notification.contact.requestAccepted.body",
-                        new Object[]{actorName},
-                        actorName + " さんが連絡先申請を承認しました", locale),
-                "CONTACT_REQUEST",
-                requestId,
-                NotificationScopeType.PERSONAL,
-                targetId,
-                "/chat",
-                actorId)));
+        eventPublisher.publishEvent(new ContactRequestNotificationEvent(
+                ContactRequestNotificationEvent.Kind.REQUEST_ACCEPTED, actorId, targetId, requestId));
     }
 }
