@@ -25,7 +25,6 @@ import com.mannschaft.app.village.repository.VillageCharterDrafterRepository;
 import com.mannschaft.app.village.repository.VillageCharterRepository;
 import com.mannschaft.app.village.repository.VillageCharterRevisionRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -79,12 +78,12 @@ public class VillageCharterService {
     private final VillageCharterArticleRepository articleRepository;
     private final VillageCharterDrafterRepository drafterRepository;
     private final VillageCharterRevisionRepository revisionRepository;
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final VillageCharterAccessService charterAccessService;
     private final VillageBulletinAccessService bulletinAccessService;
     private final VillageNicknameResolver villageNicknameResolver;
     private final AuditLogService auditLogService;
+    private final VillageAccessGate accessGate;
 
     // ====================================================================
     // read（公開ゲート・§3.2）
@@ -109,7 +108,7 @@ public class VillageCharterService {
     /** 条を末尾に追加（初回は charter 自動生成＋enacted_at=now・悲観ロック直列化・§4.5・409 なし）。 */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public VillageCharterResponse addArticle(UUID villageId, CharterArticleCreateRequest req, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         bulletinAccessService.requireHeadmanOrElder(villageId, actorUserId);
 
         CharterLock lock = getOrCreateCharterLocked(villageId);
@@ -143,7 +142,7 @@ public class VillageCharterService {
     @Transactional
     public CharterArticleResponse updateArticle(UUID villageId, UUID articleId,
                                                 CharterArticleUpdateRequest req, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         bulletinAccessService.requireHeadmanOrElder(villageId, actorUserId);
 
         VillageCharterArticleEntity article = articleRepository.findByIdAndDeletedAtIsNull(articleId)
@@ -163,7 +162,7 @@ public class VillageCharterService {
     /** 条を論理削除し残条を 0,1,2… へ再連番（悲観ロック直列化・409 なし・§6.3）。 */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public VillageCharterResponse deleteArticle(UUID villageId, UUID articleId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         bulletinAccessService.requireHeadmanOrElder(villageId, actorUserId);
 
         VillageCharterEntity charter = loadCharterLockedOrThrow(
@@ -185,7 +184,7 @@ public class VillageCharterService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public VillageCharterResponse reorderArticles(UUID villageId,
                                                   CharterArticleOrderUpdateRequest req, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         bulletinAccessService.requireHeadmanOrElder(villageId, actorUserId);
 
         VillageCharterEntity charter = loadCharterLockedOrThrow(villageId, VillageErrorCode.VILLAGE_NOT_FOUND);
@@ -223,7 +222,7 @@ public class VillageCharterService {
     /** 策定者を追加（村ニックネームを nickname_snapshot に焼付・末尾 sort_order・重複 409・上限 400・§5.2）。 */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public VillageCharterResponse addDrafter(UUID villageId, CharterDrafterCreateRequest req, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         bulletinAccessService.requireHeadmanOrElder(villageId, actorUserId);
 
         VillageCharterEntity charter = getOrCreateCharterLocked(villageId).charter();
@@ -257,7 +256,7 @@ public class VillageCharterService {
     /** 策定者を削除（不存在/他 charter は 404・残る策定者を 0,1,2… 再連番・全体返却・§5.3/AC-16b）。 */
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public VillageCharterResponse removeDrafter(UUID villageId, UUID drafterId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         bulletinAccessService.requireHeadmanOrElder(villageId, actorUserId);
 
         VillageCharterEntity charter = loadCharterLockedOrThrow(
@@ -288,7 +287,7 @@ public class VillageCharterService {
     /** 「改正を確定」＝last_revised_at=now・改定履歴に 1 行追記（未制定村は 404・enacted_at 不変・§8.2/AC-18）。 */
     @Transactional
     public VillageCharterResponse addRevision(UUID villageId, CharterRevisionCreateRequest req, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         bulletinAccessService.requireHeadmanOrElder(villageId, actorUserId);
 
         // 未制定村（charter 無し）への「改正を確定」は概念矛盾。存在秘匿に寄せ VILLAGE_NOT_FOUND(404)（§18.2）。
@@ -313,17 +312,16 @@ public class VillageCharterService {
     // 共通ヘルパ
     // ====================================================================
 
-    /** 有効な村を取得する（削除/不存在→404・凍結→VILLAGE_027・§3.3 write 村状態ガード）。 */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     /** 閲覧者が現役 HEADMAN/ELDER か（canEdit 判定・read 用・例外は投げない）。 */
