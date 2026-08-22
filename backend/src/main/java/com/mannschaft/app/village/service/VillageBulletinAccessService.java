@@ -9,7 +9,6 @@ import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,10 +48,18 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class VillageBulletinAccessService {
 
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final PostingIdentityService postingIdentityService;
     private final AccessControlService accessControlService;
+
+    /**
+     * 村自体の存在確認と可視性判定を一元化する共通ゲート。
+     *
+     * <p>従来は {@code findByIdAndDeletedAtIsNullAndArchivedAtIsNull} を直推しており、
+     * {@code visibility} を見ていなかった。そのため UNLISTED 村の非村人は 403 を受け取り、
+     * 不在の 404 との差で<b>村 ID の実在が漏れていた</b>（存在オラクル）。</p>
+     */
+    private final VillageAccessGate villageAccessGate;
 
     /**
      * 村掲示板の閲覧認可を検証する。認可違反時は例外を投げる（正常時は何も返さない）。
@@ -69,10 +76,9 @@ public class VillageBulletinAccessService {
             throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
 
-        // 削除／凍結済みは 404（IDOR 対策で統一）
-        VillageEntity village = villageRepository
-                .findByIdAndDeletedAtIsNullAndArchivedAtIsNull(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+        // 不在／削除／凍結済みに加え、<b>UNLISTED 村の非村人</b>もここで 404 に畳む（存在オラクル遮断）。
+        // PUBLIC 村はゲートを素通りし、非村人かどうかは後段の bulletinVisibility 判定（403）に委ねる。
+        VillageEntity village = villageAccessGate.loadReadableVillage(villageId, userId);
 
         VillageBulletinVisibility visibility = village.getBulletinVisibility();
         // 既存村で NULL の可能性に備え、安全側（MEMBERS_ONLY）にフォールバック
@@ -117,10 +123,8 @@ public class VillageBulletinAccessService {
             throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
 
-        // 削除／凍結済みは 404（IDOR 対策で統一）
-        villageRepository
-                .findByIdAndDeletedAtIsNullAndArchivedAtIsNull(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+        // 不在／削除／凍結済みに加え、UNLISTED 村の非村人も 404 に畳む（閲覧側と同じゲート）。
+        villageAccessGate.loadReadableVillage(villageId, userId);
 
         // SYSTEM_ADMIN は常に許可
         if (userId != null && accessControlService.isSystemAdmin(userId)) {
