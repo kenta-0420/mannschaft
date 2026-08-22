@@ -74,9 +74,13 @@ public class BatchJobLogService {
      *
      * <p>Entity のまま返すのは、DTO 変換が必要な利用箇所と、Entity 直参照したい利用箇所
      * （{@code Repository.findFirstBy...} 相当）の両方に応えるため。</p>
+     *
+     * <p><b>順序は {@code started_at DESC, id DESC} の全順序である。</b>
+     * {@code started_at} は秒精度しか持たず、同一秒に複数行が並びうるため
+     * （理由の詳細は {@code BatchJobLogRepository#findFirstByJobNameOrderByStartedAtDescIdDesc}）。</p>
      */
     public Optional<BatchJobLogEntity> findLatestByJobName(String jobName) {
-        return batchJobLogRepository.findFirstByJobNameOrderByStartedAtDesc(jobName);
+        return batchJobLogRepository.findFirstByJobNameOrderByStartedAtDescIdDesc(jobName);
     }
 
     /**

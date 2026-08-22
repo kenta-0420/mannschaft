@@ -26,9 +26,15 @@ import org.springframework.stereotype.Component;
  * <p>この記録は<b>「変わり目が読めること」だけを目的とした目印</b>であり、
  * それをメモリ上で完璧に守るために積み上げた機構の方が、守ろうとした情報より高くついていた。
  * よってインメモリ状態を全廃し、判定は毎回 {@code batch_job_logs} の当該ジョブの直近 1 行を
- * 読んで行う。索引 {@code idx_bjl_job (job_name, started_at DESC)} により
- * 1 行だけを引く読み取りであり（実測: {@code type=ref} / {@code rows=1} / filesort なし）、
+ * 読んで行う。索引 {@code idx_bjl_job_started_id (job_name, started_at DESC, id DESC)} により
+ * 1 行だけを引く読み取りであり（実測: filesort なし / 実読み 1 行 / 0.025 ms）、
  * ゲート対象バッチの実行ごとに 1 回だけ走る。</p>
+ *
+ * <p><b>順序は全順序でなければならない（Codex 検分4巡目）。</b>
+ * {@code started_at} は {@code DATETIME} で秒精度しか持たず、手動実行とスケジュール実行が
+ * 重なると通常実行行と後発の {@code SKIPPED} 行が同一秒になりうる。{@code started_at} だけの
+ * 順序では同着が索引の物理順（PK 昇順）で解決されて<b>古い行</b>が返り、
+ * 「停止中なのに動いていた」と誤判定してスキップ行を重複記録する。</p>
  *
  * <h2>前回状態の読み取り方</h2>
  * <p>直近 1 行の {@code status} が {@link BatchJobStatus#SKIPPED} なら「前回はスキップしていた」、
