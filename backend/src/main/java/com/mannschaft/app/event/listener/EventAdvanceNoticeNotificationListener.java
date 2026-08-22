@@ -35,6 +35,23 @@ import java.util.Map;
  * 巻き込まない。受信者（主催者 + 見守り者）ごとに {@link NotificationDeliveryRunner#sendOne}
  * （{@code REQUIRES_NEW}）を<b>1件ずつ</b>呼ぶ（AC-7）。</p>
  *
+ * <h2>Codex 検分 2巡目 [P2] 是正: 組み立ての隔離粒度を受信者単位に揃える</h2>
+ * <p>是正前は {@code buildRequests} が主催者・見守り者<b>全員ぶんを一括で</b>組み立てており、
+ * 誰か1人（例: 主催者）の {@code getLocale} が例外を投げると、既に組み立て済みの他の受信者ぶんも
+ * まとめて破棄されていた（配送 {@code sendOne} は1件ずつ隔離できているのに、組み立てだけ一括の
+ * ままという退行）。本クラスは以下の2段に分ける:</p>
+ * <ol>
+ *   <li><b>受信者リストの解決</b>（{@link #resolveContext}）: {@code eventService.findEventOrThrow}
+ *       / {@code careLinkService.getActiveWatchers} / ロケールのバルク解決など、全受信者に共通する
+ *       前提情報を<b>全体で1回</b>解決する。ここが失敗したら誰にも送れないため、外側の
+ *       {@code try/catch} のままでよい（規約の「配送層の1件単位独立トランザクション」は受信者ごとの
+ *       組み立て・送信に適用する軸であり、受信者を横断する共通解決には適用しない）。</li>
+ *   <li><b>受信者ごとの組み立て＋送信</b>（{@link #sendToOrganizer} / {@link #sendToWatcher}）:
+ *       件名/本文の {@code messageSource.getMessage} 呼び出しと {@link NotificationDeliveryRunner#sendOne}
+ *       を<b>1受信者ぶんずつ</b> {@code try/catch} で包む。1受信者の組み立て失敗は他の受信者への
+ *       配送に影響しない。</li>
+ * </ol>
+ *
  * <h2>D-5: 越境アクセスは Repository ではなく Service 経由</h2>
  * <p>{@code auth} ドメインへの越境は {@code UserRepository} を直接 DI せず
  * {@code UserService#getDisplayName}（Service 経由）を使う（CLAUDE.md ドメイン境界の原則・
@@ -56,81 +73,94 @@ public class EventAdvanceNoticeNotificationListener {
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onEventAdvanceNoticeNotification(EventAdvanceNoticeNotificationEvent event) {
-        List<NotificationDeliveryRequest> requests;
+        NotificationContext ctx;
         try {
-            requests = buildRequests(event);
+            ctx = resolveContext(event);
         } catch (Exception e) {
-            log.error("事前連絡通知の組み立てに失敗しました: eventId={}, targetUserId={}, kind={}",
+            // 受信者リストの解決（全体で1回）が失敗した場合は誰にも送れないため、ここは一括で諦める。
+            log.error("事前連絡通知の受信者解決に失敗しました: eventId={}, targetUserId={}, kind={}",
                     event.eventId(), event.targetUserId(), event.kind(), e);
             return;
         }
-        for (NotificationDeliveryRequest request : requests) {
-            sendOne(request);
+
+        // 受信者ごとの組み立て＋送信は1件ずつ隔離する（Codex検分2巡目[P2]是正）。
+        if (ctx.organizerUserId() != null) {
+            sendToOrganizer(event, ctx);
+        }
+        for (Long watcherId : ctx.notifiableWatcherIds()) {
+            sendToWatcher(event, ctx, watcherId);
         }
     }
 
     /**
-     * 通知配送要求の一覧（主催者 + 見守り者）を組み立てる（Codex検分[P2]是正: 業務TX外・AFTER_COMMIT後）。
+     * 受信者リストの解決（全体で1回）。ここが失敗したら誰にも送れないため、呼び出し元は一括で諦める。
      */
-    private List<NotificationDeliveryRequest> buildRequests(EventAdvanceNoticeNotificationEvent event) {
-        java.util.ArrayList<NotificationDeliveryRequest> requests = new java.util.ArrayList<>();
-
+    private NotificationContext resolveContext(EventAdvanceNoticeNotificationEvent event) {
         EventEntity eventEntity = eventService.findEventOrThrow(event.eventId());
-        EventCareNotificationType type = event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE
-                ? EventCareNotificationType.EVENT_LATE_ARRIVAL_NOTICE
-                : EventCareNotificationType.EVENT_ABSENCE_NOTICE;
-        String titleKey = event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE
-                ? "notification.event.rsvp.lateNotice.title" : "notification.event.rsvp.absenceNotice.title";
-        String defaultTitle = event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE ? "遅刻連絡" : "欠席連絡";
-        String bodyKey = event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE
-                ? "notification.event.rsvp.lateNotice.body" : "notification.event.rsvp.absenceNotice.body";
         String displayName = getUserDisplayName(event.targetUserId());
-        Object[] bodyArgs = event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE
-                ? new Object[]{displayName, event.expectedArrivalMinutesLate()}
-                : new Object[]{displayName, event.absenceReason()};
-        String defaultBody = event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE
-                ? displayName + " が " + event.expectedArrivalMinutesLate() + "分遅刻予定です"
-                : displayName + " が事前欠席連絡を送りました（理由: " + event.absenceReason() + "）";
 
-        // 主催者へ通知
-        Long organizerUserId = eventEntity.getCreatedBy();
-        if (organizerUserId != null) {
-            Locale organizerLocale = Locale.forLanguageTag(userLocaleCache.getLocale(organizerUserId));
-            String title = messageSource.getMessage(titleKey, null, defaultTitle, organizerLocale);
-            String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, organizerLocale);
-            requests.add(new NotificationDeliveryRequest(
-                    organizerUserId,
-                    type.name(),
-                    NotificationPriority.NORMAL,
-                    title, body,
-                    "EVENT", eventEntity.getId(),
-                    NotificationScopeType.TEAM, event.teamId(),
-                    "/teams/" + event.teamId() + "/events/" + eventEntity.getId(), event.operatorUserId()));
-        }
-
-        // 操作者がケア対象者の見守り者かどうかを確認し、そうであれば他の見守り者にも通知する（代理申告の共有）
+        List<Long> notifiableWatcherIds = List.of();
+        Map<Long, String> watcherLocales = Map.of();
         List<Long> allWatcherIds = careLinkService.getActiveWatchers(event.targetUserId(), "RSVP");
         if (allWatcherIds.contains(event.operatorUserId())) {
-            Map<Long, String> watcherLocales = userLocaleCache.getLocales(allWatcherIds);
-            for (Long watcherId : allWatcherIds) {
-                if (watcherId.equals(event.operatorUserId())) continue;
-
-                Locale watcherLocale = Locale.forLanguageTag(watcherLocales.getOrDefault(watcherId, "ja"));
-                String title = messageSource.getMessage(titleKey, null, defaultTitle, watcherLocale);
-                String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, watcherLocale);
-
-                requests.add(new NotificationDeliveryRequest(
-                        watcherId,
-                        type.name(),
-                        NotificationPriority.NORMAL,
-                        title, body,
-                        "EVENT", event.eventId(),
-                        NotificationScopeType.PERSONAL, watcherId,
-                        "/teams/" + event.teamId() + "/events/" + event.eventId(), event.operatorUserId()));
-            }
+            // 見守り者の locale をバルク解決（N+1 防止）。操作者自身を除いた他の見守り者が対象。
+            watcherLocales = userLocaleCache.getLocales(allWatcherIds);
+            notifiableWatcherIds = allWatcherIds.stream()
+                    .filter(id -> !id.equals(event.operatorUserId()))
+                    .toList();
         }
 
-        return requests;
+        return new NotificationContext(eventEntity, displayName, eventEntity.getCreatedBy(),
+                notifiableWatcherIds, watcherLocales);
+    }
+
+    /** 主催者ぶんの組み立て＋送信を1件だけ隔離して行う。 */
+    private void sendToOrganizer(EventAdvanceNoticeNotificationEvent event, NotificationContext ctx) {
+        try {
+            Locale organizerLocale = Locale.forLanguageTag(userLocaleCache.getLocale(ctx.organizerUserId()));
+            String title = messageSource.getMessage(
+                    titleKey(event), null, defaultTitle(event), organizerLocale);
+            String body = messageSource.getMessage(
+                    bodyKey(event), bodyArgs(event, ctx.displayName()), defaultBody(event, ctx.displayName()),
+                    organizerLocale);
+            NotificationDeliveryRequest request = new NotificationDeliveryRequest(
+                    ctx.organizerUserId(),
+                    type(event).name(),
+                    NotificationPriority.NORMAL,
+                    title, body,
+                    "EVENT", ctx.eventEntity().getId(),
+                    NotificationScopeType.TEAM, event.teamId(),
+                    "/teams/" + event.teamId() + "/events/" + ctx.eventEntity().getId(), event.operatorUserId());
+            sendOne(request);
+        } catch (Exception e) {
+            log.error("主催者向け事前連絡通知の組み立てに失敗しました: eventId={}, organizerUserId={}",
+                    event.eventId(), ctx.organizerUserId(), e);
+        }
+    }
+
+    /** 見守り者1名ぶんの組み立て＋送信を1件だけ隔離して行う。 */
+    private void sendToWatcher(EventAdvanceNoticeNotificationEvent event, NotificationContext ctx, Long watcherId) {
+        try {
+            Locale watcherLocale = Locale.forLanguageTag(
+                    ctx.watcherLocales().getOrDefault(watcherId, "ja"));
+            String title = messageSource.getMessage(
+                    titleKey(event), null, defaultTitle(event), watcherLocale);
+            String body = messageSource.getMessage(
+                    bodyKey(event), bodyArgs(event, ctx.displayName()), defaultBody(event, ctx.displayName()),
+                    watcherLocale);
+            NotificationDeliveryRequest request = new NotificationDeliveryRequest(
+                    watcherId,
+                    type(event).name(),
+                    NotificationPriority.NORMAL,
+                    title, body,
+                    "EVENT", event.eventId(),
+                    NotificationScopeType.PERSONAL, watcherId,
+                    "/teams/" + event.teamId() + "/events/" + event.eventId(), event.operatorUserId());
+            sendOne(request);
+        } catch (Exception e) {
+            log.error("見守り者向け事前連絡通知の組み立てに失敗しました: eventId={}, watcherId={}",
+                    event.eventId(), watcherId, e);
+        }
     }
 
     private String getUserDisplayName(Long userId) {
@@ -152,5 +182,54 @@ public class EventAdvanceNoticeNotificationListener {
                     request.recipientUserId(), request.notificationType(),
                     request.sourceType(), request.sourceId(), request.actorId(), e);
         }
+    }
+
+    private EventCareNotificationType type(EventAdvanceNoticeNotificationEvent event) {
+        return event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE
+                ? EventCareNotificationType.EVENT_LATE_ARRIVAL_NOTICE
+                : EventCareNotificationType.EVENT_ABSENCE_NOTICE;
+    }
+
+    private String titleKey(EventAdvanceNoticeNotificationEvent event) {
+        return event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE
+                ? "notification.event.rsvp.lateNotice.title" : "notification.event.rsvp.absenceNotice.title";
+    }
+
+    private String defaultTitle(EventAdvanceNoticeNotificationEvent event) {
+        return event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE ? "遅刻連絡" : "欠席連絡";
+    }
+
+    private String bodyKey(EventAdvanceNoticeNotificationEvent event) {
+        return event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE
+                ? "notification.event.rsvp.lateNotice.body" : "notification.event.rsvp.absenceNotice.body";
+    }
+
+    private Object[] bodyArgs(EventAdvanceNoticeNotificationEvent event, String displayName) {
+        return event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE
+                ? new Object[]{displayName, event.expectedArrivalMinutesLate()}
+                : new Object[]{displayName, event.absenceReason()};
+    }
+
+    private String defaultBody(EventAdvanceNoticeNotificationEvent event, String displayName) {
+        return event.kind() == EventAdvanceNoticeNotificationEvent.Kind.LATE
+                ? displayName + " が " + event.expectedArrivalMinutesLate() + "分遅刻予定です"
+                : displayName + " が事前欠席連絡を送りました（理由: " + event.absenceReason() + "）";
+    }
+
+    /**
+     * 受信者リストの解決結果（全体で1回だけ算出する共通情報）。
+     *
+     * @param eventEntity          イベントエンティティ（主催者取得用）
+     * @param displayName          対象ユーザーの表示名（本文組み立て用・共通）
+     * @param organizerUserId      主催者ユーザーID（{@code null} なら主催者通知はスキップ）
+     * @param notifiableWatcherIds 通知対象の見守り者ID一覧（操作者自身を除く）
+     * @param watcherLocales       見守り者の locale バルク解決結果
+     */
+    private record NotificationContext(
+            EventEntity eventEntity,
+            String displayName,
+            Long organizerUserId,
+            List<Long> notifiableWatcherIds,
+            Map<Long, String> watcherLocales) {
     }
 }

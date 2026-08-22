@@ -206,4 +206,30 @@ class EventAdvanceNoticeNotificationListenerTest {
         // 組み立てが失敗したため、配送は一切試みられない。
         verifyNoInteractions(notificationDeliveryRunner);
     }
+
+    @Test
+    @DisplayName("Codex検分2巡目[P2]是正の裏付け: 主催者ぶんの組み立て（getLocale）が失敗しても、"
+            + "既に組み立て済みの見守り者ぶんは巻き添えにならず通知が届く"
+            + "（配送だけでなく組み立ても受信者単位で隔離されていることの番人）")
+    void 一人の組み立て失敗が他の受信者を巻き添えにしない() {
+        Long watcher1 = 301L;
+        Long watcher2 = 302L;
+
+        given(eventService.findEventOrThrow(EVENT_ID)).willReturn(buildEvent(ORGANIZER));
+        given(userService.getDisplayName(TARGET_USER_ID)).willReturn("テスト太郎");
+        given(careLinkService.getActiveWatchers(TARGET_USER_ID, "RSVP"))
+                .willReturn(List.of(OPERATOR, watcher1, watcher2));
+        // 主催者(ORGANIZER=OPERATOR)ぶんの組み立て（getLocale）だけを失敗させる。
+        given(userLocaleCache.getLocale(ORGANIZER)).willThrow(new RuntimeException("locale解決失敗"));
+
+        listener.onEventAdvanceNoticeNotification(lateEvent());
+
+        // 本丸: 主催者ぶんの組み立て失敗があっても、見守り者2名分は sendOne に到達する
+        // （是正前は buildRequests が一括で例外を投げ、見守り者ぶんも含め全員が消えていた）。
+        ArgumentCaptor<NotificationDeliveryRequest> captor =
+                ArgumentCaptor.forClass(NotificationDeliveryRequest.class);
+        verify(notificationDeliveryRunner, times(2)).sendOne(captor.capture());
+        assertThat(captor.getAllValues()).extracting(NotificationDeliveryRequest::recipientUserId)
+                .containsExactlyInAnyOrder(watcher1, watcher2);
+    }
 }
