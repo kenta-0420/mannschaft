@@ -432,6 +432,10 @@ export default defineNuxtConfig({
     // （route ガード middleware feature-gate.global.ts の ssr-defer と対になっている）。
     // 対応表は app/constants/featureGates.ts が単一の正（YAML パーサ依存・コード生成は無し）。
     ...buildGateRouteRules(),
+    // 認証フォームは SEO を必要としない。SSR で操作不能なフォームを先に配信すると、
+    // クライアントのハイドレーションが遅延・失敗した際にログイン不能になるため、
+    // 最初からクライアントで操作可能な状態として描画する。
+    '/login': { ssr: false },
     ...(process.env.NUXT_API_PROXY === 'true'
       ? { '/api/v1/**': { proxy: `${apiBase}/api/v1/**` } }
       : {}),
