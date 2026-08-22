@@ -2,6 +2,7 @@ package com.mannschaft.app.contact;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.contact.dto.SendContactRequestBody;
 import com.mannschaft.app.contact.dto.SendContactRequestResponse;
 import com.mannschaft.app.contact.entity.ContactRequestEntity;
@@ -78,6 +79,47 @@ class ContactRequestNotificationTransactionIT extends AbstractMySqlIntegrationTe
      */
     @MockitoSpyBean
     private NotificationDeliveryRunner notificationDeliveryRunner;
+
+    /**
+     * Codex 独立検分 [P2]（2026-08-21）是正の裏付け用 spy。通知の文面組み立て
+     * （{@code ContactRequestNotificationListener#buildRequest} 内の {@code getLocale} 呼び出し）を
+     * 例外で失敗させ、それでも業務トランザクション（{@code contact_requests} の INSERT）が
+     * コミットされることを実DBで検証する。
+     */
+    @MockitoSpyBean
+    private UserLocaleCache userLocaleCache;
+
+    @Test
+    @DisplayName("Codex検分[P2]是正の裏付け: 通知の文面組み立て（getLocale）が例外を投げても、"
+            + "連絡先申請のINSERTはコミットされる（組み立てはAFTER_COMMIT後・業務TX外で行われるため）")
+    void 通知組み立てが失敗しても申請INSERTはコミットされる() {
+        String nonce = String.valueOf(System.nanoTime());
+        Long requesterId = insertUser("cr-p2-a-" + nonce + "@example.com");
+        Long targetId = insertUser("cr-p2-b-" + nonce + "@example.com");
+
+        // 通知の文面組み立て（AFTER_COMMITリスナー内の getLocale 呼び出し）で例外を発生させる。
+        willThrow(new RuntimeException("模擬ロケール解決失敗（Codex検分[P2]是正の裏付け用）"))
+                .given(userLocaleCache).getLocale(targetId);
+
+        SendContactRequestBody body = buildBody(targetId);
+
+        // 例外は sendRequest の呼び出し元へ伝播しない（組み立ては業務TXの外・AFTER_COMMIT後で
+        // 起きるため、そもそも sendRequest の実行中には発生しえない）。
+        SendContactRequestResponse response = contactRequestService.sendRequest(requesterId, body);
+        assertThat(response.getRequestId()).isNotNull();
+
+        // 本丸: 申請 INSERT はコミットされている（通知の組み立て失敗と無関係にコミット済み）。
+        List<ContactRequestEntity> saved = transactionTemplate.execute(
+                tx -> contactRequestRepository.findByTargetIdAndStatusOrderByCreatedAtDesc(targetId, "PENDING"));
+        assertThat(saved).hasSize(1);
+        assertThat(saved.get(0).getRequesterId()).isEqualTo(requesterId);
+
+        // 組み立てが getLocale の時点で失敗するため、配送 Runner まで到達しないことも確認する
+        // （非同期のため到達を awaitility で待つ。sendOne が一度も呼ばれないことを確認）。
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() ->
+                org.mockito.Mockito.verify(userLocaleCache).getLocale(targetId));
+        org.mockito.Mockito.verifyNoInteractions(notificationDeliveryRunner);
+    }
 
     @Test
     @DisplayName("AC-1: 通知配送のDB例外が起きても、連絡先申請のINSERTはコミットされる")
