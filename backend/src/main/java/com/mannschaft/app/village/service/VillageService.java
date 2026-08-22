@@ -51,7 +51,8 @@ import java.util.regex.Pattern;
  *
  * <h2>セキュリティ</h2>
  * <ul>
- *   <li>UNLISTED 村は村人 / SYSTEM_ADMIN のみ取得可（{@link VillageErrorCode#VILLAGE_UNLISTED}）</li>
+ *   <li>UNLISTED 村は村人 / SYSTEM_ADMIN のみ取得可。非村人には不在と同じ
+ *       {@link VillageErrorCode#VILLAGE_NOT_FOUND} を返す（存在秘匿）</li>
  *   <li>archived / deleted 状態の村は 404 を返す（IDOR 対策）</li>
  *   <li>レスポンスから個人特定情報（user_id 等）を排除</li>
  * </ul>
@@ -161,10 +162,12 @@ public class VillageService {
      * <p>UNLISTED 村は村人または SYSTEM_ADMIN のみアクセス可。
      * 削除済み / 凍結済み村は 404 を返す（IDOR 対策）。</p>
      *
-     * <p>UNLISTED 村への非村人アクセスも<b>不在と同じ 404</b>で応答する
-     * （{@link VillageErrorCode#VILLAGE_UNLISTED} を 404 でマップ登録済み）。UNLISTED は検索結果から
+     * <p>UNLISTED 村への非村人アクセスは<b>不在と完全に同じ
+     * {@link VillageErrorCode#VILLAGE_NOT_FOUND}</b>で応答する。UNLISTED は検索結果から
      * 意図的に除外され「存在を隠す」設計であり、403 を返すと不在の 404 との差で村 ID の実在が
-     * 漏れる（存在オラクル）。相性プロファイル・村憲章など兄弟 EP も同じく 404 で秘匿している。</p>
+     * 漏れる（存在オラクル）。かつては専用コード {@code VILLAGE_002} を投げていたが、
+     * ステータスが 404 で揃っていても<b>応答本文の {@code error.code}</b> が不在時と違うため、
+     * 本文だけで実在を判別できてしまっていた。相性プロファイル・村憲章など兄弟 EP も同じく秘匿する。</p>
      */
     public VillageResponse get(UUID villageId, Long requesterUserId) {
         VillageEntity entity = findActiveOrThrow(villageId);
@@ -172,9 +175,11 @@ public class VillageService {
         boolean isMember = isMember(villageId, requesterUserId);
         boolean isAdmin = accessControlService.isSystemAdmin(requesterUserId);
 
-        // UNLISTED 村の閲覧制限（VILLAGE_UNLISTED は 404 = 不在と同一ステータスで存在秘匿）
+        // UNLISTED 村の閲覧制限（不在と完全に同じ VILLAGE_NOT_FOUND で存在ごと秘匿）
         if (entity.getVisibility() == VillageVisibility.UNLISTED && !isMember && !isAdmin) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_UNLISTED);
+            // 不在側のコードそのものを投げる。専用コード（VILLAGE_002）だとステータスが 404 で揃っていても
+            // 応答本文の error.code が不在時と違い、本文だけで実在が判別できてしまう。
+            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
 
         return toResponse(entity, requesterUserId, true);
