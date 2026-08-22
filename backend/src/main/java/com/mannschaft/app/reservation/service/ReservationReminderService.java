@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 /**
@@ -142,7 +143,9 @@ public class ReservationReminderService {
         // ReservationReminderEventListener#onReservationConfirmed が業務ローカル時刻
         // （slot_date/start_time 由来の slotStartAt）から生成するため、消費側も同じ基準
         // （Clock の瞬間を JVM 既定ゾーンで解釈し直したもの）で比較する必要がある。
-        return reminderRepository.findByStatusAndRemindAtBefore(
-                ReminderStatus.PENDING, LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)));
+        Instant nowInstant = clock.instant();
+        LocalDateTime now = LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE);
+        // TeamTimezoneResolver is the policy boundary for team-local wall clocks; persisted due comparisons use Instant-derived now.
+        return reminderRepository.findByStatusAndRemindAtBefore(ReminderStatus.PENDING, now);
     }
 }

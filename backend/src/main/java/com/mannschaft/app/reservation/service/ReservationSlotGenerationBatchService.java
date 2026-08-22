@@ -2,6 +2,7 @@ package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.reservation.repository.ReservationSlotTemplateRepository;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
@@ -39,6 +40,13 @@ public class ReservationSlotGenerationBatchService {
 
     private final ReservationSlotTemplateRepository templateRepository;
     private final ReservationSlotGenerationService generationService;
+    private final TeamTimezoneResolver teamTimezoneResolver;
+
+    /** 既存のスライステスト／手動組み立てとの互換用。実運用では Spring の3引数 ctor を使う。 */
+    public ReservationSlotGenerationBatchService(ReservationSlotTemplateRepository templateRepository,
+                                                  ReservationSlotGenerationService generationService) {
+        this(templateRepository, generationService, null);
+    }
 
     /**
      * active テンプレを持つ全チームについて horizon 差分を生成する。
@@ -52,10 +60,22 @@ public class ReservationSlotGenerationBatchService {
         if (teamIds.isEmpty()) {
             return;
         }
+        var teamZones = teamTimezoneResolver == null
+                ? java.util.Collections.<Long, java.time.ZoneId>emptyMap()
+                : teamTimezoneResolver.resolveZones(teamIds);
+        /*
+        // チーム TZ は一括解決し、チームごとの生成ループで N+1 lookup を発生させない。
+        var teamZones = teamTimezoneResolver == null
+                ? java.util.Collections.<Long, java.time.ZoneId>emptyMap()
+                : teamTimezoneResolver.resolveZones(teamIds); */
         int succeeded = 0;
         for (Long teamId : teamIds) {
             try {
-                generationService.generateDiffForTeam(teamId);
+                if (teamTimezoneResolver == null) {
+                    generationService.generateDiffForTeam(teamId);
+                } else {
+                    generationService.generateDiffForTeam(teamId, teamZones.get(teamId));
+                }
                 succeeded++;
             } catch (Exception e) {
                 // 1チームの失敗が他チームを巻き込まないようチーム単位で隔離する（握りつぶさず error 記録）。

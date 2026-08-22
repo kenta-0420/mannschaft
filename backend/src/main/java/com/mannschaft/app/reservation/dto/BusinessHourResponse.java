@@ -16,5 +16,10 @@ public class BusinessHourResponse {
     Long teamId;
     BusinessStatusDto businessStatus;
 
-    public record BusinessStatusDto(String dayOfWeek, Boolean isOpen, LocalTime openTime, LocalTime closeTime) {}
+    public record BusinessStatusDto(String dayOfWeek, Boolean isOpen, LocalTime openTime, LocalTime closeTime,
+                                    Boolean endsNextDay) {
+        public BusinessStatusDto(String dayOfWeek, Boolean isOpen, LocalTime openTime, LocalTime closeTime) {
+            this(dayOfWeek, isOpen, openTime, closeTime, false);
+        }
+    }
 }

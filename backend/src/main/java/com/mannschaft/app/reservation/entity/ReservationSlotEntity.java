@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
@@ -30,6 +31,13 @@ import java.time.LocalTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
 public class ReservationSlotEntity extends BaseEntity {
+
+    @PrePersist
+    protected void backfillEndDate() {
+        if (this.endDate == null) {
+            this.endDate = this.slotDate;
+        }
+    }
 
     @Column(nullable = false)
     private Long teamId;
@@ -62,6 +70,10 @@ public class ReservationSlotEntity extends BaseEntity {
 
     @Column(nullable = false)
     private LocalDate slotDate;
+
+    /** 終了側の業務日。通常枠は slotDate、日跨ぎ枠は slotDate+1。 */
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
 
     @Column(nullable = false)
     private LocalTime startTime;
@@ -230,6 +242,9 @@ public class ReservationSlotEntity extends BaseEntity {
      */
     public void changeSlotDate(LocalDate slotDate) {
         this.slotDate = slotDate;
+        if (this.endDate == null) {
+            this.endDate = slotDate;
+        }
     }
 
     /**
@@ -241,6 +256,11 @@ public class ReservationSlotEntity extends BaseEntity {
     public void changeTimeRange(LocalTime startTime, LocalTime endTime) {
         this.startTime = startTime;
         this.endTime = endTime;
+    }
+
+    public void changeTimeRange(LocalTime startTime, LocalTime endTime, LocalDate endDate) {
+        changeTimeRange(startTime, endTime);
+        this.endDate = endDate;
     }
 
     /**

@@ -31,7 +31,7 @@ public interface ReservationMapper {
 
     // F03.4.2: lineName（ライン名）は NameResolver と同じ発想で Service 層が一括解決して後付けする（ここでは null）。
     @Mapping(target = "lineName", ignore = true)
-    @Mapping(target = "basic", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotBasicDto(entity.getTitle(), entity.getSlotDate(), entity.getStartTime(), entity.getEndTime()))")
+    @Mapping(target = "basic", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotBasicDto(entity.getTitle(), entity.getSlotDate(), entity.getEndDate(), entity.getStartTime(), entity.getEndTime()))")
     @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotStatusDto(entity.getSlotStatus() != null ? entity.getSlotStatus().name() : null, entity.getBookedCount(), entity.getCapacity(), entity.getClosedReason(), entity.getNote()))")
     @Mapping(target = "pricing", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotPricingDto(entity.getPrice()))")
     @Mapping(target = "policy", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotPolicyDto(entity.getApprovalMode() != null ? entity.getApprovalMode().name() : null))")
@@ -86,7 +86,7 @@ public interface ReservationMapper {
                 .build();
     }
 
-    @Mapping(target = "businessStatus", expression = "java(new com.mannschaft.app.reservation.dto.BusinessHourResponse.BusinessStatusDto(entity.getDayOfWeek(), entity.getIsOpen(), entity.getOpenTime(), entity.getCloseTime()))")
+    @Mapping(target = "businessStatus", expression = "java(new com.mannschaft.app.reservation.dto.BusinessHourResponse.BusinessStatusDto(entity.getDayOfWeek(), entity.getIsOpen(), entity.getOpenTime(), entity.getCloseTime(), entity.getEndsNextDay()))")
     BusinessHourResponse toBusinessHourResponse(ReservationBusinessHourEntity entity);
 
     List<BusinessHourResponse> toBusinessHourResponseList(List<ReservationBusinessHourEntity> entities);

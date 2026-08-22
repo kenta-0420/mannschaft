@@ -1,10 +1,11 @@
 package com.mannschaft.app.reservation.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.mannschaft.app.reservation.ReservationBlockedResourceType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.AllArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -23,8 +24,13 @@ import java.time.LocalTime;
  * 未指定＝{@code null} になるため）。</p>
  */
 @Getter
-@RequiredArgsConstructor
+@AllArgsConstructor(onConstructor_ = @JsonCreator)
 public class BlockedTimeRequest {
+
+    public BlockedTimeRequest(LocalDate blockedDate, LocalTime startTime, LocalTime endTime,
+                              String reason, ReservationBlockedResourceType resourceType, Long resourceId) {
+        this(blockedDate, startTime, endTime, reason, resourceType, resourceId, false);
+    }
 
     @NotNull
     private final LocalDate blockedDate;
@@ -48,4 +54,7 @@ public class BlockedTimeRequest {
      * {@code TEAM} のときは Service 層で null に正規化する。
      */
     private final Long resourceId;
+
+    /** 終了時刻を翌日として扱うか。省略時は false。 */
+    private final Boolean endsNextDay = false;
 }

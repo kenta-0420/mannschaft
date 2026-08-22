@@ -529,6 +529,7 @@ public class TeamService {
                 req.getSupporterEnabled(),
                 // F15.4 Phase 5-β: Google Maps 埋め込み URL。指定時のみ更新（null は既存値を維持）
                 req.getMapEmbedUrl());
+        team.updateTimezone(req.getTimezone());
         teamRepository.save(team);
 
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);

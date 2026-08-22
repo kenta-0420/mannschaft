@@ -31,6 +31,11 @@ import java.time.LocalDateTime;
 @SuperBuilder(toBuilder = true)
 public class TeamEntity extends BaseEntity {
 
+    /** 予約等の業務ローカル時刻を解釈する IANA タイムゾーン。既存データは移行で Asia/Tokyo に補完する。 */
+    @Column(nullable = false, length = 64)
+    @Builder.Default
+    private String timezone = "Asia/Tokyo";
+
     /**
      * URL 公開用カスタムスラッグ（人間可読な識別子）。
      * <p>3〜30文字の英数字ハイフン。チーム名から自動生成し、一意性は uq_teams_slug で担保する。
@@ -340,6 +345,13 @@ public class TeamEntity extends BaseEntity {
         }
         if (mapEmbedUrl != null) {
             this.mapEmbedUrl = mapEmbedUrl;
+        }
+    }
+
+    /** チームの業務タイムゾーンを更新する。入力の IANA 検証は API 層で行う。 */
+    public void updateTimezone(String timezone) {
+        if (timezone != null) {
+            this.timezone = timezone;
         }
     }
 

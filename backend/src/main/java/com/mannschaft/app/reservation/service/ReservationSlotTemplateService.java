@@ -102,7 +102,8 @@ public class ReservationSlotTemplateService {
         if (templateRepository.countByTeamId(teamId) >= MAX_TEMPLATES_PER_TEAM) {
             throw new BusinessException(ReservationErrorCode.TEMPLATE_LIMIT_EXCEEDED);
         }
-        SlotTimeValidator.validateTimeRange(request.getStartTime(), request.getEndTime());
+        SlotTimeValidator.validateTimeRange(request.getStartTime(), request.getEndTime(),
+                Boolean.TRUE.equals(request.getEndsNextDay()));
         ReservationLineEntity line = resolveLineOrThrow(teamId, request.getLineId());
         validateStaffMembership(teamId, request.getStaffUserId());
         validateNoOverlap(teamId, request.getLineId(), request.getDayOfWeek(),
@@ -115,6 +116,7 @@ public class ReservationSlotTemplateService {
                 .dayOfWeek(request.getDayOfWeek())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
+                .endsNextDay(Boolean.TRUE.equals(request.getEndsNextDay()))
                 // 既定値（capacity=1）は Service 層で null→1 正規化（既存 normalizeCapacity と同じ考え方）。
                 // builder に null を渡すと @Builder.Default を上書きして NULL 挿入になるため必ず正規化する。
                 .capacity(normalizeCapacity(request.getCapacity()))
@@ -430,6 +432,7 @@ public class ReservationSlotTemplateService {
                 .dayOfWeek(entity.getDayOfWeek() != null ? entity.getDayOfWeek().name() : null)
                 .startTime(entity.getStartTime())
                 .endTime(entity.getEndTime())
+                .endsNextDay(entity.getEndsNextDay())
                 .capacity(entity.getCapacity())
                 .staffUserId(entity.getStaffUserId())
                 // staffName は管理画面のみで使う表示名（PII 考慮・§6）。null 安全に一括解決系と同じ Resolver を使う。

@@ -26,6 +26,7 @@ public class SlotTemplateResponse {
     String dayOfWeek;
     LocalTime startTime;
     LocalTime endTime;
+    Boolean endsNextDay;
     Integer capacity;
     Long staffUserId;
     String staffName;

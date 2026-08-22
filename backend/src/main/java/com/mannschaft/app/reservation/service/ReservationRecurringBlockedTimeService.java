@@ -128,7 +128,8 @@ public class ReservationRecurringBlockedTimeService {
         if (ruleRepository.countByTeamId(teamId) >= MAX_RULES_PER_TEAM) {
             throw new BusinessException(ReservationErrorCode.RECURRING_BLOCKED_TIME_LIMIT_EXCEEDED);
         }
-        SlotTimeValidator.validateTimeRange(request.getStartTime(), request.getEndTime());
+        SlotTimeValidator.validateTimeRange(request.getStartTime(), request.getEndTime(),
+                Boolean.TRUE.equals(request.getEndsNextDay()));
         ReservationLineEntity line = resolveLineOrThrow(teamId, request.getLineId());
         boolean isPublic = Boolean.TRUE.equals(request.getIsPublic());
 
@@ -144,6 +145,7 @@ public class ReservationRecurringBlockedTimeService {
                 .dayOfWeek(request.getDayOfWeek())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
+                .endsNextDay(Boolean.TRUE.equals(request.getEndsNextDay()))
                 .reason(request.getReason())
                 .isPublic(isPublic)
                 .createdBy(createdBy)

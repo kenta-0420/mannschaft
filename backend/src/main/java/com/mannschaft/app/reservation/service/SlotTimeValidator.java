@@ -35,16 +35,31 @@ final class SlotTimeValidator {
      * （呼び出し側で「両方非 null のときのみ」呼ぶ前提）。
      */
     static void validateTimeRange(LocalTime startTime, LocalTime endTime) {
+        validateTimeRange(startTime, endTime, false);
+    }
+
+    /**
+     * 日跨ぎを明示した時間帯を検証する。日跨ぎ true は必ず end&lt;start、false は end&gt;start
+     * とし、同一時刻（24時間枠）を許可しない。区間は最大24時間未満である。
+     */
+    static void validateTimeRange(LocalTime startTime, LocalTime endTime, boolean endsNextDay) {
         if (startTime == null || endTime == null) {
             return;
         }
-        if (!startTime.isBefore(endTime)) {
+        boolean validOrder = endsNextDay ? endTime.isBefore(startTime) : startTime.isBefore(endTime);
+        if (!validOrder) {
             throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE);
         }
         if (!isOnGranularityGrid(startTime) || !isOnGranularityGrid(endTime)
-                || Duration.between(startTime, endTime).toMinutes() < SLOT_GRANULARITY_MINUTES) {
+                || durationMinutes(startTime, endTime, endsNextDay) < SLOT_GRANULARITY_MINUTES
+                || durationMinutes(startTime, endTime, endsNextDay) >= Duration.ofDays(1).toMinutes()) {
             throw new BusinessException(ReservationErrorCode.INVALID_SLOT_GRANULARITY);
         }
+    }
+
+    static long durationMinutes(LocalTime startTime, LocalTime endTime, boolean endsNextDay) {
+        long minutes = Duration.between(startTime, endTime).toMinutes();
+        return endsNextDay ? minutes + Duration.ofDays(1).toMinutes() : minutes;
     }
 
     /**

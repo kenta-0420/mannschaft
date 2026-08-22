@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
@@ -111,7 +112,10 @@ public class ReservationWaitlistService {
         // ReservationPendingExpireService#findExpirableUnits と同型に、Clock の瞬間を
         // JVM 既定ゾーンで解釈し直してから比較する。
         LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
-        if (slotStart.isBefore(LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)))) {
+        Instant nowInstant = clock.instant();
+        LocalDateTime now = LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE);
+        // TeamTimezoneResolver is used when a team-local slot wall clock is converted to this comparison instant.
+        if (slotStart.isBefore(now)) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
         // CLOSED は受付終了（既存 005 を再利用）。

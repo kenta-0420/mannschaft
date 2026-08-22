@@ -100,9 +100,9 @@ public class ReservationBusinessHourService {
         Set<ReservationDayOfWeek> changedDays = new LinkedHashSet<>();
 
         for (BusinessHourEntry entry : request.getHours()) {
-            if (entry.getIsOpen() && entry.getOpenTime() != null && entry.getCloseTime() != null
-                    && !entry.getOpenTime().isBefore(entry.getCloseTime())) {
-                throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE);
+            if (entry.getIsOpen() && entry.getOpenTime() != null && entry.getCloseTime() != null) {
+                SlotTimeValidator.validateTimeRange(entry.getOpenTime(), entry.getCloseTime(),
+                        Boolean.TRUE.equals(entry.getEndsNextDay()));
             }
 
             Optional<ReservationBusinessHourEntity> existingOpt =
@@ -114,8 +114,10 @@ public class ReservationBusinessHourService {
                 // 保存（mutate）前に現行値と突合して差分判定する。
                 changed = !Objects.equals(existing.getIsOpen(), entry.getIsOpen())
                         || !Objects.equals(existing.getOpenTime(), entry.getOpenTime())
-                        || !Objects.equals(existing.getCloseTime(), entry.getCloseTime());
-                existing.updateHours(entry.getIsOpen(), entry.getOpenTime(), entry.getCloseTime());
+                        || !Objects.equals(existing.getCloseTime(), entry.getCloseTime())
+                        || !Objects.equals(existing.getEndsNextDay(), entry.getEndsNextDay());
+                existing.updateHours(entry.getIsOpen(), entry.getOpenTime(), entry.getCloseTime(),
+                        entry.getEndsNextDay());
                 entity = existing;
             } else {
                 // 新規行は「変更あり」として生成対象にする（初回設定で枠を埋める・§3.2 初回体験）。
@@ -126,6 +128,7 @@ public class ReservationBusinessHourService {
                         .isOpen(entry.getIsOpen())
                         .openTime(entry.getOpenTime())
                         .closeTime(entry.getCloseTime())
+                        .endsNextDay(Boolean.TRUE.equals(entry.getEndsNextDay()))
                         .build();
             }
 

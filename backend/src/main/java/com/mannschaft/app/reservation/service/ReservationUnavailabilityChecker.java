@@ -9,6 +9,8 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Collection;
 
 /**
@@ -40,6 +42,18 @@ import java.util.Collection;
  */
 @Component
 public class ReservationUnavailabilityChecker {
+
+    /** チーム TZ で日跨ぎを Instant 化した半開区間 [start,end) の重複判定。 */
+    public boolean overlaps(LocalDate slotDate, LocalDate endDate, LocalTime slotStart, LocalTime slotEnd,
+                            LocalDate blockedDate, LocalDate blockedEndDate, LocalTime blockedStart,
+                            LocalTime blockedEnd, ZoneId teamTimezone) {
+        Instant slotStartInstant = slotDate.atTime(slotStart).atZone(teamTimezone).toInstant();
+        Instant slotEndInstant = endDate.atTime(slotEnd).atZone(teamTimezone).toInstant();
+        Instant blockedStartInstant = blockedDate.atTime(blockedStart).atZone(teamTimezone).toInstant();
+        Instant blockedEndInstant = blockedEndDate.atTime(blockedEnd).atZone(teamTimezone).toInstant();
+        return slotStartInstant.isBefore(blockedEndInstant)
+                && blockedStartInstant.isBefore(slotEndInstant);
+    }
 
     /**
      * slot（日付・時間帯・担当スタッフ）が予約不可枠に該当するかを判定する（コア・§5.B）。

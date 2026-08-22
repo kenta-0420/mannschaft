@@ -59,6 +59,10 @@ public class ReservationRecurringBlockedTimeEntity extends UuidV7Entity {
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
+    @Column(name = "ends_next_day", nullable = false)
+    @Builder.Default
+    private Boolean endsNextDay = false;
+
     /** 事由ラベル（必須・§4.1）。 */
     @Column(length = 100, nullable = false)
     private String reason;
@@ -128,6 +132,11 @@ public class ReservationRecurringBlockedTimeEntity extends UuidV7Entity {
     public void changeTimeRange(LocalTime startTime, LocalTime endTime) {
         this.startTime = startTime;
         this.endTime = endTime;
+    }
+
+    public void changeTimeRange(LocalTime startTime, LocalTime endTime, Boolean endsNextDay) {
+        changeTimeRange(startTime, endTime);
+        this.endsNextDay = endsNextDay == null ? false : endsNextDay;
     }
 
     /** 事由ラベルを変更する（部分更新）。 */

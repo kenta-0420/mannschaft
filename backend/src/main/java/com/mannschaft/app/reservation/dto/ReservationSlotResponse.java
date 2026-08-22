@@ -30,7 +30,12 @@ public class ReservationSlotResponse {
     SlotPolicyDto policy;
     SlotAuditDto audit;
 
-    public record SlotBasicDto(String title, LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
+    public record SlotBasicDto(String title, LocalDate slotDate, LocalDate endDate,
+                                LocalTime startTime, LocalTime endTime) {
+        public SlotBasicDto(String title, LocalDate slotDate, LocalTime startTime, LocalTime endTime) {
+            this(title, slotDate, slotDate, startTime, endTime);
+        }
+    }
 
     public record SlotStatusDto(String slotStatus, Integer bookedCount, Integer capacity, String closedReason, String note) {}
 
