@@ -60,12 +60,24 @@ class VillageRecruitCategoryServiceTest {
 
     @Mock
     private VillageRepository villageRepository;
+    /** 存在確認・可視性判定の共通ゲート（実物へ委譲。VillageAccessGateTestSupport 参照）。 */
+    @Mock
+    private VillageAccessGate accessGate;
     @Mock
     private VillageMembershipRepository membershipRepository;
     @Mock
     private VillageRecruitCategoryRepository categoryRepository;
     @Mock
     private VillageMatchRecruitRepository recruitRepository;
+
+
+    @org.junit.jupiter.api.BeforeEach
+    void wireAccessGate() {
+        // 存在確認・可視性判定は VillageAccessGate へ一元化された。ゲートのモックをそのまま使うと
+        // 既存試練の villageRepository stub が読まれなくなるため、実物ゲートへ委譲させる。
+        VillageAccessGateTestSupport.delegateToRealGate(
+                accessGate, villageRepository, membershipRepository);
+    }
 
     @InjectMocks
     private VillageRecruitCategoryService service;

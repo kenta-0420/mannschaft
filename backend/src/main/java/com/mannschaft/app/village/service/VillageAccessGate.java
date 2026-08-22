@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -153,6 +154,51 @@ public class VillageAccessGate {
             return true;
         }
         return accessControlService.isSystemAdmin(actorUserId);
+    }
+
+    /**
+     * 凍結の有無を問わず、操作者に可視な稼働中（未削除）の村をロードする。
+     *
+     * <p>{@link #loadActiveVillage} / {@link #loadReadableVillage} との違いは
+     * <b>凍結済み（{@code archivedAt != null}）の村をそのまま返す</b>点だけである。
+     * 募集カテゴリ（設計書 §6.4）やニュースレター設定のように
+     * 「<b>凍結村でも閲覧・購読操作は許す</b>／書き込みだけを別途 {@code VILLAGE_ALREADY_ARCHIVED} で弾く」
+     * 設計の呼び出し元がある。そこへ機械的に {@code loadActiveVillage}（凍結=409）や
+     * {@code loadReadableVillage}（凍結=404）を当てると、
+     * <b>凍結村の一覧が読めなくなるという別の退行</b>を作ってしまう。
+     * 凍結の可否判定は呼び出し元の責務として残しつつ、
+     * <b>存在確認と可視性判定だけ</b>をゲートへ寄せるための入口である。</p>
+     *
+     * <p>不在・削除済み・非可視はすべて {@link VillageErrorCode#VILLAGE_NOT_FOUND} で、
+     * 判定順序も {@code loadActiveVillage} と同一（可視性が先）。</p>
+     *
+     * @param villageId   村 ID（null 可）
+     * @param actorUserId 操作者ユーザー ID（null 可。null は非メンバー扱い）
+     * @return 操作者に可視な村（凍結済みを含む）
+     */
+    public VillageEntity loadVillageAllowingArchived(UUID villageId, @Nullable Long actorUserId) {
+        return loadVisibleVillage(villageId, actorUserId);
+    }
+
+    /**
+     * 例外を投げずに、操作者に可視な稼働中（未削除）の村を探す。
+     *
+     * <p>ピン一覧のように<b>複数の村をまとめて hydrate し、見えないものは黙って落とす</b>
+     * 経路のための入口。例外を投げる入口しか無いと、そうした呼び出し元は
+     * 「ゲートを使うと例外制御になって書けない」という理由でリポジトリを直接引き始め、
+     * 可視性判定が再び抜け落ちる。</p>
+     *
+     * @param villageId   村 ID（null 可）
+     * @param actorUserId 操作者ユーザー ID（null 可。null は非メンバー扱い）
+     * @return 不在・削除済み・非可視なら {@link Optional#empty()}、それ以外は村（凍結済みを含む）
+     */
+    public Optional<VillageEntity> findVisibleVillage(UUID villageId, @Nullable Long actorUserId) {
+        if (villageId == null) {
+            return Optional.empty();
+        }
+        return villageRepository.findById(villageId)
+                .filter(v -> v.getDeletedAt() == null)
+                .filter(v -> isVisibleTo(v, actorUserId));
     }
 
     /**

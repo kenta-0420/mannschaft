@@ -100,6 +100,25 @@ class VillageExistenceCheckCentralizationGuardTest {
                         + "推薦候補は findPilgrimageCandidateIds が SQL 側で visibility=PUBLIC に絞った ID 集合。"
                         + "取得は絞り込み済み ID の実体化であって『クライアント指定 ID の存在確認』ではないため、"
                         + "応答差から存在が漏れる経路が無い。");
+        EXCLUSIONS.put("/com/mannschaft/app/village/service/VillagePilgrimageService.java",
+                "巡礼推薦の応答 hydrate。引く村 ID はクライアント入力ではなく"
+                        + "『そのユーザー自身の推薦レコード』が保持する村 ID であり、"
+                        + "レコードは PUBLIC 村だけを候補にするバッチが作る。"
+                        + "取得は loadVillageOrNull で例外を投げず、見つからなければ村情報が null のまま"
+                        + "同じ 200 応答を返すため、応答差が生じず存在オラクルにならない。");
+        EXCLUSIONS.put("/com/mannschaft/app/village/service/VillageNewsletterIssueService.java",
+                "村横断の公開号詳細（getPublicIssue）における発行元村の生存確認。"
+                        + "クライアントが指定するのは号 ID であって村 ID ではなく、村 ID は号レコードから導出される。"
+                        + "さらに号が非 PUBLIC・未配信・削除済みの場合も、村が削除／凍結済みの場合も、"
+                        + "すべて同一の NEWSLETTER_ISSUE_NOT_FOUND を返すため応答差が無い。"
+                        + "ここをゲートへ寄せると、村が UNLISTED の場合に非村人が公開号を読めなくなり、"
+                        + "『村が明示的に PUBLIC 公開した号は村横断で読める』という仕様自体を壊す。");
+        EXCLUSIONS.put("/com/mannschaft/app/village/service/VillageChronicleService.java",
+                "村史の月次集計（generateForVillage）。唯一の呼び出し元は VillageChronicleBatchService で、"
+                        + "操作者（リクエスト実行者）が存在しないシステム処理であり、村 ID はバッチが走査した対象で"
+                        + "外部入力ではない。可視性を判定する操作者がそもそも居ないためゲートへ寄せられず"
+                        + "（actor=null で寄せると UNLISTED 村の村史が生成されなくなる退行になる）、"
+                        + "結果も HTTP 応答に出ないため存在オラクルにならない。");
         EXCLUSIONS.put("/com/mannschaft/app/village/batch/VillageHeadmanSuccessionBatchService.java",
                 "村長継承バッチ。操作者が存在しないシステム処理で、村 ID はバッチ自身が走査した対象であり"
                         + "外部入力ではない。加えて結果は HTTP 応答に出ないため存在オラクルにならない。");

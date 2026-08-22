@@ -16,7 +16,6 @@ import com.mannschaft.app.village.dto.VillagePinnedSummaryResponse;
 import com.mannschaft.app.village.entity.UserVillagePinEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.repository.UserVillagePinRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -68,7 +67,7 @@ public class VillageFeedService {
     private static final int PER_VILLAGE_FETCH_HARD_CAP = 5;
 
     private final UserVillagePinRepository pinRepository;
-    private final VillageRepository villageRepository;
+    private final VillageAccessGate accessGate;
     private final TimelinePostRepository timelinePostRepository;
     private final BulletinThreadRepository bulletinThreadRepository;
     private final ChatChannelRepository chatChannelRepository;
@@ -102,7 +101,7 @@ public class VillageFeedService {
         }
 
         // ピン村を一括取得（村数だけまとめて引いてループ内 N+1 を避ける）
-        Map<UUID, VillageEntity> villageMap = loadVillagesByPin(pins);
+        Map<UUID, VillageEntity> villageMap = loadVillagesByPin(pins, actorUserId);
 
         // ピン村サマリー（アイコンは同一キーの presign 重複を避けるため一括解決してメモ化）
         Map<String, String> iconUrlsByKey = mediaUrlResolver.resolveAll(
@@ -162,13 +161,25 @@ public class VillageFeedService {
     }
 
     /**
-     * ピンに登録された村を一括取得し、active（未削除・未凍結）のみ返す。
+     * ピンに登録された村のうち、active（未削除・未凍結）かつ<b>閲覧者に可視</b>なもののみ返す。
+     *
+     * <h3>なぜ可視性判定が要るのか（ピン経由の存在漏洩）</h3>
+     * <p>ピンは {@code VillagePinService#pin} / {@code autoPinOnJoin} で作られ、
+     * <b>退村・BAN では削除されない</b>（削除されるのは明示的な unpin と退会時の
+     * {@code VillageUserCleanerEventListener} だけ）。そのため非公開(UNLISTED)村をピンしたまま
+     * 退村・BAN されたユーザーのフィードに、<b>その村の名前と村紋が残り続ける</b>。
+     * 投稿本文は現役村人判定で除外されるが、ピン村サマリーはその判定の外側にあるため、
+     * 「もう村人ではないユーザーに非公開村の実在と名称を見せる」漏洩経路になっていた。</p>
+     *
+     * <p>そこで {@link VillageAccessGate#findVisibleVillage} を通し、可視でない村は黙って落とす。
+     * 落ちた村は既存の null 防御（{@code v == null} で continue）でそのまま非表示になるため、
+     * 応答形状は変わらない。PUBLIC 村はゲートを素通りするので従来どおり表示される。</p>
      */
-    private Map<UUID, VillageEntity> loadVillagesByPin(List<UserVillagePinEntity> pins) {
+    private Map<UUID, VillageEntity> loadVillagesByPin(List<UserVillagePinEntity> pins, Long actorUserId) {
         Map<UUID, VillageEntity> result = new HashMap<>();
         for (UserVillagePinEntity pin : pins) {
-            villageRepository.findById(pin.getVillageId())
-                    .filter(v -> v.getDeletedAt() == null && v.getArchivedAt() == null)
+            accessGate.findVisibleVillage(pin.getVillageId(), actorUserId)
+                    .filter(v -> v.getArchivedAt() == null)
                     .ifPresent(v -> result.put(v.getId(), v));
         }
         return result;

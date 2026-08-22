@@ -61,6 +61,8 @@ class VillageFeedServiceTest {
 
     @Mock private UserVillagePinRepository pinRepository;
     @Mock private VillageRepository villageRepository;
+    /** 存在確認・可視性判定の共通ゲート（実物へ委譲。VillageAccessGateTestSupport 参照）。 */
+    @Mock private VillageAccessGate accessGate;
     @Mock private TimelinePostRepository timelinePostRepository;
     @Mock private BulletinThreadRepository bulletinThreadRepository;
     @Mock private ChatChannelRepository chatChannelRepository;
@@ -69,6 +71,15 @@ class VillageFeedServiceTest {
     @Mock private MediaUrlResolver mediaUrlResolver;
     /** 村内コンテンツの可視範囲（現役の村人である村）を解決する窓口。 */
     @Mock private PostingIdentityService postingIdentityService;
+
+
+    @org.junit.jupiter.api.BeforeEach
+    void wireAccessGate() {
+        // 存在確認・可視性判定は VillageAccessGate へ一元化された。ゲートのモックをそのまま使うと
+        // 既存試練の villageRepository stub が読まれなくなるため、実物ゲートへ委譲させる。
+        VillageAccessGateTestSupport.delegateToRealGate(
+                accessGate, villageRepository, org.mockito.Mockito.mock(com.mannschaft.app.village.repository.VillageMembershipRepository.class));
+    }
 
     @InjectMocks
     private VillageFeedService service;

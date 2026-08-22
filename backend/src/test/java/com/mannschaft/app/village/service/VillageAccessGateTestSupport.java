@@ -69,6 +69,10 @@ public final class VillageAccessGateTestSupport {
                 .when(gateMock).loadReadableVillage(any(), any());
         lenient().doAnswer(inv -> real.isVisibleTo(inv.getArgument(0), inv.getArgument(1)))
                 .when(gateMock).isVisibleTo(any(), any());
+        lenient().doAnswer(inv -> real.loadVillageAllowingArchived(inv.getArgument(0), inv.getArgument(1)))
+                .when(gateMock).loadVillageAllowingArchived(any(), any());
+        lenient().doAnswer(inv -> real.findVisibleVillage(inv.getArgument(0), inv.getArgument(1)))
+                .when(gateMock).findVisibleVillage(any(), any());
 
         return real;
     }
