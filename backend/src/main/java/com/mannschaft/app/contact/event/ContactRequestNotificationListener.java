@@ -1,7 +1,6 @@
 package com.mannschaft.app.contact.event;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -24,12 +23,18 @@ import java.util.Locale;
  * <p>{@code ContactRequestService} の業務トランザクションが commit された後（{@code AFTER_COMMIT}）に
  * 非同期（{@code event-pool}）で発火する。<b>通知の文面組み立て（アクター名解決・ロケール解決・
  * 件名/本文組み立て）も本リスナーの責務</b>（Codex 検分 [P2] 是正・{@link ContactRequestNotificationEvent}
- * javadoc 参照）。業務行は AFTER_COMMIT の時点で既にコミット済みのため、ここで {@code findById} しても
- * 業務トランザクションを巻き込まない。実際の生成・配信は
+ * javadoc 参照）。業務行は AFTER_COMMIT の時点で既にコミット済みのため、ここで {@code UserService}
+ * 経由の参照を行っても業務トランザクションを巻き込まない。実際の生成・配信は
  * {@link NotificationDeliveryRunner#sendOne}（{@code REQUIRES_NEW}）へ委譲する。</p>
  *
+ * <h2>D-5: 越境アクセスは Repository ではなく Service 経由</h2>
+ * <p>{@code auth} ドメインへの越境は {@code UserRepository} を直接 DI せず
+ * {@link UserService#getFullName}（Service 経由）を使う（CLAUDE.md ドメイン境界の原則・
+ * {@code CrossDomainRepositoryDependencyArchTest} D-5）。</p>
+ *
  * <h2>境界: 例外・deny のログはこの非TXリスナーで書く</h2>
- * <p>組み立て（{@code findById} / {@code getLocale} / {@code getMessage}）も配送（{@code sendOne}）も
+ * <p>組み立て（{@code UserService} 参照 / {@code getLocale} / {@code getMessage}）も配送
+ * （{@code sendOne}）も
  * {@code try/catch} で囲むのは本リスナー（トランザクション境界の<b>外</b>）であり、Runner 内部
  * （{@code REQUIRES_NEW} トランザクションの<b>内側</b>）で catch しない。</p>
  */
@@ -39,7 +44,8 @@ import java.util.Locale;
 public class ContactRequestNotificationListener {
 
     private final NotificationDeliveryRunner notificationDeliveryRunner;
-    private final UserRepository userRepository;
+    /** Issue #2834 / CMP-056 検分対応（D-5）: 越境アクセスは Repository 直接ではなく Service 経由。 */
+    private final UserService userService;
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
 
@@ -65,16 +71,14 @@ public class ContactRequestNotificationListener {
     /**
      * 通知配送要求を組み立てる（Codex検分[P2]是正: 業務TX外・AFTER_COMMIT後に実行される）。
      *
-     * <p>{@code findById} が {@code null}（並行削除等）を返した場合は、元実装と同じくデフォルト表示名
+     * <p>{@code userService.getFullName} が空（並行削除等）を返した場合は、元実装と同じくデフォルト表示名
      * にフォールバックする（フォールバック自体は維持）。</p>
      */
     private NotificationDeliveryRequest buildRequest(ContactRequestNotificationEvent event) {
-        UserEntity actor = userRepository.findById(event.actorId()).orElse(null);
         Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(event.targetId()));
         String defaultName = messageSource.getMessage(
                 "notification.contact.common.defaultActorName", null, "ユーザー", locale);
-        String actorName = actor != null
-                ? actor.getLastName() + " " + actor.getFirstName() : defaultName;
+        String actorName = userService.getFullName(event.actorId()).orElse(defaultName);
 
         return switch (event.kind()) {
             case REQUEST_RECEIVED -> new NotificationDeliveryRequest(

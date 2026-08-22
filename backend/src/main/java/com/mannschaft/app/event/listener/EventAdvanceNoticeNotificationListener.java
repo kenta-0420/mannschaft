@@ -1,7 +1,6 @@
 package com.mannschaft.app.event.listener;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.event.EventAdvanceNoticeNotificationEvent;
@@ -35,6 +34,11 @@ import java.util.Map;
  * AFTER_COMMIT の時点で既にコミット済みのため、ここで DB 読み取りを行っても業務トランザクションを
  * 巻き込まない。受信者（主催者 + 見守り者）ごとに {@link NotificationDeliveryRunner#sendOne}
  * （{@code REQUIRES_NEW}）を<b>1件ずつ</b>呼ぶ（AC-7）。</p>
+ *
+ * <h2>D-5: 越境アクセスは Repository ではなく Service 経由</h2>
+ * <p>{@code auth} ドメインへの越境は {@code UserRepository} を直接 DI せず
+ * {@code UserService#getDisplayName}（Service 経由）を使う（CLAUDE.md ドメイン境界の原則・
+ * {@code CrossDomainRepositoryDependencyArchTest} D-5）。</p>
  */
 @Slf4j
 @Component
@@ -43,7 +47,8 @@ public class EventAdvanceNoticeNotificationListener {
 
     private final NotificationDeliveryRunner notificationDeliveryRunner;
     private final EventService eventService;
-    private final UserRepository userRepository;
+    /** Issue #2834 / CMP-056 検分対応（D-5）: 越境アクセスは Repository 直接ではなく Service 経由。 */
+    private final UserService userService;
     private final CareLinkService careLinkService;
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
@@ -129,9 +134,7 @@ public class EventAdvanceNoticeNotificationListener {
     }
 
     private String getUserDisplayName(Long userId) {
-        return userRepository.findById(userId)
-                .map(UserEntity::getDisplayName)
-                .orElse("");
+        return userService.getDisplayName(userId);
     }
 
     private void sendOne(NotificationDeliveryRequest request) {

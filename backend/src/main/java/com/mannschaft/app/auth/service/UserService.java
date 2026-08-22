@@ -88,6 +88,37 @@ public class UserService {
     private static final Pattern COUNTRY_CODE_PATTERN = Pattern.compile("^[A-Z]{2}$");
 
     /**
+     * 表示名を取得する（Issue #2834 / CMP-056: 他ドメインの通知配送リスナーからの
+     * 越境アクセス用）。
+     *
+     * <p>D-5（クロスドメイン Repository 依存禁止）に従い、他ドメインは {@code UserRepository}
+     * を直接 DI せず本メソッド（Service 経由）を使うこと。ユーザーが存在しない場合は空文字列。</p>
+     *
+     * @param userId ユーザーID
+     * @return 表示名（存在しない場合は空文字列）
+     */
+    public String getDisplayName(Long userId) {
+        return userRepository.findById(userId)
+                .map(UserEntity::getDisplayName)
+                .orElse("");
+    }
+
+    /**
+     * 姓名（{@code lastName + " " + firstName}）を取得する（Issue #2834 / CMP-056: 他ドメインの
+     * 通知配送リスナーからの越境アクセス用）。
+     *
+     * <p>D-5 に従い、他ドメインは {@code UserRepository} を直接 DI せず本メソッド（Service 経由）
+     * を使うこと。</p>
+     *
+     * @param userId ユーザーID
+     * @return 姓名。ユーザーが存在しない場合は {@link java.util.Optional#empty()}
+     */
+    public java.util.Optional<String> getFullName(Long userId) {
+        return userRepository.findById(userId)
+                .map(u -> u.getLastName() + " " + u.getFirstName());
+    }
+
+    /**
      * ユーザープロフィールを取得する。
      *
      * @param userId ユーザーID

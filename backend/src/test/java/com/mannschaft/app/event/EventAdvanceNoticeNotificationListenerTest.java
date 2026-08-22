@@ -1,7 +1,6 @@
 package com.mannschaft.app.event;
 
-import com.mannschaft.app.auth.entity.UserEntity;
-import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.auth.service.UserService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.event.EventAdvanceNoticeNotificationEvent;
@@ -25,7 +24,6 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -72,7 +70,7 @@ class EventAdvanceNoticeNotificationListenerTest {
     private EventService eventService;
 
     @Mock
-    private UserRepository userRepository;
+    private UserService userService;
 
     @Mock
     private CareLinkService careLinkService;
@@ -88,7 +86,7 @@ class EventAdvanceNoticeNotificationListenerTest {
     @BeforeEach
     void setUp() {
         listener = new EventAdvanceNoticeNotificationListener(
-                notificationDeliveryRunner, eventService, userRepository,
+                notificationDeliveryRunner, eventService, userService,
                 careLinkService, userLocaleCache, messageSource);
         lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
         lenient().when(userLocaleCache.getLocales(any())).thenReturn(Map.of());
@@ -114,8 +112,7 @@ class EventAdvanceNoticeNotificationListenerTest {
     @DisplayName("主催者へ1件送信される（見守り者なし）")
     void 主催者へ通知される() {
         given(eventService.findEventOrThrow(EVENT_ID)).willReturn(buildEvent(ORGANIZER));
-        given(userRepository.findById(TARGET_USER_ID))
-                .willReturn(Optional.of(UserEntity.builder().displayName("テスト太郎").build()));
+        given(userService.getDisplayName(TARGET_USER_ID)).willReturn("テスト太郎");
         given(careLinkService.getActiveWatchers(TARGET_USER_ID, "RSVP")).willReturn(List.of());
 
         listener.onEventAdvanceNoticeNotification(lateEvent());
@@ -136,8 +133,7 @@ class EventAdvanceNoticeNotificationListenerTest {
         ReflectionTestUtils.setField(listener, "messageSource", real);
 
         given(eventService.findEventOrThrow(EVENT_ID)).willReturn(buildEvent(ORGANIZER));
-        given(userRepository.findById(TARGET_USER_ID))
-                .willReturn(Optional.of(UserEntity.builder().displayName("テスト太郎").build()));
+        given(userService.getDisplayName(TARGET_USER_ID)).willReturn("テスト太郎");
         given(userLocaleCache.getLocale(ORGANIZER)).willReturn("en");
         given(careLinkService.getActiveWatchers(TARGET_USER_ID, "RSVP")).willReturn(List.of());
 
@@ -157,8 +153,7 @@ class EventAdvanceNoticeNotificationListenerTest {
         Long watcher2 = 302L;
 
         given(eventService.findEventOrThrow(EVENT_ID)).willReturn(buildEvent(ORGANIZER));
-        given(userRepository.findById(TARGET_USER_ID))
-                .willReturn(Optional.of(UserEntity.builder().displayName("テスト太郎").build()));
+        given(userService.getDisplayName(TARGET_USER_ID)).willReturn("テスト太郎");
         // OPERATOR 自身が見守り者の1人（＝代理送信）で、他に watcher1/watcher2 がいる
         given(careLinkService.getActiveWatchers(TARGET_USER_ID, "RSVP"))
                 .willReturn(List.of(OPERATOR, watcher1, watcher2));
@@ -183,8 +178,7 @@ class EventAdvanceNoticeNotificationListenerTest {
     void 一人の例外が他の受信者への配送を止めない() {
         Long watcher1 = 301L;
         given(eventService.findEventOrThrow(EVENT_ID)).willReturn(buildEvent(ORGANIZER));
-        given(userRepository.findById(TARGET_USER_ID))
-                .willReturn(Optional.of(UserEntity.builder().displayName("テスト太郎").build()));
+        given(userService.getDisplayName(TARGET_USER_ID)).willReturn("テスト太郎");
         given(careLinkService.getActiveWatchers(TARGET_USER_ID, "RSVP"))
                 .willReturn(List.of(OPERATOR, watcher1));
         willThrow(new RuntimeException("模擬配送失敗")).given(notificationDeliveryRunner)
@@ -203,8 +197,7 @@ class EventAdvanceNoticeNotificationListenerTest {
             + "ContactRequestNotificationTransactionIT で裏取りする）")
     void 組み立て例外は呼び出し元へ伝播しない() {
         given(eventService.findEventOrThrow(EVENT_ID)).willReturn(buildEvent(ORGANIZER));
-        given(userRepository.findById(TARGET_USER_ID))
-                .willReturn(Optional.of(UserEntity.builder().displayName("テスト太郎").build()));
+        given(userService.getDisplayName(TARGET_USER_ID)).willReturn("テスト太郎");
         given(userLocaleCache.getLocale(ORGANIZER)).willThrow(new RuntimeException("locale解決失敗"));
 
         // 例外を投げずに正常終了すること（呼び出し元=AFTER_COMMITリスナーの実行スレッドを巻き込まない）。
