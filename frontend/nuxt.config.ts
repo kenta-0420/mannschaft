@@ -90,7 +90,7 @@ export default defineNuxtConfig({
   components: [{ path: '~/components', pathPrefix: false }],
 
   imports: {
-    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match'],
+    dirs: ['composables', 'composables/jobs', 'composables/wallet-group-show', 'composables/match', 'composables/returnStayPlan'],
   },
 
   devServer: {
@@ -432,6 +432,10 @@ export default defineNuxtConfig({
     // （route ガード middleware feature-gate.global.ts の ssr-defer と対になっている）。
     // 対応表は app/constants/featureGates.ts が単一の正（YAML パーサ依存・コード生成は無し）。
     ...buildGateRouteRules(),
+    // 認証フォームは SEO を必要としない。SSR で操作不能なフォームを先に配信すると、
+    // クライアントのハイドレーションが遅延・失敗した際にログイン不能になるため、
+    // 最初からクライアントで操作可能な状態として描画する。
+    '/login': { ssr: false },
     ...(process.env.NUXT_API_PROXY === 'true'
       ? { '/api/v1/**': { proxy: `${apiBase}/api/v1/**` } }
       : {}),
@@ -523,6 +527,7 @@ export default defineNuxtConfig({
           'ja/market.json',
           'ja/inbox.json',
           'ja/schedule.json',
+          'ja/return_stay_plan.json',
           'ja/payment.json',
           'ja/match.json',
           'ja/tournament.json',
@@ -596,6 +601,7 @@ export default defineNuxtConfig({
           'en/market.json',
           'en/inbox.json',
           'en/schedule.json',
+          'en/return_stay_plan.json',
           'en/payment.json',
           'en/match.json',
           'en/tournament.json',
@@ -669,6 +675,7 @@ export default defineNuxtConfig({
           'zh/market.json',
           'zh/inbox.json',
           'zh/schedule.json',
+          'zh/return_stay_plan.json',
           'zh/payment.json',
           'zh/match.json',
           'zh/tournament.json',
@@ -742,6 +749,7 @@ export default defineNuxtConfig({
           'ko/market.json',
           'ko/inbox.json',
           'ko/schedule.json',
+          'ko/return_stay_plan.json',
           'ko/payment.json',
           'ko/match.json',
           'ko/tournament.json',
@@ -815,6 +823,7 @@ export default defineNuxtConfig({
           'es/market.json',
           'es/inbox.json',
           'es/schedule.json',
+          'es/return_stay_plan.json',
           'es/payment.json',
           'es/match.json',
           'es/tournament.json',
@@ -888,6 +897,7 @@ export default defineNuxtConfig({
           'de/market.json',
           'de/inbox.json',
           'de/schedule.json',
+          'de/return_stay_plan.json',
           'de/payment.json',
           'de/match.json',
           'de/tournament.json',

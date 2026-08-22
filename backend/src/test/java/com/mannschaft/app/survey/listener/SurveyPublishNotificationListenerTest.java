@@ -1,5 +1,6 @@
 package com.mannschaft.app.survey.listener;
 
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
@@ -102,9 +103,7 @@ class SurveyPublishNotificationListenerTest {
                 eq(String.valueOf(SCOPE_ID)),
                 eq(SurveyNotificationType.SURVEY_CREATED.name()),
                 any(UUID.class),
-                eq(SCOPE_ID),
-                anyString(),
-                anyString(),
+                eq(SCOPE_ID),any(FanoutMessageKind.class), any(String[].class),
                 eq(NotificationPriority.NORMAL),
                 eq("SURVEY"),
                 eq(SURVEY_ID),
@@ -142,9 +141,7 @@ class SurveyPublishNotificationListenerTest {
                 eq(String.valueOf(SCOPE_ID)),
                 eq(SurveyNotificationType.SURVEY_CREATED.name()),
                 any(UUID.class),
-                eq(SCOPE_ID),
-                anyString(),
-                anyString(),
+                eq(SCOPE_ID),any(FanoutMessageKind.class), any(String[].class),
                 eq(NotificationPriority.NORMAL),
                 eq("SURVEY"),
                 eq(SURVEY_ID),
@@ -169,8 +166,7 @@ class SurveyPublishNotificationListenerTest {
         // Then: チームは findUserIdsByScope のみ・耐久ジョブは使わない
         verify(userRoleRepository).findUserIdsByScope("TEAM", SCOPE_ID);
         verify(fanoutJobService, never()).enqueue(
-                anyString(), anyString(), anyString(), any(UUID.class), any(),
-                anyString(), anyString(), any(), anyString(), any(), anyString(), any(), anyBoolean());
+                anyString(), anyString(), anyString(), any(UUID.class), any(),any(FanoutMessageKind.class), any(String[].class), any(), anyString(), any(), anyString(), any(), anyBoolean());
         verify(notificationHelper).notifyAllPreAuthorizedLocalized(
                     eq(List.of(7L, 8L)),
                     eq(SurveyNotificationType.SURVEY_CREATED.name()),
@@ -202,8 +198,7 @@ class SurveyPublishNotificationListenerTest {
         verify(surveyTargetRepository).findBySurveyId(SURVEY_ID);
         verify(userRoleRepository, never()).findUserIdsByScope(anyString(), any());
         verify(fanoutJobService, never()).enqueue(
-                anyString(), anyString(), anyString(), any(UUID.class), any(),
-                anyString(), anyString(), any(), anyString(), any(), anyString(), any(), anyBoolean());
+                anyString(), anyString(), anyString(), any(UUID.class), any(),any(FanoutMessageKind.class), any(String[].class), any(), anyString(), any(), anyString(), any(), anyBoolean());
         verify(notificationHelper).notifyAllPreAuthorizedLocalized(
                     eq(List.of(101L, 102L)),
                     eq(SurveyNotificationType.SURVEY_CREATED.name()),
@@ -269,8 +264,7 @@ class SurveyPublishNotificationListenerTest {
         // Then: enqueue に渡った sourceEventUuid（4番目の引数）が2回とも同一
         ArgumentCaptor<UUID> uuidCaptor = ArgumentCaptor.forClass(UUID.class);
         verify(fanoutJobService, org.mockito.Mockito.times(2)).enqueue(
-                anyString(), anyString(), anyString(), uuidCaptor.capture(), any(),
-                anyString(), anyString(), any(), anyString(), any(), anyString(), any(), anyBoolean());
+                anyString(), anyString(), anyString(), uuidCaptor.capture(), any(),any(FanoutMessageKind.class), any(String[].class), any(), anyString(), any(), anyString(), any(), anyBoolean());
         List<UUID> captured = uuidCaptor.getAllValues();
         assertThat(captured).hasSize(2);
         assertThat(captured.get(0)).as("同一発火の二重処理は同一 sourceEventUuid に収束する").isEqualTo(captured.get(1));
@@ -290,8 +284,7 @@ class SurveyPublishNotificationListenerTest {
         // Then: sourceEventUuid は互いに異なる（Wave-1 Major② の「再公開が恒久抑止される」回帰を封じる）
         ArgumentCaptor<UUID> uuidCaptor = ArgumentCaptor.forClass(UUID.class);
         verify(fanoutJobService, org.mockito.Mockito.times(2)).enqueue(
-                anyString(), anyString(), anyString(), uuidCaptor.capture(), any(),
-                anyString(), anyString(), any(), anyString(), any(), anyString(), any(), anyBoolean());
+                anyString(), anyString(), anyString(), uuidCaptor.capture(), any(),any(FanoutMessageKind.class), any(String[].class), any(), anyString(), any(), anyString(), any(), anyBoolean());
         List<UUID> captured = uuidCaptor.getAllValues();
         assertThat(captured).hasSize(2);
         assertThat(captured.get(0)).as("occurredAt が異なる再公開は別の sourceEventUuid になる").isNotEqualTo(captured.get(1));

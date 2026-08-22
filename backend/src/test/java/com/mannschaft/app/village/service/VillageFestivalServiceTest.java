@@ -95,8 +95,23 @@ class VillageFestivalServiceTest {
     @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
+    /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
+    @Mock
+    private VillageAccessGate accessGate;
+
     @InjectMocks
     private VillageFestivalService service;
+
+    /**
+     * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
+     * モックのゲートに実物のゲート（同じモックのリポジトリを注入）を委譲させることで、
+     * 本テストが積み上げてきた {@code villageRepository.findById} の stub をそのまま生かしつつ、
+     * 可視性判定は実物のロジックで走らせる。
+     */
+    @BeforeEach
+    void wireVillageAccessGate() {
+        VillageAccessGateTestSupport.delegateToRealGate(accessGate, villageRepository, membershipRepository);
+    }
 
     @BeforeEach
     void setUp() {
@@ -476,8 +491,8 @@ class VillageFestivalServiceTest {
                 .willReturn(BANNER_URL);
         MediaUrlResolver realResolver = new MediaUrlResolver(storageService);
         VillageFestivalService serviceWithRealResolver = new VillageFestivalService(
-                festivalRepository, villageRepository, membershipRepository, auditLogService, realResolver,
-                bulletinAccessService, eventPublisher);
+                festivalRepository, membershipRepository, auditLogService, realResolver,
+                bulletinAccessService, eventPublisher, accessGate);
 
         VillageFestivalEntity f1 = festival(VillageFestivalStatus.SCHEDULED,
                 LocalDateTime.now().plusDays(5), LocalDateTime.now().plusDays(6));

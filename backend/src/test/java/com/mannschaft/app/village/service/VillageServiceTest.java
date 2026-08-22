@@ -46,6 +46,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -235,7 +236,7 @@ class VillageServiceTest {
         }
 
         @Test
-        @DisplayName("UNLISTED 村は非村人だと VILLAGE_UNLISTED")
+        @DisplayName("AC-1: UNLISTED 村は非村人だと VILLAGE_NOT_FOUND（不在と同一コードで存在秘匿）")
         void get_unlistedHiddenFromNonMember() {
             VillageEntity entity = sampleVillage(VillageVisibility.UNLISTED, null);
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
@@ -245,7 +246,34 @@ class VillageServiceTest {
             assertThatThrownBy(() -> service.get(VILLAGE_ID, REGULAR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(VillageErrorCode.VILLAGE_UNLISTED);
+                    .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+        }
+
+        /**
+         * AC-1: 存在オラクルの直接照合。UNLISTED 村の非村人が受け取る ErrorCode が、
+         * 実在しない村 ID を同じ EP に投げたときの ErrorCode と<b>完全に一致</b>することを見る。
+         * ステータス（どちらも 404）だけでなく応答本文の {@code error.code} まで揃って初めて秘匿が成立する。
+         */
+        @Test
+        @DisplayName("AC-1: UNLISTED 村の非村人と不在村 ID は ErrorCode が完全一致する")
+        void get_unlistedAndMissingShareSameErrorCode() {
+            UUID missingId = UUID.fromString("018f0000-0000-7000-8000-00000000dead");
+            when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(missingId))
+                    .thenReturn(Optional.empty());
+            Object missingCode = ((BusinessException) catchThrowable(
+                    () -> service.get(missingId, REGULAR_USER_ID))).getErrorCode();
+
+            VillageEntity entity = sampleVillage(VillageVisibility.UNLISTED, null);
+            when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
+                    .thenReturn(Optional.of(entity));
+            lenient().when(accessControlService.isSystemAdmin(REGULAR_USER_ID)).thenReturn(false);
+            Object unlistedCode = ((BusinessException) catchThrowable(
+                    () -> service.get(VILLAGE_ID, REGULAR_USER_ID))).getErrorCode();
+
+            assertThat(unlistedCode)
+                    .as("UNLISTED 村の非村人と不在 ID で ErrorCode が異なると本文で実在が判別できる")
+                    .isEqualTo(missingCode)
+                    .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
 
         @Test
@@ -857,7 +885,7 @@ class VillageServiceTest {
             assertThatThrownBy(() -> service.get(VILLAGE_ID, REGULAR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(VillageErrorCode.VILLAGE_UNLISTED);
+                    .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
 
             // 認可で弾いた以上、署名 URL の発行自体が起きてはならない。
             // （URL 解決を toResponse より手前へ移す実装にすると、例外経路でも presign が走り
