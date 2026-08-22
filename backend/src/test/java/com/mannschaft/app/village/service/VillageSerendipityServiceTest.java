@@ -199,8 +199,12 @@ class VillageSerendipityServiceTest {
     void getMyScore_unlistedVillageByMember() {
         givenActiveUnlistedVillage();
         givenActiveMember(USER_A);
+        VillageSerendipityScoreEntity me = score(USER_A, 10L, 50L);
         given(serendipityRepository.findByVillageIdAndUserId(VILLAGE_ID, USER_A))
-                .willReturn(Optional.of(score(USER_A, 10L, 50L)));
+                .willReturn(Optional.of(me));
+        // rank 計算用（自分が単独 1 位）
+        given(serendipityRepository.findByVillageIdOrderByInteractionScoreDesc(eq(VILLAGE_ID), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(me)));
 
         assertThatCode(() -> service.getMyScore(VILLAGE_ID, USER_A)).doesNotThrowAnyException();
     }
