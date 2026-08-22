@@ -65,7 +65,7 @@ public class VillagePinService {
     @Transactional(readOnly = true)
     public PinListResponse listMyPins(Long userId) {
         List<UserVillagePinEntity> pins = pinRepository.findByUserIdOrderBySortOrderAsc(userId);
-        Map<UUID, VillageEntity> villageMap = loadVillageMap(pins);
+        Map<UUID, VillageEntity> villageMap = loadVillageMap(pins, userId);
         List<PinResponse> items = pins.stream()
                 .map(p -> toResponse(p, villageMap.get(p.getVillageId())))
                 .toList();
@@ -252,17 +252,32 @@ public class VillagePinService {
     }
 
     /**
-     * ピン群に紐付く村エンティティを 1 クエリで取得して Map 化する。
-     * 凍結 / 削除済み村のピンが残っている場合はその村だけ Map に含まれないため、
-     * {@link #toResponse(UserVillagePinEntity, VillageEntity)} で null 防御する。
+     * ピン群に紐付く村エンティティを 1 クエリで取得し、
+     * <b>削除済み・凍結済み・閲覧者に不可視</b>の村を除いて Map 化する。
+     * 除かれた村は {@link #toResponse(UserVillagePinEntity, VillageEntity)} の null 防御で
+     * 村名・アイコンが空のまま返る。
+     *
+     * <h3>なぜ可視性判定が要るのか（ピン経由の存在漏洩）</h3>
+     * <p>ピンは退村・BAN では削除されない（削除されるのは明示的な unpin と退会時の
+     * {@code VillageUserCleanerEventListener} だけ）。そのため非公開(UNLISTED)村をピンしたまま
+     * 退村・BAN されたユーザーのピン一覧に、<b>その村の名前と村紋が残り続ける</b>。
+     * {@code findAllById} は ID 集合をそのまま実体化するだけで可視性も生存も見ないため、
+     * ここで {@link VillageAccessGate#isVisibleTo} を通す。
+     * 同じ欠陥がフィードの {@code VillageFeedService#loadVillagesByPin} にもあった。</p>
+     *
+     * <p>可視性判定はロード済みエンティティのフィールドで行うため、
+     * PUBLIC 村だけをピンしている通常のユーザーでは<b>追加クエリは 0 件</b>のままである。</p>
      */
-    private Map<UUID, VillageEntity> loadVillageMap(List<UserVillagePinEntity> pins) {
+    private Map<UUID, VillageEntity> loadVillageMap(List<UserVillagePinEntity> pins, Long actorUserId) {
         if (pins.isEmpty()) {
             return Map.of();
         }
         List<UUID> ids = pins.stream().map(UserVillagePinEntity::getVillageId).toList();
         Map<UUID, VillageEntity> map = new HashMap<>();
-        villageRepository.findAllById(ids).forEach(v -> map.put(v.getId(), v));
+        villageRepository.findAllById(ids).stream()
+                .filter(v -> v.getDeletedAt() == null && v.getArchivedAt() == null)
+                .filter(v -> accessGate.isVisibleTo(v, actorUserId))
+                .forEach(v -> map.put(v.getId(), v));
         return map;
     }
 

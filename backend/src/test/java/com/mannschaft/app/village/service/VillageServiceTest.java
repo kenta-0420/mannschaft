@@ -92,8 +92,20 @@ class VillageServiceTest {
     void setUp() {
         VillageAccessGateTestSupport.delegateToRealGate(
                 accessGate, villageRepository, membershipRepository, accessControlService);
+        // findActiveOrThrow は VillageAccessGate へ移り、生存判定が
+        // findByIdAndDeletedAtIsNullAndArchivedAtIsNull から findById + deletedAt/archivedAt の
+        // フィールド判定に変わった。既存試練は前者だけを stub しているので、
+        // 既定として findById を同じ stub へ流す（各試練の stub をそのまま活かすため）。
+        // 個別に findById を stub している試練（凍結系）はそちらが優先される。
+        lenient().when(villageRepository.findById(any(UUID.class))).thenAnswer(inv ->
+                villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(inv.getArgument(0)));
+        // 可視性ゲートの村人判定は findActiveByVillageIdAndSubject を使う。既存試練は
+        // VillageService#isMember が使う findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull を
+        // stub しているため、既定としてそちらへ流して「村人である」という試練の意図を保つ。
         lenient().when(membershipRepository.findActiveByVillageIdAndSubject(
-                any(UUID.class), eq(VillageSubjectType.USER), anyLong())).thenReturn(Optional.empty());
+                any(UUID.class), eq(VillageSubjectType.USER), anyLong())).thenAnswer(inv ->
+                membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                        inv.getArgument(0), inv.getArgument(1), inv.getArgument(2)));
         lenient().when(accessControlService.isSystemAdmin(anyLong())).thenReturn(false);
         // メンバーシップ・ピンは未参加・未ピンをデフォルト
         lenient().when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
