@@ -29,6 +29,15 @@ public enum VillageErrorCode implements ErrorCode {
     /**
      * VILLAGE_002: UNLISTED 村に非村人がアクセス。
      *
+     * <p><b>新規使用禁止。過去互換（既存クライアントとステータス写像表）のためだけに残す。</b>
+     * 非可視の村は例外なく {@link #VILLAGE_NOT_FOUND}（{@code VILLAGE_001}）を投げること。</p>
+     *
+     * <p>理由: 本コードは 404 に写像されており<b>ステータスは不在と一致していた</b>が、
+     * 応答<b>本文</b>の {@code error.code} が {@code VILLAGE_002} と {@code VILLAGE_001} で割れるため、
+     * 本文だけで「その村 ID は実在するが非公開」と判別できた（存在オラクル）。
+     * ステータスを揃えるだけでは秘匿は完成しない。この約束は番人
+     * {@code VillageUnlistedErrorCodeRetirementGuardTest} が本番ソースの静的走査で強制する。</p>
+     *
      * <p><b>非公開村の存在秘匿のため 404 固定</b>。UNLISTED 村は検索結果から意図的に除外され
      * 「存在を隠す」設計であり、403 を返すと不在（{@link #VILLAGE_NOT_FOUND} = 404）との差で
      * 村 ID の実在が漏れる（存在オラクル）。</p>
