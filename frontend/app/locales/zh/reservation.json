@@ -583,6 +583,8 @@
       "capacity": "名额",
       "is_active": "启用",
       "cell_count": "每天{n}个时段（30分钟）",
+      "ends_next_day": "次日结束",
+      "next_day_time": "次日 {time}",
       "price": "价格（可选）",
       "slot_title": "标题（可选）",
       "generate": "立即生成时段",
@@ -647,6 +649,7 @@
     "business_hours": {
       "title": "营业时间",
       "day_open": "营业",
+      "ends_next_day": "次日结束",
       "save_success": "已保存，共更新{generated}个时段",
       "generating": "正在更新时段…",
       "generation_failed": "营业时间已保存，但时段的自动更新失败。系统将于明晨自动补齐",

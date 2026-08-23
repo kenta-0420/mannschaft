@@ -48697,6 +48697,7 @@ export interface components {
             /** @example 14:30:00 */
             closeTime?: string;
             dayOfWeek?: string;
+            endsNextDay?: boolean;
             isOpen: boolean;
             /** @example 14:30:00 */
             openTime?: string;
@@ -48722,6 +48723,7 @@ export interface components {
             /** @example 14:30:00 */
             closeTime?: string;
             dayOfWeek?: string;
+            endsNextDay?: boolean;
             isOpen?: boolean;
             /** @example 14:30:00 */
             openTime?: string;
@@ -50399,6 +50401,7 @@ export interface components {
             slug?: string;
             social?: components["schemas"]["TeamSocialDto"];
             timestamps?: components["schemas"]["TeamTimestampsDto"];
+            timezone?: string;
             visibility?: components["schemas"]["TeamVisibilityDto"];
         };
         TeamSocialDto: {
@@ -56884,6 +56887,8 @@ export interface components {
             /** @example 14:30:00 */
             endTime?: string;
             /** Format: date */
+            endDate?: string;
+            /** Format: date */
             slotDate?: string;
             /** @example 14:30:00 */
             startTime?: string;
@@ -56937,6 +56942,7 @@ export interface components {
             dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime: string;
+            endsNextDay?: boolean;
             /** Format: int64 */
             lineId?: number;
             name?: string;
@@ -56961,6 +56967,7 @@ export interface components {
             dayOfWeek?: string;
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             /** Format: uuid */
             id?: string;
             isActive?: boolean;
@@ -57062,6 +57069,7 @@ export interface components {
             dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime: string;
+            endsNextDay?: boolean;
             forceCancelConflicting?: boolean;
             isPublic?: boolean;
             /** Format: int64 */
@@ -57079,6 +57087,7 @@ export interface components {
             dayOfWeek?: string;
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             /** Format: int32 */
             forceCancelledCount?: number;
             /** Format: uuid */
@@ -66670,6 +66679,7 @@ export interface components {
             dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             isActive?: boolean;
             /** Format: int64 */
             lineId?: number;
@@ -66789,6 +66799,7 @@ export interface components {
             dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             forceCancelConflicting?: boolean;
             isActive?: boolean;
             isPublic?: boolean;
@@ -67344,6 +67355,7 @@ export interface components {
             prefectureCode?: string;
             supporterEnabled?: boolean;
             template?: string;
+            timezone?: string;
             /** Format: int64 */
             version: number;
             visibility?: string;
@@ -70424,9 +70436,13 @@ export interface components {
         GridCellDto: {
             /** @example 14:30:00 */
             endTime?: string;
+            /** Format: date */
+            endDate?: string;
             price?: number;
             /** Format: int64 */
             slotId?: number;
+            /** Format: date */
+            slotDate?: string;
             /** @example 14:30:00 */
             startTime?: string;
             /** @enum {string} */

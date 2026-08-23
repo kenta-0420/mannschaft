@@ -12,6 +12,10 @@ export type MatrixCellState = 'AVAILABLE' | 'BOOKED' | 'CLOSED' | 'UNAVAILABLE'
 /** BE GridCellDto 相当の最小構造（生成型に依存させず純関数を独立させる）。 */
 export interface MatrixCellInput {
   slotId?: number
+  /** 枠の業務日（通常は行の日付）。 */
+  slotDate?: string
+  /** 日跨ぎ枠の終了業務日。 */
+  endDate?: string
   startTime?: string
   endTime?: string
   state?: MatrixCellState

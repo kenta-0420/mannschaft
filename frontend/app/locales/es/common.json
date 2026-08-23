@@ -1875,6 +1875,13 @@
     "mapEmbedUrlHelp": "En Google Maps, haz clic en \"Compartir > Insertar mapa > Copiar HTML\" y pega la URL de src= aquí",
     "mapEmbedUrlInvalidFormat": "Debe ser una URL de inserción de Google Maps (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "URL del mapa de la tienda guardada",
+    "timezone": {
+      "label": "Zona horaria de reservas",
+      "help": "Zona horaria IANA para interpretar las horas de inicio y fin.",
+      "placeholder": "p. ej., Asia/Tokyo",
+      "invalid": "Introduce una zona horaria IANA válida",
+      "saved": "Zona horaria guardada"
+    },
     "regionCode": {
       "label": "Ubicación (prefectura / municipio)",
       "help": "Al seleccionar una prefectura y un municipio se establecen los valores predeterminados para la búsqueda regional y las publicaciones.",

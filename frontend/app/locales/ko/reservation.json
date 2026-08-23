@@ -583,6 +583,8 @@
       "capacity": "정원",
       "is_active": "사용",
       "cell_count": "1일 {n}슬롯(30분 단위)",
+      "ends_next_day": "다음 날 종료",
+      "next_day_time": "다음 날 {time}",
       "price": "요금(선택)",
       "slot_title": "제목(선택)",
       "generate": "지금 슬롯 생성",
@@ -647,6 +649,7 @@
     "business_hours": {
       "title": "영업시간",
       "day_open": "영업함",
+      "ends_next_day": "다음 날 종료",
       "save_success": "저장했습니다. 슬롯 {generated}개를 갱신했습니다",
       "generating": "슬롯을 갱신하는 중입니다…",
       "generation_failed": "영업시간은 저장되었지만 슬롯 자동 갱신에 실패했습니다. 다음 날 아침에 자동으로 보완됩니다",

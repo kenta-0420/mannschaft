@@ -220,7 +220,19 @@ async function loadGrid(opts?: { silent?: boolean }) {
       to,
       menuId: filterMenuId.value ?? undefined,
     })
-    days.value = (res.data.days ?? []).map(d => ({ date: d.date ?? '', columns: d.columns ?? [] }))
+    days.value = (res.data.days ?? []).map((d) => {
+      const date = d.date ?? ''
+      return {
+        date,
+        columns: (d.columns ?? []).map(col => ({
+          ...col,
+          cells: (col.cells ?? []).map((c) => {
+            const cell = c as typeof c & { slotDate?: string; endDate?: string }
+            return { ...c, slotDate: cell.slotDate ?? date, endDate: cell.endDate ?? (cell.slotDate ?? date) }
+          }),
+        })),
+      }
+    })
     requiredCellCount.value = res.data.meta?.requiredCellCount ?? null
   }
   catch {
@@ -257,10 +269,10 @@ function isCellDisabled(row: MatrixRowVM, headerIndex: number): boolean {
   if (slot.cell.state === 'BOOKED') {
     // slotId 不明の BOOKED セルは押しても無反応（early return）になるため disabled にする（検分是正）。
     if (slot.cell.slotId == null) return true
-    return isPastCell(row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)
+    return isPastCell(slot.cell.slotDate ?? row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)
   }
   if (slot.cell.state !== 'AVAILABLE') return true
-  if (isPastCell(row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)) return true
+  if (isPastCell(slot.cell.slotDate ?? row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)) return true
   if (slot.span === 1 && row.startable && !row.startable.has(headerIndex)) return true
   return false
 }
@@ -302,20 +314,25 @@ function cellLabel(row: MatrixRowVM, headerIndex: number): string {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind === 'empty') return '—'
   if (slot.kind === 'covered') return ''
+  let label: string
   switch (slot.cell.state) {
-    case 'AVAILABLE': return t('reservation.grid.state.available')
+    case 'AVAILABLE': label = t('reservation.grid.state.available'); break
     // BOOKED は自分が WAITING 登録済みなら「待機中」に切り替える（W2-4-FE）。
     case 'BOOKED':
-      return slot.cell.slotId != null && myWaitlistSlotIds.value.has(slot.cell.slotId)
+      label = slot.cell.slotId != null && myWaitlistSlotIds.value.has(slot.cell.slotId)
         ? t('reservation.waitlist.registered_badge')
         : t('reservation.grid.state.booked')
-    case 'CLOSED': return t('reservation.grid.state.closed')
+      break
+    case 'CLOSED': label = t('reservation.grid.state.closed'); break
     case 'UNAVAILABLE': {
       const reason = unavailableReasonOf(row, headerIndex)
-      return reason ? `× ${reason}` : t('reservation.grid.state.unavailable')
+      label = reason ? `× ${reason}` : t('reservation.grid.state.unavailable')
+      break
     }
     default: return ''
   }
+  const isNextDay = slot.cell.endDate && slot.cell.slotDate && slot.cell.endDate !== slot.cell.slotDate
+  return isNextDay ? `${label} (${t('reservation.template.next_day_time', { time: slot.cell.endTime ?? '' })})` : label
 }
 
 /**
@@ -381,13 +398,18 @@ const dragSelectedIndices = computed<number[]>(() => {
     row.aligned,
     anchor.headerIndex,
     dragFocusIndex.value ?? anchor.headerIndex,
-    i => !isPastCell(row.date, cellStartTimeAt(row, i), todayStr.value, nowMinutes.value),
+    i => !isPastCell(cellDateAt(row, i), cellStartTimeAt(row, i), todayStr.value, nowMinutes.value),
   )
 })
 
 function cellStartTimeAt(row: MatrixRowVM, headerIndex: number): string | undefined {
   const slot = row.aligned[headerIndex]
   return slot && slot.kind === 'cell' ? slot.cell.startTime : undefined
+}
+
+function cellDateAt(row: MatrixRowVM, headerIndex: number): string {
+  const slot = row.aligned[headerIndex]
+  return slot && slot.kind === 'cell' ? (slot.cell.slotDate ?? row.date) : row.date
 }
 
 /** そのマスがドラッグ選択のハイライト対象か（テンプレートの :class 用）。 */

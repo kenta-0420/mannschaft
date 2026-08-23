@@ -205,6 +205,36 @@ describe('SlotMatrixPicker.vue', () => {
     expect(findByTestId('group-no-menu')).toBeNull()
   })
 
+  it('AC-16: 実際の slotDate が未来なら翌日終了セルを disabled にせず、終了時刻を明示する', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    const rowDate = dayjs().format('YYYY-MM-DD')
+    const endDate = dayjs(tomorrow).add(1, 'day').format('YYYY-MM-DD')
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        meta: null,
+        days: [{
+          date: rowDate,
+          columns: [{
+            lineId: 1,
+            lineName: 'Seat1',
+            lineIds: [],
+            cells: [{ slotId: 299, slotDate: tomorrow, endDate, startTime: '23:00', endTime: '04:00', state: 'AVAILABLE' }],
+          }],
+        }],
+      },
+    })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flush()
+
+    const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('23:00'))
+    expect(cell).toBeTruthy()
+    expect(cell!.attributes('disabled')).toBeUndefined()
+    expect(cell!.attributes('aria-label')).toContain('Next day 04:00')
+  })
+
   it('AC-5: 縦横スクロールコンテナに overscroll-contain が付与される（縦→横ホイール変換は実装しない。UX改善5点の4で縦スクロールも同一コンテナに統合）', async () => {
     mockGetLines.mockResolvedValue({ data: [activeLine] })
     mockGetSlotGrid.mockResolvedValue(gridResponseWithCells())

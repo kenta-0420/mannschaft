@@ -1875,6 +1875,13 @@
     "mapEmbedUrlHelp": "在 Google Maps 中「分享 > 嵌入地图 > 复制 HTML」，然后粘贴 src= 的 URL",
     "mapEmbedUrlInvalidFormat": "必须为 Google Maps 嵌入 URL（https://www.google.com/maps/embed?...）格式",
     "mapEmbedUrlSaved": "店铺地图 URL 已保存",
+    "timezone": {
+      "label": "预约时区",
+      "help": "用于解释预约开始和结束时间的 IANA 时区。",
+      "placeholder": "例如：Asia/Tokyo",
+      "invalid": "请输入有效的 IANA 时区",
+      "saved": "预约时区已保存"
+    },
     "regionCode": {
       "label": "所在地（都道府县・市区町村）",
       "help": "选择都道府县和市区町村后，将用作地区搜索和发布的默认值。",
