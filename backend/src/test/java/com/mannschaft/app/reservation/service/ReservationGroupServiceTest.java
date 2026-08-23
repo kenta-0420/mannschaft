@@ -663,6 +663,7 @@ class ReservationGroupServiceTest {
         @Test
         @DisplayName("日跨ぎslot集合は前日開始のendsNextDay blockも回避できない")
         void 日跨ぎslot集合は前日開始blockを検出する() {
+            ReflectionTestUtils.setField(service, "teamTimezoneResolver", teamTimezoneResolver);
             ReservationSlotEntity nextDay = ReservationSlotEntity.builder().id(103L).teamId(TEAM_ID)
                     .slotDate(SLOT_DATE.plusDays(1)).startTime(LocalTime.of(0, 0)).endTime(LocalTime.of(0, 30))
                     .endDate(SLOT_DATE.plusDays(1)).build();
