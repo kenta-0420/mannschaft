@@ -102,6 +102,8 @@ public class ReservationGridResponse {
      */
     public record GridCellDto(
             Long slotId,
+            LocalDate slotDate,
+            LocalDate endDate,
             LocalTime startTime,
             LocalTime endTime,
             GridCellState state,

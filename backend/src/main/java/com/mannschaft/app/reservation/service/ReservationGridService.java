@@ -266,6 +266,8 @@ public class ReservationGridService {
         CellStateResult result = resolveState(slot, blocks, recurringRules);
         return new ReservationGridResponse.GridCellDto(
                 slot.getId(),
+                slot.getSlotDate(),
+                slot.getEndDate() != null ? slot.getEndDate() : slot.getSlotDate(),
                 slot.getStartTime(),
                 slot.getEndTime(),
                 result.state(),

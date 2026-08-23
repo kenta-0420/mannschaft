@@ -869,6 +869,7 @@ public class TeamService {
                 .visibility(new TeamResponse.TeamVisibilityDto(
                         team.getVisibility() != null ? team.getVisibility().name() : null,
                         team.getSupporterEnabled()))
+                .timezone(team.getTimezone())
                 .metadata(new TeamResponse.TeamMetadataDto(
                         team.getVersion(), memberCount,
                         // 画像 URL 根治 Phase 1: icon/banner は生 R2 キーを署名付き表示 URL へ解決する。

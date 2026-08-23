@@ -29,6 +29,8 @@ public class TeamResponse {
     private TeamBasicInfoDto basicInfo;
     private TeamLocationDto location;
     private TeamVisibilityDto visibility;
+    /** 予約枠の現地日付・時刻を解釈するチーム固有の IANA タイムゾーン。 */
+    private String timezone;
     private TeamMetadataDto metadata;
     private TeamSocialDto social;
     private TeamTimestampsDto timestamps;

@@ -247,7 +247,7 @@ class ReservationGridServiceTest {
                         ReservationGridResponse.GridCellDto.class.getRecordComponents())
                 .map(RecordComponent::getName).toList();
         assertThat(componentNames)
-                .containsExactlyInAnyOrder("slotId", "startTime", "endTime", "state", "price", "unavailableReason");
+                .containsExactlyInAnyOrder("slotId", "slotDate", "endDate", "startTime", "endTime", "state", "price", "unavailableReason");
         assertThat(componentNames).noneMatch(n -> {
             String lower = n.toLowerCase();
             return lower.contains("user") || lower.contains("name")
@@ -339,6 +339,7 @@ class ReservationGridServiceTest {
     void AVAILABLEセルは予約に使える() {
         givenSlots(ReservationSlotEntity.builder()
                 .id(1L).teamId(TEAM_ID).lineId(LINE_1).slotDate(DATE)
+                .endDate(DATE.plusDays(1))
                 .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(11, 0))
                 .slotStatus(SlotStatus.AVAILABLE).price(new BigDecimal("5000.00")).build());
 
@@ -347,6 +348,8 @@ class ReservationGridServiceTest {
         ReservationGridResponse.GridCellDto cell = col.cells().get(0);
         assertThat(cell.state()).isEqualTo(GridCellState.AVAILABLE);
         assertThat(cell.slotId()).isEqualTo(1L);
+        assertThat(cell.slotDate()).isEqualTo(DATE);
+        assertThat(cell.endDate()).isEqualTo(DATE.plusDays(1));
         assertThat(cell.price()).isEqualByComparingTo("5000.00");
         assertThat(col.lineId()).isEqualTo(LINE_1);
         assertThat(col.lineName()).isEqualTo("L11");
