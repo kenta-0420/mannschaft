@@ -409,6 +409,8 @@ class ReservationRecurringBlockedTimeServiceTest {
         assertThat(response.getReservations().get(0).slotDate()).isEqualTo(matchDay);
         verify(ruleRepository, never()).save(any());
         verify(ruleRepository, never()).delete(any());
+        // impact内の複数candidate判定でもteam timezoneは1回だけ解決する。
+        verify(teamRepository, times(1)).findById(TEAM_ID);
     }
 
     // ────────────────────────────────────────────────────────────
