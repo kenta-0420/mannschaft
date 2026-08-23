@@ -271,7 +271,7 @@ class ReservationGridServiceExtensionTest {
             verify(slotRepository)
                     .findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(TEAM_ID, from, to);
             verify(blockedTimeRepository)
-                    .findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(TEAM_ID, from, to);
+                    .findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1));
         }
 
         @Test
@@ -455,7 +455,7 @@ class ReservationGridServiceExtensionTest {
         givenDaySlots(
                 slot(101L, DATE, null, LINE_1, LocalTime.of(10, 0), LocalTime.of(10, 30), SlotStatus.FULL),
                 slot(102L, DATE, null, LINE_1, LocalTime.of(11, 0), LocalTime.of(11, 30), SlotStatus.FULL));
-        given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, DATE))
+        given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, DATE, DATE.minusDays(1)))
                 .willReturn(List.of(ReservationBlockedTimeEntity.builder()
                         .teamId(TEAM_ID).blockedDate(DATE)
                         .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(10, 30))
@@ -479,8 +479,7 @@ class ReservationGridServiceExtensionTest {
                         lineSlot(1L, LINE_1, LocalTime.of(10, 0), LocalTime.of(10, 30)),
                         slot(2L, DATE.plusDays(1), null, LINE_1, LocalTime.of(10, 0), LocalTime.of(10, 30),
                                 SlotStatus.AVAILABLE)));
-        given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                TEAM_ID, from, to))
+        given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1)))
                 .willReturn(List.of(ReservationBlockedTimeEntity.builder()
                         .teamId(TEAM_ID).blockedDate(DATE)
                         .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(10, 30))

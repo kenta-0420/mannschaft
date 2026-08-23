@@ -302,9 +302,6 @@ class ReservationGroupServiceTest {
             reinitServiceWithClock(Clock.fixed(Instant.parse("2026-08-10T02:30:00Z"), ZoneOffset.UTC));
             ReflectionTestUtils.setField(service, "teamTimezoneResolver", teamTimezoneResolver);
             given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("America/New_York"));
-            given(teamTimezoneResolver.toInstant(anyLong(), any(LocalDate.class), any(LocalTime.class)))
-                    .willAnswer(invocation -> LocalDateTime.of(
-                            invocation.getArgument(1), invocation.getArgument(2)).toInstant(ZoneOffset.UTC));
             ReservationSlotEntity first = ReservationSlotEntity.builder().id(101L).teamId(TEAM_ID)
                     .slotDate(LocalDate.of(2026, 8, 9)).startTime(LocalTime.of(23, 0))
                     .endTime(LocalTime.of(23, 30)).build();
@@ -314,6 +311,8 @@ class ReservationGroupServiceTest {
             given(slotRepository.findAllById(anyIterable())).willReturn(List.of(first, second));
             given(teamTimezoneResolver.toInstant(TEAM_ID, first.getSlotDate(), first.getStartTime()))
                     .willReturn(Instant.parse("2026-08-10T03:00:00Z"));
+            given(teamTimezoneResolver.toInstant(TEAM_ID, second.getSlotDate(), second.getStartTime()))
+                    .willReturn(Instant.parse("2026-08-10T03:30:00Z"));
 
             ReservationGroupResponse response =
                     service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 102L)));
