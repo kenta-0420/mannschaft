@@ -43,6 +43,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -178,12 +179,13 @@ public class ReservationGroupService {
         }
 
         // 2-b. 同一日
-        if (slots.stream().map(ReservationSlotEntity::getSlotDate).distinct().count() > 1) {
-            throw new BusinessException(ReservationErrorCode.SLOT_LINE_MISMATCH);
-        }
+        // 日跨ぎは実際の開始Instant順で扱う（同一日制約は禁止）。
 
         // 開始時刻昇順に整列（以降「先頭枠」= slots.get(0)）
-        slots.sort(Comparator.comparing(ReservationSlotEntity::getStartTime));
+        slots.sort(Comparator.comparing(s -> teamTimezoneResolver == null
+                ? LocalDateTime.of(s.getSlotDate(), s.getStartTime())
+                    .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                : teamTimezoneResolver.toInstant(teamId, s.getSlotDate(), s.getStartTime())));
         ReservationSlotEntity firstSlot = slots.get(0);
 
         // 2-b. 先頭枠開始が未来（過去は 400=014・注入 Clock 基準）
@@ -212,7 +214,11 @@ public class ReservationGroupService {
 
         // 2-d. 連続性: 全隣接で end == next.start（30分セルであることは要求しない・§5.2）
         for (int i = 0; i < slots.size() - 1; i++) {
-            if (!slots.get(i).getEndTime().equals(slots.get(i + 1).getStartTime())) {
+            ReservationSlotEntity previous = slots.get(i);
+            ReservationSlotEntity next = slots.get(i + 1);
+            LocalDate previousEndDate = previous.getEndDate() != null ? previous.getEndDate() : previous.getSlotDate();
+            if (!java.util.Objects.equals(previousEndDate, next.getSlotDate())
+                    || !previous.getEndTime().equals(next.getStartTime())) {
                 throw new BusinessException(ReservationErrorCode.SLOT_LINE_MISMATCH);
             }
         }
