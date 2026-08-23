@@ -83,7 +83,7 @@ class ReservationGridServiceTest {
                 slotRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
                 unavailabilityChecker, viewAccessGuard, menuRepository, menuLineRepository);
         // 既定: ブロックなし・定期ルールなし・ライン 1 本（各テストで上書き）。
-        given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, DATE))
+        given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, DATE, DATE.minusDays(1)))
                 .willReturn(List.of());
         given(recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
                 .willReturn(List.of());
@@ -191,7 +191,7 @@ class ReservationGridServiceTest {
                 slot(3L, LINE_1, STAFF_A, LocalTime.of(12, 0), LocalTime.of(13, 0), SlotStatus.CLOSED),
                 slot(4L, LINE_1, STAFF_A, LocalTime.of(13, 0), LocalTime.of(14, 0), SlotStatus.FULL));
         // 13:00-14:00 を STAFF_A に対して予約不可枠に。FULL よりも UNAVAILABLE が優先される。
-        given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, DATE))
+        given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, DATE, DATE.minusDays(1)))
                 .willReturn(List.of(block(ReservationBlockedResourceType.STAFF, STAFF_A,
                         LocalTime.of(13, 0), LocalTime.of(14, 0))));
 
@@ -216,7 +216,7 @@ class ReservationGridServiceTest {
                 slot(1L, LINE_1, STAFF_A, LocalTime.of(10, 0), LocalTime.of(11, 0)),  // ブロック該当
                 slot(2L, LINE_1, STAFF_A, LocalTime.of(11, 0), LocalTime.of(12, 0)),  // 隣接（半開）非該当
                 slot(3L, LINE_2, STAFF_B, LocalTime.of(10, 0), LocalTime.of(11, 0))); // 対象軸外
-        given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, DATE))
+        given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, DATE, DATE.minusDays(1)))
                 .willReturn(List.of(block(ReservationBlockedResourceType.STAFF, STAFF_A,
                         LocalTime.of(10, 0), LocalTime.of(11, 0))));
 
@@ -406,7 +406,7 @@ class ReservationGridServiceTest {
     @DisplayName("R-10: 単発blocked_times（常に非公開）とpublic定期ルールが同一セルに重畳→非公開優先でreason=null")
     void R10_単発と定期の重畳は非公開優先() {
         givenSlots(slot(1L, LINE_1, STAFF_A, LocalTime.of(19, 0), LocalTime.of(20, 0)));
-        given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, DATE))
+        given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, DATE, DATE.minusDays(1)))
                 .willReturn(List.of(block(ReservationBlockedResourceType.STAFF, STAFF_A,
                         LocalTime.of(19, 0), LocalTime.of(20, 0))));
         given(recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(TEAM_ID))
@@ -431,5 +431,26 @@ class ReservationGridServiceTest {
 
         assertThat(cell.state()).isEqualTo(GridCellState.UNAVAILABLE);
         assertThat(cell.unavailableReason()).isEqualTo("先発ルール");
+    }
+
+    @Test
+    @DisplayName("前日23時開始の翌日跨ぎ単発blockは当日00:30をUNAVAILABLE、01:00隣接枠をAVAILABLEにする")
+    void 前日23時開始の翌日跨ぎ単発block() {
+        ReservationSlotEntity crossing = slot(10L, LINE_1, STAFF_A,
+                LocalTime.of(0, 30), LocalTime.of(1, 0));
+        ReservationSlotEntity adjacent = slot(11L, LINE_1, STAFF_A,
+                LocalTime.of(1, 0), LocalTime.of(1, 30));
+        givenSlots(crossing, adjacent);
+        given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, DATE, DATE.minusDays(1)))
+                .willReturn(List.of(ReservationBlockedTimeEntity.builder()
+                        .teamId(TEAM_ID).blockedDate(DATE.minusDays(1))
+                        .startTime(LocalTime.of(23, 0)).endTime(LocalTime.of(1, 0))
+                        .endsNextDay(true).resourceType(ReservationBlockedResourceType.TEAM).build()));
+
+        ReservationGridServiceTest.this.givenLines(line(LINE_1, 1), line(LINE_2, 2));
+        ReservationGridResponse.GridColumnDto column = columnOf(callGrid(), LINE_1);
+
+        assertThat(column.cells()).extracting(ReservationGridResponse.GridCellDto::state)
+                .containsExactly(GridCellState.UNAVAILABLE, GridCellState.AVAILABLE);
     }
 }
