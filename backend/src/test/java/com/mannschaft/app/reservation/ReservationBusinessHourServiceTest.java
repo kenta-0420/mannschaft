@@ -681,6 +681,36 @@ class ReservationBusinessHourServiceTest {
         }
 
         @Test
+        @DisplayName("日跨ぎimpactは翌日開始予約も候補に含める")
+        void impactOvernightIncludesNextDateCandidates() {
+            LocalDate date = LocalDate.of(2026, 4, 2);
+            given(reservationRepository.findActiveReservationsOnDates(
+                    eq(TEAM_ID), eq(List.of(date.minusDays(1), date, date.plusDays(1))),
+                    eq(null), eq(ACTIVE))).willReturn(List.of());
+
+            service.getBlockedTimeImpact(TEAM_ID, date,
+                    com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null,
+                    LocalTime.of(23, 0), LocalTime.of(1, 0), true);
+
+            verify(reservationRepository).findActiveReservationsOnDates(
+                    eq(TEAM_ID), eq(List.of(date.minusDays(1), date, date.plusDays(1))),
+                    eq(null), eq(ACTIVE));
+        }
+
+        @Test
+        @DisplayName("null/nullの日跨ぎblockは全日化せず400で拒否する")
+        void nullTimesWithEndsNextDayAreRejected() {
+            BlockedTimeRequest request = new BlockedTimeRequest(
+                    LocalDate.of(2026, 4, 2), null, null, "終日", null, null, true);
+
+            assertThatThrownBy(() -> service.createBlockedTime(TEAM_ID, request, CREATED_BY))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.INVALID_TIME_RANGE);
+            verify(blockedTimeRepository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
         @DisplayName("B-9: resourceType=STAFF かつ resourceId 未指定は 400（COMMON_001）")
         void B9_STAFF未指定は400() {
             BlockedTimeRequest request = new BlockedTimeRequest(

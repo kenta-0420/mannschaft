@@ -80,6 +80,37 @@ class ReservationSlotTemplateServiceTest {
                 .isInstanceOf(BusinessException.class);
     }
 
+    @Test
+    @DisplayName("週末の日跨ぎと翌週月曜の時間帯重複を拒否する")
+    void sundayOvernightOverlapsMondayInNextWeek() {
+        stubHappyCreate();
+        ReservationSlotTemplateEntity monday = templateEntity(LINE_ID, ReservationDayOfWeek.MON,
+                LocalTime.of(0, 0), LocalTime.of(2, 0));
+        given(templateRepository.findByTeamId(TEAM_ID)).willReturn(List.of(monday));
+        CreateSlotTemplateRequest request = new CreateSlotTemplateRequest(
+                "日跨ぎ", LINE_ID, ReservationDayOfWeek.SUN, LocalTime.of(23, 0), LocalTime.of(1, 0),
+                1, null, null, null, null, true);
+
+        assertThatThrownBy(() -> service.createTemplate(TEAM_ID, request, USER_ID))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("翌週月曜の時間帯から日曜日跨ぎを拒否する")
+    void mondayOvernightOverlapsSundayInPreviousWeek() {
+        stubHappyCreate();
+        ReservationSlotTemplateEntity sunday = templateEntity(LINE_ID, ReservationDayOfWeek.SUN,
+                LocalTime.of(23, 0), LocalTime.of(1, 0));
+        sunday.changeTimeRange(sunday.getStartTime(), sunday.getEndTime(), true);
+        given(templateRepository.findByTeamId(TEAM_ID)).willReturn(List.of(sunday));
+        CreateSlotTemplateRequest request = new CreateSlotTemplateRequest(
+                "月曜", LINE_ID, ReservationDayOfWeek.MON, LocalTime.of(0, 0), LocalTime.of(2, 0),
+                1, null, null, null, null, false);
+
+        assertThatThrownBy(() -> service.createTemplate(TEAM_ID, request, USER_ID))
+                .isInstanceOf(BusinessException.class);
+    }
+
     @Mock
     private ReservationSlotTemplateRepository templateRepository;
 

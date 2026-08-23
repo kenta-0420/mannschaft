@@ -395,19 +395,33 @@ public class ReservationSlotTemplateService {
                 .filter(t -> !Objects.equals(t.getId(), excludeId))
                 .filter(t -> Objects.equals(t.getLineId(), lineId))
                 .anyMatch(t -> {
-                    java.time.LocalDate anchor = java.time.LocalDate.of(2024, 1, 1);
-                    java.time.LocalDate aDate = anchor.plusDays(dayOfWeek.ordinal());
-                    java.time.LocalDate bDate = anchor.plusDays(t.getDayOfWeek().ordinal());
-                    java.time.LocalDate bEnd = bDate.plusDays(Boolean.TRUE.equals(t.getEndsNextDay()) ? 1 : 0);
-                    return java.time.LocalDateTime.of(aDate, startTime).isBefore(java.time.LocalDateTime.of(bEnd, t.getEndTime()))
-                            && java.time.LocalDateTime.of(bDate, t.getStartTime()).isBefore(
-                            java.time.LocalDateTime.of(aDate.plusDays(endsNextDay ? 1 : 0), endTime));
+                    long candidateStart = weeklyMinute(dayOfWeek, startTime);
+                    long candidateEnd = candidateStart + durationMinutes(startTime, endTime, endsNextDay);
+                    long existingStart = weeklyMinute(t.getDayOfWeek(), t.getStartTime());
+                    long existingEnd = existingStart + durationMinutes(
+                            t.getStartTime(), t.getEndTime(), Boolean.TRUE.equals(t.getEndsNextDay()));
+                    // Compare the existing interval in adjacent weekly copies so SUN->MON
+                    // overnight ranges overlap deterministically at the week boundary.
+                    return java.util.stream.LongStream.of(-WEEK_MINUTES, 0, WEEK_MINUTES)
+                            .anyMatch(shift -> candidateStart < existingEnd + shift
+                                    && existingStart + shift < candidateEnd);
                 });
         if (overlaps) {
             throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE,
                     List.of(new ErrorResponse.FieldError(
                             "startTime", "同一ライン・同一曜日の既存テンプレートと時間帯が重複しています")));
         }
+    }
+
+    private static final long WEEK_MINUTES = 7L * 24 * 60;
+
+    private static long weeklyMinute(ReservationDayOfWeek day, LocalTime time) {
+        return day.ordinal() * 24L * 60 + time.getHour() * 60L + time.getMinute();
+    }
+
+    private static long durationMinutes(LocalTime start, LocalTime end, boolean endsNextDay) {
+        long minutes = java.time.Duration.between(start, end).toMinutes();
+        return endsNextDay ? minutes + 24L * 60 : minutes;
     }
 
     private Integer normalizeCapacity(Integer capacity) {

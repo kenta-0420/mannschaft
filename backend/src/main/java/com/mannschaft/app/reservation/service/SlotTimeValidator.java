@@ -44,6 +44,9 @@ final class SlotTimeValidator {
      */
     static void validateTimeRange(LocalTime startTime, LocalTime endTime, boolean endsNextDay) {
         if (startTime == null || endTime == null) {
+            if (endsNextDay) {
+                throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE);
+            }
             return;
         }
         boolean validOrder = endsNextDay ? endTime.isBefore(startTime) : startTime.isBefore(endTime);

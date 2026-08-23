@@ -296,13 +296,21 @@ public class ReservationBusinessHourService {
             Long teamId, LocalDate date, ReservationBlockedResourceType resourceType, Long resourceId,
             LocalTime startTime, LocalTime endTime) {
 
-        validateTimeRange(startTime, endTime);
+        return getBlockedTimeImpact(teamId, date, resourceType, resourceId, startTime, endTime,
+                endTime != null && startTime != null && endTime.isBefore(startTime));
+    }
+
+    public BlockedTimeImpactResponse getBlockedTimeImpact(
+            Long teamId, LocalDate date, ReservationBlockedResourceType resourceType, Long resourceId,
+            LocalTime startTime, LocalTime endTime, boolean endsNextDay) {
+
+        validateTimeRange(startTime, endTime, endsNextDay);
         ReservationBlockedResourceType type = resolveResourceType(resourceType);
         Long resolvedResourceId = resolveResourceId(type, resourceId);
 
         List<ReservationEntity> overlapping =
                 findActiveOverlappingReservations(teamId, date, type, resolvedResourceId, startTime, endTime,
-                        endTime != null && startTime != null && endTime.isBefore(startTime));
+                        endsNextDay);
 
         // 枠情報（担当スタッフ）を一括取得（N+1 回避）。
         Set<Long> slotIds = overlapping.stream()
@@ -371,6 +379,9 @@ public class ReservationBusinessHourService {
     }
 
     private void validateTimeRange(LocalTime startTime, LocalTime endTime, boolean endsNextDay) {
+        if (endsNextDay && startTime == null && endTime == null) {
+            throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE);
+        }
         if (endsNextDay) {
             SlotTimeValidator.validateTimeRange(startTime, endTime, true);
         } else {
@@ -437,7 +448,7 @@ public class ReservationBusinessHourService {
         }
         if (endsNextDay) {
             List<ReservationEntity> candidates = reservationRepository.findActiveReservationsOnDates(
-                    teamId, List.of(date.minusDays(1), date), queryResourceId, ACTIVE_STATUSES);
+                    teamId, List.of(date.minusDays(1), date, date.plusDays(1)), queryResourceId, ACTIVE_STATUSES);
             if (candidates == null || candidates.isEmpty()) {
                 return List.of();
             }
