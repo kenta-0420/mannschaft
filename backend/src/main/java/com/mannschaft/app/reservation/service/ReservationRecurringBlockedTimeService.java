@@ -42,6 +42,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.ZoneId;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 
 /**
  * 定期予約不可枠 CRUD サービス（F03.4.5 §4 W2-2）。
@@ -553,8 +555,9 @@ public class ReservationRecurringBlockedTimeService {
                 .findActiveReservationsInRangeForRecurringGuard(teamId, today, horizonEnd, lineId, ACTIVE_STATUSES);
         return candidates.stream()
                 .filter(row -> unavailabilityChecker.isRecurringBlocked(
-                        row.slotDate(), row.startTime(), row.endTime(), row.lineId(),
-                        true, dayOfWeek, startTime, endTime, lineId))
+                        row.slotDate(), row.endDate(), row.startTime(), row.endTime(), row.lineId(),
+                        true, dayOfWeek, startTime, endTime, lineId, true,
+                        ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)))
                 .toList();
     }
 

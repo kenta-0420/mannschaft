@@ -393,7 +393,7 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      * @return 該当レンジ内の active 予約 × 枠情報のリスト（曜日・時間帯フィルタは呼び出し側で行う）
      */
     @Query("SELECT new com.mannschaft.app.reservation.repository.ReservationRecurringOverlapRow("
-            + "r.id, r.userId, s.id, s.slotDate, s.lineId, s.staffUserId, s.startTime, s.endTime, r.status) "
+            + "r.id, r.userId, s.id, s.slotDate, s.endDate, s.lineId, s.staffUserId, s.startTime, s.endTime, r.status) "
             + "FROM ReservationEntity r, ReservationSlotEntity s "
             + "WHERE r.reservationSlotId = s.id "
             + "AND r.teamId = :teamId AND r.status IN :statuses "
