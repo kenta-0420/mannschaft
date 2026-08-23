@@ -622,7 +622,7 @@ describe('SlotMatrixPicker.vue', () => {
     mockGetMenus.mockResolvedValue({ data: [{ id: 'overnight-menu', name: 'Overnight', durationMinutes: 60, requiredSlotCount: 2, isActive: true, lineIds: [] }] })
     mockGetSlotGrid.mockResolvedValue({
       data: { days: [
-        { date: '2026-08-12', columns: [{ lineId: 1, lineName: 'Seat1', lineIds: [], cells: [{ slotId: 701, slotDate: '2026-08-12', endDate: '2026-08-12', startTime: '23:30', endTime: '00:00', state: 'AVAILABLE' }] }] },
+        { date: '2026-08-12', columns: [{ lineId: 1, lineName: 'Seat1', lineIds: [], cells: [{ slotId: 701, slotDate: '2026-08-12', endDate: '2026-08-13', startTime: '23:30', endTime: '00:00', state: 'AVAILABLE' }] }] },
         { date: '2026-08-13', columns: [{ lineId: 1, lineName: 'Seat1', lineIds: [], cells: [{ slotId: 702, slotDate: '2026-08-13', endDate: '2026-08-13', startTime: '00:00', endTime: '00:30', state: 'AVAILABLE' }] }] },
       ] },
     })

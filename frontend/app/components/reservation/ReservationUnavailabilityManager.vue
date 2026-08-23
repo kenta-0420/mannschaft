@@ -58,8 +58,13 @@ const businessHours = ref<BusinessHourResponse[]>([])
 // フォーム
 const scope = ref<BlockedResourceType>('TEAM')
 const selectedLineId = ref<number | null>(null)
-const todayInTeamTimezone = () => dayjs().tz(teamTimezone.value).startOf('day').toDate()
-const blockedDate = ref<Date | null>(todayInTeamTimezone())
+const teamTodayCalendar = () => dayjs().tz(teamTimezone.value).format('YYYY-MM-DD')
+/** DatePickerにはteam midnightのInstantではなく、ブラウザ内の正午でcalendar dateを渡す。 */
+const calendarDateForPicker = (date: string) => {
+  const [year, month, day] = date.split('-').map(Number)
+  return new Date(year, month - 1, day, 12, 0, 0, 0)
+}
+const blockedDate = ref<Date | null>(calendarDateForPicker(teamTodayCalendar()))
 const template = ref<TemplateKey>('FULL_DAY')
 const startTime = ref<string | null>(null)
 const endTime = ref<string | null>(null)
@@ -130,13 +135,13 @@ function toHm(value?: string | null): string {
 }
 
 function formatDate(date: Date): string {
-  return dayjs(date).tz(teamTimezone.value).format('YYYY-MM-DD')
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 /** 選択日の曜日に対応する営業時間（is_open のみ） */
 function businessHoursForSelectedDate(): { open: string; close: string } | null {
   if (!blockedDate.value) return null
-  const dow = WEEKDAY[dayjs(blockedDate.value).tz(teamTimezone.value).day()]
+  const dow = WEEKDAY[dayjs.tz(formatDate(blockedDate.value), teamTimezone.value).day()]
   const bh = businessHours.value.find(b => b.businessStatus?.dayOfWeek === dow)
   if (!bh?.businessStatus?.isOpen || !bh.businessStatus.openTime || !bh.businessStatus.closeTime) {
     return null
@@ -154,6 +159,7 @@ function applyTemplate(key: TemplateKey) {
   if (key === 'FULL_DAY') {
     startTime.value = null
     endTime.value = null
+    endsNextDay.value = false
     return
   }
   if (key === 'MIDDAY') {
@@ -418,7 +424,7 @@ onMounted(async () => {
         <DatePicker
           v-model="blockedDate"
           date-format="yy/mm/dd"
-          :min-date="new Date()"
+          :min-date="calendarDateForPicker(teamTodayCalendar())"
           class="w-full sm:w-56"
           :disabled="disabled || submitting"
         />
