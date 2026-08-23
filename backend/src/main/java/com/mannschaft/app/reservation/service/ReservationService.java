@@ -5,6 +5,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.RecurringWeekSkipReason;
@@ -91,6 +92,10 @@ public class ReservationService {
     /** F03.4.5 §6.4: 予約作成のレートリミット（グループ作成と同一バケットを共有・§6.4）。 */
     private final ReservationCreateRateLimiter createRateLimiter;
     private final Clock clock;
+
+    /** 予約の壁時計をチーム業務TZで Instant 化する。非Springの既存テストではAsia/Tokyoへフォールバックする。 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /**
      * チームの予約一覧をページング取得する。
@@ -431,9 +436,11 @@ public class ReservationService {
         // Issue #2526: deadline は slot_date/start_time（業務ローカル時刻）由来のため、
         // Clock（UTC固定）の瞬間を JVM 既定ゾーンで解釈し直してから比較する
         // （ReservationPendingExpireService#findExpirableUnits と同型）。
-        Instant nowInstant = clock.instant();
-        // TeamTimezoneResolver defines the team-local wall-clock to Instant boundary.
-        return LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE).isAfter(deadline);
+        Instant deadlineInstant = teamTimezoneResolver == null
+                ? deadline.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                : teamTimezoneResolver.toInstant(teamId, slot.getSlotDate(), slot.getStartTime())
+                        .minusSeconds(deadlineHours * 3600L);
+        return clock.instant().isAfter(deadlineInstant);
     }
 
     /** 会員キャンセルの通知イベントを発行する（管理者キャンセルは従来どおりイベントなし）。 */

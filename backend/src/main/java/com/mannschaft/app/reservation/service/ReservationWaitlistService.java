@@ -5,6 +5,7 @@ import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -75,6 +76,9 @@ public class ReservationWaitlistService {
     private final MessageSource messageSource;
     private final Clock clock;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TeamTimezoneResolver teamTimezoneResolver;
+
     // ────────────────────────────────────────────────────────────
     // 登録（会員/公開・view ゲート）
     // ────────────────────────────────────────────────────────────
@@ -111,11 +115,11 @@ public class ReservationWaitlistService {
         // そのまま LocalDateTime.now(clock) で使うと JVM 既定ゾーンとの差分だけ判定がずれる。
         // ReservationPendingExpireService#findExpirableUnits と同型に、Clock の瞬間を
         // JVM 既定ゾーンで解釈し直してから比較する。
-        LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
-        Instant nowInstant = clock.instant();
-        LocalDateTime now = LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE);
-        // TeamTimezoneResolver is used when a team-local slot wall clock is converted to this comparison instant.
-        if (slotStart.isBefore(now)) {
+        Instant slotStartInstant = teamTimezoneResolver == null
+                ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime())
+                        .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                : teamTimezoneResolver.toInstant(teamId, slot.getSlotDate(), slot.getStartTime());
+        if (slotStartInstant.isBefore(clock.instant())) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
         // CLOSED は受付終了（既存 005 を再利用）。
