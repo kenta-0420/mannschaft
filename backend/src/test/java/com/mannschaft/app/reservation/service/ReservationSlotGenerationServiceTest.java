@@ -1,6 +1,8 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
+import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import com.mannschaft.app.reservation.dto.GenerateSlotsResponse;
 import com.mannschaft.app.reservation.entity.ReservationBusinessHourEntity;
@@ -28,6 +30,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.DateTimeException;
 import java.util.List;
 import java.util.UUID;
 
@@ -104,6 +107,16 @@ class ReservationSlotGenerationServiceTest {
         given(slotRepository.findGeneratedCellKeysByTeamIdAndSlotDateBetween(eq(TEAM_ID), any(), any()))
                 .willReturn(List.of());
         stubInsertReturning(1);
+    }
+
+    @Test
+    void newYorkDstGapIsRejectedAndOverlapUsesDeterministicEarlierOffset() {
+        TeamTimezoneResolver resolver = new TeamTimezoneResolver(org.mockito.Mockito.mock(TeamRepository.class));
+        assertThatThrownBy(() -> resolver.toInstant(LocalDate.of(2026, 3, 8), LocalTime.of(2, 30),
+                ZoneId.of("America/New_York"))).isInstanceOf(DateTimeException.class);
+        assertThat(resolver.toInstant(LocalDate.of(2026, 11, 1), LocalTime.of(1, 30),
+                ZoneId.of("America/New_York")))
+                .isEqualTo(java.time.Instant.parse("2026-11-01T05:30:00Z"));
     }
 
     private void stubInsertReturning(int affectedRows) {
