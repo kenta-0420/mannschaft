@@ -222,7 +222,7 @@ public class ReservationService {
         // 予約作成を拒否（RESERVATION_009・400）。判定は空き枠除外・グリッドと共有の
         // 単一 overlap ユーティリティを用いる（別実装厳禁）。
         List<ReservationBlockedTimeEntity> blocks =
-                blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, slot.getSlotDate());
+                blockedTimeRepository.findEffectiveOnDate(teamId, slot.getSlotDate(), slot.getSlotDate().minusDays(1));
         List<ReservationRecurringBlockedTimeEntity> recurringRules =
                 recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
         if (unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules)) {
@@ -815,8 +815,24 @@ public class ReservationService {
         // Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する（cancel_deadline 等と同様）。
         Instant nowInstant = clock.instant();
         LocalDateTime now = LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE);
-        List<ReservationEntity> reservations =
-                reservationRepository.findUpcomingByUserId(userId, now.toLocalDate(), now.toLocalTime());
+        // JST 境界だけで切ると、チームTZが日付境界を跨ぐ予約を落とすため、前日0時から候補を取得し
+        // チームTZでInstant比較する。候補は無制限ではなくDB側で現在日前日以降に絞る。
+        LocalDate candidateFrom = now.toLocalDate().minusDays(1);
+        List<ReservationEntity> candidates = reservationRepository.findUpcomingByUserId(
+                userId, candidateFrom, java.time.LocalTime.MIDNIGHT);
+        Map<Long, ReservationSlotEntity> slotMap = slotRepository.findAllById(candidates.stream()
+                        .map(ReservationEntity::getReservationSlotId).collect(Collectors.toSet()))
+                .stream().collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+        List<ReservationEntity> reservations = candidates.stream()
+                .filter(r -> {
+                    ReservationSlotEntity slot = slotMap.get(r.getReservationSlotId());
+                    if (slot == null) return false;
+                    Instant start = teamTimezoneResolver == null
+                            ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime())
+                                .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                            : teamTimezoneResolver.toInstant(r.getTeamId(), slot.getSlotDate(), slot.getStartTime());
+                    return !start.isBefore(nowInstant);
+                }).toList();
         return enrichList(reservations);
     }
 

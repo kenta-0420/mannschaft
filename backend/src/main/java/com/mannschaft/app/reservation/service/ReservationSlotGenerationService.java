@@ -21,6 +21,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.nio.ByteBuffer;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.DateTimeException;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -439,6 +440,16 @@ public class ReservationSlotGenerationService {
                 if (existingCells.contains(cellKey(template.getId(), cellStartDate, cellStart))) {
                     counts.skippedExisting++;
                     continue;
+                }
+                // DST gap の存在しない壁時計セルは保存しない。overlap は resolver の earlier offset 方針に従う。
+                if (teamTimezoneResolver != null) {
+                    try {
+                        teamTimezoneResolver.toInstant(teamId, cellStartDate, cellStart);
+                        teamTimezoneResolver.toInstant(teamId, cellEndDate, cellEnd);
+                    } catch (DateTimeException ex) {
+                        counts.skippedOutsideHours++;
+                        continue;
+                    }
                 }
                 int inserted = insertCell(
                         teamId, template, cellStartDate, cellEndDate, cellStart, cellEnd, createdBy);
