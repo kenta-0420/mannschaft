@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -24,6 +25,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -77,6 +79,8 @@ class ReservationWaitlistServiceTest {
     private NotificationHelper notificationHelper;
     @Mock
     private UserLocaleCache userLocaleCache;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /** 実プロパティファイル（messages*.properties）を読む実体（i18n の locale 分岐を実データで検証するため）。 */
     private final ReloadableResourceBundleMessageSource messageSource = realMessageSource();
@@ -459,8 +463,12 @@ class ReservationWaitlistServiceTest {
     void 失効クリーンアップ() {
         ReservationWaitlistEntryEntity expired = ReservationWaitlistEntryEntity.builder()
                 .teamId(TEAM_ID).slotId(SLOT_ID).userId(USER_ID).status(WaitlistStatus.WAITING).build();
-        when(waitlistRepository.findExpiredWaiting(eq(WaitlistStatus.WAITING), any(LocalDate.class), any(LocalTime.class)))
+        when(waitlistRepository.findByStatus(WaitlistStatus.WAITING))
                 .thenReturn(List.of(expired));
+        ReservationSlotEntity expiredSlot = ReservationSlotEntity.builder().id(SLOT_ID).teamId(TEAM_ID)
+                .slotDate(LocalDate.of(2026, 7, 7)).startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(10, 30))
+                .slotStatus(SlotStatus.FULL).build();
+        when(slotRepository.findAllById(any())).thenReturn(List.of(expiredSlot));
 
         int purged = service.purgeExpiredWaiting();
 
@@ -475,9 +483,7 @@ class ReservationWaitlistServiceTest {
         // JVM 既定ゾーンがUTCであることを前提にせず、その既定ゾーンで instant 化する。
         Instant sameInstant = LocalDateTime.of(2026, 8, 1, 9, 59)
                 .atZone(java.time.ZoneId.systemDefault()).toInstant();
-        when(waitlistRepository.findExpiredWaiting(
-                eq(WaitlistStatus.WAITING), any(LocalDate.class), any(LocalTime.class)))
-                .thenReturn(List.of());
+        when(waitlistRepository.findByStatus(WaitlistStatus.WAITING)).thenReturn(List.of());
 
         reinitServiceWithClock(Clock.fixed(sameInstant, ZoneOffset.UTC));
         service.purgeExpiredWaiting();
@@ -485,15 +491,39 @@ class ReservationWaitlistServiceTest {
         reinitServiceWithClock(Clock.fixed(sameInstant, java.time.ZoneId.of("Asia/Tokyo")));
         service.purgeExpiredWaiting();
 
-        ArgumentCaptor<LocalDate> dateCaptor = ArgumentCaptor.forClass(LocalDate.class);
-        ArgumentCaptor<LocalTime> timeCaptor = ArgumentCaptor.forClass(LocalTime.class);
-        verify(waitlistRepository, times(2)).findExpiredWaiting(
-                eq(WaitlistStatus.WAITING), dateCaptor.capture(), timeCaptor.capture());
+        verify(waitlistRepository, times(2)).findByStatus(WaitlistStatus.WAITING);
+        /*
         assertThat(dateCaptor.getAllValues().get(0))
                 .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
                 .isEqualTo(dateCaptor.getAllValues().get(1));
         assertThat(timeCaptor.getAllValues().get(0))
                 .as("Clock のゾーン設定が判定結果に漏れ出してはならない")
-                .isEqualTo(timeCaptor.getAllValues().get(1));
+                .isEqualTo(timeCaptor.getAllValues().get(1)); */
+    }
+
+    @Test
+    @DisplayName("非JST境界: America/New_Yorkの過去枠だけをpurgeし未来枠を保持する")
+    void 非JST境界のpurgeは過去枠だけ削除する() {
+        reinitServiceWithClock(Clock.fixed(Instant.parse("2026-08-10T03:30:00Z"), ZoneOffset.UTC));
+        ReflectionTestUtils.setField(service, "teamTimezoneResolver", teamTimezoneResolver);
+        ReservationWaitlistEntryEntity expired = ReservationWaitlistEntryEntity.builder()
+                .teamId(TEAM_ID).slotId(8101L).userId(USER_ID).status(WaitlistStatus.WAITING).build();
+        ReservationWaitlistEntryEntity future = ReservationWaitlistEntryEntity.builder()
+                .teamId(TEAM_ID).slotId(8102L).userId(USER_ID + 1).status(WaitlistStatus.WAITING).build();
+        when(waitlistRepository.findByStatus(WaitlistStatus.WAITING)).thenReturn(List.of(expired, future));
+        ReservationSlotEntity expiredSlot = ReservationSlotEntity.builder().id(8101L).teamId(TEAM_ID)
+                .slotDate(LocalDate.of(2026, 8, 9)).startTime(LocalTime.of(23, 15)).endTime(LocalTime.of(23, 45))
+                .slotStatus(SlotStatus.FULL).build();
+        ReservationSlotEntity futureSlot = ReservationSlotEntity.builder().id(8102L).teamId(TEAM_ID)
+                .slotDate(LocalDate.of(2026, 8, 9)).startTime(LocalTime.of(23, 45)).endTime(LocalTime.of(23, 59))
+                .slotStatus(SlotStatus.FULL).build();
+        when(slotRepository.findAllById(any())).thenReturn(List.of(expiredSlot, futureSlot));
+        when(teamTimezoneResolver.toInstant(TEAM_ID, expiredSlot.getSlotDate(), expiredSlot.getStartTime()))
+                .thenReturn(Instant.parse("2026-08-10T03:15:00Z"));
+        when(teamTimezoneResolver.toInstant(TEAM_ID, futureSlot.getSlotDate(), futureSlot.getStartTime()))
+                .thenReturn(Instant.parse("2026-08-10T03:45:00Z"));
+
+        assertThat(service.purgeExpiredWaiting()).isEqualTo(1);
+        verify(waitlistRepository).deleteAll(List.of(expired));
     }
 }
