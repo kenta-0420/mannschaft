@@ -432,4 +432,22 @@ class ReservationRecurringBlockedTimeServiceTest {
         assertThat(list).extracting(RecurringBlockedTimeResponse::getReason)
                 .containsExactly("研修A", "研修B", "スクール");
     }
+    @Test
+    @DisplayName("endsNextDay ruleは翌日00時台をimpactへ含める")
+    void impactEndsNextDayIncludesNextDayCell() {
+        LocalDate monday = TODAY.plusDays(10);
+        LocalDate tuesday = monday.plusDays(1);
+        ReservationRecurringOverlapRow row = new ReservationRecurringOverlapRow(
+                1L, 500L, 2000L, tuesday, tuesday, null, null,
+                LocalTime.of(0, 0), LocalTime.of(1, 0), ReservationStatus.CONFIRMED);
+        given(reservationRepository.findActiveReservationsInRangeForRecurringGuard(
+                eq(TEAM_ID), any(), any(), any(), any())).willReturn(List.of(row));
+        givenOverlapEntities(tuesday, LocalTime.of(0, 0), LocalTime.of(1, 0));
+        given(nameResolverService.resolveUserFullNames(any())).willReturn(java.util.Map.of(500L, "user"));
+
+        RecurringBlockedTimeImpactResponse response = service.getImpact(
+                TEAM_ID, ReservationDayOfWeek.from(monday), LocalTime.of(23, 0), LocalTime.of(1, 0), null);
+
+        assertThat(response.getAffectedCount()).isEqualTo(1);
+    }
 }

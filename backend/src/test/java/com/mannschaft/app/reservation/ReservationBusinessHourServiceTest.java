@@ -311,7 +311,7 @@ class ReservationBusinessHourServiceTest {
             LocalDate date = LocalDate.of(2026, 4, 1);
             List<ReservationBlockedTimeEntity> entities = List.of(createBlockedTimeEntity());
             List<BlockedTimeResponse> responses = List.of(createBlockedTimeResponse());
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, date))
+            given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, date, date.minusDays(1)))
                     .willReturn(entities);
             // 機能B: 一覧は resourceName 一括解決のため singular mapper を entity ごとに呼ぶ。
             given(reservationMapper.toBlockedTimeResponse(any(ReservationBlockedTimeEntity.class)))
@@ -417,6 +417,23 @@ class ReservationBusinessHourServiceTest {
             // Then
             assertThat(result).isNotNull();
         }
+
+        @Test
+        @DisplayName("日跨ぎblockは23:00→01:00を保存しresponseにも返す")
+        void overnightBlockedTimeCreate() {
+            BlockedTimeRequest request = new BlockedTimeRequest(
+                    LocalDate.of(2026, 4, 2), LocalTime.of(23, 0), LocalTime.of(1, 0),
+                    "overnight", null, null, true);
+            ReservationBlockedTimeEntity saved = ReservationBlockedTimeEntity.builder()
+                    .teamId(TEAM_ID).blockedDate(request.getBlockedDate()).startTime(request.getStartTime())
+                    .endTime(request.getEndTime()).endsNextDay(true).build();
+            BlockedTimeResponse response = BlockedTimeResponse.builder().endsNextDay(true).build();
+            given(blockedTimeRepository.save(any())).willReturn(saved);
+            given(reservationMapper.toBlockedTimeResponse(saved)).willReturn(response);
+
+            assertThat(service.createBlockedTime(TEAM_ID, request, CREATED_BY).getEndsNextDay()).isTrue();
+            assertThat(saved.getEndsNextDay()).isTrue();
+        }
     }
 
     // ========================================
@@ -481,9 +498,24 @@ class ReservationBusinessHourServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.INVALID_TIME_RANGE);
         }
+
+        @Test
+        @DisplayName("PATCH日跨ぎblockはendsNextDayを更新して返す")
+        void overnightBlockedTimeUpdate() {
+            ReservationBlockedTimeEntity entity = createBlockedTimeEntity();
+            BlockedTimeRequest request = new BlockedTimeRequest(
+                    LocalDate.of(2026, 4, 2), LocalTime.of(23, 0), LocalTime.of(1, 0),
+                    "overnight", null, null, true);
+            given(blockedTimeRepository.findByIdAndTeamId(BLOCKED_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(blockedTimeRepository.save(entity)).willReturn(entity);
+            given(reservationMapper.toBlockedTimeResponse(entity))
+                    .willReturn(BlockedTimeResponse.builder().endsNextDay(true).build());
+
+            assertThat(service.updateBlockedTime(TEAM_ID, BLOCKED_ID, request).getEndsNextDay()).isTrue();
+            assertThat(entity.getEndsNextDay()).isTrue();
+        }
     }
 
-    // ========================================
     // deleteBlockedTime
     // ========================================
 
