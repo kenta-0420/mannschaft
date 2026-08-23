@@ -5,7 +5,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.AllArgsConstructor;
 
 import java.time.LocalTime;
 
@@ -13,11 +12,20 @@ import java.time.LocalTime;
  * 営業時間エントリDTO。1曜日分の営業時間設定。
  */
 @Getter
-@AllArgsConstructor(onConstructor_ = @JsonCreator)
 public class BusinessHourEntry {
 
     public BusinessHourEntry(String dayOfWeek, Boolean isOpen, LocalTime openTime, LocalTime closeTime) {
         this(dayOfWeek, isOpen, openTime, closeTime, false);
+    }
+
+    @JsonCreator
+    public BusinessHourEntry(String dayOfWeek, Boolean isOpen, LocalTime openTime, LocalTime closeTime,
+                             Boolean endsNextDay) {
+        this.dayOfWeek = dayOfWeek;
+        this.isOpen = isOpen;
+        this.openTime = openTime;
+        this.closeTime = closeTime;
+        this.endsNextDay = endsNextDay;
     }
 
     @NotBlank
@@ -32,5 +40,5 @@ public class BusinessHourEntry {
     private final LocalTime closeTime;
 
     /** closeTime が翌日になる業務時間か。省略時は従来互換の false。 */
-    private final Boolean endsNextDay = false;
+    private final Boolean endsNextDay;
 }
