@@ -337,8 +337,9 @@ public class ReservationSlotGenerationService {
 
         // 冪等の一括先読み（§5.3・N+1 回避）: チーム単位で horizon 全域を 1 クエリ → Set 化してメモリ突合
         Set<String> existingCells = new HashSet<>();
+        // horizon 末日の夜間テンプレートは翌日側にもセルを持つため、先読みも翌日まで含める。
         for (Object[] key : slotRepository.findGeneratedCellKeysByTeamIdAndSlotDateBetween(
-                teamId, horizonFrom, horizonTo)) {
+                teamId, horizonFrom, horizonTo.plusDays(1))) {
             existingCells.add(cellKey((UUID) key[0], (LocalDate) key[1], (LocalTime) key[2]));
         }
 
@@ -420,22 +421,27 @@ public class ReservationSlotGenerationService {
             long cellCount = SlotTimeValidator.durationMinutes(
                     template.getStartTime(), template.getEndTime(), overnight) / CELL_MINUTES;
             for (long cellIndex = 0; cellIndex < cellCount; cellIndex++) {
-                LocalTime cellStart = template.getStartTime().plusMinutes(cellIndex * CELL_MINUTES);
+                long cellStartOffsetMinutes = cellIndex * CELL_MINUTES;
+                long templateStartMinutes = template.getStartTime().toSecondOfDay() / 60L;
+                long cellStartTotalMinutes = templateStartMinutes + cellStartOffsetMinutes;
+                long cellEndTotalMinutes = cellStartTotalMinutes + CELL_MINUTES;
+                long minutesPerDay = Duration.ofDays(1).toMinutes();
+                LocalDate cellStartDate = date.plusDays(cellStartTotalMinutes / minutesPerDay);
+                LocalDate cellEndDate = date.plusDays(cellEndTotalMinutes / minutesPerDay);
+                LocalTime cellStart = template.getStartTime().plusMinutes(cellStartOffsetMinutes);
                 LocalTime cellEnd = cellStart.plusMinutes(CELL_MINUTES);
-                if (!cellEnd.isAfter(cellStart)) {
-                    cellEnd = LocalTime.MIDNIGHT;
-                }
                 // 境界: close_time ちょうどで終わるセルは生成される（セル全体が営業時間内 — F-7）
                 if (!skipBusinessHours
-                        && !isWithinBusinessHours(cellIndex * CELL_MINUTES, businessHour, cellStart, cellEnd)) {
+                        && !isWithinBusinessHours(cellStartOffsetMinutes, businessHour, cellStart, cellEnd)) {
                     counts.skippedOutsideHours++;
                     continue;
                 }
-                if (existingCells.contains(cellKey(template.getId(), date, cellStart))) {
+                if (existingCells.contains(cellKey(template.getId(), cellStartDate, cellStart))) {
                     counts.skippedExisting++;
                     continue;
                 }
-                int inserted = insertCell(teamId, template, date, cellStart, cellEnd, createdBy);
+                int inserted = insertCell(
+                        teamId, template, cellStartDate, cellEndDate, cellStart, cellEnd, createdBy);
                 if (inserted == 1) {
                     counts.generated++;
                 } else {
@@ -454,20 +460,15 @@ public class ReservationSlotGenerationService {
      * （素の JDBC 直挿入は JVM≠DB タイムゾーン環境で時刻が非対称にずれる実測バグがあった）。</p>
      */
     private int insertCell(Long teamId, ReservationSlotTemplateEntity template,
-                           LocalDate date, LocalTime cellStart, LocalTime cellEnd, Long createdBy) {
-        if (Boolean.TRUE.equals(template.getEndsNextDay())) {
-            return slotRepository.insertGeneratedOvernightCellIgnoreDuplicate(
-                    teamId, template.getLineId(), template.getStaffUserId(), uuidToBytes(template.getId()),
-                    date, cellStart, cellEnd, template.getCapacity() != null ? template.getCapacity() : 1,
-                    template.getTitle(), template.getPrice(),
-                    template.getApprovalMode() != null ? template.getApprovalMode().name() : null, createdBy);
-        }
+                           LocalDate slotDate, LocalDate endDate, LocalTime cellStart,
+                           LocalTime cellEnd, Long createdBy) {
         return slotRepository.insertGeneratedCellIgnoreDuplicate(
                 teamId,
                 template.getLineId(),
                 template.getStaffUserId(),
                 uuidToBytes(template.getId()),
-                date,
+                slotDate,
+                endDate,
                 cellStart,
                 cellEnd,
                 template.getCapacity() != null ? template.getCapacity() : 1,

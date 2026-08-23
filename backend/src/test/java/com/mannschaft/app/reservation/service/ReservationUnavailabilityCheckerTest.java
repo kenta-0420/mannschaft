@@ -105,7 +105,7 @@ class ReservationUnavailabilityCheckerTest {
         @DisplayName("日跨ぎ単発 blocked は翌日セルへ反映し、半開区間の隣接は重複しない")
         void overnightBlockedUsesNextDayHalfOpenInterval() {
             assertThat(checker.overlaps(
-                    DATE.plusDays(1), DATE.plusDays(1), LocalTime.of(1, 0), LocalTime.of(2, 0),
+                    DATE.plusDays(1), DATE.plusDays(1), LocalTime.of(0, 30), LocalTime.of(1, 30),
                     DATE, DATE.plusDays(1), LocalTime.of(23, 0), LocalTime.of(1, 0),
                     ZoneId.of("Asia/Tokyo"))).isTrue();
             assertThat(checker.overlaps(

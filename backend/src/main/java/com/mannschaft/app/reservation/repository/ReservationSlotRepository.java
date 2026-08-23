@@ -119,7 +119,7 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
     @Query(value = "INSERT IGNORE INTO reservation_slots "
             + "(team_id, line_id, staff_user_id, template_id, slot_date, end_date, start_time, end_time, "
             + " capacity, title, price, approval_mode, created_by, created_at, updated_at) "
-            + "VALUES (:teamId, :lineId, :staffUserId, :templateId, :slotDate, :slotDate, :startTime, :endTime, "
+            + "VALUES (:teamId, :lineId, :staffUserId, :templateId, :slotDate, :endDate, :startTime, :endTime, "
             + " :capacity, :title, :price, :approvalMode, :createdBy, NOW(6), NOW(6))",
             nativeQuery = true)
     int insertGeneratedCellIgnoreDuplicate(
@@ -128,28 +128,7 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
             @Param("staffUserId") Long staffUserId,
             @Param("templateId") byte[] templateId,
             @Param("slotDate") LocalDate slotDate,
-            @Param("startTime") java.time.LocalTime startTime,
-            @Param("endTime") java.time.LocalTime endTime,
-            @Param("capacity") Integer capacity,
-            @Param("title") String title,
-            @Param("price") java.math.BigDecimal price,
-            @Param("approvalMode") String approvalMode,
-            @Param("createdBy") Long createdBy);
-
-    /** 日跨ぎテンプレート用。end_date を slot_date の翌日へ設定する。 */
-    @Modifying
-    @Query(value = "INSERT IGNORE INTO reservation_slots "
-            + "(team_id, line_id, staff_user_id, template_id, slot_date, end_date, start_time, end_time, "
-            + " capacity, title, price, approval_mode, created_by, created_at, updated_at) "
-            + "VALUES (:teamId, :lineId, :staffUserId, :templateId, :slotDate, DATE_ADD(:slotDate, INTERVAL 1 DAY), "
-            + " :startTime, :endTime, :capacity, :title, :price, :approvalMode, :createdBy, NOW(6), NOW(6))",
-            nativeQuery = true)
-    int insertGeneratedOvernightCellIgnoreDuplicate(
-            @Param("teamId") Long teamId,
-            @Param("lineId") Long lineId,
-            @Param("staffUserId") Long staffUserId,
-            @Param("templateId") byte[] templateId,
-            @Param("slotDate") LocalDate slotDate,
+            @Param("endDate") LocalDate endDate,
             @Param("startTime") java.time.LocalTime startTime,
             @Param("endTime") java.time.LocalTime endTime,
             @Param("capacity") Integer capacity,

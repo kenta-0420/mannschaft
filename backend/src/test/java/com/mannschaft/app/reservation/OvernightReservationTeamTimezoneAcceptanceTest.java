@@ -186,9 +186,9 @@ class OvernightReservationTeamTimezoneAcceptanceTest {
     @DisplayName("AC-14: 枠生成の途中失敗は原子性を守り、再実行で自己修復する")
     void ac14_generationIsRetryableAndSelfHealing() {
         String generation = source("src/main/java/com/mannschaft/app/reservation/service/ReservationSlotGenerationService.java");
-        assertThat(generation).contains("delete");
         assertThat(generation).contains("REQUIRES_NEW");
-        assertThat(generation).contains("endDate");
+        assertThat(generation).contains("SlotGenerationPartialException");
+        assertThat(generation).contains("existingCells");
     }
 
     @Test

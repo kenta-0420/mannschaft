@@ -36,6 +36,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -107,7 +108,7 @@ class ReservationSlotGenerationServiceTest {
 
     private void stubInsertReturning(int affectedRows) {
         given(slotRepository.insertGeneratedCellIgnoreDuplicate(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(affectedRows);
     }
 
@@ -139,19 +140,22 @@ class ReservationSlotGenerationServiceTest {
     }
 
     /** 挿入呼び出しの (slotDate, startTime, endTime) を呼び出し順に検証するヘルパー。 */
-    private record InsertedCell(LocalDate slotDate, LocalTime startTime, LocalTime endTime) {}
+    private record InsertedCell(LocalDate slotDate, LocalDate endDate,
+                                LocalTime startTime, LocalTime endTime) {}
 
     private List<InsertedCell> captureInsertedCells(int expectedCount) {
         ArgumentCaptor<LocalDate> dateCaptor = ArgumentCaptor.forClass(LocalDate.class);
+        ArgumentCaptor<LocalDate> endDateCaptor = ArgumentCaptor.forClass(LocalDate.class);
         ArgumentCaptor<LocalTime> startCaptor = ArgumentCaptor.forClass(LocalTime.class);
         ArgumentCaptor<LocalTime> endCaptor = ArgumentCaptor.forClass(LocalTime.class);
         verify(slotRepository, times(expectedCount)).insertGeneratedCellIgnoreDuplicate(
                 any(), any(), any(), any(),
-                dateCaptor.capture(), startCaptor.capture(), endCaptor.capture(),
+                dateCaptor.capture(), endDateCaptor.capture(), startCaptor.capture(), endCaptor.capture(),
                 any(), any(), any(), any(), any());
         return java.util.stream.IntStream.range(0, expectedCount)
                 .mapToObj(i -> new InsertedCell(
                         dateCaptor.getAllValues().get(i),
+                        endDateCaptor.getAllValues().get(i),
                         startCaptor.getAllValues().get(i),
                         endCaptor.getAllValues().get(i)))
                 .toList();
@@ -186,13 +190,42 @@ class ReservationSlotGenerationServiceTest {
             List<InsertedCell> cells = captureInsertedCells(6);
             // 先頭セル: 2026-07-06 10:00-10:30 / 末尾セル: 12:30-13:00
             assertThat(cells.get(0)).isEqualTo(
-                    new InsertedCell(LocalDate.of(2026, 7, 6), LocalTime.of(10, 0), LocalTime.of(10, 30)));
+                    new InsertedCell(LocalDate.of(2026, 7, 6), LocalDate.of(2026, 7, 6),
+                            LocalTime.of(10, 0), LocalTime.of(10, 30)));
             assertThat(cells.get(5)).isEqualTo(
-                    new InsertedCell(LocalDate.of(2026, 7, 6), LocalTime.of(12, 30), LocalTime.of(13, 0)));
+                    new InsertedCell(LocalDate.of(2026, 7, 6), LocalDate.of(2026, 7, 6),
+                            LocalTime.of(12, 30), LocalTime.of(13, 0)));
             // ライン・チーム・capacity=1・実行者が引き継がれる
             verify(slotRepository, times(6)).insertGeneratedCellIgnoreDuplicate(
                     eq(TEAM_ID), eq(LINE_ID), any(), any(byte[].class),
-                    any(), any(), any(), eq(1), any(), any(), any(), eq(USER_ID));
+                    any(), any(), any(), any(), eq(1), any(), any(), any(), eq(USER_ID));
+        }
+
+        @Test
+        @DisplayName("AC-7: 月曜23:30→翌01:00はセルごとの実開始日・終了日で3枠を生成する")
+        void 日跨ぎ生成_セルごとに開始日と終了日を保持する() {
+            ReservationSlotTemplateEntity template = ReservationSlotTemplateEntity.builder()
+                    .teamId(TEAM_ID).lineId(LINE_ID).dayOfWeek(ReservationDayOfWeek.MON)
+                    .startTime(LocalTime.of(23, 30)).endTime(LocalTime.of(1, 0))
+                    .endsNextDay(true).capacity(1).build();
+            template.setId(TEMPLATE_ID);
+            ReservationBusinessHourEntity businessHour = ReservationBusinessHourEntity.builder()
+                    .teamId(TEAM_ID).dayOfWeek("MON").isOpen(true)
+                    .openTime(LocalTime.of(18, 0)).closeTime(LocalTime.of(4, 0))
+                    .endsNextDay(true).build();
+            given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of(template));
+            given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID)).willReturn(List.of(businessHour));
+
+            GenerateSlotsResponse result = service.generateForTeam(TEAM_ID, 1, USER_ID);
+
+            assertThat(result.getGeneratedCount()).isEqualTo(3);
+            assertThat(captureInsertedCells(3)).containsExactly(
+                    new InsertedCell(TOMORROW, TOMORROW.plusDays(1),
+                            LocalTime.of(23, 30), LocalTime.MIDNIGHT),
+                    new InsertedCell(TOMORROW.plusDays(1), TOMORROW.plusDays(1),
+                            LocalTime.MIDNIGHT, LocalTime.of(0, 30)),
+                    new InsertedCell(TOMORROW.plusDays(1), TOMORROW.plusDays(1),
+                            LocalTime.of(0, 30), LocalTime.of(1, 0)));
         }
 
         @Test
@@ -236,7 +269,7 @@ class ReservationSlotGenerationServiceTest {
             assertThat(result.getGeneratedCount()).isZero();
             assertThat(result.getSkippedExistingCount()).isEqualTo(6);
             verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         private Object[] key(LocalTime startTime) {
@@ -278,7 +311,7 @@ class ReservationSlotGenerationServiceTest {
             assertThat(result.getGeneratedCount()).isZero();
             assertThat(result.getSkippedClosedDayCount()).isEqualTo(6);
             verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -315,7 +348,7 @@ class ReservationSlotGenerationServiceTest {
             assertThat(result.getGeneratedCount()).isZero();
             assertThat(result.getSkippedClosedDayCount()).isEqualTo(6);
             verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -352,7 +385,7 @@ class ReservationSlotGenerationServiceTest {
                                         .contains("有効なテンプレートがありません"));
                     });
             verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -460,7 +493,7 @@ class ReservationSlotGenerationServiceTest {
             // Then
             assertThat(result.getGeneratedCount()).isZero();
             verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -559,14 +592,14 @@ class ReservationSlotGenerationServiceTest {
         }
 
         @Test
-        @DisplayName("S-3/S-6③: 先行チャンクをコミット後に失敗すると SlotGenerationPartialException にコミット済み件数が保持される（0で握り潰さない）")
+        @DisplayName("AC-14: 途中失敗後の再実行で欠損チャンクだけを自己修復する")
         void 生成_部分失敗はコミット済み件数を例外に保持する() {
             // Given: MON テンプレ 10:00-10:30（1セル/日）。horizon [7/6,8/2] に月曜4回=4チャンク（各1 INSERT）。
             //        3チャンク目（3番目の月曜）で INSERT が例外を投げる → 先行2チャンクはコミット済み。
             given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
                     .willReturn(List.of(openMonday(LocalTime.of(9, 0), LocalTime.of(18, 0))));
             given(slotRepository.insertGeneratedCellIgnoreDuplicate(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .willReturn(1)
                     .willReturn(1)
                     .willThrow(new RuntimeException("3チャンク目でDB接続断"));
@@ -580,6 +613,22 @@ class ReservationSlotGenerationServiceTest {
                         assertThat(acc.getGeneratedCount()).isEqualTo(2);
                         assertThat(acc.getHorizonTo()).isEqualTo(LocalDate.of(2026, 8, 2));
                     });
+
+            // 先行2チャンクはコミット済みとして先読みされる。再実行はそこを飛ばし、
+            // 失敗日以降の2チャンクだけを生成して28日 horizon を自己修復する。
+            given(slotRepository.findGeneratedCellKeysByTeamIdAndSlotDateBetween(eq(TEAM_ID), any(), any()))
+                    .willReturn(List.of(
+                            new Object[]{TEMPLATE_ID, LocalDate.of(2026, 7, 6), LocalTime.of(10, 0)},
+                            new Object[]{TEMPLATE_ID, LocalDate.of(2026, 7, 13), LocalTime.of(10, 0)}));
+            // 直前の thenThrow を呼び出さずに再試行用の応答へ置き換える。
+            willReturn(1).given(slotRepository).insertGeneratedCellIgnoreDuplicate(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+
+            GenerateSlotsResponse retried = service.generateForTemplate(
+                    TEAM_ID, monTemplate(LocalTime.of(10, 0), LocalTime.of(10, 30)), USER_ID);
+
+            assertThat(retried.getGeneratedCount()).isEqualTo(2);
+            assertThat(retried.getSkippedExistingCount()).isEqualTo(2);
         }
 
         @Test
@@ -592,7 +641,7 @@ class ReservationSlotGenerationServiceTest {
             assertThat(result.getGeneratedCount()).isZero();
             assertThat(result.getHorizonTo()).isEqualTo(LocalDate.of(2026, 8, 2));
             verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
     }
 
@@ -669,7 +718,7 @@ class ReservationSlotGenerationServiceTest {
             assertThat(result.getGeneratedCount()).isZero();
             assertThat(result.getSkippedExistingCount()).isEqualTo(2);
             verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -729,7 +778,7 @@ class ReservationSlotGenerationServiceTest {
                                         .contains("この曜日のテンプレートがありません"));
                     });
             verify(slotRepository, never()).insertGeneratedCellIgnoreDuplicate(
-                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
     }
 }
