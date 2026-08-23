@@ -27,6 +27,7 @@ type BusinessHourResponse = components['schemas']['BusinessHourResponse']
 
 const props = defineProps<{
   teamId: string
+  teamTimezone?: string
   disabled?: boolean
 }>()
 
@@ -34,7 +35,7 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
-const { userTimezone } = useDatetime()
+const teamTimezone = computed(() => props.teamTimezone ?? 'Asia/Tokyo')
 
 /**
  * 呼称の動的差し込み（F03.4.5 §5.2・要確認事項の判断）: targetLabel() の STAFF フォールバック
@@ -57,7 +58,8 @@ const businessHours = ref<BusinessHourResponse[]>([])
 // フォーム
 const scope = ref<BlockedResourceType>('TEAM')
 const selectedLineId = ref<number | null>(null)
-const blockedDate = ref<Date | null>(new Date())
+const todayInTeamTimezone = () => dayjs().tz(teamTimezone.value).startOf('day').toDate()
+const blockedDate = ref<Date | null>(todayInTeamTimezone())
 const template = ref<TemplateKey>('FULL_DAY')
 const startTime = ref<string | null>(null)
 const endTime = ref<string | null>(null)
@@ -128,13 +130,13 @@ function toHm(value?: string | null): string {
 }
 
 function formatDate(date: Date): string {
-  return dayjs(date).tz(userTimezone.value).format('YYYY-MM-DD')
+  return dayjs(date).tz(teamTimezone.value).format('YYYY-MM-DD')
 }
 
 /** 選択日の曜日に対応する営業時間（is_open のみ） */
 function businessHoursForSelectedDate(): { open: string; close: string } | null {
   if (!blockedDate.value) return null
-  const dow = WEEKDAY[blockedDate.value.getDay()]
+  const dow = WEEKDAY[dayjs(blockedDate.value).tz(teamTimezone.value).day()]
   const bh = businessHours.value.find(b => b.businessStatus?.dayOfWeek === dow)
   if (!bh?.businessStatus?.isOpen || !bh.businessStatus.openTime || !bh.businessStatus.closeTime) {
     return null
@@ -248,8 +250,8 @@ async function loadBlockedTimes() {
   loading.value = true
   try {
     // 今日〜1年先の予約不可枠を取得（過去日は作成不可なので今日起点で十分）
-    const from = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
-    const to = dayjs().tz(userTimezone.value).add(365, 'day').format('YYYY-MM-DD')
+    const from = dayjs().tz(teamTimezone.value).format('YYYY-MM-DD')
+    const to = dayjs().tz(teamTimezone.value).add(365, 'day').format('YYYY-MM-DD')
     const res = await reservationApi.listBlockedTimes(props.teamId, { from, to })
     blockedTimes.value = res.data ?? []
   }

@@ -32,6 +32,7 @@ const mockGetLines = vi.fn()
 const mockGetMenus = vi.fn()
 const mockGetSlotGrid = vi.fn()
 const mockListMyWaitlist = vi.fn()
+const mockCreateGroup = vi.fn()
 
 vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
@@ -39,6 +40,7 @@ vi.mock('~/composables/useReservationApi', () => ({
     getMenus: mockGetMenus,
     getSlotGrid: mockGetSlotGrid,
     listMyWaitlist: mockListMyWaitlist,
+    createGroup: mockCreateGroup,
   }),
 }))
 
@@ -117,6 +119,7 @@ beforeEach(() => {
   mockGetMenus.mockReset()
   mockGetSlotGrid.mockReset()
   mockListMyWaitlist.mockReset()
+  mockCreateGroup.mockReset()
   mockGetMenus.mockResolvedValue({ data: [] })
   mockListMyWaitlist.mockResolvedValue({ data: [] })
 })
@@ -612,5 +615,32 @@ describe('SlotMatrixPicker.vue', () => {
     await flush()
     expect(findByTestId('group-confirm')).toBeNull()
     wrapper.unmount()
+  })
+
+  it('日跨ぎ同一lineの23:30→翌日00:00をメニュー選択しslotIds payload化する', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetMenus.mockResolvedValue({ data: [{ id: 'overnight-menu', name: 'Overnight', durationMinutes: 60, requiredSlotCount: 2, isActive: true, lineIds: [] }] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: { days: [
+        { date: '2026-08-12', columns: [{ lineId: 1, lineName: 'Seat1', lineIds: [], cells: [{ slotId: 701, slotDate: '2026-08-12', endDate: '2026-08-12', startTime: '23:30', endTime: '00:00', state: 'AVAILABLE' }] }] },
+        { date: '2026-08-13', columns: [{ lineId: 1, lineName: 'Seat1', lineIds: [], cells: [{ slotId: 702, slotDate: '2026-08-13', endDate: '2026-08-13', startTime: '00:00', endTime: '00:30', state: 'AVAILABLE' }] }] },
+      ] },
+    })
+    mockCreateGroup.mockResolvedValue({ data: {} })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, { props: { teamId: 'team-slug', isAdmin: false } })
+    await flush()
+    const cell = wrapper.findAll('button').find(button => button.attributes('aria-label')?.includes('23:30'))
+    expect(cell).toBeTruthy()
+    await cell!.trigger('click')
+    await flush()
+    const menu = findByTestId<HTMLButtonElement>('group-menu-option-overnight-menu')
+    expect(menu).toBeTruthy()
+    menu!.click()
+    await flush()
+    findByTestId<HTMLButtonElement>('group-confirm')!.click()
+    await flush()
+
+    expect(mockCreateGroup).toHaveBeenCalledWith('team-slug', expect.objectContaining({ slotIds: [701, 702] }))
   })
 })

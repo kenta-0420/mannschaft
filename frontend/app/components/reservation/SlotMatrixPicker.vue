@@ -25,6 +25,8 @@ import {
   unavailableReasonOfSlot,
   type MatrixCellInput,
   type RowSlot,
+  type HeaderSlot,
+  GROUP_MAX_SIZE,
 } from '~/utils/reservationMatrix'
 import type { GroupBookingContext, LineOption } from '~/components/reservation/GroupBookingDialog.vue'
 import ReservationWaitlistDialog, { type WaitlistDialogContext } from '~/components/reservation/ReservationWaitlistDialog.vue'
@@ -154,21 +156,41 @@ const matrixRows = computed<MatrixRowVM[]>(() => {
   for (const day of days.value) {
     for (const col of day.columns ?? []) {
       const aligned = alignRowToHeader(col.cells ?? [], header.value)
-      const startable = requiredCellCount.value
-        ? computeStartableIndices(aligned, requiredCellCount.value)
-        : null
       rows.push({
         date: day.date,
         column: col,
         dateLabel: dayLabel(day.date),
         columnLabel: columnLabel(col),
         aligned,
-        startable,
+        startable: null,
       })
     }
   }
+  // 日付行を跨ぐメニューでも、翌日00:00枠が同一lineかつ連続なら起点にできる。
+  for (const row of rows) {
+    const nextDate = dayjs.tz(row.date, teamTimezone.value).add(1, 'day').format('YYYY-MM-DD')
+    const next = rows.find(candidate => candidate.date === nextDate
+      && candidate.column.lineId === row.column.lineId)
+    const continuation = next ? [...row.aligned, ...next.aligned.slice(0, GROUP_MAX_SIZE)] : row.aligned
+    row.startable = requiredCellCount.value
+      ? computeStartableIndices(continuation, requiredCellCount.value)
+      : null
+  }
   return rows
 })
+
+function continuationFor(row: MatrixRowVM): { slots: RowSlot[]; header: HeaderSlot[] } {
+  const nextDate = dayjs.tz(row.date, teamTimezone.value).add(1, 'day').format('YYYY-MM-DD')
+  const next = matrixRows.value.find(candidate => candidate.date === nextDate
+    && candidate.column.lineId === row.column.lineId)
+  if (!next) return { slots: row.aligned, header: header.value }
+  const extra = next.aligned.slice(0, GROUP_MAX_SIZE)
+  const extraHeader = extra.map((_, index) => ({
+    minutes: (index * 30) + 1440,
+    label: dayjs().startOf('day').add(index * 30, 'minute').format('HH:mm'),
+  }))
+  return { slots: [...row.aligned, ...extra], header: [...header.value, ...extraHeader] }
+}
 
 function weekRangeLabel(): string {
   if (!weekStart.value) return ''
@@ -525,13 +547,14 @@ function onPointerUp() {
 
 /** GroupBookingDialog を開く（単発クリックとドラッグ確定の共通経路）。 */
 function openGroupDialog(row: MatrixRowVM, startIndex: number, dragCellCount: number | null) {
+  const continuation = continuationFor(row)
   dialogContext.value = {
     date: row.date,
     columnLineId: row.column.lineId ?? null,
     columnLineName: row.column.lineName ?? null,
-    rowSlots: row.aligned,
+    rowSlots: continuation.slots,
     startIndex,
-    header: header.value,
+    header: continuation.header,
     preselectedMenuId: filterMenuId.value,
     preselectedRequiredCellCount: requiredCellCount.value,
     dragCellCount,

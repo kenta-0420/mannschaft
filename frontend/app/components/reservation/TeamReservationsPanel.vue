@@ -460,6 +460,7 @@ onMounted(async () => {
                       </p>
                       <ReservationUnavailabilityManager
                         :team-id="props.teamId"
+                        :team-timezone="team?.timezone ?? 'Asia/Tokyo'"
                         :disabled="!isAdmin"
                       />
                     </div>
