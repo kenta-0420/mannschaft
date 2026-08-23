@@ -1,5 +1,7 @@
 package com.mannschaft.app.reservation.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -25,9 +27,15 @@ public class UpdateRecurringBlockedTimeRequest {
                 forceCancelConflicting, null);
     }
 
-    public UpdateRecurringBlockedTimeRequest(Long lineId, Boolean clearLineId, ReservationDayOfWeek dayOfWeek,
-            LocalTime startTime, LocalTime endTime, String reason, Boolean isPublic, Boolean isActive,
-            Boolean forceCancelConflicting, Boolean endsNextDay) {
+    @JsonCreator
+    public UpdateRecurringBlockedTimeRequest(@JsonProperty("lineId") Long lineId,
+            @JsonProperty("clearLineId") Boolean clearLineId,
+            @JsonProperty("dayOfWeek") ReservationDayOfWeek dayOfWeek,
+            @JsonProperty("startTime") LocalTime startTime, @JsonProperty("endTime") LocalTime endTime,
+            @JsonProperty("reason") String reason, @JsonProperty("isPublic") Boolean isPublic,
+            @JsonProperty("isActive") Boolean isActive,
+            @JsonProperty("forceCancelConflicting") Boolean forceCancelConflicting,
+            @JsonProperty("endsNextDay") Boolean endsNextDay) {
         this.lineId = lineId; this.clearLineId = clearLineId; this.dayOfWeek = dayOfWeek;
         this.startTime = startTime; this.endTime = endTime; this.reason = reason; this.isPublic = isPublic;
         this.isActive = isActive; this.forceCancelConflicting = forceCancelConflicting; this.endsNextDay = endsNextDay;

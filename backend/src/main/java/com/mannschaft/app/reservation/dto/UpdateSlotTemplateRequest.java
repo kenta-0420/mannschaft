@@ -1,5 +1,7 @@
 package com.mannschaft.app.reservation.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import jakarta.validation.constraints.DecimalMin;
@@ -28,9 +30,14 @@ public class UpdateSlotTemplateRequest {
                 approvalMode, isActive, null);
     }
 
-    public UpdateSlotTemplateRequest(String name, Long lineId, Boolean clearLineId, ReservationDayOfWeek dayOfWeek,
-            LocalTime startTime, LocalTime endTime, Integer capacity, Long staffUserId, String title,
-            BigDecimal price, ApprovalMode approvalMode, Boolean isActive, Boolean endsNextDay) {
+    @JsonCreator
+    public UpdateSlotTemplateRequest(@JsonProperty("name") String name, @JsonProperty("lineId") Long lineId,
+            @JsonProperty("clearLineId") Boolean clearLineId, @JsonProperty("dayOfWeek") ReservationDayOfWeek dayOfWeek,
+            @JsonProperty("startTime") LocalTime startTime, @JsonProperty("endTime") LocalTime endTime,
+            @JsonProperty("capacity") Integer capacity, @JsonProperty("staffUserId") Long staffUserId,
+            @JsonProperty("title") String title, @JsonProperty("price") BigDecimal price,
+            @JsonProperty("approvalMode") ApprovalMode approvalMode, @JsonProperty("isActive") Boolean isActive,
+            @JsonProperty("endsNextDay") Boolean endsNextDay) {
         this.name = name; this.lineId = lineId; this.clearLineId = clearLineId; this.dayOfWeek = dayOfWeek;
         this.startTime = startTime; this.endTime = endTime; this.capacity = capacity; this.staffUserId = staffUserId;
         this.title = title; this.price = price; this.approvalMode = approvalMode; this.isActive = isActive;
