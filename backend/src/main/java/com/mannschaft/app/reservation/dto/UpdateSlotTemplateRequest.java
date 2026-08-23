@@ -19,8 +19,23 @@ import java.time.LocalTime;
  * （親の {@code clearApprovalMode} と同形）。<b>更新は既生成枠へ遡及しない</b>（§5.4）。</p>
  */
 @Getter
-@RequiredArgsConstructor
 public class UpdateSlotTemplateRequest {
+
+    public UpdateSlotTemplateRequest(String name, Long lineId, Boolean clearLineId, ReservationDayOfWeek dayOfWeek,
+            LocalTime startTime, LocalTime endTime, Integer capacity, Long staffUserId, String title,
+            BigDecimal price, ApprovalMode approvalMode, Boolean isActive) {
+        this(name, lineId, clearLineId, dayOfWeek, startTime, endTime, capacity, staffUserId, title, price,
+                approvalMode, isActive, null);
+    }
+
+    public UpdateSlotTemplateRequest(String name, Long lineId, Boolean clearLineId, ReservationDayOfWeek dayOfWeek,
+            LocalTime startTime, LocalTime endTime, Integer capacity, Long staffUserId, String title,
+            BigDecimal price, ApprovalMode approvalMode, Boolean isActive, Boolean endsNextDay) {
+        this.name = name; this.lineId = lineId; this.clearLineId = clearLineId; this.dayOfWeek = dayOfWeek;
+        this.startTime = startTime; this.endTime = endTime; this.capacity = capacity; this.staffUserId = staffUserId;
+        this.title = title; this.price = price; this.approvalMode = approvalMode; this.isActive = isActive;
+        this.endsNextDay = endsNextDay;
+    }
 
     @Size(max = 100)
     private final String name;
@@ -53,4 +68,6 @@ public class UpdateSlotTemplateRequest {
 
     /** isActive の切替（生成対象 ON/OFF）。null = 据え置き。 */
     private final Boolean isActive;
+
+    private final Boolean endsNextDay;
 }

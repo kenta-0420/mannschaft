@@ -33,6 +33,14 @@ public interface ReservationBlockedTimeRepository extends JpaRepository<Reservat
                                                              @org.springframework.data.repository.query.Param("date") LocalDate date,
                                                              @org.springframework.data.repository.query.Param("dateMinusOne") LocalDate dateMinusOne);
 
+    @org.springframework.data.jpa.repository.Query("SELECT b FROM ReservationBlockedTimeEntity b WHERE b.teamId = :teamId "
+            + "AND b.blockedDate <= :to AND (b.blockedDate >= :from OR (b.endsNextDay = true AND b.blockedDate = :fromMinusOne)) "
+            + "ORDER BY b.blockedDate ASC, b.startTime ASC")
+    List<ReservationBlockedTimeEntity> findEffectiveBetween(@org.springframework.data.repository.query.Param("teamId") Long teamId,
+                                                              @org.springframework.data.repository.query.Param("from") LocalDate from,
+                                                              @org.springframework.data.repository.query.Param("to") LocalDate to,
+                                                              @org.springframework.data.repository.query.Param("fromMinusOne") LocalDate fromMinusOne);
+
     /**
      * IDとチームIDでブロック時間を取得する。
      */

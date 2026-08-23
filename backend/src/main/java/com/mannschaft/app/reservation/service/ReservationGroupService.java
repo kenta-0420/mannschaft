@@ -237,7 +237,7 @@ public class ReservationGroupService {
 
         // 2-g. 予約不可枠（機能B+F03.4.5 §4.2 単一ユーティリティ・違反 009）
         List<ReservationBlockedTimeEntity> blocks = blockedTimeRepository
-                .findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, firstSlot.getSlotDate());
+                .findEffectiveOnDate(teamId, firstSlot.getSlotDate(), firstSlot.getSlotDate().minusDays(1));
         List<ReservationRecurringBlockedTimeEntity> recurringRules =
                 recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
         for (ReservationSlotEntity slot : slots) {

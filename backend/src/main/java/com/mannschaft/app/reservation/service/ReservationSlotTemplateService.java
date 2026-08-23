@@ -107,7 +107,7 @@ public class ReservationSlotTemplateService {
         ReservationLineEntity line = resolveLineOrThrow(teamId, request.getLineId());
         validateStaffMembership(teamId, request.getStaffUserId());
         validateNoOverlap(teamId, request.getLineId(), request.getDayOfWeek(),
-                request.getStartTime(), request.getEndTime(), null);
+                request.getStartTime(), request.getEndTime(), Boolean.TRUE.equals(request.getEndsNextDay()), null);
 
         ReservationSlotTemplateEntity entity = ReservationSlotTemplateEntity.builder()
                 .teamId(teamId)
@@ -160,8 +160,13 @@ public class ReservationSlotTemplateService {
         if (request.getStartTime() != null || request.getEndTime() != null) {
             LocalTime newStart = request.getStartTime() != null ? request.getStartTime() : entity.getStartTime();
             LocalTime newEnd = request.getEndTime() != null ? request.getEndTime() : entity.getEndTime();
-            SlotTimeValidator.validateTimeRange(newStart, newEnd);
-            entity.changeTimeRange(newStart, newEnd);
+            boolean endsNextDay = request.getEndsNextDay() != null
+                    ? request.getEndsNextDay() : Boolean.TRUE.equals(entity.getEndsNextDay());
+            SlotTimeValidator.validateTimeRange(newStart, newEnd, endsNextDay);
+            entity.changeTimeRange(newStart, newEnd, endsNextDay);
+        } else if (request.getEndsNextDay() != null) {
+            SlotTimeValidator.validateTimeRange(entity.getStartTime(), entity.getEndTime(), request.getEndsNextDay());
+            entity.changeTimeRange(entity.getStartTime(), entity.getEndTime(), request.getEndsNextDay());
         }
         if (request.getCapacity() != null) {
             entity.changeCapacity(normalizeCapacity(request.getCapacity()));
@@ -188,7 +193,7 @@ public class ReservationSlotTemplateService {
         }
         // ライン・曜日・時間帯のいずれかが変わった可能性があるため、最終形で重複帯を再検証する（自分自身は除外）。
         validateNoOverlap(teamId, entity.getLineId(), entity.getDayOfWeek(),
-                entity.getStartTime(), entity.getEndTime(), entity.getId());
+                entity.getStartTime(), entity.getEndTime(), Boolean.TRUE.equals(entity.getEndsNextDay()), entity.getId());
 
         ReservationSlotTemplateEntity saved = templateRepository.save(entity);
         log.info("週間テンプレート更新: teamId={}, templateId={}", teamId, templateId);
@@ -379,14 +384,27 @@ public class ReservationSlotTemplateService {
      */
     private void validateNoOverlap(Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
                                    LocalTime startTime, LocalTime endTime, UUID excludeId) {
+        validateNoOverlap(teamId, lineId, dayOfWeek, startTime, endTime, false, excludeId);
+    }
+    private void validateNoOverlap(Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
+                                   LocalTime startTime, LocalTime endTime, boolean endsNextDay, UUID excludeId) {
         if (lineId == null) {
             return; // 共通枠テンプレ同士は意図的な並行枠として許可
         }
         boolean overlaps = templateRepository.findByTeamId(teamId).stream()
                 .filter(t -> !Objects.equals(t.getId(), excludeId))
                 .filter(t -> Objects.equals(t.getLineId(), lineId))
-                .filter(t -> t.getDayOfWeek() == dayOfWeek)
-                .anyMatch(t -> startTime.isBefore(t.getEndTime()) && t.getStartTime().isBefore(endTime));
+                .filter(t -> t.getDayOfWeek() == dayOfWeek || (endsNextDay
+                        && t.getDayOfWeek() == ReservationDayOfWeek.values()[(dayOfWeek.ordinal() + 1) % 7]))
+                .anyMatch(t -> {
+                    java.time.LocalDate anchor = java.time.LocalDate.of(2024, 1, 1);
+                    java.time.LocalDate aDate = anchor.plusDays(dayOfWeek.ordinal());
+                    java.time.LocalDate bDate = anchor.plusDays(t.getDayOfWeek().ordinal());
+                    java.time.LocalDate bEnd = bDate.plusDays(Boolean.TRUE.equals(t.getEndsNextDay()) ? 1 : 0);
+                    return java.time.LocalDateTime.of(aDate, startTime).isBefore(java.time.LocalDateTime.of(bEnd, t.getEndTime()))
+                            && java.time.LocalDateTime.of(bDate, t.getStartTime()).isBefore(
+                            java.time.LocalDateTime.of(aDate.plusDays(endsNextDay ? 1 : 0), endTime));
+                });
         if (overlaps) {
             throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE,
                     List.of(new ErrorResponse.FieldError(

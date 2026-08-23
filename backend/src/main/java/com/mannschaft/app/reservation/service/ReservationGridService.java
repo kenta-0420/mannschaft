@@ -149,7 +149,7 @@ public class ReservationGridService {
             List<ReservationSlotEntity> slots =
                     slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(teamId, date, date);
             List<ReservationBlockedTimeEntity> blocks =
-                    blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, date);
+                    blockedTimeRepository.findEffectiveOnDate(teamId, date, date.minusDays(1));
             List<ReservationGridResponse.GridColumnDto> columns =
                     buildLineColumns(lineColumns, slots, blocks, recurringRules);
             return ReservationGridResponse.builder()
@@ -164,8 +164,7 @@ public class ReservationGridService {
         List<ReservationSlotEntity> slots =
                 slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(teamId, from, to);
         List<ReservationBlockedTimeEntity> blocks =
-                blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                        teamId, from, to);
+                blockedTimeRepository.findEffectiveBetween(teamId, from, to, from.minusDays(1));
         Map<LocalDate, List<ReservationSlotEntity>> slotsByDate = slots.stream()
                 .collect(Collectors.groupingBy(ReservationSlotEntity::getSlotDate));
 

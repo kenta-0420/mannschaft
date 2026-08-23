@@ -105,7 +105,7 @@ public class ReservationRecurringSlotResolver {
 
         // ② 単発予約不可枠: 同じ範囲を 1 回。
         List<ReservationBlockedTimeEntity> blocks = blockedTimeRepository
-                .findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(teamId, from, to);
+                .findEffectiveBetween(teamId, from, to, from.minusDays(1));
         // ③ 定期予約不可枠: チーム単位 1 回（active 最大 50 行のメモリ突合）。
         List<ReservationRecurringBlockedTimeEntity> recurringRules =
                 recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);

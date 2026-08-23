@@ -241,9 +241,14 @@ public class ReservationSlotEntity extends BaseEntity {
      * @param slotDate スロット日付
      */
     public void changeSlotDate(LocalDate slotDate) {
+        LocalDate previousDate = this.slotDate;
+        LocalDate previousEndDate = this.endDate;
         this.slotDate = slotDate;
-        if (this.endDate == null) {
+        if (previousEndDate == null || previousDate == null) {
             this.endDate = slotDate;
+        } else {
+            long dayOffset = java.time.temporal.ChronoUnit.DAYS.between(previousDate, previousEndDate);
+            this.endDate = slotDate.plusDays(Math.max(0, Math.min(1, dayOffset)));
         }
     }
 

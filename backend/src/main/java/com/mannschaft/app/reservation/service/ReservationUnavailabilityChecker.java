@@ -208,6 +208,13 @@ public class ReservationUnavailabilityChecker {
         LocalDate slotEndDate = slot.getEndDate() == null ? slot.getSlotDate() : slot.getEndDate();
         LocalDate blockedEndDate = Boolean.TRUE.equals(blocked.getEndsNextDay())
                 ? blocked.getBlockedDate().plusDays(1) : blocked.getBlockedDate();
+        return isBlocked(slot, blocked, zone);
+    }
+
+    public boolean isBlocked(ReservationSlotEntity slot, ReservationBlockedTimeEntity blocked, ZoneId zone) {
+        LocalDate slotEndDate = slot.getEndDate() == null ? slot.getSlotDate() : slot.getEndDate();
+        LocalDate blockedEndDate = Boolean.TRUE.equals(blocked.getEndsNextDay())
+                ? blocked.getBlockedDate().plusDays(1) : blocked.getBlockedDate();
         return isBlocked(slot.getSlotDate(), slotEndDate, slot.getStartTime(), slot.getEndTime(),
                 slot.getStaffUserId(), slot.getLineId(), blocked.getBlockedDate(), blockedEndDate,
                 blocked.getStartTime(), blocked.getEndTime(), blocked.getResourceType(), blocked.getResourceId(), zone);
@@ -305,6 +312,11 @@ public class ReservationUnavailabilityChecker {
                 ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)
                 : teamTimezoneResolver.resolveZone(slot.getTeamId());
         LocalDate slotEndDate = slot.getEndDate() == null ? slot.getSlotDate() : slot.getEndDate();
+        return isRecurringBlocked(slot, rule, zone);
+    }
+
+    public boolean isRecurringBlocked(ReservationSlotEntity slot, ReservationRecurringBlockedTimeEntity rule, ZoneId zone) {
+        LocalDate slotEndDate = slot.getEndDate() == null ? slot.getSlotDate() : slot.getEndDate();
         return isRecurringBlocked(slot.getSlotDate(), slotEndDate, slot.getStartTime(), slot.getEndTime(),
                 slot.getLineId(), rule.isActiveRule(), rule.getDayOfWeek(), rule.getStartTime(), rule.getEndTime(),
                 rule.getLineId(), Boolean.TRUE.equals(rule.getEndsNextDay()), zone);
@@ -351,9 +363,11 @@ public class ReservationUnavailabilityChecker {
             ReservationSlotEntity slot,
             Collection<ReservationBlockedTimeEntity> blocks,
             Collection<ReservationRecurringBlockedTimeEntity> recurringRules) {
-        if (isBlockedByAny(slot, blocks)) {
+        ZoneId zone = teamTimezoneResolver == null ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)
+                : teamTimezoneResolver.resolveZone(slot.getTeamId());
+        if (blocks != null && blocks.stream().anyMatch(b -> isBlocked(slot, b, zone))) {
             return true;
         }
-        return recurringRules != null && recurringRules.stream().anyMatch(r -> isRecurringBlocked(slot, r));
+        return recurringRules != null && recurringRules.stream().anyMatch(r -> isRecurringBlocked(slot, r, zone));
     }
 }

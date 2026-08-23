@@ -103,7 +103,7 @@ public class ReservationSlotService {
         // 機能B（§5.B）＋F03.4.5 §4.2: 単発/定期いずれかの予約不可枠に該当する slot を空き枠一覧から除外する。
         // 判定は createReservation / グリッドと共有の単一 overlap ユーティリティを用いる（別実装厳禁）。
         List<ReservationBlockedTimeEntity> blocks =
-                blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(teamId, from, to);
+                blockedTimeRepository.findEffectiveBetween(teamId, from, to, from.minusDays(1));
         List<ReservationRecurringBlockedTimeEntity> recurringRules =
                 recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
         List<ReservationSlotEntity> visible = (blocks.isEmpty() && recurringRules.isEmpty())
