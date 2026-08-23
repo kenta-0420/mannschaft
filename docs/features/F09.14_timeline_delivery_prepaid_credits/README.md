@@ -36,19 +36,18 @@ sequenceDiagram
     participant Q as Durable queue
     participant F as Personal feed
     U->>API: 投稿 + paidConfirmationToken（有料見込時）
-    API->>DB: 対象snapshot、usage行PESSIMISTIC_WRITE
-    alt 1〜100件目
-        DB-->>API: FREE
-    else 101件目以降
-        API->>DB: credit FIFO予約（available→reserved）
-        DB-->>API: PAID
+    API->>DB: draft + job=PREPARINGを保存
+    API-->>U: 201 PostResponse(PREPARING)
+    DB->>DB: temporal projectionからsnapshot、usage lock
+    alt topupが必要
+        DB->>DB: AWAITING_TOPUP + pending cap
+        DB->>DB: Stripe webhook後に再開
+    else 公開可能
+        DB->>DB: post=PUBLISHED + lot reservation
     end
-    API->>DB: post=PUBLISHED, job=PROCESSING を原子的に保存
-    API->>Q: jobId をAFTER_COMMIT投入
-    API-->>U: 202 PROCESSING / exactRecipients
-    Q->>F: keyset batchで配信
-    Q->>DB: 成功分capture、最終未達分refund
-    DB-->>U: COMPLETED / FAILURE_RESOLVING
+    DB->>F: job table queueをlease取得してkeyset batch配信
+    DB->>DB: batch capture、最終未達refund
+    DB-->>U: pollでCOMPLETED / FAILURE_RESOLVING
 ```
 
 ## 3. 権限・責務
@@ -74,7 +73,7 @@ SYSTEM_ADMIN は障害対応・監査閲覧を行えるが、scope の財布操�
 
 - `timeline_posts` の既存 BIGINT ID を変更しない。新設の課金・ジョブ・受信者明細テーブルは UUIDv7 (`BINARY(16)`) を主キーとする。
 - TEAM / ORGANIZATION / user / Stripe payment への参照は ID と index のみで保持し、クロスドメイン FK は作らない。削除・所有移転は domain event で処理する。
-- 既存投稿は遡及スナップショットせず、migration 後に実公開された投稿から対象にする。既存クライアントが `paidConfirmed` を送らない場合、無料投稿は従来どおり送信できるが、有料になった時点で402として明示確認を要求する。
+- 既存投稿は遡及スナップショットせず、migration 後に実公開された投稿から対象にする。既存クライアントが `paidConfirmationToken` / `idempotencyKey` を送らない場合、無料投稿は従来どおり送信できるが、有料境界では409として永続confirmationを要求する。
 - 実装時の Flyway は `V{origin/main の最大major+1}.{UTC yyyyMMddHHmmss}__add_timeline_delivery_prepaid_credits.sql` とする。設計時の番号は予約せず、マージ直前に origin/main を再確認する。
 
 ## 6. 設計精査記録
@@ -84,3 +83,21 @@ SYSTEM_ADMIN は障害対応・監査閲覧を行えるが、scope の財布操�
 | 第1パス | 不備、セキュリティ、UX、既存仕様、保守性、検証可能性 | 精査待ち |
 | 第2パス | 独立した状態遷移・会計・E2E観点 | 第1パス後に実施 |
 | E2E耐性 | API型、null、認可、非同期の観測点 | 第2パス後に実施 |
+
+## 7. 第1精査反映（2026-08-23）
+
+本ドラフトは次の実装不可能な曖昧さを第1精査で解消した。Stripe を HTTP publish transaction 内で待たず、巨大 audience を同期列挙せず、job table 自体を耐久キューとして扱う。公開の事実は **recipient snapshot と quota/reservation が同一 timeline-domain transaction で commit した時点**でのみ生じる。
+
+1. auto-topup は `AWAITING_TOPUP` と off-session PaymentIntent / webhook 再開へ変更した。初回Checkoutで `setup_future_usage=off_session` の明示同意を得る。
+2. paid同意は hash化tokenを持つ confirmation table に永続化し、POSTのidempotencyを必須化した。自動投稿はscope ADMIN policyが明示許可した場合のみ有料境界を越えられる。
+3. reservation allocation によりpurchase lot とjobを結び、available/reserved/consumed/frozenの恒等式とFIFOを固定した。
+4. AFTER_COMMIT投入を廃し、`timeline_delivery_jobs`の`FOR UPDATE SKIP LOCKED`+lease+sweeperを唯一のqueue実装とした。
+5. PREPARINGを非同期化し、temporal audience projectionからsnapshotを作る。cross-domain transactionやHTTP内の1万件列挙を行わない。
+6. 既存resolverは可視性判定用で逆引きrecipient列挙には使わず、DIRECT/CHILDREN/DESCENDANTSをprojection正準queryで定義した。
+7. snapshotと現在資格を組み合わせる可視性truth tableを確定した。
+8. 既存Stripe一般例外の200握り潰しを流用せず、timeline専用webhook inbox/parser/dispatcherを導入する。
+9. 実コード上のcreate endpoint、`CreatePostRequest.scopeId:String`（slug可）、201 `PostResponse`を後方互換で拡張する。
+10. immediate/scheduled/0件/不足/retryの副作用を状態表へ固定した。
+11. permission catalog・Flyway・TEAM/ORG実DB ITを同一実装範囲にした。
+12. scope削除、dispute、expiry、退会匿名化、timezoneをwallet/lotのライフサイクルへ統合した。
+13. ACごとのテスト層・fixture・観測点を明文化した。

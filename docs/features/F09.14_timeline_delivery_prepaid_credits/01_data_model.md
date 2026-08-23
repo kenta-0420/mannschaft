@@ -98,7 +98,7 @@ scope と現地月の投稿枠。月初リセットをバッチで行わず、�
 | scope_type / scope_id | VARCHAR(20) / BIGINT UNSIGNED NOT NULL | |
 | usage_id | BINARY(16) NULL | 0件投稿ではNULL、FKなし |
 | billing_mode | VARCHAR(10) NOT NULL | `FREE`,`PAID`,`NONE` |
-| status | VARCHAR(24) NOT NULL | `PROCESSING`,`COMPLETED`,`FAILURE_RESOLVING`,`SCHEDULED_BLOCKED`,`NONE`,`DELETED`。§03状態機械 |
+| status | VARCHAR(24) NOT NULL | `PREPARING`,`AWAITING_TOPUP`,`PROCESSING`,`COMPLETED`,`FAILURE_RESOLVING`,`PUBLISH_BLOCKED`,`NONE`,`DELETED`。§03状態機械 |
 | estimated_recipient_count | INT UNSIGNED NOT NULL | 画面確認時の値、0可 |
 | exact_recipient_count | INT UNSIGNED NOT NULL | snapshot件数、0可 |
 | reserved_credits / captured_credits / refunded_credits | BIGINT UNSIGNED NOT NULL DEFAULT 0 | `reserved=captured+refunded+未処理予約` をサービスで保証 |
@@ -205,3 +205,68 @@ recipient IDを13か月後に匿名化する前の月次集計先。行はscope�
 - 毎日、失効購入の `remaining_credits` を0にして `EXPIRE` 元帳を追記する。毎月のリセットは行削除でなく新 `usage` 行で実現する。
 - 毎月、13か月を超えた recipient/ledger の `recipient_user_id` を NULL にし、scope・月・entry_typeごとに `timeline_delivery_archives` へ加算する。原行は会計監査用に残すが個人IDを復元不能にする。
 - scope 削除・購入取消・Stripe返金は物理削除しない。ステータス、元帳、Stripe外部IDを保持する。ユーザー退会は同じ匿名化バッチで recipient/actor を匿名化する。
+
+## 4. 第1精査で追加した整合性モデル
+
+### `timeline_delivery_confirmations`
+
+paid送信の一回確認をサーバ永続化する。raw tokenは返却時だけに存在し、DBにはSHA-256 hashのみを保持する。
+
+| 列 | 型 / NULL / default | 制約・説明 |
+|---|---|---|
+| id | BINARY(16) NOT NULL | PK、UUIDv7 |
+| token_hash | BINARY(32) NOT NULL | UNIQUE。raw token不保存 |
+| scope_type / scope_id / actor_user_id | VARCHAR(20) / BIGINT / BIGINT NOT NULL | scope/操作者へ束縛、FKなし |
+| request_hash | BINARY(32) NOT NULL | content以外のscope/deliveryScope/status/parent等のcanonical hash |
+| delivery_scope | VARCHAR(20) NOT NULL | `DIRECT/CHILDREN/DESCENDANTS` |
+| estimated_recipient_count / estimated_amount_yen | BIGINT UNSIGNED NOT NULL | 表示時点の概算 |
+| issued_at / expires_at / consumed_at | DATETIME NOT NULL / NOT NULL / NULL | TTL5分、consume一回のみ |
+| idempotency_key | CHAR(36) NOT NULL | actor+scopeでUNIQUE |
+| created_at / updated_at | DATETIME NOT NULL | |
+
+`uq_timeline_delivery_confirmations_token_hash`、`uq_timeline_delivery_confirmations_actor_idempotency(actor_user_id,idempotency_key)`、`idx_timeline_delivery_confirmations_expiry(expires_at)`。予約投稿は confirmation を使わず、下記policyのADMIN承認を保存する。
+
+### `timeline_paid_delivery_policies`
+
+scope ADMINだけが設定する自動投稿用の永続paid consent。`id` UUIDv7、`scope_type/scope_id`、`enabled`、`max_amount_yen_per_post`、`monthly_cap_yen`、`period_start`、`used_amount_yen`、`approved_by_user_id`、`approved_at`、`revoked_at`、監査列を持つ。`uq(scope_type,scope_id)`。自動・予約投稿が実公開時に101件目以降なら、enabledかつmax/monthly cap内でのみ有料予約できる。未許可/上限超過は `PUBLISH_BLOCKED`で非公開に残す。
+
+### `timeline_credit_reservation_allocations`
+
+purchase lotごとの予約残を持たずにcapture/refundすると、期限・取消・disputeと競合する。jobとlotのallocationを先に固定する。
+
+| 列 | 型 / NULL / default | 制約・説明 |
+|---|---|---|
+| id | BINARY(16) NOT NULL | PK、UUIDv7 |
+| job_id / purchase_id / balance_id | BINARY(16) NOT NULL | timeline ID参照、FKなし |
+| reserved_credits | BIGINT UNSIGNED NOT NULL | 初期割当 |
+| remaining_reserved_credits | BIGINT UNSIGNED NOT NULL | capture/refund未処理分 |
+| captured_credits / refunded_credits | BIGINT UNSIGNED NOT NULL DEFAULT 0 | 終端量 |
+| frozen_credits | BIGINT UNSIGNED NOT NULL DEFAULT 0 | dispute/closingで使用不能にした予約残 |
+| expires_at | DATETIME NOT NULL | lotの期限を固定 |
+| status | VARCHAR(20) NOT NULL | `ACTIVE`,`FROZEN`,`SETTLED`,`REFUNDED`,`EXPIRED` |
+| created_at / updated_at | DATETIME NOT NULL | |
+
+`uq(job_id,purchase_id)`、`idx(purchase_id,status)`、`idx(job_id,status)`。恒等式は各lotで `purchase.remaining = available_lot + allocated_remaining + frozen_lot`、各allocationで `reserved = remaining + captured + refunded`、walletで `available + reserved + frozen + consumed + expired/refunded = paid_credits` とする。recipientごとにwallet/purchaseを更新せず、workerはbatchの成功数をlot allocation順に一回のset-based captureで処理する。
+
+競合順序は **CLOSING/dispute freeze → expiry → job capture/refund**。CLOSING/FROZEN allocationはcapture不可で、未配信残はrefund liabilityまたはfrozen bucketへ移す。期限時にACTIVE allocationが残るなら新規配信を止め、既にsnapshot済みの成功分だけcaptureし未達はrefund、expiryはremaining lotだけに適用する。複数disputeはpurchaseごとにfreezeを加算し、wallet statusは最重い未終結状態から導出する。
+
+### Temporal audience projection
+
+recipient snapshotの時間点を固定するため、timeline domain に次のID-only projectionを置く。全テーブルUUIDv7、cross-domain FKなし、`source_event_version`の単調更新、`valid_from`/`valid_to DATETIME`、監査列を持つ。
+
+| projection | 正準行・index |
+|---|---|
+| `timeline_audience_memberships` | `user_id,scope_type,scope_id,membership_kind(DIRECT_TEAM/DIRECT_ORG/TEAM_ANCHOR),active,valid_from,valid_to,source_event_version`。`idx(scope_type,scope_id,active,valid_from,valid_to,user_id)` |
+| `timeline_audience_org_ancestors` | `descendant_org_id,ancestor_org_id,distance,active,valid_from,valid_to,source_event_version`。`uq(descendant,ancestor,valid_from)`、`idx(ancestor,distance,active,valid_from,valid_to,descendant)`。cycle検出済みeventだけを反映 |
+| `timeline_audience_team_anchors` | `team_id,anchor_org_id,active,valid_from,valid_to,source_event_version`。`idx(anchor_org_id,active,valid_from,valid_to,team_id)` |
+| `timeline_audience_mutes` | `user_id,scope_type,scope_id,active,valid_from,valid_to,source_event_version`。`uq(user,scope_type,scope_id,valid_from)`、`idx(scope_type,scope_id,active,valid_from,valid_to,user_id)` |
+
+Team/Organization membership・hierarchy・muteの各domain eventはsource transaction commit後にprojection inboxへ記録される。public化workerはprojection watermarkが要求event versionを満たすまでPREPARINGのまま待つ。**既存 `TimelineDeliveryScopeResolver` はcaller一人への可視性判定専用でありrecipient列挙には使用しない。** 正準queryはtime `T` でACTIVE direct team memberをTEAM recipientとし、ORGはdirect org member（distance0）、org descendant membership、team anchorのancestor distanceをunionし、`delivery_scope=DIRECT`はdistance0、`CHILDREN`は0..1、`DESCENDANTS`は0..app.org.max-depthに絞る。team anchor経路はCMP-058の+1距離規則を保持する。最後に`DISTINCT user_id`、author除外、`timeline_audience_mutes`のactive anti-joinを行う。
+
+### Queue・退会・timezone
+
+job tableは唯一の耐久queueである。`lease_owner VARCHAR(100) NULL`,`lease_until DATETIME NULL`,`lease_version BIGINT NOT NULL DEFAULT 0`,`preparation_requested_at`,`snapshot_at`,`publish_committed_at`,`blocked_reason`を追加する。workerは`status in (PREPARING,PROCESSING,AWAITING_TOPUP)`を`FOR UPDATE SKIP LOCKED`で選び、leaseをCASで取得する。sweeperは`lease_until < now`を再取得可能にし、Pod crash後も同一jobを再開する。別outboxは作らない。
+
+`billing_timezone_id VARCHAR(64) NOT NULL`をbalanceに追加する。wallet作成時にscope timezoneを採用し、無ければ`Asia/Tokyo`を固定する。ADMINのtimezone更新APIは`next_billing_timezone_id`を保存し翌period_startからだけ適用する。quotaとauto-topup月capは常にこのtimezoneを使う。
+
+退会event受信時、recipient/actor/purchaserのuser IDを即時NULLまたはHMAC化し、遅くとも30日以内に`anonymized_at`を設定する。これは通常13か月のaccount明細保持より優先する。HMAC key versionのみ監査に残し、PII復元は不可とする。

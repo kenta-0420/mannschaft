@@ -93,3 +93,13 @@ rate limitは既存 Valkey `AbstractRateLimitFilter`系を使い、Valkey障害�
 - disputeへの応答・証拠: <https://docs.stripe.com/disputes/responding>
 - webhook event種別: <https://docs.stripe.com/api/events/types>
 - refund APIと状態: <https://docs.stripe.com/api/refunds>
+
+## 6. 第1精査で確定した権限・運用詳細
+
+`SEND_PAID_TIMELINE` と `VIEW_TIMELINE_COST` はpermission catalog/Flywayに同一PRで登録する。ADMINには両方をdefault grant、DEPUTYにはdefault grantしない（ADMINがpermission group経由で委任する）。`SEND_PAID_TIMELINE`はpaid confirmationに必要な概算人数・概算税込額・tokenを閲覧できるが、wallet残高、purchase、refund、dispute、ledgerの財務詳細は閲覧できない。TEAM/ORGANIZATION双方にpermission migration・実Flyway ITを置く。
+
+wallet statusは`CLOSED > CLOSING > SETTLEMENT_BLOCKED > FROZEN > ACTIVE`の優先順で導出する。CLOSINGはscope delete eventから入り、new publish/auto-topupを止め、jobsを終端化し、lot allocation/remaining lotをFIFOでrefundし、成功ならCLOSED、Stripe返金不能ならREFUND_LIABILITYを残してCLOSEDとする。ownership transferは`ScopeOwnershipTransferredEvent`を受け、walletのscopeを変えずowner表示/監査だけを更新する。APIは既存ownership transfer confirmation画面でbalance/reserved/auto/disputeを双方へ表示する。
+
+feature flagは `FEATURE_TIMELINE_DELIVERY_PREPAID_ENABLED`。offでは既存無料投稿を完全後方互換で公開し、新しいpaid/auto UI/APIは404、既にPREPARING/PROCESSING jobはdrainまたはrefund終端まで継続する。realtimeはpollが正本、WebSocketは`timeline.deliveryJobChanged`の補助通知だけで、欠落してもpollで状態を回復する。
+
+i18nは共通jsonでなく専用 `frontend/app/locales/{ja,en,zh,ko,es,de}/timeline_delivery.json` を新設し、6言語parity testで全keyを強制する。rate limit Valkey障害は概算/readは既存fail-open、Checkout/paid publish/retryはfail-closed（429/503）とし、DB整合ではなく濫用防止だけを担う。

@@ -28,14 +28,14 @@ flowchart TD
   H -->|足りる| I[FIFO reserve exact credits]
   F --> J[post PUBLISHED + job PROCESSING + recipients保存]
   I --> J
-  J --> K[AFTER_COMMIT durable queue投入]
+  J --> K[job tableをworkerがSKIP LOCKED+lease取得]
 ```
 
 usage行とwallet行は昇順の `(scope_type, scope_id)` でロックし、1投稿は1scopeしか扱わない。usage行が無い最初の公開では unique key 衝突をリトライし、その後 `PESSIMISTIC_WRITE` を取得する。これにより同時の99/100/101件目も一意にFREE/FREE/PAIDと決まる。paid confirmationは概算時に取得し、公開時にはscope・actor・deliveryScope・nonce・有効期限だけを検証する。exact受信者数と概算が変わっても、残高が足りれば再確認しない。不足なら投稿も usageも recipientsも残さない。
 
 ### 1.3 非同期配信・精算
 
-公開トランザクションは durable job/recipient/ledger を保存し、`AFTER_COMMIT` でqueueへ出す。ワーカーは `status=PROCESSING` のjobを `SKIP LOCKED` 相当または leaseで取得し、recipientを `(job_id,status,id)` keyset batch（初期500、設定化）で処理する。accountごとのfeed materializationは job/recipientの一意キーで冪等にする。
+公開トランザクションは durable job/recipient/ledger を保存する。外部queue/outboxは使わず、ワーカーはjob tableを `FOR UPDATE SKIP LOCKED` とleaseの併用で取得し、recipientを `(job_id,status,id)` keyset batch（初期500、設定化）で処理する。accountごとのfeed materializationは job/recipientの一意キーで冪等にする。
 
 - 配信成功: recipient `DELIVERED`、paidなら購入FIFOから1creditを `CAPTURE`。予約totalを減らす。
 - 一時障害: `RETRYING`、指数backoff（1分/5分/30分/2時間/12時間、最大5回）。
@@ -111,7 +111,7 @@ purchase state: `PENDING -> PAID -> {EXPIRED | REFUND_PENDING -> REFUNDED | REFU
 
 ### 異常・境界・並行
 
-16. paid見込でconfirmation tokenなし、期限切れ、別actor/scope/tokenなら402で投稿・usage・reservationを残さない。
+16. paid見込でconfirmation tokenなし、期限切れ、別actor/scope/tokenなら409でusage・recipient・reservationを残さず、draft/job/auditだけを残す。
 17. `SEND_PAID_TIMELINE`なしは403、十分な既存投稿権限がある無料投稿はそのpermissionなしでも従来どおり公開できる。
 18. exact credit不足、wallet FROZEN/CLOSED/SETTLEMENT_BLOCKED、auto-topup失敗/cap到達ではpartial delivery/負残高/72h graceを作らず、全てrollbackまたは予約投稿はBLOCKEDにする。
 19. 同一scopeで99件目・100件目・101件目を同時公開すると、PESSIMISTIC lockにより必ず2件FREE・1件PAIDになり、異scope間はブロックしない。
@@ -125,7 +125,56 @@ purchase state: `PENDING -> PAID -> {EXPIRED | REFUND_PENDING -> REFUNDED | REFU
 ### 認可・障害・性能・E2E
 
 26. 非所属者・異scope IDは404、未認証は401、ADMIN以外はwallet/purchase/refund/auto設定/dispute明細を読めず、`VIEW_TIMELINE_COST`は概算・usageだけ、`SEND_PAID_TIMELINE`は送信だけを許す。
-27. API全fieldのlowerCamelCase、nullable、数値string、enum、202 PROCESSING、402/403/404/409/502の契約をOpenAPI contract testで固定する。
+27. API全fieldのlowerCamelCase、nullable、整数number、enum、201 PREPARING、401/403/404/409/502の契約をOpenAPI contract testで固定する。
 28. 1000万userを前提に、snapshotはDISTINCTをDBで実行、recipient insertと配信をkeyset batchにし、N+1を作らない。1万recipientの公開がHTTP request内で配信を待たず、queue lag/失敗/latencyが観測できる。
 29. 実DB integration testでusage/wallet行ロック、FIFO、rollback、期限、recipient unique、アーカイブを検証し、TestcontainersのFlyway全適用でUUIDv7列・index・照合順序・既存timeline_posts列追加を検証する。
 30. 実機E2Eで、ADMINの残高補充→有料確認1回→PROCESSING→個人feed到達→dashboard反映、DEPUTYの委任/拒否、残高不足、予約blocked、auto cap、ミュート、脱退、dispute bannerを確認し、Stripeはtest mode webhook署名を通す。
+
+## 6. 第1精査で確定したpublish状態・可視性・非同期
+
+### 状態副作用表
+
+| 起点/状態 | post公開 | job | snapshot / usage / reservation | API観測・許可操作 |
+|---|---|---|---|---|
+| immediate create | 非公開 `PROCESSING` | `PREPARING`を必ず作る | 未作成 | 201 PostResponse。retry/delete可、edit不可 |
+| preparation成功・0 recipient | `PUBLISHED` | `COMPLETED/NONE` | recipient0、usage/reservation0 | detailは直接scope認可者だけ。再snapshotなし |
+| preparation成功・FREE | `PUBLISHED` | `PROCESSING`→`COMPLETED` | snapshot、usage+1/free+1、reservation0 | poll正本、WSは補助 |
+| preparation成功・PAID | `PUBLISHED` | `PROCESSING`→`COMPLETED` | snapshot、usage+1/paid+1、lot allocation | poll正本、WSは補助 |
+| auto topup必要 | 非公開 | `AWAITING_TOPUP` | snapshotはまだcommitしない、pending capだけ予約 | 201/GET job。cancel/delete可 |
+| topup webhook成功 | workerが再PREPARING | 同job | cap確定後にsnapshot/reserve | 同一idempotencyで再開 |
+| token/残高/policy/cap不足 | 非公開 | `PUBLISH_BLOCKED` | **draft/job/confirmation監査だけ保持**、usage/recipient/allocation/available残高はrollback | 409、retry/delete可 |
+| scheduled実時刻 | 上記immediateと同じ | PREPARINGまたはBLOCKED | 保存時は全て0 | ADMIN/許可sender retry可 |
+| worker/Pod crash | 公開済みは維持 | lease期限後に再取得 | 一意recipient/lot allocationを再利用 | sweeperが再開 |
+
+ここで「rollback」は未公開の**usage、recipient snapshot、allocation、wallet available/reserved変更**を戻す意味であり、idempotent POSTのdraft/job/confirmation/audit recordを消す意味ではない。retryは同じdraftを使うが、前回snapshotが未公開なら必ず最新temporal projectionから再snapshotする。PUBLISHED後のretryはrecipientの未終端行だけで、quota/confirmationを再利用・再消費しない。
+
+### auto-topup
+
+publish transactionはStripeを呼ばない。wallet lock下でmonthly capの**pending_auto_topup_credits**を先に予約し、`AWAITING_TOPUP` jobとauto purchase PENDINGをcommitする。PaymentIntentは初回手動Checkoutで保存されたoff-session同意とcustomer/payment methodを使う。webhookがPAIDならpendingをusedへ移しworkerを再開、失敗/要追加認証/cap超過ならpendingを解放し`PUBLISH_BLOCKED`へ遷移する。初回manual purchaseはCheckoutに`setup_future_usage=off_session`を指定し、同意が無いwalletではauto-topupを有効化できない。
+
+### 可視性truth table
+
+| 経路 | 許可条件 | mute |
+|---|---|---|
+| personal feed | snapshot recipient **AND** current descendant qualification | 公開時muteでsnapshot外、かつ現在muteならfeedから除外 |
+| scope feed | current direct scope authorizationで当該scopeの全投稿 | 無関係 |
+| detail / reply / search / poster list | current direct scope authorization **OR** (snapshot recipient AND current descendant qualification) | 無関係 |
+
+これにより、後加入者はsnapshot外でも直接scopeをbrowseできるならdetailを404にしない。脱退者はsnapshotに残ってもcurrent qualificationを失いpersonal/detailから不可視となる。replyは親の可視性判定を同じtruth tableで行い、scope browse権を配下配信から新規付与しない。
+
+### 実装イベントと性能
+
+membership/team-anchor/org-hierarchy/mute変更は各source domainのcommit後にversion付きeventを発火し、timeline projection inboxが順序保証（entity/versionで単調）してprojectionへ反映する。POSTは投影watermark待ちをjobで行い、cross-domain transactionを作らない。workerは`SELECT ... FOR UPDATE SKIP LOCKED`でleaseを取り、lease owner/untilを更新する。sweeperはexpired leaseを再取得し、Pod crash・queue重複を安全に吸収する。
+
+性能受入れ条件を追加する: 10,000 recipientはHTTP内で0件配信・p95 enqueue 1秒、100,000はsnapshot query/insertionをpartitioned keyset batchで完了、1,000,000はrange/shard key（scope_type/scope_id）でworkerを水平分割しN+1/全件メモリ保持なし。いずれもwallet/purchase更新はrecipient単位でなくbatch lot captureとする。
+
+### AC→テスト層・fixture・観測点
+
+| AC範囲 | テスト層 | fixture | 観測点 |
+|---|---|---|---|
+| 1-7,16-20 | unit + MySQL IT | TEAM/ORG、多経路同一user、author/mute/0件、99-101 usage | usage row、recipient unique、ledger |
+| 8-10,21-22 | queue IT | PREPARING、lease切れ、Pod crash、500 recipient batch | job/lease、allocation、delivery status |
+| 11-15,23-25 | Stripe webhook IT | Checkout、off-session、lot expiry、refund、複数dispute、scope delete/transfer | inbox、purchase、frozen/recovery、audit |
+| 26-27 | controller/OpenAPI contract | ADMIN/DEPUTY/MEMBER/非所属、slug scopeId | 201/401/403/404/409、field null/casing |
+| 28-29 | performance + Flyway IT | 1万/10万/100万projection、TEAM/ORG permission migration | query count/latency、schema/index/collation |
+| 30 | 実機E2E | Stripe test webhook、poll/WS、scheduled blocked、withdrawal | browser UI、API、DB、audit metric |
