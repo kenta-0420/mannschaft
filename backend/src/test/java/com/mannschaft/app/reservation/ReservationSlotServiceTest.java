@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.dto.CloseSlotRequest;
 import com.mannschaft.app.reservation.dto.CreateSlotRequest;
 import com.mannschaft.app.reservation.dto.ReservationSlotResponse;
@@ -67,6 +68,8 @@ class ReservationSlotServiceTest {
     /** 予約閲覧の view ゲート（会員 or 公開）。デフォルトのモック（void）は常に通過する。 */
     @Mock
     private com.mannschaft.app.reservation.service.ReservationViewAccessGuard viewAccessGuard;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /** 機能B: overlap 判定は純ロジックのため実インスタンスを注入（listAvailableSlots の除外挙動を実検証）。 */
     private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
@@ -99,7 +102,8 @@ class ReservationSlotServiceTest {
                 blockedTimeRepository, recurringBlockedTimeRepository, unavailabilityChecker, lineRepository,
                 FIXED_CLOCK,
                 org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
-                viewAccessGuard);
+                viewAccessGuard, teamTimezoneResolver);
+        given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("UTC"));
     }
 
     private ReservationSlotEntity createSlotEntity() {
@@ -267,6 +271,7 @@ class ReservationSlotServiceTest {
                             LocalTime.of(10, 0), LocalTime.of(11, 0))));
 
             assertThat(captureVisibleSlots()).containsExactly(adjacent);
+            verify(teamTimezoneResolver).resolveZone(TEAM_ID);
         }
 
         @Test

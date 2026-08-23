@@ -30,6 +30,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -685,16 +686,19 @@ class ReservationBusinessHourServiceTest {
         void impactOvernightIncludesNextDateCandidates() {
             LocalDate date = LocalDate.of(2026, 4, 2);
             given(reservationRepository.findActiveReservationsOnDates(
-                    eq(TEAM_ID), eq(List.of(date.minusDays(1), date, date.plusDays(1))),
-                    eq(null), eq(ACTIVE))).willReturn(List.of());
+                    org.mockito.ArgumentMatchers.eq(TEAM_ID),
+                    org.mockito.ArgumentMatchers.eq(List.of(date.minusDays(1), date, date.plusDays(1))),
+                    org.mockito.ArgumentMatchers.eq((Long) null), org.mockito.ArgumentMatchers.eq(ACTIVE)))
+                    .willReturn(List.of());
 
             service.getBlockedTimeImpact(TEAM_ID, date,
                     com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null,
                     LocalTime.of(23, 0), LocalTime.of(1, 0), true);
 
             verify(reservationRepository).findActiveReservationsOnDates(
-                    eq(TEAM_ID), eq(List.of(date.minusDays(1), date, date.plusDays(1))),
-                    eq(null), eq(ACTIVE));
+                    org.mockito.ArgumentMatchers.eq(TEAM_ID),
+                    org.mockito.ArgumentMatchers.eq(List.of(date.minusDays(1), date, date.plusDays(1))),
+                    org.mockito.ArgumentMatchers.eq((Long) null), org.mockito.ArgumentMatchers.eq(ACTIVE));
         }
 
         @Test

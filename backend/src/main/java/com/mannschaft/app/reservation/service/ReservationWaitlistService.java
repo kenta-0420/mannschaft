@@ -29,6 +29,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
@@ -358,14 +359,20 @@ public class ReservationWaitlistService {
         Map<Long, ReservationSlotEntity> slots = slotRepository.findAllById(waiting.stream()
                         .map(ReservationWaitlistEntryEntity::getSlotId).collect(Collectors.toSet()))
                 .stream().collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+        Map<Long, ZoneId> zonesByTeam = teamTimezoneResolver == null
+                ? Map.of()
+                : java.util.Optional.ofNullable(teamTimezoneResolver.resolveZones(slots.values().stream()
+                        .map(ReservationSlotEntity::getTeamId).collect(Collectors.toSet())))
+                        .orElseGet(Map::of);
         List<ReservationWaitlistEntryEntity> expired = waiting.stream()
                 .filter(entry -> {
                     ReservationSlotEntity slot = slots.get(entry.getSlotId());
                     if (slot == null) return false;
-                    Instant start = teamTimezoneResolver == null
+                    ZoneId zone = zonesByTeam.get(slot.getTeamId());
+                    Instant start = teamTimezoneResolver == null || zone == null
                             ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime())
                                 .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
-                            : teamTimezoneResolver.toInstant(slot.getTeamId(), slot.getSlotDate(), slot.getStartTime());
+                            : teamTimezoneResolver.toInstant(slot.getSlotDate(), slot.getStartTime(), zone);
                     return !start.isAfter(now);
                 }).toList();
         if (expired.isEmpty()) {

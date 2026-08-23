@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.reservation.CancelledBy;
@@ -31,6 +32,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -94,6 +96,7 @@ public class ReservationRecurringBlockedTimeService {
     /** F03.4.5 §6.2 W2-5（強行登録）: 申込者への通知を AFTER_COMMIT で送るためのイベント発行者。 */
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
+    private final TeamTimezoneResolver teamTimezoneResolver;
 
     // ────────────────────────────────────────────────────────────
     // 一覧
@@ -554,7 +557,8 @@ public class ReservationRecurringBlockedTimeService {
     private List<ReservationRecurringOverlapRow> findOverlappingRows(
             Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime,
             LocalTime endTime, boolean endsNextDay) {
-        LocalDate today = LocalDate.now(clock);
+        ZoneId teamZone = teamTimezoneResolver.resolveZone(teamId);
+        LocalDate today = LocalDate.now(clock.withZone(teamZone));
         LocalDate horizonEnd = today.plusDays(GUARD_HORIZON_DAYS);
         List<ReservationRecurringOverlapRow> candidates = reservationRepository
                 .findActiveReservationsInRangeForRecurringGuard(teamId, today, horizonEnd, lineId, ACTIVE_STATUSES);

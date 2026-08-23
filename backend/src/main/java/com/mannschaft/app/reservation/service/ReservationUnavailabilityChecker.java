@@ -383,4 +383,16 @@ public class ReservationUnavailabilityChecker {
         }
         return recurringRules != null && recurringRules.stream().anyMatch(r -> isRecurringBlocked(slot, r, zone));
     }
+
+    /** 既にteam単位で解決済みのZoneIdを使う高速経路。候補slotごとのresolver呼出を発生させない。 */
+    public boolean isBlockedByAny(
+            ReservationSlotEntity slot,
+            Collection<ReservationBlockedTimeEntity> blocks,
+            Collection<ReservationRecurringBlockedTimeEntity> recurringRules,
+            ZoneId zone) {
+        if (blocks != null && blocks.stream().anyMatch(b -> isBlocked(slot, b, zone))) {
+            return true;
+        }
+        return recurringRules != null && recurringRules.stream().anyMatch(r -> isRecurringBlocked(slot, r, zone));
+    }
 }

@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.reservation.RecurringWeekSkipReason;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity;
@@ -20,6 +21,7 @@ import org.mockito.quality.Strictness;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -67,6 +69,8 @@ class ReservationRecurringSlotResolverTest {
     private ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
     @Mock
     private ReservationRepository reservationRepository;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     private ReservationRecurringSlotResolver resolver;
 
@@ -74,7 +78,8 @@ class ReservationRecurringSlotResolverTest {
     void setUp() {
         resolver = new ReservationRecurringSlotResolver(
                 slotRepository, blockedTimeRepository, recurringBlockedTimeRepository,
-                new ReservationUnavailabilityChecker(), reservationRepository);
+                new ReservationUnavailabilityChecker(), reservationRepository, teamTimezoneResolver);
+        given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("UTC"));
         given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
                 anyLong(), any(), any())).willReturn(List.of());
         given(recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(anyLong())).willReturn(List.of());
