@@ -3,8 +3,8 @@ import type { components, operations } from '~/types/generated'
 
 // === 生成型（真実のソース = openapi-typescript）===
 // 機能B（予約不可枠）は BE #2109 で resourceType/resourceId/impact を追加済み。
-type BlockedTimeRequest = components['schemas']['BlockedTimeRequest']
-type BlockedTimeResponse = components['schemas']['BlockedTimeResponse']
+type BlockedTimeRequest = components['schemas']['BlockedTimeRequest'] & { endsNextDay?: boolean }
+type BlockedTimeResponse = components['schemas']['BlockedTimeResponse'] & { endsNextDay?: boolean }
 type BlockedTimeImpactResponse = components['schemas']['BlockedTimeImpactResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type BusinessHourResponse = components['schemas']['BusinessHourResponse'] & {

@@ -17,7 +17,10 @@ import dayjs from 'dayjs'
 import type { components } from '~/types/generated'
 import type { BlockedResourceType } from '~/composables/useReservationApi'
 
-type BlockedTimeResponse = components['schemas']['BlockedTimeResponse']
+type BlockedTimeResponse = components['schemas']['BlockedTimeResponse'] & {
+  endsNextDay?: boolean
+  timeSlot?: NonNullable<components['schemas']['BlockedTimeResponse']['timeSlot']> & { endsNextDay?: boolean }
+}
 type BlockedTimeImpactResponse = components['schemas']['BlockedTimeImpactResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type BusinessHourResponse = components['schemas']['BusinessHourResponse']
@@ -58,6 +61,7 @@ const blockedDate = ref<Date | null>(new Date())
 const template = ref<TemplateKey>('FULL_DAY')
 const startTime = ref<string | null>(null)
 const endTime = ref<string | null>(null)
+const endsNextDay = ref(false)
 const reason = ref<string>('')
 
 /** 営業時間が取れずテンプレを算出できなかった場合の注意フラグ */
@@ -193,13 +197,14 @@ const effectiveRequest = computed(() => {
   const hasEnd = !!endTime.value
   // 片側だけの時刻は無効（BE も 400）
   if (hasStart !== hasEnd) return null
-  if (hasStart && hasEnd && startTime.value! >= endTime.value!) return null
+  if (hasStart && hasEnd && !endsNextDay.value && startTime.value! >= endTime.value!) return null
   return {
     date: formatDate(blockedDate.value),
     resourceType: scope.value,
     resourceId: scope.value === 'STAFF' ? resolvedStaffUserId.value ?? undefined : undefined,
     startTime: startTime.value ?? undefined,
     endTime: endTime.value ?? undefined,
+    endsNextDay: endsNextDay.value || undefined,
   }
 })
 
@@ -286,6 +291,7 @@ async function submit() {
       blockedDate: req.date,
       startTime: req.startTime,
       endTime: req.endTime,
+      endsNextDay: req.endsNextDay,
       reason: reason.value.trim() || undefined,
       resourceType: req.resourceType,
       resourceId: req.resourceId,
@@ -346,7 +352,8 @@ function timeRangeLabel(item: BlockedTimeResponse): string {
   const s = toHm(item.timeSlot?.startTime)
   const e = toHm(item.timeSlot?.endTime)
   if (!s && !e) return t('reservation.unavailability.list.all_day')
-  return `${s} - ${e}`
+  const nextDay = item.endsNextDay ?? item.timeSlot?.endsNextDay
+  return nextDay ? `${s} - ${t('reservation.template.next_day_time', { time: e })}` : `${s} - ${e}`
 }
 
 onMounted(async () => {
@@ -462,6 +469,10 @@ onMounted(async () => {
             :disabled="disabled || submitting"
           />
         </div>
+        <label class="mt-2 flex items-center gap-2 text-sm">
+          <Checkbox v-model="endsNextDay" binary :disabled="disabled || submitting" />
+          <span>{{ t('reservation.template.ends_next_day') }}</span>
+        </label>
         <p class="mt-1 text-xs text-surface-500">
           {{ t('reservation.unavailability.field.time_range_hint') }}
         </p>

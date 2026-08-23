@@ -34,6 +34,8 @@ type ReservationMenuResponse = components['schemas']['ReservationMenuResponse']
 
 const props = defineProps<{
   teamId: string
+  /** 予約枠の日付・現在時刻判定に使うチーム基準タイムゾーン。 */
+  teamTimezone?: string
   /** 管理者（ADMIN）か否か。空状態の文言・管理CTAの出し分けに使う。 */
   isAdmin: boolean
 }>()
@@ -55,7 +57,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const reservationApi = useReservationApi()
-const { userTimezone } = useDatetime()
+const teamTimezone = computed(() => props.teamTimezone ?? 'Asia/Tokyo')
 /** 静かなエラー記録（トーストは出さずバックエンドへ送信。WidgetAttendanceResults.vue 等と同一パターン）。 */
 const { captureQuiet } = useErrorReport()
 
@@ -118,7 +120,7 @@ function columnLabel(col: GridColumnDto): string {
 }
 
 function dayLabel(date: string): string {
-  return date ? dayjs(date).format('YYYY/MM/DD (ddd)') : ''
+  return date ? dayjs.tz(date, teamTimezone.value).format('YYYY/MM/DD (ddd)') : ''
 }
 
 const allCells = computed<MatrixCellInput[]>(() => {
@@ -170,23 +172,24 @@ const matrixRows = computed<MatrixRowVM[]>(() => {
 
 function weekRangeLabel(): string {
   if (!weekStart.value) return ''
-  const end = dayjs(weekStart.value).add(6, 'day')
-  return `${dayjs(weekStart.value).format('YYYY/MM/DD')} - ${end.format('YYYY/MM/DD')}`
+  const start = dayjs.tz(weekStart.value, teamTimezone.value)
+  const end = start.add(6, 'day')
+  return `${start.format('YYYY/MM/DD')} - ${end.format('YYYY/MM/DD')}`
 }
 
 function prevWeek() {
-  weekStart.value = dayjs(weekStart.value).subtract(7, 'day').format('YYYY-MM-DD')
+  weekStart.value = dayjs.tz(weekStart.value, teamTimezone.value).subtract(7, 'day').format('YYYY-MM-DD')
 }
 function nextWeek() {
-  weekStart.value = dayjs(weekStart.value).add(7, 'day').format('YYYY-MM-DD')
+  weekStart.value = dayjs.tz(weekStart.value, teamTimezone.value).add(7, 'day').format('YYYY-MM-DD')
 }
 function thisWeek() {
-  const today = dayjs().tz(userTimezone.value)
+  const today = dayjs().tz(teamTimezone.value)
   weekStart.value = today.subtract(mondayOffsetDays(today.day()), 'day').format('YYYY-MM-DD')
 }
 
 function refreshClock() {
-  const now = dayjs().tz(userTimezone.value)
+  const now = dayjs().tz(teamTimezone.value)
   todayStr.value = now.format('YYYY-MM-DD')
   nowMinutes.value = now.hour() * 60 + now.minute()
 }
@@ -214,7 +217,7 @@ async function loadGrid(opts?: { silent?: boolean }) {
   refreshClock()
   try {
     const from = weekStart.value
-    const to = dayjs(weekStart.value).add(6, 'day').format('YYYY-MM-DD')
+    const to = dayjs.tz(weekStart.value, teamTimezone.value).add(6, 'day').format('YYYY-MM-DD')
     const res = await reservationApi.getSlotGrid(props.teamId, {
       from,
       to,
