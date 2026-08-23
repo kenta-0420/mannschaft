@@ -309,9 +309,9 @@ class ReservationGroupServiceTest {
                     .slotDate(LocalDate.of(2026, 8, 9)).startTime(LocalTime.of(23, 30))
                     .endTime(LocalTime.of(23, 59)).build();
             given(slotRepository.findAllById(anyIterable())).willReturn(List.of(first, second));
-            given(teamTimezoneResolver.toInstant(TEAM_ID, first.getSlotDate(), first.getStartTime()))
+            given(teamTimezoneResolver.toInstant(first.getSlotDate(), first.getStartTime(), ZoneId.of("America/New_York")))
                     .willReturn(Instant.parse("2026-08-10T03:00:00Z"));
-            given(teamTimezoneResolver.toInstant(TEAM_ID, second.getSlotDate(), second.getStartTime()))
+            given(teamTimezoneResolver.toInstant(second.getSlotDate(), second.getStartTime(), ZoneId.of("America/New_York")))
                     .willReturn(Instant.parse("2026-08-10T03:30:00Z"));
 
             ReservationGroupResponse response =
@@ -665,8 +665,11 @@ class ReservationGroupServiceTest {
         void 日跨ぎslot集合は前日開始blockを検出する() {
             ReservationSlotEntity nextDay = ReservationSlotEntity.builder().id(103L).teamId(TEAM_ID)
                     .slotDate(SLOT_DATE.plusDays(1)).startTime(LocalTime.of(0, 0)).endTime(LocalTime.of(0, 30))
-                    .endDate(SLOT_DATE.plusDays(1)).lineId(LINE_ID).build();
-            given(slotRepository.findAllById(anyIterable())).willReturn(List.of(slot(101L, 23, 30), nextDay));
+                    .endDate(SLOT_DATE.plusDays(1)).build();
+            ReservationSlotEntity overnightStart = ReservationSlotEntity.builder().id(101L).teamId(TEAM_ID)
+                    .slotDate(SLOT_DATE).startTime(LocalTime.of(23, 30)).endTime(LocalTime.MIDNIGHT)
+                    .endDate(SLOT_DATE.plusDays(1)).build();
+            given(slotRepository.findAllById(anyIterable())).willReturn(List.of(overnightStart, nextDay));
             given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("Asia/Tokyo"));
             given(teamTimezoneResolver.toInstant(SLOT_DATE, LocalTime.of(23, 30), ZoneId.of("Asia/Tokyo")))
                     .willReturn(Instant.parse("2026-04-01T14:30:00Z"));

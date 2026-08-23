@@ -33,8 +33,10 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -518,9 +520,10 @@ class ReservationWaitlistServiceTest {
                 .slotDate(LocalDate.of(2026, 8, 9)).startTime(LocalTime.of(23, 45)).endTime(LocalTime.of(23, 59))
                 .slotStatus(SlotStatus.FULL).build();
         when(slotRepository.findAllById(any())).thenReturn(List.of(expiredSlot, futureSlot));
-        when(teamTimezoneResolver.toInstant(TEAM_ID, expiredSlot.getSlotDate(), expiredSlot.getStartTime()))
+        when(teamTimezoneResolver.resolveZones(any())).thenReturn(Map.of(TEAM_ID, ZoneId.of("America/New_York")));
+        when(teamTimezoneResolver.toInstant(expiredSlot.getSlotDate(), expiredSlot.getStartTime(), ZoneId.of("America/New_York")))
                 .thenReturn(Instant.parse("2026-08-10T03:15:00Z"));
-        when(teamTimezoneResolver.toInstant(TEAM_ID, futureSlot.getSlotDate(), futureSlot.getStartTime()))
+        when(teamTimezoneResolver.toInstant(futureSlot.getSlotDate(), futureSlot.getStartTime(), ZoneId.of("America/New_York")))
                 .thenReturn(Instant.parse("2026-08-10T03:45:00Z"));
 
         assertThat(service.purgeExpiredWaiting()).isEqualTo(1);

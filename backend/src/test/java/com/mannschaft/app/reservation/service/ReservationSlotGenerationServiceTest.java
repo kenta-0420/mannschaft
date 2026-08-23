@@ -151,7 +151,7 @@ class ReservationSlotGenerationServiceTest {
         service.generateDiffForTeam(TEAM_ID, ZoneId.of("America/New_York"));
 
         verify(teamTimezoneResolver, never()).resolveZone(TEAM_ID);
-        verify(slotRepository, times(1)).insertGeneratedCellIgnoreDuplicate(
+        verify(slotRepository, times(8)).insertGeneratedCellIgnoreDuplicate(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
