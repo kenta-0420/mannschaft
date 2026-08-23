@@ -46,6 +46,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -824,14 +825,18 @@ public class ReservationService {
         Map<Long, ReservationSlotEntity> slotMap = slotRepository.findAllById(candidates.stream()
                         .map(ReservationEntity::getReservationSlotId).collect(Collectors.toSet()))
                 .stream().collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+        Map<Long, ZoneId> teamZones = teamTimezoneResolver == null ? Map.of()
+                : teamTimezoneResolver.resolveZones(candidates.stream()
+                        .map(ReservationEntity::getTeamId).collect(Collectors.toSet()));
         List<ReservationEntity> reservations = candidates.stream()
                 .filter(r -> {
                     ReservationSlotEntity slot = slotMap.get(r.getReservationSlotId());
                     if (slot == null) return false;
-                    Instant start = teamTimezoneResolver == null
+                    ZoneId zone = teamZones.get(r.getTeamId());
+                    Instant start = teamTimezoneResolver == null || zone == null
                             ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime())
                                 .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
-                            : teamTimezoneResolver.toInstant(r.getTeamId(), slot.getSlotDate(), slot.getStartTime());
+                            : teamTimezoneResolver.toInstant(slot.getSlotDate(), slot.getStartTime(), zone);
                     return !start.isBefore(nowInstant);
                 }).toList();
         return enrichList(reservations);
