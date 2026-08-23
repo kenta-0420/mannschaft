@@ -80,8 +80,8 @@ SYSTEM_ADMIN は障害対応・監査閲覧を行えるが、scope の財布操�
 
 | パス | 観点 | 結果 |
 |---|---|---|
-| 第1パス | 不備、セキュリティ、UX、既存仕様、保守性、検証可能性 | 精査待ち |
-| 第2パス | 独立した状態遷移・会計・E2E観点 | 第1パス後に実施 |
+| 第1パス | 不備、セキュリティ、UX、既存仕様、保守性、検証可能性 | 完了。topup/confirmation/lot allocation、projection、耐久lease queue、権限・Stripe inboxを反映 |
+| 第2パス | 独立した状態遷移・会計・E2E観点 | 完了。0件COMPLETED+NONE、publication_status非露出、guard正本、fence/checkpoint、summary権限・型、6言語i18nを是正 |
 | E2E耐性 | API型、null、認可、非同期の観測点 | 第2パス後に実施 |
 
 ## 7. 第1精査反映（2026-08-23）

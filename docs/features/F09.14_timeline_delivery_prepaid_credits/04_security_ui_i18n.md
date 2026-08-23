@@ -38,7 +38,7 @@ rate limitは既存 Valkey `AbstractRateLimitFilter`系を使い、Valkey障害�
 - `VIEW_TIMELINE_COST`があれば無料利用 `82 / 100投稿` と残りを表示する。80/100以降は視覚的に注意を上げるが、無料投稿を妨げない。
 - 101件目以降の見込みでは、`「約1,240通 / 税込 ¥1,240」`、利用可能credit、`「公開時に件数を確定します。増減しても再確認はありません」`を示し、単一の明示確認チェック/ボタンで送信する。無料の送信には確認を追加しない。
 - `SEND_PAID_TIMELINE`がなければ有料送信ボタンを無効化し、ADMINへ委任を依頼する説明を表示する。残高不足・wallet停止は原因とADMIN向け導線を表示し、部分送信の選択肢は出さない。
-- `PROCESSING`は投稿カード/フォームに処理中ラベルと到達数を出し、編集・削除を非活性にする。完了/最終失敗をリアルタイムまたはpollで反映する。
+- `PROCESSING`は投稿カード/フォームに処理中ラベルと到達数を出し、編集・削除を非活性にする。完了/最終失敗は `GET timeline-delivery/jobs/{jobId}` のpollを正本に反映し、WebSocket `timeline.deliveryJobChanged` は更新を早める補助通知だけにする。
 
 ### ダッシュボードと管理画面
 
@@ -51,7 +51,7 @@ rate limitは既存 Valkey `AbstractRateLimitFilter`系を使い、Valkey障害�
 
 ## 3. i18n キー（6言語必須）
 
-実装では `frontend/app/locales/{ja,en,zh,ko,es,de}/common.json`（または既存timeline namespace）へ全キーを同時追加する。値は以下を基準に各言語へ自然に翻訳し、キー欠落検査を追加する。
+実装では専用 `frontend/app/locales/{ja,en,zh,ko,es,de}/timeline_delivery.json` を新設し、全キーを同時追加する。値は以下を基準に各言語へ自然に翻訳し、6言語parity testでキー欠落を検出する。`common.json` や既存timeline namespaceには混在させない。
 
 | key | ja基準文言 |
 |---|---|
@@ -100,6 +100,6 @@ rate limitは既存 Valkey `AbstractRateLimitFilter`系を使い、Valkey障害�
 
 wallet statusは`CLOSED > CLOSING > SETTLEMENT_BLOCKED > FROZEN > ACTIVE`の優先順で導出する。CLOSINGはscope delete eventから入り、new publish/auto-topupを止め、jobsを終端化し、lot allocation/remaining lotをFIFOでrefundし、成功ならCLOSED、Stripe返金不能ならREFUND_LIABILITYを残してCLOSEDとする。ownership transferは`ScopeOwnershipTransferredEvent`を受け、walletのscopeを変えずowner表示/監査だけを更新する。APIは既存ownership transfer confirmation画面でbalance/reserved/auto/disputeを双方へ表示する。
 
-feature flagは `FEATURE_TIMELINE_DELIVERY_PREPAID_ENABLED`。offでは既存無料投稿を完全後方互換で公開し、新しいpaid/auto UI/APIは404、既にPREPARING/PROCESSING jobはdrainまたはrefund終端まで継続する。realtimeはpollが正本、WebSocketは`timeline.deliveryJobChanged`の補助通知だけで、欠落してもpollで状態を回復する。
+feature flagは `FEATURE_TIMELINE_DELIVERY_PREPAID_ENABLED`。offでは既存無料投稿を完全後方互換で公開し、新しいpaid/auto UI/APIは404、既にPREPARING/PROCESSING jobはdrainまたはrefund終端まで継続する。状態反映はpollが正本、WebSocketは`timeline.deliveryJobChanged`の補助通知だけで、欠落してもpollで状態を回復する。
 
-i18nは共通jsonでなく専用 `frontend/app/locales/{ja,en,zh,ko,es,de}/timeline_delivery.json` を新設し、6言語parity testで全keyを強制する。rate limit Valkey障害は概算/readは既存fail-open、Checkout/paid publish/retryはfail-closed（429/503）とし、DB整合ではなく濫用防止だけを担う。
+i18nは専用 `timeline_delivery.json` の6言語parity testで全keyを強制する。rate limit Valkey障害は概算/readは既存fail-open、Checkout/paid publish/retryはfail-closed（429/503）とし、DB整合ではなく濫用防止だけを担う。

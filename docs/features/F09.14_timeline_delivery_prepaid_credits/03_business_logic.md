@@ -6,9 +6,9 @@
 
 ### 1.1 到達対象の確定
 
-`TimelineDeliveryRecipientSnapshotService` が実公開時に一度だけ候補を解決する。TEAM は直接 ACTIVE member、ORGANIZATION は既存 `TimelineDeliveryScopeResolver` の `DIRECT` / `CHILDREN` / `DESCENDANTS` を使う。account (`user_id`) を DISTINCT し、投稿者と公開時ミュートを除く。scopeミュートは feed表示設定だが、明示的に「公開時ミュートなら配信しない」という本機能の契約として snapshot 前に適用する。
+`TimelineDeliveryRecipientSnapshotService` が実公開時に一度だけ候補を解決する。TEAM は timeline-domain temporal audience projection 上の直接 ACTIVE member、ORGANIZATION は同 projection の `DIRECT` / `CHILDREN` / `DESCENDANTS` 正準queryを使う。既存 `TimelineDeliveryScopeResolver` は閲覧者一人への可視性判定用であり、recipient列挙には使わない。account (`user_id`) を DISTINCT し、投稿者と公開時ミュートを除く。scopeミュートは feed表示設定だが、明示的に「公開時ミュートなら配信しない」という本機能の契約として snapshot 前に適用する。
 
-snapshotは `timeline_delivery_recipients` に一括 INSERT し、`uq(job_id,recipient_user_id)` を最終重複防壁とする。無料投稿も必ず同じsnapshotを作る。後加入は過去jobに行がないため遡及されず、後脱退は recipient行を消さず、既存 ContentVisibilityResolver が表示時に在籍を再確認して遮断する。scope timeline の browse は従来の入場認可を維持する。個人フィード、詳細、返信、投稿者一覧、検索は同一の snapshot + 動的認可述語を共有する。ミュートだけは feed に限定する。
+snapshotは `timeline_delivery_recipients` に一括 INSERT し、`uq(job_id,recipient_user_id)` を最終重複防壁とする。無料投稿も必ず同じsnapshotを作る。後加入は過去jobに行がないため遡及されず、後脱退は recipient行を消さず、既存 `TimelinePostVisibilityAccessGuard` が表示時に在籍を再確認して遮断する。scope timeline の browse は従来の入場認可を維持する。個人フィード、詳細、返信、投稿者一覧、検索は同一の snapshot + 動的認可述語を共有する。ミュートだけは feed に限定する。
 
 ### 1.2 月次判定と原子公開
 
@@ -66,7 +66,7 @@ auto-topup は ADMIN が初回手動購入後にだけ、threshold/refill/月上
 
 以下をscope ADMINへ既存通知基盤で一意キー付き送信する: 無料投稿80/100・100/100、残高がthreshold以下、auto-topup開始/成功/失敗/cap到達、期限30日/7日前/失効、予約投稿blocked、job最終失敗、返金liability、dispute開始/解決。SYSTEM_ADMINはdispute/liabilityも受け取る。
 
-予約投稿は保存時にcreditを予約しない。実公開時のsnapshot/usage/残高を使い、auto-topupを試み、失敗時は timeline post を `SCHEDULED` のまま、delivery job を `SCHEDULED_BLOCKED`（投稿は非公開）としてADMINへ通知する。再実行は ADMIN または許可された送信者が行う。
+予約投稿は保存時にcreditを予約しない。実公開時のsnapshot/usage/残高を使い、auto-topupを試み、失敗時は timeline post を `SCHEDULED` のまま、delivery job を `PUBLISH_BLOCKED`（投稿は非公開）としてADMINへ通知する。再実行は ADMIN または許可された送信者が行う。
 
 メトリクス: `timeline_delivery_publish_total{scope_type,billing_mode,outcome}`、`timeline_delivery_job_duration_seconds`、`timeline_delivery_recipient_total{status}`、`timeline_credit_available/reserved`、`timeline_credit_auto_topup_total{outcome}`、`timeline_credit_refund_liability_total`、`timeline_credit_dispute_total{status}`、queue lag、snapshot query latency。ログは jobId/postId/scope/actor を構造化し、recipient ID、本文、Stripe secretは出さない。
 
@@ -74,20 +74,24 @@ auto-topup は ADMIN が初回手動購入後にだけ、threshold/refill/月上
 
 ```mermaid
 stateDiagram-v2
-  [*] --> NONE: recipient=0 / 非対象
-  [*] --> PROCESSING: snapshot + FREE/PAID reserve commit
-  [*] --> SCHEDULED_BLOCKED: 予約時の残高/auto補充不足
-  SCHEDULED_BLOCKED --> PROCESSING: 権限者が再公開
+  [*] --> PREPARING: 201作成 / 予約実時刻
+  PREPARING --> COMPLETED: recipient=0 / billingMode=NONE
+  PREPARING --> PROCESSING: snapshot + FREE/PAID reserve commit
+  PREPARING --> AWAITING_TOPUP: cap内auto補充待ち
+  AWAITING_TOPUP --> PREPARING: Stripe webhook PAID
+  AWAITING_TOPUP --> PUBLISH_BLOCKED: 失敗/追加認証/cap超過
+  PREPARING --> PUBLISH_BLOCKED: token/残高/policy/cap不足（即時・予約共通）
+  PUBLISH_BLOCKED --> PREPARING: 権限者が再公開
   PROCESSING --> PROCESSING: 一部成功・retry
   PROCESSING --> COMPLETED: 全recipient終端、精算済
   PROCESSING --> FAILURE_RESOLVING: queue/精算不整合・retry枯渇
   FAILURE_RESOLVING --> PROCESSING: 権限者retry
   FAILURE_RESOLVING --> COMPLETED: 未達返金を完了
   COMPLETED --> DELETED: 論理削除（返金なし）
-  NONE --> DELETED
+  COMPLETED --> DELETED: 0 recipientを含む
 ```
 
-purchase state: `PENDING -> PAID -> {EXPIRED | REFUND_PENDING -> REFUNDED | REFUND_LIABILITY | DISPUTED}`。`PENDING -> CANCELLED`、`PAID -> CANCELLED` は完全未使用取消だけ、`DISPUTED -> PAID` はwon/reinstated、`DISPUTED -> SETTLEMENT_BLOCKED` はlostのscope状態である。
+purchase state: `PENDING -> PAID -> {EXPIRED | REFUND_PENDING -> REFUNDED | REFUND_LIABILITY | DISPUTED}`。`PENDING -> CANCELLED`、`PAID -> CANCELLED` は完全未使用取消だけ、`DISPUTED -> PAID` はwon/reinstated、`DISPUTED -> SETTLEMENT_BLOCKED` はlostのwallet状態である。
 
 ## 5. 受け入れ条件（/試練へ直結）
 
@@ -113,7 +117,7 @@ purchase state: `PENDING -> PAID -> {EXPIRED | REFUND_PENDING -> REFUNDED | REFU
 
 16. paid見込でconfirmation tokenなし、期限切れ、別actor/scope/tokenなら409でusage・recipient・reservationを残さず、draft/job/auditだけを残す。
 17. `SEND_PAID_TIMELINE`なしは403、十分な既存投稿権限がある無料投稿はそのpermissionなしでも従来どおり公開できる。
-18. exact credit不足、wallet FROZEN/CLOSED/SETTLEMENT_BLOCKED、auto-topup失敗/cap到達ではpartial delivery/負残高/72h graceを作らず、全てrollbackまたは予約投稿はBLOCKEDにする。
+18. exact credit不足、wallet FROZEN/SETTLEMENT_BLOCKED/CLOSING/CLOSED、auto-topup失敗/cap到達ではpartial delivery/負残高/72h graceを作らず、全てrollbackまたは予約投稿は`PUBLISH_BLOCKED`にする。
 19. 同一scopeで99件目・100件目・101件目を同時公開すると、PESSIMISTIC lockにより必ず2件FREE・1件PAIDになり、異scope間はブロックしない。
 20. 親投稿への返信、編集、retry、自動再配送は月100投稿に含まずcreditも消費しない。予約保存は無料枠もcreditも消費せず、実公開時だけ評価する。
 21. PROCESSING/FAILURE_RESOLVING中の編集・削除は409。最終失敗後はretryまたは未達返金が完了するまでlockされる。
@@ -128,7 +132,7 @@ purchase state: `PENDING -> PAID -> {EXPIRED | REFUND_PENDING -> REFUNDED | REFU
 27. API全fieldのlowerCamelCase、nullable、整数number、enum、201 PREPARING、401/403/404/409/502の契約をOpenAPI contract testで固定する。
 28. 1000万userを前提に、snapshotはDISTINCTをDBで実行、recipient insertと配信をkeyset batchにし、N+1を作らない。1万recipientの公開がHTTP request内で配信を待たず、queue lag/失敗/latencyが観測できる。
 29. 実DB integration testでusage/wallet行ロック、FIFO、rollback、期限、recipient unique、アーカイブを検証し、TestcontainersのFlyway全適用でUUIDv7列・index・照合順序・既存timeline_posts列追加を検証する。
-30. 実機E2Eで、ADMINの残高補充→有料確認1回→PROCESSING→個人feed到達→dashboard反映、DEPUTYの委任/拒否、残高不足、予約blocked、auto cap、ミュート、脱退、dispute bannerを確認し、Stripeはtest mode webhook署名を通す。
+30. 実機E2Eで、ADMINの残高補充→有料確認1回→PROCESSING→個人feed到達→dashboard反映、DEPUTYの委任/拒否、残高不足、予約`PUBLISH_BLOCKED`、auto cap、ミュート、脱退、dispute bannerを確認し、Stripeはtest mode webhook署名を通す。
 
 ## 6. 第1精査で確定したpublish状態・可視性・非同期
 
@@ -136,14 +140,14 @@ purchase state: `PENDING -> PAID -> {EXPIRED | REFUND_PENDING -> REFUNDED | REFU
 
 | 起点/状態 | post公開 | job | snapshot / usage / reservation | API観測・許可操作 |
 |---|---|---|---|---|
-| immediate create | 非公開 `PROCESSING` | `PREPARING`を必ず作る | 未作成 | 201 PostResponse。retry/delete可、edit不可 |
-| preparation成功・0 recipient | `PUBLISHED` | `COMPLETED/NONE` | recipient0、usage/reservation0 | detailは直接scope認可者だけ。再snapshotなし |
+| immediate create | 非公開 `PREPARING` | `PREPARING`を必ず作る | 未作成 | 201 PostResponse。retry/delete可、edit不可 |
+| preparation成功・0 recipient | `PUBLISHED` | `COMPLETED` / billingMode=`NONE` | recipient0、usage/reservation0 | detailは直接scope認可者だけ。再snapshotなし |
 | preparation成功・FREE | `PUBLISHED` | `PROCESSING`→`COMPLETED` | snapshot、usage+1/free+1、reservation0 | poll正本、WSは補助 |
 | preparation成功・PAID | `PUBLISHED` | `PROCESSING`→`COMPLETED` | snapshot、usage+1/paid+1、lot allocation | poll正本、WSは補助 |
 | auto topup必要 | 非公開 | `AWAITING_TOPUP` | snapshotはまだcommitしない、pending capだけ予約 | 201/GET job。cancel/delete可 |
 | topup webhook成功 | workerが再PREPARING | 同job | cap確定後にsnapshot/reserve | 同一idempotencyで再開 |
 | token/残高/policy/cap不足 | 非公開 | `PUBLISH_BLOCKED` | **draft/job/confirmation監査だけ保持**、usage/recipient/allocation/available残高はrollback | 409、retry/delete可 |
-| scheduled実時刻 | 上記immediateと同じ | PREPARINGまたはBLOCKED | 保存時は全て0 | ADMIN/許可sender retry可 |
+| scheduled実時刻 | 上記immediateと同じ | PREPARINGまたは`PUBLISH_BLOCKED` | 保存時は全て0 | ADMIN/許可sender retry可 |
 | worker/Pod crash | 公開済みは維持 | lease期限後に再取得 | 一意recipient/lot allocationを再利用 | sweeperが再開 |
 
 ここで「rollback」は未公開の**usage、recipient snapshot、allocation、wallet available/reserved変更**を戻す意味であり、idempotent POSTのdraft/job/confirmation/audit recordを消す意味ではない。retryは同じdraftを使うが、前回snapshotが未公開なら必ず最新temporal projectionから再snapshotする。PUBLISHED後のretryはrecipientの未終端行だけで、quota/confirmationを再利用・再消費しない。
@@ -177,4 +181,4 @@ membership/team-anchor/org-hierarchy/mute変更は各source domainのcommit後�
 | 11-15,23-25 | Stripe webhook IT | Checkout、off-session、lot expiry、refund、複数dispute、scope delete/transfer | inbox、purchase、frozen/recovery、audit |
 | 26-27 | controller/OpenAPI contract | ADMIN/DEPUTY/MEMBER/非所属、slug scopeId | 201/401/403/404/409、field null/casing |
 | 28-29 | performance + Flyway IT | 1万/10万/100万projection、TEAM/ORG permission migration | query count/latency、schema/index/collation |
-| 30 | 実機E2E | Stripe test webhook、poll/WS、scheduled blocked、withdrawal | browser UI、API、DB、audit metric |
+| 30 | 実機E2E | Stripe test webhook、poll正本/WS補助、予約`PUBLISH_BLOCKED`、withdrawal | browser UI、API、DB、audit metric |

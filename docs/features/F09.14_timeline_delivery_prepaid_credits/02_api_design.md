@@ -4,9 +4,9 @@
 
 ## 1. 共通契約
 
-パス中の `{scopeType}` は小文字 `teams` / `organizations`、`{scopeId}` は `int64`、JSON は lowerCamelCase、成功は `{ "data": ... }`、失敗は既存 `ErrorResponse` とする。日時は offset付き ISO-8601 string、金額・credit・件数は JSON integer number（Java側`long`、上限は設定値でJS安全整数以内）で返す。`boolean` と enum は null不可、optional外部IDだけ nullable。本文の `scopeType` enum は `TEAM` / `ORGANIZATION`。
+パス中の `{scopeType}` は小文字 `teams` / `organizations`、`{scopeId}` は既存FEルートと同じ slug 文字列または数値文字列で、Service層で内部 `Long` IDへ解決する。JSON は lowerCamelCase、成功は `{ "data": ... }`、失敗は既存 `ErrorResponse` とする。日時は offset付き ISO-8601 string、金額・credit・件数は JSON integer number（Java側`long`、上限は設定値でJS安全整数以内）で返す。`boolean` と enum は null不可、optional外部IDだけ nullable。本文の `scopeType` enum は `TEAM` / `ORGANIZATION`。
 
-scopeの存在・所属・権限は各 Team/Organization Service と ContentVisibilityResolver 経由で解決する。権限不成立・異scopeは存在を漏らさず404、認証なし401とする。CSRF、入力長、レート制限は [04](04_security_ui_i18n.md) に従う。
+scopeの存在・所属・権限は各 Team/Organization Service と既存 `TimelinePostVisibilityAccessGuard` 経由で解決する。origin/mainのJavadocどおりTIMELINE_POSTはF00 `ContentVisibilityResolver`実装を持たないため、本機能でF00を新設せず、guardへsnapshot述語を追加する。Controller/Service認可番人の委譲深度契約は維持する。権限不成立・異scopeは存在を漏らさず404、認証なし401とする。CSRF、入力長、レート制限は [04](04_security_ui_i18n.md) に従う。
 
 ## 2. 投稿前の概算・公開
 
@@ -53,7 +53,7 @@ scopeの存在・所属・権限は各 Team/Organization Service と ContentVisi
 | scheduledAt | date-time string / nullable | 既存契約。予約時は実公開まで課金しない |
 | idempotencyKey | UUID string / required | POST再送を同じdraft/jobへ束縛。actor+scopeでUNIQUE |
 
-即時投稿は既存どおり`201 Created`でPostResponseを返すが、初期 `publicationStatus=PREPARING`、`status=PROCESSING`で未公開である。同期にrecipientを列挙せず、workerがsnapshot/reserveをcommitした時だけ`PUBLISHED`にする。`PUBLISH_BLOCKED`/`FAILED`は未公開recordとして残り、作成者はretry/deleteできる。
+即時投稿は既存どおり`201 Created`でPostResponseを返すが、初期 `publicationStatus=PREPARING`、`deliveryStatus=PREPARING`で未公開である。同期にrecipientを列挙せず、workerがsnapshot/reserveをcommitした時だけ`PUBLISHED`にする。`PUBLISH_BLOCKED`/`FAILURE_RESOLVING`はrecordとして残り、未公開なら作成者はretry/deleteできる。
 
 ```json
 {
@@ -71,7 +71,7 @@ scopeの存在・所属・権限は各 Team/Organization Service と ContentVisi
 }
 ```
 
-`deliveryJobId` は対象TEAM/ORGトップレベルでは常にnon-null（0 recipientでも`NONE/COMPLETED`jobを作る）、対象外投稿だけnull。`billingMode` は`FREE`/`PAID`/`NONE`、`reservedCredits` はFREE/NONEで0。PostResponse追加fieldは`publicationStatus:PREPARING|PUBLISHED|PUBLISH_BLOCKED|FAILED|null`、`deliveryJob:DeliveryJobSummary|null`、`exactRecipientCount:number|null`であり、既存fieldを削除/nullable化しない。金額・財布情報は投稿閲覧者に返さない。
+`deliveryJobId` は対象TEAM/ORGトップレベルでは常にnon-null（0 recipientでも`status=COMPLETED`のjobを作る）、対象外投稿だけnull。`billingMode` は`FREE`/`PAID`/`NONE`、`reservedCredits` はFREE/NONEで0。PostResponse追加fieldは`publicationStatus:PREPARING|PUBLISHED|PUBLISH_BLOCKED|null`、`deliveryStatus:PREPARING|AWAITING_TOPUP|PROCESSING|COMPLETED|FAILURE_RESOLVING|PUBLISH_BLOCKED|DELETED|null`、`deliveryJob:DeliveryJobSummary|null`、`exactRecipientCount:number|null`であり、既存fieldを削除/nullable化しない。金額・財布情報は投稿閲覧者に返さない。
 
 ## 3. ダッシュボード・財布
 
@@ -79,9 +79,9 @@ scopeの存在・所属・権限は各 Team/Organization Service と ContentVisi
 
 | method / path | 権限 | request | response data |
 |---|---|---|---|
-| GET `/{scopeType}/{scopeId}/timeline-delivery/summary` | ADMIN または `VIEW_TIMELINE_COST` | なし | `recipientEstimate:string`,`asOf:string`,`periodStart:string`,`freePostsUsed:string`,`freePostsRemaining:string`,`paidDeliveryCount:string`,`canSendPaid:boolean`,`status:string`; 金融詳細は非ADMINならnull |
-| GET `/{scopeType}/{scopeId}/timeline-delivery/wallet` | ADMIN | なし | `availableCredits:string`,`reservedCredits:string`,`status:ACTIVE|FROZEN|CLOSED|SETTLEMENT_BLOCKED`,`firstManualPurchaseAt:string|null`,`autoTopup:AutoTopupResponse`,`purchases:PurchaseSummary[]` |
-| GET `/{scopeType}/{scopeId}/timeline-delivery/ledger?cursor=&size=` | ADMIN | cursor nullable string、size int 1..100 default20 | cursor page。`entries[]`: `id:string`,`entryType:string`,`creditsDelta:string`,`amountYen:string`,`occurredAt:string`,`postId:string|null`,`recipientCount:string|null`,`actorDisplayName:string|null`; recipient user ID は返さない |
+| GET `/{scopeType}/{scopeId}/timeline-delivery/summary` | ADMIN、`VIEW_TIMELINE_COST`、または`SEND_PAID_TIMELINE` | なし | `recipientEstimate:number`,`asOf:string`,`periodStart:string`,`freePostsUsed:number`,`freePostsRemaining:number`,`paidDeliveryCount:number`,`canSendPaid:boolean`,`status:string`; 全field non-null。金融詳細は含めない |
+| GET `/{scopeType}/{scopeId}/timeline-delivery/wallet` | ADMIN | なし | `availableCredits:number`,`reservedCredits:number`,`status:ACTIVE|FROZEN|SETTLEMENT_BLOCKED|CLOSING|CLOSED`,`firstManualPurchaseAt:string|null`,`autoTopup:AutoTopupResponse`,`purchases:PurchaseSummary[]` |
+| GET `/{scopeType}/{scopeId}/timeline-delivery/ledger?cursor=&size=` | ADMIN | cursor nullable string、size int 1..100 default20 | cursor page。`entries[]`: `id:string`,`entryType:string`,`creditsDelta:number`,`amountYen:number`,`occurredAt:string`,`postId:number|null`,`recipientCount:number|null`,`actorDisplayName:string|null`; recipient user ID は返さない |
 | PUT `/{scopeType}/{scopeId}/timeline-delivery/auto-topup` | ADMIN | 下表 | `AutoTopupResponse` |
 | POST `/{scopeType}/{scopeId}/timeline-delivery/checkout` | ADMIN | 下表 | `purchaseId:string`,`checkoutUrl:string`,`expiresAt:string` |
 | POST `/{scopeType}/{scopeId}/timeline-delivery/purchases/{purchaseId}/cancel` | ADMIN | `{ "idempotencyKey": "uuid" }` | `PurchaseResponse` |
@@ -98,9 +98,9 @@ auto-topup更新requestは以下。`enabled=true`時は3数値すべて必須、
 
 checkout request: `{ "credits": 500, "idempotencyKey": "uuid" }`。`credits` は50以上の整数、ADMIN設定 `mannschaft.timeline-delivery.max-purchase-credits`（初期1000000）以下。`amountYen=credits`、税込JPY、割引なしである。StripeのJPY最小課金50円に合わせるため、財布では1 credit単位で消費できるが購入は50 credit以上とする。
 
-`PurchaseSummary`: `id:string`,`purchaseKind:MANUAL|AUTO_TOPUP`,`status:string`,`creditsPurchased:string`,`remainingCredits:string`,`amountYen:string`,`paidAt:string|null`,`expiresAt:string|null`,`refundable:boolean`,`createdAt:string`。完全未使用の PAID 購入のみ `refundable=true`。
+`PurchaseSummary`: `id:string`,`purchaseKind:MANUAL|AUTO_TOPUP`,`status:string`,`creditsPurchased:number`,`remainingCredits:number`,`amountYen:number`,`paidAt:string|null`,`expiresAt:string|null`,`refundable:boolean`,`createdAt:string`。完全未使用の PAID 購入のみ `refundable=true`。
 
-`DeliveryJobResponse` は `id:string`,`postId:string`,`billingMode:FREE|PAID|NONE`,`status:PROCESSING|COMPLETED|FAILURE_RESOLVING|SCHEDULED_BLOCKED|NONE|DELETED`,`estimatedRecipientCount:string`,`exactRecipientCount:string`,`reservedCredits:string`,`capturedCredits:string`,`refundedCredits:string`,`pendingRecipientCount:string`,`deliveredRecipientCount:string`,`undeliverableRecipientCount:string`,`attemptCount:number`,`nextAttemptAt:string|null`,`failureCode:string|null`,`createdAt:string`,`completedAt:string|null`。金額、recipient ID、Stripe情報は返さない。`PurchaseResponse` は `PurchaseSummary` の全fieldに `cancelledAt:string|null`,`refundedAt:string|null`,`refundAmountYen:string`,`checkoutUrl:string|null` を加えたものとする。
+`DeliveryJobResponse` は `id:string`,`postId:number`,`billingMode:FREE|PAID|NONE`,`status:PREPARING|AWAITING_TOPUP|PROCESSING|COMPLETED|FAILURE_RESOLVING|PUBLISH_BLOCKED|DELETED`,`estimatedRecipientCount:number`,`exactRecipientCount:number`,`reservedCredits:number`,`capturedCredits:number`,`refundedCredits:number`,`pendingRecipientCount:number`,`deliveredRecipientCount:number`,`undeliverableRecipientCount:number`,`attemptCount:number`,`nextAttemptAt:string|null`,`failureCode:string|null`,`createdAt:string`,`completedAt:string|null`。`completedAt`と`failureCode`以外はnon-null。金額、recipient ID、Stripe情報は返さない。`PurchaseResponse` は `PurchaseSummary` の全fieldに `cancelledAt:string|null`,`refundedAt:string|null`,`refundAmountYen:number`,`checkoutUrl:string|null` を加えたものとする。
 
 ## 4. Stripe webhook（内部・署名必須）
 
@@ -111,7 +111,7 @@ checkout request: `{ "credits": 500, "idempotencyKey": "uuid" }`。`credits` は
 | `checkout.session.completed` | `timelineCreditPurchaseId` | PAID化、期限設定、available加算、PURCHASE元帳 |
 | `checkout.session.expired` | 同上 | PENDINGをCANCELLED |
 | `payment_intent.payment_failed` | 同上 | PENDING/auto補充失敗、通知 |
-| `charge.dispute.created` / `charge.dispute.funds_withdrawn` | purchase IDまたはpayment intent | dispute作成、未使用credit凍結、used分recovery、送信・auto停止 |
+| `charge.dispute.created` / `charge.dispute.funds_withdrawn` | `metadata.timelineCreditPurchaseId` 必須。無い場合だけ受信済み `payment_intent` / `charge` と自前purchase行の一意対応をinbox内で照合 | dispute作成、未使用credit凍結、used分recovery、送信・auto停止 |
 | `charge.dispute.closed` / `charge.dispute.funds_reinstated` | 同上 | won/reinstatedなら解除、lostならSETTLEMENT_BLOCKED維持 |
 | `refund.created` / `refund.updated` | purchase ID | 返金状態・liabilityを確定 |
 
@@ -121,7 +121,7 @@ checkout request: `{ "credits": 500, "idempotencyKey": "uuid" }`。`credits` は
 
 `origin/main`（507264fb6）での `TIMELINE` 現在最大は `TIMELINE_017` である。したがって下表の `TIMELINE_018`〜`TIMELINE_027` を設計上予約する。実装開始時とマージ直前に全 `*ErrorCode.java` を再grepし、並行追加との衝突時は未マージ側が再採番する。クライアント起因はすべて`WARN`、外部Stripe/永続障害のみ`ERROR`とする。
 
-| 仮定数 | HTTP | Severity | 発生条件 |
+| 予約コード | HTTP | Severity | 発生条件 |
 |---|---:|---|---|
 | TIMELINE_018 PAID_DELIVERY_CONFIRMATION_REQUIRED | 409 | WARN | 有料化したがtokenなし/期限切れ/見積不一致 |
 | TIMELINE_019 PAID_DELIVERY_PERMISSION_DENIED | 403 | WARN | `SEND_PAID_TIMELINE`なし |
