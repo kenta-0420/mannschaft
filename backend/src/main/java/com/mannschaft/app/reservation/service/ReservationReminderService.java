@@ -34,6 +34,7 @@ public class ReservationReminderService {
     private final ReservationMapper reservationMapper;
     private final Clock clock;
 
+
     /**
      * 予約のリマインダー一覧を取得する。
      *
@@ -144,8 +145,14 @@ public class ReservationReminderService {
         // （slot_date/start_time 由来の slotStartAt）から生成するため、消費側も同じ基準
         // （Clock の瞬間を JVM 既定ゾーンで解釈し直したもの）で比較する必要がある。
         Instant nowInstant = clock.instant();
-        LocalDateTime now = LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE);
-        // TeamTimezoneResolver is the policy boundary for team-local wall clocks; persisted due comparisons use Instant-derived now.
-        return reminderRepository.findByStatusAndRemindAtBefore(ReminderStatus.PENDING, now);
+        LocalDateTime cutoff = LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE);
+        // remind_at is a legacy LocalDateTime column. The cutoff is only a bounded DB candidate
+        // query; the final comparison is always Instant, so team TZ/DST cannot affect delivery.
+        List<ReservationReminderEntity> candidates = reminderRepository
+                .findByStatusAndRemindAtBefore(ReminderStatus.PENDING, cutoff);
+        return candidates.stream()
+                .filter(r -> !r.getRemindAt().atZone(UserZoneLocalDateTimeParser.SERVER_ZONE)
+                        .toInstant().isAfter(nowInstant))
+                .toList();
     }
 }
