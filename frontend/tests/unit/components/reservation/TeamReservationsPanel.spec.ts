@@ -9,6 +9,10 @@ import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
 import ReservationResourceNameSettings from '~/components/reservation/ReservationResourceNameSettings.vue'
 import LineManager from '~/components/reservation/LineManager.vue'
 
+vi.mock('~/composables/useTeamShellContext', () => ({
+  useTeamShellContext: () => ({ team: ref({ timezone: 'America/New_York' }) }),
+}))
+
 /**
  * TeamReservationsPanel.vue ユニットテスト — 予約直後の再読込結線ガード（実機E2E発見バグの根治）
  *
@@ -125,6 +129,21 @@ beforeEach(() => {
 })
 
 describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
+  it('SlotMatrixPickerへTeamShellContextのタイムゾーンを渡す', async () => {
+    mockGetReservationSettings.mockResolvedValue({ data: { allowPublicReservation: true } })
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetMenus.mockResolvedValue({ data: [] })
+    mockGetSlotGrid.mockResolvedValue({ data: { days: [] } })
+    mockListMyWaitlist.mockResolvedValue({ data: [] })
+
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug', managementView: false },
+    })
+    await flushPromises()
+
+    expect(wrapper.findComponent(SlotMatrixPicker).props('teamTimezone')).toBe('America/New_York')
+  })
+
   it('AC-1/2: ReservationForm の reserved emit で枠(SlotMatrixPicker)・一覧(ReservationList)が再読込される', async () => {
     const wrapper = await mountSuspended(TeamReservationsPanel, {
       props: { teamId: 'team-slug' },

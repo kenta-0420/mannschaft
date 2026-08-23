@@ -131,6 +131,40 @@ afterAll(() => {
 })
 
 describe('SlotMatrixPicker.vue', () => {
+  it('チームTZをviewer TZより優先し、週起点・API範囲・過去セルをチーム日付境界で判定する', async () => {
+    // UTC 23:30 は viewer=Asia/Tokyo では翌日08:30だが、team=America/New_Yorkでは同日19:30。
+    vi.setSystemTime(new Date('2026-08-09T23:30:00Z'))
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        meta: null,
+        days: [{
+          date: '2026-08-09',
+          columns: [{
+            lineId: 1,
+            lineName: 'Seat1',
+            lineIds: [],
+            cells: [{ slotId: 901, slotDate: '2026-08-09', endDate: '2026-08-09', startTime: '20:00', endTime: '20:30', state: 'AVAILABLE' }],
+          }],
+        }],
+      },
+    })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', teamTimezone: 'America/New_York', isAdmin: false },
+    })
+    await flush()
+
+    const [, params] = mockGetSlotGrid.mock.calls[0] as [string, Record<string, unknown>]
+    // viewer TZ基準なら 2026-08-10週になるが、team TZでは 2026-08-03週。
+    expect(params.from).toBe('2026-08-03')
+    expect(params.to).toBe('2026-08-09')
+    const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('20:00'))
+    expect(cell?.attributes('disabled')).toBeUndefined()
+
+    vi.setSystemTime(new Date('2026-08-11T03:00:00Z'))
+  })
+
   it('AC-1: from/to レンジ呼びでグリッドAPIを叩く（#2575 で axis は送らない）', async () => {
     mockGetLines.mockResolvedValue({ data: [activeLine] })
     mockGetSlotGrid.mockResolvedValue(gridResponseWithCells())
