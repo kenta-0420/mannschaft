@@ -390,6 +390,7 @@ export function useReservationApi() {
       resourceId?: number
       startTime?: string
       endTime?: string
+      endsNextDay?: boolean
     },
   ) {
     const query = new URLSearchParams()
@@ -398,6 +399,7 @@ export function useReservationApi() {
     if (params.resourceId != null) query.set('resourceId', String(params.resourceId))
     if (params.startTime) query.set('startTime', params.startTime)
     if (params.endTime) query.set('endTime', params.endTime)
+    if (params.endsNextDay) query.set('endsNextDay', 'true')
     return api<{ data: BlockedTimeImpactResponse }>(
       `${base(teamId)}/reservation-settings/blocked-times/impact?${query}`,
     )

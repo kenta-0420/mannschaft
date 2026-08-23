@@ -255,7 +255,7 @@ public class ReservationGroupService {
         List<ReservationRecurringBlockedTimeEntity> recurringRules =
                 recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
         for (ReservationSlotEntity slot : slots) {
-            if (unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules)) {
+            if (unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules, teamZone)) {
                 throw new BusinessException(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
             }
         }
