@@ -15,6 +15,10 @@ import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 /**
  * {@link ReservationUnavailabilityChecker}（機能B・§5.B の単一 overlap ユーティリティ）の単体テスト。
@@ -225,6 +229,22 @@ class ReservationUnavailabilityCheckerTest {
     @Nested
     @DisplayName("isBlockedByAny 集約（単発+定期・F03.4.5 §4.2）")
     class AggregatedByAny {
+
+        @Test
+        @DisplayName("複数block/ruleの評価でもチームTZ解決は1回だけ")
+        void teamTimezoneResolvedOncePerEvaluation() {
+            var resolver = mock(com.mannschaft.app.common.timezone.TeamTimezoneResolver.class);
+            when(resolver.resolveZone(1L)).thenReturn(ZoneId.of("Asia/Tokyo"));
+            var sut = new ReservationUnavailabilityChecker(resolver);
+            ReservationSlotEntity target = slot(50L, LocalTime.of(19, 0), LocalTime.of(20, 0));
+            var block = block(ReservationBlockedResourceType.TEAM, null, DATE,
+                    LocalTime.of(19, 0), LocalTime.of(20, 0));
+            var rule = rule(null, ReservationDayOfWeek.from(DATE), LocalTime.of(19, 0),
+                    LocalTime.of(20, 0), true);
+
+            assertThat(sut.isBlockedByAny(target, List.of(block, block), List.of(rule, rule))).isTrue();
+            verify(resolver, times(1)).resolveZone(1L);
+        }
 
         @Test
         @DisplayName("単発が空でも定期ルールで該当すればtrue")
