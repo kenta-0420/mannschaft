@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 
 import java.lang.reflect.RecordComponent;
 import java.time.LocalDate;
@@ -94,6 +95,8 @@ class ReservationGridServiceExtensionTest {
     private ReservationMenuRepository menuRepository;
     @Mock
     private ReservationMenuLineRepository menuLineRepository;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /** overlap 判定は空き枠除外/作成拒否/グリッドと同一ユーティリティを共有（別実装厳禁・H-5）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker = new ReservationUnavailabilityChecker();
@@ -104,7 +107,8 @@ class ReservationGridServiceExtensionTest {
     void setUp() {
         service = new ReservationGridService(
                 slotRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
-                unavailabilityChecker, viewAccessGuard, menuRepository, menuLineRepository);
+                unavailabilityChecker, viewAccessGuard, menuRepository, menuLineRepository, teamTimezoneResolver);
+        given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
         // 既定: slot/ブロック/定期ルール/ライン/menu_lines なし（各テストで上書き）。
         given(slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                 any(), any(), any())).willReturn(List.of());

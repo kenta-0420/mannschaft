@@ -129,6 +129,15 @@ class TimezoneValidatorTest {
         assertThat(target.isValid(team.getTimezone(), null)).isTrue();
     }
 
+    @Test
+    void createPathNormalizesTimezoneBeforePersist() throws Exception {
+        TeamEntity team = TeamEntity.builder().name("test").timezone("  America/New_York  ").build();
+        var method = TeamEntity.class.getDeclaredMethod("normalizeTimezone");
+        method.setAccessible(true);
+        method.invoke(team);
+        assertThat(team.getTimezone()).isEqualTo("America/New_York");
+    }
+
     private static UpdateProfileRequest requestWithTimezone(String timezone) {
         return new UpdateProfileRequest(
                 null, null, null, null, null, null, null, null,

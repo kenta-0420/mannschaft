@@ -85,7 +85,7 @@ public class TeamTimezoneResolver {
             return ZoneId.of(DEFAULT_TIMEZONE);
         }
         try {
-            return ZoneId.of(timezone);
+            return ZoneId.of(timezone.trim());
         } catch (DateTimeException ignored) {
             return ZoneId.of(DEFAULT_TIMEZONE);
         }

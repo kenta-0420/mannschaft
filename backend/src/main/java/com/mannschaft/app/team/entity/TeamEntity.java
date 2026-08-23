@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -30,6 +31,13 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder(toBuilder = true)
 public class TeamEntity extends BaseEntity {
+
+    @PrePersist
+    protected void normalizeTimezone() {
+        if (timezone != null) {
+            timezone = timezone.trim();
+        }
+    }
 
     /** 予約等の業務ローカル時刻を解釈する IANA タイムゾーン。既存データは移行で Asia/Tokyo に補完する。 */
     @Column(nullable = false, length = 64)

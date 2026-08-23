@@ -20,6 +20,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 
 import java.lang.reflect.RecordComponent;
 import java.math.BigDecimal;
@@ -71,6 +72,8 @@ class ReservationGridServiceTest {
     private com.mannschaft.app.reservation.repository.ReservationMenuRepository menuRepository;
     @Mock
     private com.mannschaft.app.reservation.repository.ReservationMenuLineRepository menuLineRepository;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /** overlap 判定は純ロジック＝空き枠除外/作成拒否と同一ユーティリティを共有（別実装厳禁）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker = new ReservationUnavailabilityChecker();
@@ -81,7 +84,8 @@ class ReservationGridServiceTest {
     void setUp() {
         service = new ReservationGridService(
                 slotRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
-                unavailabilityChecker, viewAccessGuard, menuRepository, menuLineRepository);
+                unavailabilityChecker, viewAccessGuard, menuRepository, menuLineRepository, teamTimezoneResolver);
+        given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
         // 既定: ブロックなし・定期ルールなし・ライン 1 本（各テストで上書き）。
         given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, DATE, DATE.minusDays(1)))
                 .willReturn(List.of());
@@ -431,6 +435,12 @@ class ReservationGridServiceTest {
 
         assertThat(cell.state()).isEqualTo(GridCellState.UNAVAILABLE);
         assertThat(cell.unavailableReason()).isEqualTo("先発ルール");
+    }
+
+    @Test
+    void resolvesTeamZoneOnceForMultipleCells() {
+        callGrid();
+        verify(teamTimezoneResolver, org.mockito.Mockito.times(1)).resolveZone(TEAM_ID);
     }
 
     @Test
