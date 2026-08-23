@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 /**
  * キャンセル待ち（waitlist）サービス（F03.4.5 §6.1）。
@@ -352,9 +353,21 @@ public class ReservationWaitlistService {
     public int purgeExpiredWaiting() {
         // Issue #2526: 枠開始（slot_date/start_time・業務ローカル時刻）と比較するため、
         // Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する（register と同型）。
-        LocalDateTime now = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
-        List<ReservationWaitlistEntryEntity> expired = waitlistRepository.findExpiredWaiting(
-                WaitlistStatus.WAITING, now.toLocalDate(), now.toLocalTime());
+        Instant now = clock.instant();
+        List<ReservationWaitlistEntryEntity> waiting = waitlistRepository.findByStatus(WaitlistStatus.WAITING);
+        Map<Long, ReservationSlotEntity> slots = slotRepository.findAllById(waiting.stream()
+                        .map(ReservationWaitlistEntryEntity::getSlotId).collect(Collectors.toSet()))
+                .stream().collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+        List<ReservationWaitlistEntryEntity> expired = waiting.stream()
+                .filter(entry -> {
+                    ReservationSlotEntity slot = slots.get(entry.getSlotId());
+                    if (slot == null) return false;
+                    Instant start = teamTimezoneResolver == null
+                            ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime())
+                                .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                            : teamTimezoneResolver.toInstant(slot.getTeamId(), slot.getSlotDate(), slot.getStartTime());
+                    return !start.isAfter(now);
+                }).toList();
         if (expired.isEmpty()) {
             return 0;
         }

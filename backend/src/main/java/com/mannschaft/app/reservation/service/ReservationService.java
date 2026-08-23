@@ -202,6 +202,15 @@ public class ReservationService {
         // teamId スコープの finder で解決する。他チームの枠 id を渡した場合は SLOT_NOT_FOUND（404）で秘匿する。
         ReservationSlotEntity slot = slotService.getSlotEntity(teamId, request.getReservationSlotId());
 
+        // slot の業務壁時計はチーム TZ で Instant 化してから現在時刻と比較する。
+        Instant slotStart = teamTimezoneResolver == null
+                ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime())
+                        .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                : teamTimezoneResolver.toInstant(teamId, slot.getSlotDate(), slot.getStartTime());
+        if (slotStart.isBefore(clock.instant())) {
+            throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
+        }
+
         if (!slot.isAvailable()) {
             throw new BusinessException(
                     slot.getSlotStatus() == com.mannschaft.app.reservation.SlotStatus.FULL

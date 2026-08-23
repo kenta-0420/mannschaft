@@ -5,6 +5,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.UuidV7;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReminderStatus;
@@ -41,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -109,6 +111,9 @@ public class ReservationGroupService {
      */
     private final TransactionTemplate transactionTemplate;
     private final Clock clock;
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     // ========================================
     // 作成（§5.2）
@@ -184,8 +189,11 @@ public class ReservationGroupService {
         // 2-b. 先頭枠開始が未来（過去は 400=014・注入 Clock 基準）
         // Issue #2526: slot_date/start_time は業務ローカル時刻のため、Clock（UTC固定）の瞬間を
         // JVM 既定ゾーンで解釈し直してから比較する（ReservationPendingExpireService と同型）。
-        LocalDateTime firstStartAt = LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime());
-        if (!firstStartAt.isAfter(LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)))) {
+        Instant firstStartInstant = teamTimezoneResolver == null
+                ? LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime())
+                    .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                : teamTimezoneResolver.toInstant(teamId, firstSlot.getSlotDate(), firstSlot.getStartTime());
+        if (!firstStartInstant.isAfter(clock.instant())) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
 
@@ -364,9 +372,11 @@ public class ReservationGroupService {
             // （業務ローカル時刻）由来のため、単枠版 ReservationService#isCancelDeadlinePassed と
             // 同じく Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する。
             int deadlineHours = reservationPolicyService.getOrDefault(teamId).getCancelDeadlineHours();
-            LocalDateTime firstStartAt = LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime());
-            LocalDateTime deadline = firstStartAt.minusHours(deadlineHours);
-            if (LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)).isAfter(deadline)) {
+            Instant firstStartInstant = teamTimezoneResolver == null
+                    ? LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime())
+                        .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                    : teamTimezoneResolver.toInstant(teamId, firstSlot.getSlotDate(), firstSlot.getStartTime());
+            if (clock.instant().isAfter(firstStartInstant.minusSeconds(deadlineHours * 3600L))) {
                 throw new BusinessException(ReservationErrorCode.CANCEL_DEADLINE_PASSED);
             }
             cancelledBy = CancelledBy.USER;

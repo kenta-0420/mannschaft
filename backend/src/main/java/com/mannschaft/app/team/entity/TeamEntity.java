@@ -351,7 +351,7 @@ public class TeamEntity extends BaseEntity {
     /** チームの業務タイムゾーンを更新する。入力の IANA 検証は API 層で行う。 */
     public void updateTimezone(String timezone) {
         if (timezone != null) {
-            this.timezone = timezone;
+            this.timezone = timezone.trim();
         }
     }
 
