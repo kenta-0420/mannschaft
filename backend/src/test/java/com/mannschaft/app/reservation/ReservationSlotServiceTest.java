@@ -103,7 +103,6 @@ class ReservationSlotServiceTest {
                 FIXED_CLOCK,
                 org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
                 viewAccessGuard, teamTimezoneResolver);
-        given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("UTC"));
     }
 
     private ReservationSlotEntity createSlotEntity() {
@@ -222,6 +221,7 @@ class ReservationSlotServiceTest {
         private List<ReservationSlotEntity> captureVisibleSlots() {
             org.mockito.ArgumentCaptor<List<ReservationSlotEntity>> captor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
+            given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("UTC"));
             given(reservationMapper.toSlotResponseList(captor.capture())).willReturn(List.of());
             service.listAvailableSlots(TEAM_ID, USER_ID, from, to);
             return captor.getValue();
@@ -236,8 +236,7 @@ class ReservationSlotServiceTest {
                     slot(null, LocalTime.of(12, 0), LocalTime.of(13, 0)));
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(slots);
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null, null, null)));
 
             assertThat(captureVisibleSlots()).isEmpty();
@@ -251,8 +250,7 @@ class ReservationSlotServiceTest {
             ReservationSlotEntity common = slot(null, LocalTime.of(10, 0), LocalTime.of(11, 0));
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(target, otherStaff, common));
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.STAFF, 50L, null, null)));
 
             assertThat(captureVisibleSlots()).containsExactly(otherStaff, common);
@@ -265,8 +263,7 @@ class ReservationSlotServiceTest {
             ReservationSlotEntity adjacent = slot(50L, LocalTime.of(11, 0), LocalTime.of(12, 0));
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(blocked, adjacent));
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null,
                             LocalTime.of(10, 0), LocalTime.of(11, 0))));
 
@@ -282,8 +279,7 @@ class ReservationSlotServiceTest {
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(s1, s2));
             // ALTER 前データを模した TEAM/null 全日枠。
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null, null, null)));
 
             assertThat(captureVisibleSlots()).isEmpty();

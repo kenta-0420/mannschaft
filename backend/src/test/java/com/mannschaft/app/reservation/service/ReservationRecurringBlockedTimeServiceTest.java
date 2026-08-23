@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
+import com.mannschaft.app.team.repository.TeamRepository;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.ReservationStatus;
@@ -64,6 +65,7 @@ class ReservationRecurringBlockedTimeServiceTest {
     @Mock
     private ReservationLineRepository lineRepository;
     @Mock
+    private TeamRepository teamRepository;
     private TeamTimezoneResolver teamTimezoneResolver;
     @Mock
     private ReservationRepository reservationRepository;
@@ -95,8 +97,7 @@ class ReservationRecurringBlockedTimeServiceTest {
                 nameResolverService, auditLogService, slotRepository,
                 org.mockito.Mockito.mock(ReservationSlotService.class),
                 org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
-                clock, teamTimezoneResolver);
-        given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneOffset.UTC);
+                clock, teamTimezoneResolver = new TeamTimezoneResolver(teamRepository));
     }
 
     private CreateRecurringBlockedTimeRequest createRequest(
