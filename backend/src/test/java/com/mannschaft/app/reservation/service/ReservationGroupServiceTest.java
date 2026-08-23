@@ -644,7 +644,7 @@ class ReservationGroupServiceTest {
         @Test
         @DisplayName("G-6: いずれかの枠が予約不可枠と overlap すると 400=009")
         void 予約不可枠overlapは009() {
-            given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, SLOT_DATE, SLOT_DATE.minusDays(1)))
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, SLOT_DATE, SLOT_DATE, SLOT_DATE.minusDays(1)))
                     .willReturn(List.of(ReservationBlockedTimeEntity.builder()
                             .teamId(TEAM_ID)
                             .blockedDate(SLOT_DATE)
@@ -658,6 +658,30 @@ class ReservationGroupServiceTest {
 
             assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
             verify(slotRepository, never()).incrementBookedCountIfAvailable(anyLong());
+        }
+
+        @Test
+        @DisplayName("日跨ぎslot集合は前日開始のendsNextDay blockも回避できない")
+        void 日跨ぎslot集合は前日開始blockを検出する() {
+            ReservationSlotEntity nextDay = ReservationSlotEntity.builder().id(103L).teamId(TEAM_ID)
+                    .slotDate(SLOT_DATE.plusDays(1)).startTime(LocalTime.of(0, 0)).endTime(LocalTime.of(0, 30))
+                    .endDate(SLOT_DATE.plusDays(1)).lineId(LINE_ID).build();
+            given(slotRepository.findAllById(anyIterable())).willReturn(List.of(slot(101L, 23, 30), nextDay));
+            given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("Asia/Tokyo"));
+            given(teamTimezoneResolver.toInstant(SLOT_DATE, LocalTime.of(23, 30), ZoneId.of("Asia/Tokyo")))
+                    .willReturn(Instant.parse("2026-04-01T14:30:00Z"));
+            given(teamTimezoneResolver.toInstant(SLOT_DATE.plusDays(1), LocalTime.MIDNIGHT, ZoneId.of("Asia/Tokyo")))
+                    .willReturn(Instant.parse("2026-04-01T15:00:00Z"));
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, SLOT_DATE, SLOT_DATE.plusDays(1), SLOT_DATE.minusDays(1)))
+                    .willReturn(List.of(ReservationBlockedTimeEntity.builder().teamId(TEAM_ID)
+                            .blockedDate(SLOT_DATE).startTime(LocalTime.of(23, 0)).endTime(LocalTime.of(0, 30))
+                            .endsNextDay(true).resourceType(ReservationBlockedResourceType.TEAM).build()));
+
+            BusinessException e = catchBusiness(() ->
+                    service.createGroup(TEAM_ID, USER_ID, request(null, List.of(101L, 103L))));
+
+            assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
+            verify(blockedTimeRepository).findEffectiveBetween(TEAM_ID, SLOT_DATE, SLOT_DATE.plusDays(1), SLOT_DATE.minusDays(1));
         }
 
         @Test

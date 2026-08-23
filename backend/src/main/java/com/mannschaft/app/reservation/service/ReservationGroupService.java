@@ -45,6 +45,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -178,14 +179,17 @@ public class ReservationGroupService {
             throw new BusinessException(ReservationErrorCode.SLOT_NOT_FOUND);
         }
 
-        // 2-b. 同一日
+        ZoneId teamZone = teamTimezoneResolver == null
+                ? UserZoneLocalDateTimeParser.SERVER_ZONE : teamTimezoneResolver.resolveZone(teamId);
+
+        // 2-b. 実際の開始Instant順（日跨ぎを含む）
         // 日跨ぎは実際の開始Instant順で扱う（同一日制約は禁止）。
 
         // 開始時刻昇順に整列（以降「先頭枠」= slots.get(0)）
         slots.sort(Comparator.comparing(s -> teamTimezoneResolver == null
                 ? LocalDateTime.of(s.getSlotDate(), s.getStartTime())
                     .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
-                : teamTimezoneResolver.toInstant(teamId, s.getSlotDate(), s.getStartTime())));
+                : teamTimezoneResolver.toInstant(s.getSlotDate(), s.getStartTime(), teamZone)));
         ReservationSlotEntity firstSlot = slots.get(0);
 
         // 2-b. 先頭枠開始が未来（過去は 400=014・注入 Clock 基準）
@@ -194,7 +198,7 @@ public class ReservationGroupService {
         Instant firstStartInstant = teamTimezoneResolver == null
                 ? LocalDateTime.of(firstSlot.getSlotDate(), firstSlot.getStartTime())
                     .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
-                : teamTimezoneResolver.toInstant(teamId, firstSlot.getSlotDate(), firstSlot.getStartTime());
+                : teamTimezoneResolver.toInstant(firstSlot.getSlotDate(), firstSlot.getStartTime(), teamZone);
         if (!firstStartInstant.isAfter(clock.instant())) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
@@ -242,8 +246,12 @@ public class ReservationGroupService {
         }
 
         // 2-g. 予約不可枠（機能B+F03.4.5 §4.2 単一ユーティリティ・違反 009）
+        LocalDate blockFrom = slots.stream().map(ReservationSlotEntity::getSlotDate).min(LocalDate::compareTo).orElse(firstSlot.getSlotDate());
+        LocalDate blockTo = slots.stream()
+                .map(s -> s.getEndDate() != null ? s.getEndDate() : s.getSlotDate())
+                .max(LocalDate::compareTo).orElse(firstSlot.getSlotDate());
         List<ReservationBlockedTimeEntity> blocks = blockedTimeRepository
-                .findEffectiveOnDate(teamId, firstSlot.getSlotDate(), firstSlot.getSlotDate().minusDays(1));
+                .findEffectiveBetween(teamId, blockFrom, blockTo, blockFrom.minusDays(1));
         List<ReservationRecurringBlockedTimeEntity> recurringRules =
                 recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
         for (ReservationSlotEntity slot : slots) {
@@ -315,7 +323,7 @@ public class ReservationGroupService {
                     teamId, primary.getId(), userId,
                     LocalDateTime.ofInstant(firstStartInstant, teamTimezoneResolver == null
                             ? UserZoneLocalDateTimeParser.SERVER_ZONE
-                            : teamTimezoneResolver.resolveZone(teamId)), displayTitle));
+                            : teamZone), displayTitle));
         }
 
         // 8. 作成イベントも代表行についてのみ 1 回（管理者通知・機能D メールが 1 回だけ飛ぶ・§5.5）

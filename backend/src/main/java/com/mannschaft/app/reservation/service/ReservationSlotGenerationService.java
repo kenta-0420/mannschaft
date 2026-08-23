@@ -126,7 +126,8 @@ public class ReservationSlotGenerationService {
      */
     public GenerateSlotsResponse generateForTeam(Long teamId, Integer weeks, Long createdBy) {
         int effectiveWeeks = weeks != null ? weeks : DEFAULT_WEEKS;
-        LocalDate tomorrow = teamLocalDate(teamId).plusDays(1); // チーム現地日の翌日から生成
+        ZoneId teamZone = resolveTeamZone(teamId);
+        LocalDate tomorrow = teamLocalDate(teamId, teamZone).plusDays(1); // チーム現地日の翌日から生成
         LocalDate horizonTo = tomorrow.plusDays(effectiveWeeks * 7L - 1);
 
         List<ReservationSlotTemplateEntity> templates = templateRepository.findByTeamIdAndIsActiveTrue(teamId);
@@ -142,7 +143,7 @@ public class ReservationSlotGenerationService {
             fromByTemplate.put(template.getId(), tomorrow);
         }
         GenerateSlotsResponse response =
-                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy, false);
+                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy, false, teamZone);
         log.info("週間テンプレート手動生成: teamId={}, weeks={}, generated={}, skippedExisting={}, "
                         + "skippedClosedDay={}, skippedOutsideHours={}",
                 teamId, effectiveWeeks, response.getGeneratedCount(), response.getSkippedExistingCount(),
@@ -185,7 +186,8 @@ public class ReservationSlotGenerationService {
     public GenerateSlotsResponse generateForTemplates(Long teamId,
                                                       List<ReservationSlotTemplateEntity> templates,
                                                       Long createdBy) {
-        LocalDate tomorrow = teamLocalDate(teamId).plusDays(1);
+        ZoneId teamZone = resolveTeamZone(teamId);
+        LocalDate tomorrow = teamLocalDate(teamId, teamZone).plusDays(1);
         LocalDate horizonTo = tomorrow.plusDays(TEMPLATE_HORIZON_DAYS);
         if (templates.isEmpty()) {
             return emptyResponse(tomorrow, horizonTo);
@@ -195,7 +197,7 @@ public class ReservationSlotGenerationService {
             fromByTemplate.put(template.getId(), tomorrow);
         }
         GenerateSlotsResponse response =
-                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy, false);
+                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, createdBy, false, teamZone);
         log.info("週間テンプレート同期自動生成: teamId={}, templateCount={}, generated={}, skippedExisting={}, "
                         + "skippedClosedDay={}, skippedOutsideHours={}",
                 teamId, templates.size(), response.getGeneratedCount(), response.getSkippedExistingCount(),
@@ -310,7 +312,7 @@ public class ReservationSlotGenerationService {
             fromByTemplate.put(template.getId(), from);
         }
         GenerateSlotsResponse response =
-                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, null, false);
+                generateInternal(teamId, templates, fromByTemplate, tomorrow, horizonTo, null, false, teamZone);
         log.info("週間テンプレート差分生成（バッチ）: teamId={}, generated={}, skippedExisting={}, "
                         + "skippedClosedDay={}, skippedOutsideHours={}",
                 teamId, response.getGeneratedCount(), response.getSkippedExistingCount(),
@@ -329,10 +331,10 @@ public class ReservationSlotGenerationService {
                                                    LocalDate horizonFrom,
                                                    LocalDate horizonTo,
                                                    Long createdBy,
-                                                   boolean skipBusinessHours) {
+                                                   boolean skipBusinessHours,
+                                                   ZoneId suppliedTeamZone) {
         // 曜日 → 営業時間（行の無い曜日はキー欠損 = 営業時間未定義としてスキップ・F-7b）
-        ZoneId teamZone = teamTimezoneResolver == null ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)
-                : teamTimezoneResolver.resolveZone(teamId);
+        ZoneId teamZone = suppliedTeamZone == null ? resolveTeamZone(teamId) : suppliedTeamZone;
         Map<String, ReservationBusinessHourEntity> businessHours = new HashMap<>();
         for (ReservationBusinessHourEntity hour : businessHourRepository.findByTeamIdOrderByIdAsc(teamId)) {
             businessHours.putIfAbsent(hour.getDayOfWeek(), hour);
@@ -493,8 +495,12 @@ public class ReservationSlotGenerationService {
     }
 
     private LocalDate teamLocalDate(Long teamId) {
-        ZoneId zone = teamTimezoneResolver == null ? null : teamTimezoneResolver.resolveZone(teamId);
-        return teamLocalDate(teamId, zone);
+        return teamLocalDate(teamId, resolveTeamZone(teamId));
+    }
+
+    private ZoneId resolveTeamZone(Long teamId) {
+        return teamTimezoneResolver == null ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)
+                : teamTimezoneResolver.resolveZone(teamId);
     }
 
     private LocalDate teamLocalDate(Long teamId, ZoneId resolvedZone) {

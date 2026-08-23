@@ -142,6 +142,20 @@ class ReservationSlotGenerationServiceTest {
     }
 
     @Test
+    void suppliedZoneDoesNotResolveTeamAgainWhenTemplatesGenerateCells() {
+        ReservationSlotTemplateEntity template = monTemplate(LocalTime.of(10, 0), LocalTime.of(11, 0));
+        given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of(template));
+        given(businessHourRepository.findByTeamIdOrderByIdAsc(TEAM_ID))
+                .willReturn(List.of(openMonday(LocalTime.of(9, 0), LocalTime.of(18, 0))));
+
+        service.generateDiffForTeam(TEAM_ID, ZoneId.of("America/New_York"));
+
+        verify(teamTimezoneResolver, never()).resolveZone(TEAM_ID);
+        verify(slotRepository, times(1)).insertGeneratedCellIgnoreDuplicate(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     void generationResolvesZoneOncePerEntryPoint() {
         given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of());
         service.generateDiffForTeam(TEAM_ID);
