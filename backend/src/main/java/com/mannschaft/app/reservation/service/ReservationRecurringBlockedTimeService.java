@@ -565,7 +565,7 @@ public class ReservationRecurringBlockedTimeService {
         return candidates.stream()
                 .filter(row -> unavailabilityChecker.isRecurringBlockedForTeam(
                         row.slotDate(), row.endDate(), row.startTime(), row.endTime(), row.lineId(),
-                        true, dayOfWeek, startTime, endTime, lineId, endsNextDay, teamId))
+                        true, dayOfWeek, startTime, endTime, lineId, endsNextDay, teamZone))
                 .toList();
     }
 

@@ -685,6 +685,7 @@ class ReservationGroupServiceTest {
 
             assertThat(e.getErrorCode()).isEqualTo(ReservationErrorCode.BLOCKED_TIME_CONFLICT);
             verify(blockedTimeRepository).findEffectiveBetween(TEAM_ID, SLOT_DATE, SLOT_DATE.plusDays(1), SLOT_DATE.minusDays(1));
+            verify(teamTimezoneResolver, times(1)).resolveZone(TEAM_ID);
         }
 
         @Test

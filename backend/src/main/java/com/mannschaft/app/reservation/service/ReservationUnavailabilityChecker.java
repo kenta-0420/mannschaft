@@ -360,6 +360,16 @@ public class ReservationUnavailabilityChecker {
                 ruleDayOfWeek, ruleStart, ruleEnd, ruleLineId, ruleEndsNextDay, zone);
     }
 
+    /** team単位で解決済みのZoneIdを再利用するrecurring impact経路。 */
+    public boolean isRecurringBlockedForTeam(LocalDate slotDate, LocalDate slotEndDate, LocalTime slotStart,
+                                             LocalTime slotEnd, Long slotLineId, boolean ruleActive,
+                                             ReservationDayOfWeek ruleDayOfWeek, LocalTime ruleStart,
+                                             LocalTime ruleEnd, Long ruleLineId, boolean ruleEndsNextDay,
+                                             ZoneId zone) {
+        return isRecurringBlocked(slotDate, slotEndDate, slotStart, slotEnd, slotLineId, ruleActive,
+                ruleDayOfWeek, ruleStart, ruleEnd, ruleLineId, ruleEndsNextDay, zone);
+    }
+
     /**
      * slot が単発の予約不可枠（機能B）<b>または</b>定期予約不可枠（§4.2）のいずれか 1 件でも該当するか
      * （§4.2「生成はする・表示/予約時に runtime で落とす」統合判定・集約メソッド）。

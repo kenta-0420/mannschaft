@@ -16,9 +16,11 @@ class ReservationOvernightMigrationSqlTest {
         String sql = read("db/migration/V189.20260824000000__normalize_overnight_reservation_ranges.sql");
 
         assertThat(sql).contains("UPDATE reservation_slots", "SET end_date = DATE_ADD(slot_date, INTERVAL 1 DAY)");
-        assertThat(sql).contains("UPDATE reservation_business_hours", "UPDATE reservation_slot_templates");
-        assertThat(sql).contains("UPDATE reservation_blocked_times", "UPDATE reservation_recurring_blocked_times");
-        assertThat(sql).contains("end_time < start_time", "start_time IS NOT NULL", "end_time IS NOT NULL");
+        assertThat(sql).contains("UPDATE reservation_business_hours", "open_time IS NOT NULL",
+                "close_time IS NOT NULL", "close_time < open_time");
+        assertThat(sql).contains("UPDATE reservation_slot_templates", "UPDATE reservation_blocked_times",
+                "UPDATE reservation_recurring_blocked_times");
+        assertThat(sql).contains("start_time IS NOT NULL", "end_time IS NOT NULL", "end_time < start_time");
     }
 
     private static String read(String path) throws IOException {
