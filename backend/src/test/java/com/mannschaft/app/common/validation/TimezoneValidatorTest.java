@@ -1,6 +1,7 @@
 package com.mannschaft.app.common.validation;
 
 import com.mannschaft.app.auth.dto.UpdateProfileRequest;
+import com.mannschaft.app.team.entity.TeamEntity;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
@@ -120,6 +121,14 @@ class TimezoneValidatorTest {
     }
 
     /** timezone だけを差し替えた {@link UpdateProfileRequest} を作る（他項目は未指定＝null）。 */
+    @Test
+    void timezoneIsTrimmedBeforePersistence() {
+        TeamEntity team = TeamEntity.builder().name("test").build();
+        team.updateTimezone("  America/New_York  ");
+        assertThat(team.getTimezone()).isEqualTo("America/New_York");
+        assertThat(target.isValid(team.getTimezone(), null)).isTrue();
+    }
+
     private static UpdateProfileRequest requestWithTimezone(String timezone) {
         return new UpdateProfileRequest(
                 null, null, null, null, null, null, null, null,
