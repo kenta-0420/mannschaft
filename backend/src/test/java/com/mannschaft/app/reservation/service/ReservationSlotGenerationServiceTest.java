@@ -68,6 +68,9 @@ class ReservationSlotGenerationServiceTest {
     @Mock
     private ReservationBusinessHourRepository businessHourRepository;
 
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
+
     private ReservationSlotGenerationService service;
 
     private static final Long TEAM_ID = 1L;
@@ -102,7 +105,9 @@ class ReservationSlotGenerationServiceTest {
     @BeforeEach
     void setUp() {
         service = new ReservationSlotGenerationService(
-                templateRepository, slotRepository, businessHourRepository, NO_OP_TXM, FIXED_CLOCK);
+                templateRepository, slotRepository, businessHourRepository, NO_OP_TXM, FIXED_CLOCK,
+                teamTimezoneResolver);
+        given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("Asia/Tokyo"));
         // 既定スタブ: 既存セルなし・INSERT は常に成功（1 行）
         given(slotRepository.findGeneratedCellKeysByTeamIdAndSlotDateBetween(eq(TEAM_ID), any(), any()))
                 .willReturn(List.of());
@@ -123,6 +128,24 @@ class ReservationSlotGenerationServiceTest {
         given(slotRepository.insertGeneratedCellIgnoreDuplicate(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .willReturn(affectedRows);
+    }
+
+    @Test
+    void suppliedZoneDoesNotResolveTeamAgain() {
+        given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of());
+        given(slotRepository.findGeneratedCellKeysByTeamIdAndSlotDateBetween(eq(TEAM_ID), any(), any()))
+                .willReturn(List.of());
+
+        service.generateDiffForTeam(TEAM_ID, ZoneId.of("America/New_York"));
+
+        verify(teamTimezoneResolver, never()).resolveZone(TEAM_ID);
+    }
+
+    @Test
+    void generationResolvesZoneOncePerEntryPoint() {
+        given(templateRepository.findByTeamIdAndIsActiveTrue(TEAM_ID)).willReturn(List.of());
+        service.generateDiffForTeam(TEAM_ID);
+        verify(teamTimezoneResolver, times(1)).resolveZone(TEAM_ID);
     }
 
     private ReservationSlotTemplateEntity monTemplate(LocalTime start, LocalTime end) {
