@@ -1,6 +1,6 @@
 # F09.14 データモデル
 
-> **ステータス**: 🟡 設計精査中
+> **ステータス**: 🟢 設計完了
 
 ## 1. ドメイン境界と ER
 
@@ -231,11 +231,11 @@ paid送信の一回確認をサーバ永続化する。raw tokenは返却時だ�
 | idempotency_key | CHAR(36) NOT NULL | actor+scopeでUNIQUE |
 | created_at / updated_at | DATETIME NOT NULL | |
 
-`uq_timeline_delivery_confirmations_token_hash`、`uq_timeline_delivery_confirmations_actor_idempotency(actor_user_id,idempotency_key)`、`idx_timeline_delivery_confirmations_expiry(expires_at)`。予約投稿は confirmation を使わず、下記policyのADMIN承認を保存する。
+`uq_timeline_delivery_confirmations_token_hash`、`uq_timeline_delivery_confirmations_actor_idempotency(actor_user_id,idempotency_key)`、`idx_timeline_delivery_confirmations_expiry(expires_at)`。予約投稿は5分tokenを使わず、`timeline_posts`へ`scheduled_paid_consent_at/actor_user_id/delivery_scope`を保存する。作成者が予約時に一度同意し、実公開時の人数増減では再確認しない。自動投稿だけが下記policyのADMIN承認を使う。
 
 ### `timeline_paid_delivery_policies`
 
-scope ADMINだけが設定する自動投稿用の永続paid consent。`id` UUIDv7、`scope_type/scope_id`、`enabled`、`max_amount_yen_per_post`、`monthly_cap_yen`、`period_start`、`used_amount_yen`、`approved_by_user_id`、`approved_at`、`revoked_at`、監査列を持つ。`uq(scope_type,scope_id)`。自動・予約投稿が実公開時に101件目以降なら、enabledかつmax/monthly cap内でのみ有料予約できる。未許可/上限超過は `PUBLISH_BLOCKED`で非公開に残す。
+scope ADMINだけが設定する自動投稿用の永続paid consent。`id` UUIDv7、`scope_type/scope_id`、`enabled`、`monthly_cap_yen`、`period_start`、`used_amount_yen`、`approved_by_user_id`、`approved_at`、`revoked_at`、監査列を持つ。`uq(scope_type,scope_id)`。1投稿の人数・金額上限は設けない。自動投稿はenabledかつmonthly cap内でのみ有料予約できる。予約は作成時の利用者同意deliveryScopeを保存し、人数増減は概算警告だけで再確認しない。未許可/cap超過は `PUBLISH_BLOCKED`で非公開に残す。
 
 ### `timeline_credit_reservation_allocations`
 
@@ -268,15 +268,15 @@ recipient snapshotの時間点を固定するため、timeline domain に次のI
 | `timeline_audience_team_anchors` | `team_id,anchor_org_id,active,valid_from,valid_to,source_event_version`。`idx(anchor_org_id,active,valid_from,valid_to,team_id)` |
 | `timeline_audience_mutes` | `user_id,scope_type,scope_id,active,valid_from,valid_to,source_event_version`。`uq(user,scope_type,scope_id,valid_from)`、`idx(scope_type,scope_id,active,valid_from,valid_to,user_id)` |
 
-Team/Organization membership・hierarchy・muteの各domain eventはsource transaction commit後にprojection inboxへ記録される。public化workerはprojection watermarkが要求event versionを満たすまでPREPARINGのまま待つ。**既存 `TimelineDeliveryScopeResolver` はcaller一人への可視性判定専用でありrecipient列挙には使用しない。** 正準queryはtime `T` でACTIVE direct team memberをTEAM recipientとし、ORGはdirect org member（distance0）、org descendant membership、team anchorのancestor distanceをunionし、`delivery_scope=DIRECT`はdistance0、`CHILDREN`は0..1、`DESCENDANTS`は0..app.org.max-depthに絞る。team anchor経路はCMP-058の+1距離規則を保持する。最後に`DISTINCT user_id`、author除外、`timeline_audience_mutes`のactive anti-joinを行う。
+Team/Organization membership・hierarchy・team-anchor・muteの各source transactionは、aggregate単位の単調`event_version`を採番し、同じtransactionでsource outboxへeventを書き込む。relay後にtimeline projection inboxが適用するため、commitとeventの間に欠落窓を作らない。public化workerはprojection watermarkが要求event versionを満たすまでPREPARINGのまま待つ。**既存 `TimelineDeliveryScopeResolver` はcaller一人への可視性判定専用でありrecipient列挙には使用しない。** 正準queryはtime `T` でACTIVE direct team memberをTEAM recipientとし、ORGはdirect org member（distance0）、org descendant membership、team anchorのancestor distanceをunionし、`delivery_scope=DIRECT`はdistance0、`CHILDREN`は0..1、`DESCENDANTS`は0..app.org.max-depthに絞る。team anchor経路はCMP-058の+1距離規則を保持する。最後に`DISTINCT user_id`、author除外、`timeline_audience_mutes`のactive anti-joinを行う。
 
-各source domainのoutboxは`aggregate_type,aggregate_id,event_version,occurred_at,payload_hash`を持ち、projection checkpointは`source_name,partition_key,last_event_version,updated_at`（自然複合UNIQUE、UUIDv7監査行）を持つ。jobは`membership_fence_version`,`hierarchy_fence_version`,`mute_fence_version`をPREPARING開始時に保存する。正準queryは各projection行の`source_event_version <= 対応fence`かつ`valid_from <= T < valid_to（NULLは無限）`だけを読む。checkpointが全fenceに達するまでsnapshotを作らない。設定`mannschaft.timeline-delivery.projection-lag-timeout`（初期10分）超過は`PUBLISH_BLOCKED`・ADMIN通知で、usage/creditは0のままにする。
+各source domainのoutboxは`aggregate_type,aggregate_id,event_version,occurred_at,payload_hash`と`uq(aggregate_type,aggregate_id,event_version)`を持ち、membership save/delete、mute save/delete、org hierarchy変更、team-anchor変更のService transactionが必ず書く。projection checkpointは`source_name,partition_key,last_event_version,updated_at`（自然複合UNIQUE、UUIDv7監査行）を持つ。初期導入は各source tableのconsistent snapshotをprojectionへbackfillし、snapshot取得時の最新versionをcheckpointへ保存してからrelayを解禁する。job作成Tx-Aは各source outboxの`MAX(event_version)`（scope partition）を読み、`membership_fence_version`,`hierarchy_fence_version`,`anchor_fence_version`,`mute_fence_version`へ保存する。正準queryは各projection行の`source_event_version <= 対応fence`かつ`valid_from <= T < valid_to（NULLは無限）`だけを読む。checkpointが全fenceに達するまでsnapshotを作らない。設定`mannschaft.timeline-delivery.projection-lag-timeout`（初期10分）超過は`PUBLISH_BLOCKED`・ADMIN通知で、usage/creditは0のままにする。
 
 VARCHAR enum安全長: `timeline_delivery_jobs.status VARCHAR(24)`（最長`FAILURE_RESOLVING`=17）、`timeline_posts.publication_status VARCHAR(20)`（最長`PUBLISH_BLOCKED`=15）、balance/purchase/allocation/dispute statusのVARCHAR(20/24)はいずれも最長18未満である。実装FlywayではMySQL 8 `CHECK (status IN (...))`を各新規enum列へ候補として付け、既存`timeline_posts.publication_status`にも同CHECKを付ける。
 
 ### Queue・退会・timezone
 
-job tableは唯一の耐久queueである。`lease_owner VARCHAR(100) NULL`,`lease_until DATETIME NULL`,`lease_version BIGINT NOT NULL DEFAULT 0`,`preparation_requested_at`,`snapshot_at`,`publish_committed_at`,`blocked_reason`を追加する。delivery workerは`status in (PREPARING,PROCESSING)`を`FOR UPDATE SKIP LOCKED`で選び、leaseをCASで取得する。`AWAITING_TOPUP`はStripe webhook dispatcherだけが`PREPARING`または`PUBLISH_BLOCKED`へ進める。sweeperは`lease_until < now`を再取得可能にし、Pod crash後も同一jobを再開する。別outboxは作らない。
+job tableはtimeline公開・配信処理の唯一の耐久queueである。`lease_owner VARCHAR(100) NULL`,`lease_until DATETIME NULL`,`lease_version BIGINT NOT NULL DEFAULT 0`,`preparation_requested_at`,`snapshot_at`,`publish_committed_at`,`blocked_reason`を追加する。delivery workerは`status in (PREPARING,PROCESSING)`を`FOR UPDATE SKIP LOCKED`で選び、leaseをCASで取得する。`AWAITING_TOPUP`はStripe webhook dispatcherだけが`PREPARING`または`PUBLISH_BLOCKED`へ進める。sweeperは`lease_until < now`を再取得可能にし、Pod crash後も同一jobを再開する。timeline job投入用の別outboxは作らない（audience projection用の各source outboxは前節どおり必要）。
 
 wallet作成時にscope timezoneを採用し、無ければ`Asia/Tokyo`を固定する。ADMINのtimezone更新APIは`next_billing_timezone_id`を保存し翌period_startからだけ適用する。quotaとauto-topup月capは常にこのtimezoneを使う。
 

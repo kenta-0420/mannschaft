@@ -1,6 +1,6 @@
 # F09.14 タイムライン配信プリペイドクレジット
 
-> **ステータス**: 🟡 設計精査中
+> **ステータス**: 🟢 設計完了
 > **対象**: TEAM / ORGANIZATION の配下配信（F04.1 / CMP-058 を前提）
 > **最終更新**: 2026-08-23
 
@@ -24,7 +24,7 @@ TEAM または ORGANIZATION に投稿したトップレベル投稿を、その�
 
 1. ADMIN または `VIEW_TIMELINE_COST` を持つ者は、ダッシュボードと投稿フォームで、scope 別の概算受信者数・`asOf`・今月の無料利用/残数を見る。
 2. 無料枠内なら、従来の投稿権限だけで投稿できる。従来の MEMBER 等の無料投稿権限を狭めない。
-3. 有料になり得る投稿は、`SEND_PAID_TIMELINE` を持つ者だけが送信でき、概算件数・推定税込額・残高を一度だけ明示確認する。公開時に件数が変わっても二重確認しない。
+3. 有料になり得る投稿は、`SEND_PAID_TIMELINE` を持つ者だけが送信でき、概算件数・推定税込額・送信可否を一度だけ明示確認する。wallet残高そのものはADMINだけに表示し、公開時に件数が変わっても二重確認しない。
 4. 公開時に usage 行を悲観ロックし、100件目までを無料、101件目以降を有料と決定する。十分な残高がなければ、投稿・usage・予約をすべてロールバックし、部分配信・負残高・猶予は発生しない。
 5. 成功した公開は直ちに `PROCESSING` と表示し、耐久キューが account ごとへ配信する。最終未達分だけを返金する。完了後は編集できる（再課金なし）。削除はできるが返金しない。
 
@@ -56,7 +56,7 @@ sequenceDiagram
 |---|---:|---:|---:|
 | 無料枠内の通常投稿 | 既存権限 | 既存権限 | 既存権限 |
 | 有料投稿の送信 | 可 | `SEND_PAID_TIMELINE` | 不可 |
-| 概算・無料利用状況 | 可 | `VIEW_TIMELINE_COST` | 不可 |
+| 概算・無料利用状況 | 可 | `VIEW_TIMELINE_COST` または `SEND_PAID_TIMELINE` | 不可 |
 | 残高、購入、返金、dispute、auto-topup | 可 | 不可 | 不可 |
 | `SEND_PAID_TIMELINE` / `VIEW_TIMELINE_COST` の委任 | 可 | 不可 | 不可 |
 
@@ -82,14 +82,14 @@ SYSTEM_ADMIN は障害対応・監査閲覧を行えるが、scope の財布操�
 |---|---|---|
 | 第1パス | 不備、セキュリティ、UX、既存仕様、保守性、検証可能性 | 完了。topup/confirmation/lot allocation、projection、耐久lease queue、権限・Stripe inboxを反映 |
 | 第2パス | 独立した状態遷移・会計・E2E観点 | 完了。0件COMPLETED+NONE、publication_status非露出、guard正本、fence/checkpoint、summary権限・型、6言語i18nを是正 |
-| E2E耐性 | API型、null、認可、非同期の観測点 | 第2パス後に実施 |
+| E2E耐性 | API型、null、認可、非同期の観測点 | 完了。legacy無料互換、完全非同期Tx-A/B/C、scheduler、Stripe正規DTO、PostResponse互換、flag/locale/route rolloutを反映 |
 
 ## 7. 第1精査反映（2026-08-23）
 
 本ドラフトは次の実装不可能な曖昧さを第1精査で解消した。Stripe を HTTP publish transaction 内で待たず、巨大 audience を同期列挙せず、job table 自体を耐久キューとして扱う。公開の事実は **recipient snapshot と quota/reservation が同一 timeline-domain transaction で commit した時点**でのみ生じる。
 
 1. auto-topup は `AWAITING_TOPUP` と off-session PaymentIntent / webhook 再開へ変更した。初回Checkoutで `setup_future_usage=off_session` の明示同意を得る。
-2. paid同意は hash化tokenを持つ confirmation table に永続化し、POSTのidempotencyを必須化した。自動投稿はscope ADMIN policyが明示許可した場合のみ有料境界を越えられる。
+2. paid同意は hash化tokenを持つ confirmation table に永続化し、paid投稿・新FE・retryのidempotencyを必須化した。legacy無料投稿はキーなしでも後方互換で受理する。自動投稿はscope ADMIN policyが明示許可した場合のみ有料境界を越えられる。
 3. reservation allocation によりpurchase lot とjobを結び、available/reserved/consumed/frozenの恒等式とFIFOを固定した。
 4. AFTER_COMMIT投入を廃し、`timeline_delivery_jobs`の`FOR UPDATE SKIP LOCKED`+lease+sweeperを唯一のqueue実装とした。
 5. PREPARINGを非同期化し、temporal audience projectionからsnapshotを作る。cross-domain transactionやHTTP内の1万件列挙を行わない。

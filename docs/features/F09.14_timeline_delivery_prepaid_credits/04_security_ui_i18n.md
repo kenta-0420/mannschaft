@@ -1,6 +1,6 @@
 # F09.14 セキュリティ・UI・i18n・運用
 
-> **ステータス**: 🟡 設計精査中
+> **ステータス**: 🟢 設計完了
 
 ## 1. セキュリティと不正利用対策
 
@@ -101,5 +101,7 @@ rate limitは既存 Valkey `AbstractRateLimitFilter`系を使い、Valkey障害�
 wallet statusは`CLOSED > CLOSING > SETTLEMENT_BLOCKED > FROZEN > ACTIVE`の優先順で導出する。CLOSINGはscope delete eventから入り、new publish/auto-topupを止め、jobsを終端化し、lot allocation/remaining lotをFIFOでrefundし、成功ならCLOSED、Stripe返金不能ならREFUND_LIABILITYを残してCLOSEDとする。ownership transferは`ScopeOwnershipTransferredEvent`を受け、walletのscopeを変えずowner表示/監査だけを更新する。APIは既存ownership transfer confirmation画面でbalance/reserved/auto/disputeを双方へ表示する。
 
 feature flagは `FEATURE_TIMELINE_DELIVERY_PREPAID_ENABLED`。offでは既存無料投稿を完全後方互換で公開し、新しいpaid/auto UI/APIは404、既にPREPARING/PROCESSING jobはdrainまたはrefund終端まで継続する。状態反映はpollが正本、WebSocketは`timeline.deliveryJobChanged`の補助通知だけで、欠落してもpollで状態を回復する。
+
+rollout資産も本実装範囲に含める。Flywayでflagを既定offとしてseedし、一般ユーザー向けfeature flag APIへ公開する。新規backend endpointとpaid分岐は`@RequireFeature("FEATURE_TIMELINE_DELIVERY_PREPAID_ENABLED")`で保護するが、flag off時のlegacy無料POSTは従来経路へ流す。frontendは`featureGates.ts`へTEAM/ORGの投稿・設定route/page対応を登録し、route guardとページ内ボタンの双方をtestする。6言語の`timeline_delivery.json`は`nuxt.config.ts`各localeの`files`配列へ明示登録し、ロード確認とkey parity testを置く。
 
 i18nは専用 `timeline_delivery.json` の6言語parity testで全keyを強制する。rate limit Valkey障害は概算/readは既存fail-open、Checkout/paid publish/retryはfail-closed（429/503）とし、DB整合ではなく濫用防止だけを担う。
