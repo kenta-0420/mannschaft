@@ -60,6 +60,26 @@ import static org.mockito.Mockito.verify;
 @DisplayName("ReservationSlotTemplateService 単体テスト (F03.4.2)")
 class ReservationSlotTemplateServiceTest {
 
+    @Test
+    @DisplayName("PATCHでendsNextDayを反映し翌日跨ぎ同一軸重複を拒否する")
+    void patchEndsNextDayRejectsNextDayOverlap() {
+        ReservationSlotTemplateEntity current = templateEntity(LINE_ID, ReservationDayOfWeek.MON,
+                LocalTime.of(23, 0), LocalTime.of(1, 0));
+        ReservationSlotTemplateEntity conflicting = ReservationSlotTemplateEntity.builder()
+                .teamId(TEAM_ID).lineId(LINE_ID).dayOfWeek(ReservationDayOfWeek.TUE)
+                .startTime(LocalTime.of(0, 0)).endTime(LocalTime.of(2, 0)).build();
+        conflicting.setId(UUID.randomUUID());
+        given(templateRepository.findByIdAndTeamId(TEMPLATE_ID, TEAM_ID)).willReturn(Optional.of(current));
+        given(templateRepository.findByTeamId(TEAM_ID)).willReturn(List.of(current, conflicting));
+
+        UpdateSlotTemplateRequest request = new UpdateSlotTemplateRequest(null, null, null,
+                ReservationDayOfWeek.MON, LocalTime.of(23, 0), LocalTime.of(1, 0),
+                null, null, null, null, null, null, true);
+
+        assertThatThrownBy(() -> service.updateTemplate(TEAM_ID, TEMPLATE_ID, request, USER_ID))
+                .isInstanceOf(BusinessException.class);
+    }
+
     @Mock
     private ReservationSlotTemplateRepository templateRepository;
 

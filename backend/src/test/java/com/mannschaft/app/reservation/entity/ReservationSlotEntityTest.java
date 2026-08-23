@@ -18,6 +18,6 @@ class ReservationSlotEntityTest {
         slot.changeSlotDate(LocalDate.of(2026, 8, 31));
 
         assertThat(slot.getEndDate()).isEqualTo(LocalDate.of(2026, 9, 1));
-        assertThat(slot.getEndDate()).isNotBefore(slot.getSlotDate());
+        assertThat(!slot.getEndDate().isBefore(slot.getSlotDate())).isTrue();
     }
 }

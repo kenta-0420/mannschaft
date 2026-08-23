@@ -306,7 +306,10 @@ public class ReservationGroupService {
         if (mode == ApprovalMode.AUTO) {
             // 確定イベントは代表行についてのみ 1 回（リマインドは来店の 24h/1h 前 1 セットだけ・§5.5）
             eventPublisher.publishEvent(new ReservationConfirmedEvent(
-                    teamId, primary.getId(), userId, firstStartAt, displayTitle));
+                    teamId, primary.getId(), userId,
+                    LocalDateTime.ofInstant(firstStartInstant, teamTimezoneResolver == null
+                            ? UserZoneLocalDateTimeParser.SERVER_ZONE
+                            : teamTimezoneResolver.resolveZone(teamId)), displayTitle));
         }
 
         // 8. 作成イベントも代表行についてのみ 1 回（管理者通知・機能D メールが 1 回だけ飛ぶ・§5.5）
