@@ -42,8 +42,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.time.ZoneId;
-import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 
 /**
  * 定期予約不可枠 CRUD サービス（F03.4.5 §4 W2-2）。
@@ -139,7 +137,8 @@ public class ReservationRecurringBlockedTimeService {
         Integer forceCancelledCount = resolveConflicts(
                 teamId, request.getLineId(), request.getDayOfWeek(),
                 request.getStartTime(), request.getEndTime(), request.getReason(),
-                Boolean.TRUE.equals(request.getForceCancelConflicting()), createdBy);
+                Boolean.TRUE.equals(request.getForceCancelConflicting()),
+                Boolean.TRUE.equals(request.getEndsNextDay()), createdBy);
 
         ReservationRecurringBlockedTimeEntity entity = ReservationRecurringBlockedTimeEntity.builder()
                 .teamId(teamId)
@@ -213,7 +212,8 @@ public class ReservationRecurringBlockedTimeService {
         Integer forceCancelledCount = resolveConflicts(
                 teamId, entity.getLineId(), entity.getDayOfWeek(),
                 entity.getStartTime(), entity.getEndTime(), entity.getReason(),
-                Boolean.TRUE.equals(request.getForceCancelConflicting()), updatedBy);
+                Boolean.TRUE.equals(request.getForceCancelConflicting()),
+                Boolean.TRUE.equals(entity.getEndsNextDay()), updatedBy);
 
         ReservationRecurringBlockedTimeEntity saved = ruleRepository.save(entity);
         log.info("定期予約不可枠更新: teamId={}, ruleId={}, forceCancelled={}",
@@ -257,7 +257,8 @@ public class ReservationRecurringBlockedTimeService {
     public RecurringBlockedTimeImpactResponse getImpact(
             Long teamId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime, Long lineId) {
         AffectedReservations affected =
-                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime);
+                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime,
+                        endTime.isBefore(startTime));
         if (affected.rows().isEmpty()) {
             return RecurringBlockedTimeImpactResponse.builder().affectedCount(0).reservations(List.of()).build();
         }
@@ -342,13 +343,14 @@ public class ReservationRecurringBlockedTimeService {
      */
     private Integer resolveConflicts(
             Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
-            LocalTime startTime, LocalTime endTime, String blockReason, boolean force, Long actorUserId) {
+            LocalTime startTime, LocalTime endTime, String blockReason, boolean force,
+            boolean endsNextDay, Long actorUserId) {
         if (!force) {
-            guardNoActiveOverlap(teamId, lineId, dayOfWeek, startTime, endTime);
+            guardNoActiveOverlap(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay);
             return null;
         }
         return forceCancelOverlapping(
-                teamId, lineId, dayOfWeek, startTime, endTime, blockReason, actorUserId);
+                teamId, lineId, dayOfWeek, startTime, endTime, blockReason, endsNextDay, actorUserId);
     }
 
     /**
@@ -356,8 +358,9 @@ public class ReservationRecurringBlockedTimeService {
      * {@code RESERVATION_027}（409）で拒否する（§4.3）。
      */
     private void guardNoActiveOverlap(
-            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
-        if (!findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime).isEmpty()) {
+            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime,
+            LocalTime endTime, boolean endsNextDay) {
+        if (!findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay).isEmpty()) {
             throw new BusinessException(ReservationErrorCode.UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS);
         }
     }
@@ -378,10 +381,10 @@ public class ReservationRecurringBlockedTimeService {
      */
     private int forceCancelOverlapping(
             Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
-            LocalTime startTime, LocalTime endTime, String blockReason, Long actorUserId) {
+            LocalTime startTime, LocalTime endTime, String blockReason, boolean endsNextDay, Long actorUserId) {
         // impact（事前確認）と<b>完全に同じ集合</b>を解決する（検分 MUST③）。
         AffectedReservations affected =
-                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime);
+                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay);
         if (affected.rows().isEmpty()) {
             return 0;
         }
@@ -462,9 +465,10 @@ public class ReservationRecurringBlockedTimeService {
      *         overlap に直接ヒットした行（通知の起点）と、枠の一括取得結果
      */
     private AffectedReservations resolveAffectedReservations(
-            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
+            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime,
+            LocalTime endTime, boolean endsNextDay) {
         List<ReservationRecurringOverlapRow> matched =
-                findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime);
+                findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay);
         if (matched.isEmpty()) {
             return new AffectedReservations(List.of(), List.of(), Map.of());
         }
@@ -548,16 +552,16 @@ public class ReservationRecurringBlockedTimeService {
      * アプリ層でフィルタする（別実装厳禁・checker と同一の半開区間・3文字曜日変換）。</p>
      */
     private List<ReservationRecurringOverlapRow> findOverlappingRows(
-            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
+            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime,
+            LocalTime endTime, boolean endsNextDay) {
         LocalDate today = LocalDate.now(clock);
         LocalDate horizonEnd = today.plusDays(GUARD_HORIZON_DAYS);
         List<ReservationRecurringOverlapRow> candidates = reservationRepository
                 .findActiveReservationsInRangeForRecurringGuard(teamId, today, horizonEnd, lineId, ACTIVE_STATUSES);
         return candidates.stream()
-                .filter(row -> unavailabilityChecker.isRecurringBlocked(
+                .filter(row -> unavailabilityChecker.isRecurringBlockedForTeam(
                         row.slotDate(), row.endDate(), row.startTime(), row.endTime(), row.lineId(),
-                        true, dayOfWeek, startTime, endTime, lineId, true,
-                        ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)))
+                        true, dayOfWeek, startTime, endTime, lineId, endsNextDay, teamId))
                 .toList();
     }
 

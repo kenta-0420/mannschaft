@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -212,7 +213,7 @@ public class ReservationBusinessHourService {
 
         // 409 ガード: overlap する active 予約が 1 件以上なら拒否（副作用ゼロ）。
         guardNoActiveOverlap(teamId, request.getBlockedDate(), resourceType, resourceId,
-                request.getStartTime(), request.getEndTime());
+                request.getStartTime(), request.getEndTime(), Boolean.TRUE.equals(request.getEndsNextDay()));
 
         ReservationBlockedTimeEntity entity = ReservationBlockedTimeEntity.builder()
                 .teamId(teamId)
@@ -251,7 +252,7 @@ public class ReservationBusinessHourService {
 
         // 更新後の枠に対しても 409 ガードを適用する（新しい対象軸/時間帯で overlap する active 予約を弾く）。
         guardNoActiveOverlap(teamId, request.getBlockedDate(), resourceType, resourceId,
-                request.getStartTime(), request.getEndTime());
+                request.getStartTime(), request.getEndTime(), Boolean.TRUE.equals(request.getEndsNextDay()));
 
         entity.update(request.getBlockedDate(), request.getStartTime(), request.getEndTime(),
                 request.getReason(), resourceType, resourceId, request.getEndsNextDay());
@@ -300,7 +301,8 @@ public class ReservationBusinessHourService {
         Long resolvedResourceId = resolveResourceId(type, resourceId);
 
         List<ReservationEntity> overlapping =
-                findActiveOverlappingReservations(teamId, date, type, resolvedResourceId, startTime, endTime);
+                findActiveOverlappingReservations(teamId, date, type, resolvedResourceId, startTime, endTime,
+                        endTime != null && startTime != null && endTime.isBefore(startTime));
 
         // 枠情報（担当スタッフ）を一括取得（N+1 回避）。
         Set<Long> slotIds = overlapping.stream()
@@ -400,9 +402,11 @@ public class ReservationBusinessHourService {
      * 提案枠と overlap する active 予約が 1 件以上あれば {@code RESERVATION_027}（409）で拒否する。
      */
     private void guardNoActiveOverlap(Long teamId, LocalDate date, ReservationBlockedResourceType type,
-                                      Long resourceId, LocalTime startTime, LocalTime endTime) {
+                                      Long resourceId, LocalTime startTime, LocalTime endTime,
+                                      boolean endsNextDay) {
         List<ReservationEntity> overlapping =
-                findActiveOverlappingReservations(teamId, date, type, resourceId, startTime, endTime);
+                findActiveOverlappingReservations(teamId, date, type, resourceId, startTime, endTime,
+                        endsNextDay);
         if (!overlapping.isEmpty()) {
             throw new BusinessException(ReservationErrorCode.UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS);
         }
@@ -423,13 +427,36 @@ public class ReservationBusinessHourService {
      */
     private List<ReservationEntity> findActiveOverlappingReservations(
             Long teamId, LocalDate date, ReservationBlockedResourceType type, Long resourceId,
-            LocalTime startTime, LocalTime endTime) {
+            LocalTime startTime, LocalTime endTime, boolean endsNextDay) {
         // TEAM 軸は全 slot 対象（resourceId=null）、STAFF 軸は resourceId で絞る。
         Long queryResourceId = (type == ReservationBlockedResourceType.STAFF) ? resourceId : null;
         // 全日ブロック（両 NULL）は時刻トリックを使わず、日付＋軸一致でその日の active 予約を引く。
         if (startTime == null && endTime == null) {
             return reservationRepository.findActiveReservationsOnDate(
                     teamId, date, queryResourceId, ACTIVE_STATUSES);
+        }
+        if (endsNextDay) {
+            List<ReservationEntity> candidates = reservationRepository.findActiveReservationsOnDates(
+                    teamId, List.of(date.minusDays(1), date), queryResourceId, ACTIVE_STATUSES);
+            if (candidates == null || candidates.isEmpty()) {
+                return List.of();
+            }
+            List<ReservationSlotEntity> candidateSlots = slotRepository.findAllById(candidates.stream()
+                    .map(ReservationEntity::getReservationSlotId).distinct().toList());
+            if (candidateSlots == null || candidateSlots.isEmpty()) {
+                return List.of();
+            }
+            Map<Long, ReservationSlotEntity> slots = candidateSlots.stream()
+                    .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+            LocalDateTime blockStart = LocalDateTime.of(date, startTime);
+            LocalDateTime blockEnd = LocalDateTime.of(date.plusDays(1), endTime);
+            return candidates.stream().filter(r -> {
+                ReservationSlotEntity slot = slots.get(r.getReservationSlotId());
+                if (slot == null) return false;
+                LocalDate endDate = slot.getEndDate() == null ? slot.getSlotDate() : slot.getEndDate();
+                return LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).isBefore(blockEnd)
+                        && blockStart.isBefore(LocalDateTime.of(endDate, slot.getEndTime()));
+            }).toList();
         }
         // 部分ブロックは半開区間 overlap で判定する（従来クエリ維持）。
         return reservationRepository.findActiveReservationsOverlappingUnavailability(

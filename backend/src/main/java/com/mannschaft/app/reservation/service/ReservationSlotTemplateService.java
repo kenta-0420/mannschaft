@@ -394,8 +394,6 @@ public class ReservationSlotTemplateService {
         boolean overlaps = templateRepository.findByTeamId(teamId).stream()
                 .filter(t -> !Objects.equals(t.getId(), excludeId))
                 .filter(t -> Objects.equals(t.getLineId(), lineId))
-                .filter(t -> t.getDayOfWeek() == dayOfWeek || (endsNextDay
-                        && t.getDayOfWeek() == ReservationDayOfWeek.values()[(dayOfWeek.ordinal() + 1) % 7]))
                 .anyMatch(t -> {
                     java.time.LocalDate anchor = java.time.LocalDate.of(2024, 1, 1);
                     java.time.LocalDate aDate = anchor.plusDays(dayOfWeek.ordinal());
