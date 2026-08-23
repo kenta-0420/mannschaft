@@ -169,7 +169,7 @@ public class ReservationBusinessHourService {
      */
     public List<BlockedTimeResponse> getBlockedTimes(Long teamId, LocalDate date) {
         List<ReservationBlockedTimeEntity> blockedTimes =
-                blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, date);
+                blockedTimeRepository.findEffectiveOnDate(teamId, date, date.minusDays(1));
         return enrichWithResourceNames(blockedTimes);
     }
 
@@ -206,7 +206,7 @@ public class ReservationBusinessHourService {
      */
     @Transactional
     public BlockedTimeResponse createBlockedTime(Long teamId, BlockedTimeRequest request, Long createdBy) {
-        validateTimeRange(request.getStartTime(), request.getEndTime());
+        validateTimeRange(request.getStartTime(), request.getEndTime(), Boolean.TRUE.equals(request.getEndsNextDay()));
         ReservationBlockedResourceType resourceType = resolveResourceType(request.getResourceType());
         Long resourceId = resolveResourceId(resourceType, request.getResourceId());
 
@@ -222,6 +222,7 @@ public class ReservationBusinessHourService {
                 .reason(request.getReason())
                 .resourceType(resourceType)
                 .resourceId(resourceId)
+                .endsNextDay(Boolean.TRUE.equals(request.getEndsNextDay()))
                 .createdBy(createdBy)
                 .build();
 
@@ -244,7 +245,7 @@ public class ReservationBusinessHourService {
         ReservationBlockedTimeEntity entity = blockedTimeRepository.findByIdAndTeamId(blockedId, teamId)
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.BLOCKED_TIME_NOT_FOUND));
 
-        validateTimeRange(request.getStartTime(), request.getEndTime());
+        validateTimeRange(request.getStartTime(), request.getEndTime(), Boolean.TRUE.equals(request.getEndsNextDay()));
         ReservationBlockedResourceType resourceType = resolveResourceType(request.getResourceType());
         Long resourceId = resolveResourceId(resourceType, request.getResourceId());
 
@@ -253,7 +254,7 @@ public class ReservationBusinessHourService {
                 request.getStartTime(), request.getEndTime());
 
         entity.update(request.getBlockedDate(), request.getStartTime(), request.getEndTime(),
-                request.getReason(), resourceType, resourceId);
+                request.getReason(), resourceType, resourceId, request.getEndsNextDay());
         ReservationBlockedTimeEntity saved = blockedTimeRepository.save(entity);
         log.info("予約不可枠更新: teamId={}, blockedId={}, resourceType={}, resourceId={}",
                 teamId, blockedId, resourceType, resourceId);
@@ -367,7 +368,16 @@ public class ReservationBusinessHourService {
         }
     }
 
+    private void validateTimeRange(LocalTime startTime, LocalTime endTime, boolean endsNextDay) {
+        if (endsNextDay) {
+            SlotTimeValidator.validateTimeRange(startTime, endTime, true);
+        } else {
+            validateTimeRange(startTime, endTime);
+        }
+    }
+
     /** {@code resourceType} を正規化する（未指定＝null → TEAM）。 */
+
     private ReservationBlockedResourceType resolveResourceType(ReservationBlockedResourceType raw) {
         return raw != null ? raw : ReservationBlockedResourceType.TEAM;
     }

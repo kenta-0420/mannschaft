@@ -22,6 +22,7 @@ public class BlockedTimeResponse {
     TimeSlotDto timeSlot;
     ResourceDto resource;
     BlockedAuditDto audit;
+    Boolean endsNextDay;
 
     public record TimeSlotDto(LocalDate blockedDate, LocalTime startTime, LocalTime endTime) {}
 

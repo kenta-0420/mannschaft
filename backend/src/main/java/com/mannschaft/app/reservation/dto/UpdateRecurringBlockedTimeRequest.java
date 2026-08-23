@@ -16,8 +16,22 @@ import java.time.LocalTime;
  * {@code SlotTimeValidator} で再検証する（全日型への変更は許可しない）。</p>
  */
 @Getter
-@RequiredArgsConstructor
 public class UpdateRecurringBlockedTimeRequest {
+
+    public UpdateRecurringBlockedTimeRequest(Long lineId, Boolean clearLineId, ReservationDayOfWeek dayOfWeek,
+            LocalTime startTime, LocalTime endTime, String reason, Boolean isPublic, Boolean isActive,
+            Boolean forceCancelConflicting) {
+        this(lineId, clearLineId, dayOfWeek, startTime, endTime, reason, isPublic, isActive,
+                forceCancelConflicting, null);
+    }
+
+    public UpdateRecurringBlockedTimeRequest(Long lineId, Boolean clearLineId, ReservationDayOfWeek dayOfWeek,
+            LocalTime startTime, LocalTime endTime, String reason, Boolean isPublic, Boolean isActive,
+            Boolean forceCancelConflicting, Boolean endsNextDay) {
+        this.lineId = lineId; this.clearLineId = clearLineId; this.dayOfWeek = dayOfWeek;
+        this.startTime = startTime; this.endTime = endTime; this.reason = reason; this.isPublic = isPublic;
+        this.isActive = isActive; this.forceCancelConflicting = forceCancelConflicting; this.endsNextDay = endsNextDay;
+    }
 
     /** 対象ラインを変更する場合に指定（不正 ID は 400=LINE_NOT_FOUND）。 */
     private final Long lineId;
@@ -53,4 +67,6 @@ public class UpdateRecurringBlockedTimeRequest {
      * {@link CreateRecurringBlockedTimeRequest#getForceCancelConflicting()} を参照。</p>
      */
     private final Boolean forceCancelConflicting;
+
+    private final Boolean endsNextDay;
 }

@@ -184,8 +184,13 @@ public class ReservationRecurringBlockedTimeService {
         if (request.getStartTime() != null || request.getEndTime() != null) {
             LocalTime newStart = request.getStartTime() != null ? request.getStartTime() : entity.getStartTime();
             LocalTime newEnd = request.getEndTime() != null ? request.getEndTime() : entity.getEndTime();
-            SlotTimeValidator.validateTimeRange(newStart, newEnd);
-            entity.changeTimeRange(newStart, newEnd);
+            boolean endsNextDay = request.getEndsNextDay() != null
+                    ? request.getEndsNextDay() : Boolean.TRUE.equals(entity.getEndsNextDay());
+            SlotTimeValidator.validateTimeRange(newStart, newEnd, endsNextDay);
+            entity.changeTimeRange(newStart, newEnd, endsNextDay);
+        } else if (request.getEndsNextDay() != null) {
+            SlotTimeValidator.validateTimeRange(entity.getStartTime(), entity.getEndTime(), request.getEndsNextDay());
+            entity.changeTimeRange(entity.getStartTime(), entity.getEndTime(), request.getEndsNextDay());
         }
         if (request.getReason() != null) {
             entity.changeReason(request.getReason());
@@ -587,6 +592,7 @@ public class ReservationRecurringBlockedTimeService {
                 .reason(entity.getReason())
                 .isPublic(entity.getIsPublic())
                 .isActive(entity.getIsActive())
+                .endsNextDay(entity.getEndsNextDay())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

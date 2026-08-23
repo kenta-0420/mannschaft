@@ -25,6 +25,7 @@ public class RecurringBlockedTimeResponse {
     String reason;
     Boolean isPublic;
     Boolean isActive;
+    Boolean endsNextDay;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;
 
