@@ -256,7 +256,7 @@ public class ReservationSlotGenerationService {
         // 単日 = 1 チャンク tx（REQUIRES_NEW）。営業時間チェックはスキップ（skipBusinessHours=true）。
         chunkTransactionTemplate.executeWithoutResult(status ->
                 generateForDate(teamId, targetDate, sourceDow, dayTemplates, null, existingCells, createdBy,
-                        counts, true));
+                        counts, true, teamTimezoneResolver == null ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE) : teamTimezoneResolver.resolveZone(teamId)));
         log.info("臨時営業（単日テンプレ適用）: teamId={}, date={}, sourceDow={}, generated={}, skippedExisting={}",
                 teamId, date, sourceDow, counts.generated, counts.skippedExisting);
         return GenerateSlotsResponse.builder()
@@ -331,6 +331,8 @@ public class ReservationSlotGenerationService {
                                                    Long createdBy,
                                                    boolean skipBusinessHours) {
         // 曜日 → 営業時間（行の無い曜日はキー欠損 = 営業時間未定義としてスキップ・F-7b）
+        ZoneId teamZone = teamTimezoneResolver == null ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)
+                : teamTimezoneResolver.resolveZone(teamId);
         Map<String, ReservationBusinessHourEntity> businessHours = new HashMap<>();
         for (ReservationBusinessHourEntity hour : businessHourRepository.findByTeamIdOrderByIdAsc(teamId)) {
             businessHours.putIfAbsent(hour.getDayOfWeek(), hour);
@@ -366,7 +368,7 @@ public class ReservationSlotGenerationService {
                 chunkTransactionTemplate.executeWithoutResult(status ->
                         generateForDate(teamId, currentDate, dow, dayTemplates,
                                 businessHours.get(dow.name()), existingCells, createdBy, chunkCounts,
-                                skipBusinessHours));
+                                skipBusinessHours, teamZone));
             } catch (RuntimeException chunkFailure) {
                 // 先行チャンクは既にコミット済み。その実件数を例外に載せて上位（保存フローのコントローラ）が
                 // トーストに正直な件数を出せるようにする（0 件で握り潰さない＝症状の黙殺を避ける・根治原則）。
@@ -404,7 +406,8 @@ public class ReservationSlotGenerationService {
                                  Set<String> existingCells,
                                  Long createdBy,
                                  Counts counts,
-                                 boolean skipBusinessHours) {
+                                 boolean skipBusinessHours,
+                                 ZoneId teamZone) {
         for (ReservationSlotTemplateEntity template : dayTemplates) {
             // ★営業時間の防御分岐（NPE 根絶・確定仕様・F-7b）:
             //   (1) 当該曜日の行が存在しない（新規チームは 0 行があり得る — 実測）
@@ -444,8 +447,8 @@ public class ReservationSlotGenerationService {
                 // DST gap の存在しない壁時計セルは保存しない。overlap は resolver の earlier offset 方針に従う。
                 if (teamTimezoneResolver != null) {
                     try {
-                        teamTimezoneResolver.toInstant(teamId, cellStartDate, cellStart);
-                        teamTimezoneResolver.toInstant(teamId, cellEndDate, cellEnd);
+                        teamTimezoneResolver.toInstant(cellStartDate, cellStart, teamZone);
+                        teamTimezoneResolver.toInstant(cellEndDate, cellEnd, teamZone);
                     } catch (DateTimeException ex) {
                         counts.skippedOutsideHours++;
                         continue;
