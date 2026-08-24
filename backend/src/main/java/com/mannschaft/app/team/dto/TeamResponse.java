@@ -1,5 +1,6 @@
 package com.mannschaft.app.team.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -30,6 +31,7 @@ public class TeamResponse {
     private TeamLocationDto location;
     private TeamVisibilityDto visibility;
     /** 予約枠の現地日付・時刻を解釈するチーム固有の IANA タイムゾーン。 */
+    @Schema(description = "チームのIANAタイムゾーン")
     private String timezone;
     private TeamMetadataDto metadata;
     private TeamSocialDto social;

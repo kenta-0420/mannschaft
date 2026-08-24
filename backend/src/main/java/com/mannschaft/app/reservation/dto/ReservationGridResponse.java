@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.dto;
 
 import com.mannschaft.app.reservation.GridCellState;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -102,8 +103,8 @@ public class ReservationGridResponse {
      */
     public record GridCellDto(
             Long slotId,
-            LocalDate slotDate,
-            LocalDate endDate,
+            @Schema(description = "枠開始日") LocalDate slotDate,
+            @Schema(description = "枠終了日") LocalDate endDate,
             LocalTime startTime,
             LocalTime endTime,
             GridCellState state,

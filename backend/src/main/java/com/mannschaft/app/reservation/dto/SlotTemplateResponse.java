@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -26,6 +27,7 @@ public class SlotTemplateResponse {
     String dayOfWeek;
     LocalTime startTime;
     LocalTime endTime;
+    @Schema(description = "終了時刻が翌日")
     Boolean endsNextDay;
     Integer capacity;
     Long staffUserId;

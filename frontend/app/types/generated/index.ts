@@ -56884,10 +56884,10 @@ export interface components {
             updatedAt?: string;
         };
         SlotBasicDto: {
-            /** @example 14:30:00 */
-            endTime?: string;
             /** Format: date */
             endDate?: string;
+            /** @example 14:30:00 */
+            endTime?: string;
             /** Format: date */
             slotDate?: string;
             /** @example 14:30:00 */
@@ -57021,6 +57021,7 @@ export interface components {
             blockedDate: string;
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             reason?: string;
             /** Format: int64 */
             resourceId?: number;
@@ -57043,6 +57044,7 @@ export interface components {
         };
         BlockedTimeResponse: {
             audit?: components["schemas"]["BlockedAuditDto"];
+            endsNextDay?: boolean;
             /** Format: int64 */
             id?: number;
             resource?: components["schemas"]["ResourceDto"];
@@ -70434,15 +70436,15 @@ export interface components {
             data?: components["schemas"]["ReservationGridResponse"];
         };
         GridCellDto: {
-            /** @example 14:30:00 */
-            endTime?: string;
             /** Format: date */
             endDate?: string;
+            /** @example 14:30:00 */
+            endTime?: string;
             price?: number;
-            /** Format: int64 */
-            slotId?: number;
             /** Format: date */
             slotDate?: string;
+            /** Format: int64 */
+            slotId?: number;
             /** @example 14:30:00 */
             startTime?: string;
             /** @enum {string} */
@@ -145547,6 +145549,7 @@ export interface operations {
                 resourceId?: number;
                 startTime?: string;
                 endTime?: string;
+                endsNextDay?: boolean;
             };
             header?: never;
             path: {

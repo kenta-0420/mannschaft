@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -22,6 +23,7 @@ public class BlockedTimeResponse {
     TimeSlotDto timeSlot;
     ResourceDto resource;
     BlockedAuditDto audit;
+    @Schema(description = "終了時刻が翌日")
     Boolean endsNextDay;
 
     public record TimeSlotDto(LocalDate blockedDate, LocalTime startTime, LocalTime endTime) {}

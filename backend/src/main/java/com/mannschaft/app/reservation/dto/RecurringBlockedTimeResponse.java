@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -25,6 +26,7 @@ public class RecurringBlockedTimeResponse {
     String reason;
     Boolean isPublic;
     Boolean isActive;
+    @Schema(description = "終了時刻が翌日")
     Boolean endsNextDay;
     LocalDateTime createdAt;
     LocalDateTime updatedAt;

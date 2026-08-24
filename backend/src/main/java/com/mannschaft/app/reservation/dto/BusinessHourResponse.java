@@ -1,5 +1,6 @@
 package com.mannschaft.app.reservation.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -17,7 +18,7 @@ public class BusinessHourResponse {
     BusinessStatusDto businessStatus;
 
     public record BusinessStatusDto(String dayOfWeek, Boolean isOpen, LocalTime openTime, LocalTime closeTime,
-                                    Boolean endsNextDay) {
+                                    @Schema(description = "終了時刻が翌日") Boolean endsNextDay) {
         public BusinessStatusDto(String dayOfWeek, Boolean isOpen, LocalTime openTime, LocalTime closeTime) {
             this(dayOfWeek, isOpen, openTime, closeTime, false);
         }

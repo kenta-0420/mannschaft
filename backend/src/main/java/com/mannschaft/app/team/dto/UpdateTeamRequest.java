@@ -2,6 +2,7 @@ package com.mannschaft.app.team.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.mannschaft.app.common.validation.ValidTimezone;
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
@@ -24,6 +25,7 @@ import lombok.Setter;
 public class UpdateTeamRequest {
 
     @ValidTimezone
+    @Schema(description = "チームのIANAタイムゾーン")
     private String timezone;
 
     private String name;
