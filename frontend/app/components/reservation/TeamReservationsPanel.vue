@@ -358,34 +358,36 @@ onMounted(async () => {
             <div
               v-for="card in managementCards"
               :key="card.key"
-              role="button"
-              tabindex="0"
-              class="flex min-h-11 items-center gap-3 rounded-lg border p-3 text-left transition hover:border-primary hover:bg-primary/5"
+              class="flex min-h-11 items-center gap-3 rounded-lg border p-3 transition hover:border-primary hover:bg-primary/5"
               :class="selectedManagementSection === card.key ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-surface-200 dark:border-surface-700'"
               :data-testid="`management-card-${card.key}`"
-              @click="selectManagementSection(card.key)"
-              @keydown.enter="selectManagementSection(card.key)"
-              @keydown.space.prevent="selectManagementSection(card.key)"
             >
-              <i :class="card.icon" class="text-primary" aria-hidden="true" />
-              <span class="min-w-0 flex-1">
-                <span class="block text-sm font-medium text-surface-700 dark:text-surface-300">{{ t(card.titleKey, { resourceName }) }}</span>
-                <span class="block text-xs text-surface-500">{{ t(card.descriptionKey, { resourceName, n: card.count?.() ?? 0 }) }}</span>
-              </span>
-              <span class="flex items-center gap-1">
+              <button
+                type="button"
+                class="flex min-h-11 min-w-0 flex-1 items-center gap-3 text-left"
+                :aria-pressed="selectedManagementSection === card.key"
+                @click="selectManagementSection(card.key)"
+              >
+                <i :class="card.icon" class="text-primary" aria-hidden="true" />
+                <span class="min-w-0 flex-1">
+                  <span class="block text-sm font-medium text-surface-700 dark:text-surface-300">{{ t(card.titleKey, { resourceName }) }}</span>
+                  <span class="block text-xs text-surface-500">{{ t(card.descriptionKey, { resourceName, n: card.count?.() ?? 0 }) }}</span>
+                </span>
                 <span v-if="card.count" class="rounded-full bg-surface-100 px-2 py-0.5 text-xs text-surface-600 dark:bg-surface-700 dark:text-surface-300">{{ card.count() }}</span>
+              </button>
+              <span class="flex items-center gap-1">
                 <Button
                   icon="pi pi-question-circle"
                   text
                   rounded
                   size="small"
+                  class="min-h-11 min-w-11"
                   :aria-label="t('reservation.management.card_help', { label: t(card.titleKey, { resourceName }) })"
-                  @click.stop="openManagementGuide(card.key)"
+                  @click="openManagementGuide(card.key)"
                 />
               </span>
             </div>
           </div>
-
           <div v-show="selectedManagementSection" class="mt-4 rounded-lg border border-surface-200 p-4 dark:border-surface-700">
             <!-- ①営業時間（BusinessHoursManager・F03.4.5 §3.2 新設） -->
             <section v-show="selectedManagementSection === 'business_hours'" id="reservation-business-hours-section">
