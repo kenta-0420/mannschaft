@@ -775,8 +775,8 @@ class FlywayExistingDataRestrictUserAuditFkMigrationTest {
     /** reservation_slots: team_id(CASCADE)/slot_date/start_time/end_time NOT NULL。 */
     private long insertReservationSlot(Connection c, long teamId) throws SQLException {
         try (PreparedStatement ps = c.prepareStatement("""
-                INSERT INTO reservation_slots (team_id, slot_date, end_date, start_time, end_time)
-                VALUES (?, '2026-06-20', '2026-06-20', '09:00:00', '10:00:00')
+                INSERT INTO reservation_slots (team_id, slot_date, start_time, end_time)
+                VALUES (?, '2026-06-20', '09:00:00', '10:00:00')
                 """, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, teamId);
             ps.executeUpdate();

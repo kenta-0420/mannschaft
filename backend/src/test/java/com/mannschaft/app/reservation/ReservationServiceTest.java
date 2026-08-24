@@ -1510,8 +1510,9 @@ class ReservationServiceTest {
             given(reservationRepository.findUpcomingByUserId(eq(USER_ID), any(LocalDate.class), any(LocalTime.class)))
                     .willReturn(List.of(entity));
             given(slotRepository.findAllById(anyIterable())).willReturn(List.of(slot));
-            given(teamTimezoneResolver.toInstant(TEAM_ID, slot.getSlotDate(), slot.getStartTime()))
-                    .willReturn(Instant.parse("2026-08-10T03:45:00Z"));
+            given(teamTimezoneResolver.resolveZones(any())).willReturn(java.util.Map.of(TEAM_ID, ZoneId.of("America/New_York")));
+            given(teamTimezoneResolver.toInstant(slot.getSlotDate(), slot.getStartTime(), ZoneId.of("America/New_York")))
+                .willReturn(Instant.parse("2026-08-10T03:45:00Z"));
             given(reservationMapper.toReservationResponse(any(ReservationEntity.class), any(), any()))
                     .willReturn(createReservationResponse());
 
