@@ -482,8 +482,12 @@ class PermissionGroupServiceTest {
         given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(
                 PermissionGroupPermissionEntity.builder().groupId(GROUP_ID).permissionId(PERM_ID_2).build()));
         given(permissionRepository.findByIdIn(anyList())).willReturn(List.of(createPermissionEntity(PERM_ID_2, "SEND_PAID_TIMELINE")));
+        doThrow(new BusinessException(CommonErrorCode.COMMON_002)).when(accessControlService)
+                .checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM");
         assertThatThrownBy(() -> permissionGroupService.updatePermissionGroup(GROUP_ID, request, USER_ID))
                 .isInstanceOf(BusinessException.class);
         verify(accessControlService).checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM");
+        verify(permissionGroupRepository, never()).save(any());
+        verify(permissionGroupPermissionRepository, never()).deleteByGroupId(anyLong());
     }
 }

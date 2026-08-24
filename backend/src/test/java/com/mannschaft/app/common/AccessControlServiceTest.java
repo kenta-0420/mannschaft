@@ -1122,4 +1122,22 @@ class AccessControlServiceTest {
                     .isInstanceOf(IllegalArgumentException.class);
         }
     }
+
+    @Test
+    @DisplayName("F09.14 strict scope ADMIN only: ADMIN成功、DEPUTY/SYSTEM_ADMIN拒否")
+    void checkScopeAdminOnly_enforcesStrictAdmin() {
+        given(userRoleRepository.existsSystemAdminByUserId(USER_ID)).willReturn(0L);
+        given(userRoleRepository.findByUserIdAndTeamId(USER_ID, SCOPE_ID))
+                .willReturn(Optional.of(createUserRole(ROLE_ID)));
+        given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole("ADMIN", 2)));
+        accessControlService.checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM");
+
+        given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole("DEPUTY_ADMIN", 3)));
+        assertThatThrownBy(() -> accessControlService.checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM"))
+                .isInstanceOf(BusinessException.class);
+
+        given(userRoleRepository.existsSystemAdminByUserId(USER_ID)).willReturn(1L);
+        assertThatThrownBy(() -> accessControlService.checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM"))
+                .isInstanceOf(BusinessException.class);
+    }
 }

@@ -349,7 +349,14 @@ public class PermissionGroupService {
     private void evictRolePermissions(List<Long> userIds, String scopeType, Long scopeId) {
         var cache = cacheManager.getCache("role-permissions");
         if (cache == null) return;
-        userIds.stream().distinct().forEach(userId -> cache.evict(userId + ":" + scopeType + ":" + scopeId));
+        userIds.stream().distinct().forEach(userId -> {
+            try {
+                cache.evict(userId + ":" + scopeType + ":" + scopeId);
+            } catch (RuntimeException ex) {
+                log.warn("権限cache失効に失敗しました。DB mutationは成功扱いにします: userId={}, scopeType={}, scopeId={}",
+                        userId, scopeType, scopeId, ex);
+            }
+        });
     }
 
     private void validatePermissionIds(List<Long> permissionIds) {
