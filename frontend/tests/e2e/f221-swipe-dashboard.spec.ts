@@ -105,6 +105,8 @@ interface MockOptions {
   onStorageUsage?: () => void
   /** 容量APIを失敗させる検証用フック */
   storageUsageFailure?: boolean
+  /** 警告Dialog表示用の容量mock */
+  storageUsageWarning?: boolean
 }
 
 /**
@@ -147,9 +149,20 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
           fileCount: 0,
           includedBytes: 1024,
           maxBytes: 1024,
-          usagePercent: 0,
+          usagePercent: opts.storageUsageWarning ? 90 : 0,
         },
       ]),
+    })
+  })
+
+  // 有料プラン画面の route gate が参照する公開フラグ。
+  await page.route('**/api/v1/feature-flags', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [{ flagKey: 'FEATURE_BILLING_PAYMENT_ENABLED', enabled: true }],
+      }),
     })
   })
 
@@ -284,6 +297,32 @@ test('F22.1-9: 容量API失敗時もカルーセルと切替タブを維持す�
   await expect(page.getByTestId('storage-error')).toBeVisible()
   await expect(page.getByTestId('scope-carousel')).toBeVisible()
   await expect(page.getByTestId('scope-segment-PERSONAL')).toBeVisible()
+})
+
+test('F22.1-10: 容量カードの通常遷移と警告Dialogのプラン導線', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page)
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  await page.getByTestId('storage-card-0').click()
+  await expect(page).toHaveURL(/\/settings\/storage/)
+
+  await page.goto('/dashboard')
+  await mockDashboardApis(page, { storageUsageWarning: true })
+  await page.reload()
+  await waitForCarousel(page)
+  const warningCard = page.getByTestId('storage-card-0')
+  await warningCard.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(warningCard).toBeFocused()
+
+  await warningCard.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+  await page.getByRole('button', { name: 'プランを見る' }).click()
+  await expect(page).toHaveURL(/\/billing\/plans/)
 })
 
 // ──────────────────────────────────────────────────────────────────────────

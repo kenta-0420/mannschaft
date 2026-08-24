@@ -7,6 +7,7 @@ import type { StorageScopeUsage } from '~/types/storage'
 
 const getMyStorageUsage = vi.fn()
 const handleApiError = vi.fn()
+const { navigateTo } = vi.hoisted(() => ({ navigateTo: vi.fn() }))
 const dashboardStore = reactive<{
   selectedTeamId: string | null
   selectedOrgId: string | null
@@ -32,6 +33,7 @@ mockNuxtImport('useStorageUsageApi', () => () => ({ getMyStorageUsage }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError }))
 mockNuxtImport('useScopeDashboardStore', () => () => dashboardStore)
 mockNuxtImport('useAuthStore', () => () => ({ isAuthenticated: false, loadFromStorage: vi.fn() }))
+mockNuxtImport('navigateTo', () => navigateTo)
 
 const stubs = {
   DashboardWidgetCard: { template: '<section><header><slot name="actions" /></header><slot /></section>' },
@@ -39,6 +41,7 @@ const stubs = {
   Button: { template: '<button @click="$attrs.onClick"><slot />{{ label }}</button>', props: ['label'] },
   Message: { template: '<div><slot /></div>' },
   Skeleton: { template: '<div class="skeleton" />' },
+  Dialog: { props: ['visible', 'header'], template: '<div v-if="visible" role="dialog" :aria-label="header"><h2>{{ header }}</h2><slot /></div>' },
 }
 
 function usage(scopeType: StorageScopeUsage['scopeType'], overrides: Partial<StorageScopeUsage> = {}): StorageScopeUsage {
@@ -57,6 +60,7 @@ async function mountSummary() {
 beforeEach(() => {
   getMyStorageUsage.mockReset()
   handleApiError.mockReset()
+  navigateTo.mockReset()
   dashboardStore.selectedTeamId = 'team-a'
   dashboardStore.selectedOrgId = 'org-a'
 })
@@ -122,5 +126,31 @@ describe('DashboardStorageSummary', () => {
     expect(wrapper.html()).toContain('grid-cols-1')
     expect(wrapper.html()).toContain('md:grid-cols-3')
     expect(wrapper.get('a[href="/settings/storage"]').classes()).toContain('min-h-11')
+  })
+
+  it('通常カードはsettingsへ遷移し、警告カードはDialogとCTAを表示する', async () => {
+    getMyStorageUsage.mockResolvedValue([
+      usage('PERSONAL', { usagePercent: 89.9 }),
+      usage('TEAM', { usagePercent: 90 }),
+    ])
+    const wrapper = await mountSummary()
+    await wrapper.get('[data-testid="storage-card-0"]').trigger('click')
+    expect(navigateTo).toHaveBeenCalledWith('/settings/storage')
+    await wrapper.get('[data-testid="storage-card-1"]').trigger('click')
+    expect(wrapper.get('[role="dialog"]').text()).toContain('scopeDashboard.storageSummary.warningTitle')
+    expect(wrapper.get('[role="dialog"]').text()).toContain('Team Actual')
+    await wrapper.get('[role="dialog"] button:last-child').trigger('click')
+    expect(navigateTo).toHaveBeenCalledWith('/billing/plans')
+  })
+
+  it('未設定容量は通常遷移し、カードはキーボード操作可能な44px領域を持つ', async () => {
+    getMyStorageUsage.mockResolvedValue([usage('PERSONAL', { includedBytes: 0, usagePercent: 100 })])
+    const wrapper = await mountSummary()
+    const card = wrapper.get('[data-testid="storage-card-0"]')
+    expect(card.element.tagName).toBe('BUTTON')
+    expect(card.classes()).toContain('min-h-11')
+    await card.trigger('keydown.enter')
+    await card.trigger('click')
+    expect(navigateTo).toHaveBeenCalledWith('/settings/storage')
   })
 })
