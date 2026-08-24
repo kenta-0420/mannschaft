@@ -61,8 +61,25 @@ const selectedLineId = ref<number | null>(null)
 const teamTodayCalendar = () => dayjs().tz(teamTimezone.value).format('YYYY-MM-DD')
 /** DatePickerにはteam midnightのInstantではなく、ブラウザ内の正午でcalendar dateを渡す。 */
 const calendarDateForPicker = (date: string) => {
-  const [year, month, day] = date.split('-').map(Number)
-  return new Date(year, month - 1, day, 12, 0, 0, 0)
+  const parts = date.split('-')
+  if (parts.length !== 3) {
+    throw new RangeError(`Invalid calendar date: ${date}`)
+  }
+
+  const [yearPart, monthPart, dayPart] = parts
+  const year = Number(yearPart)
+  const month = Number(monthPart)
+  const day = Number(dayPart)
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    throw new RangeError(`Invalid calendar date: ${date}`)
+  }
+
+  const result = new Date(year, month - 1, day, 12, 0, 0, 0)
+  if (result.getFullYear() !== year || result.getMonth() !== month - 1 || result.getDate() !== day) {
+    throw new RangeError(`Invalid calendar date: ${date}`)
+  }
+
+  return result
 }
 const blockedDate = ref<Date | null>(calendarDateForPicker(teamTodayCalendar()))
 const template = ref<TemplateKey>('FULL_DAY')
