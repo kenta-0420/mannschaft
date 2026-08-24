@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T23:34:12+00:00",
+  "generatedAt": "2026-08-24T23:56:15+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -7,9 +7,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
-    "inventoryCommit": "8f5479f3a831fdaec55d94d835f05179c3478cd4",
+    "inventoryCommit": "224d5028785d5a1ec630193c90cf03dd3ea8a079",
     "taskListCommit": "535e544160f4e86b9e7129da43f5c523e87daadf",
-    "inventorySha256": "145014449510549e4c7d845a7a489372f816e0bb51d8be43546144cb7c2ed771",
+    "inventorySha256": "357ea5ab936a25163206b166d555652614c95ced3b58dd789998646ce9361f27",
     "taskListSha256": "9d8220cfe010ebdda3f92061b04ef64290c4e432827301d68501b1b28a9ad2f3",
     "decisionsSha256": "5721052631110d26b34bf2288bc6e8a9de069a030b7f8d63808f8304348f7a4d",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
@@ -28,9 +28,9 @@ window.BETA_INVENTORY_DATA = {
     "blockers": 21,
     "coreStatus": {
       "blocked": 4,
-      "unknown": 12,
+      "unknown": 0,
       "incomplete": 0,
-      "verifying": 9,
+      "verifying": 21,
       "ready": 0
     }
   },
@@ -47,9 +47,9 @@ window.BETA_INVENTORY_DATA = {
       "blockers": 21,
       "coreStatus": {
         "blocked": 4,
-        "unknown": 12,
+        "unknown": 0,
         "incomplete": 0,
-        "verifying": 9,
+        "verifying": 21,
         "ready": 0
       }
     },
@@ -682,24 +682,58 @@ window.BETA_INVENTORY_DATA = {
       "title": "組織メンバー管理",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 組織メンバー一覧・membershipサービス・共通membershipsテーブル・認可契約テストを確認。専用の実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role",
+        "docs/features/F10.1.1_team_org_admin_console"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/service/OrganizationMembershipServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationControllerTest.java",
+            "backend/src/main/java/com/mannschaft/app/organization/service/OrganizationMembershipService.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationCoreAuthzContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V60.001__create_memberships_table.sql",
+            "backend/src/main/resources/db/migration/V73.001__backfill_memberships_from_admin_user_roles.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -716,24 +750,59 @@ window.BETA_INVENTORY_DATA = {
       "title": "村へ参加",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 参加申請画面・申請/審査API・永続化・村BAN境界・実環境E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F17.1_village_community.md",
+        "docs/features/F17.1_village_community_phase2_3_api_addendum.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/village/useVillageMembershipApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageJoinRequestServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/controller/VillageJoinRequestControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageBannedMemberAuthzIntegrationTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.129__create_village_join_requests.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/village-join-request.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -750,24 +819,60 @@ window.BETA_INVENTORY_DATA = {
       "title": "村の構成員管理",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 構成員一覧画面・加入/脱退/追放API・公開プロフィール・BAN認可境界を確認。実環境E2Eは村全体導線までで、構成員管理の専用シナリオは未確認。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F17.1_village_community.md",
+        "docs/features/F17.1_village_headman_console_and_recruit_categories.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/village/useVillageMembershipApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/controller/VillageMembershipControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageBannedMemberAuthzIntegrationTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.126__create_village_memberships.sql",
+            "backend/src/main/resources/db/migration/V160.20260721095957__alter_village_memberships_add_profile_public.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/villages.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -822,13 +927,13 @@ window.BETA_INVENTORY_DATA = {
       "title": "通知・受信箱",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 通知一覧/フォルダ画面、通知API、fanoutジョブ、配信runner、自己スコープ契約を確認。モックE2Eはあるが実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [
@@ -836,12 +941,44 @@ window.BETA_INVENTORY_DATA = {
       ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/useNotificationApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationFolderFilterContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationSelfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V4.019__create_notifications_table.sql",
+            "backend/src/main/resources/db/migration/V173.20260730033806__create_notification_fanout_jobs.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -897,24 +1034,62 @@ window.BETA_INVENTORY_DATA = {
       "title": "チャット",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: チーム/組織チャット、メッセージ/スレッド/既読/WebSocket、予約送信・アーカイブbatch、認可契約と実環境E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F04.2_chat.md",
+        "docs/features/F04.2.1_chat_multi_tab_ui.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/chat/chatMessageMapper.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/chat/service/ChatMessageServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/chat/controller/ChatMessageControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/chat/ws/ChatChannelSubscriptionAuthzIntegrationTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/chat/ChatAuthzScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V4.013__create_chat_channels_table.sql",
+            "backend/src/main/resources/db/migration/V4.014__create_chat_messages_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/chat-page.spec.ts",
+            "frontend/tests/e2e/real/chat-thread.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -931,24 +1106,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "回覧",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: チーム/組織回覧、宛先・押印・コメント・添付・非同期エクスポート、ACL契約と実環境E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F05.2_circular.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "対象外"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/circulation/CirculationServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/circulation/CirculationStampServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/circulation.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/circulation/CirculationControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/circulation/CirculationWriteAclScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/circulation/CirculationStampRecipientAclScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V5.007__create_circulation_documents_table.sql",
+            "backend/src/main/resources/db/migration/V5.008__create_circulation_recipients_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/circulation-member.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1044,24 +1256,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "アンケート",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: 作成・公開・回答・集計、対象範囲/結果公開境界、公開時非同期通知、実環境回答E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F05.4_survey_vote.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/utils/surveyResults.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/surveys/survey-crud.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyDetailShapeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyResultAccessGuardTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V5.014__create_surveys_table.sql",
+            "backend/src/main/resources/db/migration/V5.017__create_survey_responses_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/survey-response-real.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1078,24 +1327,66 @@ window.BETA_INVENTORY_DATA = {
       "title": "ToDo・メモ類",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: TODO作成/共有、ポイっとメモ作成/閲覧・所有者境界、アクションメモ、各reminder batchを確認。TODOの実環境導線はあるが、複合能力全体を覆う実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F02.3_todo_project.md",
+        "docs/features/F02.5_quick_memo.md",
+        "docs/features/F02.5_action_memo.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/todo/TodoCommentServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/quickmemo/service/QuickMemoServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/actionmemo/service/ActionMemoServiceCoreTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/todos.spec.ts",
+            "frontend/tests/e2e/quick-memos/quick-memo.spec.ts",
+            "frontend/tests/e2e/action-memo.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/todo/TodoScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/quickmemo/QuickMemoSelfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V3.022__create_todos_table.sql",
+            "backend/src/main/resources/db/migration/V3.108__create_quick_memos_table.sql",
+            "backend/src/main/resources/db/migration/V5.041__create_action_memos_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/cmp099-calendar-targets-todos-real.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1109,27 +1400,68 @@ window.BETA_INVENTORY_DATA = {
     },
     {
       "key": "corkboard",
-      "title": "掲示板",
+      "title": "掲示板・コルクボード",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。掲示板とコルクボードを別能力カードとして表示。両方の画面/API/DBを確認し、コルクボードの整合batchも確認。掲示板の実環境E2Eはあるが、コルクボードの実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F05.1_bulletin_board.md",
+        "docs/features/F09.8_corkboard.md",
+        "docs/features/F09.8.1_corkboard_pin_dashboard.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/useCorkboardApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/bulletin/service/BulletinThreadServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/corkboard/service/CorkboardPermissionServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/bulletin.spec.ts",
+            "frontend/tests/e2e/corkboard/corkboard.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/bulletin/service/BulletinTournamentScopeAuthorizationTest.java",
+            "backend/src/test/java/com/mannschaft/app/corkboard/service/CorkboardPermissionServiceTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V5.002__create_bulletin_threads_table.sql",
+            "backend/src/main/resources/db/migration/V9.006__create_corkboards_table.sql",
+            "backend/src/main/resources/db/migration/V9.007__create_corkboard_cards_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/bulletin-archive-folder.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1146,24 +1478,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "ウォレット・ポイント",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: ウォレット、カード登録/グループ、組織スタンプ/残高、照合batch、匿名化/組織削除listener、実環境E2Eを確認。Gate停止判定は本棚卸の対象外。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F18_point_card_wallet.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/components/wallet/BarcodePreview.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/pointcard/service/PointCardBalanceServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/wallet.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/pointcard/PointCardWalletScopeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/pointcard/PointCardWalletScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.136__create_point_card_providers.sql",
+            "backend/src/main/resources/db/migration/V9.137__create_user_point_cards.sql",
+            "backend/src/main/resources/db/migration/V9.148__create_point_card_balance_events.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/wallet.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1180,24 +1549,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "大会・試合記録",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: 大会CRUD、参加者/日程/試合/スコア/順位、ロスター等拡張、コミット後非同期順位再計算、実環境E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F08.7_tournament_league.md",
+        "docs/features/F08.7.1_tournament_extensions",
+        "docs/features/F08.10_match_record_analytics"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/utils/tournamentStandings.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/tournaments/tournaments.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentScopeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentPdfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V8.038__create_tournaments_table.sql",
+            "backend/src/main/resources/db/migration/V8.044__create_tournament_matches_table.sql",
+            "backend/src/main/resources/db/migration/V8.048__create_tournament_standings_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/tournament/F0871-tournament-crud.spec.ts",
+            "frontend/tests/e2e/real/tournament/f087-visibility-matrix.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1214,24 +1624,59 @@ window.BETA_INVENTORY_DATA = {
       "title": "安否確認",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。健康・気象は含めず weather-health として非COREに残す。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: チーム/組織安否確認、回答、追跡、テンプレート、認可境界を確認。専用background処理と実環境E2Eは未作成。健康・気象はweather-healthとして非COREに分離。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F03.6_safety_check.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyResponseServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/safety-check.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckMapperTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckServiceAuthzTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V3.080__create_safety_checks_table.sql",
+            "backend/src/main/resources/db/migration/V3.081__create_safety_responses_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1539,19 +1984,58 @@ window.BETA_INVENTORY_DATA = {
       "title": "気象・健康",
       "stage": "未設定",
       "phase": "停止",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "incomplete",
+      "statusLabel": "実装未完",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置",
+      "why": "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置。棚卸バッチ: 天気widget/API/位置導出・取込schedulerと、別系統のケアリンク機能は確認できたが、統合された健康機能の画面/API/データモデルは確認できないため部分実装。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F02.10_weather_widget.md",
+        "docs/features/F03.12_care_recipient_event_watch_notification.md"
+      ],
       "layer": "ドメイン",
-      "implementation": {},
-      "verification": {},
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "部分実装",
+        "background": "実装済"
+      },
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/weather/service/WeatherForecastServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/family/service/CareLinkServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/dashboard-weather.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/weather/controller/WeatherControllerIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/family/CareLinkInvitationScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V66.003__create_user_weather_locations.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "停止",
         "deploy_safety": "不明",
@@ -3090,24 +3574,58 @@ window.BETA_INVENTORY_DATA = {
       "title": "組織メンバー閲覧",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "organization-members由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 組織メンバー一覧・membershipサービス・共通membershipsテーブル・認可契約テストを確認。専用の実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role",
+        "docs/features/F10.1.1_team_org_admin_console"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/service/OrganizationMembershipServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationControllerTest.java",
+            "backend/src/main/java/com/mannschaft/app/organization/service/OrganizationMembershipService.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationCoreAuthzContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V60.001__create_memberships_table.sql",
+            "backend/src/main/resources/db/migration/V73.001__backfill_memberships_from_admin_user_roles.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3128,24 +3646,58 @@ window.BETA_INVENTORY_DATA = {
       "title": "組織メンバー管理・権限",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "organization-members由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 組織メンバー一覧・membershipサービス・共通membershipsテーブル・認可契約テストを確認。専用の実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role",
+        "docs/features/F10.1.1_team_org_admin_console"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/service/OrganizationMembershipServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationControllerTest.java",
+            "backend/src/main/java/com/mannschaft/app/organization/service/OrganizationMembershipService.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationCoreAuthzContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V60.001__create_memberships_table.sql",
+            "backend/src/main/resources/db/migration/V73.001__backfill_memberships_from_admin_user_roles.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3166,24 +3718,59 @@ window.BETA_INVENTORY_DATA = {
       "title": "村閲覧",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "village-join由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 参加申請画面・申請/審査API・永続化・村BAN境界・実環境E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F17.1_village_community.md",
+        "docs/features/F17.1_village_community_phase2_3_api_addendum.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/village/useVillageMembershipApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageJoinRequestServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/controller/VillageJoinRequestControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageBannedMemberAuthzIntegrationTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.129__create_village_join_requests.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/village-join-request.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3204,24 +3791,59 @@ window.BETA_INVENTORY_DATA = {
       "title": "村参加",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "village-join由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 参加申請画面・申請/審査API・永続化・村BAN境界・実環境E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F17.1_village_community.md",
+        "docs/features/F17.1_village_community_phase2_3_api_addendum.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/village/useVillageMembershipApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageJoinRequestServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/controller/VillageJoinRequestControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageBannedMemberAuthzIntegrationTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.129__create_village_join_requests.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/village-join-request.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3242,24 +3864,60 @@ window.BETA_INVENTORY_DATA = {
       "title": "村の構成員閲覧",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "village-members由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 構成員一覧画面・加入/脱退/追放API・公開プロフィール・BAN認可境界を確認。実環境E2Eは村全体導線までで、構成員管理の専用シナリオは未確認。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F17.1_village_community.md",
+        "docs/features/F17.1_village_headman_console_and_recruit_categories.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/village/useVillageMembershipApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/controller/VillageMembershipControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageBannedMemberAuthzIntegrationTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.126__create_village_memberships.sql",
+            "backend/src/main/resources/db/migration/V160.20260721095957__alter_village_memberships_add_profile_public.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/villages.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3280,24 +3938,60 @@ window.BETA_INVENTORY_DATA = {
       "title": "村の構成員管理",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "village-members由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 構成員一覧画面・加入/脱退/追放API・公開プロフィール・BAN認可境界を確認。実環境E2Eは村全体導線までで、構成員管理の専用シナリオは未確認。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F17.1_village_community.md",
+        "docs/features/F17.1_village_headman_console_and_recruit_categories.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/village/useVillageMembershipApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageMembershipServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/controller/VillageMembershipControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/village/service/VillageBannedMemberAuthzIntegrationTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.126__create_village_memberships.sql",
+            "backend/src/main/resources/db/migration/V160.20260721095957__alter_village_memberships_add_profile_public.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/villages.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3654,13 +4348,13 @@ window.BETA_INVENTORY_DATA = {
       "title": "通知配信",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "notification-inbox由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 通知一覧/フォルダ画面、通知API、fanoutジョブ、配信runner、自己スコープ契約を確認。モックE2Eはあるが実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [
@@ -3668,12 +4362,44 @@ window.BETA_INVENTORY_DATA = {
       ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/useNotificationApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationFolderFilterContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationSelfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V4.019__create_notifications_table.sql",
+            "backend/src/main/resources/db/migration/V173.20260730033806__create_notification_fanout_jobs.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3694,13 +4420,13 @@ window.BETA_INVENTORY_DATA = {
       "title": "受信箱",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "notification-inbox由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: 通知一覧/フォルダ画面、通知API、fanoutジョブ、配信runner、自己スコープ契約を確認。モックE2Eはあるが実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [
@@ -3708,12 +4434,44 @@ window.BETA_INVENTORY_DATA = {
       ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/useNotificationApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationFolderFilterContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/notification/NotificationSelfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V4.019__create_notifications_table.sql",
+            "backend/src/main/resources/db/migration/V173.20260730033806__create_notification_fanout_jobs.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3863,24 +4621,62 @@ window.BETA_INVENTORY_DATA = {
       "title": "チャット",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "chat由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: チーム/組織チャット、メッセージ/スレッド/既読/WebSocket、予約送信・アーカイブbatch、認可契約と実環境E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F04.2_chat.md",
+        "docs/features/F04.2.1_chat_multi_tab_ui.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/chat/chatMessageMapper.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/chat/service/ChatMessageServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/chat/controller/ChatMessageControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/chat/ws/ChatChannelSubscriptionAuthzIntegrationTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/chat/ChatAuthzScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V4.013__create_chat_channels_table.sql",
+            "backend/src/main/resources/db/migration/V4.014__create_chat_messages_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/chat-page.spec.ts",
+            "frontend/tests/e2e/real/chat-thread.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3901,24 +4697,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "回覧",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "circulation由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ: チーム/組織回覧、宛先・押印・コメント・添付・非同期エクスポート、ACL契約と実環境E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F05.2_circular.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "対象外"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/circulation/CirculationServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/circulation/CirculationStampServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/circulation.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/circulation/CirculationControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/circulation/CirculationWriteAclScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/circulation/CirculationStampRecipientAclScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V5.007__create_circulation_documents_table.sql",
+            "backend/src/main/resources/db/migration/V5.008__create_circulation_recipients_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/circulation-member.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4026,24 +4859,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "アンケート作成",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "survey由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: 作成・公開・回答・集計、対象範囲/結果公開境界、公開時非同期通知、実環境回答E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F05.4_survey_vote.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/utils/surveyResults.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/surveys/survey-crud.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyDetailShapeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyResultAccessGuardTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V5.014__create_surveys_table.sql",
+            "backend/src/main/resources/db/migration/V5.017__create_survey_responses_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/survey-response-real.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4064,24 +4934,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "アンケート公開",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "survey由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: 作成・公開・回答・集計、対象範囲/結果公開境界、公開時非同期通知、実環境回答E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F05.4_survey_vote.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/utils/surveyResults.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/surveys/survey-crud.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyDetailShapeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyResultAccessGuardTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V5.014__create_surveys_table.sql",
+            "backend/src/main/resources/db/migration/V5.017__create_survey_responses_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/survey-response-real.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4102,24 +5009,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "アンケート回答",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "survey由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: 作成・公開・回答・集計、対象範囲/結果公開境界、公開時非同期通知、実環境回答E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F05.4_survey_vote.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/utils/surveyResults.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/surveys/survey-crud.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyDetailShapeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyResultAccessGuardTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V5.014__create_surveys_table.sql",
+            "backend/src/main/resources/db/migration/V5.017__create_survey_responses_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/survey-response-real.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4140,24 +5084,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "アンケート結果",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "survey由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: 作成・公開・回答・集計、対象範囲/結果公開境界、公開時非同期通知、実環境回答E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F05.4_survey_vote.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/utils/surveyResults.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/surveys/survey-crud.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyDetailShapeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/survey/SurveyResultAccessGuardTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V5.014__create_surveys_table.sql",
+            "backend/src/main/resources/db/migration/V5.017__create_survey_responses_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/survey-response-real.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4178,24 +5159,66 @@ window.BETA_INVENTORY_DATA = {
       "title": "TODO作成",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "todo-memo由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: TODO作成/共有、ポイっとメモ作成/閲覧・所有者境界、アクションメモ、各reminder batchを確認。TODOの実環境導線はあるが、複合能力全体を覆う実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F02.3_todo_project.md",
+        "docs/features/F02.5_quick_memo.md",
+        "docs/features/F02.5_action_memo.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/todo/TodoCommentServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/quickmemo/service/QuickMemoServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/actionmemo/service/ActionMemoServiceCoreTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/todos.spec.ts",
+            "frontend/tests/e2e/quick-memos/quick-memo.spec.ts",
+            "frontend/tests/e2e/action-memo.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/todo/TodoScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/quickmemo/QuickMemoSelfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V3.022__create_todos_table.sql",
+            "backend/src/main/resources/db/migration/V3.108__create_quick_memos_table.sql",
+            "backend/src/main/resources/db/migration/V5.041__create_action_memos_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/cmp099-calendar-targets-todos-real.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4216,24 +5239,66 @@ window.BETA_INVENTORY_DATA = {
       "title": "TODO共有",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "todo-memo由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: TODO作成/共有、ポイっとメモ作成/閲覧・所有者境界、アクションメモ、各reminder batchを確認。TODOの実環境導線はあるが、複合能力全体を覆う実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F02.3_todo_project.md",
+        "docs/features/F02.5_quick_memo.md",
+        "docs/features/F02.5_action_memo.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/todo/TodoCommentServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/quickmemo/service/QuickMemoServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/actionmemo/service/ActionMemoServiceCoreTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/todos.spec.ts",
+            "frontend/tests/e2e/quick-memos/quick-memo.spec.ts",
+            "frontend/tests/e2e/action-memo.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/todo/TodoScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/quickmemo/QuickMemoSelfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V3.022__create_todos_table.sql",
+            "backend/src/main/resources/db/migration/V3.108__create_quick_memos_table.sql",
+            "backend/src/main/resources/db/migration/V5.041__create_action_memos_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/cmp099-calendar-targets-todos-real.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4254,24 +5319,66 @@ window.BETA_INVENTORY_DATA = {
       "title": "ポイっとメモ作成",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "todo-memo由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: TODO作成/共有、ポイっとメモ作成/閲覧・所有者境界、アクションメモ、各reminder batchを確認。TODOの実環境導線はあるが、複合能力全体を覆う実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F02.3_todo_project.md",
+        "docs/features/F02.5_quick_memo.md",
+        "docs/features/F02.5_action_memo.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/todo/TodoCommentServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/quickmemo/service/QuickMemoServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/actionmemo/service/ActionMemoServiceCoreTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/todos.spec.ts",
+            "frontend/tests/e2e/quick-memos/quick-memo.spec.ts",
+            "frontend/tests/e2e/action-memo.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/todo/TodoScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/quickmemo/QuickMemoSelfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V3.022__create_todos_table.sql",
+            "backend/src/main/resources/db/migration/V3.108__create_quick_memos_table.sql",
+            "backend/src/main/resources/db/migration/V5.041__create_action_memos_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/cmp099-calendar-targets-todos-real.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4292,24 +5399,66 @@ window.BETA_INVENTORY_DATA = {
       "title": "ポイっとメモ閲覧・所有者境界",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "todo-memo由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: TODO作成/共有、ポイっとメモ作成/閲覧・所有者境界、アクションメモ、各reminder batchを確認。TODOの実環境導線はあるが、複合能力全体を覆う実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F02.3_todo_project.md",
+        "docs/features/F02.5_quick_memo.md",
+        "docs/features/F02.5_action_memo.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/todo/TodoCommentServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/quickmemo/service/QuickMemoServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/actionmemo/service/ActionMemoServiceCoreTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/todos.spec.ts",
+            "frontend/tests/e2e/quick-memos/quick-memo.spec.ts",
+            "frontend/tests/e2e/action-memo.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/todo/TodoScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/quickmemo/QuickMemoSelfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V3.022__create_todos_table.sql",
+            "backend/src/main/resources/db/migration/V3.108__create_quick_memos_table.sql",
+            "backend/src/main/resources/db/migration/V5.041__create_action_memos_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/cmp099-calendar-targets-todos-real.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4330,24 +5479,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "掲示板",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "corkboard由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。掲示板とコルクボードを別能力カードとして表示。両方の画面/API/DBを確認し、コルクボードの整合batchも確認。掲示板の実環境E2Eはあるが、コルクボードの実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F05.1_bulletin_board.md",
+        "docs/features/F09.8_corkboard.md",
+        "docs/features/F09.8.1_corkboard_pin_dashboard.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/useCorkboardApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/bulletin/service/BulletinThreadServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/corkboard/service/CorkboardPermissionServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/bulletin.spec.ts",
+            "frontend/tests/e2e/corkboard/corkboard.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/bulletin/service/BulletinTournamentScopeAuthorizationTest.java",
+            "backend/src/test/java/com/mannschaft/app/corkboard/service/CorkboardPermissionServiceTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V5.002__create_bulletin_threads_table.sql",
+            "backend/src/main/resources/db/migration/V9.006__create_corkboards_table.sql",
+            "backend/src/main/resources/db/migration/V9.007__create_corkboard_cards_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/bulletin-archive-folder.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4368,24 +5558,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "コルクボード",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "corkboard由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。掲示板とコルクボードを別能力カードとして表示。両方の画面/API/DBを確認し、コルクボードの整合batchも確認。掲示板の実環境E2Eはあるが、コルクボードの実環境E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F05.1_bulletin_board.md",
+        "docs/features/F09.8_corkboard.md",
+        "docs/features/F09.8.1_corkboard_pin_dashboard.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/composables/useCorkboardApi.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/bulletin/service/BulletinThreadServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/corkboard/service/CorkboardPermissionServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/bulletin.spec.ts",
+            "frontend/tests/e2e/corkboard/corkboard.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/bulletin/service/BulletinTournamentScopeAuthorizationTest.java",
+            "backend/src/test/java/com/mannschaft/app/corkboard/service/CorkboardPermissionServiceTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V5.002__create_bulletin_threads_table.sql",
+            "backend/src/main/resources/db/migration/V9.006__create_corkboards_table.sql",
+            "backend/src/main/resources/db/migration/V9.007__create_corkboard_cards_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/bulletin-archive-folder.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4406,24 +5637,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "ウォレット",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "pointcard由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: ウォレット、カード登録/グループ、組織スタンプ/残高、照合batch、匿名化/組織削除listener、実環境E2Eを確認。Gate停止判定は本棚卸の対象外。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F18_point_card_wallet.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/components/wallet/BarcodePreview.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/pointcard/service/PointCardBalanceServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/wallet.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/pointcard/PointCardWalletScopeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/pointcard/PointCardWalletScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.136__create_point_card_providers.sql",
+            "backend/src/main/resources/db/migration/V9.137__create_user_point_cards.sql",
+            "backend/src/main/resources/db/migration/V9.148__create_point_card_balance_events.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/wallet.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4444,24 +5712,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "ポイント",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "pointcard由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: ウォレット、カード登録/グループ、組織スタンプ/残高、照合batch、匿名化/組織削除listener、実環境E2Eを確認。Gate停止判定は本棚卸の対象外。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F18_point_card_wallet.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/components/wallet/BarcodePreview.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/pointcard/service/PointCardBalanceServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/wallet.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/pointcard/PointCardWalletScopeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/pointcard/PointCardWalletScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.136__create_point_card_providers.sql",
+            "backend/src/main/resources/db/migration/V9.137__create_user_point_cards.sql",
+            "backend/src/main/resources/db/migration/V9.148__create_point_card_balance_events.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/wallet.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4482,24 +5787,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "大会運営",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "tournament由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: 大会CRUD、参加者/日程/試合/スコア/順位、ロスター等拡張、コミット後非同期順位再計算、実環境E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F08.7_tournament_league.md",
+        "docs/features/F08.7.1_tournament_extensions",
+        "docs/features/F08.10_match_record_analytics"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/utils/tournamentStandings.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/tournaments/tournaments.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentScopeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentPdfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V8.038__create_tournaments_table.sql",
+            "backend/src/main/resources/db/migration/V8.044__create_tournament_matches_table.sql",
+            "backend/src/main/resources/db/migration/V8.048__create_tournament_standings_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/tournament/F0871-tournament-crud.spec.ts",
+            "frontend/tests/e2e/real/tournament/f087-visibility-matrix.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4520,24 +5866,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "試合記録",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "tournament由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: 大会CRUD、参加者/日程/試合/スコア/順位、ロスター等拡張、コミット後非同期順位再計算、実環境E2Eを確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F08.7_tournament_league.md",
+        "docs/features/F08.7.1_tournament_extensions",
+        "docs/features/F08.10_match_record_analytics"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/utils/tournamentStandings.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/tournaments/tournaments.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentScopeContractIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/tournament/TournamentPdfScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V8.038__create_tournaments_table.sql",
+            "backend/src/main/resources/db/migration/V8.044__create_tournament_matches_table.sql",
+            "backend/src/main/resources/db/migration/V8.048__create_tournament_standings_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/tournament/F0871-tournament-crud.spec.ts",
+            "frontend/tests/e2e/real/tournament/f087-visibility-matrix.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -4558,24 +5945,59 @@ window.BETA_INVENTORY_DATA = {
       "title": "安否確認",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "safetycheck由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。健康・気象は含めず weather-health として非COREに残す。詳細な能力分割は今後の棚卸し実測時に行う",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。棚卸バッチ: チーム/組織安否確認、回答、追跡、テンプレート、認可境界を確認。専用background処理と実環境E2Eは未作成。健康・気象はweather-healthとして非COREに分離。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F03.6_safety_check.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyResponseServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/safety-check.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckMapperTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckScopeContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/safetycheck/SafetyCheckServiceAuthzTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V3.080__create_safety_checks_table.sql",
+            "backend/src/main/resources/db/migration/V3.081__create_safety_responses_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -5360,19 +6782,58 @@ window.BETA_INVENTORY_DATA = {
       "title": "気象",
       "stage": "未設定",
       "phase": "停止",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "incomplete",
+      "statusLabel": "実装未完",
       "statusSource": "weather-health由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置",
+      "why": "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置。棚卸バッチ: 天気widget/API/位置導出・取込schedulerと、別系統のケアリンク機能は確認できたが、統合された健康機能の画面/API/データモデルは確認できないため部分実装。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F02.10_weather_widget.md",
+        "docs/features/F03.12_care_recipient_event_watch_notification.md"
+      ],
       "layer": "ドメイン",
-      "implementation": {},
-      "verification": {},
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "部分実装",
+        "background": "実装済"
+      },
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/weather/service/WeatherForecastServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/family/service/CareLinkServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/dashboard-weather.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/weather/controller/WeatherControllerIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/family/CareLinkInvitationScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V66.003__create_user_weather_locations.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "停止",
         "deploy_safety": "不明",
@@ -5393,19 +6854,58 @@ window.BETA_INVENTORY_DATA = {
       "title": "健康",
       "stage": "未設定",
       "phase": "停止",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "incomplete",
+      "statusLabel": "実装未完",
       "statusSource": "weather-health由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置",
+      "why": "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置。棚卸バッチ: 天気widget/API/位置導出・取込schedulerと、別系統のケアリンク機能は確認できたが、統合された健康機能の画面/API/データモデルは確認できないため部分実装。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F02.10_weather_widget.md",
+        "docs/features/F03.12_care_recipient_event_watch_notification.md"
+      ],
       "layer": "ドメイン",
-      "implementation": {},
-      "verification": {},
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "部分実装",
+        "background": "実装済"
+      },
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/weather/service/WeatherForecastServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/family/service/CareLinkServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/dashboard-weather.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/weather/controller/WeatherControllerIT.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/family/CareLinkInvitationScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V66.003__create_user_weather_locations.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "停止",
         "deploy_safety": "不明",
