@@ -1899,6 +1899,7 @@
     "bulletinOpen": "掲示板で議論する"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "容量", "personal": "個人", "team": "チーム", "organization": "組織", "details": "詳細を見る", "error": "容量を取得できませんでした", "retry": "再試行", "unconfigured": "容量枠未設定", "not_available": "容量データなし", "meterLabel": "{scope}の容量使用率", "meterValue": "使用率 {percent}%", "warningTitle": "容量上限に近づいています", "warningMessage": "{scope}の使用率は{percent}%です。有料プランへの変更をご検討ください。", "viewPlans": "プランを見る", "checkStorage": "ストレージを確認", "cancel": "キャンセル" },
     "tabs": {
       "personal": "個人",
       "team": "チーム",

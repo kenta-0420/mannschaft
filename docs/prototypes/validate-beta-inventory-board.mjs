@@ -89,6 +89,14 @@ for (const capability of data.capabilities) {
 }
 
 const b0Plan = data.b0Alicization;
+const strategy = b0Plan?.autonomousTestStrategy;
+if (!strategy || strategy.coordinatorCount !== 1 || strategy.personaCount !== 20) throw new Error('B0自律テスト戦略の統括数・人数が不正です');
+if (JSON.stringify(strategy.stages?.map((stage) => [stage.id, stage.personas])) !== JSON.stringify([['Phase3C', 3], ['Phase3D', 5], ['Phase3E', 10], ['Phase3F', 20], ['Phase3G', 20]])) throw new Error('B0自律テスト戦略の人数段階が不正です');
+if (!Array.isArray(strategy.personas) || strategy.personas.length !== 20 || new Set(strategy.personas.map((persona) => persona.id)).size !== 20) throw new Error('B0自律テスト戦略のpersonaが20人一意ではありません');
+const personaFields = ['age', 'itProficiency', 'adhdTendency', 'useCase', 'role', 'permission', 'membership', 'notificationResponse', 'usagePattern', 'relationships', 'history', 'account', 'browserContext'];
+for (const persona of strategy.personas) if (!persona.id || personaFields.some((field) => persona[field] === undefined || persona[field] === '')) throw new Error(`B0 persona項目不足: ${persona.id}`);
+if (!Array.isArray(strategy.timeline) || strategy.timeline.length < 6 || !Array.isArray(strategy.evidence) || strategy.evidence.length < 4) throw new Error('B0自律テスト戦略の時間軸・証拠定義が不足しています');
+if (strategy.safety?.database !== '開発DB限定' || strategy.safety?.externalSending !== false || strategy.safety?.cookies !== 'personaごとに分離' || !String(strategy.safety?.passCriteria || '').includes('0件・全skip・途中停止は非合格')) throw new Error('B0自律テスト戦略の安全条件が不正です');
 if (JSON.stringify(b0Plan) !== JSON.stringify(b0PlanSource)) throw new Error('B0アリシゼーション計画と生成データが不一致です');
 if (JSON.stringify(data.b0Coverage) !== JSON.stringify(b0Coverage)) throw new Error('B0カバレッジmanifestと生成データが不一致です');
 if (JSON.stringify(Object.keys(b0Coverage.journeys || {}).sort()) !== JSON.stringify((b0Plan.journeys || []).map((journey) => journey.id).sort())) throw new Error('B0 coverage journey ID集合が計画と一致しません');
@@ -129,6 +137,16 @@ for (const [key, decision] of Object.entries(decisions.features || {}).concat(Ob
   }
 }
 if (data.features.some((feature) => !allowedStatuses.has(feature.status))) throw new Error('公式5状態以外の機能があります。');
+for (const feature of data.features) {
+  for (const [axis, verification] of Object.entries(feature.verification || {})) {
+    if (!Array.isArray(verification.evidence) || verification.evidence.some((item) => typeof item !== 'string' || !item.trim())) {
+      throw new Error(`検証証拠が文字列配列ではありません: ${feature.key} / ${axis}`);
+    }
+    if (verification.evidence.some((item) => /["']\s*,\s*["']/.test(item))) {
+      throw new Error(`複数の検証証拠が1要素へ連結されています: ${feature.key} / ${axis}`);
+    }
+  }
+}
 
 const campaignTagByStatus = { blocked: '停止中', working: '進行中', done: '完了', unknown: '未整理' };
 if (data.campaigns.some((campaign) => campaign.tags?.length !== 1 || campaign.tags[0] !== campaignTagByStatus[campaign.status])) {

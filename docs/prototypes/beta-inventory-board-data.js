@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T13:23:08+00:00",
+  "generatedAt": "2026-08-24T15:08:06+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -9,7 +9,7 @@ window.BETA_INVENTORY_DATA = {
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "059334a7c60cb6315f1e05119d6b5c56c43d15d2",
     "taskListCommit": "f24f2fd08a27d76080b4a2ea2b98a9293ba8c53b",
-    "inventorySha256": "b7a29d2301f7ade17f21565e6a075d185d129434d81c5a0a2cdff5639d831900",
+    "inventorySha256": "c4fb92ac865b4d90c5bb85b2d599500b85a30de01034411b6bf3ec9c18e34849",
     "taskListSha256": "3732340db7c32b1e7733d2f49e8387eb884078806da1bec7537c0b90be54e354",
     "decisionsSha256": "5721052631110d26b34bf2288bc6e8a9de069a030b7f8d63808f8304348f7a4d",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
@@ -28,9 +28,9 @@ window.BETA_INVENTORY_DATA = {
     "blockers": 21,
     "coreStatus": {
       "blocked": 4,
-      "unknown": 20,
+      "unknown": 18,
       "incomplete": 0,
-      "verifying": 1,
+      "verifying": 3,
       "ready": 0
     }
   },
@@ -47,9 +47,9 @@ window.BETA_INVENTORY_DATA = {
       "blockers": 21,
       "coreStatus": {
         "blocked": 4,
-        "unknown": 20,
+        "unknown": 18,
         "incomplete": 0,
-        "verifying": 1,
+        "verifying": 3,
         "ready": 0
       }
     },
@@ -77,7 +77,9 @@ window.BETA_INVENTORY_DATA = {
       "why": "未設定",
       "acceptance": [],
       "blocker": "CMP-103: 入力途中離脱で入力消失・未保存警告なし（Issue #2857）",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
@@ -109,24 +111,62 @@ window.BETA_INVENTORY_DATA = {
       "title": "アカウント設定・退会",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ1: 設定画面・プロフィール/パスワード更新API・退会/取消API・30日後削除/リマインドバッチまで実装を確認。実環境での退会E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md",
+        "docs/features/F12.3_gdpr_personal_data.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/settings/profile.spec.ts",
+            "frontend/tests/e2e/settings/password.spec.ts",
+            "frontend/tests/e2e/gdpr/gdpr.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/GdprSelfScopeContractIT.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -143,24 +183,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "認証・ログイン・2FA",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "PR #2830 ハイドレーション即操作化済",
+      "why": "PR #2830 ハイドレーション即操作化済。棚卸バッチ1でログイン・2FA・DB・認証保守バッチの実装を確認。各テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
         "backend": "実装済",
         "database": "実装済",
-        "background": "対象外"
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/pages/login.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/auth/AuthServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/service/Auth2faServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/auth/login.spec.ts",
+            "frontend/tests/e2e/auth/2fa.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthLoginControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/Auth2faControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/config/SecurityConfigAuthorizationTest.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/auth-flow.spec.ts",
+            "frontend/tests/e2e/real/2fa-flow.spec.ts",
+            "frontend/tests/e2e/real/auth-cookie-origin.spec.ts"
+          ]
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthCleanupBatchServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -689,7 +770,7 @@ window.BETA_INVENTORY_DATA = {
         "resident_test": {
           "status": "失敗中",
           "evidence": [
-            "\"Issue #2856\""
+            "Issue #2856"
           ]
         }
       },
@@ -1540,7 +1621,9 @@ window.BETA_INVENTORY_DATA = {
       "why": "未設定",
       "acceptance": [],
       "blocker": "CMP-103: 入力途中離脱で入力消失・未保存警告なし（Issue #2857）",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
@@ -1576,24 +1659,62 @@ window.BETA_INVENTORY_DATA = {
       "title": "設定",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "account-settings由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ1: 設定画面・プロフィール/パスワード更新API・退会/取消API・30日後削除/リマインドバッチまで実装を確認。実環境での退会E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md",
+        "docs/features/F12.3_gdpr_personal_data.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/settings/profile.spec.ts",
+            "frontend/tests/e2e/settings/password.spec.ts",
+            "frontend/tests/e2e/gdpr/gdpr.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/GdprSelfScopeContractIT.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1614,24 +1735,62 @@ window.BETA_INVENTORY_DATA = {
       "title": "退会",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "account-settings由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ1: 設定画面・プロフィール/パスワード更新API・退会/取消API・30日後削除/リマインドバッチまで実装を確認。実環境での退会E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md",
+        "docs/features/F12.3_gdpr_personal_data.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/settings/profile.spec.ts",
+            "frontend/tests/e2e/settings/password.spec.ts",
+            "frontend/tests/e2e/gdpr/gdpr.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/GdprSelfScopeContractIT.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1652,24 +1811,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "ログイン",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "auth由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "PR #2830 ハイドレーション即操作化済",
+      "why": "PR #2830 ハイドレーション即操作化済。棚卸バッチ1でログイン・2FA・DB・認証保守バッチの実装を確認。各テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
         "backend": "実装済",
         "database": "実装済",
-        "background": "対象外"
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/pages/login.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/auth/AuthServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/service/Auth2faServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/auth/login.spec.ts",
+            "frontend/tests/e2e/auth/2fa.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthLoginControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/Auth2faControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/config/SecurityConfigAuthorizationTest.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/auth-flow.spec.ts",
+            "frontend/tests/e2e/real/2fa-flow.spec.ts",
+            "frontend/tests/e2e/real/auth-cookie-origin.spec.ts"
+          ]
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthCleanupBatchServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1690,24 +1890,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "2FA",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "auth由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "PR #2830 ハイドレーション即操作化済",
+      "why": "PR #2830 ハイドレーション即操作化済。棚卸バッチ1でログイン・2FA・DB・認証保守バッチの実装を確認。各テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
         "backend": "実装済",
         "database": "実装済",
-        "background": "対象外"
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/pages/login.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/auth/AuthServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/service/Auth2faServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/auth/login.spec.ts",
+            "frontend/tests/e2e/auth/2fa.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthLoginControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/Auth2faControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/config/SecurityConfigAuthorizationTest.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/auth-flow.spec.ts",
+            "frontend/tests/e2e/real/2fa-flow.spec.ts",
+            "frontend/tests/e2e/real/auth-cookie-origin.spec.ts"
+          ]
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthCleanupBatchServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3064,7 +3305,7 @@ window.BETA_INVENTORY_DATA = {
         "resident_test": {
           "status": "失敗中",
           "evidence": [
-            "\"Issue #2856\""
+            "Issue #2856"
           ]
         }
       },
@@ -5117,6 +5358,409 @@ window.BETA_INVENTORY_DATA = {
       "利用者ごとに別BrowserContext・別ログイン",
       "テストデータは識別子付きで作成"
     ],
+    "autonomousTestStrategy": {
+      "approvalScope": "ユーザー承認済みテスト戦略。機能のPhase分類・decisionStatusとは独立",
+      "coordinatorCount": 1,
+      "personaCount": 20,
+      "stages": [
+        {
+          "id": "Phase3C",
+          "personas": 3,
+          "scope": "管理者1＋一般2の認証・個人ダッシュボードproof",
+          "status": "planned"
+        },
+        {
+          "id": "Phase3D",
+          "personas": 5,
+          "scope": "予定・出欠・通知",
+          "status": "planned"
+        },
+        {
+          "id": "Phase3E",
+          "personas": 10,
+          "scope": "タイムライン・TODO・ポイっとメモ",
+          "status": "planned"
+        },
+        {
+          "id": "Phase3F",
+          "personas": 20,
+          "scope": "数日間の自律活動",
+          "status": "planned"
+        },
+        {
+          "id": "Phase3G",
+          "personas": 20,
+          "scope": "反復実行・再現性・費用・時間評価",
+          "status": "planned"
+        }
+      ],
+      "personas": [
+        {
+          "id": "P01",
+          "archetype": "運営責任者",
+          "age": 52,
+          "itProficiency": "中",
+          "adhdTendency": "なし",
+          "useCase": "全体監督",
+          "role": "統括",
+          "permission": "system-admin",
+          "membership": "組織全体",
+          "notificationResponse": "即時確認",
+          "usagePattern": "毎朝巡回",
+          "relationships": "全員を監督",
+          "history": "長期利用",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P02",
+          "archetype": "チーム代表",
+          "age": 45,
+          "itProficiency": "中",
+          "adhdTendency": "なし",
+          "useCase": "チーム運営",
+          "role": "team-admin",
+          "permission": "team-admin",
+          "membership": "TEAM-A",
+          "notificationResponse": "当日中",
+          "usagePattern": "平日昼",
+          "relationships": "P03-P06と協働",
+          "history": "2年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P03",
+          "archetype": "副代表",
+          "age": 39,
+          "itProficiency": "高",
+          "adhdTendency": "なし",
+          "useCase": "管理補佐",
+          "role": "team-deputy",
+          "permission": "team-editor",
+          "membership": "TEAM-A",
+          "notificationResponse": "即時確認",
+          "usagePattern": "複数回/日",
+          "relationships": "P02を補佐",
+          "history": "1年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P04",
+          "archetype": "几帳面な会計担当",
+          "age": 58,
+          "itProficiency": "低",
+          "adhdTendency": "なし",
+          "useCase": "予定と支出確認",
+          "role": "treasurer",
+          "permission": "member",
+          "membership": "TEAM-A",
+          "notificationResponse": "週末確認",
+          "usagePattern": "週2回",
+          "relationships": "P02へ報告",
+          "history": "5年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P05",
+          "archetype": "忙しいコーチ",
+          "age": 34,
+          "itProficiency": "中",
+          "adhdTendency": "なし",
+          "useCase": "練習・出欠",
+          "role": "coach",
+          "permission": "team-editor",
+          "membership": "TEAM-A",
+          "notificationResponse": "要約のみ",
+          "usagePattern": "夜間集中",
+          "relationships": "P06-P08を指導",
+          "history": "3年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P06",
+          "archetype": "高校生選手",
+          "age": 16,
+          "itProficiency": "高",
+          "adhdTendency": "あり",
+          "useCase": "出欠と通知",
+          "role": "player",
+          "permission": "member",
+          "membership": "TEAM-A",
+          "notificationResponse": "見落としあり",
+          "usagePattern": "移動中モバイル",
+          "relationships": "P05の指導対象",
+          "history": "半年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P07",
+          "archetype": "保護者",
+          "age": 43,
+          "itProficiency": "低",
+          "adhdTendency": "なし",
+          "useCase": "子どもの予定確認",
+          "role": "guardian",
+          "permission": "member",
+          "membership": "TEAM-A",
+          "notificationResponse": "夜に確認",
+          "usagePattern": "週末中心",
+          "relationships": "P06の保護者",
+          "history": "1年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P08",
+          "archetype": "新規参加者",
+          "age": 22,
+          "itProficiency": "中",
+          "adhdTendency": "あり",
+          "useCase": "招待・初回参加",
+          "role": "new-member",
+          "permission": "member",
+          "membership": "TEAM-B",
+          "notificationResponse": "未読がち",
+          "usagePattern": "不定期",
+          "relationships": "P09から招待",
+          "history": "登録直後",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P09",
+          "archetype": "招待担当",
+          "age": 29,
+          "itProficiency": "高",
+          "adhdTendency": "なし",
+          "useCase": "メンバー招待",
+          "role": "team-editor",
+          "permission": "team-editor",
+          "membership": "TEAM-B",
+          "notificationResponse": "即時確認",
+          "usagePattern": "週3回",
+          "relationships": "P08を招待",
+          "history": "2年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P10",
+          "archetype": "組織事務局",
+          "age": 48,
+          "itProficiency": "中",
+          "adhdTendency": "なし",
+          "useCase": "組織階層と通知",
+          "role": "org-admin",
+          "permission": "organization-admin",
+          "membership": "ORG-A",
+          "notificationResponse": "当日中",
+          "usagePattern": "毎日朝夕",
+          "relationships": "P11-P14を調整",
+          "history": "4年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P11",
+          "archetype": "地域連絡員",
+          "age": 61,
+          "itProficiency": "低",
+          "adhdTendency": "なし",
+          "useCase": "村の案内閲覧",
+          "role": "village-coordinator",
+          "permission": "village-editor",
+          "membership": "VILLAGE-A",
+          "notificationResponse": "電話確認",
+          "usagePattern": "週1回",
+          "relationships": "P10へ報告",
+          "history": "3年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P12",
+          "archetype": "若手広報",
+          "age": 27,
+          "itProficiency": "高",
+          "adhdTendency": "あり",
+          "useCase": "タイムライン投稿",
+          "role": "communicator",
+          "permission": "member",
+          "membership": "ORG-A",
+          "notificationResponse": "バッジで確認",
+          "usagePattern": "随時投稿",
+          "relationships": "P10の依頼を受ける",
+          "history": "1年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P13",
+          "archetype": "慎重な閲覧者",
+          "age": 67,
+          "itProficiency": "低",
+          "adhdTendency": "なし",
+          "useCase": "公開範囲の確認",
+          "role": "member",
+          "permission": "member",
+          "membership": "ORG-A",
+          "notificationResponse": "紙に記録",
+          "usagePattern": "週末確認",
+          "relationships": "P12の投稿を閲覧",
+          "history": "半年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P14",
+          "archetype": "兼務スタッフ",
+          "age": 36,
+          "itProficiency": "中",
+          "adhdTendency": "なし",
+          "useCase": "複数所属の切替",
+          "role": "cross-team-member",
+          "permission": "member",
+          "membership": "TEAM-A＋TEAM-B",
+          "notificationResponse": "まとめて確認",
+          "usagePattern": "勤務前後",
+          "relationships": "P02とP09に所属",
+          "history": "2年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P15",
+          "archetype": "忘れ物が多い選手",
+          "age": 18,
+          "itProficiency": "高",
+          "adhdTendency": "あり",
+          "useCase": "TODOとメモ",
+          "role": "player",
+          "permission": "member",
+          "membership": "TEAM-B",
+          "notificationResponse": "再通知で確認",
+          "usagePattern": "締切直前",
+          "relationships": "P05の指導対象",
+          "history": "1年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P16",
+          "archetype": "引退したOB",
+          "age": 70,
+          "itProficiency": "低",
+          "adhdTendency": "なし",
+          "useCase": "村のニュース閲覧",
+          "role": "alumni",
+          "permission": "village-member",
+          "membership": "VILLAGE-A",
+          "notificationResponse": "月次確認",
+          "usagePattern": "月数回",
+          "relationships": "P11と旧知",
+          "history": "登録直後",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P17",
+          "archetype": "分析好きの大学生",
+          "age": 20,
+          "itProficiency": "高",
+          "adhdTendency": "なし",
+          "useCase": "履歴と再現性確認",
+          "role": "analyst",
+          "permission": "member",
+          "membership": "ORG-A",
+          "notificationResponse": "ログ確認",
+          "usagePattern": "深夜分析",
+          "relationships": "P10へレポート",
+          "history": "1年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P18",
+          "archetype": "通知を切りがちな会社員",
+          "age": 41,
+          "itProficiency": "中",
+          "adhdTendency": "あり",
+          "useCase": "必要通知だけ確認",
+          "role": "member",
+          "permission": "member",
+          "membership": "TEAM-B",
+          "notificationResponse": "ミュート後に確認",
+          "usagePattern": "昼休みのみ",
+          "relationships": "P09と同僚",
+          "history": "半年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P19",
+          "archetype": "サポート担当",
+          "age": 31,
+          "itProficiency": "高",
+          "adhdTendency": "なし",
+          "useCase": "権限外アクセス調査",
+          "role": "support",
+          "permission": "support-readonly",
+          "membership": "ORG-A",
+          "notificationResponse": "即時対応",
+          "usagePattern": "勤務中常時",
+          "relationships": "全所属から問い合わせ",
+          "history": "3年",
+          "account": "独立account",
+          "browserContext": "独立context"
+        },
+        {
+          "id": "P20",
+          "archetype": "初めてスマホを使う高齢者",
+          "age": 78,
+          "itProficiency": "低",
+          "adhdTendency": "なし",
+          "useCase": "予定の閲覧",
+          "role": "member",
+          "permission": "member",
+          "membership": "VILLAGE-A",
+          "notificationResponse": "家族経由",
+          "usagePattern": "月数回",
+          "relationships": "P07と家族",
+          "history": "登録直後",
+          "account": "独立account",
+          "browserContext": "独立context"
+        }
+      ],
+      "timeline": [
+        "Day0: seed・runId発行・独立account/context確認",
+        "Day1: 3人proof",
+        "Day2: 5人で予定・出欠・通知",
+        "Day3: 10人でタイムライン・TODO・メモ",
+        "Day4: 20人で相互作用と通知反応",
+        "Day5: 再実行・証拠集約・費用/時間評価"
+      ],
+      "evidence": [
+        "runId付きPlaywright JSON",
+        "UIスクリーンショット/trace",
+        "API応答とstatus",
+        "開発DBの匿名化snapshot",
+        "persona別の活動ログ"
+      ],
+      "safety": {
+        "database": "開発DB限定",
+        "externalSending": false,
+        "billing": "課金操作を隔離",
+        "accountDeletion": "退会・削除操作を隔離",
+        "cookies": "personaごとに分離",
+        "stopPolicy": "途中停止を非合格",
+        "passCriteria": "0件・全skip・途中停止は非合格。UI/API/DB証拠が全条件を満たす場合のみtest-passed"
+      }
+    },
     "journeys": [
       {
         "id": "B0-J1",
@@ -5302,6 +5946,7 @@ window.BETA_INVENTORY_DATA = {
     "journeys": {
       "B0-J1": {
         "specPaths": [
+          "frontend/tests/e2e/real/b0-j1-dashboard-scope.spec.ts",
           "frontend/tests/e2e/dashboard/dashboard.spec.ts",
           "frontend/tests/e2e/teams/team-hub.spec.ts",
           "frontend/tests/e2e/organizations/org-hub.spec.ts",
