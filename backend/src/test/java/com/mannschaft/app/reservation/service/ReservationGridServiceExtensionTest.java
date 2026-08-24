@@ -26,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 
 import java.lang.reflect.RecordComponent;
 import java.time.LocalDate;
@@ -94,6 +95,8 @@ class ReservationGridServiceExtensionTest {
     private ReservationMenuRepository menuRepository;
     @Mock
     private ReservationMenuLineRepository menuLineRepository;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /** overlap 判定は空き枠除外/作成拒否/グリッドと同一ユーティリティを共有（別実装厳禁・H-5）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker = new ReservationUnavailabilityChecker();
@@ -104,7 +107,8 @@ class ReservationGridServiceExtensionTest {
     void setUp() {
         service = new ReservationGridService(
                 slotRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
-                unavailabilityChecker, viewAccessGuard, menuRepository, menuLineRepository);
+                unavailabilityChecker, viewAccessGuard, menuRepository, menuLineRepository, teamTimezoneResolver);
+        given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
         // 既定: slot/ブロック/定期ルール/ライン/menu_lines なし（各テストで上書き）。
         given(slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                 any(), any(), any())).willReturn(List.of());
@@ -267,7 +271,7 @@ class ReservationGridServiceExtensionTest {
             verify(slotRepository)
                     .findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(TEAM_ID, from, to);
             verify(blockedTimeRepository)
-                    .findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(TEAM_ID, from, to);
+                    .findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1));
         }
 
         @Test
@@ -451,7 +455,7 @@ class ReservationGridServiceExtensionTest {
         givenDaySlots(
                 slot(101L, DATE, null, LINE_1, LocalTime.of(10, 0), LocalTime.of(10, 30), SlotStatus.FULL),
                 slot(102L, DATE, null, LINE_1, LocalTime.of(11, 0), LocalTime.of(11, 30), SlotStatus.FULL));
-        given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, DATE))
+        given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, DATE, DATE.minusDays(1)))
                 .willReturn(List.of(ReservationBlockedTimeEntity.builder()
                         .teamId(TEAM_ID).blockedDate(DATE)
                         .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(10, 30))
@@ -475,8 +479,7 @@ class ReservationGridServiceExtensionTest {
                         lineSlot(1L, LINE_1, LocalTime.of(10, 0), LocalTime.of(10, 30)),
                         slot(2L, DATE.plusDays(1), null, LINE_1, LocalTime.of(10, 0), LocalTime.of(10, 30),
                                 SlotStatus.AVAILABLE)));
-        given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                TEAM_ID, from, to))
+        given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1)))
                 .willReturn(List.of(ReservationBlockedTimeEntity.builder()
                         .teamId(TEAM_ID).blockedDate(DATE)
                         .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(10, 30))
@@ -502,7 +505,7 @@ class ReservationGridServiceExtensionTest {
         // GridCellDto: 既存 C-4 と同一の完全一致検査（フィールド増減の番人）。
         // unavailableReason は公開定期予約不可枠の事由ラベル（is_public 限定・業務ラベル・W2-2）で予約者 PII を含まない。
         assertThat(componentNames(ReservationGridResponse.GridCellDto.class))
-                .containsExactlyInAnyOrder("slotId", "startTime", "endTime", "state", "price", "unavailableReason");
+                .containsExactlyInAnyOrder("slotId", "slotDate", "endDate", "startTime", "endTime", "state", "price", "unavailableReason");
         // GridColumnDto: 許容フィールドの完全一致（#2575 でスタッフ由来フィールドを撤去。ライン名は設備名で PII ではない）。
         assertThat(componentNames(ReservationGridResponse.GridColumnDto.class))
                 .containsExactlyInAnyOrder("lineId", "lineName", "cells");

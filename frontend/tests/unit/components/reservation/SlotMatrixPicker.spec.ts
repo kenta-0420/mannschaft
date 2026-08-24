@@ -32,6 +32,7 @@ const mockGetLines = vi.fn()
 const mockGetMenus = vi.fn()
 const mockGetSlotGrid = vi.fn()
 const mockListMyWaitlist = vi.fn()
+const mockCreateGroup = vi.fn()
 
 vi.mock('~/composables/useReservationApi', () => ({
   useReservationApi: () => ({
@@ -39,6 +40,7 @@ vi.mock('~/composables/useReservationApi', () => ({
     getMenus: mockGetMenus,
     getSlotGrid: mockGetSlotGrid,
     listMyWaitlist: mockListMyWaitlist,
+    createGroup: mockCreateGroup,
   }),
 }))
 
@@ -117,6 +119,7 @@ beforeEach(() => {
   mockGetMenus.mockReset()
   mockGetSlotGrid.mockReset()
   mockListMyWaitlist.mockReset()
+  mockCreateGroup.mockReset()
   mockGetMenus.mockResolvedValue({ data: [] })
   mockListMyWaitlist.mockResolvedValue({ data: [] })
 })
@@ -131,6 +134,40 @@ afterAll(() => {
 })
 
 describe('SlotMatrixPicker.vue', () => {
+  it('チームTZをviewer TZより優先し、週起点・API範囲・過去セルをチーム日付境界で判定する', async () => {
+    // UTC 23:30 は viewer=Asia/Tokyo では翌日08:30だが、team=America/New_Yorkでは同日19:30。
+    vi.setSystemTime(new Date('2026-08-09T23:30:00Z'))
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        meta: null,
+        days: [{
+          date: '2026-08-09',
+          columns: [{
+            lineId: 1,
+            lineName: 'Seat1',
+            lineIds: [],
+            cells: [{ slotId: 901, slotDate: '2026-08-09', endDate: '2026-08-09', startTime: '20:00', endTime: '20:30', state: 'AVAILABLE' }],
+          }],
+        }],
+      },
+    })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', teamTimezone: 'America/New_York', isAdmin: false },
+    })
+    await flush()
+
+    const [, params] = mockGetSlotGrid.mock.calls[0] as [string, Record<string, unknown>]
+    // viewer TZ基準なら 2026-08-10週になるが、team TZでは 2026-08-03週。
+    expect(params.from).toBe('2026-08-03')
+    expect(params.to).toBe('2026-08-09')
+    const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('20:00'))
+    expect(cell?.attributes('disabled')).toBeUndefined()
+
+    vi.setSystemTime(new Date('2026-08-11T03:00:00Z'))
+  })
+
   it('AC-1: from/to レンジ呼びでグリッドAPIを叩く（#2575 で axis は送らない）', async () => {
     mockGetLines.mockResolvedValue({ data: [activeLine] })
     mockGetSlotGrid.mockResolvedValue(gridResponseWithCells())
@@ -203,6 +240,36 @@ describe('SlotMatrixPicker.vue', () => {
     expect(payload).toEqual([202, 1, 'Seat1', tomorrow, '10:30', '11:30'])
     // 単枠フローは親のReservationFormへ委譲するため、グループダイアログ内の要素は出ない
     expect(findByTestId('group-no-menu')).toBeNull()
+  })
+
+  it('AC-16: 実際の slotDate が未来なら翌日終了セルを disabled にせず、終了時刻を明示する', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    const rowDate = dayjs().format('YYYY-MM-DD')
+    const endDate = dayjs(tomorrow).add(1, 'day').format('YYYY-MM-DD')
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        meta: null,
+        days: [{
+          date: rowDate,
+          columns: [{
+            lineId: 1,
+            lineName: 'Seat1',
+            lineIds: [],
+            cells: [{ slotId: 299, slotDate: tomorrow, endDate, startTime: '23:00', endTime: '04:00', state: 'AVAILABLE' }],
+          }],
+        }],
+      },
+    })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flush()
+
+    const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('23:00'))
+    expect(cell).toBeTruthy()
+    expect(cell!.attributes('disabled')).toBeUndefined()
+    expect(cell!.attributes('aria-label')).toContain('Next day 04:00')
   })
 
   it('AC-5: 縦横スクロールコンテナに overscroll-contain が付与される（縦→横ホイール変換は実装しない。UX改善5点の4で縦スクロールも同一コンテナに統合）', async () => {
@@ -548,5 +615,32 @@ describe('SlotMatrixPicker.vue', () => {
     await flush()
     expect(findByTestId('group-confirm')).toBeNull()
     wrapper.unmount()
+  })
+
+  it('日跨ぎ同一lineの23:30→翌日00:00をメニュー選択しslotIds payload化する', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetMenus.mockResolvedValue({ data: [{ id: 'overnight-menu', name: 'Overnight', durationMinutes: 60, requiredSlotCount: 2, isActive: true, lineIds: [] }] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: { days: [
+        { date: '2026-08-12', columns: [{ lineId: 1, lineName: 'Seat1', lineIds: [], cells: [{ slotId: 701, slotDate: '2026-08-12', endDate: '2026-08-13', startTime: '23:30', endTime: '00:00', state: 'AVAILABLE' }] }] },
+        { date: '2026-08-13', columns: [{ lineId: 1, lineName: 'Seat1', lineIds: [], cells: [{ slotId: 702, slotDate: '2026-08-13', endDate: '2026-08-13', startTime: '00:00', endTime: '00:30', state: 'AVAILABLE' }] }] },
+      ] },
+    })
+    mockCreateGroup.mockResolvedValue({ data: {} })
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, { props: { teamId: 'team-slug', isAdmin: false } })
+    await flush()
+    const cell = wrapper.findAll('button').find(button => button.attributes('aria-label')?.includes('23:30'))
+    expect(cell).toBeTruthy()
+    await cell!.trigger('click')
+    await flush()
+    const menu = findByTestId<HTMLButtonElement>('group-menu-option-overnight-menu')
+    expect(menu).toBeTruthy()
+    menu!.click()
+    await flush()
+    findByTestId<HTMLButtonElement>('group-confirm')!.click()
+    await flush()
+
+    expect(mockCreateGroup).toHaveBeenCalledWith('team-slug', expect.objectContaining({ slotIds: [701, 702] }))
   })
 })

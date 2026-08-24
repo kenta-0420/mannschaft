@@ -474,6 +474,9 @@ const teamMutators = {
       team.value.location.cityCode = cc
     }
   },
+  updateTeamTimezone: (timezone: string) => {
+    if (team.value) team.value.timezone = timezone
+  },
 }
 
 provideTeamShellContext({

@@ -48697,6 +48697,7 @@ export interface components {
             /** @example 14:30:00 */
             closeTime?: string;
             dayOfWeek?: string;
+            endsNextDay?: boolean;
             isOpen: boolean;
             /** @example 14:30:00 */
             openTime?: string;
@@ -48722,6 +48723,8 @@ export interface components {
             /** @example 14:30:00 */
             closeTime?: string;
             dayOfWeek?: string;
+            /** @description 終了時刻が翌日 */
+            endsNextDay?: boolean;
             isOpen?: boolean;
             /** @example 14:30:00 */
             openTime?: string;
@@ -50399,6 +50402,8 @@ export interface components {
             slug?: string;
             social?: components["schemas"]["TeamSocialDto"];
             timestamps?: components["schemas"]["TeamTimestampsDto"];
+            /** @description チームのIANAタイムゾーン */
+            timezone?: string;
             visibility?: components["schemas"]["TeamVisibilityDto"];
         };
         TeamSocialDto: {
@@ -56881,9 +56886,17 @@ export interface components {
             updatedAt?: string;
         };
         SlotBasicDto: {
+            /**
+             * Format: date
+             * @description 枠終了日
+             */
+            endDate?: string;
             /** @example 14:30:00 */
             endTime?: string;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description 枠開始日
+             */
             slotDate?: string;
             /** @example 14:30:00 */
             startTime?: string;
@@ -56937,6 +56950,7 @@ export interface components {
             dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime: string;
+            endsNextDay?: boolean;
             /** Format: int64 */
             lineId?: number;
             name?: string;
@@ -56961,6 +56975,8 @@ export interface components {
             dayOfWeek?: string;
             /** @example 14:30:00 */
             endTime?: string;
+            /** @description 終了時刻が翌日 */
+            endsNextDay?: boolean;
             /** Format: uuid */
             id?: string;
             isActive?: boolean;
@@ -57014,6 +57030,7 @@ export interface components {
             blockedDate: string;
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             reason?: string;
             /** Format: int64 */
             resourceId?: number;
@@ -57036,6 +57053,8 @@ export interface components {
         };
         BlockedTimeResponse: {
             audit?: components["schemas"]["BlockedAuditDto"];
+            /** @description 終了時刻が翌日 */
+            endsNextDay?: boolean;
             /** Format: int64 */
             id?: number;
             resource?: components["schemas"]["ResourceDto"];
@@ -57062,6 +57081,7 @@ export interface components {
             dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime: string;
+            endsNextDay?: boolean;
             forceCancelConflicting?: boolean;
             isPublic?: boolean;
             /** Format: int64 */
@@ -57079,6 +57099,8 @@ export interface components {
             dayOfWeek?: string;
             /** @example 14:30:00 */
             endTime?: string;
+            /** @description 終了時刻が翌日 */
+            endsNextDay?: boolean;
             /** Format: int32 */
             forceCancelledCount?: number;
             /** Format: uuid */
@@ -66670,6 +66692,7 @@ export interface components {
             dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             isActive?: boolean;
             /** Format: int64 */
             lineId?: number;
@@ -66789,6 +66812,7 @@ export interface components {
             dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             forceCancelConflicting?: boolean;
             isActive?: boolean;
             isPublic?: boolean;
@@ -67344,6 +67368,8 @@ export interface components {
             prefectureCode?: string;
             supporterEnabled?: boolean;
             template?: string;
+            /** @description チームのIANAタイムゾーン */
+            timezone?: string;
             /** Format: int64 */
             version: number;
             visibility?: string;
@@ -70422,9 +70448,19 @@ export interface components {
             data?: components["schemas"]["ReservationGridResponse"];
         };
         GridCellDto: {
+            /**
+             * Format: date
+             * @description 枠終了日
+             */
+            endDate?: string;
             /** @example 14:30:00 */
             endTime?: string;
             price?: number;
+            /**
+             * Format: date
+             * @description 枠開始日
+             */
+            slotDate?: string;
             /** Format: int64 */
             slotId?: number;
             /** @example 14:30:00 */
@@ -145531,6 +145567,7 @@ export interface operations {
                 resourceId?: number;
                 startTime?: string;
                 endTime?: string;
+                endsNextDay?: boolean;
             };
             header?: never;
             path: {

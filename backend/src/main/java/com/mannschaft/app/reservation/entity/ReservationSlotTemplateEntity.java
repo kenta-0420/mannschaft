@@ -69,6 +69,10 @@ public class ReservationSlotTemplateEntity extends UuidV7Entity {
     @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
+    @Column(name = "ends_next_day", nullable = false)
+    @Builder.Default
+    private Boolean endsNextDay = false;
+
     /** 生成する各セル枠の定員（V140 の capacity へコピー）。ライン軸テンプレは 1 を標準。 */
     @Column(nullable = false)
     @Builder.Default
@@ -126,7 +130,10 @@ public class ReservationSlotTemplateEntity extends UuidV7Entity {
      * この帯が 1 日あたり生成する 30 分セル数（{@code (end - start) / 30}・§4 の {@code cellCount}）。
      */
     public int cellCount() {
-        return (int) (Duration.between(this.startTime, this.endTime).toMinutes() / 30);
+        long minutes = endsNextDay != null && endsNextDay
+                ? Duration.between(this.startTime, this.endTime).toMinutes() + Duration.ofDays(1).toMinutes()
+                : Duration.between(this.startTime, this.endTime).toMinutes();
+        return (int) (minutes / 30);
     }
 
     /** テンプレートを有効化する。 */
@@ -163,6 +170,11 @@ public class ReservationSlotTemplateEntity extends UuidV7Entity {
     public void changeTimeRange(LocalTime startTime, LocalTime endTime) {
         this.startTime = startTime;
         this.endTime = endTime;
+    }
+
+    public void changeTimeRange(LocalTime startTime, LocalTime endTime, Boolean endsNextDay) {
+        changeTimeRange(startTime, endTime);
+        this.endsNextDay = endsNextDay == null ? false : endsNextDay;
     }
 
     /** 定員を変更する（部分更新）。 */

@@ -583,6 +583,8 @@
       "capacity": "Aforo",
       "is_active": "Activo",
       "cell_count": "{n} franjas/día (30 min cada una)",
+      "ends_next_day": "Termina al día siguiente",
+      "next_day_time": "Día siguiente {time}",
       "price": "Precio (opcional)",
       "slot_title": "Título (opcional)",
       "generate": "Generar franjas ahora",
@@ -647,6 +649,7 @@
     "business_hours": {
       "title": "Horario comercial",
       "day_open": "Abierto",
+      "ends_next_day": "Termina al día siguiente",
       "save_success": "Guardado. Se actualizaron {generated} franjas",
       "generating": "Actualizando franjas…",
       "generation_failed": "El horario comercial se guardó, pero la actualización automática de franjas falló. Se completará automáticamente mañana por la mañana",

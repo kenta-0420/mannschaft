@@ -1875,6 +1875,13 @@
     "mapEmbedUrlHelp": "Google Maps で「共有 > 地図を埋め込む > HTML をコピー」して src= の URL を貼り付けてください",
     "mapEmbedUrlInvalidFormat": "Google Maps 埋め込み URL（https://www.google.com/maps/embed?...）の形式である必要があります",
     "mapEmbedUrlSaved": "店舗地図 URL を保存しました",
+    "timezone": {
+      "label": "予約タイムゾーン",
+      "help": "予約枠の開始・終了時刻を解釈する IANA タイムゾーンです。",
+      "placeholder": "例: Asia/Tokyo",
+      "invalid": "有効な IANA タイムゾーンを入力してください",
+      "saved": "予約タイムゾーンを保存しました"
+    },
     "regionCode": {
       "label": "所在地（都道府県・市区町村）",
       "help": "都道府県・市区町村を選択すると、地域検索や札立ての初期値に使われます。",

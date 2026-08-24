@@ -112102,6 +112102,15 @@
               "type": "string",
               "format": "date-time"
             }
+          },
+          {
+            "name": "endsNextDay",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
           }
         ],
         "responses": {
@@ -151175,6 +151184,9 @@
             "maxLength": 3,
             "minLength": 0
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "isOpen": {
             "type": "boolean"
           },
@@ -151250,6 +151262,10 @@
           },
           "dayOfWeek": {
             "type": "string"
+          },
+          "endsNextDay": {
+            "type": "boolean",
+            "description": "終了時刻が翌日"
           },
           "isOpen": {
             "type": "boolean"
@@ -155721,6 +155737,10 @@
           },
           "timestamps": {
             "$ref": "#/components/schemas/TeamTimestampsDto"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "チームのIANAタイムゾーン"
           },
           "visibility": {
             "$ref": "#/components/schemas/TeamVisibilityDto"
@@ -173163,13 +173183,19 @@
       "SlotBasicDto": {
         "type": "object",
         "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "枠終了日"
+          },
           "endTime": {
             "type": "string",
             "example": "14:30:00"
           },
           "slotDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "枠開始日"
           },
           "startTime": {
             "type": "string",
@@ -173307,6 +173333,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "lineId": {
             "type": "integer",
             "format": "int64"
@@ -173372,6 +173401,10 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean",
+            "description": "終了時刻が翌日"
           },
           "id": {
             "type": "string",
@@ -173507,6 +173540,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "reason": {
             "type": "string",
             "maxLength": 200,
@@ -173567,6 +173603,10 @@
         "properties": {
           "audit": {
             "$ref": "#/components/schemas/BlockedAuditDto"
+          },
+          "endsNextDay": {
+            "type": "boolean",
+            "description": "終了時刻が翌日"
           },
           "id": {
             "type": "integer",
@@ -173635,6 +173675,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "forceCancelConflicting": {
             "type": "boolean"
           },
@@ -173682,6 +173725,10 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean",
+            "description": "終了時刻が翌日"
           },
           "forceCancelledCount": {
             "type": "integer",
@@ -200348,6 +200395,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "isActive": {
             "type": "boolean"
           },
@@ -200542,6 +200592,9 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean"
           },
           "forceCancelConflicting": {
             "type": "boolean"
@@ -202061,6 +202114,10 @@
           },
           "template": {
             "type": "string"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "チームのIANAタイムゾーン"
           },
           "version": {
             "type": "integer",
@@ -210642,12 +210699,22 @@
       "GridCellDto": {
         "type": "object",
         "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "枠終了日"
+          },
           "endTime": {
             "type": "string",
             "example": "14:30:00"
           },
           "price": {
             "type": "number"
+          },
+          "slotDate": {
+            "type": "string",
+            "format": "date",
+            "description": "枠開始日"
           },
           "slotId": {
             "type": "integer",
