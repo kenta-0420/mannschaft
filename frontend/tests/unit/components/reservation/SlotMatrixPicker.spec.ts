@@ -31,6 +31,7 @@ import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
 const mockGetLines = vi.fn()
 const mockGetMenus = vi.fn()
 const mockGetSlotGrid = vi.fn()
+const mockGetReservationSettings = vi.fn()
 const mockListMyWaitlist = vi.fn()
 const mockCreateGroup = vi.fn()
 
@@ -39,6 +40,7 @@ vi.mock('~/composables/useReservationApi', () => ({
     getLines: mockGetLines,
     getMenus: mockGetMenus,
     getSlotGrid: mockGetSlotGrid,
+    getReservationSettings: mockGetReservationSettings,
     listMyWaitlist: mockListMyWaitlist,
     createGroup: mockCreateGroup,
   }),
@@ -111,13 +113,27 @@ async function flushRaw() {
 }
 
 /** 既存のセル操作テストは明示的に全日を開いた状態を前提にする。初期全閉の契約は専用テストで raw flush を使う。 */
-async function flush() {
-  await flushRaw()
-  const toggle = document.body.querySelector<HTMLButtonElement>('[data-testid="matrix-toggle-all"]')
-  if (toggle?.textContent?.includes('Show all')) {
-    toggle.click()
+async function findDateToggle(date: string): Promise<HTMLButtonElement | null> {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const toggle = document.body.querySelector<HTMLButtonElement>(`[data-testid="matrix-toggle-date-${date}"]`)
+    if (toggle) return toggle
     await flushRaw()
   }
+  return null
+}
+
+/** 初期全閉のグリッドで、検査対象の日だけを開く。 */
+async function openDate(date: string): Promise<void> {
+  const toggle = await findDateToggle(date)
+  if (!toggle || toggle.getAttribute('aria-expanded') === 'true') return
+  toggle.click()
+  await flushRaw()
+}
+
+/** 通常のセル検査用に対象日を開いてから描画を安定させる。 */
+async function flush(date = tomorrow) {
+  await flushRaw()
+  await openDate(date)
 }
 
 function findByTestId<T extends Element = HTMLElement>(testId: string): T | null {
@@ -128,9 +144,11 @@ beforeEach(() => {
   mockGetLines.mockReset()
   mockGetMenus.mockReset()
   mockGetSlotGrid.mockReset()
+  mockGetReservationSettings.mockReset()
   mockListMyWaitlist.mockReset()
   mockCreateGroup.mockReset()
   mockGetMenus.mockResolvedValue({ data: [] })
+  mockGetReservationSettings.mockResolvedValue({ data: { resourceNameType: 'DEFAULT', resourceNameCustom: null } })
   mockListMyWaitlist.mockResolvedValue({ data: [] })
 })
 
@@ -155,20 +173,19 @@ describe('SlotMatrixPicker.vue', () => {
 
     expect(findByTestId('matrix-no-slots-empty')).toBeNull()
     expect(wrapper.findAll('[data-header-index]').length).toBe(0)
-    const dayToggle = findByTestId<HTMLButtonElement>(`matrix-toggle-date-${tomorrow}`)
+    const dayToggle = await findDateToggle(tomorrow)
     expect(dayToggle?.getAttribute('aria-expanded')).toBe('false')
 
-    dayToggle!.click()
-    await flushRaw()
-    expect(dayToggle!.getAttribute('aria-expanded')).toBe('true')
+    await openDate(tomorrow)
+    expect((await findDateToggle(tomorrow))?.getAttribute('aria-expanded')).toBe('true')
     expect(wrapper.findAll('[data-header-index]').length).toBeGreaterThan(0)
 
     const nextWeekDate = dayjs(tomorrow).add(7, 'day').format('YYYY-MM-DD')
     mockGetSlotGrid.mockResolvedValue(bookedGridResponse(201, nextWeekDate))
     const nextWeekBtn = wrapper.findAllComponents({ name: 'Button' }).find(b => b.props('icon') === 'pi pi-angle-right')
     await nextWeekBtn!.trigger('click')
-    await flushRaw()
-    expect(findByTestId<HTMLButtonElement>(`matrix-toggle-date-${nextWeekDate}`)?.getAttribute('aria-expanded')).toBe('true')
+    await flush(nextWeekDate)
+    expect((await findDateToggle(nextWeekDate))?.getAttribute('aria-expanded')).toBe('true')
 
     findByTestId<HTMLButtonElement>('matrix-toggle-all')!.click()
     await flushRaw()
@@ -194,7 +211,7 @@ describe('SlotMatrixPicker.vue', () => {
     const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: false },
     })
-    await flush()
+    await flush(tomorrow)
 
     const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('10:00'))
     expect(cell?.text()).toContain('Booked by you')
@@ -334,7 +351,7 @@ describe('SlotMatrixPicker.vue', () => {
     const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: false },
     })
-    await flush()
+    await flush(rowDate)
 
     const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('23:00'))
     expect(cell).toBeTruthy()
@@ -445,7 +462,7 @@ describe('SlotMatrixPicker.vue', () => {
     const nextWeekBtn = wrapper.findAllComponents({ name: 'Button' }).find(b => b.props('icon') === 'pi pi-angle-right')
     expect(nextWeekBtn, '翌週ボタンが見つかること').toBeTruthy()
     await nextWeekBtn!.trigger('click')
-    await flush()
+    await flush(nextWeekDate)
 
     // loadMyWaitlist がグリッド再取得後に呼ばれ、902 が loadedSlotIds に含まれるようになったことで
     // セルの表示が「待機中」に切り替わる（呼び忘れがあれば表示されない＝このアサーションが落ちる）。
