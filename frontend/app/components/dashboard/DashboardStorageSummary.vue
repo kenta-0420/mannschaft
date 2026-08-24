@@ -10,15 +10,7 @@ const usages = ref<StorageScopeUsage[]>([])
 const loading = ref(false)
 const error = ref(false)
 const warningUsage = ref<StorageScopeUsage | null>(null)
-
-function closeWarning(): void {
-  warningUsage.value = null
-}
-
-const warningVisible = computed({
-  get: () => warningUsage.value !== null,
-  set: (visible: boolean) => { if (!visible) closeWarning() },
-})
+const warningVisible = ref(false)
 
 async function loadUsage() {
   loading.value = true
@@ -72,9 +64,18 @@ function displayScopeName(usage: StorageScopeUsage, index: number): string {
 function openUsage(usage: StorageScopeUsage | null): void {
   if (usage && usage.includedBytes > 0 && usage.usagePercent >= 90) {
     warningUsage.value = usage
+    warningVisible.value = true
     return
   }
   void navigateTo('/settings/storage')
+}
+
+function requestWarningClose(): void {
+  warningVisible.value = false
+}
+
+function clearWarningAfterLeave(): void {
+  warningUsage.value = null
 }
 
 </script>
@@ -118,7 +119,6 @@ function openUsage(usage: StorageScopeUsage | null): void {
       </button>
     </div>
     <Dialog
-      v-if="warningUsage"
       v-model:visible="warningVisible"
       modal
       closable
@@ -128,14 +128,16 @@ function openUsage(usage: StorageScopeUsage | null): void {
       class="w-full max-w-md"
       :style="{ width: 'min(28rem, calc(100vw - 2rem))' }"
       :breakpoints="{ '640px': 'calc(100vw - 2rem)' }"
-      @hide="closeWarning"
+      @hide="clearWarningAfterLeave"
     >
-      <p class="mb-2">{{ t('scopeDashboard.storageSummary.warningMessage', { scope: displayScopeName(warningUsage, selectedUsages.findIndex(item => item === warningUsage)), percent: warningUsage.usagePercent.toFixed(1) }) }}</p>
+      <template v-if="warningUsage">
+        <p class="mb-2">{{ t('scopeDashboard.storageSummary.warningMessage', { scope: displayScopeName(warningUsage, selectedUsages.findIndex(item => item === warningUsage)), percent: warningUsage.usagePercent.toFixed(1) }) }}</p>
       <div class="flex flex-wrap justify-end gap-2">
-        <Button text class="min-h-11 min-w-11" :label="t('scopeDashboard.storageSummary.cancel')" @click="closeWarning" />
-        <Button text class="min-h-11 min-w-11" :label="t('scopeDashboard.storageSummary.checkStorage')" @click="closeWarning(); navigateTo('/settings/storage')" />
-        <Button class="min-h-11 min-w-11" :label="t('scopeDashboard.storageSummary.viewPlans')" @click="closeWarning(); navigateTo('/billing/plans')" />
+        <Button text class="min-h-11 min-w-11" :label="t('scopeDashboard.storageSummary.cancel')" @click="requestWarningClose" />
+        <Button text class="min-h-11 min-w-11" :label="t('scopeDashboard.storageSummary.checkStorage')" @click="requestWarningClose(); navigateTo('/settings/storage')" />
+        <Button class="min-h-11 min-w-11" :label="t('scopeDashboard.storageSummary.viewPlans')" @click="requestWarningClose(); navigateTo('/billing/plans')" />
       </div>
+      </template>
     </Dialog>
   </DashboardWidgetCard>
 </template>
