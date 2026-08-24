@@ -137,6 +137,16 @@ for (const [key, decision] of Object.entries(decisions.features || {}).concat(Ob
   }
 }
 if (data.features.some((feature) => !allowedStatuses.has(feature.status))) throw new Error('公式5状態以外の機能があります。');
+for (const feature of data.features) {
+  for (const [axis, verification] of Object.entries(feature.verification || {})) {
+    if (!Array.isArray(verification.evidence) || verification.evidence.some((item) => typeof item !== 'string' || !item.trim())) {
+      throw new Error(`検証証拠が文字列配列ではありません: ${feature.key} / ${axis}`);
+    }
+    if (verification.evidence.some((item) => /["']\s*,\s*["']/.test(item))) {
+      throw new Error(`複数の検証証拠が1要素へ連結されています: ${feature.key} / ${axis}`);
+    }
+  }
+}
 
 const campaignTagByStatus = { blocked: '停止中', working: '進行中', done: '完了', unknown: '未整理' };
 if (data.campaigns.some((campaign) => campaign.tags?.length !== 1 || campaign.tags[0] !== campaignTagByStatus[campaign.status])) {

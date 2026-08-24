@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T14:23:57+00:00",
+  "generatedAt": "2026-08-24T15:08:06+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -9,7 +9,7 @@ window.BETA_INVENTORY_DATA = {
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "059334a7c60cb6315f1e05119d6b5c56c43d15d2",
     "taskListCommit": "f24f2fd08a27d76080b4a2ea2b98a9293ba8c53b",
-    "inventorySha256": "b7a29d2301f7ade17f21565e6a075d185d129434d81c5a0a2cdff5639d831900",
+    "inventorySha256": "c4fb92ac865b4d90c5bb85b2d599500b85a30de01034411b6bf3ec9c18e34849",
     "taskListSha256": "3732340db7c32b1e7733d2f49e8387eb884078806da1bec7537c0b90be54e354",
     "decisionsSha256": "5721052631110d26b34bf2288bc6e8a9de069a030b7f8d63808f8304348f7a4d",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
@@ -28,9 +28,9 @@ window.BETA_INVENTORY_DATA = {
     "blockers": 21,
     "coreStatus": {
       "blocked": 4,
-      "unknown": 20,
+      "unknown": 18,
       "incomplete": 0,
-      "verifying": 1,
+      "verifying": 3,
       "ready": 0
     }
   },
@@ -47,9 +47,9 @@ window.BETA_INVENTORY_DATA = {
       "blockers": 21,
       "coreStatus": {
         "blocked": 4,
-        "unknown": 20,
+        "unknown": 18,
         "incomplete": 0,
-        "verifying": 1,
+        "verifying": 3,
         "ready": 0
       }
     },
@@ -77,7 +77,9 @@ window.BETA_INVENTORY_DATA = {
       "why": "未設定",
       "acceptance": [],
       "blocker": "CMP-103: 入力途中離脱で入力消失・未保存警告なし（Issue #2857）",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
@@ -109,24 +111,62 @@ window.BETA_INVENTORY_DATA = {
       "title": "アカウント設定・退会",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ1: 設定画面・プロフィール/パスワード更新API・退会/取消API・30日後削除/リマインドバッチまで実装を確認。実環境での退会E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md",
+        "docs/features/F12.3_gdpr_personal_data.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/settings/profile.spec.ts",
+            "frontend/tests/e2e/settings/password.spec.ts",
+            "frontend/tests/e2e/gdpr/gdpr.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/GdprSelfScopeContractIT.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -143,24 +183,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "認証・ログイン・2FA",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "PR #2830 ハイドレーション即操作化済",
+      "why": "PR #2830 ハイドレーション即操作化済。棚卸バッチ1でログイン・2FA・DB・認証保守バッチの実装を確認。各テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
         "backend": "実装済",
         "database": "実装済",
-        "background": "対象外"
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/pages/login.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/auth/AuthServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/service/Auth2faServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/auth/login.spec.ts",
+            "frontend/tests/e2e/auth/2fa.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthLoginControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/Auth2faControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/config/SecurityConfigAuthorizationTest.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/auth-flow.spec.ts",
+            "frontend/tests/e2e/real/2fa-flow.spec.ts",
+            "frontend/tests/e2e/real/auth-cookie-origin.spec.ts"
+          ]
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthCleanupBatchServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -689,7 +770,7 @@ window.BETA_INVENTORY_DATA = {
         "resident_test": {
           "status": "失敗中",
           "evidence": [
-            "\"Issue #2856\""
+            "Issue #2856"
           ]
         }
       },
@@ -1540,7 +1621,9 @@ window.BETA_INVENTORY_DATA = {
       "why": "未設定",
       "acceptance": [],
       "blocker": "CMP-103: 入力途中離脱で入力消失・未保存警告なし（Issue #2857）",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
@@ -1576,24 +1659,62 @@ window.BETA_INVENTORY_DATA = {
       "title": "設定",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "account-settings由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ1: 設定画面・プロフィール/パスワード更新API・退会/取消API・30日後削除/リマインドバッチまで実装を確認。実環境での退会E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md",
+        "docs/features/F12.3_gdpr_personal_data.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/settings/profile.spec.ts",
+            "frontend/tests/e2e/settings/password.spec.ts",
+            "frontend/tests/e2e/gdpr/gdpr.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/GdprSelfScopeContractIT.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1614,24 +1735,62 @@ window.BETA_INVENTORY_DATA = {
       "title": "退会",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "account-settings由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ1: 設定画面・プロフィール/パスワード更新API・退会/取消API・30日後削除/リマインドバッチまで実装を確認。実環境での退会E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md",
+        "docs/features/F12.3_gdpr_personal_data.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
-        "background": "不明"
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/settings/profile.spec.ts",
+            "frontend/tests/e2e/settings/password.spec.ts",
+            "frontend/tests/e2e/gdpr/gdpr.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/UserControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/GdprSelfScopeContractIT.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1652,24 +1811,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "ログイン",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "auth由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "PR #2830 ハイドレーション即操作化済",
+      "why": "PR #2830 ハイドレーション即操作化済。棚卸バッチ1でログイン・2FA・DB・認証保守バッチの実装を確認。各テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
         "backend": "実装済",
         "database": "実装済",
-        "background": "対象外"
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/pages/login.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/auth/AuthServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/service/Auth2faServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/auth/login.spec.ts",
+            "frontend/tests/e2e/auth/2fa.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthLoginControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/Auth2faControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/config/SecurityConfigAuthorizationTest.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/auth-flow.spec.ts",
+            "frontend/tests/e2e/real/2fa-flow.spec.ts",
+            "frontend/tests/e2e/real/auth-cookie-origin.spec.ts"
+          ]
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthCleanupBatchServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1690,24 +1890,65 @@ window.BETA_INVENTORY_DATA = {
       "title": "2FA",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "auth由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "PR #2830 ハイドレーション即操作化済",
+      "why": "PR #2830 ハイドレーション即操作化済。棚卸バッチ1でログイン・2FA・DB・認証保守バッチの実装を確認。各テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.1_auth.md"
+      ],
       "layer": "能力",
       "implementation": {
         "frontend": "実装済",
         "backend": "実装済",
         "database": "実装済",
-        "background": "対象外"
+        "background": "実装済"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/pages/login.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/auth/AuthServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/service/Auth2faServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/auth/login.spec.ts",
+            "frontend/tests/e2e/auth/2fa.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthLoginControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/Auth2faControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/config/SecurityConfigAuthorizationTest.java"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/auth-flow.spec.ts",
+            "frontend/tests/e2e/real/2fa-flow.spec.ts",
+            "frontend/tests/e2e/real/auth-cookie-origin.spec.ts"
+          ]
+        },
+        "operation": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/auth/AuthCleanupBatchServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -3064,7 +3305,7 @@ window.BETA_INVENTORY_DATA = {
         "resident_test": {
           "status": "失敗中",
           "evidence": [
-            "\"Issue #2856\""
+            "Issue #2856"
           ]
         }
       },

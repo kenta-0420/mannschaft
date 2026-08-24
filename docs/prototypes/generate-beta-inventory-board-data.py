@@ -104,9 +104,13 @@ def parse_scalar(value: str):
     if value.startswith("{") and value.endswith("}"):
         status = re.search(r"status:\s*([^,}]+)", value)
         evidence = re.search(r"evidence:\s*\[([^]]*)\]", value)
+        evidence_source = evidence.group(1).strip() if evidence else ""
+        evidence_items = re.findall(r'["\']([^"\']+)["\']', evidence_source)
+        if evidence_source and not evidence_items:
+            evidence_items = [item.strip() for item in evidence_source.split(",") if item.strip()]
         return {
             **({"status": status.group(1).strip().strip("'\"")} if status else {}),
-            "evidence": [] if not evidence or not evidence.group(1).strip() else [evidence.group(1).strip()],
+            "evidence": evidence_items,
         }
     return value.strip("'\"")
 
