@@ -174,7 +174,16 @@
       "team_page": "Reservations"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "How to use {label}",
+      "cards": {
+        "business_hours": { "title": "Business hours", "description": "Set booking hours" },
+        "lines": { "title": "Reservation targets", "description": "Manage {n} targets" },
+        "menus": { "title": "Menus", "description": "Manage {n} menus" },
+        "weekly_schedule": { "title": "Weekly schedule", "description": "{n} slot and recurring settings" },
+        "exception_day": { "title": "Exception days", "description": "Adjust specific dates" },
+        "advanced": { "title": "Advanced settings", "description": "Set visibility and notifications" }
+      }
     },
     "column": {
       "datetime": "Date & Time",

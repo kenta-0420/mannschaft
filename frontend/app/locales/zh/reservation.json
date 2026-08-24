@@ -174,7 +174,16 @@
       "team_page": "预约"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "{label}使用方法",
+      "cards": {
+        "business_hours": { "title": "营业时间", "description": "设置预约时间" },
+        "lines": { "title": "预约对象", "description": "管理{n}个预约对象" },
+        "menus": { "title": "菜单", "description": "管理{n}个菜单" },
+        "weekly_schedule": { "title": "每周日程", "description": "{n}个时段和定期设置" },
+        "exception_day": { "title": "例外日期", "description": "调整指定日期" },
+        "advanced": { "title": "详细设置", "description": "设置公开范围和通知" }
+      }
     },
     "column": {
       "datetime": "日期时间",

@@ -174,7 +174,16 @@
       "team_page": "Reservierung"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "Verwendung von {label}",
+      "cards": {
+        "business_hours": { "title": "Öffnungszeiten", "description": "Buchungszeiten festlegen" },
+        "lines": { "title": "Buchungsziele", "description": "{n} Ziele verwalten" },
+        "menus": { "title": "Menüs", "description": "{n} Menüs verwalten" },
+        "weekly_schedule": { "title": "Wochenplan", "description": "{n} Zeit- und Wiederholungseinstellungen" },
+        "exception_day": { "title": "Ausnahmetage", "description": "Bestimmte Tage anpassen" },
+        "advanced": { "title": "Erweiterte Einstellungen", "description": "Sichtbarkeit und Benachrichtigungen" }
+      }
     },
     "column": {
       "datetime": "Datum & Uhrzeit",

@@ -174,7 +174,16 @@
       "team_page": "Reservas"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "Cómo usar {label}",
+      "cards": {
+        "business_hours": { "title": "Horario comercial", "description": "Configura el horario de reservas" },
+        "lines": { "title": "Objetivos de reserva", "description": "Gestiona {n} objetivos" },
+        "menus": { "title": "Menús", "description": "Gestiona {n} menús" },
+        "weekly_schedule": { "title": "Horario semanal", "description": "{n} ajustes de franjas y recurrentes" },
+        "exception_day": { "title": "Días excepcionales", "description": "Ajusta fechas específicas" },
+        "advanced": { "title": "Configuración avanzada", "description": "Configura visibilidad y avisos" }
+      }
     },
     "column": {
       "datetime": "Fecha y hora",

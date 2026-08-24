@@ -174,7 +174,16 @@
       "team_page": "예약"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "{label} 사용법",
+      "cards": {
+        "business_hours": { "title": "영업시간", "description": "예약 시간을 설정합니다" },
+        "lines": { "title": "예약 대상", "description": "{n}개 대상을 관리합니다" },
+        "menus": { "title": "메뉴", "description": "{n}개 메뉴를 관리합니다" },
+        "weekly_schedule": { "title": "주간 일정", "description": "{n}개 시간 및 반복 설정" },
+        "exception_day": { "title": "예외일", "description": "특정 날짜를 조정합니다" },
+        "advanced": { "title": "고급 설정", "description": "공개 범위와 알림 설정" }
+      }
     },
     "column": {
       "datetime": "일시",

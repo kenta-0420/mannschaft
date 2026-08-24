@@ -174,7 +174,16 @@
       "team_page": "予約"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "{label}の使い方",
+      "cards": {
+        "business_hours": { "title": "営業時間", "description": "予約受付時間を設定" },
+        "lines": { "title": "予約対象", "description": "{n}件の予約対象を管理" },
+        "menus": { "title": "メニュー", "description": "{n}件のメニューを管理" },
+        "weekly_schedule": { "title": "週間スケジュール", "description": "{n}件の枠・定期設定" },
+        "exception_day": { "title": "例外日", "description": "特定日の営業を調整" },
+        "advanced": { "title": "詳細設定", "description": "公開範囲や通知を設定" }
+      }
     },
     "column": {
       "datetime": "日時",
