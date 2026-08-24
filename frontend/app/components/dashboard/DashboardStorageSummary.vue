@@ -9,6 +9,16 @@ const { handleApiError } = useErrorHandler()
 const usages = ref<StorageScopeUsage[]>([])
 const loading = ref(false)
 const error = ref(false)
+const warningUsage = ref<StorageScopeUsage | null>(null)
+
+function closeWarning(): void {
+  warningUsage.value = null
+}
+
+const warningVisible = computed({
+  get: () => warningUsage.value !== null,
+  set: (visible: boolean) => { if (!visible) closeWarning() },
+})
 
 async function loadUsage() {
   loading.value = true
@@ -58,6 +68,15 @@ function barClass(usage: StorageScopeUsage): string {
 function displayScopeName(usage: StorageScopeUsage, index: number): string {
   return usage.scopeType === 'PERSONAL' ? scopeLabels.value[index]! : usage.scopeName || scopeLabels.value[index]!
 }
+
+function openUsage(usage: StorageScopeUsage | null): void {
+  if (usage && usage.includedBytes > 0 && usage.usagePercent >= 90) {
+    warningUsage.value = usage
+    return
+  }
+  void navigateTo('/settings/storage')
+}
+
 </script>
 
 <template>
@@ -83,7 +102,7 @@ function displayScopeName(usage: StorageScopeUsage, index: number): string {
       </div>
     </Message>
     <div v-else class="grid grid-cols-1 gap-3 md:grid-cols-3">
-      <article v-for="(usage, index) in selectedUsages" :key="scopeLabels[index]" class="min-w-0 rounded-md bg-surface-50 p-3 dark:bg-surface-800" :data-testid="`storage-card-${index}`">
+      <button v-for="(usage, index) in selectedUsages" :key="scopeLabels[index]" type="button" class="min-h-11 w-full min-w-0 rounded-md bg-surface-50 p-3 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:bg-surface-800" :data-testid="`storage-card-${index}`" @click="openUsage(usage)">
         <div class="mb-2 flex items-center justify-between gap-2 text-sm">
           <span class="truncate font-medium">{{ usage ? displayScopeName(usage, index) : scopeLabels[index] }}</span>
           <span v-if="usage && usage.includedBytes > 0" class="shrink-0" :class="usageClass(usage)">{{ usage.usagePercent.toFixed(1) }}%</span>
@@ -96,7 +115,27 @@ function displayScopeName(usage: StorageScopeUsage, index: number): string {
           <p v-else class="mt-1 text-xs text-surface-500">{{ t('scopeDashboard.storageSummary.unconfigured') }}</p>
         </template>
         <p v-else class="text-xs text-surface-500">{{ t('scopeDashboard.storageSummary.not_available') }}</p>
-      </article>
+      </button>
     </div>
+    <Dialog
+      v-if="warningUsage"
+      v-model:visible="warningVisible"
+      modal
+      closable
+      close-on-escape
+      :header="t('scopeDashboard.storageSummary.warningTitle')"
+      :aria-label="t('scopeDashboard.storageSummary.warningTitle')"
+      class="w-full max-w-md"
+      :style="{ width: 'min(28rem, calc(100vw - 2rem))' }"
+      :breakpoints="{ '640px': 'calc(100vw - 2rem)' }"
+      @hide="closeWarning"
+    >
+      <p class="mb-2">{{ t('scopeDashboard.storageSummary.warningMessage', { scope: displayScopeName(warningUsage, selectedUsages.findIndex(item => item === warningUsage)), percent: warningUsage.usagePercent.toFixed(1) }) }}</p>
+      <div class="flex flex-wrap justify-end gap-2">
+        <Button text class="min-h-11 min-w-11" :label="t('scopeDashboard.storageSummary.cancel')" @click="closeWarning" />
+        <Button text class="min-h-11 min-w-11" :label="t('scopeDashboard.storageSummary.checkStorage')" @click="closeWarning(); navigateTo('/settings/storage')" />
+        <Button class="min-h-11 min-w-11" :label="t('scopeDashboard.storageSummary.viewPlans')" @click="closeWarning(); navigateTo('/billing/plans')" />
+      </div>
+    </Dialog>
   </DashboardWidgetCard>
 </template>

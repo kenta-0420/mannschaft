@@ -1899,7 +1899,7 @@
     "bulletinOpen": "Discuss on bulletin board"
   },
   "scopeDashboard": {
-    "storageSummary": { "title": "Storage", "personal": "Personal", "team": "Team", "organization": "Organization", "details": "View details", "error": "Could not load storage", "retry": "Retry", "unconfigured": "Quota not configured", "not_available": "No storage data", "meterLabel": "{scope} storage usage", "meterValue": "Usage {percent}%" },
+    "storageSummary": { "title": "Storage", "personal": "Personal", "team": "Team", "organization": "Organization", "details": "View details", "error": "Could not load storage", "retry": "Retry", "unconfigured": "Quota not configured", "not_available": "No storage data", "meterLabel": "{scope} storage usage", "meterValue": "Usage {percent}%", "warningTitle": "Storage limit approaching", "warningMessage": "{scope} is using {percent}%. Consider upgrading to a paid plan.", "viewPlans": "View plans", "checkStorage": "Check storage", "cancel": "Cancel" },
     "tabs": {
       "personal": "Personal",
       "team": "Team",
