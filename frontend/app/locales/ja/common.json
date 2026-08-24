@@ -1899,6 +1899,7 @@
     "bulletinOpen": "掲示板で議論する"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "容量", "personal": "個人", "team": "チーム", "organization": "組織", "details": "詳細を見る", "error": "容量を取得できませんでした", "retry": "再試行", "unconfigured": "容量枠未設定", "not_available": "容量データなし" },
     "tabs": {
       "personal": "個人",
       "team": "チーム",

@@ -1899,6 +1899,7 @@
     "bulletinOpen": "Discuss on bulletin board"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "Storage", "personal": "Personal", "team": "Team", "organization": "Organization", "details": "View details", "error": "Could not load storage", "retry": "Retry", "unconfigured": "Quota not configured", "not_available": "No storage data" },
     "tabs": {
       "personal": "Personal",
       "team": "Team",

@@ -1899,6 +1899,7 @@
     "bulletinOpen": "Im Forum diskutieren"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "Speicher", "personal": "Persönlich", "team": "Team", "organization": "Organisation", "details": "Details anzeigen", "error": "Speicher konnte nicht geladen werden", "retry": "Erneut versuchen", "unconfigured": "Kontingent nicht konfiguriert", "not_available": "Keine Speicherdaten" },
     "tabs": {
       "personal": "Persönlich",
       "team": "Team",
