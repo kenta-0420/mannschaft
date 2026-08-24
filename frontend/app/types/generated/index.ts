@@ -48723,6 +48723,7 @@ export interface components {
             /** @example 14:30:00 */
             closeTime?: string;
             dayOfWeek?: string;
+            /** @description 終了時刻が翌日 */
             endsNextDay?: boolean;
             isOpen?: boolean;
             /** @example 14:30:00 */
@@ -50401,6 +50402,7 @@ export interface components {
             slug?: string;
             social?: components["schemas"]["TeamSocialDto"];
             timestamps?: components["schemas"]["TeamTimestampsDto"];
+            /** @description チームのIANAタイムゾーン */
             timezone?: string;
             visibility?: components["schemas"]["TeamVisibilityDto"];
         };
@@ -56884,11 +56886,17 @@ export interface components {
             updatedAt?: string;
         };
         SlotBasicDto: {
-            /** Format: date */
+            /**
+             * Format: date
+             * @description 枠終了日
+             */
             endDate?: string;
             /** @example 14:30:00 */
             endTime?: string;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description 枠開始日
+             */
             slotDate?: string;
             /** @example 14:30:00 */
             startTime?: string;
@@ -56967,6 +56975,7 @@ export interface components {
             dayOfWeek?: string;
             /** @example 14:30:00 */
             endTime?: string;
+            /** @description 終了時刻が翌日 */
             endsNextDay?: boolean;
             /** Format: uuid */
             id?: string;
@@ -57044,6 +57053,7 @@ export interface components {
         };
         BlockedTimeResponse: {
             audit?: components["schemas"]["BlockedAuditDto"];
+            /** @description 終了時刻が翌日 */
             endsNextDay?: boolean;
             /** Format: int64 */
             id?: number;
@@ -57089,6 +57099,7 @@ export interface components {
             dayOfWeek?: string;
             /** @example 14:30:00 */
             endTime?: string;
+            /** @description 終了時刻が翌日 */
             endsNextDay?: boolean;
             /** Format: int32 */
             forceCancelledCount?: number;
@@ -67357,6 +67368,7 @@ export interface components {
             prefectureCode?: string;
             supporterEnabled?: boolean;
             template?: string;
+            /** @description チームのIANAタイムゾーン */
             timezone?: string;
             /** Format: int64 */
             version: number;
@@ -70436,12 +70448,18 @@ export interface components {
             data?: components["schemas"]["ReservationGridResponse"];
         };
         GridCellDto: {
-            /** Format: date */
+            /**
+             * Format: date
+             * @description 枠終了日
+             */
             endDate?: string;
             /** @example 14:30:00 */
             endTime?: string;
             price?: number;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description 枠開始日
+             */
             slotDate?: string;
             /** Format: int64 */
             slotId?: number;
