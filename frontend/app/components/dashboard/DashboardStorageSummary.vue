@@ -5,6 +5,7 @@ import { formatBytes } from '~/utils/formatBytes'
 const { t } = useI18n()
 const dashboardStore = useScopeDashboardStore()
 const storageApi = useStorageUsageApi()
+const { handleApiError } = useErrorHandler()
 const usages = ref<StorageScopeUsage[]>([])
 const loading = ref(false)
 const error = ref(false)
@@ -14,7 +15,8 @@ async function loadUsage() {
   error.value = false
   try {
     usages.value = await storageApi.getMyStorageUsage()
-  } catch {
+  } catch (caughtError) {
+    handleApiError(caughtError, 'dashboard.storageSummary')
     error.value = true
   } finally {
     loading.value = false
@@ -55,11 +57,18 @@ function barClass(usage: StorageScopeUsage): string {
 </script>
 
 <template>
-  <section class="mb-5 rounded-lg border border-surface-200 bg-surface-0 p-3 dark:border-surface-700 dark:bg-surface-900" data-testid="dashboard-storage-summary" :aria-label="t('scopeDashboard.storageSummary.title')">
-    <div class="mb-3 flex items-center justify-between gap-2">
-      <h2 class="text-sm font-semibold">{{ t('scopeDashboard.storageSummary.title') }}</h2>
-      <NuxtLink to="/settings/storage" class="text-xs text-primary hover:underline">{{ t('scopeDashboard.storageSummary.details') }}</NuxtLink>
-    </div>
+  <DashboardWidgetCard
+    :title="t('scopeDashboard.storageSummary.title')"
+    icon="pi pi-database"
+    :scrollable="false"
+    class="mb-5"
+    data-testid="dashboard-storage-summary"
+  >
+    <template #actions>
+      <NuxtLink to="/settings/storage" class="text-xs text-primary hover:underline">
+        {{ t('scopeDashboard.storageSummary.details') }}
+      </NuxtLink>
+    </template>
     <div v-if="loading" class="grid grid-cols-1 gap-3 md:grid-cols-3" data-testid="storage-loading">
       <Skeleton v-for="index in 3" :key="index" height="4.5rem" />
     </div>
@@ -85,5 +94,5 @@ function barClass(usage: StorageScopeUsage): string {
         <p v-else class="text-xs text-surface-500">{{ t('scopeDashboard.storageSummary.not_available') }}</p>
       </article>
     </div>
-  </section>
+  </DashboardWidgetCard>
 </template>

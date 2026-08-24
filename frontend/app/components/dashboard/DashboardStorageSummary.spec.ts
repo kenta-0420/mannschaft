@@ -1,0 +1,89 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { flushPromises } from '@vue/test-utils'
+import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { reactive } from 'vue'
+import DashboardStorageSummary from '~/components/dashboard/DashboardStorageSummary.vue'
+import type { StorageScopeUsage } from '~/types/storage'
+
+const getMyStorageUsage = vi.fn()
+const handleApiError = vi.fn()
+const dashboardStore = reactive({ selectedTeamId: 'team-a', selectedOrgId: 'org-a' })
+
+mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+mockNuxtImport('useStorageUsageApi', () => () => ({ getMyStorageUsage }))
+mockNuxtImport('useErrorHandler', () => () => ({ handleApiError }))
+mockNuxtImport('useScopeDashboardStore', () => () => dashboardStore)
+
+const stubs = {
+  DashboardWidgetCard: { template: '<section><header><slot name="actions" /></header><slot /></section>' },
+  NuxtLink: { template: '<a :href="to"><slot /></a>', props: ['to'] },
+  Button: { template: '<button @click="$attrs.onClick"><slot />{{ label }}</button>', props: ['label'] },
+  Message: { template: '<div><slot /></div>' },
+  Skeleton: { template: '<div class="skeleton" />' },
+}
+
+function usage(scopeType: StorageScopeUsage['scopeType'], overrides: Partial<StorageScopeUsage> = {}): StorageScopeUsage {
+  return {
+    scopeType, scopeId: 1, scopeName: scopeType, slug: scopeType === 'TEAM' ? 'team-a' : scopeType === 'ORGANIZATION' ? 'org-a' : null,
+    usedBytes: 80, fileCount: 1, includedBytes: 100, maxBytes: 100, usagePercent: 80, ...overrides,
+  }
+}
+
+async function mountSummary() {
+  const wrapper = await mountSuspended(DashboardStorageSummary, { attachTo: document.body, global: { stubs } })
+  await flushPromises()
+  return wrapper
+}
+
+beforeEach(() => {
+  getMyStorageUsage.mockReset()
+  handleApiError.mockReset()
+  dashboardStore.selectedTeamId = 'team-a'
+  dashboardStore.selectedOrgId = 'org-a'
+})
+afterEach(() => { document.body.innerHTML = '' })
+
+describe('DashboardStorageSummary', () => {
+  it('3スコープを1回のAPI呼出で表示し、選択slug切替に追随する', async () => {
+    getMyStorageUsage.mockResolvedValue([usage('PERSONAL'), usage('TEAM'), usage('ORGANIZATION')])
+    const wrapper = await mountSummary()
+    expect(getMyStorageUsage).toHaveBeenCalledTimes(1)
+    expect(wrapper.findAll('[data-testid^="storage-card-"]')).toHaveLength(3)
+    dashboardStore.selectedTeamId = 'other-team'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="storage-card-1"]').text()).toContain('scopeDashboard.storageSummary.not_available')
+  })
+
+  it('容量枠未設定・未選択・境界色・100%クランプを扱う', async () => {
+    getMyStorageUsage.mockResolvedValue([
+      usage('PERSONAL', { includedBytes: 0, usagePercent: 100 }),
+      usage('TEAM', { usagePercent: 90 }),
+      usage('ORGANIZATION', { usagePercent: 120 }),
+    ])
+    const wrapper = await mountSummary()
+    expect(wrapper.text()).toContain('scopeDashboard.storageSummary.unconfigured')
+    expect(wrapper.get('[data-testid="storage-card-1"] .text-red-600')).toBeTruthy()
+    expect(wrapper.get('[data-testid="storage-card-2"] [role="progressbar"]').getAttribute('aria-valuenow')).toBe('100')
+    dashboardStore.selectedOrgId = null
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="storage-card-2"]').text()).toContain('scopeDashboard.storageSummary.not_available')
+  })
+
+  it('API失敗時にインラインエラーと再試行を表示する', async () => {
+    getMyStorageUsage.mockRejectedValueOnce(new Error('network')).mockResolvedValueOnce([usage('PERSONAL')])
+    const wrapper = await mountSummary()
+    expect(handleApiError).toHaveBeenCalledOnce()
+    expect(wrapper.find('[data-testid="storage-error"]').exists()).toBe(true)
+    await wrapper.get('[data-testid="storage-retry"]').trigger('click')
+    await flushPromises()
+    expect(getMyStorageUsage).toHaveBeenCalledTimes(2)
+  })
+
+  it('詳細リンクとレスポンシブ3列/1列構造を持つ', async () => {
+    getMyStorageUsage.mockResolvedValue([])
+    const wrapper = await mountSummary()
+    expect(wrapper.get('a[href="/settings/storage"]')).toBeTruthy()
+    expect(wrapper.html()).toContain('grid-cols-1')
+    expect(wrapper.html()).toContain('md:grid-cols-3')
+  })
+})
