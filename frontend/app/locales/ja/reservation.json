@@ -682,6 +682,7 @@
       "state": {
         "available": "空き",
         "booked": "埋まっている",
+        "reserved": "予約済み",
         "closed": "受付終了",
         "unavailable": "予約不可"
       },

@@ -16,6 +16,7 @@ import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepositor
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuRepository;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -83,6 +84,8 @@ class ReservationGridServiceExtensionTest {
     @Mock
     private ReservationSlotRepository slotRepository;
     @Mock
+    private ReservationRepository reservationRepository;
+    @Mock
     private ReservationLineRepository lineRepository;
     @Mock
     private ReservationBlockedTimeRepository blockedTimeRepository;
@@ -106,7 +109,7 @@ class ReservationGridServiceExtensionTest {
     @BeforeEach
     void setUp() {
         service = new ReservationGridService(
-                slotRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
+                slotRepository, reservationRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
                 unavailabilityChecker, viewAccessGuard, menuRepository, menuLineRepository, teamTimezoneResolver);
         given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
         // 既定: slot/ブロック/定期ルール/ライン/menu_lines なし（各テストで上書き）。

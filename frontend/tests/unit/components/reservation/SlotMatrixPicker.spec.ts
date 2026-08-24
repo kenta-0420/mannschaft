@@ -105,9 +105,19 @@ function bookedGridResponse(slotId: number, date: string) {
   }
 }
 
+async function flushRaw() {
+  await new Promise(r => setTimeout(r, 0))
+  await new Promise(r => setTimeout(r, 0))
+}
+
+/** 既存のセル操作テストは明示的に全日を開いた状態を前提にする。初期全閉の契約は専用テストで raw flush を使う。 */
 async function flush() {
-  await new Promise(r => setTimeout(r, 0))
-  await new Promise(r => setTimeout(r, 0))
+  await flushRaw()
+  const toggle = document.body.querySelector<HTMLButtonElement>('[data-testid="matrix-toggle-all"]')
+  if (toggle?.textContent?.includes('Show all')) {
+    toggle.click()
+    await flushRaw()
+  }
 }
 
 function findByTestId<T extends Element = HTMLElement>(testId: string): T | null {
@@ -134,6 +144,66 @@ afterAll(() => {
 })
 
 describe('SlotMatrixPicker.vue', () => {
+  it('AC-17: 初期は全日閉じ、日別開閉と全体開閉が機能し、週移動後も曜日ごとの開閉状態を保つ', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue(gridResponseWithCells())
+
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flushRaw()
+
+    expect(findByTestId('matrix-no-slots-empty')).toBeNull()
+    expect(wrapper.findAll('[data-header-index]').length).toBe(0)
+    const dayToggle = findByTestId<HTMLButtonElement>(`matrix-toggle-date-${tomorrow}`)
+    expect(dayToggle?.getAttribute('aria-expanded')).toBe('false')
+
+    dayToggle!.click()
+    await flushRaw()
+    expect(dayToggle!.getAttribute('aria-expanded')).toBe('true')
+    expect(wrapper.findAll('[data-header-index]').length).toBeGreaterThan(0)
+
+    const nextWeekDate = dayjs(tomorrow).add(7, 'day').format('YYYY-MM-DD')
+    mockGetSlotGrid.mockResolvedValue(bookedGridResponse(201, nextWeekDate))
+    const nextWeekBtn = wrapper.findAllComponents({ name: 'Button' }).find(b => b.props('icon') === 'pi pi-angle-right')
+    await nextWeekBtn!.trigger('click')
+    await flushRaw()
+    expect(findByTestId<HTMLButtonElement>(`matrix-toggle-date-${nextWeekDate}`)?.getAttribute('aria-expanded')).toBe('true')
+
+    findByTestId<HTMLButtonElement>('matrix-toggle-all')!.click()
+    await flushRaw()
+    expect(wrapper.findAll('[data-header-index]').length).toBe(0)
+  })
+
+  it('AC-18: 自分の予約済み満席セルは予約済み表示かつ操作不能で、キャンセル待ちを開かない', async () => {
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetSlotGrid.mockResolvedValue({
+      data: {
+        meta: null,
+        days: [{
+          date: tomorrow,
+          columns: [{
+            lineId: 1,
+            lineName: 'Seat1',
+            lineIds: [],
+            cells: [{ slotId: 901, startTime: '10:00', endTime: '10:30', state: 'BOOKED', reservedByCurrentUser: true }],
+          }],
+        }],
+      },
+    })
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
+      props: { teamId: 'team-slug', isAdmin: false },
+    })
+    await flush()
+
+    const cell = wrapper.findAll('button').find(b => b.attributes('aria-label')?.includes('10:00'))
+    expect(cell?.text()).toContain('Booked by you')
+    expect(cell?.attributes('disabled')).toBeDefined()
+    await cell!.trigger('click')
+    await flush()
+    expect(findByTestId('waitlist-register')).toBeNull()
+  })
+
   it('チームTZをviewer TZより優先し、週起点・API範囲・過去セルをチーム日付境界で判定する', async () => {
     // UTC 23:30 は viewer=Asia/Tokyo では翌日08:30だが、team=America/New_Yorkでは同日19:30。
     vi.setSystemTime(new Date('2026-08-09T23:30:00Z'))

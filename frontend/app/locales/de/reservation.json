@@ -682,6 +682,7 @@
       "state": {
         "available": "Frei",
         "booked": "Voll",
+        "reserved": "Von Ihnen gebucht",
         "closed": "Geschlossen",
         "unavailable": "Nicht verfügbar"
       },
@@ -702,6 +703,9 @@
       "no_menu_single": "Nur 30 Minuten ohne Menü buchen",
       "preview_title": "Diese Buchung bestätigen",
       "extend_30": "+30 Min.",
+      "open_all": "Alle anzeigen",
+      "close_all": "Alle schließen",
+      "open_day_hint": "Wählen Sie ein Datum, um Reservierungszeiten anzuzeigen",
       "date_line_header": "Datum / {resourceName}",
       "help_toggle": "Anleitung anzeigen",
       "help_body": "Tippen Sie auf ein freies (grünes) Zeitfenster und wählen Sie ein Menü — die benötigte Anzahl an Zeitfenstern wird automatisch ausgewählt. Mit „+30 Min.“ können Sie weitere hinzufügen. Bei einem gemeinsamen Zeitfenster wählen Sie das gewünschte Element ({resourceName}) aus.",

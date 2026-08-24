@@ -20,6 +20,8 @@ export interface MatrixCellInput {
   endTime?: string
   state?: MatrixCellState
   price?: number
+  /** 現在のユーザーが PENDING / CONFIRMED の予約を持つ枠か（PII を返さない本人フラグ）。 */
+  reservedByCurrentUser?: boolean
   /**
    * F03.4.5 §4.4: state=UNAVAILABLE かつ判定元が is_public=TRUE の定期予約不可ルールのときのみ
    * BE が値を詰める（それ以外＝単発 blocked_times 由来・is_public=FALSE は null/undefined）。

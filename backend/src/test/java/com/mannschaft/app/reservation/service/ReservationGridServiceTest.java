@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.reservation.GridCellState;
 import com.mannschaft.app.reservation.ReservationBlockedResourceType;
 import com.mannschaft.app.reservation.ReservationErrorCode;
+import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.dto.ReservationGridResponse;
 import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
@@ -11,6 +12,7 @@ import com.mannschaft.app.reservation.entity.ReservationLineEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -60,6 +62,8 @@ class ReservationGridServiceTest {
     @Mock
     private ReservationSlotRepository slotRepository;
     @Mock
+    private ReservationRepository reservationRepository;
+    @Mock
     private ReservationLineRepository lineRepository;
     @Mock
     private ReservationBlockedTimeRepository blockedTimeRepository;
@@ -84,7 +88,7 @@ class ReservationGridServiceTest {
     @BeforeEach
     void setUp() {
         service = new ReservationGridService(
-                slotRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
+                slotRepository, reservationRepository, lineRepository, blockedTimeRepository, recurringBlockedTimeRepository,
                 unavailabilityChecker, viewAccessGuard, menuRepository, menuLineRepository, teamTimezoneResolver);
         given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
         // 既定: ブロックなし・定期ルールなし・ライン 1 本（各テストで上書き）。
@@ -139,6 +143,22 @@ class ReservationGridServiceTest {
         return grid.getColumns().stream()
                 .filter(c -> java.util.Objects.equals(c.lineId(), lineId))
                 .findFirst().orElseThrow(() -> new AssertionError("列が見つかりません: " + lineId));
+    }
+
+    @Test
+    @DisplayName("本人の PENDING / CONFIRMED 予約を持つ枠だけ本人予約済みフラグを返す")
+    void 本人予約済みフラグを返す() {
+        givenSlots(
+                slot(1L, LINE_1, null, LocalTime.of(10, 0), LocalTime.of(10, 30), SlotStatus.FULL),
+                slot(2L, LINE_1, null, LocalTime.of(10, 30), LocalTime.of(11, 0), SlotStatus.FULL));
+        given(reservationRepository.findSlotIdsAlreadyReservedByUser(
+                USER_ID, List.of(1L, 2L), List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED)))
+                .willReturn(List.of(1L));
+
+        List<ReservationGridResponse.GridCellDto> cells = columnOf(callGrid(), LINE_1).cells();
+
+        assertThat(cells).extracting(ReservationGridResponse.GridCellDto::reservedByCurrentUser)
+                .containsExactly(true, false);
     }
 
     // ========================================

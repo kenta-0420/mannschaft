@@ -331,6 +331,9 @@ async function goToWeekContaining(page: Page, targetIso: string): Promise<void> 
     await page.waitForTimeout(400)
   }
   if (!reached) throw new Error(`週範囲内に ${targetIso} が見つからない`)
+  const dateToggle = page.getByTestId(`matrix-toggle-date-${targetIso}`)
+  await expect(dateToggle).toBeVisible({ timeout: 20_000 })
+  if (await dateToggle.getAttribute('aria-expanded') !== 'true') await dateToggle.click()
   void prevWeekBtn
   void nextWeekBtn
 }
@@ -350,6 +353,7 @@ async function navBackAndForth(page: Page): Promise<void> {
 test.describe('D群 優先A: キャンセル待ち（実機・週移動で維持されるか／自分の一覧に出るか）', () => {
   let teamSlug = ''
   let lineId = 0
+  let slotId = 0
   const day = dateInfo(2)
 
   test.beforeAll(async ({ tokens }) => {
@@ -380,7 +384,7 @@ test.describe('D群 優先A: キャンセル待ち（実機・週移動で維持
     if (!tplRes.ok()) throw new Error(`テンプレ作成失敗: ${tplRes.status()} ${await tplRes.text()}`)
 
     // 管理者自身の予約で満席化（capacity=1なので1件で満席）
-    const slotId = await findSlotId(ctx, teamSlug, tokens.admin, day.iso, '09:00', lineId)
+    slotId = await findSlotId(ctx, teamSlug, tokens.admin, day.iso, '09:00', lineId)
     const reserveRes = await ctx.post(`${BE_API}/teams/${teamSlug}/reservations`, {
       headers: authHeaders(tokens.admin),
       data: { reservationSlotId: slotId, lineId, userNote: 'E2E満席化用(管理者)' },
@@ -444,6 +448,23 @@ test.describe('D群 優先A: キャンセル待ち（実機・週移動で維持
     await expect(page.getByText(/キャンセル待ちを取消しました|取消しました/)).toBeVisible({ timeout: 15_000 })
     await expect(myListEntry, '取消後は一覧から消えること').not.toBeVisible({ timeout: 10_000 })
     await page.screenshot({ path: 'test-results/d-a-05-after-cancel.png', fullPage: true })
+  })
+
+  test('own booked slot is disabled in the matrix and the waitlist API rejects it with RESERVATION_013', async ({ page }) => {
+    await gotoReservations(page, teamSlug)
+    await openReserveTab(page)
+    await goToWeekContaining(page, day.iso)
+
+    const bookedCell = page.getByRole('button', { name: new RegExp(`${day.rowLabel.replace(/[()]/g, '\\$&')} 09:00 髱｢隲・ｮ､`) })
+    await expect(bookedCell).toBeVisible({ timeout: 15_000 })
+    await expect(bookedCell).toBeDisabled()
+    await expect(bookedCell).toContainText(/予約済み/)
+    await expect(page.getByTestId('waitlist-register')).not.toBeVisible()
+
+    const response = await page.request.post(`${BE_API}/teams/${teamSlug}/reservation-slots/${slotId}/waitlist`)
+    expect(response.status()).toBe(409)
+    const body = (await response.json()) as { error?: { code?: string } }
+    expect(body.error?.code).toBe('RESERVATION_013')
   })
 
 })

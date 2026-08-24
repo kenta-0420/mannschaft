@@ -682,6 +682,7 @@
       "state": {
         "available": "Open",
         "booked": "Full",
+        "reserved": "Booked by you",
         "closed": "Closed",
         "unavailable": "Unavailable"
       },
