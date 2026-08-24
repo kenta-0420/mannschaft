@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="ja" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mannschaft B棚卸しボード — UIプロトタイプ</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f7f2;
+      --panel: #ffffff;
+      --panel-soft: #edf2e9;
+      --text: #18221b;
+      --muted: #647067;
+      --line: #dce4da;
+      --brand: #195c38;
+      --brand-soft: #dff2e7;
+      --accent: #d5ff47;
+      --danger: #c33d43;
+      --warning: #a56a09;
+      --info: #2f65a7;
+      --ready: #23764a;
+      --shadow: 0 14px 40px rgba(26, 55, 36, .08);
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #101512;
+      --panel: #18201b;
+      --panel-soft: #202a23;
+      --text: #edf5ef;
+      --muted: #aab8ae;
+      --line: #334038;
+      --brand: #81d5a4;
+      --brand-soft: #213e2d;
+      --accent: #c8ef46;
+      --danger: #ff8b91;
+      --warning: #f5bc5a;
+      --info: #8cbcff;
+      --ready: #75d39d;
+      --shadow: 0 14px 40px rgba(0, 0, 0, .25);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 85% 0%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 28rem),
+        var(--bg);
+      color: var(--text);
+      font-family: "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
+      min-height: 100vh;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(1480px, 100%); margin: 0 auto; padding: 22px; }
+    .topbar {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      margin-bottom: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .crest {
+      width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px;
+      background: var(--brand); color: var(--bg); font-size: 24px; box-shadow: var(--shadow);
+    }
+    h1 { margin: 0; font-size: clamp(20px, 3vw, 30px); letter-spacing: -.03em; }
+    .subtitle { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    .icon-button {
+      min-width: 44px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--panel); color: var(--text);
+    }
+    .hero {
+      display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; margin-bottom: 18px;
+    }
+    .hero-main, .hero-side, .toolbar, .lane, .drawer {
+      border: 1px solid var(--line); border-radius: 20px; background: var(--panel); box-shadow: var(--shadow);
+    }
+    .hero-main { padding: 24px; position: relative; overflow: hidden; }
+    .hero-main::after {
+      content: "B1"; position: absolute; right: 18px; bottom: -35px; font-size: 136px; font-weight: 900;
+      color: color-mix(in srgb, var(--brand) 8%, transparent); line-height: 1;
+    }
+    .eyebrow { color: var(--brand); font-weight: 800; font-size: 12px; letter-spacing: .12em; }
+    .hero h2 { max-width: 710px; margin: 10px 0 8px; font-size: clamp(24px, 4vw, 42px); line-height: 1.12; letter-spacing: -.045em; }
+    .hero p { color: var(--muted); max-width: 740px; line-height: 1.8; margin: 0; }
+    .hero-side { padding: 18px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .stat { padding: 14px; border-radius: 15px; background: var(--panel-soft); }
+    .stat strong { display: block; font-size: 25px; font-variant-numeric: tabular-nums; }
+    .stat span { color: var(--muted); font-size: 12px; }
+    .toolbar { padding: 14px; margin-bottom: 16px; }
+    .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .stage-button, .filter-button {
+      min-height: 44px; border: 1px solid var(--line); padding: 0 15px; border-radius: 999px;
+      background: var(--panel); color: var(--text); font-weight: 700;
+    }
+    .stage-button.active { background: var(--text); color: var(--panel); border-color: var(--text); }
+    .filter-button.active { background: var(--brand-soft); color: var(--brand); border-color: var(--brand); }
+    .search {
+      margin-left: auto; min-height: 44px; min-width: min(300px, 100%); border: 1px solid var(--line);
+      border-radius: 12px; background: var(--bg); color: var(--text); padding: 0 14px; font-size: 16px;
+    }
+    .recommendation {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px 16px; margin-bottom: 16px; border-radius: 16px;
+      border: 1px solid color-mix(in srgb, var(--warning) 38%, var(--line));
+      background: color-mix(in srgb, var(--warning) 8%, var(--panel));
+    }
+    .recommendation b { display: block; margin-bottom: 4px; }
+    .recommendation span { color: var(--muted); font-size: 13px; }
+    .primary-button, .secondary-button {
+      min-height: 44px; border-radius: 12px; padding: 0 16px; font-weight: 800;
+    }
+    .primary-button { border: 0; background: var(--accent); color: #17200f; }
+    .secondary-button { border: 1px solid var(--line); background: var(--panel); color: var(--text); }
+    .board { display: grid; grid-template-columns: repeat(4, minmax(250px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 10px; }
+    .lane { padding: 12px; box-shadow: none; min-width: 250px; }
+    .lane-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 3px 12px; }
+    .lane-title { display: flex; align-items: center; gap: 8px; font-weight: 900; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+    .lane[data-status="blocked"] .dot { background: var(--danger); }
+    .lane[data-status="unknown"] .dot { background: var(--muted); }
+    .lane[data-status="working"] .dot { background: var(--info); }
+    .lane[data-status="ready"] .dot { background: var(--ready); }
+    .count { color: var(--muted); font-size: 12px; }
+    .cards { display: grid; gap: 10px; }
+    .feature-card {
+      width: 100%; text-align: left; padding: 14px; border-radius: 15px; border: 1px solid var(--line);
+      border-left: 4px solid var(--muted); background: var(--panel); color: var(--text); transition: .15s ease;
+    }
+    .feature-card:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(26, 55, 36, .1); }
+    .feature-card[data-status="blocked"] { border-left-color: var(--danger); }
+    .feature-card[data-status="working"] { border-left-color: var(--info); }
+    .feature-card[data-status="ready"] { border-left-color: var(--ready); }
+    .card-top { display: flex; justify-content: space-between; gap: 10px; }
+    .feature-card h3 { margin: 4px 0 7px; font-size: 16px; }
+    .feature-key { font: 11px ui-monospace, SFMono-Regular, Consolas, monospace; color: var(--muted); }
+    .priority { font-size: 10px; font-weight: 900; padding: 4px 7px; border-radius: 999px; background: var(--panel-soft); white-space: nowrap; }
+    .priority.must { color: var(--danger); background: color-mix(in srgb, var(--danger) 11%, var(--panel)); }
+    .feature-card p { color: var(--muted); font-size: 12px; line-height: 1.65; margin: 0 0 10px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 5px; }
+    .tag { padding: 4px 7px; border-radius: 7px; background: var(--panel-soft); color: var(--muted); font-size: 10px; font-weight: 700; }
+    .empty { padding: 28px 10px; text-align: center; color: var(--muted); font-size: 13px; }
+    .backdrop { position: fixed; inset: 0; background: rgba(5, 10, 7, .48); z-index: 10; opacity: 0; pointer-events: none; transition: .2s; }
+    .backdrop.open { opacity: 1; pointer-events: auto; }
+    .drawer {
+      position: fixed; z-index: 11; top: 12px; right: 12px; bottom: 12px; width: min(600px, calc(100% - 24px));
+      padding: 22px; overflow-y: auto; transform: translateX(calc(100% + 30px)); transition: .25s ease;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-header { display: flex; justify-content: space-between; gap: 16px; align-items: start; }
+    .drawer h2 { margin: 6px 0 0; font-size: 27px; }
+    .section { padding: 16px 0; border-bottom: 1px solid var(--line); }
+    .section h4 { margin: 0 0 8px; font-size: 12px; color: var(--brand); letter-spacing: .08em; }
+    .section p, .section li { color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .section ul { margin: 0; padding-left: 20px; }
+    .prompt-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 10px; }
+    select {
+      min-height: 44px; border: 1px solid var(--line); border-radius: 12px; background: var(--bg);
+      color: var(--text); padding: 0 12px; font-size: 16px;
+    }
+    textarea {
+      width: 100%; min-height: 260px; resize: vertical; border: 1px solid var(--line); border-radius: 13px;
+      background: #111713; color: #dce9df; padding: 14px; font: 12px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace;
+    }
+    .drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 10px; }
+    .toast {
+      position: fixed; z-index: 20; left: 50%; bottom: 24px; transform: translate(-50%, 20px);
+      opacity: 0; pointer-events: none; border-radius: 12px; padding: 12px 16px; background: var(--text);
+      color: var(--panel); font-weight: 800; transition: .2s;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    .prototype-note { margin: 20px 2px 0; color: var(--muted); font-size: 11px; text-align: right; }
+    @media (max-width: 900px) {
+      .hero { grid-template-columns: 1fr; }
+      .board { grid-template-columns: repeat(4, minmax(280px, 84vw)); }
+      .search { order: 10; width: 100%; margin-left: 0; }
+    }
+    @media (max-width: 520px) {
+      .shell { padding: 12px; }
+      .hero-main { padding: 18px; }
+      .hero-side { grid-template-columns: 1fr 1fr; }
+      .recommendation { align-items: stretch; flex-direction: column; }
+      .prompt-controls, .drawer-actions { grid-template-columns: 1fr; }
+      .drawer { padding: 17px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="crest" aria-hidden="true">🏟️</div>
+        <div>
+          <h1>B棚卸しボード</h1>
+          <p class="subtitle">サッカー／同窓会に集中し、次にやる仕事を決める</p>
+        </div>
+      </div>
+      <button class="icon-button" id="themeToggle" type="button" aria-label="テーマを切り替える">◐</button>
+    </header>
+
+    <section class="hero">
+      <div class="hero-main">
+        <div class="eyebrow">CURRENT FOCUS · B1 / 50 USERS</div>
+        <h2>LINEを置き換える日常導線を、先に完成させる。</h2>
+        <p>成人サッカーチームで「予定・出欠・連絡・会話」を日常利用し、同窓会の名簿・一斉連絡・イベント出欠へ同じ基盤を展開する。</p>
+      </div>
+      <div class="hero-side">
+        <div class="stat"><strong id="visibleCount">0</strong><span>表示中の能力</span></div>
+        <div class="stat"><strong id="mustCount">0</strong><span>B1 MUST</span></div>
+        <div class="stat"><strong id="blockedCount">0</strong><span>blockerあり</span></div>
+        <div class="stat"><strong>2</strong><span>中心ユースケース</span></div>
+      </div>
+    </section>
+
+    <section class="toolbar" aria-label="棚卸しフィルター">
+      <div class="filters" id="filters">
+        <button class="stage-button" data-stage="B0" type="button">B0 本番準備</button>
+        <button class="stage-button active" data-stage="B1" type="button">B1 50人</button>
+        <button class="stage-button" data-stage="B2" type="button">B2 10チーム</button>
+        <button class="stage-button" data-stage="B3" type="button">B3 100チーム</button>
+        <button class="stage-button" data-stage="B4" type="button">B4 1万人</button>
+        <button class="filter-button active" data-audience="all" type="button">すべて</button>
+        <button class="filter-button" data-audience="soccer" type="button">⚽ サッカー</button>
+        <button class="filter-button" data-audience="alumni" type="button">🎓 同窓会</button>
+        <input class="search" id="search" type="search" placeholder="機能名・feature_keyで検索" aria-label="機能検索">
+      </div>
+    </section>
+
+    <section class="recommendation" id="recommendation">
+      <div>
+        <b>次の推奨：<span id="recommendationTitle">本番デプロイ経路の実証</span></b>
+        <span id="recommendationReason">B1に入る前に、ビルドからロールバックまでを一度完走させる。</span>
+      </div>
+      <button class="primary-button" id="openRecommendation" type="button">指示文を作る</button>
+    </section>
+
+    <section class="board" id="board" aria-label="準備状態別カンバン"></section>
+    <p class="prototype-note">プロトタイプ — 表示データはサンプル。将来は docs/inventory/feature-inventory.yaml から生成する。</p>
+  </main>
+
+  <div class="backdrop" id="backdrop"></div>
+  <aside class="drawer" id="drawer" aria-hidden="true" aria-label="能力詳細と指示文生成">
+    <div class="drawer-header">
+      <div>
+        <div class="feature-key" id="drawerKey"></div>
+        <h2 id="drawerTitle"></h2>
+      </div>
+      <button class="icon-button" id="closeDrawer" type="button" aria-label="閉じる">✕</button>
+    </div>
+    <div class="section">
+      <h4>今やる理由</h4>
+      <p id="drawerWhy"></p>
+    </div>
+    <div class="section">
+      <h4>完了条件</h4>
+      <ul id="drawerAcceptance"></ul>
+    </div>
+    <div class="section">
+      <h4>既知の課題</h4>
+      <p id="drawerBlocker"></p>
+    </div>
+    <div class="section">
+      <h4>AIへの指示文</h4>
+      <div class="prompt-controls">
+        <select id="agentSelect" aria-label="対象エージェント">
+          <option value="Claude">🧠 Claude君</option>
+          <option value="Codex">🛠️ Codex君</option>
+        </select>
+        <select id="taskSelect" aria-label="作業種別">
+          <option value="investigate">棚卸し・調査</option>
+          <option value="implement">実装・修正</option>
+          <option value="review">検分</option>
+        </select>
+      </div>
+      <textarea id="promptText" aria-label="生成された指示文" spellcheck="false"></textarea>
+      <div class="drawer-actions">
+        <button class="primary-button" id="copyPrompt" type="button">指示文をコピー</button>
+        <button class="secondary-button" id="copyKey" type="button">feature_keyのみコピー</button>
+      </div>
+    </div>
+  </aside>
+  <div class="toast" id="toast" role="status">コピーしました</div>
+
+  <script>
+    const features = [
+      {
+        key: 'production-deploy', title: '本番デプロイ経路', stage: 'B0', status: 'blocked', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: 'Nuxt本番ビルドからECS稼働・ロールバックまでを実証する。',
+        why: 'B1の50人を招待する前の前提。現状はAWS secretを設定したデプロイ本体が未完走。',
+        acceptance: ['nuxt buildがCI相当環境で安定完走する', 'ECSの新revisionが起動しHTTP 200を返す', '失敗時に前revisionへ復旧できる'],
+        blocker: 'CMP-260821-1235 / CMP-260821-2130', refs: ['docs/task-list.md']
+      },
+      {
+        key: 'backup-restore', title: 'バックアップ・復元', stage: 'B0', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: 'DBとメディアを取得するだけでなく、復元手順を実測する。',
+        why: '成人チームでも同窓会でも、名簿と連絡履歴の喪失は信頼を致命的に損なう。',
+        acceptance: ['RDSスナップショット取得を確認する', '別DBへ復元し整合性を検証する', 'RPO/RTOと手順を記録する'],
+        blocker: '未棚卸し', refs: ['infra/', 'docs/']
+      },
+      {
+        key: 'auth-core', title: '登録・ログイン', stage: 'B1', status: 'working', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: '登録、メール確認、ログイン、セッション維持を一つの導線として確認する。',
+        why: 'LINE置き換えでは、メンバー全員が迷わずログインできることが最初の離脱防止になる。',
+        acceptance: ['新規登録からログインまで実機で完走する', '失効セッションが自動更新される', 'パスワード再設定が届く'],
+        blocker: 'デプロイ後の実メール経路が未検証', refs: ['docs/features/F01.1_auth.md']
+      },
+      {
+        key: 'team-invite-join', title: 'チーム招待・加入', stage: 'B1', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: '管理者がURL/QRを送り、参加者が登録・加入を完了する。',
+        why: '50人のオンボーディングを個別サポートなしで行うため。',
+        acceptance: ['招待URLから未登録者が加入できる', '期限切れ・無効化トークンを拒否する', '二重加入で所属が重複しない'],
+        blocker: '未棚卸し', refs: ['docs/features/F01.2_org_team_member_role/README.md', 'docs/features/F01.8_team_invite_qr_pdf.md']
+      },
+      {
+        key: 'shared-schedule', title: '予定作成・共有', stage: 'B1', status: 'working', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: '練習・試合・同窓会を作成し、対象者に共有する。',
+        why: 'サッカーと同窓会に共通する、最も頻度の高い基本ジョブ。',
+        acceptance: ['単発予定の作成・編集・中止ができる', '繰り返し予定を作成できる', 'メンバーのカレンダーに表示される'],
+        blocker: 'タイムゾーン全域是正は別戦役中', refs: ['docs/features/F03.1_schedule_shared.md']
+      },
+      {
+        key: 'attendance-response', title: '出欠回答・集計', stage: 'B1', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: '出席・欠席・未定を回答し、管理者が未回答者を確認する。',
+        why: 'LINEの投票・返信チェックを置き換え、管理者の集計作業を減らす中核価値。',
+        acceptance: ['メンバーがスマホで1操作で回答できる', '管理者が実名付き集計を見られる', '未回答者へリマインドできる'],
+        blocker: '実機E2Eの証拠未記入', refs: ['docs/features/F03.1_schedule_shared.md']
+      },
+      {
+        key: 'announcements', title: '重要なお知らせ', stage: 'B1', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: '管理者が全員へ連絡し、読まれたかを確認する。',
+        why: 'LINEで流れる重要連絡を、通常の会話から分離する。',
+        acceptance: ['管理者がお知らせを作成できる', '対象者へ通知される', '既読・未読を確認できる'],
+        blocker: '「ブログ」「掲示板」「確認付き通知」との責務境界が未整理', refs: ['docs/features/F02.8_dashboard_announcement.md', 'docs/features/F04.9_confirmable_notification.md']
+      },
+      {
+        key: 'chat', title: 'チームチャット', stage: 'B1', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: '日常の会話、返信、画像共有、メンションを提供する。',
+        why: 'LINE置き換えを明示するならB1必須。予定専用アプリに留めないため。',
+        acceptance: ['チームチャンネルで送受信できる', '再接続後に取りこぼしがない', '添付・返信・メンションがスマホで使える'],
+        blocker: 'WebSocket外部ブローカ化は未完', refs: ['docs/features/F04.2_chat.md', 'docs/architecture/websocket_external_broker_valkey.md']
+      },
+      {
+        key: 'bulletin-board', title: '掲示板', stage: 'B1', status: 'unknown', priority: 'should', audiences: ['soccer', 'alumni'],
+        summary: 'カテゴリ別スレッド、返信、既読、重要度でストック型の議論を行う。',
+        why: 'チャットで流したくないルールや長期連絡に使う。',
+        acceptance: ['スレッドの作成・返信ができる', '重要度とピン留めが動く', '既読者を確認できる'],
+        blocker: '現行棚卸しでコルクボードと誤って同一視されている', refs: ['docs/features/F05.1_bulletin_board.md']
+      },
+      {
+        key: 'corkboard', title: 'コルクボード', stage: 'B3', status: 'unknown', priority: 'defer', audiences: ['soccer', 'alumni'],
+        summary: 'チャットや掲示板の情報をカード化して自由配置する。',
+        why: '価値はあるが、LINE置き換えの最初の習慣には不要。基本導線の完成を優先する。',
+        acceptance: ['掲示板と独立レコードに分離される', '閉栓中はUI/APIの両方から到達できない'],
+        blocker: '優先度上の理由で延期', refs: ['docs/features/F09.8_corkboard.md']
+      },
+      {
+        key: 'alumni-directory', title: '同窓会名簿', stage: 'B2', status: 'unknown', priority: 'must', audiences: ['alumni'],
+        summary: '本人が連絡先を更新し、幹事が公開範囲内で名簿を管理する。',
+        why: '同窓会固有のキラージョブ。サッカーのメンバー管理基盤を再利用できる。',
+        acceptance: ['本人が連絡先を更新できる', '幹事に必要な項目だけを開示できる', '一括エクスポートできる'],
+        blocker: '公開範囲と名簿項目の仕様確定が必要', refs: ['docs/features/F01.2_org_team_member_role.md']
+      },
+      {
+        key: 'cross-team-match', title: '対戦・クロスチーム予定', stage: 'B2', status: 'working', priority: 'must', audiences: ['soccer'],
+        summary: '相手チームを招待し、両チームに同じ試合予定を共有する。',
+        why: '単一チーム管理アプリから階層ネットワークへ進む最初の差別化。',
+        acceptance: ['対戦申込・承諾ができる', '両チームの予定に同一試合が表示される', 'キャンセルが双方へ通知される'],
+        blocker: 'マッチングと予定の正本境界を要確認', refs: ['docs/features/F03.1_schedule_shared.md', 'docs/features/F08.1_matching.md']
+      },
+      {
+        key: 'notification-fanout', title: '大規模通知fan-out', stage: 'B3', status: 'working', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: '5,000人規模の一斉通知を落とさず処理する。',
+        why: 'B3では通知の信頼性がそのままサービスの信頼性になる。',
+        acceptance: ['5,000人の配信が棄却ゼロで完了する', '失敗が再試行される', '運用者が滞留・失敗を検知できる'],
+        blocker: 'CMP-001。並列化と目標時間達成が残る', refs: ['docs/task-list.md']
+      },
+      {
+        key: 'audit-moderation', title: '監査・モデレーション', stage: 'B3', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: '通報、利用停止、管理操作履歴、インシデント対応を整備する。',
+        why: '100チームでは創業者の口頭調整では処理できない。',
+        acceptance: ['通報から処置まで追跡できる', '管理者の操作が監査ログに残る', '処置を取り消せる'],
+        blocker: 'ドメイン単位の粗い棚卸しのまま', refs: ['docs/features/F04.5_moderation.md', 'docs/features/F10.3_audit_logs.md']
+      },
+      {
+        key: 'team-fee-collection', title: '会費徴収', stage: 'B3', status: 'unknown', priority: 'should', audiences: ['soccer', 'alumni'],
+        summary: '月会費・参加費を請求し、支払い状況を管理する。',
+        why: '継続利用と管理者の負担削減に効くが、B1で連絡習慣を作る前に決済リスクを追わない。',
+        acceptance: ['請求・支払い・未納確認ができる', '二重請求が発生しない', '返金・失敗の運用手順がある'],
+        blocker: '現行台帳でプラットフォーム課金と同一行', refs: ['docs/features/F08.9_membership_billing_paywall/README.md']
+      },
+      {
+        key: 'organization-hierarchy', title: '組織階層・複数チーム', stage: 'B4', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
+        summary: '協会・クラブ・年代別チーム、学校・卒業年次の階層を管理する。',
+        why: '1万アカウントでの差別化とネットワーク効果の中心。',
+        acceptance: ['多段組織を作成できる', '個人が複数スコープへ所属できる', '上位から対象範囲を選んで連絡できる'],
+        blocker: 'チーム単位のB1/B2運用結果を先に取得する', refs: ['docs/features/F01.2_org_team_member_role/README.md']
+      }
+    ];
+
+    const laneDefinitions = [
+      { status: 'blocked', title: '不備あり' },
+      { status: 'unknown', title: '未棚卸' },
+      { status: 'working', title: '実装・検証中' },
+      { status: 'ready', title: '準備完了' }
+    ];
+
+    let selectedStage = 'B1';
+    let selectedAudience = 'all';
+    let selectedFeature = null;
+
+    const board = document.querySelector('#board');
+    const drawer = document.querySelector('#drawer');
+    const backdrop = document.querySelector('#backdrop');
+
+    function getFilteredFeatures() {
+      const query = document.querySelector('#search').value.trim().toLowerCase();
+      return features.filter((feature) => {
+        const stageMatches = feature.stage === selectedStage;
+        const audienceMatches = selectedAudience === 'all' || feature.audiences.includes(selectedAudience);
+        const queryMatches = !query || `${feature.key} ${feature.title} ${feature.summary}`.toLowerCase().includes(query);
+        return stageMatches && audienceMatches && queryMatches;
+      });
+    }
+
+    function renderBoard() {
+      const visible = getFilteredFeatures();
+      board.innerHTML = laneDefinitions.map((lane) => {
+        const cards = visible.filter((feature) => feature.status === lane.status);
+        const content = cards.length ? cards.map((feature) => `
+          <button class="feature-card" type="button" data-key="${feature.key}" data-status="${feature.status}">
+            <div class="card-top">
+              <span class="feature-key">${feature.key}</span>
+              <span class="priority ${feature.priority}">${feature.priority.toUpperCase()}</span>
+            </div>
+            <h3>${feature.title}</h3>
+            <p>${feature.summary}</p>
+            <div class="tags">
+              <span class="tag">${feature.stage}</span>
+              ${feature.audiences.map((audience) => `<span class="tag">${audience === 'soccer' ? '⚽ サッカー' : '🎓 同窓会'}</span>`).join('')}
+            </div>
+          </button>`).join('') : '<div class="empty">該当なし</div>';
+        return `
+          <article class="lane" data-status="${lane.status}">
+            <div class="lane-header"><div class="lane-title"><span class="dot"></span>${lane.title}</div><span class="count">${cards.length}</span></div>
+            <div class="cards">${content}</div>
+          </article>`;
+      }).join('');
+
+      document.querySelector('#visibleCount').textContent = visible.length;
+      document.querySelector('#mustCount').textContent = visible.filter((feature) => feature.priority === 'must').length;
+      document.querySelector('#blockedCount').textContent = visible.filter((feature) => feature.status === 'blocked' || feature.blocker !== 'なし').length;
+      const recommended = visible.find((feature) => feature.priority === 'must' && feature.status === 'blocked')
+        || visible.find((feature) => feature.priority === 'must' && feature.status !== 'ready')
+        || visible[0];
+      document.querySelector('#recommendationTitle').textContent = recommended?.title || '該当課題なし';
+      document.querySelector('#recommendationReason').textContent = recommended?.why || '別のフィルターを選んでください。';
+      document.querySelector('#openRecommendation').dataset.key = recommended?.key || '';
+    }
+
+    function buildPrompt(feature) {
+      const agent = document.querySelector('#agentSelect').value;
+      const taskType = document.querySelector('#taskSelect').value;
+      const actions = {
+        investigate: '実装・テスト・設計書を追って現状を棚卸しし、不明を証拠付きの状態へ更新してください。',
+        implement: '不足を実装し、変更範囲に比例したテストと実機検証まで完了してください。',
+        review: '設計・実装・認可・テストを検分し、完了条件へのトレーサビリティを確認してください。'
+      };
+      return `MannschaftのB棚卸しに基づく${agent}向けの依頼です。
+
+■ 対象
+- feature_key: ${feature.key}
+- 能力: ${feature.title}
+- 最早導入段階: ${feature.stage}
+- 優先度: ${feature.priority}
+- 対象ユースケース: ${feature.audiences.join(' / ')}
+
+■ 目的
+${feature.why}
+
+■ 依頼
+${actions[taskType]}
+
+■ 完了条件
+${feature.acceptance.map((item) => `- ${item}`).join('\n')}
+
+■ 既知の課題
+${feature.blocker}
+
+■ 参照候補
+${feature.refs.map((item) => `- ${item}`).join('\n')}
+
+■ 作業規則
+- AGENTS.mdとCLAUDE.md、対象領域の規約を先に読むこと。
+- 本陣の既存変更を触らず、worktreeで隔離すること。
+- 不明を推測で「実装済」にしないこと。
+- 証拠とともに docs/inventory/feature-inventory.yaml の更新案を示すこと。
+- 完了時は実行した検証、未実行の検証、残存リスクを日本語で報告すること。`;
+    }
+
+    function openDrawer(key) {
+      const feature = features.find((item) => item.key === key);
+      if (!feature) return;
+      selectedFeature = feature;
+      document.querySelector('#drawerKey').textContent = `${feature.key} · ${feature.stage} · ${feature.priority.toUpperCase()}`;
+      document.querySelector('#drawerTitle').textContent = feature.title;
+      document.querySelector('#drawerWhy').textContent = feature.why;
+      document.querySelector('#drawerAcceptance').innerHTML = feature.acceptance.map((item) => `<li>${item}</li>`).join('');
+      document.querySelector('#drawerBlocker').textContent = feature.blocker;
+      document.querySelector('#promptText').value = buildPrompt(feature);
+      drawer.classList.add('open');
+      backdrop.classList.add('open');
+      drawer.setAttribute('aria-hidden', 'false');
+      document.querySelector('#closeDrawer').focus();
+    }
+
+    function closeDrawer() {
+      drawer.classList.remove('open');
+      backdrop.classList.remove('open');
+      drawer.setAttribute('aria-hidden', 'true');
+    }
+
+    function showToast(message) {
+      const toast = document.querySelector('#toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      window.setTimeout(() => toast.classList.remove('show'), 1600);
+    }
+
+    async function copyText(text, label) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch {
+        const temporary = document.createElement('textarea');
+        temporary.value = text;
+        document.body.appendChild(temporary);
+        temporary.select();
+        document.execCommand('copy');
+        temporary.remove();
+      }
+      showToast(label);
+    }
+
+    document.querySelector('#filters').addEventListener('click', (event) => {
+      const stageButton = event.target.closest('[data-stage]');
+      const audienceButton = event.target.closest('[data-audience]');
+      if (stageButton) {
+        selectedStage = stageButton.dataset.stage;
+        document.querySelectorAll('[data-stage]').forEach((button) => button.classList.toggle('active', button === stageButton));
+        renderBoard();
+      }
+      if (audienceButton) {
+        selectedAudience = audienceButton.dataset.audience;
+        document.querySelectorAll('[data-audience]').forEach((button) => button.classList.toggle('active', button === audienceButton));
+        renderBoard();
+      }
+    });
+
+    document.querySelector('#search').addEventListener('input', renderBoard);
+    board.addEventListener('click', (event) => {
+      const card = event.target.closest('[data-key]');
+      if (card) openDrawer(card.dataset.key);
+    });
+    document.querySelector('#openRecommendation').addEventListener('click', (event) => openDrawer(event.currentTarget.dataset.key));
+    document.querySelector('#closeDrawer').addEventListener('click', closeDrawer);
+    backdrop.addEventListener('click', closeDrawer);
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeDrawer(); });
+    document.querySelector('#agentSelect').addEventListener('change', () => { if (selectedFeature) document.querySelector('#promptText').value = buildPrompt(selectedFeature); });
+    document.querySelector('#taskSelect').addEventListener('change', () => { if (selectedFeature) document.querySelector('#promptText').value = buildPrompt(selectedFeature); });
+    document.querySelector('#copyPrompt').addEventListener('click', () => copyText(document.querySelector('#promptText').value, '指示文をコピーしました'));
+    document.querySelector('#copyKey').addEventListener('click', () => copyText(selectedFeature?.key || '', 'feature_keyをコピーしました'));
+    document.querySelector('#themeToggle').addEventListener('click', () => {
+      const root = document.documentElement;
+      root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+    });
+
+    renderBoard();
+  </script>
+</body>
+</html>
