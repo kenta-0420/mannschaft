@@ -455,7 +455,7 @@ test.describe('D群 優先A: キャンセル待ち（実機・週移動で維持
     await openReserveTab(page)
     await goToWeekContaining(page, day.iso)
 
-    const bookedCell = page.getByRole('button', { name: new RegExp(`${day.rowLabel.replace(/[()]/g, '\\$&')} 09:00 髱｢隲・ｮ､`) })
+    const bookedCell = page.getByRole('button', { name: new RegExp(`${day.rowLabel.replace(/[()]/g, '\\$&')} 09:00 .*予約済み`) })
     await expect(bookedCell).toBeVisible({ timeout: 15_000 })
     await expect(bookedCell).toBeDisabled()
     await expect(bookedCell).toContainText(/予約済み/)
