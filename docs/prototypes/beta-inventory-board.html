@@ -455,13 +455,13 @@
           <img class="shot-preview" id="shotPreview" alt="添付するスクリーンショットのプレビュー" hidden>
           <div class="shot-help">
             <b>Ctrl＋V、ドロップ、または画像を選択</b>
-            <p>画像はこのブラウザ内へ保存されます。AIへ渡す時は「画像保存」で書き出せます。</p>
+            <p>画像はこのブラウザ内へ仮保存されます。AIへ渡す時はカードの「一式保存」で書き出せます。</p>
             <button class="secondary-button" id="chooseShot" type="button">画像を選択</button>
             <input id="shotInput" type="file" accept="image/*" hidden>
           </div>
         </div>
       </div>
-      <div class="storage-note"><b>試作の保存先：</b>このブラウザのIndexedDB（画像はBlob）。HTML・Git・AWSには送信しません。ブラウザデータ削除や別PCでは失われます。本番版は本文をDB、画像を非公開S3へ保存し、Mannschaftの認可経由で閲覧する想定です。</div>
+      <div class="storage-note"><b>ローカル専用：</b>入力中のメモはこのブラウザのIndexedDB（画像はBlob）へ仮保存します。HTML・Git・AWSには送信しません。確定分はカードの「一式保存」から、機能別フォルダへMarkdown＋画像として書き出します。</div>
       <div class="drawer-actions">
         <button class="primary-button" type="submit">気づきを保存</button>
         <button class="secondary-button" id="cancelInsight" type="button">キャンセル</button>
@@ -1051,7 +1051,7 @@
                           ${insight.page ? `<p>画面：${escapeHtml(insight.page)}</p>` : ''}
                           <div class="insight-actions">
                             <button class="mini-button primary" type="button" data-insight-prompt="${escapeHtml(insight.id)}">AI指示文</button>
-                            ${insight.screenshot ? `<button class="mini-button" type="button" data-insight-download="${escapeHtml(insight.id)}">画像保存</button>` : ''}
+                            <button class="mini-button" type="button" data-insight-export="${escapeHtml(insight.id)}">一式保存</button>
                             <button class="mini-button" type="button" data-insight-status="${escapeHtml(insight.id)}">${insight.status === 'inbox' ? '課題化済にする' : insight.status === 'planned' ? '対応済にする' : '未整理へ戻す'}</button>
                           </div>
                         </div>
@@ -1133,7 +1133,7 @@
 - 発見画面: ${feature.insight.page || '未記録'}
 - 状態: ${feature.insight.status}
 - 記録日時: ${new Date(feature.insight.createdAt).toLocaleString('ja-JP')}
-- スクリーンショット: ${feature.insight.screenshot ? `${feature.insight.screenshotName || '添付あり'}（「画像保存」で書き出し、この依頼と一緒に添付してください）` : 'なし'}
+- スクリーンショット: ${feature.insight.screenshot ? `${feature.insight.screenshotName || '添付あり'}（「一式保存」で書き出し、この依頼と一緒に添付してください）` : 'なし'}
 ` : '';
       const targetType = feature.campaign ? 'CMP' : feature.insight ? '改善メモ' : 'feature_key';
       return `MannschaftのB棚卸しに基づく${agent}向けの依頼です。
@@ -1257,21 +1257,77 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
       return `NOTE-${String(date.getFullYear()).slice(-2)}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}-${String(date.getMilliseconds()).padStart(3, '0')}`;
     }
 
-    function downloadInsightScreenshot(insight) {
-      if (!insight?.screenshot) return;
+    function safeLocalName(value) {
+      return String(value).replace(/[<>:"/\\|?*\u0000-\u001F]/g, '_').trim() || 'untitled';
+    }
+
+    function screenshotExtension(insight) {
       const originalName = insight.screenshotName || '';
       const extensionFromName = originalName.includes('.') ? originalName.split('.').pop() : '';
       const extensionByType = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }[insight.screenshot.type];
-      const extension = extensionFromName || extensionByType || 'png';
+      return extensionFromName || extensionByType || 'png';
+    }
+
+    function insightMarkdown(insight) {
+      const screenshotName = insight.screenshot ? `screenshot.${screenshotExtension(insight)}` : 'なし';
+      return `# ${insight.title}
+
+- ID: ${insight.id}
+- feature_key: ${insight.featureKey}
+- 優先度: ${insight.priority}
+- 状態: ${insight.status}
+- 発見画面: ${insight.page || '未記録'}
+- 記録日時: ${new Date(insight.createdAt).toLocaleString('ja-JP')}
+- スクリーンショット: ${screenshotName}
+
+## 状況・期待する動き
+
+${insight.detail}
+`;
+    }
+
+    function downloadBlob(blob, fileName) {
       const link = document.createElement('a');
-      const url = URL.createObjectURL(insight.screenshot);
+      const url = URL.createObjectURL(blob);
       link.href = url;
-      link.download = `${insight.id}-${insight.featureKey}.${extension}`;
+      link.download = fileName;
       document.body.appendChild(link);
       link.click();
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      showToast('スクリーンショットを保存しました');
+    }
+
+    async function writeLocalFile(directory, fileName, blob) {
+      const handle = await directory.getFileHandle(fileName, { create: true });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    }
+
+    async function exportInsightBundle(insight) {
+      if (!insight) return;
+      const markdown = new Blob([insightMarkdown(insight)], { type: 'text/markdown;charset=utf-8' });
+      const featureFolder = safeLocalName(insight.featureKey);
+      const noteFolder = safeLocalName(insight.id);
+      try {
+        if (typeof window.showDirectoryPicker === 'function') {
+          const root = await window.showDirectoryPicker({ mode: 'readwrite' });
+          const featureDirectory = await root.getDirectoryHandle(featureFolder, { create: true });
+          const noteDirectory = await featureDirectory.getDirectoryHandle(noteFolder, { create: true });
+          await writeLocalFile(noteDirectory, 'note.md', markdown);
+          if (insight.screenshot) {
+            await writeLocalFile(noteDirectory, `screenshot.${screenshotExtension(insight)}`, insight.screenshot);
+          }
+          showToast(`${featureFolder}/${noteFolder} に保存しました`);
+          return;
+        }
+        const prefix = `${featureFolder}__${noteFolder}`;
+        downloadBlob(markdown, `${prefix}__note.md`);
+        if (insight.screenshot) downloadBlob(insight.screenshot, `${prefix}__screenshot.${screenshotExtension(insight)}`);
+        showToast('メモ一式をダウンロードしました');
+      } catch (error) {
+        if (error?.name !== 'AbortError') showToast(`書き出せませんでした: ${error?.message || 'ファイル保存エラー'}`);
+      }
     }
 
     async function advanceInsightStatus(insight) {
@@ -1334,7 +1390,7 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
     board.addEventListener('click', async (event) => {
       const openInsightButton = event.target.closest('[data-open-insight-form]');
       const insightPromptButton = event.target.closest('[data-insight-prompt]');
-      const insightDownloadButton = event.target.closest('[data-insight-download]');
+      const insightExportButton = event.target.closest('[data-insight-export]');
       const insightStatusButton = event.target.closest('[data-insight-status]');
       if (openInsightButton) {
         openInsightForm();
@@ -1344,8 +1400,8 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
         openDrawer(insightPromptButton.dataset.insightPrompt);
         return;
       }
-      if (insightDownloadButton) {
-        downloadInsightScreenshot(insights.find((item) => item.id === insightDownloadButton.dataset.insightDownload));
+      if (insightExportButton) {
+        await exportInsightBundle(insights.find((item) => item.id === insightExportButton.dataset.insightExport));
         return;
       }
       if (insightStatusButton) {
