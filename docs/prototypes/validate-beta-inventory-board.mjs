@@ -6,6 +6,7 @@ const dataSource = fs.readFileSync(new URL('beta-inventory-board-data.js', proto
 const html = fs.readFileSync(new URL('beta-inventory-board.html', prototypeDirectory), 'utf8');
 const taskList = fs.readFileSync(new URL('../task-list.md', prototypeDirectory), 'utf8');
 const b0PlanSource = JSON.parse(fs.readFileSync(new URL('beta-inventory-board-b0-alicization.json', prototypeDirectory), 'utf8'));
+const b0Coverage = JSON.parse(fs.readFileSync(new URL('beta-inventory-board-b0-coverage.json', prototypeDirectory), 'utf8'));
 const context = { window: {} };
 vm.runInNewContext(dataSource, context, { filename: 'beta-inventory-board-data.js' });
 
@@ -89,6 +90,16 @@ for (const capability of data.capabilities) {
 
 const b0Plan = data.b0Alicization;
 if (JSON.stringify(b0Plan) !== JSON.stringify(b0PlanSource)) throw new Error('B0アリシゼーション計画と生成データが不一致です');
+if (JSON.stringify(data.b0Coverage) !== JSON.stringify(b0Coverage)) throw new Error('B0カバレッジmanifestと生成データが不一致です');
+if (JSON.stringify(Object.keys(b0Coverage.journeys || {}).sort()) !== JSON.stringify((b0Plan.journeys || []).map((journey) => journey.id).sort())) throw new Error('B0 coverage journey ID集合が計画と一致しません');
+for (const journey of b0Plan.journeys || []) {
+  const coverage = b0Coverage.journeys?.[journey.id];
+  if (!coverage || !['covered', 'partial', 'missing'].includes(coverage.coverageStatus)) throw new Error(`B0 coverageStatusが不正です: ${journey.id}`);
+  if (!Array.isArray(coverage.specPaths) || new Set(coverage.specPaths).size !== coverage.specPaths.length) throw new Error(`B0 specPathsが配列または一意ではありません: ${journey.id}`);
+  if (['covered', 'partial'].includes(coverage.coverageStatus) && coverage.specPaths.length === 0) throw new Error(`B0カバレッジにspecがありません: ${journey.id}`);
+  for (const specPath of coverage.specPaths || []) if (!fs.existsSync(new URL(`../../${specPath}`, import.meta.url))) throw new Error(`B0 spec参照が存在しません: ${journey.id} / ${specPath}`);
+  if (journey.status === 'passed' && coverage.coverageStatus !== 'covered') throw new Error(`未カバレッジのB0 journeyをpassedにできません: ${journey.id}`);
+}
 if (!b0Plan || b0Plan.stage !== 'B0' || b0Plan.status !== 'planned') throw new Error('B0アリシゼーション計画が未定義または未実測状態でありません');
 const b0CapabilityKeys = new Set(data.capabilities.map((capability) => capability.key));
 for (const journey of b0Plan.journeys || []) {

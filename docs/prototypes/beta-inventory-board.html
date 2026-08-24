@@ -688,7 +688,9 @@
       const b0Plan = baseInventory.b0Alicization;
       if (selectedStage === 'B0' && b0Plan) {
         const statusLabels = { planned: '未実測・計画', runnable: '実行可能', running: '実行中', passed: '通過', failed: '失敗' };
-        board.insertAdjacentHTML('beforeend', `<section class="decision-panel b0-alicization-panel"><div><b>B0 アリシゼーション自動探索</b><span>${b0Plan.journeys.length} journey / ${statusLabels[b0Plan.status] || b0Plan.status}</span></div><p>${escapeHtml(b0Plan.definition)}</p><p>${b0Plan.journeys.map((journey) => `<span class="status-pill ${journey.status === 'failed' ? 'blocked' : journey.status === 'passed' ? 'done' : 'working'}">${escapeHtml(journey.id)} ${escapeHtml(journey.title)}: ${escapeHtml(statusLabels[journey.status] || journey.status)}</span>`).join(' ')}</p><small>実UI・実DB／管理者1＋一般2／別BrowserContext・別ログイン。passedは実測確認後のみ。</small></section>`);
+        const coverageLabels = { covered: 'カバー済み', partial: '既存部分あり', missing: '不足' };
+        const coverageCounts = b0Plan.journeys.reduce((counts, journey) => { const status = baseInventory.b0Coverage?.journeys?.[journey.id]?.coverageStatus || 'missing'; counts[status] = (counts[status] || 0) + 1; return counts; }, {});
+        board.insertAdjacentHTML('beforeend', `<section class="decision-panel b0-alicization-panel"><div><b>B0 アリシゼーション自動探索</b><span>${b0Plan.journeys.length} journey / 実測status: ${statusLabels[b0Plan.status] || b0Plan.status} / E2Eカバレッジ: カバー済み${coverageCounts.covered || 0}・既存部分あり${coverageCounts.partial || 0}・不足${coverageCounts.missing || 0}</span></div><p>${escapeHtml(b0Plan.definition)}</p><p>${b0Plan.journeys.map((journey) => { const coverage = baseInventory.b0Coverage?.journeys?.[journey.id]?.coverageStatus || 'missing'; return `<span class="status-pill ${journey.status === 'failed' ? 'blocked' : journey.status === 'passed' ? 'done' : 'working'}">${escapeHtml(journey.id)} ${escapeHtml(journey.title)}: 実測${escapeHtml(statusLabels[journey.status] || journey.status)} / E2E ${escapeHtml(coverageLabels[coverage] || coverage)}</span>`; }).join(' ')}</p><small>実測status（未実測・計画／通過）とE2Eカバレッジ（カバー済み／既存部分あり／不足）は別管理。実UI・実DB／管理者1＋一般2／別BrowserContext・別ログイン。passedは実測確認後のみ。</small></section>`);
       }
       return focus;
     }
@@ -1040,7 +1042,7 @@
 ` : '';
       const b0Context = feature.stage === 'B0' && baseInventory.b0Alicization ? `
 ■ B0アリシゼーション自動探索
-- 対象journey: ${(baseInventory.b0Alicization.journeys || []).filter((journey) => journey.capabilities.includes(feature.key)).map((journey) => `${journey.id} ${journey.title}\n  確認項目: ${(journey.checks || []).join(' / ')}${journey.knownConstraints?.length ? `\n  既知制約: ${journey.knownConstraints.join(' / ')}` : ''}${journey.prerequisites?.length ? `\n  前提条件: ${journey.prerequisites.join(' / ')}` : ''}`).join(' / ') || '該当journeyなし'}
+- 対象journey: ${(baseInventory.b0Alicization.journeys || []).filter((journey) => journey.capabilities.includes(feature.key)).map((journey) => { const coverage = baseInventory.b0Coverage?.journeys?.[journey.id] || {}; return `${journey.id} ${journey.title}\n  確認項目: ${(journey.checks || []).join(' / ')}\n  既存E2E: ${(coverage.specPaths || []).join(' / ') || '不足'}\n  カバレッジ状態: ${coverage.coverageStatus || 'missing'}${journey.knownConstraints?.length ? `\n  既知制約: ${journey.knownConstraints.join(' / ')}` : ''}${journey.prerequisites?.length ? `\n  前提条件: ${journey.prerequisites.join(' / ')}` : ''}`; }).join(' / ') || '該当journeyなし'}
 - 検証前提: 実UI・実DB、管理者1＋一般利用者2、利用者ごとに別BrowserContext・別ログイン
 - 状態: planned / runnable / running / passed / failed。未実測をpassedにしない
 ` : '';

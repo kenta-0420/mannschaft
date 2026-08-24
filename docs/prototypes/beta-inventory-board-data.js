@@ -1,10 +1,11 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T12:07:14+00:00",
+  "generatedAt": "2026-08-24T12:42:20+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
     "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
     "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
+    "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "059334a7c60cb6315f1e05119d6b5c56c43d15d2",
     "taskListCommit": "f24f2fd08a27d76080b4a2ea2b98a9293ba8c53b",
@@ -5295,6 +5296,93 @@ window.BETA_INVENTORY_DATA = {
         ]
       }
     ]
+  },
+  "b0Coverage": {
+    "schemaVersion": 1,
+    "journeys": {
+      "B0-J1": {
+        "specPaths": [
+          "frontend/tests/e2e/dashboard/dashboard.spec.ts",
+          "frontend/tests/e2e/teams/team-hub.spec.ts",
+          "frontend/tests/e2e/organizations/org-hub.spec.ts",
+          "frontend/tests/e2e/villages/village-flow.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J2": {
+        "specPaths": [
+          "frontend/tests/e2e/teams/team-list.spec.ts",
+          "frontend/tests/e2e/teams/invite-qr-pdf.spec.ts",
+          "frontend/tests/e2e/scenarios/onboarding-flow.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J3": {
+        "specPaths": [
+          "frontend/tests/e2e/real/village-events-activation.spec.ts",
+          "frontend/tests/e2e/real/village-events-wave2.spec.ts",
+          "frontend/tests/e2e/teams/events.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J4": {
+        "specPaths": [
+          "frontend/tests/e2e/teams/surveys.spec.ts",
+          "frontend/tests/e2e/surveys/survey-crud.spec.ts",
+          "frontend/tests/e2e/surveys/survey-results-visibility.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J5": {
+        "specPaths": [
+          "frontend/tests/e2e/f0411-inbox.spec.ts",
+          "frontend/tests/e2e/global/notifications.spec.ts",
+          "frontend/tests/e2e/surveys/survey-remind.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J6": {
+        "specPaths": [
+          "frontend/tests/e2e/security/access-control.spec.ts",
+          "frontend/tests/e2e/organizations/org-hierarchy.spec.ts",
+          "frontend/tests/e2e/confirmable/unconfirmed-visibility.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J7": {
+        "specPaths": [
+          "frontend/tests/e2e/global/timeline.spec.ts",
+          "frontend/tests/e2e/organizations/org-timeline.spec.ts",
+          "frontend/tests/e2e/real/timeline-delivery-scope-and-mute.spec.ts",
+          "frontend/tests/e2e/action-memo/phase3-team-timeline.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J8": {
+        "specPaths": [
+          "frontend/tests/e2e/teams/todos.spec.ts",
+          "frontend/tests/e2e/teams/todos-deep.spec.ts",
+          "frontend/tests/e2e/todos/handoff.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J9": {
+        "specPaths": [
+          "frontend/tests/e2e/quick-memos/quick-memo.spec.ts",
+          "frontend/tests/e2e/action-memo.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J10": {
+        "specPaths": [
+          "frontend/tests/e2e/calendar/calendar.spec.ts",
+          "frontend/tests/e2e/real/f0810-entry-dashboard-calendar.spec.ts",
+          "frontend/tests/e2e/organizations/org-schedule.spec.ts",
+          "frontend/tests/e2e/real/schedule-activity-feed-visibility.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      }
+    }
   },
   "decisions": {
     "schemaVersion": 1,

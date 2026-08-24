@@ -64,7 +64,9 @@ CAPABILITY_SPLITS = {
 }
 
 B0_PLAN_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-b0-alicization.json"
+B0_COVERAGE_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-b0-coverage.json"
 B0_ALICIZATION_PLAN = json.loads(B0_PLAN_PATH.read_text(encoding="utf-8"))
+B0_COVERAGE = json.loads(B0_COVERAGE_PATH.read_text(encoding="utf-8"))
 
 def git_commit_for(path: Path) -> str:
     try:
@@ -359,6 +361,21 @@ def build_data() -> dict:
     if set(decision_capabilities) != {capability["key"] for capability in capabilities}:
         errors.append("能力単位のPhase 2分類が表示能力と一致しません")
     capability_key_set = {capability["key"] for capability in capabilities}
+    coverage_journeys = B0_COVERAGE.get("journeys", {})
+    if set(coverage_journeys) != {item["id"] for item in B0_ALICIZATION_PLAN["journeys"]}:
+        errors.append("B0 coverage journey ID集合が計画と一致しません")
+    for journey in B0_ALICIZATION_PLAN["journeys"]:
+        coverage = coverage_journeys.get(journey["id"])
+        if not coverage or coverage.get("coverageStatus") not in {"covered", "partial", "missing"}:
+            errors.append(f"B0 journey coverageStatus不正: {journey['id']}")
+        paths = coverage.get("specPaths", []) if coverage else []
+        if not isinstance(paths, list) or len(paths) != len(set(paths)):
+            errors.append(f"B0 journey specPathsが配列または一意ではありません: {journey['id']}")
+        if coverage and coverage.get("coverageStatus") in {"covered", "partial"} and not paths:
+            errors.append(f"B0 journeyカバレッジにspecがありません: {journey['id']}")
+        for path in (coverage or {}).get("specPaths", []):
+            if not (ROOT / path).is_file():
+                errors.append(f"B0 journey specが存在しません: {journey['id']} / {path}")
     for journey in B0_ALICIZATION_PLAN["journeys"]:
         if not set(journey["capabilities"]).issubset(capability_key_set):
             errors.append(f"B0アリシゼーションjourneyの能力key不一致: {journey['id']}")
@@ -412,6 +429,7 @@ def build_data() -> dict:
             "taskList": "docs/task-list.md",
             "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
             "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
+            "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
             "gate": "docs/prototypes/beta-inventory-board-gate.json",
             "inventoryCommit": git_commit_for(INVENTORY_PATH),
             "taskListCommit": git_commit_for(TASK_LIST_PATH),
@@ -446,6 +464,7 @@ def build_data() -> dict:
         "features": features,
         "capabilities": capabilities,
         "b0Alicization": B0_ALICIZATION_PLAN,
+        "b0Coverage": B0_COVERAGE,
         "decisions": {**decisions, "capabilities": decision_capabilities},
         "featureClassification": {},
         "featurePublication": {},
