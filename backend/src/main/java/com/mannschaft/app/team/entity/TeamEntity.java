@@ -40,7 +40,7 @@ public class TeamEntity extends BaseEntity {
     }
 
     /** 予約等の業務ローカル時刻を解釈する IANA タイムゾーン。既存データは移行で Asia/Tokyo に補完する。 */
-    @Column(nullable = false, length = 64)
+    @Column(nullable = false, length = 64, columnDefinition = "VARCHAR(64) NOT NULL DEFAULT 'Asia/Tokyo'")
     @Builder.Default
     private String timezone = "Asia/Tokyo";
 
