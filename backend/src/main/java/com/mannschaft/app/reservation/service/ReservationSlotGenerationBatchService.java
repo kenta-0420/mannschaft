@@ -3,8 +3,8 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.reservation.repository.ReservationSlotTemplateRepository;
 import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -35,7 +35,6 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ReservationSlotGenerationBatchService {
 
     private final ReservationSlotTemplateRepository templateRepository;
@@ -43,6 +42,15 @@ public class ReservationSlotGenerationBatchService {
     private final TeamTimezoneResolver teamTimezoneResolver;
 
     /** 既存のスライステスト／手動組み立てとの互換用。実運用では Spring の3引数 ctor を使う。 */
+    @Autowired
+    public ReservationSlotGenerationBatchService(ReservationSlotTemplateRepository templateRepository,
+                                                  ReservationSlotGenerationService generationService,
+                                                  TeamTimezoneResolver teamTimezoneResolver) {
+        this.templateRepository = templateRepository;
+        this.generationService = generationService;
+        this.teamTimezoneResolver = teamTimezoneResolver;
+    }
+
     public ReservationSlotGenerationBatchService(ReservationSlotTemplateRepository templateRepository,
                                                   ReservationSlotGenerationService generationService) {
         this(templateRepository, generationService, null);
