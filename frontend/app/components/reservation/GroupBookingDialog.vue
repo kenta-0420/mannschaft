@@ -207,13 +207,21 @@ const selectedSlotIds = computed<number[] | null>(() => {
 
 const canExtendNow = computed(() => {
   if (!props.context) return false
-  return canExtend(props.context.rowSlots, selectedIndices.value)
+  return selectedIndices.value.length < 16 && canExtend(props.context.rowSlots, selectedIndices.value)
 })
+
+const minimumCellCount = computed(() => selectedMenuId.value == null ? 1 : requiredCellCount.value)
+const canReduceNow = computed(() => selectedIndices.value.length > minimumCellCount.value)
 
 function extend() {
   if (!canExtendNow.value) return
   const last = Math.max(...selectedIndices.value)
   selectedIndices.value = [...selectedIndices.value, last + 1]
+}
+
+function reduce() {
+  if (!canReduceNow.value) return
+  selectedIndices.value = selectedIndices.value.slice(0, -1)
 }
 
 const previewTimeLabel = computed(() => {
@@ -399,16 +407,11 @@ async function confirm() {
 
         <Message v-if="lineWarning" severity="warn" :closable="false">{{ lineWarning }}</Message>
 
-        <Button
-          data-testid="group-extend"
-          :label="t('reservation.matrix.extend_30')"
-          icon="pi pi-plus"
-          text
-          size="small"
-          :disabled="!canExtendNow"
-          :title="!canExtendNow ? t('reservation.matrix.cannot_extend') : undefined"
-          @click="extend"
-        />
+        <div class="flex items-center justify-center gap-2" data-testid="group-slot-stepper">
+          <Button data-testid="group-reduce" icon="pi pi-minus" text rounded :disabled="!canReduceNow" @click="reduce" />
+          <span class="min-w-28 text-center text-sm font-medium">{{ t('reservation.group.slot_count', { n: selectedIndices.length }) }}（{{ selectedIndices.length * 30 }}分）</span>
+          <Button data-testid="group-extend" icon="pi pi-plus" text rounded :disabled="!canExtendNow" :title="!canExtendNow ? t('reservation.matrix.cannot_extend') : undefined" @click="extend" />
+        </div>
 
         <div>
           <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.note') }}</label>

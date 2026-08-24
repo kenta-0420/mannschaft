@@ -174,7 +174,16 @@
       "team_page": "Reservations"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "How to use {label}",
+      "cards": {
+        "business_hours": { "title": "Business hours", "description": "Set booking hours" },
+        "lines": { "title": "Reservation targets", "description": "Manage {n} targets" },
+        "menus": { "title": "Menus", "description": "Manage {n} menus" },
+        "weekly_schedule": { "title": "Weekly schedule", "description": "{n} slot and recurring settings" },
+        "exception_day": { "title": "Exception days", "description": "Adjust specific dates" },
+        "advanced": { "title": "Advanced settings", "description": "Set visibility and notifications" }
+      }
     },
     "column": {
       "datetime": "Date & Time",
@@ -682,6 +691,7 @@
       "state": {
         "available": "Open",
         "booked": "Full",
+        "reserved": "Booked by you",
         "closed": "Closed",
         "unavailable": "Unavailable"
       },
@@ -702,6 +712,9 @@
       "no_menu_single": "Book just 30 minutes without a menu",
       "preview_title": "Confirm this booking",
       "extend_30": "+30 min",
+      "open_all": "Show all",
+      "close_all": "Close all",
+      "open_day_hint": "Select a date to view reservation slots",
       "date_line_header": "Date / {resourceName}",
       "help_toggle": "How to use this",
       "help_body": "Tap an open (green) time slot, then choose a menu — the required number of slots is selected automatically. Use \"+30 min\" to add more. If you pick a shared slot, choose which {resourceName} to book it for.",

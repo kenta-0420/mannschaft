@@ -109,5 +109,6 @@ public class ReservationGridResponse {
             LocalTime endTime,
             GridCellState state,
             BigDecimal price,
-            String unavailableReason) {}
+            String unavailableReason,
+            @Schema(description = "現在のユーザーが有効予約を持つ枠か") boolean reservedByCurrentUser) {}
 }
