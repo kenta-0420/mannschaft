@@ -45,7 +45,7 @@ function gaugePercent(usage: StorageScopeUsage): number {
 
 function usageClass(usage: StorageScopeUsage): string {
   if (usage.usagePercent >= 90) return 'text-red-600 dark:text-red-400'
-  if (usage.usagePercent >= 80) return 'text-amber-600 dark:text-amber-400'
+  if (usage.usagePercent >= 80) return 'text-amber-700 dark:text-amber-400'
   return 'text-surface-600 dark:text-surface-300'
 }
 
@@ -65,7 +65,7 @@ function barClass(usage: StorageScopeUsage): string {
     data-testid="dashboard-storage-summary"
   >
     <template #actions>
-      <NuxtLink to="/settings/storage" class="text-xs text-primary hover:underline">
+      <NuxtLink to="/settings/storage" class="min-h-11 min-w-11 inline-flex items-center justify-center text-xs text-primary hover:underline">
         {{ t('scopeDashboard.storageSummary.details') }}
       </NuxtLink>
     </template>
@@ -75,17 +75,17 @@ function barClass(usage: StorageScopeUsage): string {
     <Message v-else-if="error" severity="error" :closable="false" data-testid="storage-error">
       <div class="flex items-center justify-between gap-3">
         <span>{{ t('scopeDashboard.storageSummary.error') }}</span>
-        <Button size="small" text :label="t('scopeDashboard.storageSummary.retry')" data-testid="storage-retry" @click="loadUsage" />
+        <Button size="small" text class="min-h-11 min-w-11" :label="t('scopeDashboard.storageSummary.retry')" data-testid="storage-retry" @click="loadUsage" />
       </div>
     </Message>
     <div v-else class="grid grid-cols-1 gap-3 md:grid-cols-3">
       <article v-for="(usage, index) in selectedUsages" :key="scopeLabels[index]" class="min-w-0 rounded-md bg-surface-50 p-3 dark:bg-surface-800" :data-testid="`storage-card-${index}`">
         <div class="mb-2 flex items-center justify-between gap-2 text-sm">
           <span class="truncate font-medium">{{ usage?.scopeName || scopeLabels[index] }}</span>
-          <span v-if="usage" class="shrink-0" :class="usageClass(usage)">{{ usage.usagePercent.toFixed(1) }}%</span>
+          <span v-if="usage && usage.includedBytes > 0" class="shrink-0" :class="usageClass(usage)">{{ usage.usagePercent.toFixed(1) }}%</span>
         </div>
         <template v-if="usage">
-          <div class="h-2 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700" role="progressbar" :aria-valuenow="gaugePercent(usage)" aria-valuemin="0" aria-valuemax="100">
+          <div v-if="usage.includedBytes > 0" class="h-2 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700" role="progressbar" :aria-label="t('scopeDashboard.storageSummary.meterLabel', { scope: scopeLabels[index] })" :aria-valuenow="gaugePercent(usage)" :aria-valuetext="t('scopeDashboard.storageSummary.meterValue', { percent: usage.usagePercent.toFixed(1) })" aria-valuemin="0" aria-valuemax="100">
             <div class="h-full rounded-full transition-all" :class="barClass(usage)" :style="{ width: `${gaugePercent(usage)}%` }" />
           </div>
           <p v-if="usage.includedBytes > 0" class="mt-1 text-xs text-surface-500">{{ formatBytes(usage.usedBytes) }} / {{ formatBytes(usage.includedBytes) }}</p>

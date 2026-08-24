@@ -1899,7 +1899,7 @@
     "bulletinOpen": "在公告板上讨论"
   },
   "scopeDashboard": {
-    "storageSummary": { "title": "存储", "personal": "个人", "team": "团队", "organization": "组织", "details": "查看详情", "error": "无法加载存储", "retry": "重试", "unconfigured": "未设置容量", "not_available": "无存储数据" },
+    "storageSummary": { "title": "存储", "personal": "个人", "team": "团队", "organization": "组织", "details": "查看详情", "error": "无法加载存储", "retry": "重试", "unconfigured": "未设置容量", "not_available": "无存储数据", "meterLabel": "{scope}存储使用率", "meterValue": "使用率 {percent}%" },
     "tabs": {
       "personal": "个人",
       "team": "团队",

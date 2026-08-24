@@ -63,9 +63,13 @@ describe('DashboardStorageSummary', () => {
     expect(getMyStorageUsage).toHaveBeenCalledTimes(1)
     expect(wrapper.findAll('[data-testid^="storage-card-"]')).toHaveLength(3)
     expect(wrapper.get('[data-testid="storage-card-0"] .text-amber-600')).toBeTruthy()
+    expect(wrapper.get('[data-testid="storage-card-0"] [role="progressbar"]').attributes('aria-label')).toContain('scopeDashboard.storageSummary.personal')
     dashboardStore.selectedTeamId = 'other-team'
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="storage-card-1"]').text()).toContain('scopeDashboard.storageSummary.not_available')
+    dashboardStore.selectedTeamId = '1'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get('[data-testid="storage-card-1"]').text()).not.toContain('scopeDashboard.storageSummary.not_available')
   })
 
   it('容量枠未設定・未選択・境界色・100%クランプを扱う', async () => {
@@ -76,8 +80,11 @@ describe('DashboardStorageSummary', () => {
     ])
     const wrapper = await mountSummary()
     expect(wrapper.text()).toContain('scopeDashboard.storageSummary.unconfigured')
+    expect(wrapper.get('[data-testid="storage-card-0"]').find('[role="progressbar"]').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="storage-card-0"]').text()).not.toContain('100.0%')
     expect(wrapper.get('[data-testid="storage-card-1"] .text-red-600')).toBeTruthy()
     expect(wrapper.get('[data-testid="storage-card-2"] [role="progressbar"]').attributes('aria-valuenow')).toBe('100')
+    expect(wrapper.get('[data-testid="storage-card-2"] [role="progressbar"]').attributes('aria-valuetext')).toContain('120.0')
     dashboardStore.selectedOrgId = null
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="storage-card-2"]').text()).toContain('scopeDashboard.storageSummary.not_available')
@@ -91,6 +98,8 @@ describe('DashboardStorageSummary', () => {
     await wrapper.get('[data-testid="storage-retry"]').trigger('click')
     await flushPromises()
     expect(getMyStorageUsage).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('[data-testid="storage-error"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="storage-card-0"]').exists()).toBe(true)
   })
 
   it('詳細リンクとレスポンシブ3列/1列構造を持つ', async () => {
@@ -99,5 +108,6 @@ describe('DashboardStorageSummary', () => {
     expect(wrapper.get('a[href="/settings/storage"]')).toBeTruthy()
     expect(wrapper.html()).toContain('grid-cols-1')
     expect(wrapper.html()).toContain('md:grid-cols-3')
+    expect(wrapper.get('a[href="/settings/storage"]').classes()).toContain('min-h-11')
   })
 })
