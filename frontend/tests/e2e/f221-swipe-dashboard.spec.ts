@@ -249,7 +249,7 @@ test('F22.1-1: /dashboard がカルーセルを描画し、初期は個人パネ
   await page.goto('/dashboard')
   await waitForCarousel(page)
   await expect(page.getByTestId('dashboard-storage-summary')).toHaveCount(1)
-  expect(storageUsageCalls).toBe(1)
+  await expect.poll(() => storageUsageCalls).toBe(1)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   const summaryBox = await page.getByTestId('dashboard-storage-summary').boundingBox()
   expect(summaryBox).not.toBeNull()
