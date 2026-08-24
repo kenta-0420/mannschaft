@@ -369,6 +369,21 @@ def build_data() -> dict:
         errors.append("能力単位のPhase 2分類が表示能力と一致しません")
     capability_key_set = {capability["key"] for capability in capabilities}
     coverage_journeys = B0_COVERAGE.get("journeys", {})
+    strategy = B0_ALICIZATION_PLAN.get("autonomousTestStrategy", {})
+    if strategy.get("coordinatorCount") != 1 or strategy.get("personaCount") != 20:
+        errors.append("B0自律テスト戦略の統括数・人数が不正です")
+    expected_stages = [("Phase3C", 3), ("Phase3D", 5), ("Phase3E", 10), ("Phase3F", 20), ("Phase3G", 20)]
+    if [(stage.get("id"), stage.get("personas")) for stage in strategy.get("stages", [])] != expected_stages:
+        errors.append("B0自律テスト戦略の人数段階が不正です")
+    personas = strategy.get("personas", [])
+    if len(personas) != 20 or len({persona.get("id") for persona in personas}) != 20:
+        errors.append("B0自律テスト戦略のpersonaが20人一意ではありません")
+    persona_fields = ["age", "itProficiency", "adhdTendency", "useCase", "role", "permission", "membership", "notificationResponse", "usagePattern", "relationships", "history", "account", "browserContext"]
+    if any(not persona.get("id") or any(persona.get(field) in (None, "") for field in persona_fields) for persona in personas):
+        errors.append("B0自律テスト戦略のpersona項目が不足しています")
+    safety = strategy.get("safety", {})
+    if safety.get("database") != "開発DB限定" or safety.get("externalSending") is not False or safety.get("cookies") != "personaごとに分離":
+        errors.append("B0自律テスト戦略の安全条件が不正です")
     if set(coverage_journeys) != {item["id"] for item in B0_ALICIZATION_PLAN["journeys"]}:
         errors.append("B0 coverage journey ID集合が計画と一致しません")
     for journey in B0_ALICIZATION_PLAN["journeys"]:
