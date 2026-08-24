@@ -121,51 +121,69 @@ records:
     layer: 能力
     design_docs: []
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/stores/useNavSettingsStore.spec.ts", "backend/src/test/java/com/mannschaft/app/navsettings/service/NavSettingsServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/navsettings/controller/NavSettingsControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/navsettings/controller/NavSettingsControllerTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V9.20260528131746__nav_features_and_user_nav_settings.sql", "backend/src/main/resources/db/migration/V128.001__add_nav_display_order_to_user_nav_settings.sql"]}
+      real_e2e: {status: 未作成, evidence: []}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ2: 個人ナビの表示/並び替え画面・API・DB・起動時同期を確認。専用の機能設計書と実環境E2Eは未確認。"
 
   - feature_key: team-create
     name: チーム作成
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.2_org_team_member_role"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/team/TeamServiceTest.java", "backend/src/test/java/com/mannschaft/app/team/TeamSlugServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/teams/team-hub.spec.ts", "frontend/tests/e2e/teams/template-module.spec.ts", "frontend/tests/e2e/slug/slug-url-migration.spec.ts"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V2.004__create_teams_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/activity-authz.spec.ts", "frontend/tests/e2e/real/dashboard-org-announcement.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ2: 作成ダイアログ・任意slug検証・POST /api/v1/teams・作成者ADMIN付与・teamsテーブルを確認。UIから作成完了までの専用実環境E2Eは未確認。"
 
   - feature_key: team-invite
     name: メンバー招待
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.2_org_team_member_role"
+      - "docs/features/F01.8_team_invite_qr_pdf.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/role/InviteServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/auth/invite.spec.ts", "frontend/tests/e2e/teams/invite-qr-pdf.spec.ts", "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerFolderTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerTest.java", "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerFolderTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V2.010__create_invite_tokens_table.sql"]}
+      real_e2e: {status: 未作成, evidence: []}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ2: 招待トークン発行/一覧/失効、招待プレビュー/参加、QR/PDF、使用期限/回数上限、招待先フォルダ境界を確認。モックなしの招待参加E2Eは未作成。"
 
   - feature_key: team-admin
     name: チーム管理コンソール
