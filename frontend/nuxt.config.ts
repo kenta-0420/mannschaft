@@ -432,6 +432,10 @@ export default defineNuxtConfig({
     // （route ガード middleware feature-gate.global.ts の ssr-defer と対になっている）。
     // 対応表は app/constants/featureGates.ts が単一の正（YAML パーサ依存・コード生成は無し）。
     ...buildGateRouteRules(),
+    // 認証フォームは SEO を必要としない。SSR で操作不能なフォームを先に配信すると、
+    // クライアントのハイドレーションが遅延・失敗した際にログイン不能になるため、
+    // 最初からクライアントで操作可能な状態として描画する。
+    '/login': { ssr: false },
     ...(process.env.NUXT_API_PROXY === 'true'
       ? { '/api/v1/**': { proxy: `${apiBase}/api/v1/**` } }
       : {}),
@@ -980,5 +984,25 @@ export default defineNuxtConfig({
       // URL 確定前の一覧へ戻るため、dev server 起動時に事前最適化しておく。
       include: ['date-holidays', 'dexie', 'chart.js', 'dompurify', 'vuedraggable'],
     },
+  },
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // 本番ビルド（nuxt build）のメモリ枯渇対策（CMP-260821-2130）
+  // ──────────────────────────────────────────────────────────────────────────
+  // 実測（6回のビルド）で本番ビルドが OOM で完走しないことを確認済み。
+  // 主因はサーバー側ソースマップ: Nuxt 3 の既定は本番で { server: true, client: false } だが、
+  // Nuxt 3.21.11 はこれを Vite の SSR ビルドへ渡すだけでなく、SSR のマップを Nitro へ
+  // 再投入するプラグインまで動かすため、同じコストを2回払っていた
+  // （実測: 無効化前は 4096MB/8192MB いずれの上限でも死亡、無効化後は 8192MB で完走・9,482MB / swap 0）。
+  // 本番の起動コマンドは `node .output/server/index.mjs` で `--enable-source-maps` が付いておらず、
+  // Node はこのフラグ無しではソースマップを使わないため、生成されていたサーバー側ソースマップは
+  // 本番で一度も使われていなかった（エラー監視基盤も未導入で、クライアント側ソースマップの使い先も無い）。
+  //
+  // 【重要】必ず $production 限定にすること。素で `sourcemap: {...}` を書くと、設定ローダー c12 が
+  // 環境別上書きとして扱う対象から外れて `npm run dev` にも常時適用されてしまい、開発時のデバッグで
+  // ソースマップが失われる（nuxt.options.sourcemap.{server,client} は多数のビルドプラグインが
+  // 開発・本番を区別せず参照するため、影響範囲が広い）。
+  $production: {
+    sourcemap: { server: false, client: false },
   },
 })
