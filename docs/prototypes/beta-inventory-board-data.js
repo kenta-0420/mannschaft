@@ -1,14 +1,16 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T07:42:06+00:00",
+  "generatedAt": "2026-08-24T07:53:41+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
     "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
+    "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "059334a7c60cb6315f1e05119d6b5c56c43d15d2",
     "taskListCommit": "507264fb6f91a1b1d2125869bac95608db82c844",
     "inventorySha256": "b7a29d2301f7ade17f21565e6a075d185d129434d81c5a0a2cdff5639d831900",
     "taskListSha256": "4513e4938a52511c05b0a524d715bef98525db3fe8a02ab022e9e6cc489d8348",
-    "decisionsSha256": "400706cd9341f10f3e9221491e7b25eda37a44d4b64b53585d0834e9ab723c34"
+    "decisionsSha256": "400706cd9341f10f3e9221491e7b25eda37a44d4b64b53585d0834e9ab723c34",
+    "gateSha256": "1fe1a0869b148212e4937f26189758b1b34484f309074793bf56950b6a83d75c"
   },
   "sourceCounts": {
     "features": 43,
@@ -50,7 +52,7 @@ window.BETA_INVENTORY_DATA = {
   "warnings": [
     "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
     "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
-    "Gate前提工事の項目は正本にないため、Gate一覧は空。",
+    "Gate前提工事はbeta-inventory-board-gate.jsonの根拠付きoverlayから表示。未確認項目は公開候補に含めない。",
     "Issue／PR／CIはGitHub連携していないため、task-list.mdの証拠欄だけを表示。"
   ],
   "features": [
@@ -1921,7 +1923,99 @@ window.BETA_INVENTORY_DATA = {
   },
   "featureClassification": {},
   "featurePublication": {},
-  "gateFoundation": [],
+  "gateFoundation": [
+    {
+      "id": "gate-public-feature-flag-api",
+      "title": "公開フラグ読取API",
+      "status": "done",
+      "detail": "公開フラグ一覧APIとFeatureFlagServiceの読取経路が存在する。",
+      "evidence": [
+        "backend/src/main/java/com/mannschaft/app/admin/controller/FeatureFlagController.java",
+        "backend/src/main/java/com/mannschaft/app/admin/service/FeatureFlagService.java",
+        "backend/src/main/java/com/mannschaft/app/admin/dto/PublicFeatureFlagResponse.java"
+      ],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260820-1550",
+        ".claude/commands/ボード更新.md:131"
+      ],
+      "decisionStatus": "confirmed"
+    },
+    {
+      "id": "gate-fe-route-middleware",
+      "title": "FE routeガード middleware",
+      "status": "done",
+      "detail": "global middlewareで未公開機能のURL直アクセスを遮断する実装があり、17 gate_key・91プレフィクスを対象にしている。",
+      "evidence": [
+        "frontend/app/middleware/feature-gate.global.ts",
+        "frontend/app/constants/featureGates.ts",
+        "backend/src/main/resources/db/migration/V187.20260820092252__seed_feature_gate_flags.sql"
+      ],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260820-1550",
+        ".claude/commands/ボード更新.md:132"
+      ],
+      "decisionStatus": "confirmed"
+    },
+    {
+      "id": "gate-require-feature-aop",
+      "title": "@RequireFeature AOP",
+      "status": "done",
+      "detail": "@RequireFeatureを実装クラス／メソッドで評価し、未知キーはフェイルクローズするAOPと番人テストが存在する。",
+      "evidence": [
+        "backend/src/main/java/com/mannschaft/app/common/featuregate/RequireFeature.java",
+        "backend/src/main/java/com/mannschaft/app/common/featuregate/FeatureGateAspect.java",
+        "backend/src/test/java/com/mannschaft/app/common/architecture/FeatureGateAnnotationKeyGuardTest.java",
+        "backend/src/test/java/com/mannschaft/app/common/architecture/RequireFeatureInterfaceGuardTest.java"
+      ],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260821-1547",
+        ".claude/commands/ボード更新.md:133"
+      ],
+      "decisionStatus": "confirmed"
+    },
+    {
+      "id": "gate-fe-ssr-slug-coverage",
+      "title": "FE SSR slug配下の閉栓",
+      "status": "blocked",
+      "detail": "91プレフィクス中44件のslug配下がSSRで隔離されない残件。β公開の閉栓前に解消必須で、Issue #2888は2026-08-24確認時点でOPEN。",
+      "evidence": [
+        "https://github.com/kenta-0420/mannschaft/issues/2888 (OPEN, 2026-08-24確認)",
+        "frontend/app/middleware/feature-gate.global.ts",
+        "frontend/app/constants/featureGates.ts"
+      ],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260820-1550",
+        "docs/inventory/feature-inventory.yaml:40"
+      ],
+      "decisionStatus": "confirmed"
+    },
+    {
+      "id": "gate-controller-annotation-coverage",
+      "title": "実Controllerへの@RequireFeature適用",
+      "status": "working",
+      "detail": "AOP基盤は完成しているが、正本は実Controller 17 gate_keyへの付与を残件として明記。ローカル全Controller走査でも@RequireFeatureは0件。",
+      "evidence": [
+        "local-scan: backend/src/main/java/**/*Controller.java の @RequireFeature = 0件",
+        "backend/src/main/java/com/mannschaft/app/common/featuregate/RequireFeature.java"
+      ],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260821-1547"
+      ],
+      "decisionStatus": "confirmed"
+    },
+    {
+      "id": "gate-batch-listener-declaration-guard",
+      "title": "バッチ／リスナー宣言必須番人",
+      "status": "unknown",
+      "detail": "正本ではGate基盤工事④を残務として明記している。実装済みと推測せず、対象154+バッチ・121リスナーの宣言網羅を別途確認する。",
+      "evidence": [],
+      "sourceRefs": [
+        "docs/task-list.md:CMP-260821-1547",
+        ".claude/commands/ボード更新.md:134"
+      ],
+      "decisionStatus": "proposed"
+    }
+  ],
   "campaigns": [
     {
       "id": "CMP-001",

@@ -151,6 +151,7 @@
     .gate-item.working .gate-check { background: color-mix(in srgb, var(--info) 12%, var(--panel)); color: var(--info); }
     .gate-item b { display: block; font-size: 14px; }
     .gate-item span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .gate-item .gate-evidence { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
     .release-rule { padding: 14px; border-radius: 14px; background: var(--panel-soft); color: var(--muted); font-size: 13px; line-height: 1.75; }
     .release-rule strong { color: var(--text); }
     .source-strip {
@@ -695,10 +696,15 @@
         <div class="gate-grid">
           <section class="gate-panel">
             ${gateFoundation.length ? gateFoundation.map((item) => `
-              <div class="gate-item ${item.status}">
-                <span class="gate-check">${item.status === 'done' ? '✓' : item.status === 'working' ? '→' : '·'}</span>
-                <div><b>${item.title}</b><span>${item.detail}</span></div>
-              </div>`).join('') : '<div class="empty">Gate前提工事は機能台帳に項目がありません。Phase 2でtask-list・PR・実機証拠を照合して登録します。</div>'}
+              <div class="gate-item ${escapeHtml(item.status)}">
+                <span class="gate-check">${item.status === 'done' ? '✓' : item.status === 'working' ? '→' : item.status === 'blocked' ? '!' : '?'}</span>
+                <div>
+                  <b>${escapeHtml(item.title)}</b>
+                  <span>${escapeHtml(item.detail)}</span>
+                  <small class="gate-evidence">判定: ${escapeHtml(item.decisionStatus)} ／ 根拠: ${item.evidence?.length ? item.evidence.map(escapeHtml).join('、') : '未確認'}</small>
+                  <small class="gate-evidence">正本: ${item.sourceRefs?.map(escapeHtml).join('、') || '未確認'}</small>
+                </div>
+              </div>`).join('') : '<div class="empty">Gate前提工事のoverlayがありません。</div>'}
           </section>
           <section class="gate-panel">
             <h3>シスアド公開判定</h3>

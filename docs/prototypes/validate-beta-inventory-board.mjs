@@ -14,6 +14,22 @@ if (data.campaigns.length !== data.sourceCounts.campaigns) throw new Error('CMP�
 if (new Set(data.features.map((feature) => feature.key)).size !== data.features.length) throw new Error('feature_keyが重複しています。');
 if (new Set(data.campaigns.map((campaign) => campaign.id)).size !== data.campaigns.length) throw new Error('CMP IDが重複しています。');
 
+const gateItems = data.gateFoundation;
+if (!Array.isArray(gateItems) || gateItems.length === 0) throw new Error('Gate overlayが空です。');
+if (new Set(gateItems.map((item) => item.id)).size !== gateItems.length) throw new Error('Gate IDが重複しています。');
+const allowedGateStatuses = new Set(['done', 'working', 'blocked', 'unknown']);
+const allowedGateDecisionStatuses = new Set(['proposed', 'confirmed']);
+for (const item of gateItems) {
+  if (!item.id || !item.title || !item.detail || !Array.isArray(item.sourceRefs) || item.sourceRefs.length === 0) {
+    throw new Error(`Gateの根拠または表示項目がありません: ${item.id}`);
+  }
+  if (!allowedGateStatuses.has(item.status)) throw new Error(`Gate statusが不正です: ${item.id}`);
+  if (!allowedGateDecisionStatuses.has(item.decisionStatus)) throw new Error(`Gate decisionStatusが不正です: ${item.id}`);
+  if (item.status !== 'unknown' && (!Array.isArray(item.evidence) || item.evidence.length === 0)) {
+    throw new Error(`Gateの判定にevidenceがありません: ${item.id}`);
+  }
+}
+
 const decisions = data.decisions;
 if (!decisions || Object.keys(decisions.features || {}).length !== data.features.length) throw new Error('Phase 2分類が43機能と一致しません');
 const allowedStages = new Set(['B0', 'B1', 'B2', 'B3', 'B4']);

@@ -21,6 +21,7 @@ INVENTORY_PATH = ROOT / "docs" / "inventory" / "feature-inventory.yaml"
 TASK_LIST_PATH = ROOT / "docs" / "task-list.md"
 OUTPUT_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-data.js"
 DECISIONS_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-decisions.json"
+GATE_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-gate.json"
 
 
 def git_commit_for(path: Path) -> str:
@@ -248,6 +249,7 @@ def build_data() -> dict:
     features = [feature_view(record) for record in records]
     campaigns = parse_campaigns(task_list)
     decisions = json.loads(DECISIONS_PATH.read_text(encoding="utf-8"))
+    gate_overlay = json.loads(GATE_PATH.read_text(encoding="utf-8"))
     layer_counts = {}
     for record in records:
         layer = text(record.get("layer"))
@@ -265,6 +267,7 @@ def build_data() -> dict:
     allowed_audiences = {"soccer", "alumni", "both"}
     allowed_priorities = {"must", "should", "could", "defer"}
     allowed_decision_statuses = {"proposed", "confirmed"}
+    allowed_gate_statuses = {"done", "working", "blocked", "unknown"}
     if set(decision_features) != {feature["key"] for feature in features}:
         errors.append("Phase 2分類が43機能と完全一致しません")
     if any(
@@ -284,6 +287,20 @@ def build_data() -> dict:
         errors.append("feature_keyが重複")
     if len({campaign["id"] for campaign in campaigns}) != len(campaigns):
         errors.append("CMP IDが重複")
+    gate_items = gate_overlay.get("items") or []
+    if not gate_items:
+        errors.append("Gate overlayの項目がありません")
+    if len({item.get("id") for item in gate_items}) != len(gate_items):
+        errors.append("Gate IDが重複")
+    for item in gate_items:
+        if item.get("status") not in allowed_gate_statuses:
+            errors.append(f"Gate statusの許可値外: {item.get('id')}")
+        if item.get("decisionStatus") not in allowed_decision_statuses:
+            errors.append(f"Gate decisionStatusの許可値外: {item.get('id')}")
+        if not item.get("title") or not item.get("detail") or not item.get("sourceRefs"):
+            errors.append(f"Gateの根拠または表示項目なし: {item.get('id')}")
+        if item.get("status") != "unknown" and not item.get("evidence"):
+            errors.append(f"Gateの判定にevidenceがありません: {item.get('id')}")
     if actual["core"] + actual["noncore"] != len(features):
         errors.append("Core/非Coreに分類できない機能あり")
     if sum(core_status_counts.values()) != len(core):
@@ -296,11 +313,13 @@ def build_data() -> dict:
             "inventory": "docs/inventory/feature-inventory.yaml",
             "taskList": "docs/task-list.md",
             "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
+            "gate": "docs/prototypes/beta-inventory-board-gate.json",
             "inventoryCommit": git_commit_for(INVENTORY_PATH),
             "taskListCommit": git_commit_for(TASK_LIST_PATH),
             "inventorySha256": hashlib.sha256(INVENTORY_PATH.read_bytes()).hexdigest(),
             "taskListSha256": hashlib.sha256(TASK_LIST_PATH.read_bytes()).hexdigest(),
             "decisionsSha256": hashlib.sha256(DECISIONS_PATH.read_bytes()).hexdigest(),
+            "gateSha256": hashlib.sha256(GATE_PATH.read_bytes()).hexdigest(),
         },
         "sourceCounts": {
             "features": len(features),
@@ -317,14 +336,14 @@ def build_data() -> dict:
         "warnings": [
             "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
             "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
-            "Gate前提工事の項目は正本にないため、Gate一覧は空。",
+            "Gate前提工事はbeta-inventory-board-gate.jsonの根拠付きoverlayから表示。未確認項目は公開候補に含めない。",
             "Issue／PR／CIはGitHub連携していないため、task-list.mdの証拠欄だけを表示。",
         ],
         "features": features,
         "decisions": decisions,
         "featureClassification": {},
         "featurePublication": {},
-        "gateFoundation": [],
+        "gateFoundation": gate_items,
         "campaigns": campaigns,
     }
 
