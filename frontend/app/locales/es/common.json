@@ -1899,6 +1899,7 @@
     "bulletinOpen": "Discutir en el tablón"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "Almacenamiento", "personal": "Personal", "team": "Equipo", "organization": "Organización", "details": "Ver detalles", "error": "No se pudo cargar el almacenamiento", "retry": "Reintentar", "unconfigured": "Cuota no configurada", "not_available": "Sin datos de almacenamiento", "meterLabel": "Uso de almacenamiento de {scope}", "meterValue": "Uso {percent}%" },
     "tabs": {
       "personal": "Personal",
       "team": "Equipo",
