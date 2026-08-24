@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 from datetime import datetime, timezone
@@ -65,8 +66,14 @@ CAPABILITY_SPLITS = {
 
 B0_PLAN_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-b0-alicization.json"
 B0_COVERAGE_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-b0-coverage.json"
+B0_LOCAL_DIR = ROOT / "docs" / "prototypes" / ".b0-local"
 B0_ALICIZATION_PLAN = json.loads(B0_PLAN_PATH.read_text(encoding="utf-8"))
 B0_COVERAGE = json.loads(B0_COVERAGE_PATH.read_text(encoding="utf-8"))
+B0_RUN_OVERLAY = None
+if os.environ.get("B0_INCLUDE_LOCAL_OVERLAY") == "true" and B0_LOCAL_DIR.exists():
+    run_files = sorted([*B0_LOCAL_DIR.glob("run-*.json"), *B0_LOCAL_DIR.glob("blocked-*.json")], key=lambda item: item.stat().st_mtime, reverse=True)
+    if run_files:
+        B0_RUN_OVERLAY = json.loads(run_files[0].read_text(encoding="utf-8"))
 
 def git_commit_for(path: Path) -> str:
     try:
@@ -465,6 +472,7 @@ def build_data() -> dict:
         "capabilities": capabilities,
         "b0Alicization": B0_ALICIZATION_PLAN,
         "b0Coverage": B0_COVERAGE,
+        "b0RunOverlay": B0_RUN_OVERLAY,
         "decisions": {**decisions, "capabilities": decision_capabilities},
         "featureClassification": {},
         "featurePublication": {},
