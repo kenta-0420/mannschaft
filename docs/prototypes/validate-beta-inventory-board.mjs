@@ -11,6 +11,16 @@ vm.runInNewContext(dataSource, context, { filename: 'beta-inventory-board-data.j
 const data = context.window.BETA_INVENTORY_DATA;
 if (!data?.verification?.passed) throw new Error('正本データの検算が完了していません。');
 if (data.features.length !== data.sourceCounts.features) throw new Error('機能件数が一致しません。');
+if (!Array.isArray(data.capabilities) || data.capabilities.length <= data.features.length) throw new Error('能力単位の表示データが親43件から展開されていません');
+if (data.sourceCounts.features !== data.verification.raw.features) throw new Error('正本親feature件数の集計がraw件数と一致しません');
+if (data.sourceCounts.capabilities !== data.capabilities.length) throw new Error('能力件数の集計が不一致です');
+if (new Set(data.capabilities.map((item) => item.key)).size !== data.capabilities.length) throw new Error('能力keyが重複しています');
+const parentKeys = new Set(data.features.map((item) => item.key));
+if (data.capabilities.some((item) => !parentKeys.has(item.parentFeatureKey))) throw new Error('能力の親feature_keyが正本にありません');
+const splitParents = new Set(data.capabilities.filter((item) => item.isCapability).map((item) => item.parentFeatureKey));
+for (const parent of ['account-settings', 'auth', 'organization-manage', 'notification-inbox', 'pointcard', 'tournament', 'facility', 'corkboard', 'property-repairplan', 'weather-health', 'billing-payment', 'shift', 'skill-resume', 'succession-proxy', 'translation-search', 'todo-memo', 'promotion', 'workflow-forms', 'family-care', 'moderation-incident', 'webhook-sync', 'gamification']) {
+  if (!splitParents.has(parent)) throw new Error(`複合親が未分割です: ${parent}`);
+}
 if (data.campaigns.length !== data.sourceCounts.campaigns) throw new Error('CMP件数が一致しません。');
 if (new Set(data.features.map((feature) => feature.key)).size !== data.features.length) throw new Error('feature_keyが重複しています。');
 if (new Set(data.campaigns.map((campaign) => campaign.id)).size !== data.campaigns.length) throw new Error('CMP IDが重複しています。');
@@ -29,7 +39,8 @@ for (const campaign of data.campaigns) {
 const github = data.githubSync || {};
 const expectedGithubNumbers = [...new Set([...sourceRefs.values()].flat())].sort((a, b) => a - b).map(String);
 const actualGithubNumbers = Object.keys(github.items || {}).sort((a, b) => Number(a) - Number(b));
-if (github.status === 'synced' && JSON.stringify(actualGithubNumbers) !== JSON.stringify(expectedGithubNumbers)) throw new Error('GitHubスナップショットの参照集合が正本と不一致です');
+// 同期失敗時は外部APIの古いスナップショットを保持する。成功扱いでの不一致だけを回帰として検出する。
+if (github.status === 'synced' && github.lastAttempt?.status !== 'error' && JSON.stringify(actualGithubNumbers) !== JSON.stringify(expectedGithubNumbers)) throw new Error('GitHubスナップショットの参照集合が正本と不一致です');
 const allowedGithubKinds = new Set(['issue', 'pull_request', 'missing', 'unsynced']);
 const allowedCiStatuses = new Set(['success', 'failure', 'pending', 'empty', 'unavailable']);
 for (const item of Object.values(github.items || {})) {
@@ -57,6 +68,8 @@ for (const item of gateItems) {
 
 const decisions = data.decisions;
 if (!decisions || Object.keys(decisions.features || {}).length !== data.features.length) throw new Error('Phase 2分類が43機能と一致しません');
+if (decisions.capabilityOverrides && Object.keys(decisions.capabilityOverrides).some((key) => !data.capabilities.some((item) => item.key === key))) throw new Error('capabilityOverridesに存在しない能力keyがあります');
+if (Object.keys(decisions.capabilities || {}).length !== data.capabilities.length) throw new Error('能力単位のPhase 2分類が表示能力と一致しません');
 const allowedStages = new Set(['B0', 'B1', 'B2', 'B3', 'B4']);
 const allowedAudiences = new Set(['soccer', 'alumni', 'both']);
 const allowedPriorities = new Set(['must', 'should', 'could', 'defer']);
@@ -66,6 +79,11 @@ for (const feature of data.features) {
   if (!decision) throw new Error(`Phase 2分類なし: ${feature.key}`);
   if (!allowedStages.has(decision.stage) || !allowedAudiences.has(decision.audience) || !allowedPriorities.has(decision.priority)) throw new Error(`Phase 2分類の許可値不正: ${feature.key}`);
   if (!allowedDecisionStatuses.has(decision.decisionStatus || decisions.decisionStatusDefault) || !decision.reason) throw new Error(`Phase 2分類の根拠または状態なし: ${feature.key}`);
+}
+for (const capability of data.capabilities) {
+  const decision = decisions.capabilities[capability.key];
+  if (!decision || decision.decisionStatus !== 'proposed' || !decision.reason) throw new Error(`能力単位の提案decisionがありません: ${capability.key}`);
+  if (capability.isCapability && (!capability.parentFeatureKey || !capability.statusSource.includes('子能力未実測'))) throw new Error(`親由来状態の明示がありません: ${capability.key}`);
 }
 
 const allowedStatuses = new Set(['blocked', 'unknown', 'incomplete', 'verifying', 'ready']);

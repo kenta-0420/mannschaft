@@ -58,18 +58,19 @@
       display: flex; align-items: center; justify-content: space-between; gap: 18px;
       margin-bottom: 18px;
     }
-    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .topbar > *, .brand > div, .hero > * { min-width: 0; }
+    .top-actions { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
     .quick-note-button {
       min-height: 44px; border: 0; border-radius: 12px; padding: 0 16px;
       background: var(--accent); color: #17200f; font-weight: 900;
     }
     .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .crest {
-      width: 46px; height: 46px; display: grid; place-items: center; border-radius: 14px;
+      width: 46px; height: 46px; flex: 0 0 46px; display: grid; place-items: center; border-radius: 14px;
       background: var(--brand); color: var(--bg); font-size: 24px; box-shadow: var(--shadow);
     }
-    h1 { margin: 0; font-size: clamp(20px, 3vw, 30px); letter-spacing: -.03em; }
-    .subtitle { margin: 3px 0 0; color: var(--muted); font-size: 13px; }
+    h1 { margin: 0; font-size: clamp(20px, 3vw, 30px); letter-spacing: -.03em; overflow-wrap: anywhere; }
+    .subtitle { margin: 3px 0 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
     .icon-button {
       min-width: 44px; min-height: 44px; border: 1px solid var(--line); border-radius: 12px;
       background: var(--panel); color: var(--text);
@@ -86,8 +87,8 @@
       color: color-mix(in srgb, var(--brand) 8%, transparent); line-height: 1;
     }
     .eyebrow { color: var(--brand); font-weight: 800; font-size: 12px; letter-spacing: .12em; }
-    .hero h2 { max-width: 710px; margin: 10px 0 8px; font-size: clamp(24px, 4vw, 42px); line-height: 1.12; letter-spacing: -.045em; }
-    .hero p { color: var(--muted); max-width: 740px; line-height: 1.8; margin: 0; }
+    .hero h2 { max-width: 710px; margin: 10px 0 8px; font-size: clamp(24px, 4vw, 42px); line-height: 1.12; letter-spacing: -.045em; overflow-wrap: anywhere; }
+    .hero p { color: var(--muted); max-width: 740px; line-height: 1.8; margin: 0; overflow-wrap: anywhere; }
     .hero-side { padding: 18px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
     .stat { padding: 14px; border-radius: 15px; background: var(--panel-soft); }
     .stat strong { display: block; font-size: 25px; font-variant-numeric: tabular-nums; }
@@ -311,7 +312,7 @@
       .source-strip { grid-template-columns: 1fr; }
       .source-arrow { transform: rotate(90deg); text-align: center; }
       .cmp-card { grid-template-columns: 1fr; }
-      .topbar { align-items: start; }
+      .topbar { align-items: start; gap: 10px; }
       .quick-note-button { width: 44px; padding: 0; font-size: 0; }
       .quick-note-button::before { content: "＋"; font-size: 20px; }
       .form-row, .shot-drop { grid-template-columns: 1fr; }
@@ -493,8 +494,8 @@
   <script>
     const baseInventory = window.BETA_INVENTORY_DATA;
     const decisions = baseInventory.decisions;
-    const features = baseInventory.features.map((feature) => {
-      const decision = decisions?.features?.[feature.key];
+    const features = (baseInventory.capabilities || baseInventory.features).map((feature) => {
+      const decision = decisions?.capabilities?.[feature.key] || decisions?.features?.[feature.key];
       if (!decision) return { ...feature, decisionStatus: 'unclassified' };
       return {
         ...feature,
@@ -591,6 +592,8 @@
     function getFeatureInfo(featureKey) {
       const feature = features.find((item) => item.key === featureKey);
       if (feature) return feature;
+      const parent = baseInventory.features.find((item) => item.key === featureKey);
+      if (parent) return parent;
       const campaign = campaigns.find((item) => item.featureKey === featureKey);
       return {
         key: featureKey,
@@ -638,6 +641,7 @@
             </div>
             <h3>${escapeHtml(feature.title)}</h3>
             <p>${escapeHtml(feature.summary)}</p>
+            ${feature.isCapability ? `<small class="capability-origin">親: ${escapeHtml(feature.parentFeatureKey)} · Gate: ${escapeHtml(feature.gateGroup || '共有なし')} · ${escapeHtml(feature.statusSource)}</small>` : ''}
             <div class="tags">
               <span class="tag ${escapeHtml(feature.classification)}">${escapeHtml(classificationLabel(feature.classification))}</span>
               <span class="tag">β: ${escapeHtml(feature.phase)}</span>
@@ -1407,7 +1411,7 @@ ${insight.detail}
 
     const generatedAt = new Date(window.BETA_INVENTORY_DATA.generatedAt).toLocaleString('ja-JP');
     const proposedDecisions = Object.values(decisions?.features || {}).filter((decision) => (decision.decisionStatus || decisions.decisionStatusDefault) === 'proposed').length;
-    document.querySelector('#sourceNote').textContent = `正本同期: 機能 ${sourceCounts.features}件 / CMP ${sourceCounts.campaigns}件 / Phase 2A分類 ${sourceCounts.features - proposedDecisions}確定・${proposedDecisions}提案 / 生成 ${generatedAt}`;
+    document.querySelector('#sourceNote').textContent = `正本大分類 ${sourceCounts.features}件 / 表示能力 ${sourceCounts.capabilities}件 / 分割親 ${sourceCounts.splitParents}件 / CMP ${sourceCounts.campaigns}件 / Phase 2A分類 ${sourceCounts.features - proposedDecisions}確定・${proposedDecisions}提案 / 生成 ${generatedAt}`;
     populateInsightFeatures();
     renderBoard();
     readInsights()
