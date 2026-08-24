@@ -85,7 +85,7 @@ function barClass(usage: StorageScopeUsage): string {
           <span v-if="usage && usage.includedBytes > 0" class="shrink-0" :class="usageClass(usage)">{{ usage.usagePercent.toFixed(1) }}%</span>
         </div>
         <template v-if="usage">
-          <div v-if="usage.includedBytes > 0" class="h-2 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700" role="progressbar" :aria-label="t('scopeDashboard.storageSummary.meterLabel', { scope: scopeLabels[index] })" :aria-valuenow="gaugePercent(usage)" :aria-valuetext="t('scopeDashboard.storageSummary.meterValue', { percent: usage.usagePercent.toFixed(1) })" aria-valuemin="0" aria-valuemax="100">
+          <div v-if="usage.includedBytes > 0" class="h-2 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700" role="progressbar" :aria-label="t('scopeDashboard.storageSummary.meterLabel', { scope: usage.scopeName || scopeLabels[index] })" :aria-valuenow="gaugePercent(usage)" :aria-valuetext="t('scopeDashboard.storageSummary.meterValue', { percent: usage.usagePercent.toFixed(1) })" aria-valuemin="0" aria-valuemax="100">
             <div class="h-full rounded-full transition-all" :class="barClass(usage)" :style="{ width: `${gaugePercent(usage)}%` }" />
           </div>
           <p v-if="usage.includedBytes > 0" class="mt-1 text-xs text-surface-500">{{ formatBytes(usage.usedBytes) }} / {{ formatBytes(usage.includedBytes) }}</p>

@@ -62,7 +62,7 @@ describe('DashboardStorageSummary', () => {
     const wrapper = await mountSummary()
     expect(getMyStorageUsage).toHaveBeenCalledTimes(1)
     expect(wrapper.findAll('[data-testid^="storage-card-"]')).toHaveLength(3)
-    expect(wrapper.get('[data-testid="storage-card-0"] .text-amber-600')).toBeTruthy()
+    expect(wrapper.get('[data-testid="storage-card-0"] .text-amber-700')).toBeTruthy()
     expect(wrapper.get('[data-testid="storage-card-0"] [role="progressbar"]').attributes('aria-label')).toContain('scopeDashboard.storageSummary.personal')
     dashboardStore.selectedTeamId = 'other-team'
     await wrapper.vm.$nextTick()
@@ -85,6 +85,7 @@ describe('DashboardStorageSummary', () => {
     expect(wrapper.get('[data-testid="storage-card-1"] .text-red-600')).toBeTruthy()
     expect(wrapper.get('[data-testid="storage-card-2"] [role="progressbar"]').attributes('aria-valuenow')).toBe('100')
     expect(wrapper.get('[data-testid="storage-card-2"] [role="progressbar"]').attributes('aria-valuetext')).toContain('120.0')
+    expect(wrapper.get('[data-testid="storage-card-2"] .text-red-600').text()).toContain('120.0%')
     dashboardStore.selectedOrgId = null
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="storage-card-2"]').text()).toContain('scopeDashboard.storageSummary.not_available')
@@ -95,6 +96,8 @@ describe('DashboardStorageSummary', () => {
     const wrapper = await mountSummary()
     expect(handleApiError).toHaveBeenCalledOnce()
     expect(wrapper.find('[data-testid="storage-error"]').exists()).toBe(true)
+    expect(wrapper.get('[data-testid="storage-retry"]').classes()).toContain('min-h-11')
+    expect(wrapper.get('[data-testid="storage-retry"]').classes()).toContain('min-w-11')
     await wrapper.get('[data-testid="storage-retry"]').trigger('click')
     await flushPromises()
     expect(getMyStorageUsage).toHaveBeenCalledTimes(2)
