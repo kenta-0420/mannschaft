@@ -68,6 +68,7 @@ describe('DashboardStorageSummary', () => {
     const wrapper = await mountSummary()
     expect(getMyStorageUsage).toHaveBeenCalledTimes(1)
     expect(wrapper.findAll('[data-testid^="storage-card-"]')).toHaveLength(3)
+    expect(wrapper.get('[data-testid="storage-card-0"]').text()).toContain('80 B / 100 B')
     expect(wrapper.get('[data-testid="storage-card-0"] .text-amber-700')).toBeTruthy()
     expect(wrapper.get('[data-testid="storage-card-0"]').text()).toContain('scopeDashboard.storageSummary.personal')
     expect(wrapper.get('[data-testid="storage-card-0"]').text()).not.toContain('個人')

@@ -101,6 +101,10 @@ interface MockOptions {
   onSearchTabs?: (url: URL) => void
   /** scope-tabs の public_id に slug を載せる（slug 移行後の実 BE 挙動を再現）*/
   withSlug?: boolean
+  /** 容量APIの呼出回数を検証するフック */
+  onStorageUsage?: () => void
+  /** 容量APIを失敗させる検証用フック */
+  storageUsageFailure?: boolean
 }
 
 /**
@@ -125,6 +129,11 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
 
   // 容量サマリーは配列レスポンスを前提とするため、catch-allより後に専用mockを登録する。
   await page.route('**/api/v1/me/storage/usage', async (route: Route) => {
+    opts.onStorageUsage?.()
+    if (opts.storageUsageFailure) {
+      await route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: { code: 'TEST_STORAGE_FAILURE' } }) })
+      return
+    }
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -233,10 +242,18 @@ test('F22.1-1: /dashboard がカルーセルを描画し、初期は個人パネ
   page,
 }) => {
   await loginAsMember(page)
-  await mockDashboardApis(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  let storageUsageCalls = 0
+  await mockDashboardApis(page, { onStorageUsage: () => { storageUsageCalls += 1 } })
 
   await page.goto('/dashboard')
   await waitForCarousel(page)
+  await expect(page.getByTestId('dashboard-storage-summary')).toHaveCount(1)
+  expect(storageUsageCalls).toBe(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+  const summaryBox = await page.getByTestId('dashboard-storage-summary').boundingBox()
+  expect(summaryBox).not.toBeNull()
+  expect(summaryBox!.x + summaryBox!.width).toBeLessThanOrEqual(390)
 
   // セグメントトグル（個人/チーム/組織）が存在する
   await expect(page.getByTestId('scope-segment-PERSONAL')).toBeVisible()
@@ -257,6 +274,16 @@ test('F22.1-1: /dashboard がカルーセルを描画し、初期は個人パネ
   await expect(page.locator('#scope-panel-PERSONAL')).toHaveCount(1)
   await expect(page.locator('#scope-panel-TEAM')).toHaveCount(1)
   await expect(page.locator('#scope-panel-ORGANIZATION')).toHaveCount(1)
+})
+
+test('F22.1-1: 容量API失敗時もカルーセルと切替タブを維持する', async ({ page }) => {
+  await loginAsMember(page)
+  await mockDashboardApis(page, { storageUsageFailure: true })
+  await page.goto('/dashboard')
+  await waitForCarousel(page)
+  await expect(page.getByTestId('storage-error')).toBeVisible()
+  await expect(page.getByTestId('scope-carousel')).toBeVisible()
+  await expect(page.getByTestId('scope-segment-PERSONAL')).toBeVisible()
 })
 
 // ──────────────────────────────────────────────────────────────────────────
