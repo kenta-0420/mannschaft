@@ -15,6 +15,7 @@ const props = withDefaults(defineProps<{
 })
 
 const { t } = useI18n()
+const { team } = useTeamShellContext()
 const { isAdmin, isAdminOrDeputy, isMember, roleName, loadPermissions } = useRoleAccess('team', computed(() => props.teamId))
 
 /** 管理者レンズがメンバー表示のときは、実ロールが管理者でも利用者向けUIへ切り替える。 */
@@ -273,6 +274,7 @@ onMounted(async () => {
             <SlotMatrixPicker
               ref="slotMatrixPickerRef"
               :team-id="props.teamId"
+              :team-timezone="team?.timezone ?? 'Asia/Tokyo'"
               :is-admin="isFullAdminView"
               @slot-selected="onSlotSelected"
               @manage-lines="activeTab = 2"
@@ -458,6 +460,7 @@ onMounted(async () => {
                       </p>
                       <ReservationUnavailabilityManager
                         :team-id="props.teamId"
+                        :team-timezone="team?.timezone ?? 'Asia/Tokyo'"
                         :disabled="!isAdmin"
                       />
                     </div>

@@ -3,6 +3,7 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import com.mannschaft.app.reservation.ReservationErrorCode;
@@ -102,6 +103,8 @@ class ReservationRecurringBlockedTimeForceCancelTest {
     @Mock
     private ReservationSlotRepository slotRepository;
     @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
+    @Mock
     private ReservationSlotService slotService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -116,7 +119,8 @@ class ReservationRecurringBlockedTimeForceCancelTest {
         service = new ReservationRecurringBlockedTimeService(
                 ruleRepository, lineRepository, reservationRepository,
                 new ReservationUnavailabilityChecker(), nameResolverService, auditLogService,
-                slotRepository, slotService, eventPublisher, FIXED_CLOCK);
+                slotRepository, slotService, eventPublisher, FIXED_CLOCK, teamTimezoneResolver);
+        given(teamTimezoneResolver.resolveZone(anyLong())).willReturn(ZoneId.of("UTC"));
 
         given(ruleRepository.countByTeamId(anyLong())).willReturn(0L);
         given(ruleRepository.save(any())).willAnswer(inv -> {

@@ -578,6 +578,8 @@
       "delete_confirm": "このテンプレートを削除しますか？（生成済みの枠は残ります）",
       "day_of_week": "曜日",
       "time_range": "時間帯",
+      "ends_next_day": "終了は翌日",
+      "next_day_time": "翌 {time}",
       "line": "予約対象",
       "line_common": "共通枠",
       "capacity": "定員",
@@ -647,6 +649,7 @@
     "business_hours": {
       "title": "営業時間",
       "day_open": "営業する",
+      "ends_next_day": "終了は翌日",
       "save_success": "保存し、枠を{generated}件更新しました",
       "generating": "枠を更新しています…",
       "generation_failed": "営業時間は保存しましたが、枠の自動更新に失敗しました。明朝に自動で追い付きます",

@@ -19,11 +19,13 @@ import com.mannschaft.app.reservation.repository.ReservationMenuLineRepository;
 import com.mannschaft.app.reservation.repository.ReservationMenuRepository;
 import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -91,6 +93,7 @@ public class ReservationGridService {
     private final ReservationViewAccessGuard viewAccessGuard;
     private final ReservationMenuRepository menuRepository;
     private final ReservationMenuLineRepository menuLineRepository;
+    private final TeamTimezoneResolver teamTimezoneResolver;
 
     /**
      * グリッド取得（F03.4.4 §4.1: 日付レンジ・メニューフィルター。列軸はライン固定 — #2575）。
@@ -111,6 +114,7 @@ public class ReservationGridService {
         // 認可: 予約作成と同一述語（会員 or 公開）。非許可は 403（RESERVATION_021）。
         // パラメータ検証より先に実行する（§6: パラメータは認可判定に影響しない）。
         viewAccessGuard.assertCanView(teamId, userId);
+        ZoneId teamZone = teamTimezoneResolver.resolveZone(teamId);
 
         // パラメータ検証（Service 層・到達順 — §4.1 検証表）。
         validateDateXorRange(date, from, to);
@@ -149,9 +153,9 @@ public class ReservationGridService {
             List<ReservationSlotEntity> slots =
                     slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(teamId, date, date);
             List<ReservationBlockedTimeEntity> blocks =
-                    blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, date);
+                    blockedTimeRepository.findEffectiveOnDate(teamId, date, date.minusDays(1));
             List<ReservationGridResponse.GridColumnDto> columns =
-                    buildLineColumns(lineColumns, slots, blocks, recurringRules);
+                    buildLineColumns(lineColumns, slots, blocks, recurringRules, teamZone);
             return ReservationGridResponse.builder()
                     .date(date)
                     .columns(columns)
@@ -164,8 +168,7 @@ public class ReservationGridService {
         List<ReservationSlotEntity> slots =
                 slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(teamId, from, to);
         List<ReservationBlockedTimeEntity> blocks =
-                blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                        teamId, from, to);
+                blockedTimeRepository.findEffectiveBetween(teamId, from, to, from.minusDays(1));
         Map<LocalDate, List<ReservationSlotEntity>> slotsByDate = slots.stream()
                 .collect(Collectors.groupingBy(ReservationSlotEntity::getSlotDate));
 
@@ -174,7 +177,7 @@ public class ReservationGridService {
             List<ReservationSlotEntity> daySlots = slotsByDate.getOrDefault(d, List.of());
             // 予約不可枠は checker が日付一致を内包判定するためレンジ全件を渡してよい（該当日以外は非マッチ）。
             days.add(new ReservationGridResponse.GridDayDto(
-                    d, buildLineColumns(lineColumns, daySlots, blocks, recurringRules)));
+                    d, buildLineColumns(lineColumns, daySlots, blocks, recurringRules, teamZone)));
         }
         return ReservationGridResponse.builder()
                 .days(days)
@@ -238,18 +241,19 @@ public class ReservationGridService {
             List<ReservationLineEntity> lineColumns,
             List<ReservationSlotEntity> daySlots,
             Collection<ReservationBlockedTimeEntity> blocks,
-            Collection<ReservationRecurringBlockedTimeEntity> recurringRules) {
+            Collection<ReservationRecurringBlockedTimeEntity> recurringRules,
+            ZoneId teamZone) {
         List<ReservationGridResponse.GridColumnDto> columns = new ArrayList<>();
         for (ReservationLineEntity line : lineColumns) {
             List<ReservationGridResponse.GridCellDto> cells = daySlots.stream()
                     .filter(s -> line.getId().equals(s.getLineId()))
-                    .map(s -> toCell(s, blocks, recurringRules))
+                    .map(s -> toCell(s, blocks, recurringRules, teamZone))
                     .toList();
             columns.add(new ReservationGridResponse.GridColumnDto(line.getId(), line.getName(), cells));
         }
         List<ReservationGridResponse.GridCellDto> commonCells = daySlots.stream()
                 .filter(s -> s.getLineId() == null)
-                .map(s -> toCell(s, blocks, recurringRules))
+                .map(s -> toCell(s, blocks, recurringRules, teamZone))
                 .toList();
         columns.add(new ReservationGridResponse.GridColumnDto(null, null, commonCells));
         return columns;
@@ -262,10 +266,13 @@ public class ReservationGridService {
     private ReservationGridResponse.GridCellDto toCell(
             ReservationSlotEntity slot,
             Collection<ReservationBlockedTimeEntity> blocks,
-            Collection<ReservationRecurringBlockedTimeEntity> recurringRules) {
-        CellStateResult result = resolveState(slot, blocks, recurringRules);
+            Collection<ReservationRecurringBlockedTimeEntity> recurringRules,
+            ZoneId teamZone) {
+        CellStateResult result = resolveState(slot, blocks, recurringRules, teamZone);
         return new ReservationGridResponse.GridCellDto(
                 slot.getId(),
+                slot.getSlotDate(),
+                slot.getEndDate() != null ? slot.getEndDate() : slot.getSlotDate(),
                 slot.getStartTime(),
                 slot.getEndTime(),
                 result.state(),
@@ -287,15 +294,16 @@ public class ReservationGridService {
     private CellStateResult resolveState(
             ReservationSlotEntity slot,
             Collection<ReservationBlockedTimeEntity> blocks,
-            Collection<ReservationRecurringBlockedTimeEntity> recurringRules) {
+            Collection<ReservationRecurringBlockedTimeEntity> recurringRules,
+            ZoneId teamZone) {
         // 最優先: 機能B の単発予約不可枠 overlap（常に非公開＝unavailableReason は null 固定）。
-        if (unavailabilityChecker.isBlockedByAny(slot, blocks)) {
+        if (blocks.stream().anyMatch(block -> unavailabilityChecker.isBlocked(slot, block, teamZone))) {
             return new CellStateResult(GridCellState.UNAVAILABLE, null);
         }
         // 次点: F03.4.5 §4 定期予約不可枠。該当があれば UNAVAILABLE。
         // reason は is_public=TRUE のうち開始時刻昇順で最初のものを採用（決定的・AC R-4）。
         List<ReservationRecurringBlockedTimeEntity> matchedRecurring = recurringRules.stream()
-                .filter(r -> unavailabilityChecker.isRecurringBlocked(slot, r))
+                .filter(r -> unavailabilityChecker.isRecurringBlocked(slot, r, teamZone))
                 .toList();
         if (!matchedRecurring.isEmpty()) {
             String publicReason = matchedRecurring.stream()

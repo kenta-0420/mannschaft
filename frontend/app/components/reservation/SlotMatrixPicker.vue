@@ -25,6 +25,8 @@ import {
   unavailableReasonOfSlot,
   type MatrixCellInput,
   type RowSlot,
+  type HeaderSlot,
+  GROUP_MAX_SIZE,
 } from '~/utils/reservationMatrix'
 import type { GroupBookingContext, LineOption } from '~/components/reservation/GroupBookingDialog.vue'
 import ReservationWaitlistDialog, { type WaitlistDialogContext } from '~/components/reservation/ReservationWaitlistDialog.vue'
@@ -34,6 +36,8 @@ type ReservationMenuResponse = components['schemas']['ReservationMenuResponse']
 
 const props = defineProps<{
   teamId: string
+  /** 予約枠の日付・現在時刻判定に使うチーム基準タイムゾーン。 */
+  teamTimezone?: string
   /** 管理者（ADMIN）か否か。空状態の文言・管理CTAの出し分けに使う。 */
   isAdmin: boolean
 }>()
@@ -55,7 +59,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const reservationApi = useReservationApi()
-const { userTimezone } = useDatetime()
+const teamTimezone = computed(() => props.teamTimezone ?? 'Asia/Tokyo')
 /** 静かなエラー記録（トーストは出さずバックエンドへ送信。WidgetAttendanceResults.vue 等と同一パターン）。 */
 const { captureQuiet } = useErrorReport()
 
@@ -118,7 +122,7 @@ function columnLabel(col: GridColumnDto): string {
 }
 
 function dayLabel(date: string): string {
-  return date ? dayjs(date).format('YYYY/MM/DD (ddd)') : ''
+  return date ? dayjs.tz(date, teamTimezone.value).format('YYYY/MM/DD (ddd)') : ''
 }
 
 const allCells = computed<MatrixCellInput[]>(() => {
@@ -152,41 +156,62 @@ const matrixRows = computed<MatrixRowVM[]>(() => {
   for (const day of days.value) {
     for (const col of day.columns ?? []) {
       const aligned = alignRowToHeader(col.cells ?? [], header.value)
-      const startable = requiredCellCount.value
-        ? computeStartableIndices(aligned, requiredCellCount.value)
-        : null
       rows.push({
         date: day.date,
         column: col,
         dateLabel: dayLabel(day.date),
         columnLabel: columnLabel(col),
         aligned,
-        startable,
+        startable: null,
       })
     }
+  }
+  // 日付行を跨ぐメニューでも、翌日00:00枠が同一lineかつ連続なら起点にできる。
+  for (const row of rows) {
+    const nextDate = dayjs.tz(row.date, teamTimezone.value).add(1, 'day').format('YYYY-MM-DD')
+    const next = rows.find(candidate => candidate.date === nextDate
+      && candidate.column.lineId === row.column.lineId)
+    const continuation = next ? [...row.aligned, ...next.aligned.slice(0, GROUP_MAX_SIZE)] : row.aligned
+    row.startable = requiredCellCount.value
+      ? computeStartableIndices(continuation, requiredCellCount.value)
+      : null
   }
   return rows
 })
 
+function continuationFor(row: MatrixRowVM): { slots: RowSlot[]; header: HeaderSlot[] } {
+  const nextDate = dayjs.tz(row.date, teamTimezone.value).add(1, 'day').format('YYYY-MM-DD')
+  const next = matrixRows.value.find(candidate => candidate.date === nextDate
+    && candidate.column.lineId === row.column.lineId)
+  if (!next) return { slots: row.aligned, header: header.value }
+  const extra = next.aligned.slice(0, GROUP_MAX_SIZE)
+  const extraHeader = extra.map((_, index) => ({
+    minutes: (index * 30) + 1440,
+    label: dayjs().startOf('day').add(index * 30, 'minute').format('HH:mm'),
+  }))
+  return { slots: [...row.aligned, ...extra], header: [...header.value, ...extraHeader] }
+}
+
 function weekRangeLabel(): string {
   if (!weekStart.value) return ''
-  const end = dayjs(weekStart.value).add(6, 'day')
-  return `${dayjs(weekStart.value).format('YYYY/MM/DD')} - ${end.format('YYYY/MM/DD')}`
+  const start = dayjs.tz(weekStart.value, teamTimezone.value)
+  const end = start.add(6, 'day')
+  return `${start.format('YYYY/MM/DD')} - ${end.format('YYYY/MM/DD')}`
 }
 
 function prevWeek() {
-  weekStart.value = dayjs(weekStart.value).subtract(7, 'day').format('YYYY-MM-DD')
+  weekStart.value = dayjs.tz(weekStart.value, teamTimezone.value).subtract(7, 'day').format('YYYY-MM-DD')
 }
 function nextWeek() {
-  weekStart.value = dayjs(weekStart.value).add(7, 'day').format('YYYY-MM-DD')
+  weekStart.value = dayjs.tz(weekStart.value, teamTimezone.value).add(7, 'day').format('YYYY-MM-DD')
 }
 function thisWeek() {
-  const today = dayjs().tz(userTimezone.value)
+  const today = dayjs().tz(teamTimezone.value)
   weekStart.value = today.subtract(mondayOffsetDays(today.day()), 'day').format('YYYY-MM-DD')
 }
 
 function refreshClock() {
-  const now = dayjs().tz(userTimezone.value)
+  const now = dayjs().tz(teamTimezone.value)
   todayStr.value = now.format('YYYY-MM-DD')
   nowMinutes.value = now.hour() * 60 + now.minute()
 }
@@ -214,13 +239,25 @@ async function loadGrid(opts?: { silent?: boolean }) {
   refreshClock()
   try {
     const from = weekStart.value
-    const to = dayjs(weekStart.value).add(6, 'day').format('YYYY-MM-DD')
+    const to = dayjs.tz(weekStart.value, teamTimezone.value).add(6, 'day').format('YYYY-MM-DD')
     const res = await reservationApi.getSlotGrid(props.teamId, {
       from,
       to,
       menuId: filterMenuId.value ?? undefined,
     })
-    days.value = (res.data.days ?? []).map(d => ({ date: d.date ?? '', columns: d.columns ?? [] }))
+    days.value = (res.data.days ?? []).map((d) => {
+      const date = d.date ?? ''
+      return {
+        date,
+        columns: (d.columns ?? []).map(col => ({
+          ...col,
+          cells: (col.cells ?? []).map((c) => {
+            const cell = c as typeof c & { slotDate?: string; endDate?: string }
+            return { ...c, slotDate: cell.slotDate ?? date, endDate: cell.endDate ?? (cell.slotDate ?? date) }
+          }),
+        })),
+      }
+    })
     requiredCellCount.value = res.data.meta?.requiredCellCount ?? null
   }
   catch {
@@ -257,10 +294,10 @@ function isCellDisabled(row: MatrixRowVM, headerIndex: number): boolean {
   if (slot.cell.state === 'BOOKED') {
     // slotId 不明の BOOKED セルは押しても無反応（early return）になるため disabled にする（検分是正）。
     if (slot.cell.slotId == null) return true
-    return isPastCell(row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)
+    return isPastCell(slot.cell.slotDate ?? row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)
   }
   if (slot.cell.state !== 'AVAILABLE') return true
-  if (isPastCell(row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)) return true
+  if (isPastCell(slot.cell.slotDate ?? row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)) return true
   if (slot.span === 1 && row.startable && !row.startable.has(headerIndex)) return true
   return false
 }
@@ -302,20 +339,25 @@ function cellLabel(row: MatrixRowVM, headerIndex: number): string {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind === 'empty') return '—'
   if (slot.kind === 'covered') return ''
+  let label: string
   switch (slot.cell.state) {
-    case 'AVAILABLE': return t('reservation.grid.state.available')
+    case 'AVAILABLE': label = t('reservation.grid.state.available'); break
     // BOOKED は自分が WAITING 登録済みなら「待機中」に切り替える（W2-4-FE）。
     case 'BOOKED':
-      return slot.cell.slotId != null && myWaitlistSlotIds.value.has(slot.cell.slotId)
+      label = slot.cell.slotId != null && myWaitlistSlotIds.value.has(slot.cell.slotId)
         ? t('reservation.waitlist.registered_badge')
         : t('reservation.grid.state.booked')
-    case 'CLOSED': return t('reservation.grid.state.closed')
+      break
+    case 'CLOSED': label = t('reservation.grid.state.closed'); break
     case 'UNAVAILABLE': {
       const reason = unavailableReasonOf(row, headerIndex)
-      return reason ? `× ${reason}` : t('reservation.grid.state.unavailable')
+      label = reason ? `× ${reason}` : t('reservation.grid.state.unavailable')
+      break
     }
     default: return ''
   }
+  const isNextDay = slot.cell.endDate && slot.cell.slotDate && slot.cell.endDate !== slot.cell.slotDate
+  return isNextDay ? `${label} (${t('reservation.template.next_day_time', { time: slot.cell.endTime ?? '' })})` : label
 }
 
 /**
@@ -381,13 +423,18 @@ const dragSelectedIndices = computed<number[]>(() => {
     row.aligned,
     anchor.headerIndex,
     dragFocusIndex.value ?? anchor.headerIndex,
-    i => !isPastCell(row.date, cellStartTimeAt(row, i), todayStr.value, nowMinutes.value),
+    i => !isPastCell(cellDateAt(row, i), cellStartTimeAt(row, i), todayStr.value, nowMinutes.value),
   )
 })
 
 function cellStartTimeAt(row: MatrixRowVM, headerIndex: number): string | undefined {
   const slot = row.aligned[headerIndex]
   return slot && slot.kind === 'cell' ? slot.cell.startTime : undefined
+}
+
+function cellDateAt(row: MatrixRowVM, headerIndex: number): string {
+  const slot = row.aligned[headerIndex]
+  return slot && slot.kind === 'cell' ? (slot.cell.slotDate ?? row.date) : row.date
 }
 
 /** そのマスがドラッグ選択のハイライト対象か（テンプレートの :class 用）。 */
@@ -500,13 +547,14 @@ function onPointerUp() {
 
 /** GroupBookingDialog を開く（単発クリックとドラッグ確定の共通経路）。 */
 function openGroupDialog(row: MatrixRowVM, startIndex: number, dragCellCount: number | null) {
+  const continuation = continuationFor(row)
   dialogContext.value = {
     date: row.date,
     columnLineId: row.column.lineId ?? null,
     columnLineName: row.column.lineName ?? null,
-    rowSlots: row.aligned,
+    rowSlots: continuation.slots,
     startIndex,
-    header: header.value,
+    header: continuation.header,
     preselectedMenuId: filterMenuId.value,
     preselectedRequiredCellCount: requiredCellCount.value,
     dragCellCount,

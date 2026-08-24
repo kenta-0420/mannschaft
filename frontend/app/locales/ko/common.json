@@ -1875,6 +1875,13 @@
     "mapEmbedUrlHelp": "Google Maps에서 「공유 > 지도 삽입 > HTML 복사」하여 src= URL을 붙여넣기 해 주세요",
     "mapEmbedUrlInvalidFormat": "Google Maps 삽입 URL（https://www.google.com/maps/embed?...）형식이어야 합니다",
     "mapEmbedUrlSaved": "매장 지도 URL이 저장되었습니다",
+    "timezone": {
+      "label": "예약 시간대",
+      "help": "예약 시작 및 종료 시간을 해석하는 IANA 시간대입니다.",
+      "placeholder": "예: Asia/Tokyo",
+      "invalid": "유효한 IANA 시간대를 입력하세요",
+      "saved": "예약 시간대를 저장했습니다"
+    },
     "regionCode": {
       "label": "소재지(도도부현・시구정촌)",
       "help": "도도부현과 시구정촌을 선택하면 지역 검색과 모집 게시의 초기값으로 사용됩니다.",

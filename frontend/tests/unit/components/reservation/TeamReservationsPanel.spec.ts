@@ -6,8 +6,13 @@ import TeamReservationsPanel from '~/components/reservation/TeamReservationsPane
 import ReservationForm from '~/components/reservation/ReservationForm.vue'
 import ReservationList from '~/components/reservation/ReservationList.vue'
 import SlotMatrixPicker from '~/components/reservation/SlotMatrixPicker.vue'
+import ReservationUnavailabilityManager from '~/components/reservation/ReservationUnavailabilityManager.vue'
 import ReservationResourceNameSettings from '~/components/reservation/ReservationResourceNameSettings.vue'
 import LineManager from '~/components/reservation/LineManager.vue'
+
+vi.mock('~/composables/useTeamShellContext', () => ({
+  useTeamShellContext: () => ({ team: ref({ timezone: 'America/New_York' }) }),
+}))
 
 /**
  * TeamReservationsPanel.vue ユニットテスト — 予約直後の再読込結線ガード（実機E2E発見バグの根治）
@@ -42,6 +47,8 @@ const mockCreateReservation = vi.fn()
 // 検分指摘（軽4）: 週間スケジュールの件数バッジ（枠テンプレ＋定期予約不可の合算）を検証するために追加。
 const mockGetSlotTemplates = vi.fn()
 const mockListRecurringBlockedTimes = vi.fn()
+const mockListBlockedTimes = vi.fn()
+const mockGetBusinessHours = vi.fn()
 // SlotMatrixPicker が自分のキャンセル待ち集合の取得に使う（#2609是正: 未モックだと
 // TypeError: reservationApi.listMyWaitlist is not a function が握りつぶされつつ毎回発生していた）。
 const mockListMyWaitlist = vi.fn()
@@ -57,6 +64,8 @@ vi.mock('~/composables/useReservationApi', () => ({
     createReservation: mockCreateReservation,
     getSlotTemplates: mockGetSlotTemplates,
     listRecurringBlockedTimes: mockListRecurringBlockedTimes,
+    listBlockedTimes: mockListBlockedTimes,
+    getBusinessHours: mockGetBusinessHours,
     listMyWaitlist: mockListMyWaitlist,
   }),
 }))
@@ -103,6 +112,8 @@ beforeEach(() => {
   mockCreateReservation.mockReset()
   mockGetSlotTemplates.mockReset()
   mockListRecurringBlockedTimes.mockReset()
+  mockListBlockedTimes.mockReset()
+  mockGetBusinessHours.mockReset()
   mockListMyWaitlist.mockReset()
   localStorage.clear()
 
@@ -115,6 +126,8 @@ beforeEach(() => {
   // 既定は枠テンプレ・定期予約不可とも0件（badge検証テストのみ個別に上書きする）。
   mockGetSlotTemplates.mockResolvedValue({ data: { templates: [], meta: { totalTemplates: 0, limit: 500 } } })
   mockListRecurringBlockedTimes.mockResolvedValue({ data: [] })
+  mockListBlockedTimes.mockResolvedValue({ data: [] })
+  mockGetBusinessHours.mockResolvedValue({ data: [] })
   // 自分がどの枠のキャンセル待ちにも登録していない既定状態（空配列が自然な初期値）。
   mockListMyWaitlist.mockResolvedValue({ data: [] })
 
@@ -125,6 +138,55 @@ beforeEach(() => {
 })
 
 describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
+  it('SlotMatrixPickerへTeamShellContextのタイムゾーンを渡す', async () => {
+    mockGetReservationSettings.mockResolvedValue({ data: { allowPublicReservation: true } })
+    mockGetLines.mockResolvedValue({ data: [activeLine] })
+    mockGetMenus.mockResolvedValue({ data: [] })
+    mockGetSlotGrid.mockResolvedValue({ data: { days: [] } })
+    mockListMyWaitlist.mockResolvedValue({ data: [] })
+
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug', managementView: false },
+    })
+    await flushPromises()
+
+    expect(wrapper.findComponent(SlotMatrixPicker).props('teamTimezone')).toBe('America/New_York')
+  })
+
+  it('ReservationUnavailabilityManagerへteam timezoneを渡す', async () => {
+    roleOverride.isAdmin = true
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'ADMIN'
+
+    const wrapper = await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug', managementView: true },
+    })
+    await flushPromises()
+
+    const manager = wrapper.findComponent(ReservationUnavailabilityManager)
+    expect(manager.exists()).toBe(true)
+    expect(manager.props('teamTimezone')).toBe('America/New_York')
+  })
+
+  it('ReservationUnavailabilityManager取得rangeはteam timezoneの日付を使う', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-08-13T02:00:00.000Z'))
+    roleOverride.isAdmin = true
+    roleOverride.isAdminOrDeputy = true
+    roleOverride.roleName = 'ADMIN'
+
+    await mountSuspended(TeamReservationsPanel, {
+      props: { teamId: 'team-slug', managementView: true },
+    })
+    await flushPromises()
+
+    expect(mockListBlockedTimes).toHaveBeenCalledWith('team-slug', {
+      from: '2026-08-12',
+      to: '2027-08-12',
+    })
+    vi.useRealTimers()
+  })
+
   it('AC-1/2: ReservationForm の reserved emit で枠(SlotMatrixPicker)・一覧(ReservationList)が再読込される', async () => {
     const wrapper = await mountSuspended(TeamReservationsPanel, {
       props: { teamId: 'team-slug' },

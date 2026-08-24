@@ -5,6 +5,7 @@ import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.common.ratelimit.RateLimitResult;
 import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
@@ -27,11 +28,14 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.Locale;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 /**
  * キャンセル待ち（waitlist）サービス（F03.4.5 §6.1）。
@@ -74,6 +78,9 @@ public class ReservationWaitlistService {
     private final MessageSource messageSource;
     private final Clock clock;
 
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TeamTimezoneResolver teamTimezoneResolver;
+
     // ────────────────────────────────────────────────────────────
     // 登録（会員/公開・view ゲート）
     // ────────────────────────────────────────────────────────────
@@ -110,8 +117,11 @@ public class ReservationWaitlistService {
         // そのまま LocalDateTime.now(clock) で使うと JVM 既定ゾーンとの差分だけ判定がずれる。
         // ReservationPendingExpireService#findExpirableUnits と同型に、Clock の瞬間を
         // JVM 既定ゾーンで解釈し直してから比較する。
-        LocalDateTime slotStart = LocalDateTime.of(slot.getSlotDate(), slot.getStartTime());
-        if (slotStart.isBefore(LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE)))) {
+        Instant slotStartInstant = teamTimezoneResolver == null
+                ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime())
+                        .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                : teamTimezoneResolver.toInstant(teamId, slot.getSlotDate(), slot.getStartTime());
+        if (slotStartInstant.isBefore(clock.instant())) {
             throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
         }
         // CLOSED は受付終了（既存 005 を再利用）。
@@ -344,9 +354,27 @@ public class ReservationWaitlistService {
     public int purgeExpiredWaiting() {
         // Issue #2526: 枠開始（slot_date/start_time・業務ローカル時刻）と比較するため、
         // Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する（register と同型）。
-        LocalDateTime now = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
-        List<ReservationWaitlistEntryEntity> expired = waitlistRepository.findExpiredWaiting(
-                WaitlistStatus.WAITING, now.toLocalDate(), now.toLocalTime());
+        Instant now = clock.instant();
+        List<ReservationWaitlistEntryEntity> waiting = waitlistRepository.findByStatus(WaitlistStatus.WAITING);
+        Map<Long, ReservationSlotEntity> slots = slotRepository.findAllById(waiting.stream()
+                        .map(ReservationWaitlistEntryEntity::getSlotId).collect(Collectors.toSet()))
+                .stream().collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+        Map<Long, ZoneId> zonesByTeam = teamTimezoneResolver == null
+                ? Map.of()
+                : java.util.Optional.ofNullable(teamTimezoneResolver.resolveZones(slots.values().stream()
+                        .map(ReservationSlotEntity::getTeamId).collect(Collectors.toSet())))
+                        .orElseGet(Map::of);
+        List<ReservationWaitlistEntryEntity> expired = waiting.stream()
+                .filter(entry -> {
+                    ReservationSlotEntity slot = slots.get(entry.getSlotId());
+                    if (slot == null) return false;
+                    ZoneId zone = zonesByTeam.get(slot.getTeamId());
+                    Instant start = teamTimezoneResolver == null || zone == null
+                            ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime())
+                                .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                            : teamTimezoneResolver.toInstant(slot.getSlotDate(), slot.getStartTime(), zone);
+                    return !start.isAfter(now);
+                }).toList();
         if (expired.isEmpty()) {
             return 0;
         }

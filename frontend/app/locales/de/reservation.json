@@ -583,6 +583,8 @@
       "capacity": "Kapazität",
       "is_active": "Aktiv",
       "cell_count": "{n} Slots/Tag (je 30 Min.)",
+      "ends_next_day": "Ende am nächsten Tag",
+      "next_day_time": "Nächster Tag {time}",
       "price": "Preis (optional)",
       "slot_title": "Titel (optional)",
       "generate": "Slots jetzt erzeugen",
@@ -647,6 +649,7 @@
     "business_hours": {
       "title": "Geschäftszeiten",
       "day_open": "Geöffnet",
+      "ends_next_day": "Ende am nächsten Tag",
       "save_success": "Gespeichert. {generated} Slots wurden aktualisiert",
       "generating": "Slots werden aktualisiert…",
       "generation_failed": "Die Geschäftszeiten wurden gespeichert, aber die automatische Slot-Aktualisierung ist fehlgeschlagen. Sie wird morgen früh automatisch nachgeholt",
