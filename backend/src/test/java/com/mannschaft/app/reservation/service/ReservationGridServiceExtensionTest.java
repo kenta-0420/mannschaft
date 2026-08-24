@@ -508,7 +508,7 @@ class ReservationGridServiceExtensionTest {
         // GridCellDto: 既存 C-4 と同一の完全一致検査（フィールド増減の番人）。
         // unavailableReason は公開定期予約不可枠の事由ラベル（is_public 限定・業務ラベル・W2-2）で予約者 PII を含まない。
         assertThat(componentNames(ReservationGridResponse.GridCellDto.class))
-                .containsExactlyInAnyOrder("slotId", "slotDate", "endDate", "startTime", "endTime", "state", "price", "unavailableReason");
+                .containsExactlyInAnyOrder("slotId", "slotDate", "endDate", "startTime", "endTime", "state", "price", "unavailableReason", "reservedByCurrentUser");
         // GridColumnDto: 許容フィールドの完全一致（#2575 でスタッフ由来フィールドを撤去。ライン名は設備名で PII ではない）。
         assertThat(componentNames(ReservationGridResponse.GridColumnDto.class))
                 .containsExactlyInAnyOrder("lineId", "lineName", "cells");

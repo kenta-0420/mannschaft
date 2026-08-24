@@ -272,7 +272,7 @@ class ReservationGridServiceTest {
                         ReservationGridResponse.GridCellDto.class.getRecordComponents())
                 .map(RecordComponent::getName).toList();
         assertThat(componentNames)
-                .containsExactlyInAnyOrder("slotId", "slotDate", "endDate", "startTime", "endTime", "state", "price", "unavailableReason");
+                .containsExactlyInAnyOrder("slotId", "slotDate", "endDate", "startTime", "endTime", "state", "price", "unavailableReason", "reservedByCurrentUser");
         assertThat(componentNames).noneMatch(n -> {
             String lower = n.toLowerCase();
             return lower.contains("user") || lower.contains("name")
