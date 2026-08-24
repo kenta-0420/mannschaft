@@ -35,7 +35,7 @@ CAPABILITY_SPLITS = {
     "organization-members": [("member-view", "組織メンバー閲覧"), ("member-manage", "組織メンバー管理・権限")],
     "village-join": [("village-view", "村閲覧"), ("village-join", "村参加")],
     "village-members": [("member-view", "村の構成員閲覧"), ("member-manage", "村の構成員管理")],
-    "village-events": [("schedule-create", "予定作成"), ("schedule-view-manage", "予定閲覧・管理"), ("attendance-request", "出欠募集"), ("attendance-response", "出欠回答"), ("attendance-summary", "出欠集計")],
+    "village-events": [("schedule-create", "予定作成"), ("schedule-view-manage", "予定閲覧・管理"), ("attendance-request", "出欠募集"), ("attendance-response", "出欠回答"), ("attendance-summary", "出欠集計"), ("calendar-view", "統合カレンダー閲覧"), ("calendar-sharing-level", "予定の公開範囲"), ("calendar-visibility-boundary", "カレンダー可視性境界")],
     "dashboard": [("personal-view", "個人ダッシュボード閲覧")],
     "survey": [("create", "アンケート作成"), ("publish", "アンケート公開"), ("response", "アンケート回答"), ("results", "アンケート結果")],
     "account-settings": [("settings", "設定"), ("withdrawal", "退会")],
@@ -44,7 +44,8 @@ CAPABILITY_SPLITS = {
     "notification-inbox": [("notification-delivery", "通知配信"), ("inbox", "受信箱")],
     "pointcard": [("wallet", "ウォレット"), ("points", "ポイント")],
     "tournament": [("tournament-management", "大会運営"), ("match-record", "試合記録")],
-    "todo-memo": [("todo", "TODO"), ("memo", "メモ")],
+    "todo-memo": [("todo-create", "TODO作成"), ("todo-share", "TODO共有"), ("memo-quick-create", "ポイっとメモ作成"), ("memo-view", "ポイっとメモ閲覧・所有者境界")],
+    "timeline": [("post", "タイムライン投稿"), ("view", "タイムライン閲覧"), ("sharing", "タイムライン共有範囲")],
     "corkboard": [("bulletin", "掲示板"), ("corkboard", "コルクボード")],
     "shift": [("shift", "シフト"), ("shift-budget", "シフト予算")],
     "billing-payment": [("billing", "請求"), ("payment", "決済"), ("membership-fee", "会費")],
@@ -61,7 +62,6 @@ CAPABILITY_SPLITS = {
     "webhook-sync": [("webhook", "Webhook"), ("external-sync", "外部同期"), ("line-link", "LINE連携")],
     "gamification": [("gamification", "ゲーミフィケーション"), ("supporter", "サポーター")],
 }
-
 
 B0_PLAN_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-b0-alicization.json"
 B0_ALICIZATION_PLAN = json.loads(B0_PLAN_PATH.read_text(encoding="utf-8"))

@@ -637,7 +637,7 @@
         <button class="feature-card" type="button" data-key="${escapeHtml(feature.key)}" data-status="${escapeHtml(feature.status)}">
             <div class="card-top">
               <span class="feature-key">${escapeHtml(feature.key)}</span>
-              <span class="priority ${escapeHtml(feature.priority)}">${escapeHtml(feature.priority.toUpperCase())} · ${escapeHtml(feature.decisionStatus === 'confirmed' ? '確定' : '提案')}</span>
+              <span class="priority ${escapeHtml(feature.priority)}">${escapeHtml(feature.priority.toUpperCase())} · ${escapeHtml(feature.decisionStatus === 'confirmed' ? '分類承認済' : '分類未承認')}</span>
             </div>
             <h3>${escapeHtml(feature.title)}</h3>
             <p>${escapeHtml(feature.summary)}</p>
@@ -682,8 +682,8 @@
           ${focus.map((feature, index) => `<div class="focus-card"><div class="focus-order">${index + 1}番目</div>${featureCard(feature)}</div>`).join('') || `<div class="empty">${selectedStage}に未完了のmust提案はありません。</div>`}
         </div>
         <section class="decision-panel">
-          <div><b>Phase 2の決定待ち</b><span>${features.filter((feature) => feature.decisionStatus === 'proposed').length}件が提案状態</span></div>
-          <p>対象者・B段階・優先度は仮説です。カードを開いて根拠を確認し、合意したものだけ decisions.json の decisionStatus を confirmed に変更してください。</p>
+          <div><b>Phase 2の分類承認待ち</b><span>${features.filter((feature) => feature.decisionStatus === 'proposed').length}件が分類未承認</span></div>
+          <p>対象者・B段階・優先度は提案です。分類判断は実装状態・アリシゼーション実測statusと別管理です。</p>
         </section>`;
       const b0Plan = baseInventory.b0Alicization;
       if (selectedStage === 'B0' && b0Plan) {
@@ -1015,7 +1015,7 @@
       const taskType = document.querySelector('#taskSelect').value;
       const actions = {
         investigate: '実装・テスト・設計書を追って現状を棚卸しし、不明を証拠付きの状態へ更新してください。',
-        classify: 'Phase 2A分類提案を設計書と対象ユースケースに照らして確認してください。妥当ならdecisionStatusをconfirmedへ変更し、異なる場合はstage・audience・priority・reasonを根拠付きで修正してください。',
+        classify: 'Phase 2A分類提案を設計書と対象ユースケースに照らして確認してください。分類判断は実装状態・アリシゼーション実測statusとは別です。ユーザーの明示承認が得られた場合だけ、stage・audience・priorityを設定し、decisionStatusをconfirmed、confirmedByをuser、有効なISO形式confirmedAt、非空confirmationNoteを同時に記録してください。依頼文から推測して承認しないでください。',
         implement: '不足を実装し、変更範囲に比例したテストと実機検証まで完了してください。',
         review: '設計・実装・認可・テストを検分し、完了条件へのトレーサビリティを確認してください。'
       };
@@ -1040,13 +1040,13 @@
 ` : '';
       const b0Context = feature.stage === 'B0' && baseInventory.b0Alicization ? `
 ■ B0アリシゼーション自動探索
-- 対象journey: ${(baseInventory.b0Alicization.journeys || []).filter((journey) => journey.capabilities.includes(feature.key)).map((journey) => `${journey.id} ${journey.title}`).join(' / ') || '該当journeyなし'}
+- 対象journey: ${(baseInventory.b0Alicization.journeys || []).filter((journey) => journey.capabilities.includes(feature.key)).map((journey) => `${journey.id} ${journey.title}\n  確認項目: ${(journey.checks || []).join(' / ')}${journey.knownConstraints?.length ? `\n  既知制約: ${journey.knownConstraints.join(' / ')}` : ''}${journey.prerequisites?.length ? `\n  前提条件: ${journey.prerequisites.join(' / ')}` : ''}`).join(' / ') || '該当journeyなし'}
 - 検証前提: 実UI・実DB、管理者1＋一般利用者2、利用者ごとに別BrowserContext・別ログイン
 - 状態: planned / runnable / running / passed / failed。未実測をpassedにしない
 ` : '';
       const decisionContext = feature.decisionReason ? `
 ■ Phase 2A分類提案（正本ではなくプロダクト判断）
-- 判断状態: ${feature.decisionStatus === 'confirmed' ? '確定' : '提案'}
+- 分類判断: ${feature.decisionStatus === 'confirmed' ? '分類承認済' : '分類未承認'}（実装状態・アリシゼーション実測statusとは別）
 - 根拠: ${feature.decisionReason}
 - 参照: ${(feature.decisionRefs || []).join(' / ')}
 ` : '';
@@ -1423,7 +1423,7 @@ ${insight.detail}
 
     const generatedAt = new Date(window.BETA_INVENTORY_DATA.generatedAt).toLocaleString('ja-JP');
     const proposedDecisions = Object.values(decisions?.features || {}).filter((decision) => (decision.decisionStatus || decisions.decisionStatusDefault) === 'proposed').length;
-    document.querySelector('#sourceNote').textContent = `正本大分類 ${sourceCounts.features}件 / 表示能力 ${sourceCounts.capabilities}件 / 分割親 ${sourceCounts.splitParents}件 / CMP ${sourceCounts.campaigns}件 / Phase 2A分類 ${sourceCounts.features - proposedDecisions}確定・${proposedDecisions}提案 / 生成 ${generatedAt}`;
+    document.querySelector('#sourceNote').textContent = `正本大分類 ${sourceCounts.features}件 / 表示能力 ${sourceCounts.capabilities}件 / 分割親 ${sourceCounts.splitParents}件 / CMP ${sourceCounts.campaigns}件 / Phase 2A分類 ${sourceCounts.features - proposedDecisions}分類承認済・${proposedDecisions}分類未承認 / 生成 ${generatedAt}`;
     populateInsightFeatures();
     renderBoard();
     readInsights()

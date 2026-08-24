@@ -102,7 +102,21 @@ for (const journey of b0Plan.journeys || []) {
 if (!b0CapabilityKeys.has('village-events-attendance-response') || !b0CapabilityKeys.has('village-events-attendance-summary')) throw new Error('出欠回答・集計の分割能力がありません');
 if (!b0CapabilityKeys.has('survey-response') || !b0CapabilityKeys.has('survey-results')) throw new Error('アンケート回答・結果の分割能力がありません');
 if ((b0Plan.journeys || []).some((journey) => (journey.capabilities || []).includes('reservation'))) throw new Error('予約を出欠journeyに含めています');
+for (const key of ['timeline-post', 'timeline-view', 'timeline-sharing', 'notification-inbox-notification-delivery', 'notification-inbox-inbox', 'todo-memo-todo-create', 'todo-memo-todo-share', 'todo-memo-memo-quick-create', 'todo-memo-memo-view', 'village-events-calendar-view', 'village-events-calendar-sharing-level', 'village-events-calendar-visibility-boundary']) {
+  if (!b0CapabilityKeys.has(key)) throw new Error(`B0共有機能の能力がありません: ${key}`);
+  const decision = decisions.capabilities[key];
+  if (!decision || decision.stage !== 'B0' || decision.priority !== 'must' || !['proposed', 'confirmed'].includes(decision.decisionStatus || decisions.decisionStatusDefault) || !decision.reason) throw new Error(`B0共有機能の判断がB0/must/reason非空ではありません: ${key}`);
+  if (!(b0Plan.journeys || []).some((journey) => (journey.capabilities || []).includes(key))) throw new Error(`B0 journeyに共有機能がありません: ${key}`);
+}
+if ((b0Plan.journeys || []).some((journey) => (journey.capabilities || []).some((key) => key.startsWith('village-events-calendar-') && key.includes('attendance')))) throw new Error('カレンダー能力に出欠能力を混在させないでください');
 const allowedStatuses = new Set(['blocked', 'unknown', 'incomplete', 'verifying', 'ready']);
+for (const [key, decision] of Object.entries(decisions.features || {}).concat(Object.entries(decisions.capabilityOverrides || {}))) {
+  if (decision.decisionStatus === 'confirmed') {
+    if (decision.confirmedBy !== 'user' || !decision.confirmedAt || Number.isNaN(Date.parse(decision.confirmedAt)) || !decision.confirmationNote?.trim()) {
+      throw new Error(`confirmed判断にはconfirmedBy=user、confirmedAt、confirmationNoteが必要です: ${key}`);
+    }
+  }
+}
 if (data.features.some((feature) => !allowedStatuses.has(feature.status))) throw new Error('公式5状態以外の機能があります。');
 
 const campaignTagByStatus = { blocked: '停止中', working: '進行中', done: '完了', unknown: '未整理' };
