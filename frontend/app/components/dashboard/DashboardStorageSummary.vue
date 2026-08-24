@@ -54,6 +54,10 @@ function barClass(usage: StorageScopeUsage): string {
   if (usage.usagePercent >= 80) return 'bg-amber-500'
   return 'bg-primary'
 }
+
+function displayScopeName(usage: StorageScopeUsage, index: number): string {
+  return usage.scopeType === 'PERSONAL' ? scopeLabels.value[index]! : usage.scopeName || scopeLabels.value[index]!
+}
 </script>
 
 <template>
@@ -81,11 +85,11 @@ function barClass(usage: StorageScopeUsage): string {
     <div v-else class="grid grid-cols-1 gap-3 md:grid-cols-3">
       <article v-for="(usage, index) in selectedUsages" :key="scopeLabels[index]" class="min-w-0 rounded-md bg-surface-50 p-3 dark:bg-surface-800" :data-testid="`storage-card-${index}`">
         <div class="mb-2 flex items-center justify-between gap-2 text-sm">
-          <span class="truncate font-medium">{{ usage?.scopeName || scopeLabels[index] }}</span>
+          <span class="truncate font-medium">{{ usage ? displayScopeName(usage, index) : scopeLabels[index] }}</span>
           <span v-if="usage && usage.includedBytes > 0" class="shrink-0" :class="usageClass(usage)">{{ usage.usagePercent.toFixed(1) }}%</span>
         </div>
         <template v-if="usage">
-          <div v-if="usage.includedBytes > 0" class="h-2 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700" role="progressbar" :aria-label="t('scopeDashboard.storageSummary.meterLabel', { scope: usage.scopeName || scopeLabels[index] })" :aria-valuenow="gaugePercent(usage)" :aria-valuetext="t('scopeDashboard.storageSummary.meterValue', { percent: usage.usagePercent.toFixed(1) })" aria-valuemin="0" aria-valuemax="100">
+          <div v-if="usage.includedBytes > 0" class="h-2 overflow-hidden rounded-full bg-surface-200 dark:bg-surface-700" role="progressbar" :aria-label="t('scopeDashboard.storageSummary.meterLabel', { scope: displayScopeName(usage, index) })" :aria-valuenow="gaugePercent(usage)" :aria-valuetext="t('scopeDashboard.storageSummary.meterValue', { percent: usage.usagePercent.toFixed(1) })" aria-valuemin="0" aria-valuemax="100">
             <div class="h-full rounded-full transition-all" :class="barClass(usage)" :style="{ width: `${gaugePercent(usage)}%` }" />
           </div>
           <p v-if="usage.includedBytes > 0" class="mt-1 text-xs text-surface-500">{{ formatBytes(usage.usedBytes) }} / {{ formatBytes(usage.includedBytes) }}</p>

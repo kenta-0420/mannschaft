@@ -43,7 +43,7 @@ const stubs = {
 
 function usage(scopeType: StorageScopeUsage['scopeType'], overrides: Partial<StorageScopeUsage> = {}): StorageScopeUsage {
   return {
-    scopeType, scopeId: 1, scopeName: scopeType, slug: scopeType === 'TEAM' ? 'team-a' : scopeType === 'ORGANIZATION' ? 'org-a' : null,
+    scopeType, scopeId: 1, scopeName: scopeType === 'PERSONAL' ? '個人' : scopeType === 'TEAM' ? 'Team Actual' : 'Organization Actual', slug: scopeType === 'TEAM' ? 'team-a' : scopeType === 'ORGANIZATION' ? 'org-a' : null,
     usedBytes: 80, fileCount: 1, includedBytes: 100, maxBytes: 100, usagePercent: 80, ...overrides,
   }
 }
@@ -69,8 +69,10 @@ describe('DashboardStorageSummary', () => {
     expect(getMyStorageUsage).toHaveBeenCalledTimes(1)
     expect(wrapper.findAll('[data-testid^="storage-card-"]')).toHaveLength(3)
     expect(wrapper.get('[data-testid="storage-card-0"] .text-amber-700')).toBeTruthy()
-    expect(wrapper.get('[data-testid="storage-card-0"] [role="progressbar"]').attributes('aria-label')).toContain('PERSONAL')
-    expect(wrapper.get('[data-testid="storage-card-1"] [role="progressbar"]').attributes('aria-label')).toContain('TEAM')
+    expect(wrapper.get('[data-testid="storage-card-0"]').text()).toContain('scopeDashboard.storageSummary.personal')
+    expect(wrapper.get('[data-testid="storage-card-0"]').text()).not.toContain('個人')
+    expect(wrapper.get('[data-testid="storage-card-0"] [role="progressbar"]').attributes('aria-label')).toContain('scopeDashboard.storageSummary.personal')
+    expect(wrapper.get('[data-testid="storage-card-1"] [role="progressbar"]').attributes('aria-label')).toContain('Team Actual')
     dashboardStore.selectedTeamId = 'other-team'
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="storage-card-1"]').text()).toContain('scopeDashboard.storageSummary.not_available')

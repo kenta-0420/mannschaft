@@ -123,6 +123,27 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
     })
   })
 
+  // 容量サマリーは配列レスポンスを前提とするため、catch-allより後に専用mockを登録する。
+  await page.route('**/api/v1/me/storage/usage', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          scopeType: 'PERSONAL',
+          scopeId: 1,
+          scopeName: '個人',
+          slug: null,
+          usedBytes: 0,
+          fileCount: 0,
+          includedBytes: 1024,
+          maxBytes: 1024,
+          usagePercent: 0,
+        },
+      ]),
+    })
+  })
+
   // --- 認証リフレッシュ（401 連鎖でログアウトさせない）---
   await page.route('**/api/v1/auth/refresh', async (route: Route) => {
     await route.fulfill({
