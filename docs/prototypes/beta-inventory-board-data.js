@@ -1,24 +1,25 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T10:49:18+00:00",
+  "generatedAt": "2026-08-24T13:23:08+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
     "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
     "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
+    "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "059334a7c60cb6315f1e05119d6b5c56c43d15d2",
     "taskListCommit": "f24f2fd08a27d76080b4a2ea2b98a9293ba8c53b",
     "inventorySha256": "b7a29d2301f7ade17f21565e6a075d185d129434d81c5a0a2cdff5639d831900",
     "taskListSha256": "3732340db7c32b1e7733d2f49e8387eb884078806da1bec7537c0b90be54e354",
-    "decisionsSha256": "15b90ebca6a748c0e76288f7c07d22fcef23e1742f46bcf07c14a701448d22b0",
+    "decisionsSha256": "5721052631110d26b34bf2288bc6e8a9de069a030b7f8d63808f8304348f7a4d",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
     "githubSnapshotSha256": "e8c85413126e0702ca2192849d3bf866ff4d2ee38447e4e4c065aef30373f771"
   },
   "sourceCounts": {
     "features": 43,
-    "capabilities": 87,
-    "splitParents": 32,
+    "capabilities": 94,
+    "splitParents": 33,
     "campaigns": 87,
     "layer": {
       "能力": 25,
@@ -55,7 +56,7 @@ window.BETA_INVENTORY_DATA = {
     "passed": true
   },
   "warnings": [
-    "正本は43大分類、表示・集計は87能力単位。分割親は32件。",
+    "正本は43大分類、表示・集計は94能力単位。分割親は33件。",
     "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
     "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
     "Gate前提工事はbeta-inventory-board-gate.jsonの根拠付きoverlayから表示。未確認項目は公開候補に含めない。",
@@ -2627,6 +2628,132 @@ window.BETA_INVENTORY_DATA = {
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
+      "key": "village-events-calendar-view",
+      "title": "統合カレンダー閲覧",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "village-events由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "CMP-002 実装中",
+      "refs": [
+        "docs/features"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "CMP-002 実装中"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-events",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-events-calendar-sharing-level",
+      "title": "予定の公開範囲",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "village-events由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "CMP-002 実装中",
+      "refs": [
+        "docs/features"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "CMP-002 実装中"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-events",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-events-calendar-visibility-boundary",
+      "title": "カレンダー可視性境界",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "village-events由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "CMP-002 実装中",
+      "refs": [
+        "docs/features"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "CMP-002 実装中"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-events",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
       "key": "notification-inbox-notification-delivery",
       "title": "通知配信",
       "stage": "未設定",
@@ -2707,8 +2834,8 @@ window.BETA_INVENTORY_DATA = {
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "timeline",
-      "title": "タイムライン",
+      "key": "timeline-post",
+      "title": "タイムライン投稿",
       "stage": "未設定",
       "phase": "コア",
       "status": "verifying",
@@ -2746,7 +2873,93 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml",
       "parentFeatureKey": "timeline",
       "gateGroup": null,
-      "isCapability": false,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "timeline-view",
+      "title": "タイムライン閲覧",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "verifying",
+      "statusLabel": "検証中",
+      "statusSource": "timeline由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "実機E2E作業中spec群あり（frontend/tests/e2e/real/personal-timeline.spec.ts 等）",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
+      },
+      "verification": {
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": []
+        }
+      },
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "timeline",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "timeline-sharing",
+      "title": "タイムライン共有範囲",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "verifying",
+      "statusLabel": "検証中",
+      "statusSource": "timeline由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "実機E2E作業中spec群あり（frontend/tests/e2e/real/personal-timeline.spec.ts 等）",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
+      },
+      "verification": {
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": []
+        }
+      },
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "timeline",
+      "gateGroup": null,
+      "isCapability": true,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
@@ -3065,8 +3278,8 @@ window.BETA_INVENTORY_DATA = {
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "todo-memo-todo",
-      "title": "TODO",
+      "key": "todo-memo-todo-create",
+      "title": "TODO作成",
       "stage": "未設定",
       "phase": "コア",
       "status": "unknown",
@@ -3103,8 +3316,84 @@ window.BETA_INVENTORY_DATA = {
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "todo-memo-memo",
-      "title": "メモ",
+      "key": "todo-memo-todo-share",
+      "title": "TODO共有",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "todo-memo由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "todo-memo",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "todo-memo-memo-quick-create",
+      "title": "ポイっとメモ作成",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "todo-memo由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "todo-memo",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "todo-memo-memo-view",
+      "title": "ポイっとメモ閲覧・所有者境界",
       "stage": "未設定",
       "phase": "コア",
       "status": "unknown",
@@ -4898,15 +5187,21 @@ window.BETA_INVENTORY_DATA = {
       },
       {
         "id": "B0-J5",
-        "title": "予定・アンケートの通知受信",
+        "title": "通知配信・受信箱",
         "status": "planned",
         "capabilities": [
           "notification-inbox-notification-delivery",
           "notification-inbox-inbox"
         ],
         "checks": [
-          "別セッションへ通知",
-          "受信箱から遷移"
+          "予定・アンケート等、設計上通知が発生する操作",
+          "対象者だけに届く",
+          "未読→既読",
+          "受信箱から対象へ遷移",
+          "対象外ユーザーへ漏れない"
+        ],
+        "knownConstraints": [
+          "設計上通知が発生しない操作は期待しない"
         ]
       },
       {
@@ -4922,9 +5217,174 @@ window.BETA_INVENTORY_DATA = {
           "権限外操作の非表示",
           "権限外URL/API拒否"
         ]
+      },
+      {
+        "id": "B0-J7",
+        "title": "タイムライン投稿・閲覧・共有範囲",
+        "status": "planned",
+        "capabilities": [
+          "timeline-post",
+          "timeline-view",
+          "timeline-sharing"
+        ],
+        "checks": [
+          "実UI+実DB",
+          "管理者1+一般2を別BrowserContext/別ログイン",
+          "TEAM/ORGANIZATION投稿先",
+          "ORGANIZATIONのDIRECT/CHILDREN/DESCENDANTS",
+          "共有範囲ごとの可視性",
+          "権限外URL/APIは非表示または拒否"
+        ],
+        "knownConstraints": [
+          "PUBLICは初期無効のためB0対象外"
+        ]
+      },
+      {
+        "id": "B0-J8",
+        "title": "共有TODO",
+        "status": "planned",
+        "capabilities": [
+          "todo-memo-todo-create",
+          "todo-memo-todo-share"
+        ],
+        "checks": [
+          "実UI+実DB",
+          "管理者1+一般2を別BrowserContext/別ログイン",
+          "PERSONAL/TEAM/ORGANIZATION共有",
+          "担当者/非担当者の可視性",
+          "URL/API権限境界"
+        ]
+      },
+      {
+        "id": "B0-J9",
+        "title": "ポイっとメモ",
+        "status": "planned",
+        "capabilities": [
+          "todo-memo-memo-quick-create",
+          "todo-memo-memo-view"
+        ],
+        "checks": [
+          "実UI+実DB",
+          "所有者による作成・閲覧",
+          "他人から404または拒否",
+          "可能ならTODO昇格の導線を確認"
+        ],
+        "knownConstraints": [
+          "実装が所有者限定の場合、共有能力は要求しない"
+        ]
+      },
+      {
+        "id": "B0-J10",
+        "title": "統合カレンダー共有レベル",
+        "status": "planned",
+        "capabilities": [
+          "village-events-calendar-view",
+          "village-events-calendar-sharing-level",
+          "village-events-calendar-visibility-boundary"
+        ],
+        "checks": [
+          "実UI+実DB",
+          "管理者1+一般2を別BrowserContext/別ログイン",
+          "統合カレンダーPERSONAL/TEAM/ORGANIZATIONレイヤー",
+          "予定の公開範囲MEMBERS_ONLY/ORGANIZATION",
+          "min_view_role別可視性",
+          "権限外URL/APIは非表示または拒否",
+          "村イベントの予定閲覧とは別能力"
+        ],
+        "knownConstraints": [
+          "F03.1ではmin_view_role編集UIがないため、設定不能な値を通過前提にしない"
+        ]
       }
     ]
   },
+  "b0Coverage": {
+    "schemaVersion": 1,
+    "journeys": {
+      "B0-J1": {
+        "specPaths": [
+          "frontend/tests/e2e/dashboard/dashboard.spec.ts",
+          "frontend/tests/e2e/teams/team-hub.spec.ts",
+          "frontend/tests/e2e/organizations/org-hub.spec.ts",
+          "frontend/tests/e2e/villages/village-flow.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J2": {
+        "specPaths": [
+          "frontend/tests/e2e/teams/team-list.spec.ts",
+          "frontend/tests/e2e/teams/invite-qr-pdf.spec.ts",
+          "frontend/tests/e2e/scenarios/onboarding-flow.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J3": {
+        "specPaths": [
+          "frontend/tests/e2e/real/village-events-activation.spec.ts",
+          "frontend/tests/e2e/real/village-events-wave2.spec.ts",
+          "frontend/tests/e2e/teams/events.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J4": {
+        "specPaths": [
+          "frontend/tests/e2e/teams/surveys.spec.ts",
+          "frontend/tests/e2e/surveys/survey-crud.spec.ts",
+          "frontend/tests/e2e/surveys/survey-results-visibility.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J5": {
+        "specPaths": [
+          "frontend/tests/e2e/f0411-inbox.spec.ts",
+          "frontend/tests/e2e/global/notifications.spec.ts",
+          "frontend/tests/e2e/surveys/survey-remind.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J6": {
+        "specPaths": [
+          "frontend/tests/e2e/security/access-control.spec.ts",
+          "frontend/tests/e2e/organizations/org-hierarchy.spec.ts",
+          "frontend/tests/e2e/confirmable/unconfirmed-visibility.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J7": {
+        "specPaths": [
+          "frontend/tests/e2e/global/timeline.spec.ts",
+          "frontend/tests/e2e/organizations/org-timeline.spec.ts",
+          "frontend/tests/e2e/real/timeline-delivery-scope-and-mute.spec.ts",
+          "frontend/tests/e2e/action-memo/phase3-team-timeline.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J8": {
+        "specPaths": [
+          "frontend/tests/e2e/teams/todos.spec.ts",
+          "frontend/tests/e2e/teams/todos-deep.spec.ts",
+          "frontend/tests/e2e/todos/handoff.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J9": {
+        "specPaths": [
+          "frontend/tests/e2e/quick-memos/quick-memo.spec.ts",
+          "frontend/tests/e2e/action-memo.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      },
+      "B0-J10": {
+        "specPaths": [
+          "frontend/tests/e2e/calendar/calendar.spec.ts",
+          "frontend/tests/e2e/real/f0810-entry-dashboard-calendar.spec.ts",
+          "frontend/tests/e2e/organizations/org-schedule.spec.ts",
+          "frontend/tests/e2e/real/schedule-activity-feed-visibility.spec.ts"
+        ],
+        "coverageStatus": "partial"
+      }
+    }
+  },
+  "b0RunOverlay": null,
   "decisions": {
     "schemaVersion": 1,
     "phase": "Phase 2A",
@@ -4979,7 +5439,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-invite": {
         "stage": "B0",
@@ -4989,7 +5449,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-admin": {
         "stage": "B0",
@@ -4999,7 +5459,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-modules": {
         "stage": "B2",
@@ -5019,7 +5479,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "organization-members": {
         "stage": "B0",
@@ -5029,7 +5489,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-join": {
         "stage": "B0",
@@ -5039,7 +5499,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-members": {
         "stage": "B0",
@@ -5049,7 +5509,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events": {
         "stage": "B0",
@@ -5060,7 +5520,7 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "notification-inbox": {
         "stage": "B0",
@@ -5074,13 +5534,15 @@ window.BETA_INVENTORY_DATA = {
         "decisionStatus": "proposed"
       },
       "timeline": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
-        "reason": "チームの日常更新を一か所に集めるLINE置換の中核。",
+        "reason": "B0でチーム・組織の投稿と共有範囲を実測する。",
         "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ]
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F04.1_timeline.md"
+        ],
+        "decisionStatus": "proposed"
       },
       "chat": {
         "stage": "B1",
@@ -5108,7 +5570,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "reservation": {
         "stage": "B1",
@@ -5127,16 +5589,19 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "todo-memo": {
-        "stage": "B2",
+        "stage": "B0",
         "audience": "both",
-        "priority": "could",
-        "reason": "個人・運営メモは便利だが、連絡と予定の実証後でよい。",
+        "priority": "must",
+        "reason": "B0でTODO共有とポイっとメモの所有者境界を実測する。",
         "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ]
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F02.3_todo_project.md",
+          "docs/features/F02.5_quick_memo.md"
+        ],
+        "decisionStatus": "proposed"
       },
       "corkboard": {
         "stage": "B1",
@@ -5348,26 +5813,6 @@ window.BETA_INVENTORY_DATA = {
         ],
         "decisionStatus": "proposed"
       },
-      "todo-memo-todo": {
-        "stage": "B2",
-        "audience": "both",
-        "priority": "could",
-        "reason": "TODOは個人の作業項目を管理する独立能力。親提案を継承し、子能力は未実測。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ],
-        "decisionStatus": "proposed"
-      },
-      "todo-memo-memo": {
-        "stage": "B2",
-        "audience": "both",
-        "priority": "could",
-        "reason": "メモは自由記述を扱う独立能力。親提案を継承し、子能力は未実測。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ],
-        "decisionStatus": "proposed"
-      },
       "corkboard-bulletin": {
         "stage": "B1",
         "audience": "both",
@@ -5658,6 +6103,128 @@ window.BETA_INVENTORY_DATA = {
         ],
         "decisionStatus": "proposed"
       },
+      "timeline-post": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "タイムライン投稿を実UIと実DBで実測する。",
+        "sourceRefs": [
+          "docs/features/F04.1_timeline.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "timeline-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "タイムライン閲覧を別ログインで実測する。",
+        "sourceRefs": [
+          "docs/features/F04.1_timeline.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "timeline-sharing": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "タイムライン共有範囲と権限境界を実測する。",
+        "sourceRefs": [
+          "docs/features/F04.1_timeline.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "todo-memo-todo-create": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "TODO作成を実UIと実DBで実測する。",
+        "sourceRefs": [
+          "docs/features/F02.3_todo_project.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "todo-memo-todo-share": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "TODO共有先と担当権限を実測する。",
+        "sourceRefs": [
+          "docs/features/F02.3_todo_project.md",
+          "docs/features/F02.3.1_todo_status_labels_and_handoff.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "todo-memo-memo-quick-create": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "ポイっとメモ作成を実測する。",
+        "sourceRefs": [
+          "docs/features/F02.5_quick_memo.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "todo-memo-memo-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "ポイっとメモ閲覧と所有者境界を実測する。",
+        "sourceRefs": [
+          "docs/features/F02.5_quick_memo.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-events-calendar-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "統合カレンダー閲覧を村イベント閲覧と分離して実測する。",
+        "sourceRefs": [
+          "docs/features/F03.19_unified_calendar_view.md",
+          "docs/features/F03.1_schedule_shared.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-events-calendar-sharing-level": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "予定の公開範囲を実測する。",
+        "sourceRefs": [
+          "docs/features/F03.1_schedule_shared.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-events-calendar-visibility-boundary": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "カレンダー可視性境界とURL/API権限を実測する。",
+        "sourceRefs": [
+          "docs/features/F03.1_schedule_shared.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "notification-inbox-notification-delivery": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "通知配信を実測する。",
+        "sourceRefs": [
+          "docs/features/F04.11_notification_inbox"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "notification-inbox-inbox": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "通知受信箱を実測する。",
+        "sourceRefs": [
+          "docs/features/F04.11_notification_inbox"
+        ],
+        "decisionStatus": "proposed"
+      },
       "personal-profile": {
         "stage": "B0",
         "audience": "both",
@@ -5696,7 +6263,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-create-view": {
         "stage": "B0",
@@ -5706,7 +6273,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-invite-invite": {
         "stage": "B0",
@@ -5716,7 +6283,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-invite-join": {
         "stage": "B0",
@@ -5726,7 +6293,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-admin-member-view": {
         "stage": "B0",
@@ -5736,7 +6303,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-admin-member-manage": {
         "stage": "B0",
@@ -5746,7 +6313,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-admin-permissions": {
         "stage": "B0",
@@ -5756,7 +6323,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-modules-module-view": {
         "stage": "B2",
@@ -5788,7 +6355,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "organization-manage-organization-admin": {
         "stage": "B0",
@@ -5798,7 +6365,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "organization-members-member-view": {
         "stage": "B0",
@@ -5808,7 +6375,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "organization-members-member-manage": {
         "stage": "B0",
@@ -5818,7 +6385,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-join-village-view": {
         "stage": "B0",
@@ -5828,7 +6395,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-join-village-join": {
         "stage": "B0",
@@ -5838,7 +6405,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-members-member-view": {
         "stage": "B0",
@@ -5848,7 +6415,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-members-member-manage": {
         "stage": "B0",
@@ -5858,7 +6425,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events-schedule-create": {
         "stage": "B0",
@@ -5869,7 +6436,7 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events-schedule-view-manage": {
         "stage": "B0",
@@ -5880,7 +6447,7 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events-attendance-request": {
         "stage": "B0",
@@ -5891,7 +6458,7 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events-attendance-response": {
         "stage": "B0",
@@ -5902,7 +6469,7 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events-attendance-summary": {
         "stage": "B0",
@@ -5912,38 +6479,6 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
-        ],
-        "decisionStatus": "confirmed"
-      },
-      "notification-inbox-notification-delivery": {
-        "stage": "B0",
-        "audience": "both",
-        "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml",
-          "docs/features/F04.11_notification_inbox"
-        ],
-        "decisionStatus": "proposed"
-      },
-      "notification-inbox-inbox": {
-        "stage": "B0",
-        "audience": "both",
-        "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml",
-          "docs/features/F04.11_notification_inbox"
-        ],
-        "decisionStatus": "proposed"
-      },
-      "timeline": {
-        "stage": "B1",
-        "audience": "both",
-        "priority": "must",
-        "reason": "チームの日常更新を一か所に集めるLINE置換の中核。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
         ],
         "decisionStatus": "proposed"
       },
@@ -5975,7 +6510,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "reservation": {
         "stage": "B1",
@@ -5995,7 +6530,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "survey-publish": {
         "stage": "B0",
@@ -6005,7 +6540,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "survey-response": {
         "stage": "B0",
@@ -6015,7 +6550,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "survey-results": {
         "stage": "B0",
@@ -6025,7 +6560,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "pointcard-wallet": {
         "stage": "B3",
@@ -6229,26 +6764,6 @@ window.BETA_INVENTORY_DATA = {
         ],
         "decisionStatus": "proposed"
       },
-      "todo-memo-todo": {
-        "stage": "B2",
-        "audience": "both",
-        "priority": "could",
-        "reason": "TODOは個人の作業項目を管理する独立能力。親提案を継承し、子能力は未実測。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ],
-        "decisionStatus": "proposed"
-      },
-      "todo-memo-memo": {
-        "stage": "B2",
-        "audience": "both",
-        "priority": "could",
-        "reason": "メモは自由記述を扱う独立能力。親提案を継承し、子能力は未実測。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ],
-        "decisionStatus": "proposed"
-      },
       "corkboard-bulletin": {
         "stage": "B1",
         "audience": "both",
@@ -6539,6 +7054,128 @@ window.BETA_INVENTORY_DATA = {
         ],
         "decisionStatus": "proposed"
       },
+      "timeline-post": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "タイムライン投稿を実UIと実DBで実測する。",
+        "sourceRefs": [
+          "docs/features/F04.1_timeline.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "timeline-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "タイムライン閲覧を別ログインで実測する。",
+        "sourceRefs": [
+          "docs/features/F04.1_timeline.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "timeline-sharing": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "タイムライン共有範囲と権限境界を実測する。",
+        "sourceRefs": [
+          "docs/features/F04.1_timeline.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "todo-memo-todo-create": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "TODO作成を実UIと実DBで実測する。",
+        "sourceRefs": [
+          "docs/features/F02.3_todo_project.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "todo-memo-todo-share": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "TODO共有先と担当権限を実測する。",
+        "sourceRefs": [
+          "docs/features/F02.3_todo_project.md",
+          "docs/features/F02.3.1_todo_status_labels_and_handoff.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "todo-memo-memo-quick-create": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "ポイっとメモ作成を実測する。",
+        "sourceRefs": [
+          "docs/features/F02.5_quick_memo.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "todo-memo-memo-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "ポイっとメモ閲覧と所有者境界を実測する。",
+        "sourceRefs": [
+          "docs/features/F02.5_quick_memo.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-events-calendar-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "統合カレンダー閲覧を村イベント閲覧と分離して実測する。",
+        "sourceRefs": [
+          "docs/features/F03.19_unified_calendar_view.md",
+          "docs/features/F03.1_schedule_shared.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-events-calendar-sharing-level": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "予定の公開範囲を実測する。",
+        "sourceRefs": [
+          "docs/features/F03.1_schedule_shared.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-events-calendar-visibility-boundary": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "カレンダー可視性境界とURL/API権限を実測する。",
+        "sourceRefs": [
+          "docs/features/F03.1_schedule_shared.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "notification-inbox-notification-delivery": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "通知配信を実測する。",
+        "sourceRefs": [
+          "docs/features/F04.11_notification_inbox"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "notification-inbox-inbox": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "通知受信箱を実測する。",
+        "sourceRefs": [
+          "docs/features/F04.11_notification_inbox"
+        ],
+        "decisionStatus": "proposed"
+      },
       "personal-profile": {
         "stage": "B0",
         "audience": "both",
@@ -6577,7 +7214,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-create-view": {
         "stage": "B0",
@@ -6587,7 +7224,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-invite-invite": {
         "stage": "B0",
@@ -6597,7 +7234,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-invite-join": {
         "stage": "B0",
@@ -6607,7 +7244,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-admin-member-view": {
         "stage": "B0",
@@ -6617,7 +7254,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-admin-member-manage": {
         "stage": "B0",
@@ -6627,7 +7264,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-admin-permissions": {
         "stage": "B0",
@@ -6637,7 +7274,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "team-modules-module-view": {
         "stage": "B2",
@@ -6669,7 +7306,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "organization-manage-organization-admin": {
         "stage": "B0",
@@ -6679,7 +7316,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "organization-members-member-view": {
         "stage": "B0",
@@ -6689,7 +7326,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "organization-members-member-manage": {
         "stage": "B0",
@@ -6699,7 +7336,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-join-village-view": {
         "stage": "B0",
@@ -6709,7 +7346,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-join-village-join": {
         "stage": "B0",
@@ -6719,7 +7356,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-members-member-view": {
         "stage": "B0",
@@ -6729,7 +7366,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-members-member-manage": {
         "stage": "B0",
@@ -6739,7 +7376,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events-schedule-create": {
         "stage": "B0",
@@ -6750,7 +7387,7 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events-schedule-view-manage": {
         "stage": "B0",
@@ -6761,7 +7398,7 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events-attendance-request": {
         "stage": "B0",
@@ -6772,7 +7409,7 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events-attendance-response": {
         "stage": "B0",
@@ -6783,7 +7420,7 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "village-events-attendance-summary": {
         "stage": "B0",
@@ -6793,38 +7430,6 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
-        ],
-        "decisionStatus": "confirmed"
-      },
-      "notification-inbox-notification-delivery": {
-        "stage": "B0",
-        "audience": "both",
-        "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml",
-          "docs/features/F04.11_notification_inbox"
-        ],
-        "decisionStatus": "proposed"
-      },
-      "notification-inbox-inbox": {
-        "stage": "B0",
-        "audience": "both",
-        "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml",
-          "docs/features/F04.11_notification_inbox"
-        ],
-        "decisionStatus": "proposed"
-      },
-      "timeline": {
-        "stage": "B1",
-        "audience": "both",
-        "priority": "must",
-        "reason": "チームの日常更新を一か所に集めるLINE置換の中核。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
         ],
         "decisionStatus": "proposed"
       },
@@ -6856,7 +7461,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "reservation": {
         "stage": "B1",
@@ -6876,7 +7481,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "survey-publish": {
         "stage": "B0",
@@ -6886,7 +7491,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "survey-response": {
         "stage": "B0",
@@ -6896,7 +7501,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "survey-results": {
         "stage": "B0",
@@ -6906,7 +7511,7 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "confirmed"
+        "decisionStatus": "proposed"
       },
       "pointcard-wallet": {
         "stage": "B3",

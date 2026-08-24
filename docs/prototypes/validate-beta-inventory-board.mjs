@@ -6,6 +6,7 @@ const dataSource = fs.readFileSync(new URL('beta-inventory-board-data.js', proto
 const html = fs.readFileSync(new URL('beta-inventory-board.html', prototypeDirectory), 'utf8');
 const taskList = fs.readFileSync(new URL('../task-list.md', prototypeDirectory), 'utf8');
 const b0PlanSource = JSON.parse(fs.readFileSync(new URL('beta-inventory-board-b0-alicization.json', prototypeDirectory), 'utf8'));
+const b0Coverage = JSON.parse(fs.readFileSync(new URL('beta-inventory-board-b0-coverage.json', prototypeDirectory), 'utf8'));
 const context = { window: {} };
 vm.runInNewContext(dataSource, context, { filename: 'beta-inventory-board-data.js' });
 
@@ -89,6 +90,16 @@ for (const capability of data.capabilities) {
 
 const b0Plan = data.b0Alicization;
 if (JSON.stringify(b0Plan) !== JSON.stringify(b0PlanSource)) throw new Error('B0アリシゼーション計画と生成データが不一致です');
+if (JSON.stringify(data.b0Coverage) !== JSON.stringify(b0Coverage)) throw new Error('B0カバレッジmanifestと生成データが不一致です');
+if (JSON.stringify(Object.keys(b0Coverage.journeys || {}).sort()) !== JSON.stringify((b0Plan.journeys || []).map((journey) => journey.id).sort())) throw new Error('B0 coverage journey ID集合が計画と一致しません');
+for (const journey of b0Plan.journeys || []) {
+  const coverage = b0Coverage.journeys?.[journey.id];
+  if (!coverage || !['covered', 'partial', 'missing'].includes(coverage.coverageStatus)) throw new Error(`B0 coverageStatusが不正です: ${journey.id}`);
+  if (!Array.isArray(coverage.specPaths) || new Set(coverage.specPaths).size !== coverage.specPaths.length) throw new Error(`B0 specPathsが配列または一意ではありません: ${journey.id}`);
+  if (['covered', 'partial'].includes(coverage.coverageStatus) && coverage.specPaths.length === 0) throw new Error(`B0カバレッジにspecがありません: ${journey.id}`);
+  for (const specPath of coverage.specPaths || []) if (!fs.existsSync(new URL(`../../${specPath}`, import.meta.url))) throw new Error(`B0 spec参照が存在しません: ${journey.id} / ${specPath}`);
+  if (journey.status === 'passed' && coverage.coverageStatus !== 'covered') throw new Error(`未カバレッジのB0 journeyをpassedにできません: ${journey.id}`);
+}
 if (!b0Plan || b0Plan.stage !== 'B0' || b0Plan.status !== 'planned') throw new Error('B0アリシゼーション計画が未定義または未実測状態でありません');
 const b0CapabilityKeys = new Set(data.capabilities.map((capability) => capability.key));
 for (const journey of b0Plan.journeys || []) {
@@ -102,7 +113,21 @@ for (const journey of b0Plan.journeys || []) {
 if (!b0CapabilityKeys.has('village-events-attendance-response') || !b0CapabilityKeys.has('village-events-attendance-summary')) throw new Error('出欠回答・集計の分割能力がありません');
 if (!b0CapabilityKeys.has('survey-response') || !b0CapabilityKeys.has('survey-results')) throw new Error('アンケート回答・結果の分割能力がありません');
 if ((b0Plan.journeys || []).some((journey) => (journey.capabilities || []).includes('reservation'))) throw new Error('予約を出欠journeyに含めています');
+for (const key of ['timeline-post', 'timeline-view', 'timeline-sharing', 'notification-inbox-notification-delivery', 'notification-inbox-inbox', 'todo-memo-todo-create', 'todo-memo-todo-share', 'todo-memo-memo-quick-create', 'todo-memo-memo-view', 'village-events-calendar-view', 'village-events-calendar-sharing-level', 'village-events-calendar-visibility-boundary']) {
+  if (!b0CapabilityKeys.has(key)) throw new Error(`B0共有機能の能力がありません: ${key}`);
+  const decision = decisions.capabilities[key];
+  if (!decision || decision.stage !== 'B0' || decision.priority !== 'must' || !['proposed', 'confirmed'].includes(decision.decisionStatus || decisions.decisionStatusDefault) || !decision.reason) throw new Error(`B0共有機能の判断がB0/must/reason非空ではありません: ${key}`);
+  if (!(b0Plan.journeys || []).some((journey) => (journey.capabilities || []).includes(key))) throw new Error(`B0 journeyに共有機能がありません: ${key}`);
+}
+if ((b0Plan.journeys || []).some((journey) => (journey.capabilities || []).some((key) => key.startsWith('village-events-calendar-') && key.includes('attendance')))) throw new Error('カレンダー能力に出欠能力を混在させないでください');
 const allowedStatuses = new Set(['blocked', 'unknown', 'incomplete', 'verifying', 'ready']);
+for (const [key, decision] of Object.entries(decisions.features || {}).concat(Object.entries(decisions.capabilityOverrides || {}))) {
+  if (decision.decisionStatus === 'confirmed') {
+    if (decision.confirmedBy !== 'user' || !decision.confirmedAt || Number.isNaN(Date.parse(decision.confirmedAt)) || !decision.confirmationNote?.trim()) {
+      throw new Error(`confirmed判断にはconfirmedBy=user、confirmedAt、confirmationNoteが必要です: ${key}`);
+    }
+  }
+}
 if (data.features.some((feature) => !allowedStatuses.has(feature.status))) throw new Error('公式5状態以外の機能があります。');
 
 const campaignTagByStatus = { blocked: '停止中', working: '進行中', done: '完了', unknown: '未整理' };

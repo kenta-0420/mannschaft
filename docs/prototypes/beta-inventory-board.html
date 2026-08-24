@@ -637,7 +637,7 @@
         <button class="feature-card" type="button" data-key="${escapeHtml(feature.key)}" data-status="${escapeHtml(feature.status)}">
             <div class="card-top">
               <span class="feature-key">${escapeHtml(feature.key)}</span>
-              <span class="priority ${escapeHtml(feature.priority)}">${escapeHtml(feature.priority.toUpperCase())} · ${escapeHtml(feature.decisionStatus === 'confirmed' ? '確定' : '提案')}</span>
+              <span class="priority ${escapeHtml(feature.priority)}">${escapeHtml(feature.priority.toUpperCase())} · ${escapeHtml(feature.decisionStatus === 'confirmed' ? '分類承認済' : '分類未承認')}</span>
             </div>
             <h3>${escapeHtml(feature.title)}</h3>
             <p>${escapeHtml(feature.summary)}</p>
@@ -682,13 +682,17 @@
           ${focus.map((feature, index) => `<div class="focus-card"><div class="focus-order">${index + 1}番目</div>${featureCard(feature)}</div>`).join('') || `<div class="empty">${selectedStage}に未完了のmust提案はありません。</div>`}
         </div>
         <section class="decision-panel">
-          <div><b>Phase 2の決定待ち</b><span>${features.filter((feature) => feature.decisionStatus === 'proposed').length}件が提案状態</span></div>
-          <p>対象者・B段階・優先度は仮説です。カードを開いて根拠を確認し、合意したものだけ decisions.json の decisionStatus を confirmed に変更してください。</p>
+          <div><b>Phase 2の分類承認待ち</b><span>${features.filter((feature) => feature.decisionStatus === 'proposed').length}件が分類未承認</span></div>
+          <p>対象者・B段階・優先度は提案です。分類判断は実装状態・アリシゼーション実測statusと別管理です。</p>
         </section>`;
       const b0Plan = baseInventory.b0Alicization;
       if (selectedStage === 'B0' && b0Plan) {
         const statusLabels = { planned: '未実測・計画', runnable: '実行可能', running: '実行中', passed: '通過', failed: '失敗' };
-        board.insertAdjacentHTML('beforeend', `<section class="decision-panel b0-alicization-panel"><div><b>B0 アリシゼーション自動探索</b><span>${b0Plan.journeys.length} journey / ${statusLabels[b0Plan.status] || b0Plan.status}</span></div><p>${escapeHtml(b0Plan.definition)}</p><p>${b0Plan.journeys.map((journey) => `<span class="status-pill ${journey.status === 'failed' ? 'blocked' : journey.status === 'passed' ? 'done' : 'working'}">${escapeHtml(journey.id)} ${escapeHtml(journey.title)}: ${escapeHtml(statusLabels[journey.status] || journey.status)}</span>`).join(' ')}</p><small>実UI・実DB／管理者1＋一般2／別BrowserContext・別ログイン。passedは実測確認後のみ。</small></section>`);
+        const coverageLabels = { covered: 'カバー済み', partial: '既存部分あり', missing: '不足' };
+        const coverageCounts = b0Plan.journeys.reduce((counts, journey) => { const status = baseInventory.b0Coverage?.journeys?.[journey.id]?.coverageStatus || 'missing'; counts[status] = (counts[status] || 0) + 1; return counts; }, {});
+        const runOverlay = baseInventory.b0RunOverlay;
+        const runSummary = runOverlay ? ` / 最終実行: ${runOverlay.finishedAt || runOverlay.recordedAt || runOverlay.startedAt} / test-passed${(runOverlay.journeys || []).filter((item) => item.status === 'test-passed').length}・test-failed${(runOverlay.journeys || []).filter((item) => item.status === 'test-failed').length}・blocked${runOverlay.status === 'blocked' ? (runOverlay.selectedJourneys || []).length : (runOverlay.journeys || []).filter((item) => item.status === 'blocked').length}` : ' / 実行結果なし';
+        board.insertAdjacentHTML('beforeend', `<section class="decision-panel b0-alicization-panel"><div><b>B0 アリシゼーション自動探索</b><span>${b0Plan.journeys.length} journey / 実測status: ${statusLabels[b0Plan.status] || b0Plan.status} / E2Eカバレッジ: カバー済み${coverageCounts.covered || 0}・既存部分あり${coverageCounts.partial || 0}・不足${coverageCounts.missing || 0}${runSummary}</span></div><p>${escapeHtml(b0Plan.definition)}</p><p>${b0Plan.journeys.map((journey) => { const coverage = baseInventory.b0Coverage?.journeys?.[journey.id]?.coverageStatus || 'missing'; const run = runOverlay?.journeys?.find((item) => item.id === journey.id); return `<span class="status-pill ${journey.status === 'failed' ? 'blocked' : journey.status === 'passed' ? 'done' : 'working'}">${escapeHtml(journey.id)} ${escapeHtml(journey.title)}: 実測${escapeHtml(statusLabels[journey.status] || journey.status)} / E2E ${escapeHtml(coverageLabels[coverage] || coverage)}${run ? ` / 最終実行${escapeHtml(run.status)}・証拠${escapeHtml(run.evidencePath || '記録なし')}` : ''}</span>`; }).join(' ')}</p><small>実測status（未実測・計画／通過）、E2Eカバレッジ、最終実行結果は別管理。実UI・実DB／管理者1＋一般2／別BrowserContext・別ログイン。test-passedでも計画statusはplannedのまま。</small></section>`);
       }
       return focus;
     }
@@ -1015,7 +1019,7 @@
       const taskType = document.querySelector('#taskSelect').value;
       const actions = {
         investigate: '実装・テスト・設計書を追って現状を棚卸しし、不明を証拠付きの状態へ更新してください。',
-        classify: 'Phase 2A分類提案を設計書と対象ユースケースに照らして確認してください。妥当ならdecisionStatusをconfirmedへ変更し、異なる場合はstage・audience・priority・reasonを根拠付きで修正してください。',
+        classify: 'Phase 2A分類提案を設計書と対象ユースケースに照らして確認してください。分類判断は実装状態・アリシゼーション実測statusとは別です。ユーザーの明示承認が得られた場合だけ、stage・audience・priorityを設定し、decisionStatusをconfirmed、confirmedByをuser、有効なISO形式confirmedAt、非空confirmationNoteを同時に記録してください。依頼文から推測して承認しないでください。',
         implement: '不足を実装し、変更範囲に比例したテストと実機検証まで完了してください。',
         review: '設計・実装・認可・テストを検分し、完了条件へのトレーサビリティを確認してください。'
       };
@@ -1040,13 +1044,13 @@
 ` : '';
       const b0Context = feature.stage === 'B0' && baseInventory.b0Alicization ? `
 ■ B0アリシゼーション自動探索
-- 対象journey: ${(baseInventory.b0Alicization.journeys || []).filter((journey) => journey.capabilities.includes(feature.key)).map((journey) => `${journey.id} ${journey.title}`).join(' / ') || '該当journeyなし'}
+- 対象journey: ${(baseInventory.b0Alicization.journeys || []).filter((journey) => journey.capabilities.includes(feature.key)).map((journey) => { const coverage = baseInventory.b0Coverage?.journeys?.[journey.id] || {}; return `${journey.id} ${journey.title}\n  確認項目: ${(journey.checks || []).join(' / ')}\n  既存E2E: ${(coverage.specPaths || []).join(' / ') || '不足'}\n  カバレッジ状態: ${coverage.coverageStatus || 'missing'}${journey.knownConstraints?.length ? `\n  既知制約: ${journey.knownConstraints.join(' / ')}` : ''}${journey.prerequisites?.length ? `\n  前提条件: ${journey.prerequisites.join(' / ')}` : ''}`; }).join(' / ') || '該当journeyなし'}
 - 検証前提: 実UI・実DB、管理者1＋一般利用者2、利用者ごとに別BrowserContext・別ログイン
 - 状態: planned / runnable / running / passed / failed。未実測をpassedにしない
 ` : '';
       const decisionContext = feature.decisionReason ? `
 ■ Phase 2A分類提案（正本ではなくプロダクト判断）
-- 判断状態: ${feature.decisionStatus === 'confirmed' ? '確定' : '提案'}
+- 分類判断: ${feature.decisionStatus === 'confirmed' ? '分類承認済' : '分類未承認'}（実装状態・アリシゼーション実測statusとは別）
 - 根拠: ${feature.decisionReason}
 - 参照: ${(feature.decisionRefs || []).join(' / ')}
 ` : '';
@@ -1423,7 +1427,7 @@ ${insight.detail}
 
     const generatedAt = new Date(window.BETA_INVENTORY_DATA.generatedAt).toLocaleString('ja-JP');
     const proposedDecisions = Object.values(decisions?.features || {}).filter((decision) => (decision.decisionStatus || decisions.decisionStatusDefault) === 'proposed').length;
-    document.querySelector('#sourceNote').textContent = `正本大分類 ${sourceCounts.features}件 / 表示能力 ${sourceCounts.capabilities}件 / 分割親 ${sourceCounts.splitParents}件 / CMP ${sourceCounts.campaigns}件 / Phase 2A分類 ${sourceCounts.features - proposedDecisions}確定・${proposedDecisions}提案 / 生成 ${generatedAt}`;
+    document.querySelector('#sourceNote').textContent = `正本大分類 ${sourceCounts.features}件 / 表示能力 ${sourceCounts.capabilities}件 / 分割親 ${sourceCounts.splitParents}件 / CMP ${sourceCounts.campaigns}件 / Phase 2A分類 ${sourceCounts.features - proposedDecisions}分類承認済・${proposedDecisions}分類未承認 / 生成 ${generatedAt}`;
     populateInsightFeatures();
     renderBoard();
     readInsights()
