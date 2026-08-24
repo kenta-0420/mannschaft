@@ -16,13 +16,6 @@ WHERE r.name = 'ADMIN'
   AND p.name IN ('SEND_PAID_TIMELINE', 'VIEW_TIMELINE_COST')
   AND NOT EXISTS (SELECT 1 FROM role_permissions rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
 
-INSERT INTO role_permissions (role_id, permission_id, is_default, created_at)
-SELECT r.id, p.id, 0, NOW()
-FROM roles r CROSS JOIN permissions p
-WHERE r.name = 'DEPUTY_ADMIN'
-  AND p.name IN ('SEND_PAID_TIMELINE', 'VIEW_TIMELINE_COST')
-  AND NOT EXISTS (SELECT 1 FROM role_permissions rp WHERE rp.role_id = r.id AND rp.permission_id = p.id);
-
 INSERT INTO feature_flags (flag_key, is_enabled, description, created_at, updated_at)
 SELECT 'F09_14_TIMELINE_PAID_DELIVERY_ENABLED', 0, 'F09.14 有料タイムライン配信（既定 OFF）', NOW(), NOW()
 FROM DUAL

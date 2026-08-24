@@ -20,6 +20,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.cache.CacheManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
@@ -83,8 +85,9 @@ public class PermissionGroupService {
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
 
         // 束1 BOLA 根治: グループが属するスコープの ADMIN/DEPUTY_ADMIN のみ更新できる（別スコープ ADMIN の越境改変を遮断）。
-        requireMutationAuthority(actorUserId, group, req.getPermissionIds());
-        evictAssignedUsers(groupId, group);
+        List<Long> oldPermissionIds = permissionIdsForGroup(groupId);
+        List<Long> affectedUsers = userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(groupId));
+        requireMutationAuthority(actorUserId, group, union(oldPermissionIds, req.getPermissionIds()));
 
         // パーミッション存在確認
         validatePermissionIds(req.getPermissionIds());
@@ -99,6 +102,7 @@ public class PermissionGroupService {
         // パーミッション紐付けを差し替え
         permissionGroupPermissionRepository.deleteByGroupId(groupId);
         savePermissionGroupPermissions(groupId, req.getPermissionIds());
+        evictAfterCommit(affectedUsers, group);
 
         log.info("権限グループ更新完了: groupId={}", groupId);
         return ApiResponse.of(toResponse(updated));
@@ -148,10 +152,10 @@ public class PermissionGroupService {
         // 束1 BOLA 根治: グループが属するスコープの ADMIN/DEPUTY_ADMIN のみ削除できる。
         List<Long> permissionIds = permissionGroupPermissionRepository.findByGroupId(groupId).stream()
                 .map(PermissionGroupPermissionEntity::getPermissionId).toList();
+        List<Long> affectedUsers = userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(groupId));
         requireMutationAuthority(actorUserId, group, permissionIds);
-        evictAssignedUsers(groupId, group);
-
         permissionGroupRepository.delete(group);
+        evictAfterCommit(affectedUsers, group);
         log.info("権限グループ削除完了: groupId={}", groupId);
     }
 
@@ -240,15 +244,18 @@ public class PermissionGroupService {
     public void assignUserPermissionGroups(Long userId, Long scopeId, String scopeType,
                                            UserPermissionGroupAssignRequest req, Long assignedBy) {
         // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ権限グループを割り当てられる。
-        requireMutationAuthority(assignedBy, scopeId, scopeType, req.getGroupIds().stream()
-                .filter(groupId -> findByScope(scopeId, scopeType).stream().anyMatch(group -> group.getId().equals(groupId)))
-                .flatMap(groupId -> permissionGroupPermissionRepository.findByGroupId(groupId).stream())
-                .map(PermissionGroupPermissionEntity::getPermissionId).toList());
+        // 権限集合の検証は、現行割当と新割当の和集合に対して一度だけ行う。
 
         // 既存の割当を削除
         List<PermissionGroupEntity> scopeGroups = findByScope(scopeId, scopeType);
         List<Long> scopeGroupIds = scopeGroups.stream()
                 .map(PermissionGroupEntity::getId).toList();
+        List<Long> oldGroupIds = userPermissionGroupRepository.findByUserId(userId).stream()
+                .map(UserPermissionGroupEntity::getGroupId).filter(scopeGroupIds::contains).toList();
+        List<Long> oldPermissionIds = oldGroupIds.stream().flatMap(id -> permissionIdsForGroup(id).stream()).toList();
+        List<Long> newPermissionIds = req.getGroupIds().stream().filter(scopeGroupIds::contains)
+                .flatMap(id -> permissionIdsForGroup(id).stream()).toList();
+        requireMutationAuthority(assignedBy, scopeId, scopeType, union(oldPermissionIds, newPermissionIds));
         if (!scopeGroupIds.isEmpty()) {
             userPermissionGroupRepository.deleteByUserIdAndGroupIdIn(userId, scopeGroupIds);
         }
@@ -270,6 +277,7 @@ public class PermissionGroupService {
 
         log.info("ユーザー権限グループ割当完了: userId={}, scopeType={}, scopeId={}, groupCount={}",
                 userId, scopeType, scopeId, req.getGroupIds().size());
+        evictAfterCommit(List.of(userId), scopeType, scopeId);
     }
 
     // ========================================
@@ -312,10 +320,30 @@ public class PermissionGroupService {
                 .anyMatch(F0914_SENSITIVE_PERMISSIONS::contains);
     }
 
-    private void evictAssignedUsers(Long groupId, PermissionGroupEntity group) {
-        evictRolePermissions(userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(groupId)),
-                group.getTeamId() != null ? "TEAM" : "ORGANIZATION",
+    private List<Long> permissionIdsForGroup(Long groupId) {
+        return permissionGroupPermissionRepository.findByGroupId(groupId).stream()
+                .map(PermissionGroupPermissionEntity::getPermissionId).toList();
+    }
+
+    private List<Long> union(List<Long> first, List<Long> second) {
+        return java.util.stream.Stream.concat(first.stream(), second.stream()).distinct().toList();
+    }
+
+    private void evictAfterCommit(List<Long> userIds, PermissionGroupEntity group) {
+        evictAfterCommit(userIds, group.getTeamId() != null ? "TEAM" : "ORGANIZATION",
                 group.getTeamId() != null ? group.getTeamId() : group.getOrganizationId());
+    }
+
+    private void evictAfterCommit(List<Long> userIds, String scopeType, Long scopeId) {
+        Runnable eviction = () -> evictRolePermissions(userIds, scopeType, scopeId);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() { eviction.run(); }
+            });
+        } else {
+            eviction.run();
+        }
     }
 
     private void evictRolePermissions(List<Long> userIds, String scopeType, Long scopeId) {

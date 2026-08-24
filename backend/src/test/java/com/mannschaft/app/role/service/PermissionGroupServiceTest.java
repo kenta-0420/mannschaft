@@ -472,4 +472,18 @@ class PermissionGroupServiceTest {
             verify(permissionGroupRepository).findByOrganizationId(SCOPE_ID);
         }
     }
+
+    @Test
+    @DisplayName("F09.14: 既存の敏感権限を外す更新もADMIN専用")
+    void updateSensitivePermissionRemovalRequiresScopeAdmin() {
+        PermissionGroupEntity group = createGroupEntity(GROUP_ID, "paid");
+        PermissionGroupRequest request = new PermissionGroupRequest("paid", "MEMBER", List.of(PERM_ID_1));
+        given(permissionGroupRepository.findById(GROUP_ID)).willReturn(Optional.of(group));
+        given(permissionGroupPermissionRepository.findByGroupId(GROUP_ID)).willReturn(List.of(
+                PermissionGroupPermissionEntity.builder().groupId(GROUP_ID).permissionId(PERM_ID_2).build()));
+        given(permissionRepository.findByIdIn(anyList())).willReturn(List.of(createPermissionEntity(PERM_ID_2, "SEND_PAID_TIMELINE")));
+        assertThatThrownBy(() -> permissionGroupService.updatePermissionGroup(GROUP_ID, request, USER_ID))
+                .isInstanceOf(BusinessException.class);
+        verify(accessControlService).checkScopeAdminOnly(USER_ID, SCOPE_ID, "TEAM");
+    }
 }
