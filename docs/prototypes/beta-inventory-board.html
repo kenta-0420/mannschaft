@@ -288,6 +288,10 @@
     }
     .toast.show { opacity: 1; transform: translate(-50%, 0); }
     .prototype-note { margin: 20px 2px 0; color: var(--muted); font-size: 11px; text-align: right; }
+    .decision-panel { margin-top: 14px; padding: 15px; border: 1px solid var(--line); border-radius: 15px; background: var(--panel); }
+    .decision-panel > div { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
+    .decision-panel span, .decision-panel p { color: var(--muted); font-size: 11px; }
+    .decision-panel p { margin: 7px 0 0; line-height: 1.6; }
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; }
       .board { grid-template-columns: repeat(5, minmax(280px, 84vw)); }
@@ -335,7 +339,7 @@
 
     <section class="hero">
       <div class="hero-main">
-        <div class="eyebrow">正本同期 · Phase未設定</div>
+        <div class="eyebrow">正本同期 · Phase 2A 仮説分類</div>
         <h2>LINEを置き換える日常導線を、先に完成させる。</h2>
         <p>成人サッカーチームで「予定・出欠・連絡・会話」を日常利用し、同窓会の名簿・一斉連絡・イベント出欠へ同じ基盤を展開する。</p>
       </div>
@@ -349,23 +353,22 @@
 
     <section class="toolbar" aria-label="棚卸しフィルター">
       <nav class="view-switcher" aria-label="ボード表示">
-        <button class="view-button" data-view="focus" type="button">今やる<small>Phase 2で優先度設定</small></button>
-        <button class="view-button active" data-view="roadmap" type="button">Bロードマップ<small>正本の全体</small></button>
+        <button class="view-button active" data-view="focus" type="button">今やる<small>Phase 2Aのmust上位3件</small></button>
+        <button class="view-button" data-view="roadmap" type="button">Bロードマップ<small>Phase 2Aの全体</small></button>
         <button class="view-button" data-view="gate" type="button">公開Gate<small>前提工事と公開判定</small></button>
         <button class="view-button" data-view="campaigns" type="button">CMP・Issue<small>戦役と実装の現在地</small></button>
         <button class="view-button" data-view="insights" type="button">気づき箱<small>スクショ付き改善メモ</small></button>
         <button class="view-button" data-view="deferred" type="button">延期箱<small>非Coreを退避</small></button>
       </nav>
       <div class="filters" id="filters">
-        <button class="stage-button active" data-stage="未設定" type="button">Phase未設定</button>
-        <button class="stage-button" data-stage="B0" type="button">B0 開発者テスト</button>
+        <button class="stage-button active" data-stage="B0" type="button">B0 開発者テスト</button>
         <button class="stage-button" data-stage="B1" type="button">B1 1チーム・50人</button>
         <button class="stage-button" data-stage="B2" type="button">B2 10チーム</button>
         <button class="stage-button" data-stage="B3" type="button">B3 100チーム</button>
         <button class="stage-button" data-stage="B4" type="button">B4 1万人</button>
         <button class="filter-button active" data-audience="all" type="button">すべて</button>
-        <button class="filter-button" data-audience="soccer" type="button" disabled title="Phase 2で対象者を分類します">⚽ サッカー（未分類）</button>
-        <button class="filter-button" data-audience="alumni" type="button" disabled title="Phase 2で対象者を分類します">🎓 同窓会（未分類）</button>
+        <button class="filter-button" data-audience="soccer" type="button">⚽ サッカー</button>
+        <button class="filter-button" data-audience="alumni" type="button">🎓 同窓会</button>
         <input class="search" id="search" type="search" placeholder="機能・feature_key・CMP・Issueで検索" aria-label="機能・CMP・Issue検索">
       </div>
     </section>
@@ -396,6 +399,10 @@
       <p id="drawerWhy"></p>
     </div>
     <div class="section">
+      <h4>Phase 2A分類の根拠</h4>
+      <p id="drawerDecision"></p>
+    </div>
+    <div class="section">
       <h4>完了条件</h4>
       <ul id="drawerAcceptance"></ul>
     </div>
@@ -412,6 +419,7 @@
         </select>
         <select id="taskSelect" aria-label="作業種別">
           <option value="investigate">棚卸し・調査</option>
+          <option value="classify">B段階・対象者・優先度の確認</option>
           <option value="implement">実装・修正</option>
           <option value="review">検分</option>
         </select>
@@ -482,7 +490,23 @@
 
   <script src="./beta-inventory-board-data.js"></script>
   <script>
-    const { features, featureClassification, featurePublication, gateFoundation, campaigns } = window.BETA_INVENTORY_DATA;
+    const baseInventory = window.BETA_INVENTORY_DATA;
+    const decisions = baseInventory.decisions;
+    const features = baseInventory.features.map((feature) => {
+      const decision = decisions?.features?.[feature.key];
+      if (!decision) return { ...feature, decisionStatus: 'unclassified' };
+      return {
+        ...feature,
+        stage: decision.stage,
+        audiences: decision.audience === 'both' ? ['soccer', 'alumni'] : [decision.audience],
+        priority: decision.priority,
+        decisionStatus: decision.decisionStatus || decisions.decisionStatusDefault || 'proposed',
+        decisionReason: decision.reason,
+        decisionRefs: decision.sourceRefs || []
+      };
+    });
+    const { featureClassification, featurePublication, gateFoundation, campaigns } = baseInventory;
+    const sourceCounts = baseInventory.sourceCounts;
     const campaignStatusLabels = { blocked: '停止中', working: '進行中', done: '完了', unknown: '未整理' };
 
     const laneDefinitions = [
@@ -493,8 +517,8 @@
       { status: 'ready', title: 'β準備完了' }
     ];
 
-    let selectedView = 'roadmap';
-    let selectedStage = '未設定';
+    let selectedView = 'focus';
+    let selectedStage = 'B0';
     let selectedAudience = 'all';
     const selectedCampaignTags = new Set();
     let selectedFeature = null;
@@ -593,7 +617,7 @@
     function getFilteredFeatures() {
       const query = document.querySelector('#search').value.trim().toLowerCase();
       return features.filter((feature) => {
-        const stageMatches = selectedView === 'focus' || selectedView === 'deferred' || feature.stage === selectedStage;
+        const stageMatches = selectedView === 'deferred' || feature.stage === selectedStage;
         const audienceMatches = selectedAudience === 'all' || feature.audiences.includes(selectedAudience);
         const queryMatches = !query || `${feature.key} ${feature.title} ${feature.summary}`.toLowerCase().includes(query);
         return stageMatches && audienceMatches && queryMatches;
@@ -609,14 +633,14 @@
         <button class="feature-card" type="button" data-key="${escapeHtml(feature.key)}" data-status="${escapeHtml(feature.status)}">
             <div class="card-top">
               <span class="feature-key">${escapeHtml(feature.key)}</span>
-              <span class="priority ${escapeHtml(feature.priority)}">${escapeHtml(feature.priority.toUpperCase())}</span>
+              <span class="priority ${escapeHtml(feature.priority)}">${escapeHtml(feature.priority.toUpperCase())} · ${escapeHtml(feature.decisionStatus === 'confirmed' ? '確定' : '提案')}</span>
             </div>
             <h3>${escapeHtml(feature.title)}</h3>
             <p>${escapeHtml(feature.summary)}</p>
             <div class="tags">
               <span class="tag ${escapeHtml(feature.classification)}">${escapeHtml(classificationLabel(feature.classification))}</span>
-              <span class="tag">${escapeHtml(feature.stage)}</span>
               <span class="tag">β: ${escapeHtml(feature.phase)}</span>
+              <span class="tag">${escapeHtml(feature.stage)}</span>
               ${feature.audiences.map((audience) => `<span class="tag">${audience === 'soccer' ? '⚽ サッカー' : '🎓 同窓会'}</span>`).join('')}
             </div>
         </button>`;
@@ -646,12 +670,16 @@
       board.className = '';
       board.innerHTML = `
         <div class="panel-heading">
-          <div><h2>今やること</h2><p>正本でmustと確定した課題だけを最大3件表示します。現在の優先度はPhase 2で設定します。</p></div>
+          <div><h2>今やること</h2><p>${selectedStage}のmust提案から、未完了の上位3件を表示します。</p></div>
           <span class="wip-chip">WIP ${focus.filter((feature) => feature.status === 'verifying').length} / 3</span>
         </div>
         <div class="focus-grid">
-          ${focus.map((feature, index) => `<div class="focus-card"><div class="focus-order">${index + 1}番目</div>${featureCard(feature)}</div>`).join('') || '<div class="empty">正本に優先度がないため、まだ推薦しません。Phase 2でB0〜B4・対象者・優先度を決めると表示されます。</div>'}
-        </div>`;
+          ${focus.map((feature, index) => `<div class="focus-card"><div class="focus-order">${index + 1}番目</div>${featureCard(feature)}</div>`).join('') || `<div class="empty">${selectedStage}に未完了のmust提案はありません。</div>`}
+        </div>
+        <section class="decision-panel">
+          <div><b>Phase 2の決定待ち</b><span>${features.filter((feature) => feature.decisionStatus === 'proposed').length}件が提案状態</span></div>
+          <p>対象者・B段階・優先度は仮説です。カードを開いて根拠を確認し、合意したものだけ decisions.json の decisionStatus を confirmed に変更してください。</p>
+        </section>`;
       return focus;
     }
 
@@ -722,7 +750,7 @@
       const query = document.querySelector('#search').value.trim().toLowerCase();
       return campaigns.filter((campaign) => {
         const stageMatches = campaign.stage === selectedStage || campaign.stage === '未設定';
-        const audienceMatches = selectedAudience === 'all' || campaign.audiences.includes(selectedAudience);
+        const audienceMatches = campaign.audiences.length === 0 || selectedAudience === 'all' || campaign.audiences.includes(selectedAudience);
         const issueText = campaign.issues.map((issue) => issue.label).join(' ');
         const queryMatches = !query || `${campaign.id} ${campaign.title} ${campaign.featureKey} ${issueText}`.toLowerCase().includes(query);
         const tagMatches = selectedCampaignTags.size === 0 || [...selectedCampaignTags].some((tag) => campaign.tags.includes(tag));
@@ -950,6 +978,7 @@
       const taskType = document.querySelector('#taskSelect').value;
       const actions = {
         investigate: '実装・テスト・設計書を追って現状を棚卸しし、不明を証拠付きの状態へ更新してください。',
+        classify: 'Phase 2A分類提案を設計書と対象ユースケースに照らして確認してください。妥当ならdecisionStatusをconfirmedへ変更し、異なる場合はstage・audience・priority・reasonを根拠付きで修正してください。',
         implement: '不足を実装し、変更範囲に比例したテストと実機検証まで完了してください。',
         review: '設計・実装・認可・テストを検分し、完了条件へのトレーサビリティを確認してください。'
       };
@@ -972,6 +1001,12 @@
 - 記録日時: ${new Date(feature.insight.createdAt).toLocaleString('ja-JP')}
 - スクリーンショット: ${feature.insight.screenshot ? `${feature.insight.screenshotName || '添付あり'}（「一式保存」で書き出し、この依頼と一緒に添付してください）` : 'なし'}
 ` : '';
+      const decisionContext = feature.decisionReason ? `
+■ Phase 2A分類提案（正本ではなくプロダクト判断）
+- 判断状態: ${feature.decisionStatus === 'confirmed' ? '確定' : '提案'}
+- 根拠: ${feature.decisionReason}
+- 参照: ${(feature.decisionRefs || []).join(' / ')}
+` : '';
       const targetType = feature.campaign ? 'CMP' : feature.insight ? '改善メモ' : 'feature_key';
       return `MannschaftのB棚卸しに基づく${agent}向けの依頼です。
 
@@ -986,6 +1021,7 @@
 - Gate適用状態: ${feature.gate}
 ${campaignContext}
 ${insightContext}
+${decisionContext}
 
 ■ 目的
 ${feature.why}
@@ -1023,6 +1059,7 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
       document.querySelector('#drawerKey').textContent = `${feature.key} · ${classificationLabel(feature.classification)} · ${feature.stage} · ${feature.priority.toUpperCase()} · ${feature.publication}`;
       document.querySelector('#drawerTitle').textContent = feature.title;
       document.querySelector('#drawerWhy').textContent = feature.why;
+      document.querySelector('#drawerDecision').textContent = feature.decisionReason || 'この項目にはPhase 2A分類がありません。';
       document.querySelector('#drawerAcceptance').innerHTML = feature.acceptance.map((item) => `<li>${item}</li>`).join('');
       document.querySelector('#drawerBlocker').textContent = feature.blocker;
       document.querySelector('#promptText').value = buildPrompt(feature);
@@ -1340,9 +1377,9 @@ ${insight.detail}
       root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
     });
 
-    const sourceCounts = window.BETA_INVENTORY_DATA.sourceCounts;
     const generatedAt = new Date(window.BETA_INVENTORY_DATA.generatedAt).toLocaleString('ja-JP');
-    document.querySelector('#sourceNote').textContent = `正本同期: 機能 ${sourceCounts.features}件 / CMP ${sourceCounts.campaigns}件 / 生成 ${generatedAt} / B0〜B4・対象者・Gate・GitHubライブ状態はPhase 2で照合`;
+    const proposedDecisions = Object.values(decisions?.features || {}).filter((decision) => (decision.decisionStatus || decisions.decisionStatusDefault) === 'proposed').length;
+    document.querySelector('#sourceNote').textContent = `正本同期: 機能 ${sourceCounts.features}件 / CMP ${sourceCounts.campaigns}件 / Phase 2A分類 ${sourceCounts.features - proposedDecisions}確定・${proposedDecisions}提案 / 生成 ${generatedAt}`;
     populateInsightFeatures();
     renderBoard();
     readInsights()

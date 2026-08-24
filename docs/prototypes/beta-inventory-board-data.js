@@ -1,12 +1,14 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T07:02:33+00:00",
+  "generatedAt": "2026-08-24T07:42:06+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
+    "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
     "inventoryCommit": "059334a7c60cb6315f1e05119d6b5c56c43d15d2",
     "taskListCommit": "507264fb6f91a1b1d2125869bac95608db82c844",
     "inventorySha256": "b7a29d2301f7ade17f21565e6a075d185d129434d81c5a0a2cdff5639d831900",
-    "taskListSha256": "4513e4938a52511c05b0a524d715bef98525db3fe8a02ab022e9e6cc489d8348"
+    "taskListSha256": "4513e4938a52511c05b0a524d715bef98525db3fe8a02ab022e9e6cc489d8348",
+    "decisionsSha256": "400706cd9341f10f3e9221491e7b25eda37a44d4b64b53585d0834e9ab723c34"
   },
   "sourceCounts": {
     "features": 43,
@@ -46,7 +48,7 @@ window.BETA_INVENTORY_DATA = {
     "passed": true
   },
   "warnings": [
-    "B0〜B4は正本に軸がないため未設定。",
+    "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
     "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
     "Gate前提工事の項目は正本にないため、Gate一覧は空。",
     "Issue／PR／CIはGitHub連携していないため、task-list.mdの証拠欄だけを表示。"
@@ -1514,6 +1516,409 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml"
     }
   ],
+  "decisions": {
+    "schemaVersion": 1,
+    "phase": "Phase 2A",
+    "decisionStatusDefault": "proposed",
+    "assumptions": [
+      "B0は開発者テスト、B1は自分のサッカーチーム約50人、B2は10チーム、B3は100チーム・約5000人、B4は1万人を示す。",
+      "成人中心、サッカーと同窓会を主対象とし、日常連絡のLINE置換を優先する。",
+      "本ファイルはプロダクト判断の仮説であり、docs/inventory/feature-inventory.yamlの正本値を変更しない。"
+    ],
+    "features": {
+      "personal-profile": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "本人確認と連絡先表示の土台。サッカー・同窓会の両方で最初に必要。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "account-settings": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "成人利用で退会・通知などの自己管理を欠かせない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "auth": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "開発者テストから全β段階までの利用開始条件。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "nav-settings": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "should",
+        "reason": "対象機能を迷わず使うための最小導線を先に固定する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "team-create": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "B1の実チームを作成する入口。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "team-invite": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "B1の約50人を招待できなければ実地検証に進めない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "team-admin": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "小規模チームの管理者がメンバーと権限を扱うために必要。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F10.1.1_team_org_admin_console"
+        ]
+      },
+      "team-modules": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "10チームで用途別機能を切り分ける段階から必要。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F01.3_template_module.md"
+        ]
+      },
+      "organization-manage": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "複数チームを束ねる運用はB2から検証する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "organization-members": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "複数チーム運営時の横断メンバー管理に必要。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "village-join": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "招待された成人がコミュニティへ参加する基本導線。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "village-members": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "実チーム・同窓会で参加者を確認するために必要。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "village-events": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "試合・練習・同窓会を共通の予定として扱う中心機能。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ]
+      },
+      "notification-inbox": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "LINE置換の要件である未読通知と受信確認を担う。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F04.11_notification_inbox"
+        ]
+      },
+      "timeline": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "チームの日常更新を一か所に集めるLINE置換の中核。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "chat": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "日常連絡の直接的なLINE置換として最優先。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "circulation": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "告知の確認・回収が必要になる10チーム規模から導入する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "dashboard": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "参加者が自分の予定と通知をまとめて確認する入口。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "reservation": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "サッカーの参加表明と同窓会会場・出欠の共通需要を検証する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "survey": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "日程・出欠・同窓会の意向確認をLINEフォームより一元化する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "todo-memo": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "could",
+        "reason": "個人・運営メモは便利だが、連絡と予定の実証後でよい。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "corkboard": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "固定告知と流れるタイムラインを分けることでLINE置換の情報整理を検証する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "pointcard": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "ポイント・会費の運用は初期の連絡価値から外れ、規模拡大後に再評価する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "tournament": {
+        "stage": "B1",
+        "audience": "soccer",
+        "priority": "must",
+        "reason": "サッカー固有の試合・大会記録で初期利用の明確な差別化になる。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "safetycheck": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "成人コミュニティの緊急連絡価値は高いが、B1の基本連絡検証後に導入する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "shift": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "勤務シフトはサッカー・同窓会の初期対象外で、正本でも停止扱い。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "matching": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "求人・マッチングは主対象外で、停止機能を広げない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "billing-payment": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "会費決済は規模拡大後の運営課題であり、初期のLINE置換から分離する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "promotion": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "広告・販促は知人中心のB0〜B3では不要。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "market": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "マーケットプレイスは主対象外で、停止機能を広げない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "workflow-forms": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "運営の定型化は規模拡大後に価値が出るが、アンケート検証後に判断する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "facility": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "could",
+        "reason": "会場・駐車場はチーム数が増えた時の運用課題として候補に残す。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "property-repairplan": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "主対象の利用シナリオから外れ、停止機能を広げない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "family-care": {
+        "stage": "B3",
+        "audience": "alumni",
+        "priority": "could",
+        "reason": "同窓会コミュニティの派生需要だが、初期成人連絡の検証後に扱う。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "weather-health": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "could",
+        "reason": "試合判断に有用だが、まず予定・連絡の利用定着を確認する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "skill-resume": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "主対象外で、停止機能を広げない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "recruitment": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "募集はチーム招待で代替し、求人機能は初期対象外。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "succession-proxy": {
+        "stage": "B4",
+        "audience": "alumni",
+        "priority": "defer",
+        "reason": "代理投票は高度な組織運用であり、初期の成人コミュニケーションから外す。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "gdpr-disclosure": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "should",
+        "reason": "規模拡大前に情報開示と個人データ管理を整える必要がある。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "moderation-incident": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "10チーム規模から通報・対応の運用を試す。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "webhook-sync": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "LINE置換の移行期に既存連絡との橋渡しが必要。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "translation-search": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "多チーム・大規模化で検索価値が上がるが、B1の定着後に行う。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      },
+      "gamification": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "継続利用の施策だが、初期の本質価値を検証するまで導入しない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ]
+      }
+    }
+  },
   "featureClassification": {},
   "featurePublication": {},
   "gateFoundation": [],

@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 INVENTORY_PATH = ROOT / "docs" / "inventory" / "feature-inventory.yaml"
 TASK_LIST_PATH = ROOT / "docs" / "task-list.md"
 OUTPUT_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-data.js"
+DECISIONS_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-decisions.json"
 
 
 def git_commit_for(path: Path) -> str:
@@ -29,7 +30,7 @@ def git_commit_for(path: Path) -> str:
             cwd=ROOT,
             text=True,
             stderr=subprocess.DEVNULL,
-        ).strip()
+        ).strip() or "未取得"
     except (OSError, subprocess.CalledProcessError):
         return "未取得"
 
@@ -246,6 +247,7 @@ def build_data() -> dict:
     task_list = TASK_LIST_PATH.read_text(encoding="utf-8")
     features = [feature_view(record) for record in records]
     campaigns = parse_campaigns(task_list)
+    decisions = json.loads(DECISIONS_PATH.read_text(encoding="utf-8"))
     layer_counts = {}
     for record in records:
         layer = text(record.get("layer"))
@@ -258,6 +260,22 @@ def build_data() -> dict:
     raw_campaign_count = len(re.findall(r"^\|\s*CMP(?:-|\|)", task_list, flags=re.MULTILINE))
     actual = {"features": len(features), "campaigns": len(campaigns), "core": len(core), "noncore": sum(feature["classification"] == "noncore" for feature in features), "blockers": blockers_count, "coreStatus": core_status_counts}
     errors = []
+    decision_features = decisions.get("features", {})
+    allowed_stages = {"B0", "B1", "B2", "B3", "B4"}
+    allowed_audiences = {"soccer", "alumni", "both"}
+    allowed_priorities = {"must", "should", "could", "defer"}
+    allowed_decision_statuses = {"proposed", "confirmed"}
+    if set(decision_features) != {feature["key"] for feature in features}:
+        errors.append("Phase 2分類が43機能と完全一致しません")
+    if any(
+        decision.get("stage") not in allowed_stages
+        or decision.get("audience") not in allowed_audiences
+        or decision.get("priority") not in allowed_priorities
+        or decision.get("decisionStatus", decisions.get("decisionStatusDefault")) not in allowed_decision_statuses
+        or not decision.get("reason")
+        for decision in decision_features.values()
+    ):
+        errors.append("Phase 2分類に許可値外または根拠なしの項目があります")
     if len(features) != raw_feature_count:
         errors.append(f"機能行の解析漏れ: raw={raw_feature_count} parsed={len(features)}")
     if len(campaigns) != raw_campaign_count:
@@ -277,10 +295,12 @@ def build_data() -> dict:
         "sources": {
             "inventory": "docs/inventory/feature-inventory.yaml",
             "taskList": "docs/task-list.md",
+            "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
             "inventoryCommit": git_commit_for(INVENTORY_PATH),
             "taskListCommit": git_commit_for(TASK_LIST_PATH),
             "inventorySha256": hashlib.sha256(INVENTORY_PATH.read_bytes()).hexdigest(),
             "taskListSha256": hashlib.sha256(TASK_LIST_PATH.read_bytes()).hexdigest(),
+            "decisionsSha256": hashlib.sha256(DECISIONS_PATH.read_bytes()).hexdigest(),
         },
         "sourceCounts": {
             "features": len(features),
@@ -295,12 +315,13 @@ def build_data() -> dict:
             "passed": True,
         },
         "warnings": [
-            "B0〜B4は正本に軸がないため未設定。",
+            "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
             "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
             "Gate前提工事の項目は正本にないため、Gate一覧は空。",
             "Issue／PR／CIはGitHub連携していないため、task-list.mdの証拠欄だけを表示。",
         ],
         "features": features,
+        "decisions": decisions,
         "featureClassification": {},
         "featurePublication": {},
         "gateFoundation": [],

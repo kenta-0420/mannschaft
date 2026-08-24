@@ -14,6 +14,19 @@ if (data.campaigns.length !== data.sourceCounts.campaigns) throw new Error('CMP�
 if (new Set(data.features.map((feature) => feature.key)).size !== data.features.length) throw new Error('feature_keyが重複しています。');
 if (new Set(data.campaigns.map((campaign) => campaign.id)).size !== data.campaigns.length) throw new Error('CMP IDが重複しています。');
 
+const decisions = data.decisions;
+if (!decisions || Object.keys(decisions.features || {}).length !== data.features.length) throw new Error('Phase 2分類が43機能と一致しません');
+const allowedStages = new Set(['B0', 'B1', 'B2', 'B3', 'B4']);
+const allowedAudiences = new Set(['soccer', 'alumni', 'both']);
+const allowedPriorities = new Set(['must', 'should', 'could', 'defer']);
+const allowedDecisionStatuses = new Set(['proposed', 'confirmed']);
+for (const feature of data.features) {
+  const decision = decisions.features[feature.key];
+  if (!decision) throw new Error(`Phase 2分類なし: ${feature.key}`);
+  if (!allowedStages.has(decision.stage) || !allowedAudiences.has(decision.audience) || !allowedPriorities.has(decision.priority)) throw new Error(`Phase 2分類の許可値不正: ${feature.key}`);
+  if (!allowedDecisionStatuses.has(decision.decisionStatus || decisions.decisionStatusDefault) || !decision.reason) throw new Error(`Phase 2分類の根拠または状態なし: ${feature.key}`);
+}
+
 const allowedStatuses = new Set(['blocked', 'unknown', 'incomplete', 'verifying', 'ready']);
 if (data.features.some((feature) => !allowedStatuses.has(feature.status))) throw new Error('公式5状態以外の機能があります。');
 
