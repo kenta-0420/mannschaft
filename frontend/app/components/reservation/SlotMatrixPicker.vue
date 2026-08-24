@@ -85,6 +85,8 @@ const filterMenuId = ref<string | null>(null)
 const weekStart = ref('')
 const loading = ref(false)
 const errorMsg = ref('')
+/** 曜日単位で保持するため、週を移動しても開閉状態を維持する。 */
+const openWeekdays = ref<Set<number>>(new Set())
 
 const todayStr = ref('')
 const nowMinutes = ref(0)
@@ -178,6 +180,20 @@ const matrixRows = computed<MatrixRowVM[]>(() => {
   }
   return rows
 })
+
+function weekdayOf(date: string): number { return dayjs.tz(date, teamTimezone.value).day() }
+function isDateOpen(date: string): boolean { return openWeekdays.value.has(weekdayOf(date)) }
+function toggleDate(date: string) {
+  const weekday = weekdayOf(date)
+  const next = new Set(openWeekdays.value)
+  next.has(weekday) ? next.delete(weekday) : next.add(weekday)
+  openWeekdays.value = next
+}
+const allDatesOpen = computed(() => days.value.length > 0 && days.value.every(day => isDateOpen(day.date)))
+function toggleAllDates() {
+  openWeekdays.value = allDatesOpen.value ? new Set() : new Set(days.value.map(day => weekdayOf(day.date)))
+}
+const visibleMatrixRows = computed(() => matrixRows.value.filter(row => isDateOpen(row.date)))
 
 function continuationFor(row: MatrixRowVM): { slots: RowSlot[]; header: HeaderSlot[] } {
   const nextDate = dayjs.tz(row.date, teamTimezone.value).add(1, 'day').format('YYYY-MM-DD')
@@ -292,6 +308,7 @@ function isCellDisabled(row: MatrixRowVM, headerIndex: number): boolean {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind !== 'cell') return true
   if (slot.cell.state === 'BOOKED') {
+    if ((slot.cell as typeof slot.cell & { reservedByCurrentUser?: boolean }).reservedByCurrentUser) return true
     // slotId 不明の BOOKED セルは押しても無反応（early return）になるため disabled にする（検分是正）。
     if (slot.cell.slotId == null) return true
     return isPastCell(slot.cell.slotDate ?? row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)
@@ -344,7 +361,9 @@ function cellLabel(row: MatrixRowVM, headerIndex: number): string {
     case 'AVAILABLE': label = t('reservation.grid.state.available'); break
     // BOOKED は自分が WAITING 登録済みなら「待機中」に切り替える（W2-4-FE）。
     case 'BOOKED':
-      label = slot.cell.slotId != null && myWaitlistSlotIds.value.has(slot.cell.slotId)
+      label = (slot.cell as typeof slot.cell & { reservedByCurrentUser?: boolean }).reservedByCurrentUser
+        ? t('reservation.grid.state.reserved')
+        : slot.cell.slotId != null && myWaitlistSlotIds.value.has(slot.cell.slotId)
         ? t('reservation.waitlist.registered_badge')
         : t('reservation.grid.state.booked')
       break
@@ -574,6 +593,7 @@ function onCellClick(row: MatrixRowVM, headerIndex: number) {
   if (isCellDisabled(row, headerIndex)) return
 
   if (slot.cell.state === 'BOOKED') {
+    if ((slot.cell as typeof slot.cell & { reservedByCurrentUser?: boolean }).reservedByCurrentUser) return
     // 満席セル: キャンセル待ちダイアログを開く（W2-4-FE）。span（長尺枠の跨ぎ）に関わらず
     // 対象は常に単一 slotId のため、長尺/30分どちらでも扱いは同じ。
     if (slot.cell.slotId == null) return
@@ -702,6 +722,7 @@ defineExpose({
         <Button icon="pi pi-angle-left" text rounded @click="prevWeek" />
         <Button :label="t('reservation.grid.view.week') + ' ' + weekRangeLabel()" text size="small" @click="thisWeek" />
         <Button icon="pi pi-angle-right" text rounded @click="nextWeek" />
+        <Button :label="allDatesOpen ? t('reservation.matrix.close_all') : t('reservation.matrix.open_all')" text size="small" @click="toggleAllDates" />
       </div>
     </div>
 
@@ -765,7 +786,12 @@ defineExpose({
 
     <!-- マトリックス本体（縦横スクロール・overscroll-contain・時間ヘッダ行 sticky top・行ヘッダ列 sticky left）。
          縦スクロールを本コンテナ内に閉じ込める（max-h + overflow-auto）ことで sticky top を確実に効かせる。 -->
-    <div v-else class="max-h-[65vh] overflow-auto overscroll-contain">
+    <div v-else class="space-y-2">
+      <div class="flex flex-wrap gap-2">
+        <Button v-for="day in days" :key="day.date" :label="dayLabel(day.date)" :icon="isDateOpen(day.date) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" text size="small" :aria-expanded="isDateOpen(day.date)" @click="toggleDate(day.date)" />
+      </div>
+      <div v-if="visibleMatrixRows.length === 0" class="rounded-lg bg-surface-50 p-4 text-center text-sm text-surface-500 dark:bg-surface-800">{{ t('reservation.matrix.open_day_hint') }}</div>
+      <div v-else class="max-h-[65vh] overflow-auto overscroll-contain">
       <!-- ドラッグ中のみテキスト選択を殺す（常時 select-none にはしない＝通常時のコピーを妨げない）。
            touch-action は一切いじらない: タッチはマトリックスの縦横パン専用で、ドラッグ選択は
            マウス/ペンのみ（onCellPointerDown で pointerType を判定）。 -->
@@ -787,7 +813,7 @@ defineExpose({
         </div>
 
         <!-- 本体行: 日付×予約対象 -->
-        <template v-for="(row, ri) in matrixRows" :key="`r-${ri}`">
+        <template v-for="(row, ri) in visibleMatrixRows" :key="`r-${ri}`">
           <div class="sticky left-0 z-10 flex flex-col items-center justify-center bg-surface-0 p-2 text-center text-[11px] font-medium text-surface-600 dark:bg-surface-900 dark:text-surface-300">
             <span>{{ row.dateLabel }}</span>
             <span class="text-surface-400">{{ row.columnLabel }}</span>
@@ -811,6 +837,7 @@ defineExpose({
             </button>
           </template>
         </template>
+      </div>
       </div>
     </div>
 
