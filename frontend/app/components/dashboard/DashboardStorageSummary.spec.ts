@@ -7,12 +7,19 @@ import type { StorageScopeUsage } from '~/types/storage'
 
 const getMyStorageUsage = vi.fn()
 const handleApiError = vi.fn()
-const dashboardStore = reactive({ selectedTeamId: 'team-a', selectedOrgId: 'org-a' })
+const dashboardStore = reactive({
+  selectedTeamId: 'team-a',
+  selectedOrgId: 'org-a',
+  teamTabPage: 0,
+  loadFromStorage: vi.fn(),
+  loadTabs: vi.fn().mockResolvedValue(undefined),
+})
 
 mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
 mockNuxtImport('useStorageUsageApi', () => () => ({ getMyStorageUsage }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError }))
 mockNuxtImport('useScopeDashboardStore', () => () => dashboardStore)
+mockNuxtImport('useAuthStore', () => () => ({ isAuthenticated: false, loadFromStorage: vi.fn() }))
 
 const stubs = {
   DashboardWidgetCard: { template: '<section><header><slot name="actions" /></header><slot /></section>' },
@@ -49,6 +56,7 @@ describe('DashboardStorageSummary', () => {
     const wrapper = await mountSummary()
     expect(getMyStorageUsage).toHaveBeenCalledTimes(1)
     expect(wrapper.findAll('[data-testid^="storage-card-"]')).toHaveLength(3)
+    expect(wrapper.get('[data-testid="storage-card-0"] .text-amber-600')).toBeTruthy()
     dashboardStore.selectedTeamId = 'other-team'
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="storage-card-1"]').text()).toContain('scopeDashboard.storageSummary.not_available')
@@ -63,7 +71,7 @@ describe('DashboardStorageSummary', () => {
     const wrapper = await mountSummary()
     expect(wrapper.text()).toContain('scopeDashboard.storageSummary.unconfigured')
     expect(wrapper.get('[data-testid="storage-card-1"] .text-red-600')).toBeTruthy()
-    expect(wrapper.get('[data-testid="storage-card-2"] [role="progressbar"]').getAttribute('aria-valuenow')).toBe('100')
+    expect(wrapper.get('[data-testid="storage-card-2"] [role="progressbar"]').attributes('aria-valuenow')).toBe('100')
     dashboardStore.selectedOrgId = null
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="storage-card-2"]').text()).toContain('scopeDashboard.storageSummary.not_available')
