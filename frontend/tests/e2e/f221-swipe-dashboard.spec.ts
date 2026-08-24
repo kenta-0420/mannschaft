@@ -155,6 +155,17 @@ async function mockDashboardApis(page: Page, opts: MockOptions = {}): Promise<vo
     })
   })
 
+  // 有料プラン画面の route gate が参照する公開フラグ。
+  await page.route('**/api/v1/feature-flags', async (route: Route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: [{ flagKey: 'FEATURE_BILLING_PAYMENT_ENABLED', enabled: true }],
+      }),
+    })
+  })
+
   // --- 認証リフレッシュ（401 連鎖でログアウトさせない）---
   await page.route('**/api/v1/auth/refresh', async (route: Route) => {
     await route.fulfill({
@@ -300,7 +311,15 @@ test('F22.1-10: 容量カードの通常遷移と警告Dialogのプラン導線'
   await mockDashboardApis(page, { storageUsageWarning: true })
   await page.reload()
   await waitForCarousel(page)
-  await page.getByTestId('storage-card-0').click()
+  const warningCard = page.getByTestId('storage-card-0')
+  await warningCard.click()
+  await expect(page.getByRole('dialog')).toBeVisible()
+
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toBeHidden()
+  await expect(warningCard).toBeFocused()
+
+  await warningCard.click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByRole('button', { name: 'プランを見る' }).click()
   await expect(page).toHaveURL(/\/billing\/plans/)
