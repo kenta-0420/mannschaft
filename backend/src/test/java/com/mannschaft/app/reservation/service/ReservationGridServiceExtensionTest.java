@@ -524,6 +524,7 @@ class ReservationGridServiceExtensionTest {
                 .containsExactlyInAnyOrder("menuId", "menuName", "requiredCellCount", "cellMinutes");
         // セル DTO に user/reservation/note を含む名称が存在しないこと（C-4 の noneMatch 踏襲）。
         assertThat(componentNames(ReservationGridResponse.GridCellDto.class)).noneMatch(n -> {
+            if (n.equals("reservedByCurrentUser")) return false;
             String lower = n.toLowerCase();
             return lower.contains("user") || lower.contains("name")
                     || lower.contains("reservation") || lower.contains("note");

@@ -274,6 +274,7 @@ class ReservationGridServiceTest {
         assertThat(componentNames)
                 .containsExactlyInAnyOrder("slotId", "slotDate", "endDate", "startTime", "endTime", "state", "price", "unavailableReason", "reservedByCurrentUser");
         assertThat(componentNames).noneMatch(n -> {
+            if (n.equals("reservedByCurrentUser")) return false;
             String lower = n.toLowerCase();
             return lower.contains("user") || lower.contains("name")
                     || lower.contains("reservation") || lower.contains("note");

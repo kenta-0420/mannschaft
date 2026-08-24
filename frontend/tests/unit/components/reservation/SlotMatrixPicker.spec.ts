@@ -188,7 +188,7 @@ describe('SlotMatrixPicker.vue', () => {
     await flush(wrapper, nextWeekDate)
     expect((await findDateToggle(wrapper, nextWeekDate))?.getAttribute('aria-expanded')).toBe('true')
 
-    findByTestId<HTMLButtonElement>('matrix-toggle-all')!.click()
+    wrapper.find<HTMLButtonElement>('[data-testid="matrix-toggle-all"]').element.click()
     await flushRaw()
     expect(wrapper.findAll('[data-header-index]').length).toBe(0)
   })
@@ -260,7 +260,7 @@ describe('SlotMatrixPicker.vue', () => {
     mockGetLines.mockResolvedValue({ data: [activeLine] })
     mockGetSlotGrid.mockResolvedValue(gridResponseWithCells())
 
-    await mountSuspended(SlotMatrixPicker, {
+    const wrapper = await mountSuspended(SlotMatrixPicker, {
       props: { teamId: 'team-slug', isAdmin: false },
     })
     await flush(wrapper)
