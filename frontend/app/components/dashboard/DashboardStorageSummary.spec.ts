@@ -7,7 +7,7 @@ import type { StorageScopeUsage } from '~/types/storage'
 
 const getMyStorageUsage = vi.fn()
 const handleApiError = vi.fn()
-const navigateTo = vi.fn()
+const { navigateTo } = vi.hoisted(() => ({ navigateTo: vi.fn() }))
 const dashboardStore = reactive<{
   selectedTeamId: string | null
   selectedOrgId: string | null
