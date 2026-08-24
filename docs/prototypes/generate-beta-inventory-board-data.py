@@ -147,18 +147,9 @@ def parse_campaigns(markdown: str) -> list[dict]:
         cells = (cells + [""] * 7)[:7]
         campaign_id, title, status, prerequisite, acceptance, evidence, refs = cells[:7]
         status_text = status.strip()
-        status_key = {
-            "未着手": "unknown",
-            "設計中": "working",
-            "実装中": "working",
-            "実装済み": "done",
-            "実装済": "done",
-            "検証待ち": "working",
-            "完了": "done",
-            "凍結": "blocked",
-            "停止": "blocked",
-        }.get(status_text, "unknown")
+        status_key = normalize_campaign_status(status_text)
         feature_refs = re.findall(r"[A-Za-z][A-Za-z0-9_-]+", title + " " + acceptance)
+        tags = campaign_tags(status_key)
         campaigns.append(
             {
                 "id": campaign_id,
@@ -180,9 +171,28 @@ def parse_campaigns(markdown: str) -> list[dict]:
                 "refs": [refs] if refs else [],
                 "source": "docs/task-list.md",
                 "sourceTokens": feature_refs,
+                "tags": tags,
             }
         )
     return campaigns
+
+
+def campaign_tags(status_key: str) -> list[str]:
+    """task-list.mdの状態列を、フィルター用の進捗タグへ機械的に写像する。"""
+    labels = {"done": "完了", "working": "進行中", "blocked": "停止中", "unknown": "未整理"}
+    return [labels.get(status_key, "未整理")]
+
+
+def normalize_campaign_status(status_text: str) -> str:
+    """状態列の先頭語を、画面の4進捗へ機械的に正規化する。"""
+    normalized = status_text.replace("**", "").strip()
+    if normalized.startswith(("凍結", "停止")):
+        return "blocked"
+    if normalized.startswith("完了"):
+        return "done"
+    if normalized.startswith(("設計中", "実装中", "実装済", "検証待ち", "実機検証待ち", "実装完了", "実装・実機E2E完了", "型確立PR進行中", "一部完了")):
+        return "working"
+    return "unknown"
 
 
 def feature_view(record: dict) -> dict:

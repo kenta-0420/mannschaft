@@ -104,6 +104,12 @@
     .view-button.active { background: var(--brand); color: var(--bg); border-color: var(--brand); }
     .view-button small { display: block; margin-top: 2px; color: inherit; opacity: .72; font-size: 10px; font-weight: 600; }
     .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .cmp-tag-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 12px 0 2px; }
+    .cmp-tag-filter-label { color: var(--muted); font-size: 12px; font-weight: 800; margin-right: 2px; }
+    .cmp-tag-button { border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; background: var(--panel); color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; }
+    .cmp-tag-button:hover { border-color: var(--brand); }
+    .cmp-tag-button.active { background: var(--brand-soft); border-color: var(--brand); color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+    .cmp-tag-clear { border: 0; background: transparent; color: var(--muted); text-decoration: underline; cursor: pointer; font-size: 12px; padding: 7px 4px; }
     .stage-button, .filter-button {
       min-height: 44px; border: 1px solid var(--line); padding: 0 15px; border-radius: 999px;
       background: var(--panel); color: var(--text); font-weight: 700;
@@ -154,13 +160,15 @@
     .source-box { min-width: 0; padding: 12px; border-radius: 12px; background: var(--panel-soft); }
     .source-box b { display: block; font-size: 13px; }
     .source-box span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
-    .source-arrow { color: var(--brand); font-weight: 900; }
+    .source-arrow { color: var(--brand); font-weight: 900; pointer-events: none; }
     .cmp-summary { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
     .cmp-list { display: grid; gap: 10px; }
     .cmp-card {
       display: grid; grid-template-columns: minmax(230px, 1.45fr) minmax(170px, .8fr) minmax(210px, 1fr) auto;
       gap: 14px; align-items: center; padding: 15px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel);
+      overflow-wrap: anywhere;
     }
+    .cmp-card > * { min-width: 0; }
     .cmp-card[data-status="blocked"] { border-left: 4px solid var(--danger); }
     .cmp-card[data-status="working"] { border-left: 4px solid var(--info); }
     .cmp-card[data-status="done"] { border-left: 4px solid var(--ready); }
@@ -488,6 +496,7 @@
     let selectedView = 'roadmap';
     let selectedStage = '未設定';
     let selectedAudience = 'all';
+    const selectedCampaignTags = new Set();
     let selectedFeature = null;
     let insights = [];
     let pendingScreenshot = null;
@@ -716,8 +725,24 @@
         const audienceMatches = selectedAudience === 'all' || campaign.audiences.includes(selectedAudience);
         const issueText = campaign.issues.map((issue) => issue.label).join(' ');
         const queryMatches = !query || `${campaign.id} ${campaign.title} ${campaign.featureKey} ${issueText}`.toLowerCase().includes(query);
-        return stageMatches && audienceMatches && queryMatches;
+        const tagMatches = selectedCampaignTags.size === 0 || [...selectedCampaignTags].some((tag) => campaign.tags.includes(tag));
+        return stageMatches && audienceMatches && queryMatches && tagMatches;
       });
+    }
+
+    function campaignTagButtons() {
+      const counts = new Map();
+      campaigns.forEach((campaign) => campaign.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1)));
+      const order = ['完了', '進行中', '未整理', '停止中'];
+      const entries = [...counts.entries()].sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
+      const render = ([tag, count]) => `<button class="cmp-tag-button${selectedCampaignTags.has(tag) ? ' active' : ''}" type="button" data-cmp-tag="${escapeHtml(tag)}" aria-pressed="${selectedCampaignTags.has(tag)}">${escapeHtml(tag)} <span>${count}</span></button>`;
+      return `<div class="cmp-tag-filter" aria-label="CMPタグフィルター">
+        <span class="cmp-tag-filter-label">進捗タグ（複数選択はOR）</span>
+        <button class="cmp-tag-button${selectedCampaignTags.size === 0 ? ' active' : ''}" type="button" data-cmp-tag-clear aria-pressed="${selectedCampaignTags.size === 0}">すべて</button>
+        ${entries.map(render).join('') || '<span class="cmp-tag-filter-label">進捗なし</span>'}
+        <span class="cmp-tag-filter-label">${selectedCampaignTags.size}種類選択</span>
+        ${selectedCampaignTags.size ? '<button class="cmp-tag-clear" type="button" data-cmp-tag-clear>全解除</button>' : ''}
+      </div>`;
     }
 
     function renderCampaigns() {
@@ -745,6 +770,7 @@
           <span class="status-pill unknown">未整理 ${unknown}</span>
           <span class="status-pill done">完了 ${done}</span>
         </div>
+        ${campaignTagButtons()}
         <div class="cmp-list">
           ${visibleCampaigns.map((campaign) => `
             <article class="cmp-card" data-status="${campaign.status}">
@@ -1195,6 +1221,20 @@ ${insight.detail}
 
     document.querySelector('#search').addEventListener('input', renderBoard);
     board.addEventListener('click', async (event) => {
+      const tagButton = event.target.closest('[data-cmp-tag]');
+      const clearTagsButton = event.target.closest('[data-cmp-tag-clear]');
+      if (clearTagsButton) {
+        selectedCampaignTags.clear();
+        renderBoard();
+        return;
+      }
+      if (tagButton) {
+        const tag = tagButton.dataset.cmpTag;
+        if (selectedCampaignTags.has(tag)) selectedCampaignTags.delete(tag);
+        else selectedCampaignTags.add(tag);
+        renderBoard();
+        return;
+      }
       const openInsightButton = event.target.closest('[data-open-insight-form]');
       const insightPromptButton = event.target.closest('[data-insight-prompt]');
       const insightExportButton = event.target.closest('[data-insight-export]');

@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T06:42:46+00:00",
+  "generatedAt": "2026-08-24T07:02:33+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -1550,6 +1550,9 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [
         "fan-out"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -1585,6 +1588,9 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "F17",
         "Wave1"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -1620,6 +1626,9 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "FE",
         "BE"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -1656,6 +1665,9 @@ window.BETA_INVENTORY_DATA = {
         "WS",
         "IaC",
         "Valkey"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -1691,12 +1703,15 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "ADHD",
         "UX"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-006",
       "title": "予約v2根本再設計",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "実機検証待ち",
       "stage": "未設定",
       "priority": "未設定",
@@ -1727,6 +1742,9 @@ window.BETA_INVENTORY_DATA = {
         "v2",
         "E2E",
         "approve-series"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -1762,6 +1780,9 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "toBuilder",
         "campaign"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -1798,6 +1819,9 @@ window.BETA_INVENTORY_DATA = {
         "DB",
         "UUID",
         "PK"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -1834,6 +1858,9 @@ window.BETA_INVENTORY_DATA = {
         "F18",
         "AccountPurge",
         "AccountPurge"
+      ],
+      "tags": [
+        "停止中"
       ]
     },
     {
@@ -1869,6 +1896,9 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "F20",
         "UTC"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -1901,7 +1931,10 @@ window.BETA_INVENTORY_DATA = {
         "—"
       ],
       "source": "docs/task-list.md",
-      "sourceTokens": []
+      "sourceTokens": [],
+      "tags": [
+        "進行中"
+      ]
     },
     {
       "id": "CMP-012",
@@ -1936,6 +1969,9 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "ElastiCache",
         "HA"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -1968,7 +2004,10 @@ window.BETA_INVENTORY_DATA = {
         "—"
       ],
       "source": "docs/task-list.md",
-      "sourceTokens": []
+      "sourceTokens": [],
+      "tags": [
+        "未整理"
+      ]
     },
     {
       "id": "CMP-014",
@@ -2003,6 +2042,9 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "promo2",
         "promo2"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -2040,6 +2082,9 @@ window.BETA_INVENTORY_DATA = {
         "git",
         "commit",
         "main"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -2072,7 +2117,10 @@ window.BETA_INVENTORY_DATA = {
         "—"
       ],
       "source": "docs/task-list.md",
-      "sourceTokens": []
+      "sourceTokens": [],
+      "tags": [
+        "進行中"
+      ]
     },
     {
       "id": "CMP-017",
@@ -2106,6 +2154,9 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [
         "IDOR"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -2145,6 +2196,9 @@ window.BETA_INVENTORY_DATA = {
         "DDL",
         "CRUD",
         "TODO"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -2184,12 +2238,15 @@ window.BETA_INVENTORY_DATA = {
         "docs",
         "TODO_LIST",
         "txt"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-020",
       "title": "本番のみで顕在化するスキーマ差の是正（照合順序不一致）",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "実機検証待ち",
       "stage": "未設定",
       "priority": "未設定",
@@ -2220,6 +2277,9 @@ window.BETA_INVENTORY_DATA = {
         "main",
         "V175",
         "API"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -2256,6 +2316,9 @@ window.BETA_INVENTORY_DATA = {
         "IT",
         "my_scope_folder_items",
         "scope_id"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -2292,6 +2355,9 @@ window.BETA_INVENTORY_DATA = {
         "migration",
         "SQL",
         "Java"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -2332,12 +2398,15 @@ window.BETA_INVENTORY_DATA = {
         "TimeZoneConfig",
         "JST",
         "Issue"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
       "id": "CMP-024",
       "title": "**募集キャンセル料の決済API実装（F03.11.1）**",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-14）",
       "stage": "未設定",
       "priority": "未設定",
@@ -2373,12 +2442,15 @@ window.BETA_INVENTORY_DATA = {
         "PR",
         "UI",
         "E2E"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-029",
       "title": "F03.16 予定コメントスレッド",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "**完了**（main 着地 PR #2763 / squash `c86ba2ce7` / 2026-08-14。**実機E2E 10シナリオ全緑まで裏取り済み**）",
       "stage": "未設定",
       "priority": "未設定",
@@ -2408,6 +2480,9 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "F03",
         "E2E"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -2444,12 +2519,15 @@ window.BETA_INVENTORY_DATA = {
         "scopeId",
         "slug",
         "API"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-031",
       "title": "日時JSONの送信側だけTZ変換する非対称設計の是正（Issue #2508・Phase 1〜3）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-11）",
       "stage": "未設定",
       "priority": "未設定",
@@ -2483,12 +2561,15 @@ window.BETA_INVENTORY_DATA = {
         "Phase",
         "TZ",
         "LocalDate"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-032",
       "title": "ErrorCode の HTTP ステータス写像是正（存在秘匿の破れ優先）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-14）",
       "stage": "未設定",
       "priority": "未設定",
@@ -2519,6 +2600,9 @@ window.BETA_INVENTORY_DATA = {
         "ErrorCode",
         "HTTP",
         "ERROR_CODE_STATUS_MAP"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -2562,6 +2646,9 @@ window.BETA_INVENTORY_DATA = {
         "villages",
         "spec",
         "ts"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -2604,12 +2691,15 @@ window.BETA_INVENTORY_DATA = {
         "main",
         "exit",
         "CI"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-035",
       "title": "**バッチ全体を単一トランザクションで包んだまま1件ずつ catch している2箇所（失敗が全件巻き戻る）**",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-12）",
       "stage": "未設定",
       "priority": "未設定",
@@ -2640,12 +2730,15 @@ window.BETA_INVENTORY_DATA = {
         "catch",
         "PR",
         "e356ef3f7"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-036",
       "title": "**ブログ予約公開のBE実装（Issue #2616）**",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-13）",
       "stage": "未設定",
       "priority": "未設定",
@@ -2679,12 +2772,15 @@ window.BETA_INVENTORY_DATA = {
         "PR",
         "main",
         "CI"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-037",
       "title": "**コード内権限名がカタログ未登録（死んだ権限名）の是正＋検出番人の新設**",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-15）",
       "stage": "未設定",
       "priority": "未設定",
@@ -2717,12 +2813,15 @@ window.BETA_INVENTORY_DATA = {
         "MANAGE_COMMITTEE",
         "jobs",
         "manage"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-038",
       "title": "**アンケート契約の非対称とenum契約の根治（Issue #2635 / #2617）**",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-14）",
       "stage": "未設定",
       "priority": "未設定",
@@ -2757,12 +2856,15 @@ window.BETA_INVENTORY_DATA = {
         "PR",
         "main",
         "CI"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-039",
       "title": "**組織配信の母集団が `user_roles` 基底で一般メンバーを取りこぼす（Issue #2780 / #2785 / #2786 の三層）**",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-14）",
       "stage": "未設定",
       "priority": "未設定",
@@ -2794,12 +2896,15 @@ window.BETA_INVENTORY_DATA = {
         "Issue",
         "main",
         "memberships"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-040",
       "title": "権限グループの付与を組織ごとに持たせる（Issue #2797）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-15）",
       "stage": "未設定",
       "priority": "未設定",
@@ -2831,6 +2936,9 @@ window.BETA_INVENTORY_DATA = {
         "UserRoleRepository",
         "findUserIdsByOrganizationIdAndPermissionName",
         "AC-1"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -2870,6 +2978,9 @@ window.BETA_INVENTORY_DATA = {
         "ADMIN",
         "MANAGE_SURVEYS",
         "DEPUTY_ADMIN"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -2908,12 +3019,15 @@ window.BETA_INVENTORY_DATA = {
         "target_count",
         "Issue",
         "target_count"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-028",
       "title": "認証済み一覧の可視性 SQL 述語化（F00 に可視レベル解決 API を新設）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "**完了（2026-08-14・PR 4本すべて main 着地／CI 全緑）**",
       "stage": "未設定",
       "priority": "未設定",
@@ -2944,6 +3058,9 @@ window.BETA_INVENTORY_DATA = {
         "SQL",
         "F00",
         "API"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -2985,12 +3102,15 @@ window.BETA_INVENTORY_DATA = {
         "Entity",
         "DDL",
         "NULL"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-044",
       "title": "`matches.organization_id` をNOT NULL化すべきか否かの設計判断（要マスター判断）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-15・マスター御裁可）",
       "stage": "未設定",
       "priority": "未設定",
@@ -3025,12 +3145,15 @@ window.BETA_INVENTORY_DATA = {
         "DDL",
         "Entity",
         "nullable"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-045",
       "title": "BE CI のテストシャードが60分の時間上限に張り付き、内容と無関係に打ち切られる",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-21）",
       "stage": "未設定",
       "priority": "未設定",
@@ -3062,6 +3185,9 @@ window.BETA_INVENTORY_DATA = {
         "CI",
         "AC-1",
         "AC-2"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -3098,6 +3224,9 @@ window.BETA_INVENTORY_DATA = {
         "is_default",
         "Issue",
         "is_default"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -3138,6 +3267,9 @@ window.BETA_INVENTORY_DATA = {
         "DDL",
         "CHECK",
         "native"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -3176,6 +3308,9 @@ window.BETA_INVENTORY_DATA = {
         "API",
         "null",
         "SUPPORTER"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -3221,6 +3356,9 @@ window.BETA_INVENTORY_DATA = {
         "DEFERRED",
         "FAILED",
         "UNCOLLECTIBLE"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -3274,6 +3412,9 @@ window.BETA_INVENTORY_DATA = {
         "RoleService",
         "transferOwnership",
         "ACTIVE"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -3312,6 +3453,9 @@ window.BETA_INVENTORY_DATA = {
         "BE",
         "UI",
         "API"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -3360,12 +3504,15 @@ window.BETA_INVENTORY_DATA = {
         "FamilyPersonalTimetableService",
         "ArchUnit",
         "javadoc"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-053",
       "title": "ログイン可能な非ACTIVE状態（RELOCATED／DECEASED）が在籍列挙から落ち自分の画面が白紙になる（CMP-050派生・検分P2）（F14.3の方式確定により到達不能）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（仕様判断済み・到達不能）",
       "stage": "未設定",
       "priority": "未設定",
@@ -3416,12 +3563,15 @@ window.BETA_INVENTORY_DATA = {
         "RELOCATED",
         "enum",
         "AC-803"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-055",
       "title": "通知本文の日本語直書きを解消する（Issue #2715）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-21、ロットC完結。残務はIssue #2871として明記）",
       "stage": "未設定",
       "priority": "未設定",
@@ -3568,12 +3718,15 @@ window.BETA_INVENTORY_DATA = {
         "C-6",
         "PR",
         "d083e124b"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-056",
       "title": "通知発行が本処理と同一トランザクションに参加し、失敗時に本処理ごと巻き戻る（Issue #2834）",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "型確立PR進行中（PR #2910、`feature/2834-notification-tx-separation-pattern`）",
       "stage": "未設定",
       "priority": "未設定",
@@ -3697,6 +3850,9 @@ window.BETA_INVENTORY_DATA = {
         "PERSONAL_TIMETABLE",
         "Resolver",
         "PERSONAL_TIMETABLE_SYNC_REVOKED"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -3734,12 +3890,15 @@ window.BETA_INVENTORY_DATA = {
         "URL",
         "ACL",
         "fileKey"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-099",
       "title": "予定対象者・スコープ別メンバー色・自分担当TODOのマイカレンダー統合",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "実装・実機E2E完了（CI待ち）",
       "stage": "未設定",
       "priority": "未設定",
@@ -3769,6 +3928,9 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "TODO",
         "TODO"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -3808,6 +3970,9 @@ window.BETA_INVENTORY_DATA = {
         "Flyway",
         "migration",
         "AC"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -3845,6 +4010,9 @@ window.BETA_INVENTORY_DATA = {
         "getMyFeed",
         "TeamOrgMembershipRepository",
         "findByTeamIdInAndStatus"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -3893,12 +4061,15 @@ window.BETA_INVENTORY_DATA = {
         "mutedType",
         "TEAM",
         "ORGANIZATION"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-102",
       "title": "data_exports の s3Key 物理列名不一致でダッシュボード(CORE)とGDPRバッチが実機500",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "**完了**（main 着地 PR #2881）",
       "stage": "未設定",
       "priority": "未設定",
@@ -3948,12 +4119,15 @@ window.BETA_INVENTORY_DATA = {
         "green",
         "s3Key",
         "Entity"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-103",
       "title": "プロフィール編集で入力途中離脱すると入力が消える（未保存警告で対応）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "**完了**（main 着地 PR #2876）",
       "stage": "未設定",
       "priority": "未設定",
@@ -3988,12 +4162,15 @@ window.BETA_INVENTORY_DATA = {
         "settings",
         "profile",
         "localStorage"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-106",
       "title": "F03.18 予定アクティビティフィード",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "**完了**（main 着地 PR #2850 / 2026-08-19。**実機E2E 13件全緑まで裏取り済み**）",
       "stage": "未設定",
       "priority": "未設定",
@@ -4022,6 +4199,9 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/task-list.md",
       "sourceTokens": [
         "F03"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -4060,6 +4240,9 @@ window.BETA_INVENTORY_DATA = {
         "E2E",
         "detail",
         "affectedCount"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4098,6 +4281,9 @@ window.BETA_INVENTORY_DATA = {
         "E2E",
         "enum",
         "COMMON_999"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4133,12 +4319,15 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "worktree",
         "worktree"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-110",
       "title": "**秘密情報混入の機械的防止（gitleaks 必須CIゲート＋`.gitignore` 強化）**",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（2026-08-18・PR #2749 `206b88200` で main へマージ済み）。ただし**殿/マスターの手が要る残務が1件あり**（後述）",
       "stage": "未設定",
       "priority": "未設定",
@@ -4172,12 +4361,15 @@ window.BETA_INVENTORY_DATA = {
         "PR",
         "CI",
         "gitignore"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
       "id": "CMP-260820-1422",
       "title": "存在オラクル一掃（越境を不在と同じ404へ・skill 以外の全ドメイン）",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "実装完了（CI待ち）",
       "stage": "未設定",
       "priority": "未設定",
@@ -4208,6 +4400,9 @@ window.BETA_INVENTORY_DATA = {
         "ID",
         "ID",
         "PARKING_020"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -4244,6 +4439,9 @@ window.BETA_INVENTORY_DATA = {
         "VillageAccessGate",
         "pointcard",
         "CMP-260820-1422"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -4290,6 +4488,9 @@ window.BETA_INVENTORY_DATA = {
         "F14",
         "OWNER",
         "CHAIR"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4328,6 +4529,9 @@ window.BETA_INVENTORY_DATA = {
         "TTL",
         "CacheEvict",
         "transactionAware"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4365,6 +4569,9 @@ window.BETA_INVENTORY_DATA = {
         "user_roles",
         "MembershipService",
         "join"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4404,6 +4611,9 @@ window.BETA_INVENTORY_DATA = {
         "status",
         "GuardianChildViewService",
         "userId"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4442,6 +4652,9 @@ window.BETA_INVENTORY_DATA = {
         "Valid",
         "NotNull",
         "DTO"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4482,6 +4695,9 @@ window.BETA_INVENTORY_DATA = {
         "role",
         "proxy",
         "Transactional"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4524,6 +4740,9 @@ window.BETA_INVENTORY_DATA = {
         "moveOutDate",
         "deletedAt",
         "builder"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4562,6 +4781,9 @@ window.BETA_INVENTORY_DATA = {
         "revokeConsent",
         "getRecords",
         "API"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4600,12 +4822,15 @@ window.BETA_INVENTORY_DATA = {
         "deleted_at",
         "SYSTEM_ADMIN",
         "SYSTEM_ADMIN"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-260820-1550",
       "title": "未公開機能への URL 直アクセスを止める FE route ガード（Gate基盤工事②）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "**完了**（main 着地 PR #2878）",
       "stage": "未設定",
       "priority": "未設定",
@@ -4641,6 +4866,9 @@ window.BETA_INVENTORY_DATA = {
         "false",
         "URL",
         "gate_key"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -4710,6 +4938,9 @@ window.BETA_INVENTORY_DATA = {
         "md",
         "slug",
         "AC"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4750,12 +4981,15 @@ window.BETA_INVENTORY_DATA = {
         "AWS",
         "frontend",
         "main"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-260821-1547",
       "title": "未公開機能の API ゲート `@RequireFeature`（Gate基盤工事③）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "**完了**（main 着地 PR #2894・#2902）",
       "stage": "未設定",
       "priority": "未設定",
@@ -4789,6 +5023,9 @@ window.BETA_INVENTORY_DATA = {
         "BE",
         "API",
         "CI"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -4824,12 +5061,15 @@ window.BETA_INVENTORY_DATA = {
       "sourceTokens": [
         "capability",
         "UNLISTED"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-260821-2130",
       "title": "FE 本番ビルド（nuxt build）がメモリ枯渇で完走しない",
-      "status": "unknown",
+      "status": "working",
       "statusLabel": "一部完了（2026-08-22・ビルドのOOMは解消。コンテナ500は未解決）",
       "stage": "未設定",
       "priority": "未設定",
@@ -4868,6 +5108,9 @@ window.BETA_INVENTORY_DATA = {
         "CI",
         "PR",
         "main"
+      ],
+      "tags": [
+        "進行中"
       ]
     },
     {
@@ -4907,6 +5150,9 @@ window.BETA_INVENTORY_DATA = {
         "CI",
         "Docker",
         "HTTP"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
@@ -4955,12 +5201,15 @@ window.BETA_INVENTORY_DATA = {
         "Linux",
         "npm",
         "ci"
+      ],
+      "tags": [
+        "未整理"
       ]
     },
     {
       "id": "CMP-260821-1446",
       "title": "F02.11 帰省・滞在予定（本人の帰省/滞在予定の登録・チーム可視化・逝去/転出アーカイブ連動パージ）",
-      "status": "unknown",
+      "status": "done",
       "statusLabel": "完了（#2905マージ済・実機E2E緑）",
       "stage": "未設定",
       "priority": "未設定",
@@ -4992,6 +5241,9 @@ window.BETA_INVENTORY_DATA = {
         "AC-01",
         "BE",
         "FE"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -5028,6 +5280,9 @@ window.BETA_INVENTORY_DATA = {
         "gradle-turnstile",
         "stale",
         "stale"
+      ],
+      "tags": [
+        "完了"
       ]
     },
     {
@@ -5066,6 +5321,9 @@ window.BETA_INVENTORY_DATA = {
         "AccountPurgeService",
         "user_id",
         "IT"
+      ],
+      "tags": [
+        "未整理"
       ]
     }
   ]
