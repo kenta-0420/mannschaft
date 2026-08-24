@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T12:42:20+00:00",
+  "generatedAt": "2026-08-24T13:23:08+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -11,7 +11,7 @@ window.BETA_INVENTORY_DATA = {
     "taskListCommit": "f24f2fd08a27d76080b4a2ea2b98a9293ba8c53b",
     "inventorySha256": "b7a29d2301f7ade17f21565e6a075d185d129434d81c5a0a2cdff5639d831900",
     "taskListSha256": "3732340db7c32b1e7733d2f49e8387eb884078806da1bec7537c0b90be54e354",
-    "decisionsSha256": "2b3d2c61937a109bdce1c5a9c6b4e858b56471a1c8c1c8728cf06f17a5df3e00",
+    "decisionsSha256": "5721052631110d26b34bf2288bc6e8a9de069a030b7f8d63808f8304348f7a4d",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
     "githubSnapshotSha256": "e8c85413126e0702ca2192849d3bf866ff4d2ee38447e4e4c065aef30373f771"
@@ -5384,6 +5384,7 @@ window.BETA_INVENTORY_DATA = {
       }
     }
   },
+  "b0RunOverlay": null,
   "decisions": {
     "schemaVersion": 1,
     "phase": "Phase 2A",
