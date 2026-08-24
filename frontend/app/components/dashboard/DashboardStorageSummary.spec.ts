@@ -21,7 +21,13 @@ const dashboardStore = reactive<{
   loadTabs: vi.fn().mockResolvedValue(undefined),
 })
 
-mockNuxtImport('useI18n', () => () => ({ t: (key: string) => key }))
+mockNuxtImport('useI18n', () => () => ({
+  t: (key: string, params?: Record<string, string>) => {
+    if (params?.scope) return `${key}:${params.scope}`
+    if (params?.percent) return `${key}:${params.percent}`
+    return key
+  },
+}))
 mockNuxtImport('useStorageUsageApi', () => () => ({ getMyStorageUsage }))
 mockNuxtImport('useErrorHandler', () => () => ({ handleApiError }))
 mockNuxtImport('useScopeDashboardStore', () => () => dashboardStore)
@@ -63,7 +69,8 @@ describe('DashboardStorageSummary', () => {
     expect(getMyStorageUsage).toHaveBeenCalledTimes(1)
     expect(wrapper.findAll('[data-testid^="storage-card-"]')).toHaveLength(3)
     expect(wrapper.get('[data-testid="storage-card-0"] .text-amber-700')).toBeTruthy()
-    expect(wrapper.get('[data-testid="storage-card-0"] [role="progressbar"]').attributes('aria-label')).toContain('scopeDashboard.storageSummary.personal')
+    expect(wrapper.get('[data-testid="storage-card-0"] [role="progressbar"]').attributes('aria-label')).toContain('PERSONAL')
+    expect(wrapper.get('[data-testid="storage-card-1"] [role="progressbar"]').attributes('aria-label')).toContain('TEAM')
     dashboardStore.selectedTeamId = 'other-team'
     await wrapper.vm.$nextTick()
     expect(wrapper.get('[data-testid="storage-card-1"]').text()).toContain('scopeDashboard.storageSummary.not_available')
