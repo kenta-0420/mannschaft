@@ -153,7 +153,7 @@ describe('TeamReservationsPanel.vue 予約直後の再読込結線', () => {
     expect(wrapper.findComponent(SlotMatrixPicker).props('teamTimezone')).toBe('America/New_York')
   })
 
-  it('ReservationUnavailabilityManager縺ｸteam timezone繧呈ｸ｡縺・, async () => {
+  it('ReservationUnavailabilityManagerへteam timezoneを渡す', async () => {
     roleOverride.isAdmin = true
     roleOverride.isAdminOrDeputy = true
     roleOverride.roleName = 'ADMIN'
