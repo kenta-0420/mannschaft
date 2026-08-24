@@ -386,9 +386,9 @@ onMounted(async () => {
             </div>
           </div>
 
-          <div v-if="selectedManagementSection" class="mt-4 rounded-lg border border-surface-200 p-4 dark:border-surface-700">
+          <div v-show="selectedManagementSection" class="mt-4 rounded-lg border border-surface-200 p-4 dark:border-surface-700">
             <!-- ①営業時間（BusinessHoursManager・F03.4.5 §3.2 新設） -->
-            <section v-if="selectedManagementSection === 'business_hours'" id="reservation-business-hours-section">
+            <section v-show="selectedManagementSection === 'business_hours'" id="reservation-business-hours-section">
                 <ReservationBusinessHoursManager
                   ref="businessHoursManagerRef"
                   :team-id="props.teamId"
@@ -398,7 +398,7 @@ onMounted(async () => {
             </section>
 
             <!-- ②予約対象（呼称設定＋LineManager。呼称設定は F03.4.5 §5.1: セクション先頭に配置） -->
-            <section v-if="selectedManagementSection === 'lines'">
+            <section v-show="selectedManagementSection === 'lines'">
                 <div class="mb-4">
                   <!-- 呼称設定は ADMIN・DEPUTY_ADMIN とも編集可（マスター裁可 2026-07-11・設計§2）。ライン管理は ADMIN のみ -->
                   <ReservationResourceNameSettings
@@ -411,14 +411,14 @@ onMounted(async () => {
             </section>
 
             <!-- ③メニュー管理セクション（機能E・F03.4.1） -->
-            <section v-if="selectedManagementSection === 'menus'">
+            <section v-show="selectedManagementSection === 'menus'">
                 <MenuManager ref="menuManagerRef" :team-id="props.teamId" />
             </section>
 
             <!-- ④週間スケジュール管理セクション（旧 SlotTemplateManager・F03.4.2/F03.4.5 §3.2）。
                  ラベルは「枠テンプレ」限定表現ではなく、枠テンプレ＋定期予約不可を包含する
                  「週間スケジュール」（検分指摘・軽4）。 -->
-            <section v-if="selectedManagementSection === 'weekly_schedule'" id="reservation-weekly-schedule-section">
+            <section v-show="selectedManagementSection === 'weekly_schedule'" id="reservation-weekly-schedule-section">
                 <WeeklyScheduleManager
                   ref="slotTemplateManagerRef"
                   :team-id="props.teamId"
@@ -428,7 +428,7 @@ onMounted(async () => {
             </section>
 
             <!-- ⑤例外日カレンダー（F03.4.5 §3.3・W2-1第二隊で実装完了） -->
-            <section v-if="selectedManagementSection === 'exception_day'">
+            <section v-show="selectedManagementSection === 'exception_day'">
                 <ScheduleExceptionPanel
                   :team-id="props.teamId"
                   @goto-list="activeTab = 1"
@@ -439,7 +439,7 @@ onMounted(async () => {
           </div>
 
           <!-- 詳細設定（ADMIN限定・既定 collapsed）-->
-          <div v-if="selectedManagementSection === 'advanced'" class="mt-6">
+          <div v-show="selectedManagementSection === 'advanced'" class="mt-6">
             <Accordion v-model:value="advancedSettingsValue">
               <AccordionPanel value="advanced">
                 <AccordionHeader>
