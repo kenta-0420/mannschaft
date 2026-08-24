@@ -10,12 +10,14 @@ import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.reservation.ReservationErrorCode;
 import com.mannschaft.app.reservation.SlotStatus;
+import com.mannschaft.app.reservation.ReservationStatus;
 import com.mannschaft.app.reservation.WaitlistStatus;
 import com.mannschaft.app.reservation.dto.WaitlistCountResponse;
 import com.mannschaft.app.reservation.dto.WaitlistEntryResponse;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.entity.ReservationWaitlistEntryEntity;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationWaitlistEntryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -74,6 +76,8 @@ class ReservationWaitlistServiceTest {
     @Mock
     private ReservationSlotRepository slotRepository;
     @Mock
+    private ReservationRepository reservationRepository;
+    @Mock
     private ReservationViewAccessGuard viewAccessGuard;
     @Mock
     private ValkeyRateLimiter rateLimiter;
@@ -103,7 +107,7 @@ class ReservationWaitlistServiceTest {
         // 既定 locale は ja（未スタブのテストで NPE にならないよう lenient で用意）。
         org.mockito.Mockito.lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
         service = new ReservationWaitlistService(
-                waitlistRepository, slotRepository, viewAccessGuard, rateLimiter, notificationHelper,
+                waitlistRepository, slotRepository, reservationRepository, viewAccessGuard, rateLimiter, notificationHelper,
                 userLocaleCache, messageSource, clock);
     }
 
@@ -113,7 +117,7 @@ class ReservationWaitlistServiceTest {
      */
     private void reinitServiceWithClock(Clock injectedClock) {
         service = new ReservationWaitlistService(
-                waitlistRepository, slotRepository, viewAccessGuard, rateLimiter, notificationHelper,
+                waitlistRepository, slotRepository, reservationRepository, viewAccessGuard, rateLimiter, notificationHelper,
                 userLocaleCache, messageSource, injectedClock);
     }
 
@@ -528,5 +532,20 @@ class ReservationWaitlistServiceTest {
 
         assertThat(service.purgeExpiredWaiting()).isEqualTo(1);
         verify(waitlistRepository).deleteAll(List.of(expired));
+    }
+    @Test
+    @DisplayName("本人の有効予約済みスロットへのキャンセル待ちは409で拒否し、WAITINGを生成しない")
+    void 本人の有効予約済みスロットへのキャンセル待ちは拒否する() {
+        stubAllowedRate();
+        when(slotRepository.findByIdAndTeamId(SLOT_ID, TEAM_ID)).thenReturn(Optional.of(slot(SlotStatus.FULL)));
+        when(reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                SLOT_ID, USER_ID, List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED)))
+                .thenReturn(true);
+
+        assertThatThrownBy(() -> service.register(TEAM_ID, SLOT_ID, USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(ReservationErrorCode.DUPLICATE_RESERVATION);
+        verify(waitlistRepository, never()).save(any());
     }
 }
