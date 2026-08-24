@@ -4,8 +4,8 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.reservation.repository.ReservationSlotTemplateRepository;
 import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
