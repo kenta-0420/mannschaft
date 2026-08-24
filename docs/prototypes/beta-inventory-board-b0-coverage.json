@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "journeys": {
-    "B0-J1": {"specPaths":["frontend/tests/e2e/dashboard/dashboard.spec.ts","frontend/tests/e2e/teams/team-hub.spec.ts","frontend/tests/e2e/organizations/org-hub.spec.ts","frontend/tests/e2e/villages/village-flow.spec.ts"],"coverageStatus":"partial"},
+    "B0-J1": {"specPaths":["frontend/tests/e2e/real/b0-j1-dashboard-scope.spec.ts","frontend/tests/e2e/dashboard/dashboard.spec.ts","frontend/tests/e2e/teams/team-hub.spec.ts","frontend/tests/e2e/organizations/org-hub.spec.ts","frontend/tests/e2e/villages/village-flow.spec.ts"],"coverageStatus":"partial"},
     "B0-J2": {"specPaths":["frontend/tests/e2e/teams/team-list.spec.ts","frontend/tests/e2e/teams/invite-qr-pdf.spec.ts","frontend/tests/e2e/scenarios/onboarding-flow.spec.ts"],"coverageStatus":"partial"},
     "B0-J3": {"specPaths":["frontend/tests/e2e/real/village-events-activation.spec.ts","frontend/tests/e2e/real/village-events-wave2.spec.ts","frontend/tests/e2e/teams/events.spec.ts"],"coverageStatus":"partial"},
     "B0-J4": {"specPaths":["frontend/tests/e2e/teams/surveys.spec.ts","frontend/tests/e2e/surveys/survey-crud.spec.ts","frontend/tests/e2e/surveys/survey-results-visibility.spec.ts"],"coverageStatus":"partial"},

@@ -35,7 +35,6 @@ async function requireRuntime() {
   if (missing.length) throw new Error(`実行条件不足（値は記録しません）: ${missing.join(', ')}`);
   if (process.env.B0_REAL_DB !== 'true') throw new Error('B0_REAL_DB=true が必要です。モックDBでは実測しません。');
   if (process.env.B0_THREE_BROWSER_CONTEXTS !== 'true') throw new Error('B0_THREE_BROWSER_CONTEXTS=true はオペレータ申告です。3利用者の別BrowserContextを保証する専用fixtureがないため、実測はblockedです。');
-  throw new Error('B0_THREE_BROWSER_CONTEXTS=true はオペレータ申告に過ぎません。3利用者の別BrowserContextを実証する専用fixtureが未指定のため、実測はblockedです。');
   for (const state of ['tests/e2e/.auth/admin.json', 'tests/e2e/.auth/user.json']) if (!fs.existsSync(path.join(root, 'frontend', state))) throw new Error(`認証storageStateがありません: ${state}`);
   for (const [name, url] of [['BASE_URL', process.env.BASE_URL], ['API_BASE_URL', process.env.API_BASE_URL]]) {
     const response = await fetch(url, { signal: AbortSignal.timeout(5000) }).catch(() => null);
@@ -86,11 +85,17 @@ async function run() {
   fs.mkdirSync(outputDir, { recursive: true });
   const startedAt = new Date().toISOString();
   const result = { schemaVersion: 1, startedAt, mode: 'real-ui-real-db', selectedJourneys: [], conditions: { baseUrlConfigured: true, apiBaseUrlConfigured: true, realDb: true, threeUsers: 'operator-declared', separateBrowserContexts: 'not-proven' }, journeys: [] };
+  const dedicatedProof = 'frontend/tests/e2e/real/b0-j1-dashboard-scope.spec.ts';
   for (const [id, item] of journeys()) {
+    if (id !== 'B0-J1') {
+      result.journeys.push({ id, status: 'blocked', specPaths: item.specPaths, reason: '専用proof spec未整備' });
+      continue;
+    }
+    if (!item.specPaths.includes(dedicatedProof)) throw new Error(`B0-J1: 専用proof specがmanifestにありません: ${dedicatedProof}`);
     const jsonPath = path.join(outputDir, `${id}-${Date.now()}.json`);
     const playwrightCli = path.join(root, 'frontend/node_modules/@playwright/test/cli.js');
     if (!fs.existsSync(playwrightCli)) throw new Error('Playwright依存がありません: frontend/node_modules/@playwright/test/cli.js');
-    const specs = item.specPaths.map(normalizeSpecPath);
+    const specs = [...new Set([...item.specPaths, dedicatedProof])].map(normalizeSpecPath);
     const child = spawnSync(process.execPath, [playwrightCli, 'test', ...specs, '--reporter=json'], { cwd: path.join(root, 'frontend'), env: { ...process.env }, encoding: 'utf8' });
     const stdout = child.stdout || '';
     const parsed = (() => { try { return JSON.parse(stdout); } catch { return null; } })();
@@ -98,6 +103,7 @@ async function run() {
     const status = child.status === 0 && summary.results > 0 && summary.expected > 0 && summary.unexpected === 0 && summary.skipped === 0 ? 'test-passed' : 'test-failed';
     fs.writeFileSync(jsonPath, JSON.stringify(parsed || { error: 'Playwright JSONを解釈できません', exitCode: child.status }, null, 2));
     result.journeys.push({ id, status, specPaths: item.specPaths, summary, evidencePath: path.relative(root, jsonPath).replaceAll('\\', '/') });
+    if (status === 'test-passed') result.conditions.separateBrowserContexts = 'proven';
   }
   result.finishedAt = new Date().toISOString();
   const resultPath = path.join(outputDir, `run-${startedAt.replaceAll(':', '-')}.json`);

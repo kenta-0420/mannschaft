@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T13:23:08+00:00",
+  "generatedAt": "2026-08-24T14:06:07+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -5302,6 +5302,7 @@ window.BETA_INVENTORY_DATA = {
     "journeys": {
       "B0-J1": {
         "specPaths": [
+          "frontend/tests/e2e/real/b0-j1-dashboard-scope.spec.ts",
           "frontend/tests/e2e/dashboard/dashboard.spec.ts",
           "frontend/tests/e2e/teams/team-hub.spec.ts",
           "frontend/tests/e2e/organizations/org-hub.spec.ts",
