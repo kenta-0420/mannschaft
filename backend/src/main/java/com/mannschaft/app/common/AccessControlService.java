@@ -423,6 +423,13 @@ public class AccessControlService {
         }
     }
 
+    /** F09.14 の wallet/委任 mutation 用。scope ADMIN 本人だけを許可し、SYSTEM_ADMIN は監査 read-only とする。 */
+    public void checkScopeAdminOnly(Long userId, Long scopeId, String scopeType) {
+        if (isSystemAdmin(userId) || !isAdmin(userId, scopeId, scopeType)) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
     /**
      * ADMIN 以上 or 指定 Permission を持つ DEPUTY_ADMIN かを判定する（F18 Phase 4 第二陣 2B）。
      *

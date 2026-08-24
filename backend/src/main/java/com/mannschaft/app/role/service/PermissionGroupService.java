@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.CacheManager;
 
 import java.util.List;
 
@@ -36,6 +37,10 @@ public class PermissionGroupService {
     private final PermissionRepository permissionRepository;
     private final UserPermissionGroupRepository userPermissionGroupRepository;
     private final AccessControlService accessControlService;
+    private final CacheManager cacheManager;
+
+    private static final List<String> F0914_SENSITIVE_PERMISSIONS =
+            List.of("SEND_PAID_TIMELINE", "VIEW_TIMELINE_COST");
 
     /**
      * 権限グループを作成する。
@@ -44,7 +49,7 @@ public class PermissionGroupService {
     public ApiResponse<PermissionGroupResponse> createPermissionGroup(Long scopeId, String scopeType,
                                                                        PermissionGroupRequest req, Long createdBy) {
         // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ権限グループを作成できる。
-        accessControlService.checkAdminOrAbove(createdBy, scopeId, scopeType);
+        requireMutationAuthority(createdBy, scopeId, scopeType, req.getPermissionIds());
 
         // パーミッション存在確認
         validatePermissionIds(req.getPermissionIds());
@@ -78,7 +83,8 @@ public class PermissionGroupService {
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
 
         // 束1 BOLA 根治: グループが属するスコープの ADMIN/DEPUTY_ADMIN のみ更新できる（別スコープ ADMIN の越境改変を遮断）。
-        checkScopeAdmin(group, actorUserId);
+        requireMutationAuthority(actorUserId, group, req.getPermissionIds());
+        evictAssignedUsers(groupId, group);
 
         // パーミッション存在確認
         validatePermissionIds(req.getPermissionIds());
@@ -107,7 +113,8 @@ public class PermissionGroupService {
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
 
         // 束1 BOLA 根治: 複製元が属するスコープの ADMIN/DEPUTY_ADMIN のみ複製できる。
-        checkScopeAdmin(original, createdBy);
+        requireMutationAuthority(createdBy, original, permissionGroupPermissionRepository.findByGroupId(groupId)
+                .stream().map(PermissionGroupPermissionEntity::getPermissionId).toList());
 
         // 複製エンティティ作成
         var dupBuilder = PermissionGroupEntity.builder()
@@ -139,7 +146,10 @@ public class PermissionGroupService {
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_006));
 
         // 束1 BOLA 根治: グループが属するスコープの ADMIN/DEPUTY_ADMIN のみ削除できる。
-        checkScopeAdmin(group, actorUserId);
+        List<Long> permissionIds = permissionGroupPermissionRepository.findByGroupId(groupId).stream()
+                .map(PermissionGroupPermissionEntity::getPermissionId).toList();
+        requireMutationAuthority(actorUserId, group, permissionIds);
+        evictAssignedUsers(groupId, group);
 
         permissionGroupRepository.delete(group);
         log.info("権限グループ削除完了: groupId={}", groupId);
@@ -230,7 +240,10 @@ public class PermissionGroupService {
     public void assignUserPermissionGroups(Long userId, Long scopeId, String scopeType,
                                            UserPermissionGroupAssignRequest req, Long assignedBy) {
         // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ権限グループを割り当てられる。
-        accessControlService.checkAdminOrAbove(assignedBy, scopeId, scopeType);
+        requireMutationAuthority(assignedBy, scopeId, scopeType, req.getGroupIds().stream()
+                .filter(groupId -> findByScope(scopeId, scopeType).stream().anyMatch(group -> group.getId().equals(groupId)))
+                .flatMap(groupId -> permissionGroupPermissionRepository.findByGroupId(groupId).stream())
+                .map(PermissionGroupPermissionEntity::getPermissionId).toList());
 
         // 既存の割当を削除
         List<PermissionGroupEntity> scopeGroups = findByScope(scopeId, scopeType);
@@ -274,6 +287,41 @@ public class PermissionGroupService {
         } else {
             accessControlService.checkAdminOrAbove(actorUserId, group.getOrganizationId(), "ORGANIZATION");
         }
+    }
+
+    private void requireMutationAuthority(Long actorUserId, Long scopeId, String scopeType,
+                                          List<Long> permissionIds) {
+        if (containsF0914Permission(permissionIds)) {
+            accessControlService.checkScopeAdminOnly(actorUserId, scopeId, scopeType);
+        } else {
+            accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
+        }
+    }
+
+    private void requireMutationAuthority(Long actorUserId, PermissionGroupEntity group,
+                                          List<Long> permissionIds) {
+        Long scopeId = group.getTeamId() != null ? group.getTeamId() : group.getOrganizationId();
+        String scopeType = group.getTeamId() != null ? "TEAM" : "ORGANIZATION";
+        requireMutationAuthority(actorUserId, scopeId, scopeType, permissionIds);
+    }
+
+    private boolean containsF0914Permission(List<Long> permissionIds) {
+        if (permissionIds == null || permissionIds.isEmpty()) return false;
+        return permissionRepository.findByIdIn(permissionIds).stream()
+                .map(PermissionEntity::getName)
+                .anyMatch(F0914_SENSITIVE_PERMISSIONS::contains);
+    }
+
+    private void evictAssignedUsers(Long groupId, PermissionGroupEntity group) {
+        evictRolePermissions(userPermissionGroupRepository.findUserIdsByGroupIdIn(List.of(groupId)),
+                group.getTeamId() != null ? "TEAM" : "ORGANIZATION",
+                group.getTeamId() != null ? group.getTeamId() : group.getOrganizationId());
+    }
+
+    private void evictRolePermissions(List<Long> userIds, String scopeType, Long scopeId) {
+        var cache = cacheManager.getCache("role-permissions");
+        if (cache == null) return;
+        userIds.stream().distinct().forEach(userId -> cache.evict(userId + ":" + scopeType + ":" + scopeId));
     }
 
     private void validatePermissionIds(List<Long> permissionIds) {
