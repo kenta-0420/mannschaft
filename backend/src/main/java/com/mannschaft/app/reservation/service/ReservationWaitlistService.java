@@ -17,6 +17,7 @@ import com.mannschaft.app.reservation.dto.WaitlistEntryResponse;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.entity.ReservationWaitlistEntryEntity;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationWaitlistEntryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -71,6 +72,7 @@ public class ReservationWaitlistService {
 
     private final ReservationWaitlistEntryRepository waitlistRepository;
     private final ReservationSlotRepository slotRepository;
+    private final ReservationRepository reservationRepository;
     private final ReservationViewAccessGuard viewAccessGuard;
     private final ValkeyRateLimiter rateLimiter;
     private final NotificationHelper notificationHelper;
@@ -131,6 +133,12 @@ public class ReservationWaitlistService {
         // 満席でなければ待つ必要はない（そのまま予約すべき）。
         if (slot.getSlotStatus() != SlotStatus.FULL) {
             throw new BusinessException(ReservationErrorCode.WAITLIST_SLOT_NOT_FULL);
+        }
+
+        if (reservationRepository.existsByReservationSlotIdAndUserIdAndStatusIn(
+                slotId, userId, List.of(com.mannschaft.app.reservation.ReservationStatus.PENDING,
+                        com.mannschaft.app.reservation.ReservationStatus.CONFIRMED))) {
+            throw new BusinessException(ReservationErrorCode.DUPLICATE_RESERVATION);
         }
 
         // 重複登録ガード（アプリ層・409）。
