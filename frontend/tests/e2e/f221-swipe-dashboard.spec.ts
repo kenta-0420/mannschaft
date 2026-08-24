@@ -276,7 +276,7 @@ test('F22.1-1: /dashboard がカルーセルを描画し、初期は個人パネ
   await expect(page.locator('#scope-panel-ORGANIZATION')).toHaveCount(1)
 })
 
-test('F22.1-1: 容量API失敗時もカルーセルと切替タブを維持する', async ({ page }) => {
+test('F22.1-9: 容量API失敗時もカルーセルと切替タブを維持する', async ({ page }) => {
   await loginAsMember(page)
   await mockDashboardApis(page, { storageUsageFailure: true })
   await page.goto('/dashboard')
