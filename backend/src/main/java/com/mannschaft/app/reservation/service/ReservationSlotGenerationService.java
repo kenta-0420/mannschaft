@@ -505,7 +505,7 @@ public class ReservationSlotGenerationService {
 
     private LocalDate teamLocalDate(Long teamId, ZoneId resolvedZone) {
         ZoneId zone = resolvedZone == null
-                ? ZoneId.of("Asia/Tokyo") : resolvedZone;
+                ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE) : resolvedZone;
         return LocalDate.now(clock.withZone(zone));
     }
 
