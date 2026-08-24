@@ -1,23 +1,24 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T09:50:29+00:00",
+  "generatedAt": "2026-08-24T10:49:18+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
     "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
+    "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "059334a7c60cb6315f1e05119d6b5c56c43d15d2",
     "taskListCommit": "f24f2fd08a27d76080b4a2ea2b98a9293ba8c53b",
     "inventorySha256": "b7a29d2301f7ade17f21565e6a075d185d129434d81c5a0a2cdff5639d831900",
     "taskListSha256": "3732340db7c32b1e7733d2f49e8387eb884078806da1bec7537c0b90be54e354",
-    "decisionsSha256": "4544926b08e615abb262c9ccaae6c98adf84e150f5bbbaa2963547864cc505d2",
+    "decisionsSha256": "15b90ebca6a748c0e76288f7c07d22fcef23e1742f46bcf07c14a701448d22b0",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
     "githubSnapshotSha256": "e8c85413126e0702ca2192849d3bf866ff4d2ee38447e4e4c065aef30373f771"
   },
   "sourceCounts": {
     "features": 43,
-    "capabilities": 72,
-    "splitParents": 22,
+    "capabilities": 87,
+    "splitParents": 32,
     "campaigns": 87,
     "layer": {
       "能力": 25,
@@ -54,7 +55,7 @@ window.BETA_INVENTORY_DATA = {
     "passed": true
   },
   "warnings": [
-    "正本は43大分類、表示・集計は72能力単位。分割親は22件。",
+    "正本は43大分類、表示・集計は87能力単位。分割親は32件。",
     "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
     "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
     "Gate前提工事はbeta-inventory-board-gate.jsonの根拠付きoverlayから表示。未確認項目は公開候補に含めない。",
@@ -1760,7 +1761,7 @@ window.BETA_INVENTORY_DATA = {
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "team-create",
+      "key": "team-create-create",
       "title": "チーム作成",
       "stage": "未設定",
       "phase": "コア",
@@ -1794,12 +1795,50 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml",
       "parentFeatureKey": "team-create",
       "gateGroup": null,
-      "isCapability": false,
+      "isCapability": true,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "team-invite",
-      "title": "メンバー招待",
+      "key": "team-create-view",
+      "title": "チーム閲覧",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "team-create由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "team-create",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "team-invite-invite",
+      "title": "チーム招待",
       "stage": "未設定",
       "phase": "コア",
       "status": "unknown",
@@ -1832,12 +1871,50 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml",
       "parentFeatureKey": "team-invite",
       "gateGroup": null,
-      "isCapability": false,
+      "isCapability": true,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "team-admin",
-      "title": "チーム管理コンソール",
+      "key": "team-invite-join",
+      "title": "チーム参加",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "team-invite由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "team-invite",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "team-admin-member-view",
+      "title": "チームメンバー閲覧",
       "stage": "未設定",
       "phase": "コア",
       "status": "unknown",
@@ -1872,12 +1949,92 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml",
       "parentFeatureKey": "team-admin",
       "gateGroup": null,
-      "isCapability": false,
+      "isCapability": true,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "team-modules",
-      "title": "モジュール有効化",
+      "key": "team-admin-member-manage",
+      "title": "チームメンバー管理",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "team-admin由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [
+        "docs/features/F10.1.1_team_org_admin_console"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "team-admin",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "team-admin-permissions",
+      "title": "チーム権限管理",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "team-admin由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [
+        "docs/features/F10.1.1_team_org_admin_console"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "team-admin",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "team-modules-module-view",
+      "title": "チーム機能閲覧",
       "stage": "未設定",
       "phase": "コア",
       "status": "unknown",
@@ -1912,7 +2069,47 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml",
       "parentFeatureKey": "team-modules",
       "gateGroup": null,
-      "isCapability": false,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "team-modules-module-manage",
+      "title": "チーム機能管理",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "team-modules由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [
+        "docs/features/F01.3_template_module.md"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "team-modules",
+      "gateGroup": null,
+      "isCapability": true,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
@@ -1992,8 +2189,8 @@ window.BETA_INVENTORY_DATA = {
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "organization-members",
-      "title": "組織メンバー管理",
+      "key": "organization-members-member-view",
+      "title": "組織メンバー閲覧",
       "stage": "未設定",
       "phase": "コア",
       "status": "unknown",
@@ -2026,12 +2223,50 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml",
       "parentFeatureKey": "organization-members",
       "gateGroup": null,
-      "isCapability": false,
+      "isCapability": true,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "village-join",
-      "title": "村へ参加",
+      "key": "organization-members-member-manage",
+      "title": "組織メンバー管理・権限",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "organization-members由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "organization-members",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-join-village-view",
+      "title": "村閲覧",
       "stage": "未設定",
       "phase": "コア",
       "status": "unknown",
@@ -2064,11 +2299,87 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml",
       "parentFeatureKey": "village-join",
       "gateGroup": null,
-      "isCapability": false,
+      "isCapability": true,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "village-members",
+      "key": "village-join-village-join",
+      "title": "村参加",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "village-join由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-join",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-members-member-view",
+      "title": "村の構成員閲覧",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "village-members由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-members",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-members-member-manage",
       "title": "村の構成員管理",
       "stage": "未設定",
       "phase": "コア",
@@ -2102,12 +2413,12 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml",
       "parentFeatureKey": "village-members",
       "gateGroup": null,
-      "isCapability": false,
+      "isCapability": true,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "village-events",
-      "title": "村行事",
+      "key": "village-events-schedule-create",
+      "title": "予定作成",
       "stage": "未設定",
       "phase": "コア",
       "status": "blocked",
@@ -2144,7 +2455,175 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml",
       "parentFeatureKey": "village-events",
       "gateGroup": null,
-      "isCapability": false,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-events-schedule-view-manage",
+      "title": "予定閲覧・管理",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "village-events由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "CMP-002 実装中",
+      "refs": [
+        "docs/features"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "CMP-002 実装中"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-events",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-events-attendance-request",
+      "title": "出欠募集",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "village-events由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "CMP-002 実装中",
+      "refs": [
+        "docs/features"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "CMP-002 実装中"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-events",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-events-attendance-response",
+      "title": "出欠回答",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "village-events由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "CMP-002 実装中",
+      "refs": [
+        "docs/features"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "CMP-002 実装中"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-events",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-events-attendance-summary",
+      "title": "出欠集計",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "village-events由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "CMP-002 実装中",
+      "refs": [
+        "docs/features"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "CMP-002 実装中"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-events",
+      "gateGroup": null,
+      "isCapability": true,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
@@ -2348,7 +2827,7 @@ window.BETA_INVENTORY_DATA = {
     },
     {
       "key": "dashboard",
-      "title": "個人ダッシュボード",
+      "title": "個人ダッシュボード閲覧",
       "stage": "未設定",
       "phase": "コア",
       "status": "blocked",
@@ -2434,8 +2913,8 @@ window.BETA_INVENTORY_DATA = {
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
-      "key": "survey",
-      "title": "アンケート",
+      "key": "survey-create",
+      "title": "アンケート作成",
       "stage": "未設定",
       "phase": "コア",
       "status": "unknown",
@@ -2468,7 +2947,121 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml",
       "parentFeatureKey": "survey",
       "gateGroup": null,
-      "isCapability": false,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "survey-publish",
+      "title": "アンケート公開",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "survey由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "survey",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "survey-response",
+      "title": "アンケート回答",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "survey由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "survey",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "survey-results",
+      "title": "アンケート結果",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "survey由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "survey",
+      "gateGroup": null,
+      "isCapability": true,
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     },
     {
@@ -4224,6 +4817,114 @@ window.BETA_INVENTORY_DATA = {
       "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
     }
   ],
+  "b0Alicization": {
+    "schemaVersion": 1,
+    "stage": "B0",
+    "status": "planned",
+    "definition": "アリシゼーションで実UI・実DBを自動探索し、基本導線の成立を調査する。未実測をpassedにしない。",
+    "environment": [
+      "実UI + 実DB",
+      "管理者1 + 一般利用者2",
+      "利用者ごとに別BrowserContext・別ログイン",
+      "テストデータは識別子付きで作成"
+    ],
+    "journeys": [
+      {
+        "id": "B0-J1",
+        "title": "個人ダッシュボードからチーム・組織・村を確認",
+        "status": "planned",
+        "capabilities": [
+          "dashboard",
+          "team-create-view",
+          "team-admin-permissions",
+          "organization-manage-organization-admin",
+          "village-join-village-view",
+          "village-members-member-manage"
+        ],
+        "checks": [
+          "階層ごとの閲覧導線",
+          "一般利用者に管理操作を表示しない"
+        ]
+      },
+      {
+        "id": "B0-J2",
+        "title": "チーム作成・招待・メンバー確認",
+        "status": "planned",
+        "capabilities": [
+          "team-create-create",
+          "team-invite-invite",
+          "team-invite-join",
+          "team-admin-member-view"
+        ],
+        "checks": [
+          "管理者作成",
+          "一般利用者参加",
+          "メンバー一覧整合"
+        ]
+      },
+      {
+        "id": "B0-J3",
+        "title": "予定作成・出欠募集・回答・集計",
+        "status": "planned",
+        "capabilities": [
+          "village-events-schedule-create",
+          "village-events-schedule-view-manage",
+          "village-events-attendance-request",
+          "village-events-attendance-response",
+          "village-events-attendance-summary"
+        ],
+        "checks": [
+          "予定公開",
+          "一般利用者2名の回答",
+          "集計反映",
+          "予約を出欠の代用にしない"
+        ]
+      },
+      {
+        "id": "B0-J4",
+        "title": "アンケート作成・公開・回答・結果",
+        "status": "planned",
+        "capabilities": [
+          "survey-create",
+          "survey-publish",
+          "survey-response",
+          "survey-results"
+        ],
+        "checks": [
+          "公開",
+          "回答",
+          "結果反映"
+        ]
+      },
+      {
+        "id": "B0-J5",
+        "title": "予定・アンケートの通知受信",
+        "status": "planned",
+        "capabilities": [
+          "notification-inbox-notification-delivery",
+          "notification-inbox-inbox"
+        ],
+        "checks": [
+          "別セッションへ通知",
+          "受信箱から遷移"
+        ]
+      },
+      {
+        "id": "B0-J6",
+        "title": "階層ごとの権限境界",
+        "status": "planned",
+        "capabilities": [
+          "team-admin-permissions",
+          "organization-manage-organization-admin",
+          "village-members-member-manage"
+        ],
+        "checks": [
+          "権限外操作の非表示",
+          "権限外URL/API拒否"
+        ]
+      }
+    ]
+  },
   "decisions": {
     "schemaVersion": 1,
     "phase": "Phase 2A",
@@ -4277,7 +4978,8 @@ window.BETA_INVENTORY_DATA = {
         "reason": "B1の実チームを作成する入口。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
-        ]
+        ],
+        "decisionStatus": "confirmed"
       },
       "team-invite": {
         "stage": "B0",
@@ -4286,17 +4988,18 @@ window.BETA_INVENTORY_DATA = {
         "reason": "B1の約50人を招待できなければ実地検証に進めない。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
-        ]
+        ],
+        "decisionStatus": "confirmed"
       },
       "team-admin": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
-        "reason": "小規模チームの管理者がメンバーと権限を扱うために必要。",
+        "reason": "B0でチーム管理・権限境界を実UIで確認する。",
         "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml",
-          "docs/features/F10.1.1_team_org_admin_console"
-        ]
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
       },
       "team-modules": {
         "stage": "B2",
@@ -4309,60 +5012,66 @@ window.BETA_INVENTORY_DATA = {
         ]
       },
       "organization-manage": {
-        "stage": "B2",
+        "stage": "B0",
         "audience": "both",
-        "priority": "should",
-        "reason": "複数チームを束ねる運用はB2から検証する。",
+        "priority": "must",
+        "reason": "B0で組織の作成・閲覧・管理導線を確認する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
-        ]
+        ],
+        "decisionStatus": "confirmed"
       },
       "organization-members": {
-        "stage": "B2",
+        "stage": "B0",
         "audience": "both",
-        "priority": "should",
-        "reason": "複数チーム運営時の横断メンバー管理に必要。",
+        "priority": "must",
+        "reason": "B0で組織メンバー閲覧と管理境界を確認する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
-        ]
+        ],
+        "decisionStatus": "confirmed"
       },
       "village-join": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
-        "reason": "招待された成人がコミュニティへ参加する基本導線。",
+        "reason": "B0で村への参加・閲覧導線を確認する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
-        ]
+        ],
+        "decisionStatus": "confirmed"
       },
       "village-members": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
-        "reason": "実チーム・同窓会で参加者を確認するために必要。",
+        "reason": "B0で村の構成員閲覧と管理境界を確認する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
-        ]
+        ],
+        "decisionStatus": "confirmed"
       },
       "village-events": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
-        "reason": "試合・練習・同窓会を共通の予定として扱う中心機能。",
+        "reason": "B0で予定作成・閲覧・出欠募集・回答・集計を確認する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
-        ]
+        ],
+        "decisionStatus": "confirmed"
       },
       "notification-inbox": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
-        "reason": "LINE置換の要件である未読通知と受信確認を担う。",
+        "reason": "予定・アンケート探索に必要な通知と受信箱を補助的に確認する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml",
           "docs/features/F04.11_notification_inbox"
-        ]
+        ],
+        "decisionStatus": "proposed"
       },
       "timeline": {
         "stage": "B1",
@@ -4392,31 +5101,33 @@ window.BETA_INVENTORY_DATA = {
         ]
       },
       "dashboard": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
-        "priority": "should",
-        "reason": "参加者が自分の予定と通知をまとめて確認する入口。",
+        "priority": "must",
+        "reason": "B0で個人ダッシュボードから各階層と基本機能へ到達できることを確認する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
-        ]
+        ],
+        "decisionStatus": "confirmed"
       },
       "reservation": {
         "stage": "B1",
         "audience": "both",
         "priority": "should",
-        "reason": "サッカーの参加表明と同窓会会場・出欠の共通需要を検証する。",
+        "reason": "会場・施設などの予約を出欠とは独立した運用としてB1以降で検証する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ]
       },
       "survey": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
-        "priority": "should",
-        "reason": "日程・出欠・同窓会の意向確認をLINEフォームより一元化する。",
+        "priority": "must",
+        "reason": "B0でアンケートの作成・公開・回答・結果を確認する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
-        ]
+        ],
+        "decisionStatus": "confirmed"
       },
       "todo-memo": {
         "stage": "B2",
@@ -4627,6 +5338,16 @@ window.BETA_INVENTORY_DATA = {
       }
     },
     "capabilityOverrides": {
+      "account-settings-withdrawal": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "退会は実利用者を迎えるB1前に確認する。B0の基本導線探索には含めない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
       "todo-memo-todo": {
         "stage": "B2",
         "audience": "both",
@@ -4941,7 +5662,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B0",
         "audience": "both",
         "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "本人確認と連絡先表示の土台。サッカー・同窓会の両方で最初に必要。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -4957,27 +5678,17 @@ window.BETA_INVENTORY_DATA = {
         ],
         "decisionStatus": "proposed"
       },
-      "account-settings-withdrawal": {
-        "stage": "B0",
-        "audience": "both",
-        "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ],
-        "decisionStatus": "proposed"
-      },
       "nav-settings": {
         "stage": "B0",
         "audience": "both",
         "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "対象機能を迷わず使うための最小導線を先に固定する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
         "decisionStatus": "proposed"
       },
-      "team-create": {
+      "team-create-create": {
         "stage": "B0",
         "audience": "both",
         "priority": "must",
@@ -4985,9 +5696,9 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
-      "team-invite": {
+      "team-create-view": {
         "stage": "B0",
         "audience": "both",
         "priority": "must",
@@ -4995,20 +5706,70 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
-      "team-admin": {
-        "stage": "B1",
+      "team-invite-invite": {
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "team-invite-join": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "team-admin-member-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "team-admin-member-manage": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "team-admin-permissions": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "team-modules-module-view": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml",
-          "docs/features/F10.1.1_team_org_admin_console"
+          "docs/features/F01.3_template_module.md"
         ],
         "decisionStatus": "proposed"
       },
-      "team-modules": {
+      "team-modules-module-manage": {
         "stage": "B2",
         "audience": "both",
         "priority": "should",
@@ -5020,57 +5781,87 @@ window.BETA_INVENTORY_DATA = {
         "decisionStatus": "proposed"
       },
       "organization-manage-organization-create": {
-        "stage": "B2",
+        "stage": "B0",
         "audience": "both",
-        "priority": "should",
+        "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
       "organization-manage-organization-admin": {
-        "stage": "B2",
-        "audience": "both",
-        "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ],
-        "decisionStatus": "proposed"
-      },
-      "organization-members": {
-        "stage": "B2",
-        "audience": "both",
-        "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ],
-        "decisionStatus": "proposed"
-      },
-      "village-join": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
-      "village-members": {
-        "stage": "B1",
+      "organization-members-member-view": {
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
-      "village-events": {
-        "stage": "B1",
+      "organization-members-member-manage": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-join-village-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-join-village-join": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-members-member-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-members-member-manage": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-events-schedule-create": {
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
@@ -5078,10 +5869,54 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
+      },
+      "village-events-schedule-view-manage": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-events-attendance-request": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-events-attendance-response": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-events-attendance-summary": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ],
+        "decisionStatus": "confirmed"
       },
       "notification-inbox-notification-delivery": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
@@ -5092,7 +5927,7 @@ window.BETA_INVENTORY_DATA = {
         "decisionStatus": "proposed"
       },
       "notification-inbox-inbox": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
@@ -5106,7 +5941,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B1",
         "audience": "both",
         "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "チームの日常更新を一か所に集めるLINE置換の中核。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5116,7 +5951,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B1",
         "audience": "both",
         "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "日常連絡の直接的なLINE置換として最優先。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5126,41 +5961,71 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B2",
         "audience": "both",
         "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "告知の確認・回収が必要になる10チーム規模から導入する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
         "decisionStatus": "proposed"
       },
       "dashboard": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
-        "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "priority": "must",
+        "reason": "B0で個人ダッシュボードから各階層と基本機能へ到達できることを確認する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
       "reservation": {
         "stage": "B1",
         "audience": "both",
         "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "会場・施設などの予約を出欠とは独立した運用としてB1以降で検証する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
         "decisionStatus": "proposed"
       },
-      "survey": {
-        "stage": "B1",
+      "survey-create": {
+        "stage": "B0",
         "audience": "both",
-        "priority": "should",
+        "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
+      },
+      "survey-publish": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "survey-response": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "survey-results": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
       },
       "pointcard-wallet": {
         "stage": "B3",
@@ -5186,7 +6051,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B2",
         "audience": "both",
         "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "成人コミュニティの緊急連絡価値は高いが、B1の基本連絡検証後に導入する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5196,7 +6061,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B4",
         "audience": "both",
         "priority": "defer",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "求人・マッチングは主対象外で、停止機能を広げない。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5236,7 +6101,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B4",
         "audience": "both",
         "priority": "defer",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "マーケットプレイスは主対象外で、停止機能を広げない。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5296,7 +6161,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B4",
         "audience": "both",
         "priority": "defer",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "募集はチーム招待で代替し、求人機能は初期対象外。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5306,7 +6171,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B3",
         "audience": "both",
         "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "規模拡大前に情報開示と個人データ管理を整える必要がある。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5354,6 +6219,16 @@ window.BETA_INVENTORY_DATA = {
       }
     },
     "capabilities": {
+      "account-settings-withdrawal": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "退会は実利用者を迎えるB1前に確認する。B0の基本導線探索には含めない。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
       "todo-memo-todo": {
         "stage": "B2",
         "audience": "both",
@@ -5668,7 +6543,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B0",
         "audience": "both",
         "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "本人確認と連絡先表示の土台。サッカー・同窓会の両方で最初に必要。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5684,27 +6559,17 @@ window.BETA_INVENTORY_DATA = {
         ],
         "decisionStatus": "proposed"
       },
-      "account-settings-withdrawal": {
-        "stage": "B0",
-        "audience": "both",
-        "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ],
-        "decisionStatus": "proposed"
-      },
       "nav-settings": {
         "stage": "B0",
         "audience": "both",
         "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "対象機能を迷わず使うための最小導線を先に固定する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
         "decisionStatus": "proposed"
       },
-      "team-create": {
+      "team-create-create": {
         "stage": "B0",
         "audience": "both",
         "priority": "must",
@@ -5712,9 +6577,9 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
-      "team-invite": {
+      "team-create-view": {
         "stage": "B0",
         "audience": "both",
         "priority": "must",
@@ -5722,20 +6587,70 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
-      "team-admin": {
-        "stage": "B1",
+      "team-invite-invite": {
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "team-invite-join": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "team-admin-member-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "team-admin-member-manage": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "team-admin-permissions": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "team-modules-module-view": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml",
-          "docs/features/F10.1.1_team_org_admin_console"
+          "docs/features/F01.3_template_module.md"
         ],
         "decisionStatus": "proposed"
       },
-      "team-modules": {
+      "team-modules-module-manage": {
         "stage": "B2",
         "audience": "both",
         "priority": "should",
@@ -5747,57 +6662,87 @@ window.BETA_INVENTORY_DATA = {
         "decisionStatus": "proposed"
       },
       "organization-manage-organization-create": {
-        "stage": "B2",
+        "stage": "B0",
         "audience": "both",
-        "priority": "should",
+        "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
       "organization-manage-organization-admin": {
-        "stage": "B2",
-        "audience": "both",
-        "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ],
-        "decisionStatus": "proposed"
-      },
-      "organization-members": {
-        "stage": "B2",
-        "audience": "both",
-        "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-        "sourceRefs": [
-          "docs/inventory/feature-inventory.yaml"
-        ],
-        "decisionStatus": "proposed"
-      },
-      "village-join": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
-      "village-members": {
-        "stage": "B1",
+      "organization-members-member-view": {
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
-      "village-events": {
-        "stage": "B1",
+      "organization-members-member-manage": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-join-village-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-join-village-join": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-members-member-view": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-members-member-manage": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-events-schedule-create": {
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
@@ -5805,10 +6750,54 @@ window.BETA_INVENTORY_DATA = {
           "docs/inventory/feature-inventory.yaml",
           "docs/features"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
+      },
+      "village-events-schedule-view-manage": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-events-attendance-request": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-events-attendance-response": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "village-events-attendance-summary": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ],
+        "decisionStatus": "confirmed"
       },
       "notification-inbox-notification-delivery": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
@@ -5819,7 +6808,7 @@ window.BETA_INVENTORY_DATA = {
         "decisionStatus": "proposed"
       },
       "notification-inbox-inbox": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
         "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
@@ -5833,7 +6822,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B1",
         "audience": "both",
         "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "チームの日常更新を一か所に集めるLINE置換の中核。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5843,7 +6832,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B1",
         "audience": "both",
         "priority": "must",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "日常連絡の直接的なLINE置換として最優先。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5853,41 +6842,71 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B2",
         "audience": "both",
         "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "告知の確認・回収が必要になる10チーム規模から導入する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
         "decisionStatus": "proposed"
       },
       "dashboard": {
-        "stage": "B1",
+        "stage": "B0",
         "audience": "both",
-        "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "priority": "must",
+        "reason": "B0で個人ダッシュボードから各階層と基本機能へ到達できることを確認する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
       },
       "reservation": {
         "stage": "B1",
         "audience": "both",
         "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "会場・施設などの予約を出欠とは独立した運用としてB1以降で検証する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
         "decisionStatus": "proposed"
       },
-      "survey": {
-        "stage": "B1",
+      "survey-create": {
+        "stage": "B0",
         "audience": "both",
-        "priority": "should",
+        "priority": "must",
         "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
-        "decisionStatus": "proposed"
+        "decisionStatus": "confirmed"
+      },
+      "survey-publish": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "survey-response": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
+      },
+      "survey-results": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "confirmed"
       },
       "pointcard-wallet": {
         "stage": "B3",
@@ -5913,7 +6932,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B2",
         "audience": "both",
         "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "成人コミュニティの緊急連絡価値は高いが、B1の基本連絡検証後に導入する。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5923,7 +6942,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B4",
         "audience": "both",
         "priority": "defer",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "求人・マッチングは主対象外で、停止機能を広げない。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -5963,7 +6982,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B4",
         "audience": "both",
         "priority": "defer",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "マーケットプレイスは主対象外で、停止機能を広げない。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -6023,7 +7042,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B4",
         "audience": "both",
         "priority": "defer",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "募集はチーム招待で代替し、求人機能は初期対象外。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],
@@ -6033,7 +7052,7 @@ window.BETA_INVENTORY_DATA = {
         "stage": "B3",
         "audience": "both",
         "priority": "should",
-        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "reason": "規模拡大前に情報開示と個人データ管理を整える必要がある。",
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ],

@@ -28,6 +28,16 @@ GITHUB_STATUS_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-github
 # 複合親は、独立した受入条件と公開時期を持つ能力だけを表示単位へ展開する。
 # 親の実装・Gate証拠は子へコピーするが、子自身の実測とは扱わない。
 CAPABILITY_SPLITS = {
+    "team-create": [("create", "チーム作成"), ("view", "チーム閲覧")],
+    "team-invite": [("invite", "チーム招待"), ("join", "チーム参加")],
+    "team-admin": [("member-view", "チームメンバー閲覧"), ("member-manage", "チームメンバー管理"), ("permissions", "チーム権限管理")],
+    "team-modules": [("module-view", "チーム機能閲覧"), ("module-manage", "チーム機能管理")],
+    "organization-members": [("member-view", "組織メンバー閲覧"), ("member-manage", "組織メンバー管理・権限")],
+    "village-join": [("village-view", "村閲覧"), ("village-join", "村参加")],
+    "village-members": [("member-view", "村の構成員閲覧"), ("member-manage", "村の構成員管理")],
+    "village-events": [("schedule-create", "予定作成"), ("schedule-view-manage", "予定閲覧・管理"), ("attendance-request", "出欠募集"), ("attendance-response", "出欠回答"), ("attendance-summary", "出欠集計")],
+    "dashboard": [("personal-view", "個人ダッシュボード閲覧")],
+    "survey": [("create", "アンケート作成"), ("publish", "アンケート公開"), ("response", "アンケート回答"), ("results", "アンケート結果")],
     "account-settings": [("settings", "設定"), ("withdrawal", "退会")],
     "auth": [("login", "ログイン"), ("two-factor", "2FA")],
     "organization-manage": [("organization-create", "組織作成"), ("organization-admin", "組織管理")],
@@ -52,6 +62,9 @@ CAPABILITY_SPLITS = {
     "gamification": [("gamification", "ゲーミフィケーション"), ("supporter", "サポーター")],
 }
 
+
+B0_PLAN_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-b0-alicization.json"
+B0_ALICIZATION_PLAN = json.loads(B0_PLAN_PATH.read_text(encoding="utf-8"))
 
 def git_commit_for(path: Path) -> str:
     try:
@@ -329,8 +342,12 @@ def build_data() -> dict:
             if parent_decision:
                 decision_capabilities[capability["key"]] = {
                     **parent_decision,
-                    "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
-                    "decisionStatus": "proposed",
+                    "reason": (
+                        "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。"
+                        if capability["isCapability"]
+                        else parent_decision.get("reason", "")
+                    ),
+                    "decisionStatus": parent_decision.get("decisionStatus", "proposed"),
                 }
     allowed_stages = {"B0", "B1", "B2", "B3", "B4"}
     allowed_audiences = {"soccer", "alumni", "both"}
@@ -340,7 +357,17 @@ def build_data() -> dict:
     if set(decision_features) != {feature["key"] for feature in features}:
         errors.append("Phase 2分類が43機能と完全一致しません")
     if set(decision_capabilities) != {capability["key"] for capability in capabilities}:
-        errors.append("能力単位のPhase 2分類が表示能力と完全一致しません")
+        errors.append("能力単位のPhase 2分類が表示能力と一致しません")
+    capability_key_set = {capability["key"] for capability in capabilities}
+    for journey in B0_ALICIZATION_PLAN["journeys"]:
+        if not set(journey["capabilities"]).issubset(capability_key_set):
+            errors.append(f"B0アリシゼーションjourneyの能力key不一致: {journey['id']}")
+    if "village-events-attendance-response" not in capability_key_set or "village-events-attendance-summary" not in capability_key_set:
+        errors.append("出欠回答・出欠集計の分割能力がありません")
+    if "survey-response" not in capability_key_set or "survey-results" not in capability_key_set:
+        errors.append("アンケート回答・結果の分割能力がありません")
+    if any("reservation" in key and "attendance" in key for key in capability_key_set):
+        errors.append("予約と出欠を同一能力keyで表現しています")
     if any(
         decision.get("stage") not in allowed_stages
         or decision.get("audience") not in allowed_audiences
@@ -384,6 +411,7 @@ def build_data() -> dict:
             "inventory": "docs/inventory/feature-inventory.yaml",
             "taskList": "docs/task-list.md",
             "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
+            "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
             "gate": "docs/prototypes/beta-inventory-board-gate.json",
             "inventoryCommit": git_commit_for(INVENTORY_PATH),
             "taskListCommit": git_commit_for(TASK_LIST_PATH),
@@ -417,6 +445,7 @@ def build_data() -> dict:
         ],
         "features": features,
         "capabilities": capabilities,
+        "b0Alicization": B0_ALICIZATION_PLAN,
         "decisions": {**decisions, "capabilities": decision_capabilities},
         "featureClassification": {},
         "featurePublication": {},

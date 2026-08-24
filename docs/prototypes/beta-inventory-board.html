@@ -685,6 +685,11 @@
           <div><b>Phase 2の決定待ち</b><span>${features.filter((feature) => feature.decisionStatus === 'proposed').length}件が提案状態</span></div>
           <p>対象者・B段階・優先度は仮説です。カードを開いて根拠を確認し、合意したものだけ decisions.json の decisionStatus を confirmed に変更してください。</p>
         </section>`;
+      const b0Plan = baseInventory.b0Alicization;
+      if (selectedStage === 'B0' && b0Plan) {
+        const statusLabels = { planned: '未実測・計画', runnable: '実行可能', running: '実行中', passed: '通過', failed: '失敗' };
+        board.insertAdjacentHTML('beforeend', `<section class="decision-panel b0-alicization-panel"><div><b>B0 アリシゼーション自動探索</b><span>${b0Plan.journeys.length} journey / ${statusLabels[b0Plan.status] || b0Plan.status}</span></div><p>${escapeHtml(b0Plan.definition)}</p><p>${b0Plan.journeys.map((journey) => `<span class="status-pill ${journey.status === 'failed' ? 'blocked' : journey.status === 'passed' ? 'done' : 'working'}">${escapeHtml(journey.id)} ${escapeHtml(journey.title)}: ${escapeHtml(statusLabels[journey.status] || journey.status)}</span>`).join(' ')}</p><small>実UI・実DB／管理者1＋一般2／別BrowserContext・別ログイン。passedは実測確認後のみ。</small></section>`);
+      }
       return focus;
     }
 
@@ -1033,6 +1038,12 @@
 - 記録日時: ${new Date(feature.insight.createdAt).toLocaleString('ja-JP')}
 - スクリーンショット: ${feature.insight.screenshot ? `${feature.insight.screenshotName || '添付あり'}（「一式保存」で書き出し、この依頼と一緒に添付してください）` : 'なし'}
 ` : '';
+      const b0Context = feature.stage === 'B0' && baseInventory.b0Alicization ? `
+■ B0アリシゼーション自動探索
+- 対象journey: ${(baseInventory.b0Alicization.journeys || []).filter((journey) => journey.capabilities.includes(feature.key)).map((journey) => `${journey.id} ${journey.title}`).join(' / ') || '該当journeyなし'}
+- 検証前提: 実UI・実DB、管理者1＋一般利用者2、利用者ごとに別BrowserContext・別ログイン
+- 状態: planned / runnable / running / passed / failed。未実測をpassedにしない
+` : '';
       const decisionContext = feature.decisionReason ? `
 ■ Phase 2A分類提案（正本ではなくプロダクト判断）
 - 判断状態: ${feature.decisionStatus === 'confirmed' ? '確定' : '提案'}
@@ -1054,6 +1065,7 @@
 ${campaignContext}
 ${insightContext}
 ${decisionContext}
+${b0Context}
 
 ■ 目的
 ${feature.why}
