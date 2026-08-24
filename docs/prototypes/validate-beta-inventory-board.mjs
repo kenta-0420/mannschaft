@@ -4,6 +4,7 @@ import vm from 'node:vm';
 const prototypeDirectory = new URL('./', import.meta.url);
 const dataSource = fs.readFileSync(new URL('beta-inventory-board-data.js', prototypeDirectory), 'utf8');
 const html = fs.readFileSync(new URL('beta-inventory-board.html', prototypeDirectory), 'utf8');
+const taskList = fs.readFileSync(new URL('../task-list.md', prototypeDirectory), 'utf8');
 const context = { window: {} };
 vm.runInNewContext(dataSource, context, { filename: 'beta-inventory-board-data.js' });
 
@@ -13,6 +14,30 @@ if (data.features.length !== data.sourceCounts.features) throw new Error('機能
 if (data.campaigns.length !== data.sourceCounts.campaigns) throw new Error('CMP件数が一致しません。');
 if (new Set(data.features.map((feature) => feature.key)).size !== data.features.length) throw new Error('feature_keyが重複しています。');
 if (new Set(data.campaigns.map((campaign) => campaign.id)).size !== data.campaigns.length) throw new Error('CMP IDが重複しています。');
+
+const sourceRefs = new Map();
+for (const line of taskList.split(/\r?\n/)) {
+  const match = line.match(/^\|\s*(CMP(?:-|$).*?)\s*\|/);
+  if (!match) continue;
+  sourceRefs.set(match[1], [...new Set([...line.matchAll(/(?<![A-Za-z0-9])#(\d+)/g)].map((item) => Number(item[1])).filter((number) => number >= 100))].sort((a, b) => a - b));
+}
+if (sourceRefs.size !== data.campaigns.length) throw new Error('CMP正本行数と参照抽出数が一致しません');
+for (const campaign of data.campaigns) {
+  const expected = sourceRefs.get(campaign.id);
+  if (!expected || JSON.stringify(expected) !== JSON.stringify(campaign.githubRefs || [])) throw new Error(`CMPのGitHub参照が不一致です: ${campaign.id}`);
+}
+const github = data.githubSync || {};
+const expectedGithubNumbers = [...new Set([...sourceRefs.values()].flat())].sort((a, b) => a - b).map(String);
+const actualGithubNumbers = Object.keys(github.items || {}).sort((a, b) => Number(a) - Number(b));
+if (github.status === 'synced' && JSON.stringify(actualGithubNumbers) !== JSON.stringify(expectedGithubNumbers)) throw new Error('GitHubスナップショットの参照集合が正本と不一致です');
+const allowedGithubKinds = new Set(['issue', 'pull_request', 'missing', 'unsynced']);
+const allowedCiStatuses = new Set(['success', 'failure', 'pending', 'empty', 'unavailable']);
+for (const item of Object.values(github.items || {})) {
+  if (!allowedGithubKinds.has(item.kind)) throw new Error(`GitHub区分が不正です: ${item.kind}`);
+  if (!['open', 'closed', 'merged', '', 'unknown'].includes(item.state)) throw new Error(`GitHub stateが不正です: ${item.state}`);
+  if (item.kind === 'pull_request' && !allowedCiStatuses.has(item.ci?.status)) throw new Error(`PRのCI状態が不正です: #${item.number}`);
+}
+if (github.status === 'synced' && !github.synchronizedAt) throw new Error('同期済みなのに同期時刻がありません');
 
 const gateItems = data.gateFoundation;
 if (!Array.isArray(gateItems) || gateItems.length === 0) throw new Error('Gate overlayが空です。');

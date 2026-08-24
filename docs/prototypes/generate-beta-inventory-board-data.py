@@ -22,6 +22,8 @@ TASK_LIST_PATH = ROOT / "docs" / "task-list.md"
 OUTPUT_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-data.js"
 DECISIONS_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-decisions.json"
 GATE_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-gate.json"
+GITHUB_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-github.json"
+GITHUB_STATUS_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-github-status.json"
 
 
 def git_commit_for(path: Path) -> str:
@@ -151,6 +153,7 @@ def parse_campaigns(markdown: str) -> list[dict]:
         status_text = status.strip()
         status_key = normalize_campaign_status(status_text)
         feature_refs = re.findall(r"[A-Za-z][A-Za-z0-9_-]+", title + " " + acceptance)
+        github_refs = sorted({number for value in re.findall(r"(?<![A-Za-z0-9])#(\d+)", line) if (number := int(value)) >= 100})
         tags = campaign_tags(status_key)
         campaigns.append(
             {
@@ -174,6 +177,8 @@ def parse_campaigns(markdown: str) -> list[dict]:
                 "source": "docs/task-list.md",
                 "sourceTokens": feature_refs,
                 "tags": tags,
+                "githubRefs": github_refs,
+                "github": [],
             }
         )
     return campaigns
@@ -248,6 +253,10 @@ def build_data() -> dict:
     task_list = TASK_LIST_PATH.read_text(encoding="utf-8")
     features = [feature_view(record) for record in records]
     campaigns = parse_campaigns(task_list)
+    github_snapshot = json.loads(GITHUB_PATH.read_text(encoding="utf-8")) if GITHUB_PATH.exists() else {"status": "unsynced", "items": {}, "references": {}}
+    github_status = json.loads(GITHUB_STATUS_PATH.read_text(encoding="utf-8")) if GITHUB_STATUS_PATH.exists() else {"status": "unsynced", "error": None, "synchronizedAt": None}
+    for campaign in campaigns:
+        campaign["github"] = [github_snapshot.get("items", {}).get(str(number), {"number": number, "kind": "unsynced", "state": "unknown", "title": "", "url": "", "updatedAt": None, "ci": None}) for number in campaign["githubRefs"]]
     decisions = json.loads(DECISIONS_PATH.read_text(encoding="utf-8"))
     gate_overlay = json.loads(GATE_PATH.read_text(encoding="utf-8"))
     layer_counts = {}
@@ -320,6 +329,8 @@ def build_data() -> dict:
             "taskListSha256": hashlib.sha256(TASK_LIST_PATH.read_bytes()).hexdigest(),
             "decisionsSha256": hashlib.sha256(DECISIONS_PATH.read_bytes()).hexdigest(),
             "gateSha256": hashlib.sha256(GATE_PATH.read_bytes()).hexdigest(),
+            "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
+            "githubSnapshotSha256": hashlib.sha256(GITHUB_PATH.read_bytes()).hexdigest() if GITHUB_PATH.exists() else None,
         },
         "sourceCounts": {
             "features": len(features),
@@ -337,7 +348,7 @@ def build_data() -> dict:
             "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
             "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
             "Gate前提工事はbeta-inventory-board-gate.jsonの根拠付きoverlayから表示。未確認項目は公開候補に含めない。",
-            "Issue／PR／CIはGitHub連携していないため、task-list.mdの証拠欄だけを表示。",
+            "GitHubはtask-list.mdの各CMP行に明記された#番号だけを同期し、未同期・エラー時は既存スナップショットを保持する。",
         ],
         "features": features,
         "decisions": decisions,
@@ -345,6 +356,7 @@ def build_data() -> dict:
         "featurePublication": {},
         "gateFoundation": gate_items,
         "campaigns": campaigns,
+        "githubSync": {**github_snapshot, "lastAttempt": github_status},
     }
 
 

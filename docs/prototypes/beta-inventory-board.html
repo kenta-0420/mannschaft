@@ -758,7 +758,8 @@
         const stageMatches = campaign.stage === selectedStage || campaign.stage === '未設定';
         const audienceMatches = campaign.audiences.length === 0 || selectedAudience === 'all' || campaign.audiences.includes(selectedAudience);
         const issueText = campaign.issues.map((issue) => issue.label).join(' ');
-        const queryMatches = !query || `${campaign.id} ${campaign.title} ${campaign.featureKey} ${issueText}`.toLowerCase().includes(query);
+        const githubText = (campaign.github || []).map((item) => `${item.number} ${item.kind} ${item.state} ${item.title}`).join(' ');
+        const queryMatches = !query || `${campaign.id} ${campaign.title} ${campaign.featureKey} ${issueText} ${githubText}`.toLowerCase().includes(query);
         const tagMatches = selectedCampaignTags.size === 0 || [...selectedCampaignTags].some((tag) => campaign.tags.includes(tag));
         return stageMatches && audienceMatches && queryMatches && tagMatches;
       });
@@ -779,6 +780,24 @@
       </div>`;
     }
 
+    function githubReferenceMarkup(campaign) {
+      if (!campaign.githubRefs?.length) return '<div class="issue-chip">GitHub参照なし</div>';
+      return (campaign.github || []).map((item) => {
+        const kind = item.kind === 'pull_request' ? 'PR' : item.kind === 'issue' ? 'Issue' : item.kind === 'missing' ? '未検出' : '未同期';
+        const state = item.state || 'unknown';
+        const ci = item.ci ? ` / CI: ${item.ci.status}` : '';
+        const label = `#${item.number} ${kind}・${state}${ci}`;
+        return item.url ? `<a class="issue-chip ${state}" href="${escapeHtml(item.url)}" target="_blank" rel="noreferrer">${escapeHtml(label)}<br><span>${escapeHtml(item.title || '')}</span></a>` : `<div class="issue-chip ${state}">${escapeHtml(label)}</div>`;
+      }).join('');
+    }
+
+    function campaignCiLabel(campaign) {
+      const statuses = [...new Set((campaign.github || [])
+        .filter((item) => item.kind === 'pull_request' && item.ci)
+        .map((item) => item.ci.status))];
+      return statuses.length ? statuses.join(' / ') : 'PRなし・未同期';
+    }
+
     function renderCampaigns() {
       const visibleCampaigns = getVisibleCampaigns();
       const blocked = visibleCampaigns.filter((campaign) => campaign.status === 'blocked').length;
@@ -788,17 +807,18 @@
       board.className = '';
       board.innerHTML = `
         <div class="panel-heading">
-          <div><h2>CMPの現在地</h2><p>task-list.mdの全行を表示します。Issue・PR・CIのライブ状態は未接続なので推測しません。</p></div>
+          <div><h2>CMPの現在地</h2><p>task-list.mdの全行と、取得日時付きGitHubスナップショットを表示します。画面を開くだけでは通信しません。</p></div>
           <span class="wip-chip">${visibleCampaigns.length}戦役</span>
         </div>
         <div class="source-strip" aria-label="ダッシュボードのデータ生成経路">
           <div class="source-box"><b>正本</b><span>機能台帳 YAML ＋ task-list.md</span></div>
           <div class="source-arrow" aria-hidden="true">＋</div>
-          <div class="source-box"><b>実装証拠</b><span>task-list.md記載値のみ</span></div>
+          <div class="source-box"><b>実装証拠</b><span>task-list.md ＋ GitHub読取同期</span></div>
           <div class="source-arrow" aria-hidden="true">→</div>
           <div class="source-box"><b>自動生成</b><span>beta-inventory-board-data.js → この画面</span></div>
         </div>
         <div class="cmp-summary">
+          <span class="status-pill ${baseInventory.githubSync?.status === 'synced' ? 'done' : 'unknown'}">GitHub: ${escapeHtml(baseInventory.githubSync?.status || '未同期')} / ${escapeHtml(baseInventory.githubSync?.synchronizedAt || '取得日時なし')}${baseInventory.githubSync?.lastAttempt?.status === 'error' ? ' / 最新試行失敗' : ''}</span>
           <span class="status-pill blocked">停止中 ${blocked}</span>
           <span class="status-pill working">進行中 ${working}</span>
           <span class="status-pill unknown">未整理 ${unknown}</span>
@@ -817,10 +837,12 @@
                 <span class="status-pill ${escapeHtml(campaign.status)}">${escapeHtml(campaignStatusLabels[campaign.status])} · ${escapeHtml(campaign.statusLabel)}</span>
                 <div class="cmp-meta-row"><b>機能</b><span>${escapeHtml(campaign.featureKey || '未紐づけ')}</span></div>
                 <div class="cmp-meta-row"><b>証拠</b><span>${escapeHtml(campaign.prs.join(' / '))}</span></div>
-                <div class="cmp-meta-row"><b>ライブCI</b><span>未接続</span></div>
+                <div class="cmp-meta-row"><b>CI</b><span>${escapeHtml(campaignCiLabel(campaign))}</span></div>
+                <div class="cmp-meta-row"><b>GitHub</b><span>${campaign.githubRefs?.length || 0}件</span></div>
                 <div class="cmp-meta-row"><b>Phase</b><span>${escapeHtml(campaign.stage)}</span></div>
               </div>
               <div class="issue-stack">
+                ${githubReferenceMarkup(campaign)}
                 ${campaign.issues.map((issue) => `<div class="issue-chip ${escapeHtml(issue.state)}">· ${escapeHtml(issue.label)}</div>`).join('')}
                 <p><b>受け入れ条件：</b>${escapeHtml(campaign.nextAction)}</p>
               </div>
