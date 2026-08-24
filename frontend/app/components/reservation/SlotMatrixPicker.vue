@@ -186,7 +186,12 @@ function isDateOpen(date: string): boolean { return openWeekdays.value.has(weekd
 function toggleDate(date: string) {
   const weekday = weekdayOf(date)
   const next = new Set(openWeekdays.value)
-  next.has(weekday) ? next.delete(weekday) : next.add(weekday)
+  if (next.has(weekday)) {
+    next.delete(weekday)
+  }
+  else {
+    next.add(weekday)
+  }
   openWeekdays.value = next
 }
 const allDatesOpen = computed(() => days.value.length > 0 && days.value.every(day => isDateOpen(day.date)))
