@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T15:08:06+00:00",
+  "generatedAt": "2026-08-24T23:25:55+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -7,10 +7,10 @@ window.BETA_INVENTORY_DATA = {
     "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
-    "inventoryCommit": "059334a7c60cb6315f1e05119d6b5c56c43d15d2",
-    "taskListCommit": "f24f2fd08a27d76080b4a2ea2b98a9293ba8c53b",
-    "inventorySha256": "c4fb92ac865b4d90c5bb85b2d599500b85a30de01034411b6bf3ec9c18e34849",
-    "taskListSha256": "3732340db7c32b1e7733d2f49e8387eb884078806da1bec7537c0b90be54e354",
+    "inventoryCommit": "82bdb5839ff207e11ce65478edfea56e3cfaaf82",
+    "taskListCommit": "535e544160f4e86b9e7129da43f5c523e87daadf",
+    "inventorySha256": "fa56772ad817127407c52ee02aa7b3b5316da0868c1d5f576d7a1113f2431737",
+    "taskListSha256": "9d8220cfe010ebdda3f92061b04ef64290c4e432827301d68501b1b28a9ad2f3",
     "decisionsSha256": "5721052631110d26b34bf2288bc6e8a9de069a030b7f8d63808f8304348f7a4d",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
@@ -20,7 +20,7 @@ window.BETA_INVENTORY_DATA = {
     "features": 43,
     "capabilities": 94,
     "splitParents": 33,
-    "campaigns": 87,
+    "campaigns": 88,
     "layer": {
       "能力": 25,
       "ドメイン": 18
@@ -28,28 +28,28 @@ window.BETA_INVENTORY_DATA = {
     "blockers": 21,
     "coreStatus": {
       "blocked": 4,
-      "unknown": 18,
+      "unknown": 15,
       "incomplete": 0,
-      "verifying": 3,
+      "verifying": 6,
       "ready": 0
     }
   },
   "verification": {
     "raw": {
       "features": 43,
-      "campaigns": 87
+      "campaigns": 88
     },
     "parsed": {
       "features": 43,
-      "campaigns": 87,
+      "campaigns": 88,
       "core": 25,
       "noncore": 18,
       "blockers": 21,
       "coreStatus": {
         "blocked": 4,
-        "unknown": 18,
+        "unknown": 15,
         "incomplete": 0,
-        "verifying": 3,
+        "verifying": 6,
         "ready": 0
       }
     },
@@ -258,24 +258,55 @@ window.BETA_INVENTORY_DATA = {
       "title": "ナビ設定",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ2: 個人ナビの表示/並び替え画面・API・DB・起動時同期を確認。専用の機能設計書と実環境E2Eは未確認。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/stores/useNavSettingsStore.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/navsettings/service/NavSettingsServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/navsettings/controller/NavSettingsControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/navsettings/controller/NavSettingsControllerTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.20260528131746__nav_features_and_user_nav_settings.sql",
+            "backend/src/main/resources/db/migration/V128.001__add_nav_display_order_to_user_nav_settings.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -292,24 +323,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "チーム作成",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ2: 作成ダイアログ・任意slug検証・POST /api/v1/teams・作成者ADMIN付与・teamsテーブルを確認。UIから作成完了までの専用実環境E2Eは未確認。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/TeamServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/team/TeamSlugServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/team-hub.spec.ts",
+            "frontend/tests/e2e/teams/template-module.spec.ts",
+            "frontend/tests/e2e/slug/slug-url-migration.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.004__create_teams_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/activity-authz.spec.ts",
+            "frontend/tests/e2e/real/dashboard-org-announcement.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -326,24 +394,59 @@ window.BETA_INVENTORY_DATA = {
       "title": "メンバー招待",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ2: 招待トークン発行/一覧/失効、招待プレビュー/参加、QR/PDF、使用期限/回数上限、招待先フォルダ境界を確認。モックなしの招待参加E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role",
+        "docs/features/F01.8_team_invite_qr_pdf.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/role/InviteServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/auth/invite.spec.ts",
+            "frontend/tests/e2e/teams/invite-qr-pdf.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerFolderTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerFolderTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.010__create_invite_tokens_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -1969,24 +2072,55 @@ window.BETA_INVENTORY_DATA = {
       "title": "ナビ設定",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "nav-settings由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ2: 個人ナビの表示/並び替え画面・API・DB・起動時同期を確認。専用の機能設計書と実環境E2Eは未確認。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/unit/stores/useNavSettingsStore.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/navsettings/service/NavSettingsServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/navsettings/controller/NavSettingsControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/navsettings/controller/NavSettingsControllerTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V9.20260528131746__nav_features_and_user_nav_settings.sql",
+            "backend/src/main/resources/db/migration/V128.001__add_nav_display_order_to_user_nav_settings.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2007,24 +2141,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "チーム作成",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "team-create由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ2: 作成ダイアログ・任意slug検証・POST /api/v1/teams・作成者ADMIN付与・teamsテーブルを確認。UIから作成完了までの専用実環境E2Eは未確認。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/TeamServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/team/TeamSlugServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/team-hub.spec.ts",
+            "frontend/tests/e2e/teams/template-module.spec.ts",
+            "frontend/tests/e2e/slug/slug-url-migration.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.004__create_teams_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/activity-authz.spec.ts",
+            "frontend/tests/e2e/real/dashboard-org-announcement.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2045,24 +2216,61 @@ window.BETA_INVENTORY_DATA = {
       "title": "チーム閲覧",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "team-create由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ2: 作成ダイアログ・任意slug検証・POST /api/v1/teams・作成者ADMIN付与・teamsテーブルを確認。UIから作成完了までの専用実環境E2Eは未確認。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/TeamServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/team/TeamSlugServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/team-hub.spec.ts",
+            "frontend/tests/e2e/teams/template-module.spec.ts",
+            "frontend/tests/e2e/slug/slug-url-migration.spec.ts"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.004__create_teams_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/activity-authz.spec.ts",
+            "frontend/tests/e2e/real/dashboard-org-announcement.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2083,24 +2291,59 @@ window.BETA_INVENTORY_DATA = {
       "title": "チーム招待",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "team-invite由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ2: 招待トークン発行/一覧/失効、招待プレビュー/参加、QR/PDF、使用期限/回数上限、招待先フォルダ境界を確認。モックなしの招待参加E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role",
+        "docs/features/F01.8_team_invite_qr_pdf.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/role/InviteServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/auth/invite.spec.ts",
+            "frontend/tests/e2e/teams/invite-qr-pdf.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerFolderTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerFolderTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.010__create_invite_tokens_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2121,24 +2364,59 @@ window.BETA_INVENTORY_DATA = {
       "title": "チーム参加",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "team-invite由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ2: 招待トークン発行/一覧/失効、招待プレビュー/参加、QR/PDF、使用期限/回数上限、招待先フォルダ境界を確認。モックなしの招待参加E2Eは未作成。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role",
+        "docs/features/F01.8_team_invite_qr_pdf.md"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/role/InviteServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/auth/invite.spec.ts",
+            "frontend/tests/e2e/teams/invite-qr-pdf.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerFolderTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/role/controller/InviteControllerFolderTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.010__create_invite_tokens_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未作成",
+          "evidence": []
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -21911,6 +22189,52 @@ window.BETA_INVENTORY_DATA = {
         "Linux",
         "npm",
         "ci"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [],
+      "github": []
+    },
+    {
+      "id": "CMP-260824-2217",
+      "title": "予約マトリックス本人予約済み表示・待機防御・日付Accordion仕上げ",
+      "status": "unknown",
+      "statusLabel": "実装・検証中",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "Gridの本人限定フラグ、PENDING/CONFIRMEDのwaitlist 409、6言語、UT/E2E、OpenAPI再生成を同一変更で追随すること",
+      "acceptance": [
+        "Gridの本人限定フラグ、PENDING/CONFIRMEDのwaitlist 409、6言語、UT/E2E、OpenAPI再生成を同一変更で追随すること"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "`ReservationGridService`、`ReservationWaitlistService`、Matrix/Group/Waitlist Vitest、実機E2E",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "`ReservationGridService`、`ReservationWaitlistService`、Matrix/Group/Waitlist Vitest、実機E2E"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "`feature/reservation-ux-waitlist-accordion-v2`"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "Accordion",
+        "Grid",
+        "PENDING",
+        "CONFIRMED",
+        "waitlist",
+        "UT",
+        "E2E",
+        "OpenAPI"
       ],
       "tags": [
         "未整理"
