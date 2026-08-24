@@ -190,18 +190,24 @@ records:
     layer: 能力
     design_docs:
       - "docs/features/F10.1.1_team_org_admin_console"
+      - "docs/features/F01.2_org_team_member_role"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/role/RoleServiceTest.java", "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/team/TeamCoreAuthzContractIT.java", "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupScopeIntegrationTest.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V2.006__create_user_roles_table.sql", "backend/src/main/resources/db/migration/V2.007__create_permission_groups_table.sql", "backend/src/main/resources/db/migration/V2.008__create_permission_group_permissions_table.sql", "backend/src/main/resources/db/migration/V2.009__create_user_permission_groups_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/admin/f1011-admin-console.spec.ts", "frontend/tests/e2e/real/org-admin.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ3: 管理コンソール、メンバー/ロール変更、権限グループ、除名、所有権・アーカイブ導線と認可境界を確認。テストは今回未実行。"
 
   - feature_key: team-modules
     name: モジュール有効化
@@ -209,34 +215,46 @@ records:
     design_docs:
       - "docs/features/F01.3_template_module.md"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/template/ModuleServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/teams/template-module.spec.ts", "backend/src/test/java/com/mannschaft/app/template/controller/TeamModuleControllerTest.java", "backend/src/test/java/com/mannschaft/app/template/controller/TeamModuleCatalogControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/template/TeamModuleScopeContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V2.019__create_template_modules_table.sql", "backend/src/main/resources/db/migration/V2.021__create_team_enabled_modules_table.sql", "backend/src/main/resources/db/migration/V158.20260718115027__module_activation_backfill_grandfather.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/module-settings-catalog.spec.ts", "frontend/tests/e2e/real/module-activation-backfill.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ3: モジュールカタログ、ON/OFF、テンプレート適用、有料権利/無料上限、チーム越境認可、既存有効化データ移行を確認。テストは今回未実行。"
 
   - feature_key: organization-manage
     name: 組織作成・管理
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.2_org_team_member_role"
+      - "docs/features/F10.1.1_team_org_admin_console"
     implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
       background: 対象外
-    verification: {}
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/organization/OrganizationServiceTest.java", "backend/src/test/java/com/mannschaft/app/organization/OrganizationSlugServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/organizations/org-hub.spec.ts", "frontend/tests/e2e/organizations/org-list.spec.ts", "backend/src/test/java/com/mannschaft/app/organization/OrganizationControllerTest.java"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/organization/OrganizationCoreAuthzContractIT.java", "backend/src/test/java/com/mannschaft/app/organization/OrganizationCreateParentAuthzContractIT.java"]}
+      migration: {status: 未実行, evidence: ["backend/src/main/resources/db/migration/V2.003__create_organizations_table.sql"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/org-admin.spec.ts", "frontend/tests/e2e/real/org-features.spec.ts"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: null
+    notes: "棚卸バッチ3: 組織作成、親組織指定、更新/削除/アーカイブ、管理コンソールと越境認可を確認。テストは今回未実行。"
 
   - feature_key: organization-members
     name: 組織メンバー管理

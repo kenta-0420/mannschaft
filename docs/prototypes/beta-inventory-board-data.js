@@ -1,5 +1,5 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T23:25:55+00:00",
+  "generatedAt": "2026-08-24T23:34:12+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
@@ -7,9 +7,9 @@ window.BETA_INVENTORY_DATA = {
     "b0Alicization": "docs/prototypes/beta-inventory-board-b0-alicization.json",
     "b0Coverage": "docs/prototypes/beta-inventory-board-b0-coverage.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
-    "inventoryCommit": "82bdb5839ff207e11ce65478edfea56e3cfaaf82",
+    "inventoryCommit": "8f5479f3a831fdaec55d94d835f05179c3478cd4",
     "taskListCommit": "535e544160f4e86b9e7129da43f5c523e87daadf",
-    "inventorySha256": "fa56772ad817127407c52ee02aa7b3b5316da0868c1d5f576d7a1113f2431737",
+    "inventorySha256": "145014449510549e4c7d845a7a489372f816e0bb51d8be43546144cb7c2ed771",
     "taskListSha256": "9d8220cfe010ebdda3f92061b04ef64290c4e432827301d68501b1b28a9ad2f3",
     "decisionsSha256": "5721052631110d26b34bf2288bc6e8a9de069a030b7f8d63808f8304348f7a4d",
     "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
@@ -28,9 +28,9 @@ window.BETA_INVENTORY_DATA = {
     "blockers": 21,
     "coreStatus": {
       "blocked": 4,
-      "unknown": 15,
+      "unknown": 12,
       "incomplete": 0,
-      "verifying": 6,
+      "verifying": 9,
       "ready": 0
     }
   },
@@ -47,9 +47,9 @@ window.BETA_INVENTORY_DATA = {
       "blockers": 21,
       "coreStatus": {
         "blocked": 4,
-        "unknown": 15,
+        "unknown": 12,
         "incomplete": 0,
-        "verifying": 6,
+        "verifying": 9,
         "ready": 0
       }
     },
@@ -463,26 +463,64 @@ window.BETA_INVENTORY_DATA = {
       "title": "チーム管理コンソール",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ3: 管理コンソール、メンバー/ロール変更、権限グループ、除名、所有権・アーカイブ導線と認可境界を確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [
-        "docs/features/F10.1.1_team_org_admin_console"
+        "docs/features/F10.1.1_team_org_admin_console",
+        "docs/features/F01.2_org_team_member_role"
       ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/role/RoleServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/TeamCoreAuthzContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupScopeIntegrationTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.006__create_user_roles_table.sql",
+            "backend/src/main/resources/db/migration/V2.007__create_permission_groups_table.sql",
+            "backend/src/main/resources/db/migration/V2.008__create_permission_group_permissions_table.sql",
+            "backend/src/main/resources/db/migration/V2.009__create_user_permission_groups_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/admin/f1011-admin-console.spec.ts",
+            "frontend/tests/e2e/real/org-admin.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -499,13 +537,13 @@ window.BETA_INVENTORY_DATA = {
       "title": "モジュール有効化",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ3: モジュールカタログ、ON/OFF、テンプレート適用、有料権利/無料上限、チーム越境認可、既存有効化データ移行を確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [
@@ -513,12 +551,48 @@ window.BETA_INVENTORY_DATA = {
       ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/template/ModuleServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/template-module.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/template/controller/TeamModuleControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/template/controller/TeamModuleCatalogControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/template/TeamModuleScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.019__create_template_modules_table.sql",
+            "backend/src/main/resources/db/migration/V2.021__create_team_enabled_modules_table.sql",
+            "backend/src/main/resources/db/migration/V158.20260718115027__module_activation_backfill_grandfather.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/module-settings-catalog.spec.ts",
+            "frontend/tests/e2e/real/module-activation-backfill.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -535,24 +609,63 @@ window.BETA_INVENTORY_DATA = {
       "title": "組織作成・管理",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "implementation/blockersから機械導出",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ3: 組織作成、親組織指定、更新/削除/アーカイブ、管理コンソールと越境認可を確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role",
+        "docs/features/F10.1.1_team_org_admin_console"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationSlugServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/organizations/org-hub.spec.ts",
+            "frontend/tests/e2e/organizations/org-list.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationCoreAuthzContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationCreateParentAuthzContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.003__create_organizations_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/org-admin.spec.ts",
+            "frontend/tests/e2e/real/org-features.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2437,26 +2550,64 @@ window.BETA_INVENTORY_DATA = {
       "title": "チームメンバー閲覧",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "team-admin由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ3: 管理コンソール、メンバー/ロール変更、権限グループ、除名、所有権・アーカイブ導線と認可境界を確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [
-        "docs/features/F10.1.1_team_org_admin_console"
+        "docs/features/F10.1.1_team_org_admin_console",
+        "docs/features/F01.2_org_team_member_role"
       ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/role/RoleServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/TeamCoreAuthzContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupScopeIntegrationTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.006__create_user_roles_table.sql",
+            "backend/src/main/resources/db/migration/V2.007__create_permission_groups_table.sql",
+            "backend/src/main/resources/db/migration/V2.008__create_permission_group_permissions_table.sql",
+            "backend/src/main/resources/db/migration/V2.009__create_user_permission_groups_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/admin/f1011-admin-console.spec.ts",
+            "frontend/tests/e2e/real/org-admin.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2477,26 +2628,64 @@ window.BETA_INVENTORY_DATA = {
       "title": "チームメンバー管理",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "team-admin由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ3: 管理コンソール、メンバー/ロール変更、権限グループ、除名、所有権・アーカイブ導線と認可境界を確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [
-        "docs/features/F10.1.1_team_org_admin_console"
+        "docs/features/F10.1.1_team_org_admin_console",
+        "docs/features/F01.2_org_team_member_role"
       ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/role/RoleServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/TeamCoreAuthzContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupScopeIntegrationTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.006__create_user_roles_table.sql",
+            "backend/src/main/resources/db/migration/V2.007__create_permission_groups_table.sql",
+            "backend/src/main/resources/db/migration/V2.008__create_permission_group_permissions_table.sql",
+            "backend/src/main/resources/db/migration/V2.009__create_user_permission_groups_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/admin/f1011-admin-console.spec.ts",
+            "frontend/tests/e2e/real/org-admin.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2517,26 +2706,64 @@ window.BETA_INVENTORY_DATA = {
       "title": "チーム権限管理",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "team-admin由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ3: 管理コンソール、メンバー/ロール変更、権限グループ、除名、所有権・アーカイブ導線と認可境界を確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [
-        "docs/features/F10.1.1_team_org_admin_console"
+        "docs/features/F10.1.1_team_org_admin_console",
+        "docs/features/F01.2_org_team_member_role"
       ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/role/RoleServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/controller/TeamControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/team/TeamCoreAuthzContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/role/service/PermissionGroupScopeIntegrationTest.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.006__create_user_roles_table.sql",
+            "backend/src/main/resources/db/migration/V2.007__create_permission_groups_table.sql",
+            "backend/src/main/resources/db/migration/V2.008__create_permission_group_permissions_table.sql",
+            "backend/src/main/resources/db/migration/V2.009__create_user_permission_groups_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/admin/f1011-admin-console.spec.ts",
+            "frontend/tests/e2e/real/org-admin.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2557,13 +2784,13 @@ window.BETA_INVENTORY_DATA = {
       "title": "チーム機能閲覧",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "team-modules由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ3: モジュールカタログ、ON/OFF、テンプレート適用、有料権利/無料上限、チーム越境認可、既存有効化データ移行を確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [
@@ -2571,12 +2798,48 @@ window.BETA_INVENTORY_DATA = {
       ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/template/ModuleServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/template-module.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/template/controller/TeamModuleControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/template/controller/TeamModuleCatalogControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/template/TeamModuleScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.019__create_template_modules_table.sql",
+            "backend/src/main/resources/db/migration/V2.021__create_team_enabled_modules_table.sql",
+            "backend/src/main/resources/db/migration/V158.20260718115027__module_activation_backfill_grandfather.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/module-settings-catalog.spec.ts",
+            "frontend/tests/e2e/real/module-activation-backfill.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2597,13 +2860,13 @@ window.BETA_INVENTORY_DATA = {
       "title": "チーム機能管理",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "team-modules由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ3: モジュールカタログ、ON/OFF、テンプレート適用、有料権利/無料上限、チーム越境認可、既存有効化データ移行を確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
       "refs": [
@@ -2611,12 +2874,48 @@ window.BETA_INVENTORY_DATA = {
       ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/template/ModuleServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/teams/template-module.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/template/controller/TeamModuleControllerTest.java",
+            "backend/src/test/java/com/mannschaft/app/template/controller/TeamModuleCatalogControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/template/TeamModuleScopeContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.019__create_template_modules_table.sql",
+            "backend/src/main/resources/db/migration/V2.021__create_team_enabled_modules_table.sql",
+            "backend/src/main/resources/db/migration/V158.20260718115027__module_activation_backfill_grandfather.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/module-settings-catalog.spec.ts",
+            "frontend/tests/e2e/real/module-activation-backfill.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2637,24 +2936,63 @@ window.BETA_INVENTORY_DATA = {
       "title": "組織作成",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "organization-manage由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ3: 組織作成、親組織指定、更新/削除/アーカイブ、管理コンソールと越境認可を確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role",
+        "docs/features/F10.1.1_team_org_admin_console"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationSlugServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/organizations/org-hub.spec.ts",
+            "frontend/tests/e2e/organizations/org-list.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationCoreAuthzContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationCreateParentAuthzContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.003__create_organizations_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/org-admin.spec.ts",
+            "frontend/tests/e2e/real/org-features.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
@@ -2675,24 +3013,63 @@ window.BETA_INVENTORY_DATA = {
       "title": "組織管理",
       "stage": "未設定",
       "phase": "コア",
-      "status": "unknown",
-      "statusLabel": "未棚卸",
+      "status": "verifying",
+      "statusLabel": "検証中",
       "statusSource": "organization-manage由来・子能力未実測",
       "priority": "未設定",
       "audiences": [],
       "summary": "feature-inventory.yamlの正本レコード。",
-      "why": "未設定",
+      "why": "棚卸バッチ3: 組織作成、親組織指定、更新/削除/アーカイブ、管理コンソールと越境認可を確認。テストは今回未実行。",
       "acceptance": [],
       "blocker": "未設定",
-      "refs": [],
+      "refs": [
+        "docs/features/F01.2_org_team_member_role",
+        "docs/features/F10.1.1_team_org_admin_console"
+      ],
       "layer": "能力",
       "implementation": {
-        "frontend": "不明",
-        "backend": "不明",
-        "database": "不明",
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
         "background": "対象外"
       },
-      "verification": {},
+      "verification": {
+        "unit": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationServiceTest.java",
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationSlugServiceTest.java"
+          ]
+        },
+        "integration": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/organizations/org-hub.spec.ts",
+            "frontend/tests/e2e/organizations/org-list.spec.ts",
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationControllerTest.java"
+          ]
+        },
+        "authorization": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationCoreAuthzContractIT.java",
+            "backend/src/test/java/com/mannschaft/app/organization/OrganizationCreateParentAuthzContractIT.java"
+          ]
+        },
+        "migration": {
+          "status": "未実行",
+          "evidence": [
+            "backend/src/main/resources/db/migration/V2.003__create_organizations_table.sql"
+          ]
+        },
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": [
+            "frontend/tests/e2e/real/org-admin.spec.ts",
+            "frontend/tests/e2e/real/org-features.spec.ts"
+          ]
+        }
+      },
       "release": {
         "beta": "コア",
         "deploy_safety": "不明",
