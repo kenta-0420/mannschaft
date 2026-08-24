@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "stage": "B0",
+  "status": "planned",
+  "definition": "アリシゼーションで実UI・実DBを自動探索し、基本導線の成立を調査する。未実測をpassedにしない。",
+  "environment": ["実UI + 実DB", "管理者1 + 一般利用者2", "利用者ごとに別BrowserContext・別ログイン", "テストデータは識別子付きで作成"],
+  "journeys": [
+    {"id":"B0-J1","title":"個人ダッシュボードからチーム・組織・村を確認","status":"planned","capabilities":["dashboard","team-create-view","team-admin-permissions","organization-manage-organization-admin","village-join-village-view","village-members-member-manage"],"checks":["階層ごとの閲覧導線","一般利用者に管理操作を表示しない"]},
+    {"id":"B0-J2","title":"チーム作成・招待・メンバー確認","status":"planned","capabilities":["team-create-create","team-invite-invite","team-invite-join","team-admin-member-view"],"checks":["管理者作成","一般利用者参加","メンバー一覧整合"]},
+    {"id":"B0-J3","title":"予定作成・出欠募集・回答・集計","status":"planned","capabilities":["village-events-schedule-create","village-events-schedule-view-manage","village-events-attendance-request","village-events-attendance-response","village-events-attendance-summary"],"checks":["予定公開","一般利用者2名の回答","集計反映","予約を出欠の代用にしない"]},
+    {"id":"B0-J4","title":"アンケート作成・公開・回答・結果","status":"planned","capabilities":["survey-create","survey-publish","survey-response","survey-results"],"checks":["公開","回答","結果反映"]},
+    {"id":"B0-J5","title":"予定・アンケートの通知受信","status":"planned","capabilities":["notification-inbox-notification-delivery","notification-inbox-inbox"],"checks":["別セッションへ通知","受信箱から遷移"]},
+    {"id":"B0-J6","title":"階層ごとの権限境界","status":"planned","capabilities":["team-admin-permissions","organization-manage-organization-admin","village-members-member-manage"],"checks":["権限外操作の非表示","権限外URL/API拒否"]}
+  ]
+}

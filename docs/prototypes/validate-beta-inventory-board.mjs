@@ -5,6 +5,7 @@ const prototypeDirectory = new URL('./', import.meta.url);
 const dataSource = fs.readFileSync(new URL('beta-inventory-board-data.js', prototypeDirectory), 'utf8');
 const html = fs.readFileSync(new URL('beta-inventory-board.html', prototypeDirectory), 'utf8');
 const taskList = fs.readFileSync(new URL('../task-list.md', prototypeDirectory), 'utf8');
+const b0PlanSource = JSON.parse(fs.readFileSync(new URL('beta-inventory-board-b0-alicization.json', prototypeDirectory), 'utf8'));
 const context = { window: {} };
 vm.runInNewContext(dataSource, context, { filename: 'beta-inventory-board-data.js' });
 
@@ -18,7 +19,7 @@ if (new Set(data.capabilities.map((item) => item.key)).size !== data.capabilitie
 const parentKeys = new Set(data.features.map((item) => item.key));
 if (data.capabilities.some((item) => !parentKeys.has(item.parentFeatureKey))) throw new Error('能力の親feature_keyが正本にありません');
 const splitParents = new Set(data.capabilities.filter((item) => item.isCapability).map((item) => item.parentFeatureKey));
-for (const parent of ['account-settings', 'auth', 'organization-manage', 'notification-inbox', 'pointcard', 'tournament', 'facility', 'corkboard', 'property-repairplan', 'weather-health', 'billing-payment', 'shift', 'skill-resume', 'succession-proxy', 'translation-search', 'todo-memo', 'promotion', 'workflow-forms', 'family-care', 'moderation-incident', 'webhook-sync', 'gamification']) {
+for (const parent of ['account-settings', 'auth', 'organization-manage', 'organization-members', 'notification-inbox', 'pointcard', 'tournament', 'facility', 'corkboard', 'property-repairplan', 'weather-health', 'billing-payment', 'shift', 'skill-resume', 'succession-proxy', 'translation-search', 'todo-memo', 'promotion', 'workflow-forms', 'family-care', 'moderation-incident', 'webhook-sync', 'gamification', 'team-create', 'team-invite', 'team-admin', 'team-modules', 'village-join', 'village-members', 'village-events', 'survey']) {
   if (!splitParents.has(parent)) throw new Error(`複合親が未分割です: ${parent}`);
 }
 if (data.campaigns.length !== data.sourceCounts.campaigns) throw new Error('CMP件数が一致しません。');
@@ -82,10 +83,25 @@ for (const feature of data.features) {
 }
 for (const capability of data.capabilities) {
   const decision = decisions.capabilities[capability.key];
-  if (!decision || decision.decisionStatus !== 'proposed' || !decision.reason) throw new Error(`能力単位の提案decisionがありません: ${capability.key}`);
+  if (!decision || !['proposed', 'confirmed'].includes(decision.decisionStatus) || !decision.reason) throw new Error(`能力単位のdecisionがありません: ${capability.key}`);
   if (capability.isCapability && (!capability.parentFeatureKey || !capability.statusSource.includes('子能力未実測'))) throw new Error(`親由来状態の明示がありません: ${capability.key}`);
 }
 
+const b0Plan = data.b0Alicization;
+if (JSON.stringify(b0Plan) !== JSON.stringify(b0PlanSource)) throw new Error('B0アリシゼーション計画と生成データが不一致です');
+if (!b0Plan || b0Plan.stage !== 'B0' || b0Plan.status !== 'planned') throw new Error('B0アリシゼーション計画が未定義または未実測状態でありません');
+const b0CapabilityKeys = new Set(data.capabilities.map((capability) => capability.key));
+for (const journey of b0Plan.journeys || []) {
+  if (!['planned', 'runnable', 'running', 'passed', 'failed'].includes(journey.status)) throw new Error(`B0 journey状態が不正です: ${journey.id}`);
+  if ((journey.capabilities || []).some((key) => !b0CapabilityKeys.has(key))) throw new Error(`B0 journeyの能力keyが未分割です: ${journey.id}`);
+  for (const key of journey.capabilities || []) {
+    const decision = decisions.capabilities[key];
+    if (!decision || decision.stage !== 'B0' || decision.priority !== 'must') throw new Error(`B0 journey能力がB0/mustではありません: ${journey.id} / ${key}`);
+  }
+}
+if (!b0CapabilityKeys.has('village-events-attendance-response') || !b0CapabilityKeys.has('village-events-attendance-summary')) throw new Error('出欠回答・集計の分割能力がありません');
+if (!b0CapabilityKeys.has('survey-response') || !b0CapabilityKeys.has('survey-results')) throw new Error('アンケート回答・結果の分割能力がありません');
+if ((b0Plan.journeys || []).some((journey) => (journey.capabilities || []).includes('reservation'))) throw new Error('予約を出欠journeyに含めています');
 const allowedStatuses = new Set(['blocked', 'unknown', 'incomplete', 'verifying', 'ready']);
 if (data.features.some((feature) => !allowedStatuses.has(feature.status))) throw new Error('公式5状態以外の機能があります。');
 
