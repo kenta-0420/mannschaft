@@ -1,22 +1,24 @@
 window.BETA_INVENTORY_DATA = {
-  "generatedAt": "2026-08-24T08:36:39+00:00",
+  "generatedAt": "2026-08-24T09:50:29+00:00",
   "sources": {
     "inventory": "docs/inventory/feature-inventory.yaml",
     "taskList": "docs/task-list.md",
     "decisions": "docs/prototypes/beta-inventory-board-decisions.json",
     "gate": "docs/prototypes/beta-inventory-board-gate.json",
     "inventoryCommit": "059334a7c60cb6315f1e05119d6b5c56c43d15d2",
-    "taskListCommit": "507264fb6f91a1b1d2125869bac95608db82c844",
+    "taskListCommit": "f24f2fd08a27d76080b4a2ea2b98a9293ba8c53b",
     "inventorySha256": "b7a29d2301f7ade17f21565e6a075d185d129434d81c5a0a2cdff5639d831900",
-    "taskListSha256": "4513e4938a52511c05b0a524d715bef98525db3fe8a02ab022e9e6cc489d8348",
-    "decisionsSha256": "400706cd9341f10f3e9221491e7b25eda37a44d4b64b53585d0834e9ab723c34",
-    "gateSha256": "1fe1a0869b148212e4937f26189758b1b34484f309074793bf56950b6a83d75c",
+    "taskListSha256": "3732340db7c32b1e7733d2f49e8387eb884078806da1bec7537c0b90be54e354",
+    "decisionsSha256": "4544926b08e615abb262c9ccaae6c98adf84e150f5bbbaa2963547864cc505d2",
+    "gateSha256": "bb96e2277e7cabfa0bf4486f4564cdd08f70814e0f30290c63c00f2d1d21a000",
     "githubSnapshot": "docs/prototypes/beta-inventory-board-github.json",
-    "githubSnapshotSha256": "0d8fde8f2f17e3fba9a445d3a3210b150bc22cc747502e79f6b3750e3dd34928"
+    "githubSnapshotSha256": "e8c85413126e0702ca2192849d3bf866ff4d2ee38447e4e4c065aef30373f771"
   },
   "sourceCounts": {
     "features": 43,
-    "campaigns": 86,
+    "capabilities": 72,
+    "splitParents": 22,
+    "campaigns": 87,
     "layer": {
       "能力": 25,
       "ドメイン": 18
@@ -33,11 +35,11 @@ window.BETA_INVENTORY_DATA = {
   "verification": {
     "raw": {
       "features": 43,
-      "campaigns": 86
+      "campaigns": 87
     },
     "parsed": {
       "features": 43,
-      "campaigns": 86,
+      "campaigns": 87,
       "core": 25,
       "noncore": 18,
       "blockers": 21,
@@ -52,6 +54,7 @@ window.BETA_INVENTORY_DATA = {
     "passed": true
   },
   "warnings": [
+    "正本は43大分類、表示・集計は72能力単位。分割親は22件。",
     "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
     "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
     "Gate前提工事はbeta-inventory-board-gate.jsonの根拠付きoverlayから表示。未確認項目は公開候補に含めない。",
@@ -1520,6 +1523,2707 @@ window.BETA_INVENTORY_DATA = {
       "source": "docs/inventory/feature-inventory.yaml"
     }
   ],
+  "capabilities": [
+    {
+      "key": "personal-profile",
+      "title": "個人プロフィール編集",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "personal-profile由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "CMP-103: 入力途中離脱で入力消失・未保存警告なし（Issue #2857）",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "対象外"
+      },
+      "verification": {
+        "integration": {
+          "status": "不明",
+          "evidence": []
+        }
+      },
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "CMP-103: 入力途中離脱で入力消失・未保存警告なし（Issue #2857）"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "personal-profile",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "account-settings-settings",
+      "title": "設定",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "account-settings由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "account-settings",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "account-settings-withdrawal",
+      "title": "退会",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "account-settings由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "account-settings",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "auth-login",
+      "title": "ログイン",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "auth由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "PR #2830 ハイドレーション即操作化済",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "auth",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "auth-two-factor",
+      "title": "2FA",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "auth由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "PR #2830 ハイドレーション即操作化済",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "auth",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "nav-settings",
+      "title": "ナビ設定",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "nav-settings由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "nav-settings",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "team-create",
+      "title": "チーム作成",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "team-create由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "team-create",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "team-invite",
+      "title": "メンバー招待",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "team-invite由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "team-invite",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "team-admin",
+      "title": "チーム管理コンソール",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "team-admin由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [
+        "docs/features/F10.1.1_team_org_admin_console"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "team-admin",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "team-modules",
+      "title": "モジュール有効化",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "team-modules由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [
+        "docs/features/F01.3_template_module.md"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "team-modules",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "organization-manage-organization-create",
+      "title": "組織作成",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "organization-manage由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "organization-manage",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "organization-manage-organization-admin",
+      "title": "組織管理",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "organization-manage由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "organization-manage",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "organization-members",
+      "title": "組織メンバー管理",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "organization-members由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "organization-members",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-join",
+      "title": "村へ参加",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "village-join由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-join",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-members",
+      "title": "村の構成員管理",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "village-members由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-members",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "village-events",
+      "title": "村行事",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "village-events由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "CMP-002 実装中",
+      "refs": [
+        "docs/features"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "部分実装",
+        "backend": "部分実装",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "CMP-002 実装中"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "village-events",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "notification-inbox-notification-delivery",
+      "title": "通知配信",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "notification-inbox由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [
+        "docs/features/F04.11_notification_inbox"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "notification-inbox",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "notification-inbox-inbox",
+      "title": "受信箱",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "notification-inbox由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [
+        "docs/features/F04.11_notification_inbox"
+      ],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "notification-inbox",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "timeline",
+      "title": "タイムライン",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "verifying",
+      "statusLabel": "検証中",
+      "statusSource": "timeline由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "実機E2E作業中spec群あり（frontend/tests/e2e/real/personal-timeline.spec.ts 等）",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "実装済",
+        "backend": "実装済",
+        "database": "実装済",
+        "background": "実装済"
+      },
+      "verification": {
+        "real_e2e": {
+          "status": "未実行",
+          "evidence": []
+        }
+      },
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "timeline",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "chat",
+      "title": "チャット",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "chat由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "chat",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "circulation",
+      "title": "回覧",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "circulation由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "対象外"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "circulation",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "dashboard",
+      "title": "個人ダッシュボード",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "dashboard由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "CMP-102: data_exports s3Key列名不一致で /api/v1/dashboard が実機500（Issue #2856）",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不具合あり",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {
+        "resident_test": {
+          "status": "失敗中",
+          "evidence": [
+            "\"Issue #2856\""
+          ]
+        }
+      },
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "CMP-102: data_exports s3Key列名不一致で /api/v1/dashboard が実機500（Issue #2856）"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "dashboard",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "reservation",
+      "title": "予約",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "reservation由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "予約v2再設計(CMP-006)が進行中",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [
+        "予約v2再設計(CMP-006)が進行中"
+      ],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "reservation",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "survey",
+      "title": "アンケート",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "survey由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "survey",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "todo-memo-todo",
+      "title": "TODO",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "todo-memo由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "todo-memo",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "todo-memo-memo",
+      "title": "メモ",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "todo-memo由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "todo-memo",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "corkboard-bulletin",
+      "title": "掲示板",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "corkboard由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "corkboard",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "corkboard-corkboard",
+      "title": "コルクボード",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "corkboard由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "corkboard",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "pointcard-wallet",
+      "title": "ウォレット",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "pointcard由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "pointcard",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "pointcard-points",
+      "title": "ポイント",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "pointcard由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "pointcard",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "tournament-tournament-management",
+      "title": "大会運営",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "tournament由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "tournament",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "tournament-match-record",
+      "title": "試合記録",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "tournament由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "tournament",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "safetycheck",
+      "title": "安否確認",
+      "stage": "未設定",
+      "phase": "コア",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "safetycheck由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "COREへ昇格（2026-08-19、マスター裁可）。バッチ/リスナー停止判定はGate工事(第二戦以降)で確認。健康・気象は含めず weather-health として非COREに残す。詳細な能力分割は今後の棚卸し実測時に行う",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "能力",
+      "implementation": {
+        "frontend": "不明",
+        "backend": "不明",
+        "database": "不明",
+        "background": "不明"
+      },
+      "verification": {},
+      "release": {
+        "beta": "コア",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "core",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "safetycheck",
+      "gateGroup": null,
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "shift-shift",
+      "title": "シフト",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "shift由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_SHIFT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_SHIFT_ENABLED",
+        "route_keywords": "[\"shift\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_SHIFT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "shift",
+      "gateGroup": "FEATURE_SHIFT_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "shift-shift-budget",
+      "title": "シフト予算",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "shift由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_SHIFT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_SHIFT_ENABLED",
+        "route_keywords": "[\"shift\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_SHIFT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "shift",
+      "gateGroup": "FEATURE_SHIFT_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "matching",
+      "title": "マッチング・求人",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "matching由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_MATCHING_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_MATCHING_ENABLED",
+        "route_keywords": "[\"matching\", \"match-analytics\", \"/jobs\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_MATCHING_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "matching",
+      "gateGroup": "FEATURE_MATCHING_ENABLED",
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "billing-payment-billing",
+      "title": "請求",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "billing-payment由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_BILLING_PAYMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_BILLING_PAYMENT_ENABLED",
+        "route_keywords": "[\"billing\", \"payment\", \"contract\", \"wallet\", \"invoice\", \"fee-statement\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_BILLING_PAYMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "billing-payment",
+      "gateGroup": "FEATURE_BILLING_PAYMENT_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "billing-payment-payment",
+      "title": "決済",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "billing-payment由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_BILLING_PAYMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_BILLING_PAYMENT_ENABLED",
+        "route_keywords": "[\"billing\", \"payment\", \"contract\", \"wallet\", \"invoice\", \"fee-statement\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_BILLING_PAYMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "billing-payment",
+      "gateGroup": "FEATURE_BILLING_PAYMENT_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "billing-payment-membership-fee",
+      "title": "会費",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "billing-payment由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_BILLING_PAYMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_BILLING_PAYMENT_ENABLED",
+        "route_keywords": "[\"billing\", \"payment\", \"contract\", \"wallet\", \"invoice\", \"fee-statement\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_BILLING_PAYMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "billing-payment",
+      "gateGroup": "FEATURE_BILLING_PAYMENT_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "promotion-advertising",
+      "title": "広告",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "promotion由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_PROMOTION_ENABLED",
+        "route_keywords": "[\"ad-\", \"ads/\", \"advertis\", \"signage\", \"promotion\", \"campaign\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "promotion",
+      "gateGroup": "FEATURE_PROMOTION_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "promotion-promotion",
+      "title": "販促",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "promotion由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_PROMOTION_ENABLED",
+        "route_keywords": "[\"ad-\", \"ads/\", \"advertis\", \"signage\", \"promotion\", \"campaign\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "promotion",
+      "gateGroup": "FEATURE_PROMOTION_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "promotion-signage",
+      "title": "サイネージ",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "promotion由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_PROMOTION_ENABLED",
+        "route_keywords": "[\"ad-\", \"ads/\", \"advertis\", \"signage\", \"promotion\", \"campaign\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_PROMOTION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "promotion",
+      "gateGroup": "FEATURE_PROMOTION_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "market",
+      "title": "マーケットプレイス",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "market由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_MARKET_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_MARKET_ENABLED",
+        "route_keywords": "[\"market\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_MARKET_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "market",
+      "gateGroup": "FEATURE_MARKET_ENABLED",
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "workflow-forms-workflow",
+      "title": "ワークフロー",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "workflow-forms由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_WORKFLOW_FORMS_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_WORKFLOW_FORMS_ENABLED",
+        "route_keywords": "[\"workflow\", \"/forms\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_WORKFLOW_FORMS_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "workflow-forms",
+      "gateGroup": "FEATURE_WORKFLOW_FORMS_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "workflow-forms-forms",
+      "title": "フォーム",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "workflow-forms由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_WORKFLOW_FORMS_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_WORKFLOW_FORMS_ENABLED",
+        "route_keywords": "[\"workflow\", \"/forms\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_WORKFLOW_FORMS_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "workflow-forms",
+      "gateGroup": "FEATURE_WORKFLOW_FORMS_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "facility-equipment",
+      "title": "備品",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "facility由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_FACILITY_ENABLED",
+        "route_keywords": "[\"facilit\", \"equipment\", \"parking\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "facility",
+      "gateGroup": "FEATURE_FACILITY_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "facility-facility",
+      "title": "施設",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "facility由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_FACILITY_ENABLED",
+        "route_keywords": "[\"facilit\", \"equipment\", \"parking\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "facility",
+      "gateGroup": "FEATURE_FACILITY_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "facility-venue",
+      "title": "会場",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "facility由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_FACILITY_ENABLED",
+        "route_keywords": "[\"facilit\", \"equipment\", \"parking\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "facility",
+      "gateGroup": "FEATURE_FACILITY_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "facility-parking",
+      "title": "駐車場",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "facility由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_FACILITY_ENABLED",
+        "route_keywords": "[\"facilit\", \"equipment\", \"parking\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_FACILITY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "facility",
+      "gateGroup": "FEATURE_FACILITY_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "property-repairplan-property",
+      "title": "不動産",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "property-repairplan由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "唯一AOP Gateあり（RequireRepairPlanModule）",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_PROPERTY_REPAIRPLAN_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_PROPERTY_REPAIRPLAN_ENABLED",
+        "route_keywords": "[\"property\", \"repair\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_PROPERTY_REPAIRPLAN_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "property-repairplan",
+      "gateGroup": "FEATURE_PROPERTY_REPAIRPLAN_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "property-repairplan-repairplan",
+      "title": "修繕計画",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "property-repairplan由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "唯一AOP Gateあり（RequireRepairPlanModule）",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_PROPERTY_REPAIRPLAN_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_PROPERTY_REPAIRPLAN_ENABLED",
+        "route_keywords": "[\"property\", \"repair\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_PROPERTY_REPAIRPLAN_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "property-repairplan",
+      "gateGroup": "FEATURE_PROPERTY_REPAIRPLAN_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "family-care-school",
+      "title": "学校",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "family-care由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_FAMILY_CARE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_FAMILY_CARE_ENABLED",
+        "route_keywords": "[\"families\", \"care-link\", \"guardianship\", \"school-attendance\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_FAMILY_CARE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "family-care",
+      "gateGroup": "FEATURE_FAMILY_CARE_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "family-care-family",
+      "title": "家族",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "family-care由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_FAMILY_CARE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_FAMILY_CARE_ENABLED",
+        "route_keywords": "[\"families\", \"care-link\", \"guardianship\", \"school-attendance\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_FAMILY_CARE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "family-care",
+      "gateGroup": "FEATURE_FAMILY_CARE_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "family-care-safety-watch",
+      "title": "見守り",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "family-care由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_FAMILY_CARE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_FAMILY_CARE_ENABLED",
+        "route_keywords": "[\"families\", \"care-link\", \"guardianship\", \"school-attendance\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_FAMILY_CARE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "family-care",
+      "gateGroup": "FEATURE_FAMILY_CARE_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "weather-health-weather",
+      "title": "気象",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "weather-health由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "weather-health",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "weather-health-health",
+      "title": "健康",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "unknown",
+      "statusLabel": "未棚卸",
+      "statusSource": "weather-health由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "安否確認（safetycheck）のCORE昇格から健康・気象領域のみ切り出して非COREに残置",
+      "acceptance": [],
+      "blocker": "未設定",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": null
+      },
+      "blockers": [],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "weather-health",
+      "gateGroup": null,
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "skill-resume-skill",
+      "title": "スキル",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "skill-resume由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_SKILL_RESUME_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_SKILL_RESUME_ENABLED",
+        "route_keywords": "[\"resume\", \"/skills\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_SKILL_RESUME_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "skill-resume",
+      "gateGroup": "FEATURE_SKILL_RESUME_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "skill-resume-resume",
+      "title": "履歴書",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "skill-resume由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_SKILL_RESUME_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_SKILL_RESUME_ENABLED",
+        "route_keywords": "[\"resume\", \"/skills\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_SKILL_RESUME_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "skill-resume",
+      "gateGroup": "FEATURE_SKILL_RESUME_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "recruitment",
+      "title": "募集",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "recruitment由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_RECRUITMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_RECRUITMENT_ENABLED",
+        "route_keywords": "[\"recruit\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_RECRUITMENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "recruitment",
+      "gateGroup": "FEATURE_RECRUITMENT_ENABLED",
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "succession-proxy-succession",
+      "title": "事業承継",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "succession-proxy由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_SUCCESSION_PROXY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_SUCCESSION_PROXY_ENABLED",
+        "route_keywords": "[\"succession\", \"proxy\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_SUCCESSION_PROXY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "succession-proxy",
+      "gateGroup": "FEATURE_SUCCESSION_PROXY_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "succession-proxy-proxy-vote",
+      "title": "代理投票",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "succession-proxy由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_SUCCESSION_PROXY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_SUCCESSION_PROXY_ENABLED",
+        "route_keywords": "[\"succession\", \"proxy\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_SUCCESSION_PROXY_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "succession-proxy",
+      "gateGroup": "FEATURE_SUCCESSION_PROXY_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "gdpr-disclosure",
+      "title": "GDPR・情報開示",
+      "stage": "未設定",
+      "phase": "内部限定",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "gdpr-disclosure由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "基盤扱いすべきか要判断",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_GDPR_DISCLOSURE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / CMP-102: cleanupExpiredExportsバッチが失敗中（Issue #2856）",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "内部限定",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_GDPR_DISCLOSURE_ENABLED",
+        "route_keywords": "[\"gdpr\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_GDPR_DISCLOSURE_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "CMP-102: cleanupExpiredExportsバッチが失敗中（Issue #2856）"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "gdpr-disclosure",
+      "gateGroup": "FEATURE_GDPR_DISCLOSURE_ENABLED",
+      "isCapability": false,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "moderation-incident-moderation",
+      "title": "モデレーション",
+      "stage": "未設定",
+      "phase": "内部限定",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "moderation-incident由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "運用基盤",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_MODERATION_INCIDENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "内部限定",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_MODERATION_INCIDENT_ENABLED",
+        "route_keywords": "[\"moderation\", \"incident\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_MODERATION_INCIDENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "moderation-incident",
+      "gateGroup": "FEATURE_MODERATION_INCIDENT_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "moderation-incident-incident",
+      "title": "インシデント",
+      "stage": "未設定",
+      "phase": "内部限定",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "moderation-incident由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "運用基盤",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_MODERATION_INCIDENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "内部限定",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_MODERATION_INCIDENT_ENABLED",
+        "route_keywords": "[\"moderation\", \"incident\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_MODERATION_INCIDENT_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "moderation-incident",
+      "gateGroup": "FEATURE_MODERATION_INCIDENT_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "webhook-sync-webhook",
+      "title": "Webhook",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "webhook-sync由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_WEBHOOK_SYNC_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_WEBHOOK_SYNC_ENABLED",
+        "route_keywords": "[\"webhook\", \"sync\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_WEBHOOK_SYNC_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "webhook-sync",
+      "gateGroup": "FEATURE_WEBHOOK_SYNC_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "webhook-sync-external-sync",
+      "title": "外部同期",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "webhook-sync由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_WEBHOOK_SYNC_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_WEBHOOK_SYNC_ENABLED",
+        "route_keywords": "[\"webhook\", \"sync\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_WEBHOOK_SYNC_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "webhook-sync",
+      "gateGroup": "FEATURE_WEBHOOK_SYNC_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "webhook-sync-line-link",
+      "title": "LINE連携",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "webhook-sync由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_WEBHOOK_SYNC_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること / バッチ・リスナーの停止判定未確認",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_WEBHOOK_SYNC_ENABLED",
+        "route_keywords": "[\"webhook\", \"sync\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_WEBHOOK_SYNC_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+        "バッチ・リスナーの停止判定未確認"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "webhook-sync",
+      "gateGroup": "FEATURE_WEBHOOK_SYNC_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "translation-search-translation",
+      "title": "翻訳",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "translation-search由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_TRANSLATION_SEARCH_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_TRANSLATION_SEARCH_ENABLED",
+        "route_keywords": "[\"translation\", \"analytics\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_TRANSLATION_SEARCH_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "translation-search",
+      "gateGroup": "FEATURE_TRANSLATION_SEARCH_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "translation-search-search",
+      "title": "検索",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "translation-search由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_TRANSLATION_SEARCH_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_TRANSLATION_SEARCH_ENABLED",
+        "route_keywords": "[\"translation\", \"analytics\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_TRANSLATION_SEARCH_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "translation-search",
+      "gateGroup": "FEATURE_TRANSLATION_SEARCH_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "translation-search-analytics",
+      "title": "分析",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "translation-search由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_TRANSLATION_SEARCH_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_TRANSLATION_SEARCH_ENABLED",
+        "route_keywords": "[\"translation\", \"analytics\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_TRANSLATION_SEARCH_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "translation-search",
+      "gateGroup": "FEATURE_TRANSLATION_SEARCH_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "gamification-gamification",
+      "title": "ゲーミフィケーション",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "gamification由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_GAMIFICATION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_GAMIFICATION_ENABLED",
+        "route_keywords": "[\"gamification\", \"supporter\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_GAMIFICATION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "gamification",
+      "gateGroup": "FEATURE_GAMIFICATION_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    },
+    {
+      "key": "gamification-supporter",
+      "title": "サポーター",
+      "stage": "未設定",
+      "phase": "停止",
+      "status": "blocked",
+      "statusLabel": "不備あり",
+      "statusSource": "gamification由来・子能力未実測",
+      "priority": "未設定",
+      "audiences": [],
+      "summary": "feature-inventory.yamlの正本レコード。",
+      "why": "未設定",
+      "acceptance": [],
+      "blocker": "β公開前に FEATURE_GAMIFICATION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること",
+      "refs": [],
+      "layer": "ドメイン",
+      "implementation": {},
+      "verification": {},
+      "release": {
+        "beta": "停止",
+        "deploy_safety": "不明",
+        "gate_key": "FEATURE_GAMIFICATION_ENABLED",
+        "route_keywords": "[\"gamification\", \"supporter\"]"
+      },
+      "blockers": [
+        "β公開前に FEATURE_GAMIFICATION_ENABLED を無効化する（Gate基盤工事② は既定 TRUE で seed。閉栓は運用操作）。閉栓より前に Issue #2888（slug 配下は SSR で隔離されない）を解消すること"
+      ],
+      "classification": "noncore",
+      "publication": "未設定",
+      "gate": "未設定",
+      "source": "docs/inventory/feature-inventory.yaml",
+      "parentFeatureKey": "gamification",
+      "gateGroup": "FEATURE_GAMIFICATION_ENABLED",
+      "isCapability": true,
+      "evidenceSource": "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+    }
+  ],
   "decisions": {
     "schemaVersion": 1,
     "phase": "Phase 2A",
@@ -1920,6 +4624,1460 @@ window.BETA_INVENTORY_DATA = {
         "sourceRefs": [
           "docs/inventory/feature-inventory.yaml"
         ]
+      }
+    },
+    "capabilityOverrides": {
+      "todo-memo-todo": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "could",
+        "reason": "TODOは個人の作業項目を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "todo-memo-memo": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "could",
+        "reason": "メモは自由記述を扱う独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "corkboard-bulletin": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "掲示板は固定のお知らせをLINE置換の初期運用で配信するB1候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "corkboard-corkboard": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "could",
+        "reason": "コルクボードは自由配置の情報整理で、掲示板と独立したB2候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "shift-shift": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "シフトの勤務予定を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "shift-shift-budget": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "シフト予算は勤務管理と別の費用計画能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "billing-payment-billing": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "請求書・請求状態を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "billing-payment-payment": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "決済処理を扱う独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "facility-equipment": {
+        "stage": "B3",
+        "audience": "soccer",
+        "priority": "could",
+        "reason": "備品の在庫・貸出は会場運用と独立した受入条件を持つためB3候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "facility-facility": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "could",
+        "reason": "施設台帳・利用条件は会場予約と独立して管理するB2候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "facility-venue": {
+        "stage": "B1",
+        "audience": "soccer",
+        "priority": "must",
+        "reason": "会場設定は試合予定と集合場所の受入条件に直結するためB1必須候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "facility-parking": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "should",
+        "reason": "駐車台数・割当は会場とは別の運用課題で、チーム拡大時のB2候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "property-repairplan-property": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "不動産台帳を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "property-repairplan-repairplan": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "修繕計画を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "weather-health-weather": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "could",
+        "reason": "気象情報を試合判断に提供する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "weather-health-health": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "could",
+        "reason": "健康状態を扱う独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "skill-resume-skill": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "スキル情報を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "skill-resume-resume": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "履歴書を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "succession-proxy-succession": {
+        "stage": "B4",
+        "audience": "alumni",
+        "priority": "defer",
+        "reason": "事業承継情報を扱う独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "succession-proxy-proxy-vote": {
+        "stage": "B4",
+        "audience": "alumni",
+        "priority": "defer",
+        "reason": "代理投票を扱う独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "translation-search-translation": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "翻訳は多言語チームの独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "translation-search-search": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "検索は増加する情報を見つける独立能力でB2候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "translation-search-analytics": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "分析は運用データの独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "auth-login": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "ログインは全利用者の入口でB0必須。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "auth-two-factor": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "2FAは認証強化の独立能力でB2候補。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "tournament-match-record": {
+        "stage": "B1",
+        "audience": "soccer",
+        "priority": "must",
+        "reason": "試合記録は大会運営と別にB1で必要なサッカー能力。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "tournament-tournament-management": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "should",
+        "reason": "大会運営は試合記録と独立したB2候補。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "webhook-sync-line-link": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "LINE連携は移行期の連絡経路としてB2候補。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "webhook-sync-webhook": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "Webhookは外部連携の独立能力でB3候補。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "webhook-sync-external-sync": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "外部同期はWebhookと独立したB3候補。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "billing-payment-membership-fee": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "会費は請求・決済と独立した継続課金能力。B3以降で判断する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "personal-profile": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "account-settings-settings": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "account-settings-withdrawal": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "nav-settings": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "team-create": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "team-invite": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "team-admin": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F10.1.1_team_org_admin_console"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "team-modules": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F01.3_template_module.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "organization-manage-organization-create": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "organization-manage-organization-admin": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "organization-members": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-join": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-members": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-events": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "notification-inbox-notification-delivery": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F04.11_notification_inbox"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "notification-inbox-inbox": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F04.11_notification_inbox"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "timeline": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "chat": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "circulation": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "dashboard": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "reservation": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "survey": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "pointcard-wallet": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "pointcard-points": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "safetycheck": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "matching": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "promotion-advertising": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "promotion-promotion": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "promotion-signage": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "market": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "workflow-forms-workflow": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "workflow-forms-forms": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "family-care-school": {
+        "stage": "B3",
+        "audience": "alumni",
+        "priority": "could",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "family-care-family": {
+        "stage": "B3",
+        "audience": "alumni",
+        "priority": "could",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "family-care-safety-watch": {
+        "stage": "B3",
+        "audience": "alumni",
+        "priority": "could",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "recruitment": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "gdpr-disclosure": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "moderation-incident-moderation": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "moderation-incident-incident": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "gamification-gamification": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "gamification-supporter": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      }
+    },
+    "capabilities": {
+      "todo-memo-todo": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "could",
+        "reason": "TODOは個人の作業項目を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "todo-memo-memo": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "could",
+        "reason": "メモは自由記述を扱う独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "corkboard-bulletin": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "掲示板は固定のお知らせをLINE置換の初期運用で配信するB1候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "corkboard-corkboard": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "could",
+        "reason": "コルクボードは自由配置の情報整理で、掲示板と独立したB2候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "shift-shift": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "シフトの勤務予定を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "shift-shift-budget": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "シフト予算は勤務管理と別の費用計画能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "billing-payment-billing": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "請求書・請求状態を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "billing-payment-payment": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "決済処理を扱う独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "facility-equipment": {
+        "stage": "B3",
+        "audience": "soccer",
+        "priority": "could",
+        "reason": "備品の在庫・貸出は会場運用と独立した受入条件を持つためB3候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "facility-facility": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "could",
+        "reason": "施設台帳・利用条件は会場予約と独立して管理するB2候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "facility-venue": {
+        "stage": "B1",
+        "audience": "soccer",
+        "priority": "must",
+        "reason": "会場設定は試合予定と集合場所の受入条件に直結するためB1必須候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "facility-parking": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "should",
+        "reason": "駐車台数・割当は会場とは別の運用課題で、チーム拡大時のB2候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "property-repairplan-property": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "不動産台帳を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "property-repairplan-repairplan": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "修繕計画を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "weather-health-weather": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "could",
+        "reason": "気象情報を試合判断に提供する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "weather-health-health": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "could",
+        "reason": "健康状態を扱う独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "skill-resume-skill": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "スキル情報を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "skill-resume-resume": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "履歴書を管理する独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "succession-proxy-succession": {
+        "stage": "B4",
+        "audience": "alumni",
+        "priority": "defer",
+        "reason": "事業承継情報を扱う独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "succession-proxy-proxy-vote": {
+        "stage": "B4",
+        "audience": "alumni",
+        "priority": "defer",
+        "reason": "代理投票を扱う独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "translation-search-translation": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "翻訳は多言語チームの独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "translation-search-search": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "検索は増加する情報を見つける独立能力でB2候補。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "translation-search-analytics": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "分析は運用データの独立能力。親提案を継承し、子能力は未実測。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "auth-login": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "ログインは全利用者の入口でB0必須。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "auth-two-factor": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "2FAは認証強化の独立能力でB2候補。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "tournament-match-record": {
+        "stage": "B1",
+        "audience": "soccer",
+        "priority": "must",
+        "reason": "試合記録は大会運営と別にB1で必要なサッカー能力。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "tournament-tournament-management": {
+        "stage": "B2",
+        "audience": "soccer",
+        "priority": "should",
+        "reason": "大会運営は試合記録と独立したB2候補。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "webhook-sync-line-link": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "LINE連携は移行期の連絡経路としてB2候補。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "webhook-sync-webhook": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "Webhookは外部連携の独立能力でB3候補。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "webhook-sync-external-sync": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "外部同期はWebhookと独立したB3候補。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "billing-payment-membership-fee": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "会費は請求・決済と独立した継続課金能力。B3以降で判断する。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "personal-profile": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "account-settings-settings": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "account-settings-withdrawal": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "nav-settings": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "team-create": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "team-invite": {
+        "stage": "B0",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "team-admin": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F10.1.1_team_org_admin_console"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "team-modules": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F01.3_template_module.md"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "organization-manage-organization-create": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "organization-manage-organization-admin": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "organization-members": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-join": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-members": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "village-events": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "notification-inbox-notification-delivery": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F04.11_notification_inbox"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "notification-inbox-inbox": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml",
+          "docs/features/F04.11_notification_inbox"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "timeline": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "chat": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "must",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "circulation": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "dashboard": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "reservation": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "survey": {
+        "stage": "B1",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "pointcard-wallet": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "pointcard-points": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "safetycheck": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "matching": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "promotion-advertising": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "promotion-promotion": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "promotion-signage": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "market": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "workflow-forms-workflow": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "workflow-forms-forms": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "could",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "family-care-school": {
+        "stage": "B3",
+        "audience": "alumni",
+        "priority": "could",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "family-care-family": {
+        "stage": "B3",
+        "audience": "alumni",
+        "priority": "could",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "family-care-safety-watch": {
+        "stage": "B3",
+        "audience": "alumni",
+        "priority": "could",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "recruitment": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "gdpr-disclosure": {
+        "stage": "B3",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "moderation-incident-moderation": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "moderation-incident-incident": {
+        "stage": "B2",
+        "audience": "both",
+        "priority": "should",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "gamification-gamification": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
+      },
+      "gamification-supporter": {
+        "stage": "B4",
+        "audience": "both",
+        "priority": "defer",
+        "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+        "sourceRefs": [
+          "docs/inventory/feature-inventory.yaml"
+        ],
+        "decisionStatus": "proposed"
       }
     }
   },
@@ -15456,12 +19614,12 @@ window.BETA_INVENTORY_DATA = {
       "blocker": "—",
       "issues": [
         {
-          "label": "1. **実測**: 開発機 **Node 24.15.0 / npm 11.12.1**、CI と Docker **Node 22.23.2 / npm 10.9.8**。メジャーが2つ違う。2. **実害**: Vue 固定のため Windows で `npm install --package-lock-only` を実行したところ、**無関係な optional-peer のツリーが79箇所削られ**、CI の `npm ci` が `EUSAGE` で拒否するようになった（`Missing: oxc-parser@0.146.0 from lock file` 等）。`oxc-parser` 系エントリは **80件 → 38件** へ半減。3. **Vue 固定は引き金にすぎず意味的原因ではない**。Vue は `oxc-parser` を要求していない。依存元は `nuxt@3.21.11`（`^0.143.0`）、`@nuxtjs/i18n`（`^0.70.0`）、各サブツリーの `unctx@3.0.0` の optional peer（`>=0.140.0`）。4. **Windows 上で `npm install --package-lock-only` を再実行しても差分が出ない**。Windows の npm はこの欠落を欠落と認識しない。**つまり Windows では検知も修復もできない**。5. **Codex が示した運用原則**: Node/npm をパッチ単位で統一する／`NODE_VERSION: \"22\"` や `node:22-alpine` のような可変指定ではなく固定する／lockfile 更新はクリーン checkout か使い捨てコンテナで行う／生成環境は本番に合わせた Linux を正とする／Ubuntu（glibc）と Alpine（musl）の両方で `npm ci` を確認する／lockfile 変更 PR ではクリーン環境の `npm ci` を必須ゲートにする／native binding を持つパッケージ（rollup・esbuild・sharp・oxc・rolldown 等）の大量エントリ削除をレビュー時の警戒信号にする／**lockfile を手編集しない**。6. **`\"vue\": \"latest\"` は未固定のまま残っている**（破損した lockfile を着地させないため）。これも本課題の一部として扱う。7. **壊れた lockfile はブランチ `feature/cmp-260821-2130-nuxt-vue-fix`（`cebd10949`）に残っている。main へは入れていない**。",
+          "label": "1. **実測**: 開発機 **Node 24.15.0 / npm 11.12.1**、CI と Docker **Node 22.23.2 / npm 10.9.8**。メジャーが2つ違う。2. **実害**: Vue 固定のため Windows で `npm install --package-lock-only` を実行したところ、**無関係な optional-peer のツリーが79箇所削られ**、CI の `npm ci` が `EUSAGE` で拒否するようになった（`Missing: oxc-parser@0.146.0 from lock file` 等）。`oxc-parser` 系エントリは **80件 → 38件** へ半減。3. **Vue 固定は引き金にすぎず意味的原因ではない**。Vue は `oxc-parser` を要求していない。依存元は `nuxt@3.21.11`（`^0.143.0`）、`@nuxtjs/i18n`（`^0.70.0`）、各サブツリーの `unctx@3.0.0` の optional peer（`>=0.140.0`）。4. **Windows 上で `npm install --package-lock-only` を再実行しても差分が出ない**。Windows の npm はこの欠落を欠落と認識しない。**つまり Windows では検知も修復できない**。5. **Codex が示した運用原則**: Node/npm をパッチ単位で統一する／`NODE_VERSION: \"22\"` や `node:22-alpine` のような可変指定ではなく固定する／lockfile 更新はクリーン checkout か使い捨てコンテナで行う／生成環境は本番に合わせた Linux を正とする／Ubuntu（glibc）と Alpine（musl）の両方で `npm ci` を確認する／lockfile 変更 PR ではクリーン環境の `npm ci` を必須ゲートにする／native binding を持つパッケージ（rollup・esbuild・sharp・oxc・rolldown 等）の大量エントリ削除をレビュー時の警戒信号にする／**lockfile を手編集しない**。6. **`\"vue\": \"latest\"` は未固定のまま残っている**（破損した lockfile を着地させないため）。これも本課題の一部として扱う。7. **壊れた lockfile はブランチ `feature/cmp-260821-2130-nuxt-vue-fix`（`cebd10949`）に残っている。main へは入れていない**。",
           "state": "unknown"
         }
       ],
       "prs": [
-        "1. **実測**: 開発機 **Node 24.15.0 / npm 11.12.1**、CI と Docker **Node 22.23.2 / npm 10.9.8**。メジャーが2つ違う。2. **実害**: Vue 固定のため Windows で `npm install --package-lock-only` を実行したところ、**無関係な optional-peer のツリーが79箇所削られ**、CI の `npm ci` が `EUSAGE` で拒否するようになった（`Missing: oxc-parser@0.146.0 from lock file` 等）。`oxc-parser` 系エントリは **80件 → 38件** へ半減。3. **Vue 固定は引き金にすぎず意味的原因ではない**。Vue は `oxc-parser` を要求していない。依存元は `nuxt@3.21.11`（`^0.143.0`）、`@nuxtjs/i18n`（`^0.70.0`）、各サブツリーの `unctx@3.0.0` の optional peer（`>=0.140.0`）。4. **Windows 上で `npm install --package-lock-only` を再実行しても差分が出ない**。Windows の npm はこの欠落を欠落と認識しない。**つまり Windows では検知も修復もできない**。5. **Codex が示した運用原則**: Node/npm をパッチ単位で統一する／`NODE_VERSION: \"22\"` や `node:22-alpine` のような可変指定ではなく固定する／lockfile 更新はクリーン checkout か使い捨てコンテナで行う／生成環境は本番に合わせた Linux を正とする／Ubuntu（glibc）と Alpine（musl）の両方で `npm ci` を確認する／lockfile 変更 PR ではクリーン環境の `npm ci` を必須ゲートにする／native binding を持つパッケージ（rollup・esbuild・sharp・oxc・rolldown 等）の大量エントリ削除をレビュー時の警戒信号にする／**lockfile を手編集しない**。6. **`\"vue\": \"latest\"` は未固定のまま残っている**（破損した lockfile を着地させないため）。これも本課題の一部として扱う。7. **壊れた lockfile はブランチ `feature/cmp-260821-2130-nuxt-vue-fix`（`cebd10949`）に残っている。main へは入れていない**。"
+        "1. **実測**: 開発機 **Node 24.15.0 / npm 11.12.1**、CI と Docker **Node 22.23.2 / npm 10.9.8**。メジャーが2つ違う。2. **実害**: Vue 固定のため Windows で `npm install --package-lock-only` を実行したところ、**無関係な optional-peer のツリーが79箇所削られ**、CI の `npm ci` が `EUSAGE` で拒否するようになった（`Missing: oxc-parser@0.146.0 from lock file` 等）。`oxc-parser` 系エントリは **80件 → 38件** へ半減。3. **Vue 固定は引き金にすぎず意味的原因ではない**。Vue は `oxc-parser` を要求していない。依存元は `nuxt@3.21.11`（`^0.143.0`）、`@nuxtjs/i18n`（`^0.70.0`）、各サブツリーの `unctx@3.0.0` の optional peer（`>=0.140.0`）。4. **Windows 上で `npm install --package-lock-only` を再実行しても差分が出ない**。Windows の npm はこの欠落を欠落と認識しない。**つまり Windows では検知も修復できない**。5. **Codex が示した運用原則**: Node/npm をパッチ単位で統一する／`NODE_VERSION: \"22\"` や `node:22-alpine` のような可変指定ではなく固定する／lockfile 更新はクリーン checkout か使い捨てコンテナで行う／生成環境は本番に合わせた Linux を正とする／Ubuntu（glibc）と Alpine（musl）の両方で `npm ci` を確認する／lockfile 変更 PR ではクリーン環境の `npm ci` を必須ゲートにする／native binding を持つパッケージ（rollup・esbuild・sharp・oxc・rolldown 等）の大量エントリ削除をレビュー時の警戒信号にする／**lockfile を手編集しない**。6. **`\"vue\": \"latest\"` は未固定のまま残っている**（破損した lockfile を着地させないため）。これも本課題の一部として扱う。7. **壊れた lockfile はブランチ `feature/cmp-260821-2130-nuxt-vue-fix`（`cebd10949`）に残っている。main へは入れていない**。"
       ],
       "ci": "正本に記載された証拠を確認してください。",
       "refs": [
@@ -15490,6 +19648,183 @@ window.BETA_INVENTORY_DATA = {
       ],
       "githubRefs": [],
       "github": []
+    },
+    {
+      "id": "CMP-260822-1730",
+      "title": "チームTZ対応・日跨ぎ予約枠",
+      "status": "unknown",
+      "statusLabel": "PR作成済み／CI確認中（#2922）",
+      "stage": "未設定",
+      "priority": "未設定",
+      "audiences": [],
+      "featureKey": null,
+      "updated": "未設定",
+      "summary": "task-list.mdの正本表から生成。",
+      "nextAction": "チームのIANA timezoneを正本とし、営業時間・テンプレート・予約枠・単発／定期ブロックで「終了は翌日」を扱えること。期限・通知はチーム現地時刻をInstant化して比較し、既存同日枠は後方互換を保つこと",
+      "acceptance": [
+        "チームのIANA timezoneを正本とし、営業時間・テンプレート・予約枠・単発／定期ブロックで「終了は翌日」を扱えること。期限・通知はチーム現地時刻をInstant化して比較し、既存同日枠は後方互換を保つこと"
+      ],
+      "blocker": "—",
+      "issues": [
+        {
+          "label": "`OvernightReservationTeamTimezoneAcceptanceTest`、`ReservationSlotGenerationServiceTest`、`ReservationUnavailabilityCheckerTest`。PR #2922作成済み、CI確認中",
+          "state": "unknown"
+        }
+      ],
+      "prs": [
+        "`OvernightReservationTeamTimezoneAcceptanceTest`、`ReservationSlotGenerationServiceTest`、`ReservationUnavailabilityCheckerTest`。PR #2922作成済み、CI確認中"
+      ],
+      "ci": "正本に記載された証拠を確認してください。",
+      "refs": [
+        "`2026-08-22-overnight-reservation-team-timezone.md`"
+      ],
+      "source": "docs/task-list.md",
+      "sourceTokens": [
+        "TZ",
+        "IANA",
+        "timezone",
+        "Instant"
+      ],
+      "tags": [
+        "未整理"
+      ],
+      "githubRefs": [
+        2922
+      ],
+      "github": [
+        {
+          "number": 2922,
+          "kind": "pull_request",
+          "state": "merged",
+          "title": "機能追加(予約): チームTZ対応と日跨ぎ予約枠",
+          "url": "https://github.com/kenta-0420/mannschaft/pull/2922",
+          "updatedAt": "2026-08-24T08:36:14Z",
+          "ci": {
+            "status": "success",
+            "checks": [
+              {
+                "name": "Compile & Test",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97367444485",
+                "completedAt": "2026-08-24T08:24:01Z"
+              },
+              {
+                "name": "Detect changes",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366563463",
+                "completedAt": "2026-08-24T08:20:51Z"
+              },
+              {
+                "name": "Install",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811148/job/97366563467",
+                "completedAt": "2026-08-24T08:31:10Z"
+              },
+              {
+                "name": "Lighthouse パフォーマンスチェック",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811187/job/97366564110",
+                "completedAt": "2026-08-24T08:25:27Z"
+              },
+              {
+                "name": "Lint (D-5 @Builder guard)",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649031",
+                "completedAt": "2026-08-24T08:21:05Z"
+              },
+              {
+                "name": "OpenAPI Drift Check",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811102/job/97366563245",
+                "completedAt": "2026-08-24T08:22:53Z"
+              },
+              {
+                "name": "PR差分スキャン",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811073/job/97366563005",
+                "completedAt": "2026-08-24T08:20:49Z"
+              },
+              {
+                "name": "Scan & Comment",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811087/job/97366563333",
+                "completedAt": "2026-08-24T08:20:54Z"
+              },
+              {
+                "name": "Smoke E2E (F15.4 + F22.1 + 拡大予定)",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811070/job/97366564392",
+                "completedAt": "2026-08-24T08:24:09Z"
+              },
+              {
+                "name": "Test (shard 0)",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649093",
+                "completedAt": "2026-08-24T08:22:26Z"
+              },
+              {
+                "name": "Test (shard 1)",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649084",
+                "completedAt": "2026-08-24T08:23:56Z"
+              },
+              {
+                "name": "Test (shard 2)",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649078",
+                "completedAt": "2026-08-24T08:23:25Z"
+              },
+              {
+                "name": "Test (shard 3)",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649075",
+                "completedAt": "2026-08-24T08:22:14Z"
+              },
+              {
+                "name": "Test (shard 4)",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649110",
+                "completedAt": "2026-08-24T08:22:59Z"
+              },
+              {
+                "name": "Test (shard 5)",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649172",
+                "completedAt": "2026-08-24T08:22:24Z"
+              },
+              {
+                "name": "generate:types 差分チェック",
+                "status": "completed",
+                "conclusion": "success",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811108/job/97366562721",
+                "completedAt": "2026-08-24T08:21:11Z"
+              },
+              {
+                "name": "フル履歴スキャン（週次）",
+                "status": "completed",
+                "conclusion": "skipped",
+                "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811073/job/97366564199",
+                "completedAt": "2026-08-24T08:20:32Z"
+              }
+            ]
+          }
+        }
+      ]
     },
     {
       "id": "CMP-260821-1446",
@@ -15828,7 +20163,7 @@ window.BETA_INVENTORY_DATA = {
   "githubSync": {
     "schemaVersion": 1,
     "repository": "kenta-0420/mannschaft",
-    "synchronizedAt": "2026-08-24T08:34:57+00:00",
+    "synchronizedAt": "2026-08-24T09:41:30+00:00",
     "status": "synced",
     "error": null,
     "references": {
@@ -16097,6 +20432,9 @@ window.BETA_INVENTORY_DATA = {
       ],
       "CMP-260822-1005": [],
       "CMP-260822-1006": [],
+      "CMP-260822-1730": [
+        2922
+      ],
       "CMP-260821-1446": [
         2905
       ],
@@ -24595,13 +28933,145 @@ window.BETA_INVENTORY_DATA = {
             }
           ]
         }
+      },
+      "2922": {
+        "number": 2922,
+        "kind": "pull_request",
+        "state": "merged",
+        "title": "機能追加(予約): チームTZ対応と日跨ぎ予約枠",
+        "url": "https://github.com/kenta-0420/mannschaft/pull/2922",
+        "updatedAt": "2026-08-24T08:36:14Z",
+        "ci": {
+          "status": "success",
+          "checks": [
+            {
+              "name": "Compile & Test",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97367444485",
+              "completedAt": "2026-08-24T08:24:01Z"
+            },
+            {
+              "name": "Detect changes",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366563463",
+              "completedAt": "2026-08-24T08:20:51Z"
+            },
+            {
+              "name": "Install",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811148/job/97366563467",
+              "completedAt": "2026-08-24T08:31:10Z"
+            },
+            {
+              "name": "Lighthouse パフォーマンスチェック",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811187/job/97366564110",
+              "completedAt": "2026-08-24T08:25:27Z"
+            },
+            {
+              "name": "Lint (D-5 @Builder guard)",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649031",
+              "completedAt": "2026-08-24T08:21:05Z"
+            },
+            {
+              "name": "OpenAPI Drift Check",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811102/job/97366563245",
+              "completedAt": "2026-08-24T08:22:53Z"
+            },
+            {
+              "name": "PR差分スキャン",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811073/job/97366563005",
+              "completedAt": "2026-08-24T08:20:49Z"
+            },
+            {
+              "name": "Scan & Comment",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811087/job/97366563333",
+              "completedAt": "2026-08-24T08:20:54Z"
+            },
+            {
+              "name": "Smoke E2E (F15.4 + F22.1 + 拡大予定)",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811070/job/97366564392",
+              "completedAt": "2026-08-24T08:24:09Z"
+            },
+            {
+              "name": "Test (shard 0)",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649093",
+              "completedAt": "2026-08-24T08:22:26Z"
+            },
+            {
+              "name": "Test (shard 1)",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649084",
+              "completedAt": "2026-08-24T08:23:56Z"
+            },
+            {
+              "name": "Test (shard 2)",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649078",
+              "completedAt": "2026-08-24T08:23:25Z"
+            },
+            {
+              "name": "Test (shard 3)",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649075",
+              "completedAt": "2026-08-24T08:22:14Z"
+            },
+            {
+              "name": "Test (shard 4)",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649110",
+              "completedAt": "2026-08-24T08:22:59Z"
+            },
+            {
+              "name": "Test (shard 5)",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649172",
+              "completedAt": "2026-08-24T08:22:24Z"
+            },
+            {
+              "name": "generate:types 差分チェック",
+              "status": "completed",
+              "conclusion": "success",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811108/job/97366562721",
+              "completedAt": "2026-08-24T08:21:11Z"
+            },
+            {
+              "name": "フル履歴スキャン（週次）",
+              "status": "completed",
+              "conclusion": "skipped",
+              "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811073/job/97366564199",
+              "completedAt": "2026-08-24T08:20:32Z"
+            }
+          ]
+        }
       }
     },
     "lastAttempt": {
-      "status": "synced",
-      "error": null,
-      "synchronizedAt": "2026-08-24T08:34:57+00:00",
-      "referenceCount": 121
+      "status": "error",
+      "error": "GitHub参照 #902-#2660 の取得失敗: gh: API rate limit exceeded for 133.106.51.243. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.) (HTTP 403)",
+      "synchronizedAt": null,
+      "referenceCount": 122
     }
   }
 };

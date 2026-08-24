@@ -25,6 +25,33 @@ GATE_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-gate.json"
 GITHUB_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-github.json"
 GITHUB_STATUS_PATH = ROOT / "docs" / "prototypes" / "beta-inventory-board-github-status.json"
 
+# 複合親は、独立した受入条件と公開時期を持つ能力だけを表示単位へ展開する。
+# 親の実装・Gate証拠は子へコピーするが、子自身の実測とは扱わない。
+CAPABILITY_SPLITS = {
+    "account-settings": [("settings", "設定"), ("withdrawal", "退会")],
+    "auth": [("login", "ログイン"), ("two-factor", "2FA")],
+    "organization-manage": [("organization-create", "組織作成"), ("organization-admin", "組織管理")],
+    "notification-inbox": [("notification-delivery", "通知配信"), ("inbox", "受信箱")],
+    "pointcard": [("wallet", "ウォレット"), ("points", "ポイント")],
+    "tournament": [("tournament-management", "大会運営"), ("match-record", "試合記録")],
+    "todo-memo": [("todo", "TODO"), ("memo", "メモ")],
+    "corkboard": [("bulletin", "掲示板"), ("corkboard", "コルクボード")],
+    "shift": [("shift", "シフト"), ("shift-budget", "シフト予算")],
+    "billing-payment": [("billing", "請求"), ("payment", "決済"), ("membership-fee", "会費")],
+    "facility": [("equipment", "備品"), ("facility", "施設"), ("venue", "会場"), ("parking", "駐車場")],
+    "property-repairplan": [("property", "不動産"), ("repairplan", "修繕計画")],
+    "weather-health": [("weather", "気象"), ("health", "健康")],
+    "skill-resume": [("skill", "スキル"), ("resume", "履歴書")],
+    "succession-proxy": [("succession", "事業承継"), ("proxy-vote", "代理投票")],
+    "translation-search": [("translation", "翻訳"), ("search", "検索"), ("analytics", "分析")],
+    "promotion": [("advertising", "広告"), ("promotion", "販促"), ("signage", "サイネージ")],
+    "workflow-forms": [("workflow", "ワークフロー"), ("forms", "フォーム")],
+    "family-care": [("school", "学校"), ("family", "家族"), ("safety-watch", "見守り")],
+    "moderation-incident": [("moderation", "モデレーション"), ("incident", "インシデント")],
+    "webhook-sync": [("webhook", "Webhook"), ("external-sync", "外部同期"), ("line-link", "LINE連携")],
+    "gamification": [("gamification", "ゲーミフィケーション"), ("supporter", "サポーター")],
+}
+
 
 def git_commit_for(path: Path) -> str:
     try:
@@ -246,12 +273,31 @@ def feature_view(record: dict) -> dict:
     }
 
 
+def capability_views(record: dict) -> list[dict]:
+    """親レコードを能力カードへ展開する。分割対象外は親自身を1カードにする。"""
+    parent = feature_view(record)
+    splits = CAPABILITY_SPLITS.get(parent["key"], [(parent["key"], parent["title"])])
+    result = []
+    for suffix, title in splits:
+        child = {**parent}
+        child["key"] = f'{parent["key"]}-{suffix}' if len(splits) > 1 else parent["key"]
+        child["title"] = title
+        child["parentFeatureKey"] = parent["key"]
+        child["gateGroup"] = parent["release"].get("gate_key")
+        child["isCapability"] = len(splits) > 1
+        child["statusSource"] = f'{parent["key"]}由来・子能力未実測'
+        child["evidenceSource"] = "親feature_keyの実装/Gate証拠を継承（子能力の独自証拠ではない）"
+        result.append(child)
+    return result
+
+
 def build_data() -> dict:
     inventory_source = INVENTORY_PATH.read_text(encoding="utf-8")
     inventory = parse_inventory(inventory_source)
     records = inventory.get("records") or []
     task_list = TASK_LIST_PATH.read_text(encoding="utf-8")
     features = [feature_view(record) for record in records]
+    capabilities = [capability for record in records for capability in capability_views(record)]
     campaigns = parse_campaigns(task_list)
     github_snapshot = json.loads(GITHUB_PATH.read_text(encoding="utf-8")) if GITHUB_PATH.exists() else {"status": "unsynced", "items": {}, "references": {}}
     github_status = json.loads(GITHUB_STATUS_PATH.read_text(encoding="utf-8")) if GITHUB_STATUS_PATH.exists() else {"status": "unsynced", "error": None, "synchronizedAt": None}
@@ -272,6 +318,20 @@ def build_data() -> dict:
     actual = {"features": len(features), "campaigns": len(campaigns), "core": len(core), "noncore": sum(feature["classification"] == "noncore" for feature in features), "blockers": blockers_count, "coreStatus": core_status_counts}
     errors = []
     decision_features = decisions.get("features", {})
+    decision_capabilities = decisions.get("capabilityOverrides", {})
+    capability_keys = {capability["key"] for capability in capabilities}
+    if not set(decision_capabilities).issubset(capability_keys):
+        errors.append("capabilityOverridesに存在しない能力keyがあります")
+    # 分割対象外の能力も、親キーをそのまま能力キーとして明示的に保持する。
+    for capability in capabilities:
+        if capability["key"] not in decision_capabilities:
+            parent_decision = decision_features.get(capability["parentFeatureKey"])
+            if parent_decision:
+                decision_capabilities[capability["key"]] = {
+                    **parent_decision,
+                    "reason": "親提案を継承した能力単位の仮説。子能力の独自実測は未実施。",
+                    "decisionStatus": "proposed",
+                }
     allowed_stages = {"B0", "B1", "B2", "B3", "B4"}
     allowed_audiences = {"soccer", "alumni", "both"}
     allowed_priorities = {"must", "should", "could", "defer"}
@@ -279,6 +339,8 @@ def build_data() -> dict:
     allowed_gate_statuses = {"done", "working", "blocked", "unknown"}
     if set(decision_features) != {feature["key"] for feature in features}:
         errors.append("Phase 2分類が43機能と完全一致しません")
+    if set(decision_capabilities) != {capability["key"] for capability in capabilities}:
+        errors.append("能力単位のPhase 2分類が表示能力と完全一致しません")
     if any(
         decision.get("stage") not in allowed_stages
         or decision.get("audience") not in allowed_audiences
@@ -334,6 +396,8 @@ def build_data() -> dict:
         },
         "sourceCounts": {
             "features": len(features),
+            "capabilities": len(capabilities),
+            "splitParents": len(CAPABILITY_SPLITS),
             "campaigns": len(campaigns),
             "layer": layer_counts,
             "blockers": blockers_count,
@@ -345,13 +409,15 @@ def build_data() -> dict:
             "passed": True,
         },
         "warnings": [
+            f"正本は43大分類、表示・集計は{len(capabilities)}能力単位。分割親は{len(CAPABILITY_SPLITS)}件。",
             "B0〜B4・対象者・優先度は正本とは分離したPhase 2A提案であり、確定値ではない。",
             "Core／非Coreはlayerとrelease.betaから機械導出。foundationは正本にないため未設定。",
             "Gate前提工事はbeta-inventory-board-gate.jsonの根拠付きoverlayから表示。未確認項目は公開候補に含めない。",
             "GitHubはtask-list.mdの各CMP行に明記された#番号だけを同期し、未同期・エラー時は既存スナップショットを保持する。",
         ],
         "features": features,
-        "decisions": decisions,
+        "capabilities": capabilities,
+        "decisions": {**decisions, "capabilities": decision_capabilities},
         "featureClassification": {},
         "featurePublication": {},
         "gateFoundation": gate_items,

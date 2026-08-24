@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "repository": "kenta-0420/mannschaft",
-  "synchronizedAt": "2026-08-24T08:34:57+00:00",
+  "synchronizedAt": "2026-08-24T09:41:30+00:00",
   "status": "synced",
   "error": null,
   "references": {
@@ -270,6 +270,9 @@
     ],
     "CMP-260822-1005": [],
     "CMP-260822-1006": [],
+    "CMP-260822-1730": [
+      2922
+    ],
     "CMP-260821-1446": [
       2905
     ],
@@ -8765,6 +8768,138 @@
             "conclusion": "skipped",
             "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32550826971/job/96977155578",
             "completedAt": "2026-08-22T04:06:54Z"
+          }
+        ]
+      }
+    },
+    "2922": {
+      "number": 2922,
+      "kind": "pull_request",
+      "state": "merged",
+      "title": "機能追加(予約): チームTZ対応と日跨ぎ予約枠",
+      "url": "https://github.com/kenta-0420/mannschaft/pull/2922",
+      "updatedAt": "2026-08-24T08:36:14Z",
+      "ci": {
+        "status": "success",
+        "checks": [
+          {
+            "name": "Compile & Test",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97367444485",
+            "completedAt": "2026-08-24T08:24:01Z"
+          },
+          {
+            "name": "Detect changes",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366563463",
+            "completedAt": "2026-08-24T08:20:51Z"
+          },
+          {
+            "name": "Install",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811148/job/97366563467",
+            "completedAt": "2026-08-24T08:31:10Z"
+          },
+          {
+            "name": "Lighthouse パフォーマンスチェック",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811187/job/97366564110",
+            "completedAt": "2026-08-24T08:25:27Z"
+          },
+          {
+            "name": "Lint (D-5 @Builder guard)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649031",
+            "completedAt": "2026-08-24T08:21:05Z"
+          },
+          {
+            "name": "OpenAPI Drift Check",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811102/job/97366563245",
+            "completedAt": "2026-08-24T08:22:53Z"
+          },
+          {
+            "name": "PR差分スキャン",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811073/job/97366563005",
+            "completedAt": "2026-08-24T08:20:49Z"
+          },
+          {
+            "name": "Scan & Comment",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811087/job/97366563333",
+            "completedAt": "2026-08-24T08:20:54Z"
+          },
+          {
+            "name": "Smoke E2E (F15.4 + F22.1 + 拡大予定)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811070/job/97366564392",
+            "completedAt": "2026-08-24T08:24:09Z"
+          },
+          {
+            "name": "Test (shard 0)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649093",
+            "completedAt": "2026-08-24T08:22:26Z"
+          },
+          {
+            "name": "Test (shard 1)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649084",
+            "completedAt": "2026-08-24T08:23:56Z"
+          },
+          {
+            "name": "Test (shard 2)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649078",
+            "completedAt": "2026-08-24T08:23:25Z"
+          },
+          {
+            "name": "Test (shard 3)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649075",
+            "completedAt": "2026-08-24T08:22:14Z"
+          },
+          {
+            "name": "Test (shard 4)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649110",
+            "completedAt": "2026-08-24T08:22:59Z"
+          },
+          {
+            "name": "Test (shard 5)",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811129/job/97366649172",
+            "completedAt": "2026-08-24T08:22:24Z"
+          },
+          {
+            "name": "generate:types 差分チェック",
+            "status": "completed",
+            "conclusion": "success",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811108/job/97366562721",
+            "completedAt": "2026-08-24T08:21:11Z"
+          },
+          {
+            "name": "フル履歴スキャン（週次）",
+            "status": "completed",
+            "conclusion": "skipped",
+            "url": "https://github.com/kenta-0420/mannschaft/actions/runs/32705811073/job/97366564199",
+            "completedAt": "2026-08-24T08:20:32Z"
           }
         ]
       }
