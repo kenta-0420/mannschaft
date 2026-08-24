@@ -88,6 +88,16 @@
     .stat strong { display: block; font-size: 25px; font-variant-numeric: tabular-nums; }
     .stat span { color: var(--muted); font-size: 12px; }
     .toolbar { padding: 14px; margin-bottom: 16px; }
+    .view-switcher {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
+      padding-bottom: 12px; border-bottom: 1px solid var(--line);
+    }
+    .view-button {
+      min-height: 48px; border: 1px solid var(--line); border-radius: 13px;
+      background: var(--panel); color: var(--text); font-weight: 900;
+    }
+    .view-button.active { background: var(--brand); color: var(--bg); border-color: var(--brand); }
+    .view-button small { display: block; margin-top: 2px; color: inherit; opacity: .72; font-size: 10px; font-weight: 600; }
     .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .stage-button, .filter-button {
       min-height: 44px; border: 1px solid var(--line); padding: 0 15px; border-radius: 999px;
@@ -113,6 +123,25 @@
     .primary-button { border: 0; background: var(--accent); color: #17200f; }
     .secondary-button { border: 1px solid var(--line); background: var(--panel); color: var(--text); }
     .board { display: grid; grid-template-columns: repeat(4, minmax(250px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 10px; }
+    .focus-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+    .focus-card { min-height: 250px; display: flex; flex-direction: column; }
+    .focus-card .feature-card { height: 100%; flex: 1; }
+    .focus-order { margin-bottom: 8px; color: var(--brand); font-size: 12px; font-weight: 900; letter-spacing: .08em; }
+    .panel-heading { display: flex; justify-content: space-between; gap: 16px; align-items: end; margin: 4px 2px 12px; }
+    .panel-heading h2 { margin: 0; font-size: 21px; }
+    .panel-heading p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .wip-chip { border-radius: 999px; padding: 7px 10px; background: var(--brand-soft); color: var(--brand); font-size: 11px; font-weight: 900; }
+    .gate-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 12px; }
+    .gate-panel { border: 1px solid var(--line); border-radius: 18px; background: var(--panel); padding: 16px; }
+    .gate-item { display: flex; align-items: start; gap: 11px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+    .gate-item:last-child { border-bottom: 0; }
+    .gate-check { width: 24px; height: 24px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 8px; background: var(--panel-soft); color: var(--muted); font-weight: 900; }
+    .gate-item.done .gate-check { background: var(--brand-soft); color: var(--ready); }
+    .gate-item.working .gate-check { background: color-mix(in srgb, var(--info) 12%, var(--panel)); color: var(--info); }
+    .gate-item b { display: block; font-size: 14px; }
+    .gate-item span { color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .release-rule { padding: 14px; border-radius: 14px; background: var(--panel-soft); color: var(--muted); font-size: 13px; line-height: 1.75; }
+    .release-rule strong { color: var(--text); }
     .lane { padding: 12px; box-shadow: none; min-width: 250px; }
     .lane-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 3px 12px; }
     .lane-title { display: flex; align-items: center; gap: 8px; font-weight: 900; }
@@ -139,6 +168,9 @@
     .feature-card p { color: var(--muted); font-size: 12px; line-height: 1.65; margin: 0 0 10px; }
     .tags { display: flex; flex-wrap: wrap; gap: 5px; }
     .tag { padding: 4px 7px; border-radius: 7px; background: var(--panel-soft); color: var(--muted); font-size: 10px; font-weight: 700; }
+    .tag.core { color: var(--brand); background: var(--brand-soft); }
+    .tag.foundation { color: var(--info); background: color-mix(in srgb, var(--info) 11%, var(--panel)); }
+    .tag.noncore { color: var(--warning); background: color-mix(in srgb, var(--warning) 11%, var(--panel)); }
     .empty { padding: 28px 10px; text-align: center; color: var(--muted); font-size: 13px; }
     .backdrop { position: fixed; inset: 0; background: rgba(5, 10, 7, .48); z-index: 10; opacity: 0; pointer-events: none; transition: .2s; }
     .backdrop.open { opacity: 1; pointer-events: auto; }
@@ -173,6 +205,7 @@
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; }
       .board { grid-template-columns: repeat(4, minmax(280px, 84vw)); }
+      .focus-grid, .gate-grid { grid-template-columns: 1fr; }
       .search { order: 10; width: 100%; margin-left: 0; }
     }
     @media (max-width: 520px) {
@@ -181,6 +214,7 @@
       .hero-side { grid-template-columns: 1fr 1fr; }
       .recommendation { align-items: stretch; flex-direction: column; }
       .prompt-controls, .drawer-actions { grid-template-columns: 1fr; }
+      .view-switcher { grid-template-columns: 1fr 1fr; }
       .drawer { padding: 17px; }
     }
   </style>
@@ -205,14 +239,20 @@
         <p>成人サッカーチームで「予定・出欠・連絡・会話」を日常利用し、同窓会の名簿・一斉連絡・イベント出欠へ同じ基盤を展開する。</p>
       </div>
       <div class="hero-side">
-        <div class="stat"><strong id="visibleCount">0</strong><span>表示中の能力</span></div>
-        <div class="stat"><strong id="mustCount">0</strong><span>B1 MUST</span></div>
-        <div class="stat"><strong id="blockedCount">0</strong><span>blockerあり</span></div>
-        <div class="stat"><strong>2</strong><span>中心ユースケース</span></div>
+        <div class="stat"><strong id="activeCount">1</strong><span>進行中（WIP上限3）</span></div>
+        <div class="stat"><strong id="nextCount">2</strong><span>次点</span></div>
+        <div class="stat"><strong id="publishableCount">0</strong><span>シスアド公開可能</span></div>
+        <div class="stat"><strong id="gateCount">3/8</strong><span>Gate前提工事</span></div>
       </div>
     </section>
 
     <section class="toolbar" aria-label="棚卸しフィルター">
+      <nav class="view-switcher" aria-label="ボード表示">
+        <button class="view-button active" data-view="focus" type="button">今やる<small>最大3件だけ</small></button>
+        <button class="view-button" data-view="roadmap" type="button">Bロードマップ<small>B0〜B4の全体</small></button>
+        <button class="view-button" data-view="gate" type="button">公開Gate<small>前提工事と公開判定</small></button>
+        <button class="view-button" data-view="deferred" type="button">延期箱<small>非Coreを退避</small></button>
+      </nav>
       <div class="filters" id="filters">
         <button class="stage-button" data-stage="B0" type="button">B0 本番準備</button>
         <button class="stage-button active" data-stage="B1" type="button">B1 50人</button>
@@ -397,6 +437,36 @@
       }
     ];
 
+    const featureClassification = {
+      'production-deploy': 'foundation',
+      'backup-restore': 'foundation',
+      'corkboard': 'noncore',
+      'team-fee-collection': 'noncore'
+    };
+
+    const featurePublication = {
+      'auth-core': { state: '閉栓中', gate: '一部適用' },
+      'shared-schedule': { state: '閉栓中', gate: '一部適用' },
+      'cross-team-match': { state: '閉栓中', gate: '未確認' }
+    };
+
+    features.forEach((feature) => {
+      feature.classification = featureClassification[feature.key] || 'core';
+      feature.publication = featurePublication[feature.key]?.state || '閉栓中';
+      feature.gate = featurePublication[feature.key]?.gate || '未確認';
+    });
+
+    const gateFoundation = [
+      { title: '公開フラグ読取API', status: 'done', detail: 'シスアドが設定した公開状態を読み取る基盤' },
+      { title: 'FE routeガード', status: 'working', detail: 'URL直アクセスとSSR露出を含めて閉じる' },
+      { title: 'API @RequireFeature', status: 'done', detail: 'Controller / Service入口をフラグで拒否する' },
+      { title: 'バッチ・リスナーGate', status: 'working', detail: '画面を閉じても裏で動く処理を停止する' },
+      { title: 'シスアド公開画面', status: 'unknown', detail: '公開候補だけを選んで段階公開する' },
+      { title: '公開・閉栓の監査ログ', status: 'unknown', detail: '誰がいつ状態を変えたか残す' },
+      { title: '公開失敗時ロールバック', status: 'unknown', detail: 'ワンクリックで閉栓へ戻せることを実証する' },
+      { title: '全入口Gate番人', status: 'unknown', detail: 'FE・API・バッチの宣言漏れをCIで検出する' }
+    ];
+
     const laneDefinitions = [
       { status: 'blocked', title: '不備あり' },
       { status: 'unknown', title: '未棚卸' },
@@ -404,6 +474,7 @@
       { status: 'ready', title: '準備完了' }
     ];
 
+    let selectedView = 'focus';
     let selectedStage = 'B1';
     let selectedAudience = 'all';
     let selectedFeature = null;
@@ -415,19 +486,20 @@
     function getFilteredFeatures() {
       const query = document.querySelector('#search').value.trim().toLowerCase();
       return features.filter((feature) => {
-        const stageMatches = feature.stage === selectedStage;
+        const stageMatches = selectedView === 'focus' || selectedView === 'deferred' || feature.stage === selectedStage;
         const audienceMatches = selectedAudience === 'all' || feature.audiences.includes(selectedAudience);
         const queryMatches = !query || `${feature.key} ${feature.title} ${feature.summary}`.toLowerCase().includes(query);
         return stageMatches && audienceMatches && queryMatches;
       });
     }
 
-    function renderBoard() {
-      const visible = getFilteredFeatures();
-      board.innerHTML = laneDefinitions.map((lane) => {
-        const cards = visible.filter((feature) => feature.status === lane.status);
-        const content = cards.length ? cards.map((feature) => `
-          <button class="feature-card" type="button" data-key="${feature.key}" data-status="${feature.status}">
+    function classificationLabel(classification) {
+      return { core: 'Core', noncore: '非Core', foundation: '基盤' }[classification];
+    }
+
+    function featureCard(feature) {
+      return `
+        <button class="feature-card" type="button" data-key="${feature.key}" data-status="${feature.status}">
             <div class="card-top">
               <span class="feature-key">${feature.key}</span>
               <span class="priority ${feature.priority}">${feature.priority.toUpperCase()}</span>
@@ -435,23 +507,110 @@
             <h3>${feature.title}</h3>
             <p>${feature.summary}</p>
             <div class="tags">
+              <span class="tag ${feature.classification}">${classificationLabel(feature.classification)}</span>
               <span class="tag">${feature.stage}</span>
+              <span class="tag">${feature.publication}</span>
               ${feature.audiences.map((audience) => `<span class="tag">${audience === 'soccer' ? '⚽ サッカー' : '🎓 同窓会'}</span>`).join('')}
             </div>
-          </button>`).join('') : '<div class="empty">該当なし</div>';
+        </button>`;
+    }
+
+    function renderRoadmap(visible) {
+      board.className = 'board';
+      board.innerHTML = laneDefinitions.map((lane) => {
+        const cards = visible.filter((feature) => feature.status === lane.status);
+        const content = cards.length ? cards.map(featureCard).join('') : '<div class="empty">該当なし</div>';
         return `
           <article class="lane" data-status="${lane.status}">
             <div class="lane-header"><div class="lane-title"><span class="dot"></span>${lane.title}</div><span class="count">${cards.length}</span></div>
             <div class="cards">${content}</div>
           </article>`;
       }).join('');
+    }
 
-      document.querySelector('#visibleCount').textContent = visible.length;
-      document.querySelector('#mustCount').textContent = visible.filter((feature) => feature.priority === 'must').length;
-      document.querySelector('#blockedCount').textContent = visible.filter((feature) => feature.status === 'blocked' || feature.blocker !== 'なし').length;
-      const recommended = visible.find((feature) => feature.priority === 'must' && feature.status === 'blocked')
-        || visible.find((feature) => feature.priority === 'must' && feature.status !== 'ready')
-        || visible[0];
+    function renderFocus(visible) {
+      const focus = visible
+        .filter((feature) => feature.status !== 'ready' && (
+          feature.classification === 'foundation'
+          || (feature.stage === selectedStage && feature.classification === 'core' && feature.priority === 'must')
+        ))
+        .sort((a, b) => {
+          const statusRank = { blocked: 0, working: 1, unknown: 2, ready: 3 };
+          return statusRank[a.status] - statusRank[b.status];
+        })
+        .slice(0, 3);
+      board.className = '';
+      board.innerHTML = `
+        <div class="panel-heading">
+          <div><h2>今やること</h2><p>前提基盤と${selectedStage} Coreから、最大3件だけ表示します。</p></div>
+          <span class="wip-chip">WIP ${focus.filter((feature) => feature.status === 'working').length} / 3</span>
+        </div>
+        <div class="focus-grid">
+          ${focus.map((feature, index) => `<div class="focus-card"><div class="focus-order">${index + 1}番目</div>${featureCard(feature)}</div>`).join('') || '<div class="empty">該当なし</div>'}
+        </div>`;
+      return focus;
+    }
+
+    function renderGate() {
+      const done = gateFoundation.filter((item) => item.status === 'done').length;
+      const candidates = features.filter((feature) => feature.status === 'ready' && feature.gate === '適用完了');
+      board.className = '';
+      board.innerHTML = `
+        <div class="panel-heading">
+          <div><h2>Gate基盤の前提工事</h2><p>機能完成とGate適用の両方が揃ったものだけ、シスアド公開候補になります。</p></div>
+          <span class="wip-chip">${done} / ${gateFoundation.length} 完了</span>
+        </div>
+        <div class="gate-grid">
+          <section class="gate-panel">
+            ${gateFoundation.map((item) => `
+              <div class="gate-item ${item.status}">
+                <span class="gate-check">${item.status === 'done' ? '✓' : item.status === 'working' ? '→' : '·'}</span>
+                <div><b>${item.title}</b><span>${item.detail}</span></div>
+              </div>`).join('')}
+          </section>
+          <section class="gate-panel">
+            <h3>シスアド公開判定</h3>
+            <div class="release-rule">
+              <strong>β準備完了</strong><br>＋<br>
+              <strong>FE・API・バッチのGate適用完了</strong><br>＋<br>
+              <strong>閉栓へのロールバック確認</strong><br>↓<br>
+              シスアド画面の「公開」が有効になる
+            </div>
+            <h3>現在の公開候補</h3>
+            ${candidates.length ? candidates.map(featureCard).join('') : '<div class="empty">まだ0件です。Gateだけで楽観的に公開可能へ倒しません。</div>'}
+          </section>
+        </div>`;
+    }
+
+    function renderDeferred(visible) {
+      const deferred = visible.filter((feature) => feature.classification === 'noncore' || feature.priority === 'defer');
+      board.className = '';
+      board.innerHTML = `
+        <div class="panel-heading">
+          <div><h2>延期箱</h2><p>価値を否定せず、今の集中範囲から安全に退避した機能です。</p></div>
+          <span class="wip-chip">${deferred.length}件を退避</span>
+        </div>
+        <div class="focus-grid">${deferred.map(featureCard).join('') || '<div class="empty">該当なし</div>'}</div>`;
+    }
+
+    function renderBoard() {
+      const visible = getFilteredFeatures();
+      let focus = [];
+      if (selectedView === 'focus') focus = renderFocus(visible);
+      if (selectedView === 'roadmap') renderRoadmap(visible);
+      if (selectedView === 'gate') renderGate();
+      if (selectedView === 'deferred') renderDeferred(visible);
+
+      const doneGates = gateFoundation.filter((item) => item.status === 'done').length;
+      document.querySelector('#activeCount').textContent = focus.filter((feature) => feature.status === 'working').length;
+      document.querySelector('#nextCount').textContent = Math.max(focus.length - focus.filter((feature) => feature.status === 'working').length, 0);
+      document.querySelector('#publishableCount').textContent = features.filter((feature) => feature.status === 'ready' && feature.gate === '適用完了').length;
+      document.querySelector('#gateCount').textContent = `${doneGates}/${gateFoundation.length}`;
+
+      const recommendationSource = selectedView === 'focus' ? focus : visible;
+      const recommended = recommendationSource.find((feature) => feature.priority === 'must' && feature.status === 'blocked')
+        || recommendationSource.find((feature) => feature.priority === 'must' && feature.status !== 'ready')
+        || recommendationSource[0];
       document.querySelector('#recommendationTitle').textContent = recommended?.title || '該当課題なし';
       document.querySelector('#recommendationReason').textContent = recommended?.why || '別のフィルターを選んでください。';
       document.querySelector('#openRecommendation').dataset.key = recommended?.key || '';
@@ -470,9 +629,12 @@
 ■ 対象
 - feature_key: ${feature.key}
 - 能力: ${feature.title}
+- 区分: ${classificationLabel(feature.classification)}
 - 最早導入段階: ${feature.stage}
 - 優先度: ${feature.priority}
 - 対象ユースケース: ${feature.audiences.join(' / ')}
+- 公開状態: ${feature.publication}
+- Gate適用状態: ${feature.gate}
 
 ■ 目的
 ${feature.why}
@@ -494,6 +656,7 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
 - 本陣の既存変更を触らず、worktreeで隔離すること。
 - 不明を推測で「実装済」にしないこと。
 - 証拠とともに docs/inventory/feature-inventory.yaml の更新案を示すこと。
+- β準備完了とGate適用完了を混同せず、シスアド公開可能かを別々に判定すること。
 - 完了時は実行した検証、未実行の検証、残存リスクを日本語で報告すること。`;
     }
 
@@ -501,7 +664,7 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
       const feature = features.find((item) => item.key === key);
       if (!feature) return;
       selectedFeature = feature;
-      document.querySelector('#drawerKey').textContent = `${feature.key} · ${feature.stage} · ${feature.priority.toUpperCase()}`;
+      document.querySelector('#drawerKey').textContent = `${feature.key} · ${classificationLabel(feature.classification)} · ${feature.stage} · ${feature.priority.toUpperCase()} · ${feature.publication}`;
       document.querySelector('#drawerTitle').textContent = feature.title;
       document.querySelector('#drawerWhy').textContent = feature.why;
       document.querySelector('#drawerAcceptance').innerHTML = feature.acceptance.map((item) => `<li>${item}</li>`).join('');
@@ -539,6 +702,14 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
       }
       showToast(label);
     }
+
+    document.querySelector('.view-switcher').addEventListener('click', (event) => {
+      const viewButton = event.target.closest('[data-view]');
+      if (!viewButton) return;
+      selectedView = viewButton.dataset.view;
+      document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button === viewButton));
+      renderBoard();
+    });
 
     document.querySelector('#filters').addEventListener('click', (event) => {
       const stageButton = event.target.closest('[data-stage]');
