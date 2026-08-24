@@ -82,7 +82,7 @@
     }
     .hero-main { padding: 24px; position: relative; overflow: hidden; }
     .hero-main::after {
-      content: "B1"; position: absolute; right: 18px; bottom: -35px; font-size: 136px; font-weight: 900;
+      content: "?"; position: absolute; right: 18px; bottom: -35px; font-size: 136px; font-weight: 900;
       color: color-mix(in srgb, var(--brand) 8%, transparent); line-height: 1;
     }
     .eyebrow { color: var(--brand); font-weight: 800; font-size: 12px; letter-spacing: .12em; }
@@ -127,7 +127,7 @@
     }
     .primary-button { border: 0; background: var(--accent); color: #17200f; }
     .secondary-button { border: 1px solid var(--line); background: var(--panel); color: var(--text); }
-    .board { display: grid; grid-template-columns: repeat(4, minmax(250px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 10px; }
+    .board { display: grid; grid-template-columns: repeat(5, minmax(250px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 10px; }
     .focus-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
     .focus-card { min-height: 250px; display: flex; flex-direction: column; }
     .focus-card .feature-card { height: 100%; flex: 1; }
@@ -224,7 +224,8 @@
     .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
     .lane[data-status="blocked"] .dot { background: var(--danger); }
     .lane[data-status="unknown"] .dot { background: var(--muted); }
-    .lane[data-status="working"] .dot { background: var(--info); }
+    .lane[data-status="incomplete"] .dot { background: var(--warning); }
+    .lane[data-status="verifying"] .dot { background: var(--info); }
     .lane[data-status="ready"] .dot { background: var(--ready); }
     .count { color: var(--muted); font-size: 12px; }
     .cards { display: grid; gap: 10px; }
@@ -281,7 +282,7 @@
     .prototype-note { margin: 20px 2px 0; color: var(--muted); font-size: 11px; text-align: right; }
     @media (max-width: 900px) {
       .hero { grid-template-columns: 1fr; }
-      .board { grid-template-columns: repeat(4, minmax(280px, 84vw)); }
+      .board { grid-template-columns: repeat(5, minmax(280px, 84vw)); }
       .focus-grid, .gate-grid { grid-template-columns: 1fr; }
       .cmp-card { grid-template-columns: 1fr 1fr; }
       .insight-card-grid { grid-template-columns: 1fr; }
@@ -326,50 +327,51 @@
 
     <section class="hero">
       <div class="hero-main">
-        <div class="eyebrow">CURRENT FOCUS · B1 / 50 USERS</div>
+        <div class="eyebrow">正本同期 · Phase未設定</div>
         <h2>LINEを置き換える日常導線を、先に完成させる。</h2>
         <p>成人サッカーチームで「予定・出欠・連絡・会話」を日常利用し、同窓会の名簿・一斉連絡・イベント出欠へ同じ基盤を展開する。</p>
       </div>
       <div class="hero-side">
-        <div class="stat"><strong id="activeCount">1</strong><span id="activeLabel">進行中（WIP上限3）</span></div>
-        <div class="stat"><strong id="nextCount">2</strong><span id="nextLabel">次点</span></div>
+        <div class="stat"><strong id="activeCount">0</strong><span id="activeLabel">検証中</span></div>
+        <div class="stat"><strong id="nextCount">0</strong><span id="nextLabel">不備・未棚卸</span></div>
         <div class="stat"><strong id="publishableCount">0</strong><span>シスアド公開可能</span></div>
-        <div class="stat"><strong id="gateCount">3/8</strong><span>Gate前提工事</span></div>
+        <div class="stat"><strong id="gateCount">0/0</strong><span>Gate前提工事</span></div>
       </div>
     </section>
 
     <section class="toolbar" aria-label="棚卸しフィルター">
       <nav class="view-switcher" aria-label="ボード表示">
-        <button class="view-button active" data-view="focus" type="button">今やる<small>最大3件だけ</small></button>
-        <button class="view-button" data-view="roadmap" type="button">Bロードマップ<small>B0〜B4の全体</small></button>
+        <button class="view-button" data-view="focus" type="button">今やる<small>Phase 2で優先度設定</small></button>
+        <button class="view-button active" data-view="roadmap" type="button">Bロードマップ<small>正本の全体</small></button>
         <button class="view-button" data-view="gate" type="button">公開Gate<small>前提工事と公開判定</small></button>
         <button class="view-button" data-view="campaigns" type="button">CMP・Issue<small>戦役と実装の現在地</small></button>
         <button class="view-button" data-view="insights" type="button">気づき箱<small>スクショ付き改善メモ</small></button>
         <button class="view-button" data-view="deferred" type="button">延期箱<small>非Coreを退避</small></button>
       </nav>
       <div class="filters" id="filters">
-        <button class="stage-button" data-stage="B0" type="button">B0 本番準備</button>
-        <button class="stage-button active" data-stage="B1" type="button">B1 50人</button>
+        <button class="stage-button active" data-stage="未設定" type="button">Phase未設定</button>
+        <button class="stage-button" data-stage="B0" type="button">B0 開発者テスト</button>
+        <button class="stage-button" data-stage="B1" type="button">B1 1チーム・50人</button>
         <button class="stage-button" data-stage="B2" type="button">B2 10チーム</button>
         <button class="stage-button" data-stage="B3" type="button">B3 100チーム</button>
         <button class="stage-button" data-stage="B4" type="button">B4 1万人</button>
         <button class="filter-button active" data-audience="all" type="button">すべて</button>
-        <button class="filter-button" data-audience="soccer" type="button">⚽ サッカー</button>
-        <button class="filter-button" data-audience="alumni" type="button">🎓 同窓会</button>
+        <button class="filter-button" data-audience="soccer" type="button" disabled title="Phase 2で対象者を分類します">⚽ サッカー（未分類）</button>
+        <button class="filter-button" data-audience="alumni" type="button" disabled title="Phase 2で対象者を分類します">🎓 同窓会（未分類）</button>
         <input class="search" id="search" type="search" placeholder="機能・feature_key・CMP・Issueで検索" aria-label="機能・CMP・Issue検索">
       </div>
     </section>
 
     <section class="recommendation" id="recommendation">
       <div>
-        <b>次の推奨：<span id="recommendationTitle">本番デプロイ経路の実証</span></b>
-        <span id="recommendationReason">B1に入る前に、ビルドからロールバックまでを一度完走させる。</span>
+        <b>次の推奨：<span id="recommendationTitle">Phase 2で優先順位を設定</span></b>
+        <span id="recommendationReason">正本に優先度がないため、現時点では課題を推測推薦しません。</span>
       </div>
       <button class="primary-button" id="openRecommendation" type="button">指示文を作る</button>
     </section>
 
     <section class="board" id="board" aria-label="準備状態別カンバン"></section>
-    <p class="prototype-note">プロトタイプ — 2026-08-24時点のサンプル。将来は機能台帳・CMP台帳・GitHubから自動生成し、このHTMLは編集しない。</p>
+    <p class="prototype-note" id="sourceNote">正本から生成したデータを読み込み中…</p>
   </main>
 
   <div class="backdrop" id="backdrop"></div>
@@ -470,211 +472,21 @@
   </aside>
   <div class="toast" id="toast" role="status">コピーしました</div>
 
+  <script src="./beta-inventory-board-data.js"></script>
   <script>
-    const features = [
-      {
-        key: 'production-deploy', title: '本番デプロイ経路', stage: 'B0', status: 'blocked', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: 'Nuxt本番ビルドからECS稼働・ロールバックまでを実証する。',
-        why: 'B1の50人を招待する前の前提。現状はAWS secretを設定したデプロイ本体が未完走。',
-        acceptance: ['nuxt buildがCI相当環境で安定完走する', 'ECSの新revisionが起動しHTTP 200を返す', '失敗時に前revisionへ復旧できる'],
-        blocker: 'CMP-260821-1235 / CMP-260821-2130', refs: ['docs/task-list.md']
-      },
-      {
-        key: 'backup-restore', title: 'バックアップ・復元', stage: 'B0', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: 'DBとメディアを取得するだけでなく、復元手順を実測する。',
-        why: '成人チームでも同窓会でも、名簿と連絡履歴の喪失は信頼を致命的に損なう。',
-        acceptance: ['RDSスナップショット取得を確認する', '別DBへ復元し整合性を検証する', 'RPO/RTOと手順を記録する'],
-        blocker: '未棚卸し', refs: ['infra/', 'docs/']
-      },
-      {
-        key: 'auth-core', title: '登録・ログイン', stage: 'B1', status: 'working', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: '登録、メール確認、ログイン、セッション維持を一つの導線として確認する。',
-        why: 'LINE置き換えでは、メンバー全員が迷わずログインできることが最初の離脱防止になる。',
-        acceptance: ['新規登録からログインまで実機で完走する', '失効セッションが自動更新される', 'パスワード再設定が届く'],
-        blocker: 'デプロイ後の実メール経路が未検証', refs: ['docs/features/F01.1_auth.md']
-      },
-      {
-        key: 'team-invite-join', title: 'チーム招待・加入', stage: 'B1', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: '管理者がURL/QRを送り、参加者が登録・加入を完了する。',
-        why: '50人のオンボーディングを個別サポートなしで行うため。',
-        acceptance: ['招待URLから未登録者が加入できる', '期限切れ・無効化トークンを拒否する', '二重加入で所属が重複しない'],
-        blocker: '未棚卸し', refs: ['docs/features/F01.2_org_team_member_role/README.md', 'docs/features/F01.8_team_invite_qr_pdf.md']
-      },
-      {
-        key: 'shared-schedule', title: '予定作成・共有', stage: 'B1', status: 'working', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: '練習・試合・同窓会を作成し、対象者に共有する。',
-        why: 'サッカーと同窓会に共通する、最も頻度の高い基本ジョブ。',
-        acceptance: ['単発予定の作成・編集・中止ができる', '繰り返し予定を作成できる', 'メンバーのカレンダーに表示される'],
-        blocker: 'タイムゾーン全域是正は別戦役中', refs: ['docs/features/F03.1_schedule_shared.md']
-      },
-      {
-        key: 'attendance-response', title: '出欠回答・集計', stage: 'B1', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: '出席・欠席・未定を回答し、管理者が未回答者を確認する。',
-        why: 'LINEの投票・返信チェックを置き換え、管理者の集計作業を減らす中核価値。',
-        acceptance: ['メンバーがスマホで1操作で回答できる', '管理者が実名付き集計を見られる', '未回答者へリマインドできる'],
-        blocker: '実機E2Eの証拠未記入', refs: ['docs/features/F03.1_schedule_shared.md']
-      },
-      {
-        key: 'announcements', title: '重要なお知らせ', stage: 'B1', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: '管理者が全員へ連絡し、読まれたかを確認する。',
-        why: 'LINEで流れる重要連絡を、通常の会話から分離する。',
-        acceptance: ['管理者がお知らせを作成できる', '対象者へ通知される', '既読・未読を確認できる'],
-        blocker: '「ブログ」「掲示板」「確認付き通知」との責務境界が未整理', refs: ['docs/features/F02.8_dashboard_announcement.md', 'docs/features/F04.9_confirmable_notification.md']
-      },
-      {
-        key: 'chat', title: 'チームチャット', stage: 'B1', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: '日常の会話、返信、画像共有、メンションを提供する。',
-        why: 'LINE置き換えを明示するならB1必須。予定専用アプリに留めないため。',
-        acceptance: ['チームチャンネルで送受信できる', '再接続後に取りこぼしがない', '添付・返信・メンションがスマホで使える'],
-        blocker: 'WebSocket外部ブローカ化は未完', refs: ['docs/features/F04.2_chat.md', 'docs/architecture/websocket_external_broker_valkey.md']
-      },
-      {
-        key: 'bulletin-board', title: '掲示板', stage: 'B1', status: 'unknown', priority: 'should', audiences: ['soccer', 'alumni'],
-        summary: 'カテゴリ別スレッド、返信、既読、重要度でストック型の議論を行う。',
-        why: 'チャットで流したくないルールや長期連絡に使う。',
-        acceptance: ['スレッドの作成・返信ができる', '重要度とピン留めが動く', '既読者を確認できる'],
-        blocker: '現行棚卸しでコルクボードと誤って同一視されている', refs: ['docs/features/F05.1_bulletin_board.md']
-      },
-      {
-        key: 'corkboard', title: 'コルクボード', stage: 'B3', status: 'unknown', priority: 'defer', audiences: ['soccer', 'alumni'],
-        summary: 'チャットや掲示板の情報をカード化して自由配置する。',
-        why: '価値はあるが、LINE置き換えの最初の習慣には不要。基本導線の完成を優先する。',
-        acceptance: ['掲示板と独立レコードに分離される', '閉栓中はUI/APIの両方から到達できない'],
-        blocker: '優先度上の理由で延期', refs: ['docs/features/F09.8_corkboard.md']
-      },
-      {
-        key: 'alumni-directory', title: '同窓会名簿', stage: 'B2', status: 'unknown', priority: 'must', audiences: ['alumni'],
-        summary: '本人が連絡先を更新し、幹事が公開範囲内で名簿を管理する。',
-        why: '同窓会固有のキラージョブ。サッカーのメンバー管理基盤を再利用できる。',
-        acceptance: ['本人が連絡先を更新できる', '幹事に必要な項目だけを開示できる', '一括エクスポートできる'],
-        blocker: '公開範囲と名簿項目の仕様確定が必要', refs: ['docs/features/F01.2_org_team_member_role.md']
-      },
-      {
-        key: 'cross-team-match', title: '対戦・クロスチーム予定', stage: 'B2', status: 'working', priority: 'must', audiences: ['soccer'],
-        summary: '相手チームを招待し、両チームに同じ試合予定を共有する。',
-        why: '単一チーム管理アプリから階層ネットワークへ進む最初の差別化。',
-        acceptance: ['対戦申込・承諾ができる', '両チームの予定に同一試合が表示される', 'キャンセルが双方へ通知される'],
-        blocker: 'マッチングと予定の正本境界を要確認', refs: ['docs/features/F03.1_schedule_shared.md', 'docs/features/F08.1_matching.md']
-      },
-      {
-        key: 'notification-fanout', title: '大規模通知fan-out', stage: 'B3', status: 'working', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: '5,000人規模の一斉通知を落とさず処理する。',
-        why: 'B3では通知の信頼性がそのままサービスの信頼性になる。',
-        acceptance: ['5,000人の配信が棄却ゼロで完了する', '失敗が再試行される', '運用者が滞留・失敗を検知できる'],
-        blocker: 'CMP-001。並列化と目標時間達成が残る', refs: ['docs/task-list.md']
-      },
-      {
-        key: 'audit-moderation', title: '監査・モデレーション', stage: 'B3', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: '通報、利用停止、管理操作履歴、インシデント対応を整備する。',
-        why: '100チームでは創業者の口頭調整では処理できない。',
-        acceptance: ['通報から処置まで追跡できる', '管理者の操作が監査ログに残る', '処置を取り消せる'],
-        blocker: 'ドメイン単位の粗い棚卸しのまま', refs: ['docs/features/F04.5_moderation.md', 'docs/features/F10.3_audit_logs.md']
-      },
-      {
-        key: 'team-fee-collection', title: '会費徴収', stage: 'B3', status: 'unknown', priority: 'should', audiences: ['soccer', 'alumni'],
-        summary: '月会費・参加費を請求し、支払い状況を管理する。',
-        why: '継続利用と管理者の負担削減に効くが、B1で連絡習慣を作る前に決済リスクを追わない。',
-        acceptance: ['請求・支払い・未納確認ができる', '二重請求が発生しない', '返金・失敗の運用手順がある'],
-        blocker: '現行台帳でプラットフォーム課金と同一行', refs: ['docs/features/F08.9_membership_billing_paywall/README.md']
-      },
-      {
-        key: 'organization-hierarchy', title: '組織階層・複数チーム', stage: 'B4', status: 'unknown', priority: 'must', audiences: ['soccer', 'alumni'],
-        summary: '協会・クラブ・年代別チーム、学校・卒業年次の階層を管理する。',
-        why: '1万アカウントでの差別化とネットワーク効果の中心。',
-        acceptance: ['多段組織を作成できる', '個人が複数スコープへ所属できる', '上位から対象範囲を選んで連絡できる'],
-        blocker: 'チーム単位のB1/B2運用結果を先に取得する', refs: ['docs/features/F01.2_org_team_member_role/README.md']
-      }
-    ];
-
-    const featureClassification = {
-      'production-deploy': 'foundation',
-      'backup-restore': 'foundation',
-      'corkboard': 'noncore',
-      'team-fee-collection': 'noncore'
-    };
-
-    const featurePublication = {
-      'auth-core': { state: '閉栓中', gate: '一部適用' },
-      'shared-schedule': { state: '閉栓中', gate: '一部適用' },
-      'cross-team-match': { state: '閉栓中', gate: '未確認' }
-    };
-
-    features.forEach((feature) => {
-      feature.classification = featureClassification[feature.key] || 'core';
-      feature.publication = featurePublication[feature.key]?.state || '閉栓中';
-      feature.gate = featurePublication[feature.key]?.gate || '未確認';
-    });
-
-    const gateFoundation = [
-      { title: '公開フラグ読取API', status: 'done', detail: 'シスアドが設定した公開状態を読み取る基盤' },
-      { title: 'FE routeガード', status: 'working', detail: 'URL直アクセスとSSR露出を含めて閉じる' },
-      { title: 'API @RequireFeature', status: 'done', detail: 'Controller / Service入口をフラグで拒否する' },
-      { title: 'バッチ・リスナーGate', status: 'working', detail: '画面を閉じても裏で動く処理を停止する' },
-      { title: 'シスアド公開画面', status: 'unknown', detail: '公開候補だけを選んで段階公開する' },
-      { title: '公開・閉栓の監査ログ', status: 'unknown', detail: '誰がいつ状態を変えたか残す' },
-      { title: '公開失敗時ロールバック', status: 'unknown', detail: 'ワンクリックで閉栓へ戻せることを実証する' },
-      { title: '全入口Gate番人', status: 'unknown', detail: 'FE・API・バッチの宣言漏れをCIで検出する' }
-    ];
-
-    const campaigns = [
-      {
-        id: 'CMP-260821-1235', title: '本番デプロイ経路の実証', status: 'blocked', statusLabel: '再開待ち',
-        stage: 'B0', priority: 'must', audiences: ['soccer', 'alumni'], featureKey: 'production-deploy', updated: '2026-08-21',
-        summary: 'AWS資格情報を設定した状態で、Docker buildからECS反映・安定待ちまで完走させる。',
-        nextAction: 'AWS secret設定の直前に、必要変数の完全性チェックと初回デプロイ手順を確定する。',
-        acceptance: ['必要なAWS設定が欠けていればデプロイ前に停止する', 'frontend変更からECS安定待ちまで完走する', '失敗時のロールバックを実測する'],
-        blocker: 'AWS secret未設定。CMP-260821-2130の本番ビルド安定化が前提。',
-        issues: [{ label: 'Issue未起票', state: 'open' }], prs: ['#2895 merged'], ci: '前段run成功／本体未走行', refs: ['docs/task-list.md', '.github/workflows/frontend-deploy.yml']
-      },
-      {
-        id: 'CMP-260821-2130', title: 'FE本番ビルドのメモリ枯渇解消', status: 'blocked', statusLabel: '再開条件あり',
-        stage: 'B0', priority: 'must', audiences: ['soccer', 'alumni'], featureKey: 'production-deploy', updated: '2026-08-21',
-        summary: 'nuxt buildを安定完走させ、生成コンテナがHTTP応答を返すところまで固定する。',
-        nextAction: '本番用source map方針とCI実行頻度を決め、再現可能なビルド試験を作る。',
-        acceptance: ['nuxt buildが冷キャッシュでも安定完走する', '成果物からコンテナが起動する', 'HTTP 200を返す', 'CI配置と実行条件が決まる'],
-        blocker: 'AWS secret設定または初回デプロイ着手前に再開する条件付き。',
-        issues: [{ label: 'Issue未起票', state: 'open' }], prs: ['—'], ci: '未配置', refs: ['docs/task-list.md', 'frontend/nuxt.config.ts', 'frontend/Dockerfile']
-      },
-      {
-        id: 'CMP-260820-1550', title: 'FE routeガード', status: 'done', statusLabel: '基盤完了',
-        stage: 'B0', priority: 'must', audiences: ['soccer', 'alumni'], featureKey: 'gate-foundation-fe', updated: '2026-08-20',
-        summary: '未公開機能へのURL直アクセスをglobal middlewareで遮断する。',
-        nextAction: '完了済み基盤は触らず、追跡Issue #2888のSSR隔離漏れを閉栓前に解消する。',
-        acceptance: ['91プレフィクスがGate台帳で覆われる', 'slug配下を含めSSRで未公開画面が露出しない', '取得失敗は503として伝播する'],
-        blocker: 'Issue #2888: slug配下44プレフィクスがSSRで隔離されない。',
-        issues: [{ label: '#2888 SSR隔離漏れ', state: 'open' }], prs: ['#2878 merged'], ci: 'green', refs: ['docs/task-list.md', 'frontend/app/middleware/feature-gate.global.ts']
-      },
-      {
-        id: 'CMP-260821-1547', title: 'API @RequireFeature基盤', status: 'done', statusLabel: '基盤完了',
-        stage: 'B0', priority: 'must', audiences: ['soccer', 'alumni'], featureKey: 'gate-foundation-api', updated: '2026-08-21',
-        summary: '未公開機能へのAPIアクセスを宣言的に遮断し、キー誤りを番人で検出する。',
-        nextAction: '基盤の再実装はせず、17ゲートキーを実Controllerへ適用する後続CMPを紐づける。',
-        acceptance: ['実Controller入口へGateが付く', '宣言漏れをCIで検出する', '未知キーはフェイルクローズになる'],
-        blocker: '基盤は完了したが、実Controllerへの適用戦役がこの画面では未紐づけ。',
-        issues: [{ label: '後続Issue未紐づけ', state: 'open' }], prs: ['#2894 merged', '#2902 merged'], ci: 'green', refs: ['docs/task-list.md', 'backend/src/main/java/com/mannschaft/app/common/featuregate/']
-      },
-      {
-        id: 'CMP未紐づけ・GATE-04', title: 'バッチ・リスナーGate', status: 'unknown', statusLabel: '台帳の穴',
-        stage: 'B0', priority: 'must', audiences: ['soccer', 'alumni'], featureKey: 'gate-foundation-background', updated: '—',
-        summary: '画面とAPIを閉じても動き続ける154+バッチ・121リスナーの公開Gateを設計する。',
-        nextAction: '既存CMPとIssueを検索し、無ければCMPを採番してIssueと受け入れ条件を紐づける。',
-        acceptance: ['対象バッチ・リスナーを全数棚卸しする', '未公開時の停止方針を分類する', '宣言漏れをCIで検出する'],
-        blocker: 'Gate基盤工事④として言及されているが、CMP/Issueの対応関係が画面上で確定していない。',
-        issues: [{ label: 'CMPなし', state: 'open' }, { label: 'Issueなし', state: 'open' }], prs: ['—'], ci: '番人なし', refs: ['docs/task-list.md', 'docs/inventory/feature-inventory.yaml']
-      }
-    ];
-
+    const { features, featureClassification, featurePublication, gateFoundation, campaigns } = window.BETA_INVENTORY_DATA;
     const campaignStatusLabels = { blocked: '停止中', working: '進行中', done: '完了', unknown: '未整理' };
 
     const laneDefinitions = [
       { status: 'blocked', title: '不備あり' },
       { status: 'unknown', title: '未棚卸' },
-      { status: 'working', title: '実装・検証中' },
-      { status: 'ready', title: '準備完了' }
+      { status: 'incomplete', title: '実装未完' },
+      { status: 'verifying', title: '検証中' },
+      { status: 'ready', title: 'β準備完了' }
     ];
 
-    let selectedView = 'focus';
-    let selectedStage = 'B1';
+    let selectedView = 'roadmap';
+    let selectedStage = '未設定';
     let selectedAudience = 'all';
     let selectedFeature = null;
     let insights = [];
@@ -749,7 +561,7 @@
       return {
         key: featureKey,
         title: campaign?.title || 'その他・横断',
-        stage: campaign?.stage || 'B0',
+        stage: campaign?.stage || '未設定',
         classification: 'foundation',
         priority: campaign?.priority || 'should',
         audiences: campaign?.audiences || ['soccer', 'alumni'],
@@ -761,7 +573,7 @@
     function populateInsightFeatures() {
       const featureOptions = new Map(features.map((feature) => [feature.key, feature.title]));
       campaigns.forEach((campaign) => {
-        if (!featureOptions.has(campaign.featureKey)) featureOptions.set(campaign.featureKey, campaign.title);
+        if (campaign.featureKey && !featureOptions.has(campaign.featureKey)) featureOptions.set(campaign.featureKey, campaign.title);
       });
       featureOptions.set('cross-cutting', 'その他・横断');
       document.querySelector('#insightFeature').innerHTML = [...featureOptions.entries()]
@@ -785,17 +597,17 @@
 
     function featureCard(feature) {
       return `
-        <button class="feature-card" type="button" data-key="${feature.key}" data-status="${feature.status}">
+        <button class="feature-card" type="button" data-key="${escapeHtml(feature.key)}" data-status="${escapeHtml(feature.status)}">
             <div class="card-top">
-              <span class="feature-key">${feature.key}</span>
-              <span class="priority ${feature.priority}">${feature.priority.toUpperCase()}</span>
+              <span class="feature-key">${escapeHtml(feature.key)}</span>
+              <span class="priority ${escapeHtml(feature.priority)}">${escapeHtml(feature.priority.toUpperCase())}</span>
             </div>
-            <h3>${feature.title}</h3>
-            <p>${feature.summary}</p>
+            <h3>${escapeHtml(feature.title)}</h3>
+            <p>${escapeHtml(feature.summary)}</p>
             <div class="tags">
-              <span class="tag ${feature.classification}">${classificationLabel(feature.classification)}</span>
-              <span class="tag">${feature.stage}</span>
-              <span class="tag">${feature.publication}</span>
+              <span class="tag ${escapeHtml(feature.classification)}">${escapeHtml(classificationLabel(feature.classification))}</span>
+              <span class="tag">${escapeHtml(feature.stage)}</span>
+              <span class="tag">β: ${escapeHtml(feature.phase)}</span>
               ${feature.audiences.map((audience) => `<span class="tag">${audience === 'soccer' ? '⚽ サッカー' : '🎓 同窓会'}</span>`).join('')}
             </div>
         </button>`;
@@ -816,23 +628,20 @@
 
     function renderFocus(visible) {
       const focus = visible
-        .filter((feature) => feature.status !== 'ready' && (
-          feature.classification === 'foundation'
-          || (feature.stage === selectedStage && feature.classification === 'core' && feature.priority === 'must')
-        ))
+        .filter((feature) => feature.status !== 'ready' && feature.priority === 'must')
         .sort((a, b) => {
-          const statusRank = { blocked: 0, working: 1, unknown: 2, ready: 3 };
+          const statusRank = { blocked: 0, incomplete: 1, verifying: 2, unknown: 3, ready: 4 };
           return statusRank[a.status] - statusRank[b.status];
         })
         .slice(0, 3);
       board.className = '';
       board.innerHTML = `
         <div class="panel-heading">
-          <div><h2>今やること</h2><p>前提基盤と${selectedStage} Coreから、最大3件だけ表示します。</p></div>
-          <span class="wip-chip">WIP ${focus.filter((feature) => feature.status === 'working').length} / 3</span>
+          <div><h2>今やること</h2><p>正本でmustと確定した課題だけを最大3件表示します。現在の優先度はPhase 2で設定します。</p></div>
+          <span class="wip-chip">WIP ${focus.filter((feature) => feature.status === 'verifying').length} / 3</span>
         </div>
         <div class="focus-grid">
-          ${focus.map((feature, index) => `<div class="focus-card"><div class="focus-order">${index + 1}番目</div>${featureCard(feature)}</div>`).join('') || '<div class="empty">該当なし</div>'}
+          ${focus.map((feature, index) => `<div class="focus-card"><div class="focus-order">${index + 1}番目</div>${featureCard(feature)}</div>`).join('') || '<div class="empty">正本に優先度がないため、まだ推薦しません。Phase 2でB0〜B4・対象者・優先度を決めると表示されます。</div>'}
         </div>`;
       return focus;
     }
@@ -848,11 +657,11 @@
         </div>
         <div class="gate-grid">
           <section class="gate-panel">
-            ${gateFoundation.map((item) => `
+            ${gateFoundation.length ? gateFoundation.map((item) => `
               <div class="gate-item ${item.status}">
                 <span class="gate-check">${item.status === 'done' ? '✓' : item.status === 'working' ? '→' : '·'}</span>
                 <div><b>${item.title}</b><span>${item.detail}</span></div>
-              </div>`).join('')}
+              </div>`).join('') : '<div class="empty">Gate前提工事は機能台帳に項目がありません。Phase 2でtask-list・PR・実機証拠を照合して登録します。</div>'}
           </section>
           <section class="gate-panel">
             <h3>シスアド公開判定</h3>
@@ -903,7 +712,7 @@
     function getVisibleCampaigns() {
       const query = document.querySelector('#search').value.trim().toLowerCase();
       return campaigns.filter((campaign) => {
-        const stageMatches = campaign.stage === selectedStage;
+        const stageMatches = campaign.stage === selectedStage || campaign.stage === '未設定';
         const audienceMatches = selectedAudience === 'all' || campaign.audiences.includes(selectedAudience);
         const issueText = campaign.issues.map((issue) => issue.label).join(' ');
         const queryMatches = !query || `${campaign.id} ${campaign.title} ${campaign.featureKey} ${issueText}`.toLowerCase().includes(query);
@@ -913,48 +722,49 @@
 
     function renderCampaigns() {
       const visibleCampaigns = getVisibleCampaigns();
-      const openIssues = visibleCampaigns.flatMap((campaign) => campaign.issues).filter((issue) => issue.state === 'open').length;
       const blocked = visibleCampaigns.filter((campaign) => campaign.status === 'blocked').length;
-      const gaps = visibleCampaigns.filter((campaign) => campaign.id.startsWith('CMP未紐づけ')).length;
+      const working = visibleCampaigns.filter((campaign) => campaign.status === 'working').length;
+      const unknown = visibleCampaigns.filter((campaign) => campaign.status === 'unknown').length;
+      const done = visibleCampaigns.filter((campaign) => campaign.status === 'done').length;
       board.className = '';
       board.innerHTML = `
         <div class="panel-heading">
-          <div><h2>CMP・Issueの現在地</h2><p>CMPを仕事の単位にし、Issue・PR・CIを証拠として束ねます。完了率は手入力しません。</p></div>
+          <div><h2>CMPの現在地</h2><p>task-list.mdの全行を表示します。Issue・PR・CIのライブ状態は未接続なので推測しません。</p></div>
           <span class="wip-chip">${visibleCampaigns.length}戦役</span>
         </div>
         <div class="source-strip" aria-label="ダッシュボードのデータ生成経路">
           <div class="source-box"><b>正本</b><span>機能台帳 YAML ＋ task-list.md</span></div>
           <div class="source-arrow" aria-hidden="true">＋</div>
-          <div class="source-box"><b>実装証拠</b><span>GitHub Issue・PR・CI</span></div>
+          <div class="source-box"><b>実装証拠</b><span>task-list.md記載値のみ</span></div>
           <div class="source-arrow" aria-hidden="true">→</div>
-          <div class="source-box"><b>自動生成</b><span>dashboard-data.json → この画面</span></div>
+          <div class="source-box"><b>自動生成</b><span>beta-inventory-board-data.js → この画面</span></div>
         </div>
         <div class="cmp-summary">
           <span class="status-pill blocked">停止中 ${blocked}</span>
-          <span class="status-pill working">未解決Issue ${openIssues}</span>
-          <span class="status-pill unknown">CMP未紐づけ ${gaps}</span>
-          <span class="status-pill done">手入力する進捗率 0</span>
+          <span class="status-pill working">進行中 ${working}</span>
+          <span class="status-pill unknown">未整理 ${unknown}</span>
+          <span class="status-pill done">完了 ${done}</span>
         </div>
         <div class="cmp-list">
           ${visibleCampaigns.map((campaign) => `
             <article class="cmp-card" data-status="${campaign.status}">
               <div>
-                <span class="feature-key">${campaign.id}</span>
-                <h3>${campaign.title}</h3>
-                <p>${campaign.summary}</p>
+                <span class="feature-key">${escapeHtml(campaign.id)}</span>
+                <h3>${escapeHtml(campaign.title)}</h3>
+                <p>${escapeHtml(campaign.summary)}</p>
               </div>
               <div class="cmp-meta">
-                <span class="status-pill ${campaign.status}">${campaignStatusLabels[campaign.status]} · ${campaign.statusLabel}</span>
-                <div class="cmp-meta-row"><b>機能</b><span>${campaign.featureKey}</span></div>
-                <div class="cmp-meta-row"><b>PR</b><span>${campaign.prs.join(' / ')}</span></div>
-                <div class="cmp-meta-row"><b>CI</b><span>${campaign.ci}</span></div>
-                <div class="cmp-meta-row"><b>更新</b><span>${campaign.updated}</span></div>
+                <span class="status-pill ${escapeHtml(campaign.status)}">${escapeHtml(campaignStatusLabels[campaign.status])} · ${escapeHtml(campaign.statusLabel)}</span>
+                <div class="cmp-meta-row"><b>機能</b><span>${escapeHtml(campaign.featureKey || '未紐づけ')}</span></div>
+                <div class="cmp-meta-row"><b>証拠</b><span>${escapeHtml(campaign.prs.join(' / '))}</span></div>
+                <div class="cmp-meta-row"><b>ライブCI</b><span>未接続</span></div>
+                <div class="cmp-meta-row"><b>Phase</b><span>${escapeHtml(campaign.stage)}</span></div>
               </div>
               <div class="issue-stack">
-                ${campaign.issues.map((issue) => `<div class="issue-chip ${issue.state}">${issue.state === 'closed' ? '✓' : '●'} ${issue.label}</div>`).join('')}
-                <p><b>次：</b>${campaign.nextAction}</p>
+                ${campaign.issues.map((issue) => `<div class="issue-chip ${escapeHtml(issue.state)}">· ${escapeHtml(issue.label)}</div>`).join('')}
+                <p><b>受け入れ条件：</b>${escapeHtml(campaign.nextAction)}</p>
               </div>
-              <button class="primary-button" type="button" data-key="${campaign.id}">次の指示文</button>
+              <button class="primary-button" type="button" data-key="${escapeHtml(campaign.id)}">次の指示文</button>
             </article>`).join('') || '<div class="empty">この条件に該当するCMPはありません。</div>'}
         </div>`;
       return visibleCampaigns;
@@ -1080,19 +890,19 @@
       const activeCount = selectedView === 'campaigns'
         ? visibleCampaigns.filter((campaign) => campaign.status === 'working').length
         : selectedView === 'insights' ? visibleInsights.filter((insight) => insight.status === 'inbox').length
-        : focus.filter((feature) => feature.status === 'working').length;
+        : visible.filter((feature) => feature.status === 'incomplete' || feature.status === 'verifying').length;
       const nextCount = selectedView === 'campaigns'
         ? visibleCampaigns.filter((campaign) => campaign.status === 'blocked' || campaign.status === 'unknown').length
         : selectedView === 'insights' ? visibleInsights.filter((insight) => insight.status === 'planned').length
-        : Math.max(focus.length - focus.filter((feature) => feature.status === 'working').length, 0);
+        : visible.filter((feature) => feature.status === 'blocked' || feature.status === 'unknown').length;
       document.querySelector('#activeCount').textContent = activeCount;
       document.querySelector('#nextCount').textContent = nextCount;
       document.querySelector('#activeLabel').textContent = selectedView === 'campaigns'
         ? '進行中CMP'
-        : selectedView === 'insights' ? '未整理の気づき' : '進行中（WIP上限3）';
+        : selectedView === 'insights' ? '未整理の気づき' : '実装未完・検証中';
       document.querySelector('#nextLabel').textContent = selectedView === 'campaigns'
         ? '停止・未整理CMP'
-        : selectedView === 'insights' ? '課題化済' : '次点';
+        : selectedView === 'insights' ? '課題化済' : '不備・未棚卸';
       document.querySelector('#publishableCount').textContent = features.filter((feature) => feature.status === 'ready' && feature.gate === '適用完了').length;
       document.querySelector('#gateCount').textContent = `${doneGates}/${gateFoundation.length}`;
 
@@ -1101,11 +911,12 @@
         : selectedView === 'insights' ? visibleInsights.map(insightToTarget)
         : selectedView === 'focus' ? focus : visible;
       const recommended = recommendationSource.find((feature) => feature.priority === 'must' && feature.status === 'blocked')
-        || recommendationSource.find((feature) => feature.priority === 'must' && feature.status !== 'ready')
-        || recommendationSource[0];
-      document.querySelector('#recommendationTitle').textContent = recommended?.title || '該当課題なし';
-      document.querySelector('#recommendationReason').textContent = recommended?.why || '別のフィルターを選んでください。';
-      document.querySelector('#openRecommendation').dataset.key = recommended?.key || '';
+        || recommendationSource.find((feature) => feature.priority === 'must' && feature.status !== 'ready');
+      const recommendationButton = document.querySelector('#openRecommendation');
+      document.querySelector('#recommendationTitle').textContent = recommended?.title || 'Phase 2で優先順位を設定';
+      document.querySelector('#recommendationReason').textContent = recommended?.why || '正本に優先度がないため、現時点では課題を推測推薦しません。';
+      recommendationButton.dataset.key = recommended?.key || '';
+      recommendationButton.disabled = !recommended;
     }
 
     function buildPrompt(feature) {
@@ -1363,10 +1174,6 @@ ${insight.detail}
       const viewButton = event.target.closest('[data-view]');
       if (!viewButton) return;
       selectedView = viewButton.dataset.view;
-      if (selectedView === 'campaigns' && !campaigns.some((campaign) => campaign.stage === selectedStage)) {
-        selectedStage = 'B0';
-        document.querySelectorAll('[data-stage]').forEach((button) => button.classList.toggle('active', button.dataset.stage === 'B0'));
-      }
       document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button === viewButton));
       renderBoard();
     });
@@ -1412,7 +1219,9 @@ ${insight.detail}
       const card = event.target.closest('[data-key]');
       if (card) openDrawer(card.dataset.key);
     });
-    document.querySelector('#openRecommendation').addEventListener('click', (event) => openDrawer(event.currentTarget.dataset.key));
+    document.querySelector('#openRecommendation').addEventListener('click', (event) => {
+      if (event.currentTarget.dataset.key) openDrawer(event.currentTarget.dataset.key);
+    });
     document.querySelector('#closeDrawer').addEventListener('click', closeDrawer);
     document.querySelector('#openInsightForm').addEventListener('click', () => openInsightForm());
     document.querySelector('#closeInsightDrawer').addEventListener('click', closeInsightForm);
@@ -1491,6 +1300,9 @@ ${insight.detail}
       root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
     });
 
+    const sourceCounts = window.BETA_INVENTORY_DATA.sourceCounts;
+    const generatedAt = new Date(window.BETA_INVENTORY_DATA.generatedAt).toLocaleString('ja-JP');
+    document.querySelector('#sourceNote').textContent = `正本同期: 機能 ${sourceCounts.features}件 / CMP ${sourceCounts.campaigns}件 / 生成 ${generatedAt} / B0〜B4・対象者・Gate・GitHubライブ状態はPhase 2で照合`;
     populateInsightFeatures();
     renderBoard();
     readInsights()

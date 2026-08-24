@@ -1,0 +1,36 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const prototypeDirectory = new URL('./', import.meta.url);
+const dataSource = fs.readFileSync(new URL('beta-inventory-board-data.js', prototypeDirectory), 'utf8');
+const html = fs.readFileSync(new URL('beta-inventory-board.html', prototypeDirectory), 'utf8');
+const context = { window: {} };
+vm.runInNewContext(dataSource, context, { filename: 'beta-inventory-board-data.js' });
+
+const data = context.window.BETA_INVENTORY_DATA;
+if (!data?.verification?.passed) throw new Error('正本データの検算が完了していません。');
+if (data.features.length !== data.sourceCounts.features) throw new Error('機能件数が一致しません。');
+if (data.campaigns.length !== data.sourceCounts.campaigns) throw new Error('CMP件数が一致しません。');
+if (new Set(data.features.map((feature) => feature.key)).size !== data.features.length) throw new Error('feature_keyが重複しています。');
+if (new Set(data.campaigns.map((campaign) => campaign.id)).size !== data.campaigns.length) throw new Error('CMP IDが重複しています。');
+
+const allowedStatuses = new Set(['blocked', 'unknown', 'incomplete', 'verifying', 'ready']);
+if (data.features.some((feature) => !allowedStatuses.has(feature.status))) throw new Error('公式5状態以外の機能があります。');
+
+const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
+  .map((match) => match[1])
+  .filter((source) => source.trim());
+inlineScripts.forEach((source) => new Function(source));
+
+for (const label of ['不備あり', '未棚卸', '実装未完', '検証中', 'β準備完了']) {
+  if (!html.includes(label)) throw new Error(`5状態レーンが不足しています: ${label}`);
+}
+
+console.log(JSON.stringify({
+  features: data.features.length,
+  campaigns: data.campaigns.length,
+  core: data.features.filter((feature) => feature.classification === 'core').length,
+  noncore: data.features.filter((feature) => feature.classification === 'noncore').length,
+  blockers: data.sourceCounts.blockers,
+  coreStatus: data.sourceCounts.coreStatus,
+}, null, 2));
