@@ -51,12 +51,17 @@
       font-family: "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif;
       min-height: 100vh;
     }
-    button, input, select { font: inherit; }
+    button, input, select, textarea { font: inherit; }
     button { cursor: pointer; }
     .shell { width: min(1480px, 100%); margin: 0 auto; padding: 22px; }
     .topbar {
       display: flex; align-items: center; justify-content: space-between; gap: 18px;
       margin-bottom: 18px;
+    }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .quick-note-button {
+      min-height: 44px; border: 0; border-radius: 12px; padding: 0 16px;
+      background: var(--accent); color: #17200f; font-weight: 900;
     }
     .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
     .crest {
@@ -89,7 +94,7 @@
     .stat span { color: var(--muted); font-size: 12px; }
     .toolbar { padding: 14px; margin-bottom: 16px; }
     .view-switcher {
-      display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px;
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 12px;
       padding-bottom: 12px; border-bottom: 1px solid var(--line);
     }
     .view-button {
@@ -174,6 +179,45 @@
     .status-pill.working { color: var(--info); background: color-mix(in srgb, var(--info) 10%, var(--panel)); }
     .status-pill.done { color: var(--ready); background: var(--brand-soft); }
     .status-pill.unknown { color: var(--muted); background: var(--panel-soft); }
+    .insight-intro {
+      display: flex; justify-content: space-between; gap: 14px; align-items: center;
+      padding: 15px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel);
+    }
+    .insight-intro p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .insight-groups { display: grid; gap: 14px; }
+    .insight-group { padding: 15px; border: 1px solid var(--line); border-radius: 18px; background: var(--panel); }
+    .insight-group-header { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 11px; }
+    .insight-group-header h3 { margin: 0; font-size: 16px; }
+    .insight-group-header span { color: var(--muted); font-size: 11px; }
+    .insight-card-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .insight-card { display: grid; grid-template-columns: 118px minmax(0, 1fr); gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--bg); }
+    .insight-shot { width: 118px; height: 92px; border-radius: 10px; object-fit: cover; background: var(--panel-soft); border: 1px solid var(--line); }
+    .insight-shot.empty { display: grid; place-items: center; padding: 8px; font-size: 10px; text-align: center; }
+    .insight-body { min-width: 0; }
+    .insight-body h4 { margin: 5px 0; font-size: 14px; }
+    .insight-body p { margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .insight-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+    .mini-button { min-height: 36px; border: 1px solid var(--line); border-radius: 9px; padding: 0 10px; background: var(--panel); color: var(--text); font-size: 11px; font-weight: 800; }
+    .mini-button.primary { border: 0; background: var(--accent); color: #17200f; }
+    .insight-drawer { width: min(640px, calc(100% - 24px)); }
+    .insight-form { display: grid; gap: 14px; margin-top: 18px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .form-field { display: grid; gap: 6px; }
+    .form-field label { color: var(--muted); font-size: 11px; font-weight: 800; }
+    .form-field input, .form-field textarea {
+      width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--bg); color: var(--text); padding: 10px 12px; font-size: 16px;
+    }
+    .form-field textarea { min-height: 118px; resize: vertical; }
+    .shot-drop {
+      display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 12px; align-items: center;
+      min-height: 150px; padding: 12px; border: 2px dashed var(--line); border-radius: 14px; background: var(--bg);
+    }
+    .shot-drop.dragging { border-color: var(--brand); background: var(--brand-soft); }
+    .shot-preview { width: 128px; height: 104px; border-radius: 10px; object-fit: cover; background: var(--panel-soft); }
+    .shot-help b { display: block; margin-bottom: 5px; }
+    .shot-help p { margin: 0 0 8px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .storage-note { padding: 10px 12px; border-radius: 11px; background: var(--panel-soft); color: var(--muted); font-size: 11px; line-height: 1.6; }
     .lane { padding: 12px; box-shadow: none; min-width: 250px; }
     .lane-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 3px 12px; }
     .lane-title { display: flex; align-items: center; gap: 8px; font-weight: 900; }
@@ -227,6 +271,7 @@
       background: #111713; color: #dce9df; padding: 14px; font: 12px/1.65 ui-monospace, SFMono-Regular, Consolas, monospace;
     }
     .drawer-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 10px; }
+    .drawer-actions .wide { grid-column: 1 / -1; }
     .toast {
       position: fixed; z-index: 20; left: 50%; bottom: 24px; transform: translate(-50%, 20px);
       opacity: 0; pointer-events: none; border-radius: 12px; padding: 12px 16px; background: var(--text);
@@ -239,6 +284,7 @@
       .board { grid-template-columns: repeat(4, minmax(280px, 84vw)); }
       .focus-grid, .gate-grid { grid-template-columns: 1fr; }
       .cmp-card { grid-template-columns: 1fr 1fr; }
+      .insight-card-grid { grid-template-columns: 1fr; }
       .search { order: 10; width: 100%; margin-left: 0; }
     }
     @media (max-width: 520px) {
@@ -251,6 +297,13 @@
       .source-strip { grid-template-columns: 1fr; }
       .source-arrow { transform: rotate(90deg); text-align: center; }
       .cmp-card { grid-template-columns: 1fr; }
+      .topbar { align-items: start; }
+      .quick-note-button { width: 44px; padding: 0; font-size: 0; }
+      .quick-note-button::before { content: "＋"; font-size: 20px; }
+      .form-row, .shot-drop { grid-template-columns: 1fr; }
+      .insight-card { grid-template-columns: 1fr; }
+      .insight-shot { width: 100%; height: 150px; }
+      .insight-intro { align-items: stretch; flex-direction: column; }
       .drawer { padding: 17px; }
     }
   </style>
@@ -265,7 +318,10 @@
           <p class="subtitle">サッカー／同窓会に集中し、次にやる仕事を決める</p>
         </div>
       </div>
-      <button class="icon-button" id="themeToggle" type="button" aria-label="テーマを切り替える">◐</button>
+      <div class="top-actions">
+        <button class="quick-note-button" id="openInsightForm" type="button">＋ 気づきを残す</button>
+        <button class="icon-button" id="themeToggle" type="button" aria-label="テーマを切り替える">◐</button>
+      </div>
     </header>
 
     <section class="hero">
@@ -275,8 +331,8 @@
         <p>成人サッカーチームで「予定・出欠・連絡・会話」を日常利用し、同窓会の名簿・一斉連絡・イベント出欠へ同じ基盤を展開する。</p>
       </div>
       <div class="hero-side">
-        <div class="stat"><strong id="activeCount">1</strong><span>進行中（WIP上限3）</span></div>
-        <div class="stat"><strong id="nextCount">2</strong><span>次点</span></div>
+        <div class="stat"><strong id="activeCount">1</strong><span id="activeLabel">進行中（WIP上限3）</span></div>
+        <div class="stat"><strong id="nextCount">2</strong><span id="nextLabel">次点</span></div>
         <div class="stat"><strong id="publishableCount">0</strong><span>シスアド公開可能</span></div>
         <div class="stat"><strong id="gateCount">3/8</strong><span>Gate前提工事</span></div>
       </div>
@@ -288,6 +344,7 @@
         <button class="view-button" data-view="roadmap" type="button">Bロードマップ<small>B0〜B4の全体</small></button>
         <button class="view-button" data-view="gate" type="button">公開Gate<small>前提工事と公開判定</small></button>
         <button class="view-button" data-view="campaigns" type="button">CMP・Issue<small>戦役と実装の現在地</small></button>
+        <button class="view-button" data-view="insights" type="button">気づき箱<small>スクショ付き改善メモ</small></button>
         <button class="view-button" data-view="deferred" type="button">延期箱<small>非Coreを退避</small></button>
       </nav>
       <div class="filters" id="filters">
@@ -353,8 +410,63 @@
       <div class="drawer-actions">
         <button class="primary-button" id="copyPrompt" type="button">指示文をコピー</button>
         <button class="secondary-button" id="copyKey" type="button">IDのみコピー</button>
+        <button class="secondary-button wide" id="recordFromTask" type="button">この機能の改善点を記録</button>
       </div>
     </div>
+  </aside>
+  <aside class="drawer insight-drawer" id="insightDrawer" aria-hidden="true" aria-label="改善点を記録">
+    <div class="drawer-header">
+      <div>
+        <div class="feature-key">QUICK CAPTURE</div>
+        <h2>気づきを残す</h2>
+      </div>
+      <button class="icon-button" id="closeInsightDrawer" type="button" aria-label="閉じる">✕</button>
+    </div>
+    <form class="insight-form" id="insightForm">
+      <div class="form-row">
+        <div class="form-field">
+          <label for="insightFeature">対象機能</label>
+          <select id="insightFeature" required></select>
+        </div>
+        <div class="form-field">
+          <label for="insightPriority">優先度</label>
+          <select id="insightPriority">
+            <option value="must">止まる・危険</option>
+            <option value="should" selected>摩擦が大きい</option>
+            <option value="could">あると良い</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-field">
+        <label for="insightTitle">気づいたこと</label>
+        <input id="insightTitle" type="text" maxlength="120" required placeholder="例：出欠回答後に次の操作が分からない">
+      </div>
+      <div class="form-field">
+        <label for="insightPage">発見した画面・URL</label>
+        <input id="insightPage" type="text" maxlength="300" placeholder="例：/teams/demo/schedule/123">
+      </div>
+      <div class="form-field">
+        <label for="insightDetail">状況・期待する動き</label>
+        <textarea id="insightDetail" maxlength="1200" required placeholder="何をした時に何が起きたか／本当はどうなってほしいか"></textarea>
+      </div>
+      <div class="form-field">
+        <label>スクリーンショット（任意）</label>
+        <div class="shot-drop" id="shotDrop" tabindex="0">
+          <img class="shot-preview" id="shotPreview" alt="添付するスクリーンショットのプレビュー" hidden>
+          <div class="shot-help">
+            <b>Ctrl＋V、ドロップ、または画像を選択</b>
+            <p>画像はこのブラウザ内へ保存されます。AIへ渡す時は「画像保存」で書き出せます。</p>
+            <button class="secondary-button" id="chooseShot" type="button">画像を選択</button>
+            <input id="shotInput" type="file" accept="image/*" hidden>
+          </div>
+        </div>
+      </div>
+      <div class="storage-note"><b>試作の保存先：</b>このブラウザのIndexedDB（画像はBlob）。HTML・Git・AWSには送信しません。ブラウザデータ削除や別PCでは失われます。本番版は本文をDB、画像を非公開S3へ保存し、Mannschaftの認可経由で閲覧する想定です。</div>
+      <div class="drawer-actions">
+        <button class="primary-button" type="submit">気づきを保存</button>
+        <button class="secondary-button" id="cancelInsight" type="button">キャンセル</button>
+      </div>
+    </form>
   </aside>
   <div class="toast" id="toast" role="status">コピーしました</div>
 
@@ -565,10 +677,97 @@
     let selectedStage = 'B1';
     let selectedAudience = 'all';
     let selectedFeature = null;
+    let insights = [];
+    let pendingScreenshot = null;
+    let pendingScreenshotUrl = '';
+    let insightObjectUrls = [];
 
     const board = document.querySelector('#board');
     const drawer = document.querySelector('#drawer');
+    const insightDrawer = document.querySelector('#insightDrawer');
     const backdrop = document.querySelector('#backdrop');
+
+    const INSIGHT_DB_NAME = 'mannschaft-beta-inventory-board';
+    const INSIGHT_STORE_NAME = 'insights';
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    }
+
+    function openInsightDatabase() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(INSIGHT_DB_NAME, 1);
+        request.onupgradeneeded = () => {
+          if (!request.result.objectStoreNames.contains(INSIGHT_STORE_NAME)) {
+            request.result.createObjectStore(INSIGHT_STORE_NAME, { keyPath: 'id' });
+          }
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function readInsights() {
+      const database = await openInsightDatabase();
+      return new Promise((resolve, reject) => {
+        const request = database.transaction(INSIGHT_STORE_NAME, 'readonly').objectStore(INSIGHT_STORE_NAME).getAll();
+        request.onsuccess = () => {
+          database.close();
+          resolve(request.result.sort((a, b) => b.createdAt - a.createdAt));
+        };
+        request.onerror = () => {
+          database.close();
+          reject(request.error);
+        };
+      });
+    }
+
+    async function writeInsight(insight) {
+      const database = await openInsightDatabase();
+      return new Promise((resolve, reject) => {
+        const request = database.transaction(INSIGHT_STORE_NAME, 'readwrite').objectStore(INSIGHT_STORE_NAME).put(insight);
+        request.onsuccess = () => {
+          database.close();
+          resolve();
+        };
+        request.onerror = () => {
+          database.close();
+          reject(request.error);
+        };
+      });
+    }
+
+    function getFeatureInfo(featureKey) {
+      const feature = features.find((item) => item.key === featureKey);
+      if (feature) return feature;
+      const campaign = campaigns.find((item) => item.featureKey === featureKey);
+      return {
+        key: featureKey,
+        title: campaign?.title || 'その他・横断',
+        stage: campaign?.stage || 'B0',
+        classification: 'foundation',
+        priority: campaign?.priority || 'should',
+        audiences: campaign?.audiences || ['soccer', 'alumni'],
+        publication: '—',
+        gate: campaign?.statusLabel || '未確認'
+      };
+    }
+
+    function populateInsightFeatures() {
+      const featureOptions = new Map(features.map((feature) => [feature.key, feature.title]));
+      campaigns.forEach((campaign) => {
+        if (!featureOptions.has(campaign.featureKey)) featureOptions.set(campaign.featureKey, campaign.title);
+      });
+      featureOptions.set('cross-cutting', 'その他・横断');
+      document.querySelector('#insightFeature').innerHTML = [...featureOptions.entries()]
+        .map(([key, title]) => `<option value="${escapeHtml(key)}">${escapeHtml(title)} · ${escapeHtml(key)}</option>`)
+        .join('');
+    }
 
     function getFilteredFeatures() {
       const query = document.querySelector('#search').value.trim().toLowerCase();
@@ -761,30 +960,145 @@
       return visibleCampaigns;
     }
 
+    function insightToTarget(insight) {
+      if (!insight) return null;
+      const feature = getFeatureInfo(insight.featureKey);
+      return {
+        key: insight.id,
+        title: insight.title,
+        status: insight.status === 'done' ? 'ready' : insight.status === 'planned' ? 'working' : 'unknown',
+        classification: feature.classification,
+        stage: feature.stage,
+        priority: insight.priority,
+        audiences: feature.audiences,
+        publication: feature.publication,
+        gate: feature.gate,
+        summary: insight.detail,
+        why: insight.detail,
+        acceptance: [
+          '記録された操作を再現し、現状の挙動を証拠付きで確定する',
+          '期待する動きと受け入れ条件を具体化する',
+          '対象機能の既存仕様・Issue・CMPとの重複を確認する'
+        ],
+        blocker: insight.page ? `発見画面: ${insight.page}` : '発見画面は未記録',
+        refs: ['docs/inventory/feature-inventory.yaml', 'docs/task-list.md'],
+        insight
+      };
+    }
+
+    function releaseInsightObjectUrls() {
+      insightObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+      insightObjectUrls = [];
+    }
+
+    function renderInsights() {
+      releaseInsightObjectUrls();
+      const query = document.querySelector('#search').value.trim().toLowerCase();
+      const visibleInsights = insights.filter((insight) => {
+        const feature = getFeatureInfo(insight.featureKey);
+        const stageMatches = feature.stage === selectedStage;
+        const queryMatches = !query || `${insight.id} ${insight.title} ${insight.detail} ${insight.page} ${feature.title} ${insight.featureKey}`.toLowerCase().includes(query);
+        return stageMatches && queryMatches;
+      });
+      const groups = new Map();
+      visibleInsights.forEach((insight) => {
+        if (!groups.has(insight.featureKey)) groups.set(insight.featureKey, []);
+        groups.get(insight.featureKey).push(insight);
+      });
+      const openCount = visibleInsights.filter((insight) => insight.status === 'inbox').length;
+      const plannedCount = visibleInsights.filter((insight) => insight.status === 'planned').length;
+      const priorityLabels = { must: '止まる・危険', should: '摩擦が大きい', could: 'あると良い' };
+      const statusLabels = { inbox: '未整理', planned: '課題化済', done: '対応済' };
+      const statusClasses = { inbox: 'unknown', planned: 'working', done: 'done' };
+
+      board.className = '';
+      board.innerHTML = `
+        <div class="panel-heading">
+          <div><h2>気づき箱</h2><p>操作中の違和感を止めずに捕まえ、後から機能単位でまとめます。</p></div>
+          <span class="wip-chip">未整理 ${openCount} · 課題化済 ${plannedCount}</span>
+        </div>
+        <div class="insight-intro">
+          <div><b>記録は30秒で十分</b><p>対象機能・一言・状況・スクショだけ残し、優先順位やCMP化は後で行います。</p></div>
+          <button class="primary-button" type="button" data-open-insight-form>＋ 気づきを追加</button>
+        </div>
+        <div class="insight-groups">
+          ${groups.size ? [...groups.entries()].map(([featureKey, groupInsights]) => {
+            const feature = getFeatureInfo(featureKey);
+            return `
+              <section class="insight-group">
+                <div class="insight-group-header">
+                  <div><h3>${escapeHtml(feature.title)}</h3><span>${escapeHtml(featureKey)} · ${escapeHtml(feature.stage)} · ${escapeHtml(classificationLabel(feature.classification))}</span></div>
+                  <span>${groupInsights.length}件</span>
+                </div>
+                <div class="insight-card-grid">
+                  ${groupInsights.map((insight) => {
+                    let screenshot = '<div class="insight-shot empty">スクショなし</div>';
+                    if (insight.screenshot) {
+                      const imageUrl = URL.createObjectURL(insight.screenshot);
+                      insightObjectUrls.push(imageUrl);
+                      screenshot = `<img class="insight-shot" src="${imageUrl}" alt="${escapeHtml(insight.title)}のスクリーンショット">`;
+                    }
+                    return `
+                      <article class="insight-card">
+                        ${screenshot}
+                        <div class="insight-body">
+                          <div class="tags">
+                            <span class="status-pill ${statusClasses[insight.status]}">${statusLabels[insight.status]}</span>
+                            <span class="priority ${insight.priority}">${priorityLabels[insight.priority]}</span>
+                          </div>
+                          <h4>${escapeHtml(insight.title)}</h4>
+                          <p>${escapeHtml(insight.detail)}</p>
+                          ${insight.page ? `<p>画面：${escapeHtml(insight.page)}</p>` : ''}
+                          <div class="insight-actions">
+                            <button class="mini-button primary" type="button" data-insight-prompt="${escapeHtml(insight.id)}">AI指示文</button>
+                            ${insight.screenshot ? `<button class="mini-button" type="button" data-insight-download="${escapeHtml(insight.id)}">画像保存</button>` : ''}
+                            <button class="mini-button" type="button" data-insight-status="${escapeHtml(insight.id)}">${insight.status === 'inbox' ? '課題化済にする' : insight.status === 'planned' ? '対応済にする' : '未整理へ戻す'}</button>
+                          </div>
+                        </div>
+                      </article>`;
+                  }).join('')}
+                </div>
+              </section>`;
+          }).join('') : '<div class="empty">まだ気づきはありません。「＋ 気づきを追加」から最初の1件を残せます。</div>'}
+        </div>`;
+      return visibleInsights;
+    }
+
     function renderBoard() {
       const visible = getFilteredFeatures();
       let focus = [];
       let visibleCampaigns = [];
+      let visibleInsights = [];
       if (selectedView === 'focus') focus = renderFocus(visible);
       if (selectedView === 'roadmap') renderRoadmap(visible);
       if (selectedView === 'gate') renderGate();
       if (selectedView === 'campaigns') visibleCampaigns = renderCampaigns();
+      if (selectedView === 'insights') visibleInsights = renderInsights();
       if (selectedView === 'deferred') renderDeferred(visible);
 
       const doneGates = gateFoundation.filter((item) => item.status === 'done').length;
       const activeCount = selectedView === 'campaigns'
         ? visibleCampaigns.filter((campaign) => campaign.status === 'working').length
+        : selectedView === 'insights' ? visibleInsights.filter((insight) => insight.status === 'inbox').length
         : focus.filter((feature) => feature.status === 'working').length;
       const nextCount = selectedView === 'campaigns'
         ? visibleCampaigns.filter((campaign) => campaign.status === 'blocked' || campaign.status === 'unknown').length
+        : selectedView === 'insights' ? visibleInsights.filter((insight) => insight.status === 'planned').length
         : Math.max(focus.length - focus.filter((feature) => feature.status === 'working').length, 0);
       document.querySelector('#activeCount').textContent = activeCount;
       document.querySelector('#nextCount').textContent = nextCount;
+      document.querySelector('#activeLabel').textContent = selectedView === 'campaigns'
+        ? '進行中CMP'
+        : selectedView === 'insights' ? '未整理の気づき' : '進行中（WIP上限3）';
+      document.querySelector('#nextLabel').textContent = selectedView === 'campaigns'
+        ? '停止・未整理CMP'
+        : selectedView === 'insights' ? '課題化済' : '次点';
       document.querySelector('#publishableCount').textContent = features.filter((feature) => feature.status === 'ready' && feature.gate === '適用完了').length;
       document.querySelector('#gateCount').textContent = `${doneGates}/${gateFoundation.length}`;
 
       const recommendationSource = selectedView === 'campaigns'
         ? visibleCampaigns.map(campaignToTarget)
+        : selectedView === 'insights' ? visibleInsights.map(insightToTarget)
         : selectedView === 'focus' ? focus : visible;
       const recommended = recommendationSource.find((feature) => feature.priority === 'must' && feature.status === 'blocked')
         || recommendationSource.find((feature) => feature.priority === 'must' && feature.status !== 'ready')
@@ -812,10 +1126,20 @@
 - CI: ${feature.campaign.ci}
 - 最終更新: ${feature.campaign.updated}
 ` : '';
+      const insightContext = feature.insight ? `
+■ 操作中の気づき
+- 改善メモID: ${feature.insight.id}
+- 対応feature_key: ${feature.insight.featureKey}
+- 発見画面: ${feature.insight.page || '未記録'}
+- 状態: ${feature.insight.status}
+- 記録日時: ${new Date(feature.insight.createdAt).toLocaleString('ja-JP')}
+- スクリーンショット: ${feature.insight.screenshot ? `${feature.insight.screenshotName || '添付あり'}（「画像保存」で書き出し、この依頼と一緒に添付してください）` : 'なし'}
+` : '';
+      const targetType = feature.campaign ? 'CMP' : feature.insight ? '改善メモ' : 'feature_key';
       return `MannschaftのB棚卸しに基づく${agent}向けの依頼です。
 
 ■ 対象
-- ${feature.campaign ? 'CMP' : 'feature_key'}: ${feature.key}
+- ${targetType}: ${feature.key}
 - 課題: ${feature.title}
 - 区分: ${classificationLabel(feature.classification)}
 - 最早導入段階: ${feature.stage}
@@ -824,6 +1148,7 @@
 - 公開状態: ${feature.publication}
 - Gate適用状態: ${feature.gate}
 ${campaignContext}
+${insightContext}
 
 ■ 目的
 ${feature.why}
@@ -846,6 +1171,7 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
 - 不明を推測で「実装済」にしないこと。
 - 証拠とともに docs/inventory/feature-inventory.yaml の更新案を示すこと。
 - CMPを扱う場合は docs/task-list.md を正本とし、Issue・PR・CIとの対応を確認すること。
+- 改善メモを扱う場合は添付スクリーンショットと発見画面から再現条件を確定し、同じ機能のメモをまとめてからIssue/CMP化を判断すること。
 - β準備完了とGate適用完了を混同せず、シスアド公開可能かを別々に判定すること。
 - 完了時は実行した検証、未実行の検証、残存リスクを日本語で報告すること。`;
     }
@@ -853,7 +1179,8 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
     function openDrawer(key) {
       const matchedFeature = features.find((item) => item.key === key);
       const matchedCampaign = campaigns.find((item) => item.id === key);
-      const feature = matchedFeature || campaignToTarget(matchedCampaign);
+      const matchedInsight = insights.find((item) => item.id === key);
+      const feature = matchedFeature || campaignToTarget(matchedCampaign) || insightToTarget(matchedInsight);
       if (!feature) return;
       selectedFeature = feature;
       document.querySelector('#drawerKey').textContent = `${feature.key} · ${classificationLabel(feature.classification)} · ${feature.stage} · ${feature.priority.toUpperCase()} · ${feature.publication}`;
@@ -863,15 +1190,96 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
       document.querySelector('#drawerBlocker').textContent = feature.blocker;
       document.querySelector('#promptText').value = buildPrompt(feature);
       drawer.classList.add('open');
-      backdrop.classList.add('open');
       drawer.setAttribute('aria-hidden', 'false');
+      syncBackdrop();
       document.querySelector('#closeDrawer').focus();
     }
 
     function closeDrawer() {
       drawer.classList.remove('open');
-      backdrop.classList.remove('open');
       drawer.setAttribute('aria-hidden', 'true');
+      syncBackdrop();
+    }
+
+    function syncBackdrop() {
+      backdrop.classList.toggle('open', drawer.classList.contains('open') || insightDrawer.classList.contains('open'));
+    }
+
+    function clearPendingScreenshot() {
+      if (pendingScreenshotUrl) URL.revokeObjectURL(pendingScreenshotUrl);
+      pendingScreenshot = null;
+      pendingScreenshotUrl = '';
+      const preview = document.querySelector('#shotPreview');
+      preview.hidden = true;
+      preview.removeAttribute('src');
+      document.querySelector('#shotInput').value = '';
+    }
+
+    function setPendingScreenshot(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        showToast('画像ファイルを選んでください');
+        return;
+      }
+      if (file.size > 15 * 1024 * 1024) {
+        showToast('画像は15MB以下にしてください');
+        return;
+      }
+      clearPendingScreenshot();
+      pendingScreenshot = file;
+      pendingScreenshotUrl = URL.createObjectURL(file);
+      const preview = document.querySelector('#shotPreview');
+      preview.src = pendingScreenshotUrl;
+      preview.hidden = false;
+    }
+
+    function openInsightForm(featureKey = '') {
+      closeDrawer();
+      document.querySelector('#insightForm').reset();
+      clearPendingScreenshot();
+      const select = document.querySelector('#insightFeature');
+      select.value = [...select.options].some((option) => option.value === featureKey) ? featureKey : 'cross-cutting';
+      insightDrawer.classList.add('open');
+      insightDrawer.setAttribute('aria-hidden', 'false');
+      syncBackdrop();
+      document.querySelector('#insightTitle').focus();
+    }
+
+    function closeInsightForm() {
+      insightDrawer.classList.remove('open');
+      insightDrawer.setAttribute('aria-hidden', 'true');
+      clearPendingScreenshot();
+      syncBackdrop();
+    }
+
+    function createInsightId(createdAt) {
+      const date = new Date(createdAt);
+      const pad = (value) => String(value).padStart(2, '0');
+      return `NOTE-${String(date.getFullYear()).slice(-2)}${pad(date.getMonth() + 1)}${pad(date.getDate())}-${pad(date.getHours())}${pad(date.getMinutes())}${pad(date.getSeconds())}-${String(date.getMilliseconds()).padStart(3, '0')}`;
+    }
+
+    function downloadInsightScreenshot(insight) {
+      if (!insight?.screenshot) return;
+      const originalName = insight.screenshotName || '';
+      const extensionFromName = originalName.includes('.') ? originalName.split('.').pop() : '';
+      const extensionByType = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif' }[insight.screenshot.type];
+      const extension = extensionFromName || extensionByType || 'png';
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(insight.screenshot);
+      link.href = url;
+      link.download = `${insight.id}-${insight.featureKey}.${extension}`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      showToast('スクリーンショットを保存しました');
+    }
+
+    async function advanceInsightStatus(insight) {
+      const nextStatus = insight.status === 'inbox' ? 'planned' : insight.status === 'planned' ? 'done' : 'inbox';
+      await writeInsight({ ...insight, status: nextStatus, updatedAt: Date.now() });
+      insights = await readInsights();
+      renderBoard();
+      showToast(nextStatus === 'planned' ? '課題化済にしました' : nextStatus === 'done' ? '対応済にしました' : '未整理へ戻しました');
     }
 
     function showToast(message) {
@@ -923,24 +1331,118 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
     });
 
     document.querySelector('#search').addEventListener('input', renderBoard);
-    board.addEventListener('click', (event) => {
+    board.addEventListener('click', async (event) => {
+      const openInsightButton = event.target.closest('[data-open-insight-form]');
+      const insightPromptButton = event.target.closest('[data-insight-prompt]');
+      const insightDownloadButton = event.target.closest('[data-insight-download]');
+      const insightStatusButton = event.target.closest('[data-insight-status]');
+      if (openInsightButton) {
+        openInsightForm();
+        return;
+      }
+      if (insightPromptButton) {
+        openDrawer(insightPromptButton.dataset.insightPrompt);
+        return;
+      }
+      if (insightDownloadButton) {
+        downloadInsightScreenshot(insights.find((item) => item.id === insightDownloadButton.dataset.insightDownload));
+        return;
+      }
+      if (insightStatusButton) {
+        const insight = insights.find((item) => item.id === insightStatusButton.dataset.insightStatus);
+        if (insight) await advanceInsightStatus(insight);
+        return;
+      }
       const card = event.target.closest('[data-key]');
       if (card) openDrawer(card.dataset.key);
     });
     document.querySelector('#openRecommendation').addEventListener('click', (event) => openDrawer(event.currentTarget.dataset.key));
     document.querySelector('#closeDrawer').addEventListener('click', closeDrawer);
-    backdrop.addEventListener('click', closeDrawer);
-    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closeDrawer(); });
+    document.querySelector('#openInsightForm').addEventListener('click', () => openInsightForm());
+    document.querySelector('#closeInsightDrawer').addEventListener('click', closeInsightForm);
+    document.querySelector('#cancelInsight').addEventListener('click', closeInsightForm);
+    document.querySelector('#recordFromTask').addEventListener('click', () => {
+      const featureKey = selectedFeature?.campaign?.featureKey || selectedFeature?.insight?.featureKey || selectedFeature?.key || '';
+      openInsightForm(featureKey);
+    });
+    backdrop.addEventListener('click', () => {
+      closeDrawer();
+      closeInsightForm();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        closeDrawer();
+        closeInsightForm();
+      }
+    });
     document.querySelector('#agentSelect').addEventListener('change', () => { if (selectedFeature) document.querySelector('#promptText').value = buildPrompt(selectedFeature); });
     document.querySelector('#taskSelect').addEventListener('change', () => { if (selectedFeature) document.querySelector('#promptText').value = buildPrompt(selectedFeature); });
     document.querySelector('#copyPrompt').addEventListener('click', () => copyText(document.querySelector('#promptText').value, '指示文をコピーしました'));
     document.querySelector('#copyKey').addEventListener('click', () => copyText(selectedFeature?.key || '', 'IDをコピーしました'));
+    document.querySelector('#chooseShot').addEventListener('click', () => document.querySelector('#shotInput').click());
+    document.querySelector('#shotInput').addEventListener('change', (event) => setPendingScreenshot(event.target.files[0]));
+    const shotDrop = document.querySelector('#shotDrop');
+    ['dragenter', 'dragover'].forEach((type) => shotDrop.addEventListener(type, (event) => {
+      event.preventDefault();
+      shotDrop.classList.add('dragging');
+    }));
+    ['dragleave', 'drop'].forEach((type) => shotDrop.addEventListener(type, (event) => {
+      event.preventDefault();
+      shotDrop.classList.remove('dragging');
+    }));
+    shotDrop.addEventListener('drop', (event) => setPendingScreenshot([...event.dataTransfer.files].find((file) => file.type.startsWith('image/'))));
+    shotDrop.addEventListener('paste', (event) => {
+      const image = [...event.clipboardData.items]
+        .find((item) => item.type.startsWith('image/'))
+        ?.getAsFile();
+      if (image) {
+        event.preventDefault();
+        setPendingScreenshot(image);
+      }
+    });
+    document.querySelector('#insightForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const createdAt = Date.now();
+      const insight = {
+        id: createInsightId(createdAt),
+        featureKey: document.querySelector('#insightFeature').value,
+        priority: document.querySelector('#insightPriority').value,
+        title: document.querySelector('#insightTitle').value.trim(),
+        page: document.querySelector('#insightPage').value.trim(),
+        detail: document.querySelector('#insightDetail').value.trim(),
+        status: 'inbox',
+        createdAt,
+        updatedAt: createdAt,
+        screenshot: pendingScreenshot,
+        screenshotName: pendingScreenshot?.name || ''
+      };
+      try {
+        await writeInsight(insight);
+        insights = await readInsights();
+        closeInsightForm();
+        selectedView = 'insights';
+        selectedStage = getFeatureInfo(insight.featureKey).stage;
+        document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button.dataset.view === 'insights'));
+        document.querySelectorAll('[data-stage]').forEach((button) => button.classList.toggle('active', button.dataset.stage === selectedStage));
+        renderBoard();
+        showToast('気づきを保存しました');
+      } catch (error) {
+        showToast(`保存できませんでした: ${error?.message || 'IndexedDBエラー'}`);
+      }
+    });
     document.querySelector('#themeToggle').addEventListener('click', () => {
       const root = document.documentElement;
       root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
     });
 
+    populateInsightFeatures();
     renderBoard();
+    readInsights()
+      .then((storedInsights) => {
+        insights = storedInsights;
+        if (selectedView === 'insights') renderBoard();
+      })
+      .catch((error) => showToast(`保存済みメモを読めませんでした: ${error?.message || 'IndexedDBエラー'}`));
   </script>
 </body>
 </html>
