@@ -52,7 +52,8 @@ records:
   - feature_key: personal-profile
     name: 個人プロフィール編集
     layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.1_auth.md"
     implementation:
       frontend: 実装済
       backend: 実装済
@@ -71,36 +72,49 @@ records:
   - feature_key: account-settings
     name: アカウント設定・退会
     layer: 能力
-    design_docs: []
-    implementation:
-      frontend: 不明
-      backend: 不明
-      database: 不明
-      background: 不明
-    verification: {}
-    release:
-      beta: コア
-      deploy_safety: 不明
-      gate_key: null
-    blockers: []
-    notes: null
-
-  - feature_key: auth
-    name: 認証・ログイン・2FA
-    layer: 能力
-    design_docs: []
+    design_docs:
+      - "docs/features/F01.1_auth.md"
+      - "docs/features/F12.3_gdpr_personal_data.md"
     implementation:
       frontend: 実装済
       backend: 実装済
       database: 実装済
-      background: 対象外
-    verification: {}
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/auth/UserServiceTest.java", "backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java", "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/settings/profile.spec.ts", "frontend/tests/e2e/settings/password.spec.ts", "frontend/tests/e2e/gdpr/gdpr.spec.ts"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/auth/UserControllerTest.java", "backend/src/test/java/com/mannschaft/app/gdpr/GdprSelfScopeContractIT.java"]}
+      real_e2e: {status: 未作成, evidence: []}
+      operation: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/gdpr/AccountPurgeServiceTest.java", "backend/src/test/java/com/mannschaft/app/gdpr/WithdrawalReminderServiceTest.java"]}
     release:
       beta: コア
       deploy_safety: 不明
       gate_key: null
     blockers: []
-    notes: "PR #2830 ハイドレーション即操作化済"
+    notes: "棚卸バッチ1: 設定画面・プロフィール/パスワード更新API・退会/取消API・30日後削除/リマインドバッチまで実装を確認。実環境での退会E2Eは未作成。"
+
+  - feature_key: auth
+    name: 認証・ログイン・2FA
+    layer: 能力
+    design_docs:
+      - "docs/features/F01.1_auth.md"
+    implementation:
+      frontend: 実装済
+      backend: 実装済
+      database: 実装済
+      background: 実装済
+    verification:
+      unit: {status: 未実行, evidence: ["frontend/tests/unit/pages/login.spec.ts", "backend/src/test/java/com/mannschaft/app/auth/AuthServiceTest.java", "backend/src/test/java/com/mannschaft/app/auth/service/Auth2faServiceTest.java"]}
+      integration: {status: 未実行, evidence: ["frontend/tests/e2e/auth/login.spec.ts", "frontend/tests/e2e/auth/2fa.spec.ts"]}
+      authorization: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/auth/AuthLoginControllerTest.java", "backend/src/test/java/com/mannschaft/app/auth/Auth2faControllerTest.java", "backend/src/test/java/com/mannschaft/app/config/SecurityConfigAuthorizationTest.java"]}
+      real_e2e: {status: 未実行, evidence: ["frontend/tests/e2e/real/auth-flow.spec.ts", "frontend/tests/e2e/real/2fa-flow.spec.ts", "frontend/tests/e2e/real/auth-cookie-origin.spec.ts"]}
+      operation: {status: 未実行, evidence: ["backend/src/test/java/com/mannschaft/app/auth/AuthCleanupBatchServiceTest.java", "backend/src/test/java/com/mannschaft/app/auth/AuditLogArchiveBatchServiceTest.java"]}
+    release:
+      beta: コア
+      deploy_safety: 不明
+      gate_key: null
+    blockers: []
+    notes: "PR #2830 ハイドレーション即操作化済。棚卸バッチ1でログイン・2FA・DB・認証保守バッチの実装を確認。各テストは今回未実行。"
 
   - feature_key: nav-settings
     name: ナビ設定
