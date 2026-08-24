@@ -89,7 +89,7 @@
     .stat span { color: var(--muted); font-size: 12px; }
     .toolbar { padding: 14px; margin-bottom: 16px; }
     .view-switcher {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 12px;
       padding-bottom: 12px; border-bottom: 1px solid var(--line);
     }
     .view-button {
@@ -142,6 +142,38 @@
     .gate-item span { color: var(--muted); font-size: 11px; line-height: 1.5; }
     .release-rule { padding: 14px; border-radius: 14px; background: var(--panel-soft); color: var(--muted); font-size: 13px; line-height: 1.75; }
     .release-rule strong { color: var(--text); }
+    .source-strip {
+      display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 10px; align-items: center;
+      padding: 14px; margin-bottom: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel);
+    }
+    .source-box { min-width: 0; padding: 12px; border-radius: 12px; background: var(--panel-soft); }
+    .source-box b { display: block; font-size: 13px; }
+    .source-box span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .source-arrow { color: var(--brand); font-weight: 900; }
+    .cmp-summary { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 12px; }
+    .cmp-list { display: grid; gap: 10px; }
+    .cmp-card {
+      display: grid; grid-template-columns: minmax(230px, 1.45fr) minmax(170px, .8fr) minmax(210px, 1fr) auto;
+      gap: 14px; align-items: center; padding: 15px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel);
+    }
+    .cmp-card[data-status="blocked"] { border-left: 4px solid var(--danger); }
+    .cmp-card[data-status="working"] { border-left: 4px solid var(--info); }
+    .cmp-card[data-status="done"] { border-left: 4px solid var(--ready); }
+    .cmp-card[data-status="unknown"] { border-left: 4px solid var(--muted); }
+    .cmp-card h3 { margin: 5px 0; font-size: 15px; }
+    .cmp-card p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .cmp-meta { display: grid; gap: 6px; }
+    .cmp-meta-row { display: flex; gap: 7px; align-items: center; color: var(--muted); font-size: 11px; }
+    .cmp-meta-row b { min-width: 45px; color: var(--text); font-size: 10px; }
+    .issue-stack { display: grid; gap: 6px; }
+    .issue-chip { padding: 7px 9px; border-radius: 9px; background: var(--panel-soft); color: var(--muted); font-size: 10px; line-height: 1.4; }
+    .issue-chip.open { color: var(--danger); background: color-mix(in srgb, var(--danger) 9%, var(--panel)); }
+    .issue-chip.closed { color: var(--ready); background: var(--brand-soft); }
+    .status-pill { display: inline-flex; width: fit-content; padding: 5px 8px; border-radius: 999px; font-size: 10px; font-weight: 900; }
+    .status-pill.blocked { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, var(--panel)); }
+    .status-pill.working { color: var(--info); background: color-mix(in srgb, var(--info) 10%, var(--panel)); }
+    .status-pill.done { color: var(--ready); background: var(--brand-soft); }
+    .status-pill.unknown { color: var(--muted); background: var(--panel-soft); }
     .lane { padding: 12px; box-shadow: none; min-width: 250px; }
     .lane-header { display: flex; align-items: center; justify-content: space-between; padding: 4px 3px 12px; }
     .lane-title { display: flex; align-items: center; gap: 8px; font-weight: 900; }
@@ -206,6 +238,7 @@
       .hero { grid-template-columns: 1fr; }
       .board { grid-template-columns: repeat(4, minmax(280px, 84vw)); }
       .focus-grid, .gate-grid { grid-template-columns: 1fr; }
+      .cmp-card { grid-template-columns: 1fr 1fr; }
       .search { order: 10; width: 100%; margin-left: 0; }
     }
     @media (max-width: 520px) {
@@ -215,6 +248,9 @@
       .recommendation { align-items: stretch; flex-direction: column; }
       .prompt-controls, .drawer-actions { grid-template-columns: 1fr; }
       .view-switcher { grid-template-columns: 1fr 1fr; }
+      .source-strip { grid-template-columns: 1fr; }
+      .source-arrow { transform: rotate(90deg); text-align: center; }
+      .cmp-card { grid-template-columns: 1fr; }
       .drawer { padding: 17px; }
     }
   </style>
@@ -251,6 +287,7 @@
         <button class="view-button active" data-view="focus" type="button">今やる<small>最大3件だけ</small></button>
         <button class="view-button" data-view="roadmap" type="button">Bロードマップ<small>B0〜B4の全体</small></button>
         <button class="view-button" data-view="gate" type="button">公開Gate<small>前提工事と公開判定</small></button>
+        <button class="view-button" data-view="campaigns" type="button">CMP・Issue<small>戦役と実装の現在地</small></button>
         <button class="view-button" data-view="deferred" type="button">延期箱<small>非Coreを退避</small></button>
       </nav>
       <div class="filters" id="filters">
@@ -262,7 +299,7 @@
         <button class="filter-button active" data-audience="all" type="button">すべて</button>
         <button class="filter-button" data-audience="soccer" type="button">⚽ サッカー</button>
         <button class="filter-button" data-audience="alumni" type="button">🎓 同窓会</button>
-        <input class="search" id="search" type="search" placeholder="機能名・feature_keyで検索" aria-label="機能検索">
+        <input class="search" id="search" type="search" placeholder="機能・feature_key・CMP・Issueで検索" aria-label="機能・CMP・Issue検索">
       </div>
     </section>
 
@@ -275,11 +312,11 @@
     </section>
 
     <section class="board" id="board" aria-label="準備状態別カンバン"></section>
-    <p class="prototype-note">プロトタイプ — 表示データはサンプル。将来は docs/inventory/feature-inventory.yaml から生成する。</p>
+    <p class="prototype-note">プロトタイプ — 2026-08-24時点のサンプル。将来は機能台帳・CMP台帳・GitHubから自動生成し、このHTMLは編集しない。</p>
   </main>
 
   <div class="backdrop" id="backdrop"></div>
-  <aside class="drawer" id="drawer" aria-hidden="true" aria-label="能力詳細と指示文生成">
+  <aside class="drawer" id="drawer" aria-hidden="true" aria-label="課題詳細と指示文生成">
     <div class="drawer-header">
       <div>
         <div class="feature-key" id="drawerKey"></div>
@@ -315,7 +352,7 @@
       <textarea id="promptText" aria-label="生成された指示文" spellcheck="false"></textarea>
       <div class="drawer-actions">
         <button class="primary-button" id="copyPrompt" type="button">指示文をコピー</button>
-        <button class="secondary-button" id="copyKey" type="button">feature_keyのみコピー</button>
+        <button class="secondary-button" id="copyKey" type="button">IDのみコピー</button>
       </div>
     </div>
   </aside>
@@ -467,6 +504,56 @@
       { title: '全入口Gate番人', status: 'unknown', detail: 'FE・API・バッチの宣言漏れをCIで検出する' }
     ];
 
+    const campaigns = [
+      {
+        id: 'CMP-260821-1235', title: '本番デプロイ経路の実証', status: 'blocked', statusLabel: '再開待ち',
+        stage: 'B0', priority: 'must', audiences: ['soccer', 'alumni'], featureKey: 'production-deploy', updated: '2026-08-21',
+        summary: 'AWS資格情報を設定した状態で、Docker buildからECS反映・安定待ちまで完走させる。',
+        nextAction: 'AWS secret設定の直前に、必要変数の完全性チェックと初回デプロイ手順を確定する。',
+        acceptance: ['必要なAWS設定が欠けていればデプロイ前に停止する', 'frontend変更からECS安定待ちまで完走する', '失敗時のロールバックを実測する'],
+        blocker: 'AWS secret未設定。CMP-260821-2130の本番ビルド安定化が前提。',
+        issues: [{ label: 'Issue未起票', state: 'open' }], prs: ['#2895 merged'], ci: '前段run成功／本体未走行', refs: ['docs/task-list.md', '.github/workflows/frontend-deploy.yml']
+      },
+      {
+        id: 'CMP-260821-2130', title: 'FE本番ビルドのメモリ枯渇解消', status: 'blocked', statusLabel: '再開条件あり',
+        stage: 'B0', priority: 'must', audiences: ['soccer', 'alumni'], featureKey: 'production-deploy', updated: '2026-08-21',
+        summary: 'nuxt buildを安定完走させ、生成コンテナがHTTP応答を返すところまで固定する。',
+        nextAction: '本番用source map方針とCI実行頻度を決め、再現可能なビルド試験を作る。',
+        acceptance: ['nuxt buildが冷キャッシュでも安定完走する', '成果物からコンテナが起動する', 'HTTP 200を返す', 'CI配置と実行条件が決まる'],
+        blocker: 'AWS secret設定または初回デプロイ着手前に再開する条件付き。',
+        issues: [{ label: 'Issue未起票', state: 'open' }], prs: ['—'], ci: '未配置', refs: ['docs/task-list.md', 'frontend/nuxt.config.ts', 'frontend/Dockerfile']
+      },
+      {
+        id: 'CMP-260820-1550', title: 'FE routeガード', status: 'done', statusLabel: '基盤完了',
+        stage: 'B0', priority: 'must', audiences: ['soccer', 'alumni'], featureKey: 'gate-foundation-fe', updated: '2026-08-20',
+        summary: '未公開機能へのURL直アクセスをglobal middlewareで遮断する。',
+        nextAction: '完了済み基盤は触らず、追跡Issue #2888のSSR隔離漏れを閉栓前に解消する。',
+        acceptance: ['91プレフィクスがGate台帳で覆われる', 'slug配下を含めSSRで未公開画面が露出しない', '取得失敗は503として伝播する'],
+        blocker: 'Issue #2888: slug配下44プレフィクスがSSRで隔離されない。',
+        issues: [{ label: '#2888 SSR隔離漏れ', state: 'open' }], prs: ['#2878 merged'], ci: 'green', refs: ['docs/task-list.md', 'frontend/app/middleware/feature-gate.global.ts']
+      },
+      {
+        id: 'CMP-260821-1547', title: 'API @RequireFeature基盤', status: 'done', statusLabel: '基盤完了',
+        stage: 'B0', priority: 'must', audiences: ['soccer', 'alumni'], featureKey: 'gate-foundation-api', updated: '2026-08-21',
+        summary: '未公開機能へのAPIアクセスを宣言的に遮断し、キー誤りを番人で検出する。',
+        nextAction: '基盤の再実装はせず、17ゲートキーを実Controllerへ適用する後続CMPを紐づける。',
+        acceptance: ['実Controller入口へGateが付く', '宣言漏れをCIで検出する', '未知キーはフェイルクローズになる'],
+        blocker: '基盤は完了したが、実Controllerへの適用戦役がこの画面では未紐づけ。',
+        issues: [{ label: '後続Issue未紐づけ', state: 'open' }], prs: ['#2894 merged', '#2902 merged'], ci: 'green', refs: ['docs/task-list.md', 'backend/src/main/java/com/mannschaft/app/common/featuregate/']
+      },
+      {
+        id: 'CMP未紐づけ・GATE-04', title: 'バッチ・リスナーGate', status: 'unknown', statusLabel: '台帳の穴',
+        stage: 'B0', priority: 'must', audiences: ['soccer', 'alumni'], featureKey: 'gate-foundation-background', updated: '—',
+        summary: '画面とAPIを閉じても動き続ける154+バッチ・121リスナーの公開Gateを設計する。',
+        nextAction: '既存CMPとIssueを検索し、無ければCMPを採番してIssueと受け入れ条件を紐づける。',
+        acceptance: ['対象バッチ・リスナーを全数棚卸しする', '未公開時の停止方針を分類する', '宣言漏れをCIで検出する'],
+        blocker: 'Gate基盤工事④として言及されているが、CMP/Issueの対応関係が画面上で確定していない。',
+        issues: [{ label: 'CMPなし', state: 'open' }, { label: 'Issueなし', state: 'open' }], prs: ['—'], ci: '番人なし', refs: ['docs/task-list.md', 'docs/inventory/feature-inventory.yaml']
+      }
+    ];
+
+    const campaignStatusLabels = { blocked: '停止中', working: '進行中', done: '完了', unknown: '未整理' };
+
     const laneDefinitions = [
       { status: 'blocked', title: '不備あり' },
       { status: 'unknown', title: '未棚卸' },
@@ -593,21 +680,112 @@
         <div class="focus-grid">${deferred.map(featureCard).join('') || '<div class="empty">該当なし</div>'}</div>`;
     }
 
+    function campaignToTarget(campaign) {
+      if (!campaign) return null;
+      return {
+        key: campaign.id,
+        title: campaign.title,
+        status: campaign.status,
+        classification: 'foundation',
+        stage: campaign.stage,
+        priority: campaign.priority,
+        audiences: campaign.audiences,
+        publication: '—',
+        gate: campaign.statusLabel,
+        summary: campaign.summary,
+        why: campaign.nextAction,
+        acceptance: campaign.acceptance,
+        blocker: campaign.blocker,
+        refs: campaign.refs,
+        campaign
+      };
+    }
+
+    function getVisibleCampaigns() {
+      const query = document.querySelector('#search').value.trim().toLowerCase();
+      return campaigns.filter((campaign) => {
+        const stageMatches = campaign.stage === selectedStage;
+        const audienceMatches = selectedAudience === 'all' || campaign.audiences.includes(selectedAudience);
+        const issueText = campaign.issues.map((issue) => issue.label).join(' ');
+        const queryMatches = !query || `${campaign.id} ${campaign.title} ${campaign.featureKey} ${issueText}`.toLowerCase().includes(query);
+        return stageMatches && audienceMatches && queryMatches;
+      });
+    }
+
+    function renderCampaigns() {
+      const visibleCampaigns = getVisibleCampaigns();
+      const openIssues = visibleCampaigns.flatMap((campaign) => campaign.issues).filter((issue) => issue.state === 'open').length;
+      const blocked = visibleCampaigns.filter((campaign) => campaign.status === 'blocked').length;
+      const gaps = visibleCampaigns.filter((campaign) => campaign.id.startsWith('CMP未紐づけ')).length;
+      board.className = '';
+      board.innerHTML = `
+        <div class="panel-heading">
+          <div><h2>CMP・Issueの現在地</h2><p>CMPを仕事の単位にし、Issue・PR・CIを証拠として束ねます。完了率は手入力しません。</p></div>
+          <span class="wip-chip">${visibleCampaigns.length}戦役</span>
+        </div>
+        <div class="source-strip" aria-label="ダッシュボードのデータ生成経路">
+          <div class="source-box"><b>正本</b><span>機能台帳 YAML ＋ task-list.md</span></div>
+          <div class="source-arrow" aria-hidden="true">＋</div>
+          <div class="source-box"><b>実装証拠</b><span>GitHub Issue・PR・CI</span></div>
+          <div class="source-arrow" aria-hidden="true">→</div>
+          <div class="source-box"><b>自動生成</b><span>dashboard-data.json → この画面</span></div>
+        </div>
+        <div class="cmp-summary">
+          <span class="status-pill blocked">停止中 ${blocked}</span>
+          <span class="status-pill working">未解決Issue ${openIssues}</span>
+          <span class="status-pill unknown">CMP未紐づけ ${gaps}</span>
+          <span class="status-pill done">手入力する進捗率 0</span>
+        </div>
+        <div class="cmp-list">
+          ${visibleCampaigns.map((campaign) => `
+            <article class="cmp-card" data-status="${campaign.status}">
+              <div>
+                <span class="feature-key">${campaign.id}</span>
+                <h3>${campaign.title}</h3>
+                <p>${campaign.summary}</p>
+              </div>
+              <div class="cmp-meta">
+                <span class="status-pill ${campaign.status}">${campaignStatusLabels[campaign.status]} · ${campaign.statusLabel}</span>
+                <div class="cmp-meta-row"><b>機能</b><span>${campaign.featureKey}</span></div>
+                <div class="cmp-meta-row"><b>PR</b><span>${campaign.prs.join(' / ')}</span></div>
+                <div class="cmp-meta-row"><b>CI</b><span>${campaign.ci}</span></div>
+                <div class="cmp-meta-row"><b>更新</b><span>${campaign.updated}</span></div>
+              </div>
+              <div class="issue-stack">
+                ${campaign.issues.map((issue) => `<div class="issue-chip ${issue.state}">${issue.state === 'closed' ? '✓' : '●'} ${issue.label}</div>`).join('')}
+                <p><b>次：</b>${campaign.nextAction}</p>
+              </div>
+              <button class="primary-button" type="button" data-key="${campaign.id}">次の指示文</button>
+            </article>`).join('') || '<div class="empty">この条件に該当するCMPはありません。</div>'}
+        </div>`;
+      return visibleCampaigns;
+    }
+
     function renderBoard() {
       const visible = getFilteredFeatures();
       let focus = [];
+      let visibleCampaigns = [];
       if (selectedView === 'focus') focus = renderFocus(visible);
       if (selectedView === 'roadmap') renderRoadmap(visible);
       if (selectedView === 'gate') renderGate();
+      if (selectedView === 'campaigns') visibleCampaigns = renderCampaigns();
       if (selectedView === 'deferred') renderDeferred(visible);
 
       const doneGates = gateFoundation.filter((item) => item.status === 'done').length;
-      document.querySelector('#activeCount').textContent = focus.filter((feature) => feature.status === 'working').length;
-      document.querySelector('#nextCount').textContent = Math.max(focus.length - focus.filter((feature) => feature.status === 'working').length, 0);
+      const activeCount = selectedView === 'campaigns'
+        ? visibleCampaigns.filter((campaign) => campaign.status === 'working').length
+        : focus.filter((feature) => feature.status === 'working').length;
+      const nextCount = selectedView === 'campaigns'
+        ? visibleCampaigns.filter((campaign) => campaign.status === 'blocked' || campaign.status === 'unknown').length
+        : Math.max(focus.length - focus.filter((feature) => feature.status === 'working').length, 0);
+      document.querySelector('#activeCount').textContent = activeCount;
+      document.querySelector('#nextCount').textContent = nextCount;
       document.querySelector('#publishableCount').textContent = features.filter((feature) => feature.status === 'ready' && feature.gate === '適用完了').length;
       document.querySelector('#gateCount').textContent = `${doneGates}/${gateFoundation.length}`;
 
-      const recommendationSource = selectedView === 'focus' ? focus : visible;
+      const recommendationSource = selectedView === 'campaigns'
+        ? visibleCampaigns.map(campaignToTarget)
+        : selectedView === 'focus' ? focus : visible;
       const recommended = recommendationSource.find((feature) => feature.priority === 'must' && feature.status === 'blocked')
         || recommendationSource.find((feature) => feature.priority === 'must' && feature.status !== 'ready')
         || recommendationSource[0];
@@ -624,17 +802,28 @@
         implement: '不足を実装し、変更範囲に比例したテストと実機検証まで完了してください。',
         review: '設計・実装・認可・テストを検分し、完了条件へのトレーサビリティを確認してください。'
       };
+      const campaignContext = feature.campaign ? `
+■ CMP・Issue・PR・CI
+- CMP: ${feature.campaign.id}
+- 状態: ${campaignStatusLabels[feature.campaign.status]} / ${feature.campaign.statusLabel}
+- 対応feature_key: ${feature.campaign.featureKey}
+- Issue: ${feature.campaign.issues.map((issue) => `${issue.label} (${issue.state})`).join(' / ')}
+- PR: ${feature.campaign.prs.join(' / ')}
+- CI: ${feature.campaign.ci}
+- 最終更新: ${feature.campaign.updated}
+` : '';
       return `MannschaftのB棚卸しに基づく${agent}向けの依頼です。
 
 ■ 対象
-- feature_key: ${feature.key}
-- 能力: ${feature.title}
+- ${feature.campaign ? 'CMP' : 'feature_key'}: ${feature.key}
+- 課題: ${feature.title}
 - 区分: ${classificationLabel(feature.classification)}
 - 最早導入段階: ${feature.stage}
 - 優先度: ${feature.priority}
 - 対象ユースケース: ${feature.audiences.join(' / ')}
 - 公開状態: ${feature.publication}
 - Gate適用状態: ${feature.gate}
+${campaignContext}
 
 ■ 目的
 ${feature.why}
@@ -656,12 +845,15 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
 - 本陣の既存変更を触らず、worktreeで隔離すること。
 - 不明を推測で「実装済」にしないこと。
 - 証拠とともに docs/inventory/feature-inventory.yaml の更新案を示すこと。
+- CMPを扱う場合は docs/task-list.md を正本とし、Issue・PR・CIとの対応を確認すること。
 - β準備完了とGate適用完了を混同せず、シスアド公開可能かを別々に判定すること。
 - 完了時は実行した検証、未実行の検証、残存リスクを日本語で報告すること。`;
     }
 
     function openDrawer(key) {
-      const feature = features.find((item) => item.key === key);
+      const matchedFeature = features.find((item) => item.key === key);
+      const matchedCampaign = campaigns.find((item) => item.id === key);
+      const feature = matchedFeature || campaignToTarget(matchedCampaign);
       if (!feature) return;
       selectedFeature = feature;
       document.querySelector('#drawerKey').textContent = `${feature.key} · ${classificationLabel(feature.classification)} · ${feature.stage} · ${feature.priority.toUpperCase()} · ${feature.publication}`;
@@ -707,6 +899,10 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
       const viewButton = event.target.closest('[data-view]');
       if (!viewButton) return;
       selectedView = viewButton.dataset.view;
+      if (selectedView === 'campaigns' && !campaigns.some((campaign) => campaign.stage === selectedStage)) {
+        selectedStage = 'B0';
+        document.querySelectorAll('[data-stage]').forEach((button) => button.classList.toggle('active', button.dataset.stage === 'B0'));
+      }
       document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button === viewButton));
       renderBoard();
     });
@@ -738,7 +934,7 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
     document.querySelector('#agentSelect').addEventListener('change', () => { if (selectedFeature) document.querySelector('#promptText').value = buildPrompt(selectedFeature); });
     document.querySelector('#taskSelect').addEventListener('change', () => { if (selectedFeature) document.querySelector('#promptText').value = buildPrompt(selectedFeature); });
     document.querySelector('#copyPrompt').addEventListener('click', () => copyText(document.querySelector('#promptText').value, '指示文をコピーしました'));
-    document.querySelector('#copyKey').addEventListener('click', () => copyText(selectedFeature?.key || '', 'feature_keyをコピーしました'));
+    document.querySelector('#copyKey').addEventListener('click', () => copyText(selectedFeature?.key || '', 'IDをコピーしました'));
     document.querySelector('#themeToggle').addEventListener('click', () => {
       const root = document.documentElement;
       root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
