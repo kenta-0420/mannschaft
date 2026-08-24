@@ -70456,6 +70456,8 @@ export interface components {
             /** @example 14:30:00 */
             endTime?: string;
             price?: number;
+            /** @description 現在のユーザーが有効予約を持つ枠か */
+            reservedByCurrentUser?: boolean;
             /**
              * Format: date
              * @description 枠開始日

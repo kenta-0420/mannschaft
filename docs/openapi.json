@@ -210711,6 +210711,10 @@
           "price": {
             "type": "number"
           },
+          "reservedByCurrentUser": {
+            "type": "boolean",
+            "description": "現在のユーザーが有効予約を持つ枠か"
+          },
           "slotDate": {
             "type": "string",
             "format": "date",
