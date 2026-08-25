@@ -1,5 +1,9 @@
 package com.mannschaft.app.onboarding;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -7,6 +11,7 @@ import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.onboarding.event.OnboardingReminderNotificationEvent;
 import com.mannschaft.app.onboarding.event.OnboardingReminderNotificationListener;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.MessageSource;
 
 import java.util.List;
@@ -179,5 +185,85 @@ class OnboardingReminderNotificationListenerTest {
                 new OnboardingReminderNotificationEvent("TEAM", SCOPE_ID, List.of()));
 
         verifyNoInteractions(notificationDeliveryRunner, userLocaleCache);
+    }
+
+    // ------------------------------------------------------------------
+    // 集計ログのレベル（deny=WARN / 例外=ERROR の区別）
+    // ------------------------------------------------------------------
+
+    /** 集計ログを識別するための固定文言。 */
+    private static final String SUMMARY_MARKER = "オンボーディングリマインド一括配送の結果";
+
+    private Logger listenerLogger;
+    private Level originalLevel;
+    private ListAppender<ILoggingEvent> logAppender;
+
+    /**
+     * 集計ログを捕捉する。
+     *
+     * <p>ロガーレベルは<b>このテスト自身で明示設定する</b>。{@link ListAppender} はフォークをまたいで
+     * ロガーレベルを継承するため、レベルを設定しないと単体実行では拾えて全体実行では拾えない
+     * （あるいはその逆の）偽緑になる。</p>
+     */
+    private void captureLogs() {
+        listenerLogger = (Logger) LoggerFactory.getLogger(OnboardingReminderNotificationListener.class);
+        originalLevel = listenerLogger.getLevel();
+        listenerLogger.setLevel(Level.WARN);
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        listenerLogger.addAppender(logAppender);
+    }
+
+    @AfterEach
+    void tearDownLogCapture() {
+        if (listenerLogger != null) {
+            listenerLogger.detachAppender(logAppender);
+            listenerLogger.setLevel(originalLevel);
+            listenerLogger = null;
+        }
+    }
+
+    private List<ILoggingEvent> summaryEvents() {
+        return logAppender.list.stream()
+                .filter(e -> e.getMessage() != null && e.getMessage().contains(SUMMARY_MARKER))
+                .toList();
+    }
+
+    @Test
+    @DisplayName("deny のみ（例外ゼロ）なら集計ログは WARN であり ERROR は出ない")
+    void denyのみなら集計ログはWARN() {
+        captureLogs();
+        given(notificationDeliveryRunner.sendOne(any())).willReturn(null);
+
+        listener.onOnboardingReminderNotification(event("TEAM"));
+
+        List<ILoggingEvent> summaries = summaryEvents();
+        assertThat(summaries).hasSize(1);
+        assertThat(summaries.get(0).getLevel()).isEqualTo(Level.WARN);
+        assertThat(logAppender.list).noneMatch(e -> e.getLevel() == Level.ERROR);
+    }
+
+    @Test
+    @DisplayName("例外が1件でもあれば集計ログは ERROR になる")
+    void 例外が1件でもあれば集計ログはERROR() {
+        captureLogs();
+        willThrow(new RuntimeException("模擬配送失敗")).given(notificationDeliveryRunner)
+                .sendOne(argThat(r -> r != null && USER_B.equals(r.recipientUserId())));
+
+        listener.onOnboardingReminderNotification(event("TEAM"));
+
+        List<ILoggingEvent> summaries = summaryEvents();
+        assertThat(summaries).hasSize(1);
+        assertThat(summaries.get(0).getLevel()).isEqualTo(Level.ERROR);
+    }
+
+    @Test
+    @DisplayName("全件成功なら集計ログ自体が出ない")
+    void 全件成功なら集計ログは出ない() {
+        captureLogs();
+
+        listener.onOnboardingReminderNotification(event("TEAM"));
+
+        assertThat(summaryEvents()).isEmpty();
     }
 }

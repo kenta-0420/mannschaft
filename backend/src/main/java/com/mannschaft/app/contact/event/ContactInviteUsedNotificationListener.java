@@ -30,6 +30,18 @@ import java.util.Locale;
  * 業務トランザクションに参加するため、通知側の DB 例外は rollback-only を残し、catch しても
  * <b>招待受諾の永続化（利用回数・連絡先追加）ごと巻き戻っていた</b>。</p>
  *
+ * <h2>意図的な挙動変更: Push/WebSocket 配信が付く</h2>
+ * <p>是正前の {@code ContactInviteTokenService#sendInviteUsedNotification} は
+ * {@code notificationService.createNotification} を直接呼ぶだけで dispatch しておらず、
+ * {@code CONTACT_INVITE_USED} は <b>DB 保存のみ</b>（Push / WebSocket 配信なし）だった。
+ * 本リスナーは {@link NotificationDeliveryRunner#sendOne}（= create + dispatch）を使うため、
+ * 以後この通知は <b>Push / WebSocket でも配信される</b>。これは型（#2910 の配送リスナー金型）に
+ * 寄せた結果として<b>意図的に受け入れた挙動変更</b>であり、退行ではない。
+ * 招待リンクが使われたことは受信者にとって即時性のある通知であり、他の連絡先系通知
+ * （{@code CONTACT_REQUEST} 等）が既に dispatch 済みであることとも整合する。
+ * なお SafetyCheck / Onboarding 側は是正前から {@code notificationHelper.notify}
+ * （= create + dispatch）だったため、配信面では等価であり挙動は変わらない。</p>
+ *
  * <h2>D-5: 越境アクセスは Repository ではなく Service 経由</h2>
  * <p>{@code auth} ドメインへの越境は {@code UserRepository} を直接 DI せず
  * {@link UserService#getFullName}（Service 経由）を使う（{@code CrossDomainRepositoryDependencyArchTest} D-5）。

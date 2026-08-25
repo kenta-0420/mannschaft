@@ -96,13 +96,21 @@ public class OnboardingReminderNotificationListener {
             }
         }
 
+        // 集計ログのレベルは個別ログと揃える。visibility deny は例外ではなく正常系なので
+        // WARN に留め、例外が1件でもあるときだけ ERROR（非同期イベント失敗の監査記録・規約上必須）とする。
+        // 両者を ERROR に混ぜると「deny（WARN）と例外（ERROR）を区別して観測できる」という方針が潰れる。
         if (failed > 0 || denied > 0) {
-            // 非同期イベント失敗の監査記録（規約上必須）。1件ずつ大量記録せず、イベント単位で
-            // 失敗数と代表IDをまとめる（確定設計「複数件イベントなら…代表IDをまとめる」）。
-            log.error("オンボーディングリマインド一括配送の結果: scopeType={}, scopeId={}, "
-                            + "total={}, failed={}, denied={}, firstFailedProgressId={}",
-                    event.scopeType(), event.scopeId(), event.recipients().size(),
-                    failed, denied, firstFailedProgressId);
+            // 1件ずつ大量記録せず、イベント単位で失敗数と代表IDをまとめる
+            // （確定設計「複数件イベントなら…代表IDをまとめる」）。
+            String summary = "オンボーディングリマインド一括配送の結果: scopeType={}, scopeId={}, "
+                    + "total={}, failed={}, denied={}, firstFailedProgressId={}";
+            if (failed > 0) {
+                log.error(summary, event.scopeType(), event.scopeId(), event.recipients().size(),
+                        failed, denied, firstFailedProgressId);
+            } else {
+                log.warn(summary, event.scopeType(), event.scopeId(), event.recipients().size(),
+                        failed, denied, firstFailedProgressId);
+            }
         }
     }
 
