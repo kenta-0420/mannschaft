@@ -15,7 +15,7 @@ import com.mannschaft.app.schedule.service.ScheduleCrossRefService;
 import com.mannschaft.app.schedule.service.ScheduleReminderService;
 import com.mannschaft.app.schedule.service.ScheduleScheduledTaskService;
 import com.mannschaft.app.schedule.service.ScheduleService;
-import com.mannschaft.app.team.service.TeamService;
+import com.mannschaft.app.config.TeamScopeId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -57,7 +57,6 @@ public class TeamScheduleController {
     private final ScheduleReminderService reminderService;
     private final ScheduleScheduledTaskService scheduledTaskService;
     private final NameResolverService nameResolverService;
-    private final TeamService teamService;
 
 
     /**
@@ -67,13 +66,13 @@ public class TeamScheduleController {
     @Operation(summary = "チームスケジュール一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ScheduleResponse>>> listSchedules(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @RequestParam(required = false) String eventType,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String cursor) {
-        Long teamId = teamService.resolveTeamId(teamPublicId);
+        Long teamId = teamPublicId.value();
         List<ScheduleResponse> schedules = scheduleService.listTeamSchedules(
                 teamId, from, to, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(schedules));
@@ -86,9 +85,9 @@ public class TeamScheduleController {
     @Operation(summary = "チームスケジュール作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ScheduleResponse>> createSchedule(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @Valid @RequestBody CreateScheduleRequest request) {
-        Long teamId = teamService.resolveTeamId(teamPublicId);
+        Long teamId = teamPublicId.value();
         ScheduleResponse response = scheduleService.createSchedule(
                 request, teamId, SCOPE_TYPE_TEAM, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
@@ -101,9 +100,9 @@ public class TeamScheduleController {
     @Operation(summary = "チームスケジュール詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ScheduleResponse>> getSchedule(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId) {
-        Long teamId = teamService.resolveTeamId(teamPublicId);
+        Long teamId = teamPublicId.value();
         var entity = scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
         String createdByDisplayName = nameResolverService.resolveUserDisplayName(entity.getCreatedBy());
         String scopeName = nameResolverService.resolveScopeName(SCOPE_TYPE_TEAM, teamId);
@@ -148,10 +147,10 @@ public class TeamScheduleController {
     @Operation(summary = "予約タスク取消")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
     public ResponseEntity<Void> cancelScheduledTask(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId,
             @PathVariable UUID taskId) {
-        Long teamId = teamService.resolveTeamId(teamPublicId);
+        Long teamId = teamPublicId.value();
         // 認可: 当該予定が閲覧可能か（CanView）を確認してから取消する（既存の予定操作と同等基準）
         scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
         scheduledTaskService.cancelTask(taskId, CalendarSyncScopeType.TEAM, teamId);
@@ -165,7 +164,7 @@ public class TeamScheduleController {
     @Operation(summary = "チームスケジュール更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ScheduleResponse>> updateSchedule(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId,
             @Valid @RequestBody UpdateScheduleRequest request,
             @RequestParam(defaultValue = "THIS_ONLY") String updateScope) {
@@ -181,7 +180,7 @@ public class TeamScheduleController {
     @Operation(summary = "チームスケジュール削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSchedule(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId,
             @RequestParam(defaultValue = "THIS_ONLY") String updateScope) {
         scheduleService.deleteSchedule(scheduleId, updateScope, SecurityUtils.getCurrentUserId());
@@ -195,7 +194,7 @@ public class TeamScheduleController {
     @Operation(summary = "チームスケジュールキャンセル")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "キャンセル成功")
     public ResponseEntity<Void> cancelSchedule(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId) {
         scheduleService.cancelSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
@@ -211,7 +210,7 @@ public class TeamScheduleController {
     @Operation(summary = "チーム出欠一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendances(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId) {
         List<AttendanceResponse> responses =
                 attendanceService.getAttendances(scheduleId, SecurityUtils.getCurrentUserId());
@@ -229,7 +228,7 @@ public class TeamScheduleController {
     @Operation(summary = "チーム出欠一括更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "更新成功")
     public ResponseEntity<Void> bulkUpdateAttendances(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId,
             @Valid @RequestBody BulkAttendanceRequest request) {
         // 他者の出欠を書き換える操作のため、スケジュール実体由来のスコープに対する
@@ -248,7 +247,7 @@ public class TeamScheduleController {
     @Operation(summary = "チーム出欠CSVエクスポート")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "エクスポート成功")
     public ResponseEntity<byte[]> exportAttendancesCsv(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId) {
         String csv = attendanceService.exportAttendancesCsv(scheduleId, SecurityUtils.getCurrentUserId());
         byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -270,7 +269,7 @@ public class TeamScheduleController {
     @Operation(summary = "チームスケジュール複製")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
     public ResponseEntity<ApiResponse<ScheduleResponse>> duplicateSchedule(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId) {
         Long userId = SecurityUtils.getCurrentUserId();
         scheduleService.checkScopeAdminAccess(scheduleId, userId);
@@ -285,7 +284,7 @@ public class TeamScheduleController {
     @Operation(summary = "クロス招待送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "招待送信成功")
     public ResponseEntity<ApiResponse<CrossRefResponse>> sendCrossInvite(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId,
             @Valid @RequestBody CrossInviteRequest request) {
         CrossRefResponse response = crossRefService.sendCrossInvite(
@@ -300,7 +299,7 @@ public class TeamScheduleController {
     @Operation(summary = "クロス招待キャンセル")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "キャンセル成功")
     public ResponseEntity<Void> cancelCrossInvite(
-            @PathVariable String teamPublicId,
+            @PathVariable TeamScopeId teamPublicId,
             @PathVariable Long scheduleId,
             @PathVariable Long invitationId) {
         crossRefService.cancelCrossInvite(invitationId, SecurityUtils.getCurrentUserId());
