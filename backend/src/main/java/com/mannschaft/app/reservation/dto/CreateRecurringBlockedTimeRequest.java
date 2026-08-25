@@ -1,11 +1,11 @@
 package com.mannschaft.app.reservation.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 
 import java.time.LocalTime;
 
@@ -19,8 +19,28 @@ import java.time.LocalTime;
  * {@code start < end} 検証は既存 {@code SlotTimeValidator}（007/022 再利用）を Service 層で適用する。</p>
  */
 @Getter
-@RequiredArgsConstructor
 public class CreateRecurringBlockedTimeRequest {
+
+    public CreateRecurringBlockedTimeRequest(Long lineId, ReservationDayOfWeek dayOfWeek,
+                                             LocalTime startTime, LocalTime endTime, String reason,
+                                             Boolean isPublic, Boolean forceCancelConflicting) {
+        this(lineId, dayOfWeek, startTime, endTime, reason, isPublic, forceCancelConflicting, false);
+    }
+
+    @JsonCreator
+    public CreateRecurringBlockedTimeRequest(Long lineId, ReservationDayOfWeek dayOfWeek,
+                                             LocalTime startTime, LocalTime endTime, String reason,
+                                             Boolean isPublic, Boolean forceCancelConflicting,
+                                             Boolean endsNextDay) {
+        this.lineId = lineId;
+        this.dayOfWeek = dayOfWeek;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.reason = reason;
+        this.isPublic = isPublic;
+        this.forceCancelConflicting = forceCancelConflicting;
+        this.endsNextDay = endsNextDay;
+    }
 
     /** 対象ライン。NULL = チーム全体。不正 ID は 400（LINE_NOT_FOUND=001 再利用）。 */
     private final Long lineId;
@@ -66,4 +86,7 @@ public class CreateRecurringBlockedTimeRequest {
      * 管理者は事前に {@code GET .../impact}（副作用ゼロ・氏名込み一覧）で件数と対象を確認できる。</p>
      */
     private final Boolean forceCancelConflicting;
+
+    /** 終了時刻を翌日として扱うか。省略時は false。 */
+    private final Boolean endsNextDay;
 }

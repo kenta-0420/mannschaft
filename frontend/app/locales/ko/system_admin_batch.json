@@ -33,6 +33,7 @@
         "failed": "실패",
         "running": "실행 중",
         "skipped": "스킵됨",
+        "resumed": "재개",
         "locked": "잠금 중",
         "accepted": "수리됨",
         "completed": "완료",

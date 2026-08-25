@@ -171,9 +171,9 @@ class FlywayExistingDataReservationSlotLineTemplateMigrationTest {
      */
     private static String insertManualSlotPostMigration(long id, long teamId) {
         return "INSERT INTO reservation_slots "
-                + "(id, team_id, slot_date, start_time, end_time, booked_count, capacity, slot_status, "
+                + "(id, team_id, slot_date, end_date, start_time, end_time, booked_count, capacity, slot_status, "
                 + " created_at, updated_at) VALUES ("
-                + id + ", " + teamId + ", '2026-08-01', '10:00:00', '10:30:00', 0, 1, 'AVAILABLE', "
+                + id + ", " + teamId + ", '2026-08-01', '2026-08-01', '10:00:00', '10:30:00', 0, 1, 'AVAILABLE', "
                 + "NOW(), NOW())";
     }
 

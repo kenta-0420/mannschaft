@@ -3,6 +3,8 @@ package com.mannschaft.app.reservation.event;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
 import com.mannschaft.app.reservation.service.ReservationReminderService;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -105,6 +107,28 @@ class ReservationReminderEventListenerTest {
             verify(reminderService).generateReminders(eq(RESERVATION_ID), captor.capture());
             assertThat(captor.getValue())
                     .containsExactly(slotStartAt.minusHours(24), slotStartAt.minusHours(1));
+        }
+
+        @Test
+        @DisplayName("America/New_York の壁時計をInstant化し、DST切替後も同じ期限を生成する")
+        void teamTimezoneInstantIsUsedAcrossDst() {
+            TeamTimezoneResolver resolver = org.mockito.Mockito.mock(TeamTimezoneResolver.class);
+            Instant slotInstant = Instant.parse("2026-11-01T17:00:00Z");
+            when(resolver.toInstant(eq(TEAM_ID), eq(java.time.LocalDate.of(2026, 11, 1)),
+                    eq(java.time.LocalTime.of(12, 0)))).thenReturn(slotInstant);
+            givenPolicy("24,1");
+            initListener();
+            ReflectionTestUtils.setField(listener, "teamTimezoneResolver", resolver);
+
+            listener.onReservationConfirmed(eventWithSlotStart(LocalDateTime.of(2026, 11, 1, 12, 0)));
+
+            ArgumentCaptor<List<LocalDateTime>> captor = ArgumentCaptor.captor();
+            verify(reminderService).generateReminders(eq(RESERVATION_ID), captor.capture());
+            assertThat(captor.getValue()).containsExactly(
+                    LocalDateTime.ofInstant(slotInstant.minusSeconds(24 * 3600L),
+                            com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE),
+                    LocalDateTime.ofInstant(slotInstant.minusSeconds(3600),
+                            com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser.SERVER_ZONE));
         }
 
         @Test
