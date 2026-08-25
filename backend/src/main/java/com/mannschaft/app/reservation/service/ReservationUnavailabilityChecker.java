@@ -9,7 +9,18 @@ import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.LocalDateTime;
+import java.time.DateTimeException;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.zone.ZoneOffsetTransition;
+import java.time.zone.ZoneRules;
 import java.util.Collection;
+
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * 予約不可枠（機能B・§5.B）の時間帯重複判定を一箇所に集約した<b>単一 overlap ユーティリティ</b>。
@@ -40,6 +51,51 @@ import java.util.Collection;
  */
 @Component
 public class ReservationUnavailabilityChecker {
+
+    private final TeamTimezoneResolver teamTimezoneResolver;
+
+    /** 既存の unit test / 手動利用との互換を保つ。Spring では resolver 付き ctor が使われる。 */
+    public ReservationUnavailabilityChecker() {
+        this(null);
+    }
+
+    @Autowired
+    public ReservationUnavailabilityChecker(TeamTimezoneResolver teamTimezoneResolver) {
+        this.teamTimezoneResolver = teamTimezoneResolver;
+    }
+
+    /** チーム TZ で日跨ぎを Instant 化した半開区間 [start,end) の重複判定。 */
+    public boolean overlaps(LocalDate slotDate, LocalDate endDate, LocalTime slotStart, LocalTime slotEnd,
+                            LocalDate blockedDate, LocalDate blockedEndDate, LocalTime blockedStart,
+                            LocalTime blockedEnd, ZoneId teamTimezone) {
+        if (slotDate == null || endDate == null || slotStart == null || slotEnd == null
+                || blockedDate == null || blockedEndDate == null || blockedStart == null || blockedEnd == null
+                || teamTimezone == null) {
+            return false;
+        }
+        Instant slotStartInstant = toInstant(slotDate, slotStart, teamTimezone);
+        Instant slotEndInstant = toInstant(endDate, slotEnd, teamTimezone);
+        Instant blockedStartInstant = toInstant(blockedDate, blockedStart, teamTimezone);
+        Instant blockedEndInstant = toInstant(blockedEndDate, blockedEnd, teamTimezone);
+        if (!slotStartInstant.isBefore(slotEndInstant) || !blockedStartInstant.isBefore(blockedEndInstant)) {
+            return false;
+        }
+        return slotStartInstant.isBefore(blockedEndInstant)
+                && blockedStartInstant.isBefore(slotEndInstant);
+    }
+
+    private static Instant toInstant(LocalDate date, LocalTime time, ZoneId zone) {
+        LocalDateTime wallClock = LocalDateTime.of(date, time);
+        ZoneRules rules = zone.getRules();
+        var offsets = rules.getValidOffsets(wallClock);
+        if (offsets.isEmpty()) {
+            ZoneOffsetTransition transition = rules.getTransition(wallClock);
+            throw new DateTimeException("DST gap is not a valid wall clock: " + wallClock
+                    + " in " + zone + " (transition=" + transition + ")");
+        }
+        ZoneOffset selected = offsets.get(0);
+        return ZonedDateTime.ofLocal(wallClock, zone, selected).toInstant();
+    }
 
     /**
      * slot（日付・時間帯・担当スタッフ）が予約不可枠に該当するかを判定する（コア・§5.B）。
@@ -146,10 +202,46 @@ public class ReservationUnavailabilityChecker {
      * @return 該当なら true
      */
     public boolean isBlocked(ReservationSlotEntity slot, ReservationBlockedTimeEntity blocked) {
-        return isBlocked(
-                slot.getSlotDate(), slot.getStartTime(), slot.getEndTime(), slot.getStaffUserId(), slot.getLineId(),
-                blocked.getBlockedDate(), blocked.getStartTime(), blocked.getEndTime(),
-                blocked.getResourceType(), blocked.getResourceId());
+        ZoneId zone = teamTimezoneResolver == null
+                ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)
+                : teamTimezoneResolver.resolveZone(slot.getTeamId());
+        LocalDate slotEndDate = slot.getEndDate() == null ? slot.getSlotDate() : slot.getEndDate();
+        LocalDate blockedEndDate = Boolean.TRUE.equals(blocked.getEndsNextDay())
+                ? blocked.getBlockedDate().plusDays(1) : blocked.getBlockedDate();
+        return isBlocked(slot, blocked, zone);
+    }
+
+    public boolean isBlocked(ReservationSlotEntity slot, ReservationBlockedTimeEntity blocked, ZoneId zone) {
+        LocalDate slotEndDate = slot.getEndDate() == null ? slot.getSlotDate() : slot.getEndDate();
+        LocalDate blockedEndDate = Boolean.TRUE.equals(blocked.getEndsNextDay())
+                ? blocked.getBlockedDate().plusDays(1) : blocked.getBlockedDate();
+        return isBlocked(slot.getSlotDate(), slotEndDate, slot.getStartTime(), slot.getEndTime(),
+                slot.getStaffUserId(), slot.getLineId(), blocked.getBlockedDate(), blockedEndDate,
+                blocked.getStartTime(), blocked.getEndTime(), blocked.getResourceType(), blocked.getResourceId(), zone);
+    }
+
+    /** 実日時の半開区間で単発 blocked time を判定する。 */
+    public boolean isBlocked(LocalDate slotDate, LocalDate slotEndDate, LocalTime slotStart, LocalTime slotEnd,
+                             Long slotStaffUserId, Long slotLineId, LocalDate blockedDate,
+                             LocalDate blockedEndDate, LocalTime blockedStart, LocalTime blockedEnd,
+                             ReservationBlockedResourceType resourceType, Long resourceId, ZoneId zone) {
+        boolean resourceMatch = resourceType == ReservationBlockedResourceType.TEAM
+                || (resourceType == ReservationBlockedResourceType.STAFF
+                    && resourceId != null && resourceId.equals(slotStaffUserId))
+                || (resourceType == ReservationBlockedResourceType.LINE
+                    && resourceId != null && resourceId.equals(slotLineId));
+        if (!resourceMatch) {
+            return false;
+        }
+        if (blockedStart == null && blockedEnd == null) {
+            return slotDate != null && blockedDate != null
+                    && !slotDate.isBefore(blockedDate) && !slotDate.isAfter(blockedEndDate);
+        }
+        if (slotDate == null || slotEndDate == null || blockedDate == null || blockedEndDate == null) {
+            return false;
+        }
+        return overlaps(slotDate, slotEndDate, slotStart, slotEnd,
+                blockedDate, blockedEndDate, blockedStart, blockedEnd, zone);
     }
 
     /**
@@ -216,9 +308,66 @@ public class ReservationUnavailabilityChecker {
      * @return 該当なら true
      */
     public boolean isRecurringBlocked(ReservationSlotEntity slot, ReservationRecurringBlockedTimeEntity rule) {
-        return isRecurringBlocked(
-                slot.getSlotDate(), slot.getStartTime(), slot.getEndTime(), slot.getLineId(),
-                rule.isActiveRule(), rule.getDayOfWeek(), rule.getStartTime(), rule.getEndTime(), rule.getLineId());
+        ZoneId zone = teamTimezoneResolver == null
+                ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)
+                : teamTimezoneResolver.resolveZone(slot.getTeamId());
+        LocalDate slotEndDate = slot.getEndDate() == null ? slot.getSlotDate() : slot.getEndDate();
+        return isRecurringBlocked(slot, rule, zone);
+    }
+
+    public boolean isRecurringBlocked(ReservationSlotEntity slot, ReservationRecurringBlockedTimeEntity rule, ZoneId zone) {
+        LocalDate slotEndDate = slot.getEndDate() == null ? slot.getSlotDate() : slot.getEndDate();
+        return isRecurringBlocked(slot.getSlotDate(), slotEndDate, slot.getStartTime(), slot.getEndTime(),
+                slot.getLineId(), rule.isActiveRule(), rule.getDayOfWeek(), rule.getStartTime(), rule.getEndTime(),
+                rule.getLineId(), Boolean.TRUE.equals(rule.getEndsNextDay()), zone);
+    }
+
+    /** 繰返し blocked time も前日開始の日跨ぎ区間を含めて判定する。 */
+    public boolean isRecurringBlocked(LocalDate slotDate, LocalDate slotEndDate, LocalTime slotStart,
+                                      LocalTime slotEnd, Long slotLineId, boolean ruleActive,
+                                      ReservationDayOfWeek ruleDayOfWeek, LocalTime ruleStart,
+                                      LocalTime ruleEnd, Long ruleLineId, boolean ruleEndsNextDay, ZoneId zone) {
+        if (!ruleActive || slotDate == null || ruleDayOfWeek == null || ruleStart == null || ruleEnd == null
+                || !((ruleLineId == null) || ruleLineId.equals(slotLineId))) {
+            return false;
+        }
+        // A recurring rule is anchored to its weekday. For overnight rules, the interval
+        // beginning on the previous weekday also covers the current slot date.
+        for (LocalDate ruleDate : ruleEndsNextDay
+                ? new LocalDate[] {slotDate, slotDate.minusDays(1)} : new LocalDate[] {slotDate}) {
+            if (ReservationDayOfWeek.from(ruleDate) != ruleDayOfWeek) {
+                continue;
+            }
+            LocalDate ruleEndDate = ruleEndsNextDay ? ruleDate.plusDays(1) : ruleDate;
+            if (overlaps(slotDate, slotEndDate, slotStart, slotEnd,
+                    ruleDate, ruleEndDate, ruleStart, ruleEnd, zone)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** チームの実タイムゾーンで recurring rule を判定する。 */
+    public boolean isRecurringBlockedForTeam(LocalDate slotDate, LocalDate slotEndDate, LocalTime slotStart,
+                                             LocalTime slotEnd, Long slotLineId, boolean ruleActive,
+                                             ReservationDayOfWeek ruleDayOfWeek, LocalTime ruleStart,
+                                             LocalTime ruleEnd, Long ruleLineId, boolean ruleEndsNextDay,
+                                             Long teamId) {
+        ZoneId zone = teamTimezoneResolver == null
+                ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)
+                : teamTimezoneResolver.resolveZone(teamId);
+        return isRecurringBlocked(slotDate, slotEndDate, slotStart, slotEnd, slotLineId, ruleActive,
+                ruleDayOfWeek, ruleStart, ruleEnd, ruleLineId, ruleEndsNextDay, zone);
+    }
+
+    /** team単位で解決済みのZoneIdを再利用するrecurring impact経路。 */
+    public boolean isRecurringBlockedForTeam(LocalDate slotDate, LocalDate slotEndDate, LocalTime slotStart,
+                                             LocalTime slotEnd, Long slotLineId, boolean ruleActive,
+                                             ReservationDayOfWeek ruleDayOfWeek, LocalTime ruleStart,
+                                             LocalTime ruleEnd, Long ruleLineId, boolean ruleEndsNextDay,
+                                             ZoneId zone) {
+        return isRecurringBlocked(slotDate, slotEndDate, slotStart, slotEnd, slotLineId, ruleActive,
+                ruleDayOfWeek, ruleStart, ruleEnd, ruleLineId, ruleEndsNextDay, zone);
     }
 
     /**
@@ -237,9 +386,23 @@ public class ReservationUnavailabilityChecker {
             ReservationSlotEntity slot,
             Collection<ReservationBlockedTimeEntity> blocks,
             Collection<ReservationRecurringBlockedTimeEntity> recurringRules) {
-        if (isBlockedByAny(slot, blocks)) {
+        ZoneId zone = teamTimezoneResolver == null ? ZoneId.of(TeamTimezoneResolver.DEFAULT_TIMEZONE)
+                : teamTimezoneResolver.resolveZone(slot.getTeamId());
+        if (blocks != null && blocks.stream().anyMatch(b -> isBlocked(slot, b, zone))) {
             return true;
         }
-        return recurringRules != null && recurringRules.stream().anyMatch(r -> isRecurringBlocked(slot, r));
+        return recurringRules != null && recurringRules.stream().anyMatch(r -> isRecurringBlocked(slot, r, zone));
+    }
+
+    /** 既にteam単位で解決済みのZoneIdを使う高速経路。候補slotごとのresolver呼出を発生させない。 */
+    public boolean isBlockedByAny(
+            ReservationSlotEntity slot,
+            Collection<ReservationBlockedTimeEntity> blocks,
+            Collection<ReservationRecurringBlockedTimeEntity> recurringRules,
+            ZoneId zone) {
+        if (blocks != null && blocks.stream().anyMatch(b -> isBlocked(slot, b, zone))) {
+            return true;
+        }
+        return recurringRules != null && recurringRules.stream().anyMatch(r -> isRecurringBlocked(slot, r, zone));
     }
 }

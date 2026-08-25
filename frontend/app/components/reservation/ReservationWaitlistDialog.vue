@@ -115,6 +115,12 @@ async function register() {
       case 'RESERVATION_050':
         notification.error(t('reservation.waitlist.rate_limited'))
         break
+      case 'RESERVATION_013':
+        // 表示後の競合で本人の有効予約が先に作成された。最新グリッドへ戻して再選択を防ぐ。
+        notification.info(t('reservation.group.own_overlap'))
+        emit('changed')
+        close()
+        break
       default:
         handleApiError(error)
     }

@@ -1,5 +1,7 @@
 package com.mannschaft.app.reservation.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -16,8 +18,28 @@ import java.time.LocalTime;
  * {@code SlotTimeValidator} で再検証する（全日型への変更は許可しない）。</p>
  */
 @Getter
-@RequiredArgsConstructor
 public class UpdateRecurringBlockedTimeRequest {
+
+    public UpdateRecurringBlockedTimeRequest(Long lineId, Boolean clearLineId, ReservationDayOfWeek dayOfWeek,
+            LocalTime startTime, LocalTime endTime, String reason, Boolean isPublic, Boolean isActive,
+            Boolean forceCancelConflicting) {
+        this(lineId, clearLineId, dayOfWeek, startTime, endTime, reason, isPublic, isActive,
+                forceCancelConflicting, null);
+    }
+
+    @JsonCreator
+    public UpdateRecurringBlockedTimeRequest(@JsonProperty("lineId") Long lineId,
+            @JsonProperty("clearLineId") Boolean clearLineId,
+            @JsonProperty("dayOfWeek") ReservationDayOfWeek dayOfWeek,
+            @JsonProperty("startTime") LocalTime startTime, @JsonProperty("endTime") LocalTime endTime,
+            @JsonProperty("reason") String reason, @JsonProperty("isPublic") Boolean isPublic,
+            @JsonProperty("isActive") Boolean isActive,
+            @JsonProperty("forceCancelConflicting") Boolean forceCancelConflicting,
+            @JsonProperty("endsNextDay") Boolean endsNextDay) {
+        this.lineId = lineId; this.clearLineId = clearLineId; this.dayOfWeek = dayOfWeek;
+        this.startTime = startTime; this.endTime = endTime; this.reason = reason; this.isPublic = isPublic;
+        this.isActive = isActive; this.forceCancelConflicting = forceCancelConflicting; this.endsNextDay = endsNextDay;
+    }
 
     /** 対象ラインを変更する場合に指定（不正 ID は 400=LINE_NOT_FOUND）。 */
     private final Long lineId;
@@ -53,4 +75,6 @@ public class UpdateRecurringBlockedTimeRequest {
      * {@link CreateRecurringBlockedTimeRequest#getForceCancelConflicting()} を参照。</p>
      */
     private final Boolean forceCancelConflicting;
+
+    private final Boolean endsNextDay;
 }
