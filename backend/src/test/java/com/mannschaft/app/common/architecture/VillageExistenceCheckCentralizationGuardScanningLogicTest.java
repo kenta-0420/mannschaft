@@ -69,6 +69,55 @@ class VillageExistenceCheckCentralizationGuardScanningLogicTest {
     }
 
     @Test
+    @DisplayName("陽性: 変数と呼び出しが改行で分かれていても検出する")
+    void detectsCallSplitAcrossLines() {
+        // `villageRepository` と `.findById(` の間に改行・インデントを挟むのは Java として完全に
+        // 正当な書き方であり（IDE の自動整形でも起こる）、行ごとに照合していると
+        // この形で存在確認を書き足すだけで番人をすり抜けられてしまう。
+        String code = """
+                package com.mannschaft.app.village.service;
+                class SyntheticService {
+                    private final VillageRepository villageRepository;
+                    VillageEntity load(UUID villageId) {
+                        return villageRepository
+                                .findById(villageId)
+                                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+                    }
+                }
+                """;
+
+        List<VillageExistenceCheckCentralizationGuardTest.Violation> found =
+                VillageExistenceCheckCentralizationGuardTest.scan(Map.of(PATH, code));
+
+        assertThat(found).singleElement().satisfies(v -> {
+            assertThat(v.method()).isEqualTo("findById");
+            // 行番号は呼び出しの起点（変数が現れる行）を指す。
+            assertThat(v.line()).isEqualTo(5);
+        });
+    }
+
+    @Test
+    @DisplayName("陽性: フィールド名を日本語にしてもすり抜けられない")
+    void detectsUnicodeFieldName() {
+        // Java の識別子は Unicode を許すため、ASCII 前提の語境界で書くと改名だけで回避できてしまう。
+        String code = """
+                package com.mannschaft.app.village.service;
+                class SyntheticService {
+                    private final VillageRepository 村リポジトリ;
+                    boolean exists(UUID villageId) {
+                        return 村リポジトリ.existsById(villageId);
+                    }
+                }
+                """;
+
+        List<VillageExistenceCheckCentralizationGuardTest.Violation> found =
+                VillageExistenceCheckCentralizationGuardTest.scan(Map.of(PATH, code));
+
+        assertThat(found).singleElement()
+                .satisfies(v -> assertThat(v.method()).isEqualTo("existsById"));
+    }
+
+    @Test
     @DisplayName("陽性: フィールド名を villageRepository 以外に変えてもすり抜けられない")
     void detectsRenamedField() {
         String code = """

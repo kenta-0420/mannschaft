@@ -135,9 +135,20 @@ class VillageExistenceCheckCentralizationGuardTest {
         }
     }
 
+    /**
+     * 識別子を構成しうる文字（2 文字目以降）。
+     *
+     * <p>Java の識別子は ASCII に限られず Unicode 文字を含みうる（日本語のフィールド名も正当な Java である）。
+     * これを {@code [A-Za-z0-9_$]} や {@code \b} で書くと、<b>フィールド名を日本語にするだけで
+     * 番人をすり抜けられてしまう</b>ため、{@code \p{L}} 基準で書く。
+     * {@code \b} を使えないのは、語境界を ASCII の {@code \w} で判定するため
+     * 日本語識別子の前後では境界判定が反転してしまうからである。</p>
+     */
+    private static final String IDENTIFIER_PART = "[\\p{L}\\p{N}_$]";
+
     /** {@code VillageRepository} 型のフィールド／引数／ローカル変数の名前を拾う。 */
-    private static final Pattern REPOSITORY_VARIABLE =
-            Pattern.compile("\\bVillageRepository\\s+([A-Za-z_$][A-Za-z0-9_$]*)\\b");
+    private static final Pattern REPOSITORY_VARIABLE = Pattern.compile(
+            "(?<!" + IDENTIFIER_PART + ")VillageRepository\\s+([\\p{L}_$]" + IDENTIFIER_PART + "*)");
 
     /**
      * 与えられたソース群から違反を抽出する。
@@ -168,23 +179,36 @@ class VillageExistenceCheckCentralizationGuardTest {
                 continue;
             }
 
-            String[] maskedLines = masked.split("\n", -1);
+            // 行ごとではなく本文全体に対して走査する。`villageRepository` と `.findById(` の間で
+            // 改行・インデントが入るのは Java として完全に正当な書き方であり、行分割してから
+            // 照合すると、その形で存在確認を書き足すだけで番人をすり抜けられてしまう。
             String[] originalLines = original.split("\n", -1);
-            for (int i = 0; i < maskedLines.length; i++) {
-                for (String variable : variables) {
-                    for (String method : EXISTENCE_LOOKUP_METHODS) {
-                        Pattern call = Pattern.compile(
-                                "\\b" + Pattern.quote(variable) + "\\s*\\.\\s*"
-                                        + Pattern.quote(method) + "\\s*\\(");
-                        if (call.matcher(maskedLines[i]).find()) {
-                            violations.add(new Violation(path, i + 1, method,
-                                    i < originalLines.length ? originalLines[i] : ""));
-                        }
+            for (String variable : variables) {
+                for (String method : EXISTENCE_LOOKUP_METHODS) {
+                    Pattern call = Pattern.compile(
+                            "(?<!" + IDENTIFIER_PART + ")" + Pattern.quote(variable) + "\\s*\\.\\s*"
+                                    + Pattern.quote(method) + "\\s*\\(");
+                    Matcher callMatcher = call.matcher(masked);
+                    while (callMatcher.find()) {
+                        int line = lineNumberOf(masked, callMatcher.start());
+                        violations.add(new Violation(path, line, method,
+                                line - 1 < originalLines.length ? originalLines[line - 1] : ""));
                     }
                 }
             }
         }
         return violations;
+    }
+
+    /** {@code offset} が本文の何行目（1 始まり）にあたるかを返す。 */
+    private static int lineNumberOf(String source, int offset) {
+        int line = 1;
+        for (int i = 0; i < offset; i++) {
+            if (source.charAt(i) == '\n') {
+                line++;
+            }
+        }
+        return line;
     }
 
     // ────────────────────────────────────────────────────────────
