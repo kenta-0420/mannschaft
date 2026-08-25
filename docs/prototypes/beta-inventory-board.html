@@ -4,6 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mannschaft B棚卸しボード — UIプロトタイプ</title>
+  <script>
+    (() => {
+      try {
+        const savedTheme = localStorage.getItem('mannschaft-beta-inventory-theme');
+        if (savedTheme === 'dark' || savedTheme === 'light') document.documentElement.dataset.theme = savedTheme;
+      } catch {
+        // file:// やブラウザ設定でlocalStorageが使えなくても画面表示は継続する。
+      }
+    })();
+  </script>
   <style>
     :root {
       color-scheme: light;
@@ -213,6 +223,7 @@
     .insight-form { display: grid; gap: 14px; margin-top: 18px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .form-field { display: grid; gap: 6px; }
+    .form-field[hidden] { display: none; }
     .form-field label { color: var(--muted); font-size: 11px; font-weight: 800; }
     .form-field input, .form-field textarea {
       width: 100%; min-height: 44px; border: 1px solid var(--line); border-radius: 12px;
@@ -457,6 +468,21 @@
           </select>
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label for="insightSource">登録元</label>
+          <select id="insightSource">
+            <option value="self" selected>私</option>
+            <option value="alicization">アリシゼーションテスト</option>
+          </select>
+        </div>
+        <div class="form-field" id="insightPersonaField" hidden>
+          <label for="insightPersona">発見したペルソナ</label>
+          <select id="insightPersona">
+            <option value="">統括／ペルソナ未特定</option>
+          </select>
+        </div>
+      </div>
       <div class="form-field">
         <label for="insightTitle">気づいたこと</label>
         <input id="insightTitle" type="text" maxlength="120" required placeholder="例：出欠回答後に次の操作が分からない">
@@ -481,7 +507,7 @@
           </div>
         </div>
       </div>
-      <div class="storage-note"><b>ローカル専用：</b>入力中のメモはこのブラウザのIndexedDB（画像はBlob）へ仮保存します。HTML・Git・AWSには送信しません。確定分はカードの「一式保存」から、機能別フォルダへMarkdown＋画像として書き出します。</div>
+      <div class="storage-note"><b>ローカル専用：</b>手入力とアリシゼーションの気づきは、このブラウザの同じIndexedDB（画像はBlob）へ保存します。HTML・Git・AWSには送信しません。確定分はカードの「一式保存」から、機能別フォルダへMarkdown＋画像として書き出します。</div>
       <div class="drawer-actions">
         <button class="primary-button" type="submit">気づきを保存</button>
         <button class="secondary-button" id="cancelInsight" type="button">キャンセル</button>
@@ -536,6 +562,10 @@
 
     const INSIGHT_DB_NAME = 'mannschaft-beta-inventory-board';
     const INSIGHT_STORE_NAME = 'insights';
+    const THEME_STORAGE_KEY = 'mannschaft-beta-inventory-theme';
+    const alicizationPersonas = new Map(
+      (baseInventory.b0Alicization?.autonomousTestStrategy?.personas || []).map((persona) => [persona.id, persona])
+    );
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -589,6 +619,67 @@
       });
     }
 
+    function insightSourceDetails(insight) {
+      const source = insight.registrationSource === 'alicization' ? 'alicization' : 'self';
+      const persona = insight.personaId ? alicizationPersonas.get(insight.personaId) : null;
+      return {
+        source,
+        sourceLabel: source === 'alicization' ? 'アリシゼーションテスト' : '私',
+        personaLabel: insight.personaId
+          ? `${insight.personaId} ${insight.personaArchetype || persona?.archetype || '名称未取得'}`
+          : source === 'alicization' ? '統括／ペルソナ未特定' : ''
+      };
+    }
+
+    function collectAlicizationInsights() {
+      const overlay = baseInventory.b0RunOverlay;
+      if (!overlay) return [];
+      const runId = overlay.runId || overlay.startedAt || overlay.recordedAt || 'run-unknown';
+      const stableRunPart = String(runId).replace(/[^A-Za-z0-9_-]/g, '-');
+      const findings = [
+        ...(overlay.insights || overlay.findings || []),
+        ...(overlay.journeys || []).flatMap((journey) =>
+          (journey.insights || journey.findings || []).map((finding) => ({ ...finding, journeyId: finding.journeyId || journey.id }))
+        )
+      ];
+      return findings
+        .filter((finding) => finding.featureKey && finding.title && finding.detail)
+        .map((finding, index) => {
+          const observedAt = Date.parse(finding.observedAt || overlay.finishedAt || overlay.startedAt || overlay.recordedAt || '') || Date.now();
+          const stablePart = String(finding.id || `${finding.journeyId || 'B0'}-${finding.personaId || 'COORD'}-${index + 1}`)
+            .replace(/[^A-Za-z0-9_-]/g, '-');
+          const persona = finding.personaId ? alicizationPersonas.get(finding.personaId) : null;
+          return {
+            id: `ALI-${stableRunPart}-${stablePart}`,
+            featureKey: finding.featureKey,
+            priority: ['must', 'should', 'could'].includes(finding.priority) ? finding.priority : 'should',
+            title: finding.title,
+            page: finding.page || '',
+            detail: finding.detail,
+            status: 'inbox',
+            registrationSource: 'alicization',
+            personaId: finding.personaId || '',
+            personaArchetype: finding.personaArchetype || persona?.archetype || '',
+            journeyId: finding.journeyId || '',
+            runId,
+            evidencePath: finding.evidencePath || '',
+            screenshotPath: finding.screenshotPath || '',
+            createdAt: observedAt,
+            updatedAt: observedAt,
+            screenshot: null,
+            screenshotName: ''
+          };
+        });
+    }
+
+    async function syncAlicizationInsights(storedInsights) {
+      const existingIds = new Set(storedInsights.map((insight) => insight.id));
+      const uniqueIncoming = [...new Map(collectAlicizationInsights().map((insight) => [insight.id, insight])).values()];
+      const incoming = uniqueIncoming.filter((insight) => !existingIds.has(insight.id));
+      for (const insight of incoming) await writeInsight(insight);
+      return incoming.length ? readInsights() : storedInsights;
+    }
+
     function getFeatureInfo(featureKey) {
       const feature = features.find((item) => item.key === featureKey);
       if (feature) return feature;
@@ -616,6 +707,21 @@
       document.querySelector('#insightFeature').innerHTML = [...featureOptions.entries()]
         .map(([key, title]) => `<option value="${escapeHtml(key)}">${escapeHtml(title)} · ${escapeHtml(key)}</option>`)
         .join('');
+    }
+
+    function populateInsightPersonas() {
+      document.querySelector('#insightPersona').innerHTML = [
+        '<option value="">統括／ペルソナ未特定</option>',
+        ...[...alicizationPersonas.values()].map((persona) =>
+          `<option value="${escapeHtml(persona.id)}">${escapeHtml(persona.id)} · ${escapeHtml(persona.archetype)}</option>`
+        )
+      ].join('');
+    }
+
+    function syncInsightSourceField() {
+      const isAlicization = document.querySelector('#insightSource').value === 'alicization';
+      document.querySelector('#insightPersonaField').hidden = !isAlicization;
+      if (!isAlicization) document.querySelector('#insightPersona').value = '';
     }
 
     function getFilteredFeatures() {
@@ -903,8 +1009,9 @@
       const query = document.querySelector('#search').value.trim().toLowerCase();
       const visibleInsights = insights.filter((insight) => {
         const feature = getFeatureInfo(insight.featureKey);
+        const source = insightSourceDetails(insight);
         const stageMatches = feature.stage === selectedStage;
-        const queryMatches = !query || `${insight.id} ${insight.title} ${insight.detail} ${insight.page} ${feature.title} ${insight.featureKey}`.toLowerCase().includes(query);
+        const queryMatches = !query || `${insight.id} ${insight.title} ${insight.detail} ${insight.page} ${feature.title} ${insight.featureKey} ${source.sourceLabel} ${source.personaLabel} ${insight.journeyId || ''}`.toLowerCase().includes(query);
         return stageMatches && queryMatches;
       });
       const groups = new Map();
@@ -921,7 +1028,7 @@
       board.className = '';
       board.innerHTML = `
         <div class="panel-heading">
-          <div><h2>気づき箱</h2><p>操作中の違和感を止めずに捕まえ、後から機能単位でまとめます。</p></div>
+          <div><h2>気づき箱</h2><p>私とアリシゼーションテストの発見を統合し、機能単位でまとめます。</p></div>
           <span class="wip-chip">未整理 ${openCount} · 課題化済 ${plannedCount}</span>
         </div>
         <div class="insight-intro">
@@ -939,11 +1046,14 @@
                 </div>
                 <div class="insight-card-grid">
                   ${groupInsights.map((insight) => {
+                    const source = insightSourceDetails(insight);
                     let screenshot = '<div class="insight-shot empty">スクショなし</div>';
                     if (insight.screenshot) {
                       const imageUrl = URL.createObjectURL(insight.screenshot);
                       insightObjectUrls.push(imageUrl);
                       screenshot = `<img class="insight-shot" src="${imageUrl}" alt="${escapeHtml(insight.title)}のスクリーンショット">`;
+                    } else if (insight.screenshotPath) {
+                      screenshot = '<div class="insight-shot empty">自動テストのスクショ証拠あり</div>';
                     }
                     return `
                       <article class="insight-card">
@@ -952,10 +1062,15 @@
                           <div class="tags">
                             <span class="status-pill ${statusClasses[insight.status]}">${statusLabels[insight.status]}</span>
                             <span class="priority ${insight.priority}">${priorityLabels[insight.priority]}</span>
+                            <span class="tag">登録：${escapeHtml(source.sourceLabel)}</span>
+                            ${source.personaLabel ? `<span class="tag">発見：${escapeHtml(source.personaLabel)}</span>` : ''}
+                            ${insight.journeyId ? `<span class="tag">${escapeHtml(insight.journeyId)}</span>` : ''}
                           </div>
                           <h4>${escapeHtml(insight.title)}</h4>
                           <p>${escapeHtml(insight.detail)}</p>
                           ${insight.page ? `<p>画面：${escapeHtml(insight.page)}</p>` : ''}
+                          ${insight.evidencePath ? `<p>実行証拠：${escapeHtml(insight.evidencePath)}</p>` : ''}
+                          ${insight.screenshotPath ? `<p>スクショ証拠：${escapeHtml(insight.screenshotPath)}</p>` : ''}
                           <div class="insight-actions">
                             <button class="mini-button primary" type="button" data-insight-prompt="${escapeHtml(insight.id)}">AI指示文</button>
                             <button class="mini-button" type="button" data-insight-export="${escapeHtml(insight.id)}">一式保存</button>
@@ -1039,10 +1154,15 @@
 ■ 操作中の気づき
 - 改善メモID: ${feature.insight.id}
 - 対応feature_key: ${feature.insight.featureKey}
+- 登録元: ${insightSourceDetails(feature.insight).sourceLabel}
+- 発見者: ${insightSourceDetails(feature.insight).personaLabel || '私'}
+- B0 journey: ${feature.insight.journeyId || '該当なし'}
+- runId: ${feature.insight.runId || '該当なし'}
 - 発見画面: ${feature.insight.page || '未記録'}
 - 状態: ${feature.insight.status}
 - 記録日時: ${new Date(feature.insight.createdAt).toLocaleString('ja-JP')}
-- スクリーンショット: ${feature.insight.screenshot ? `${feature.insight.screenshotName || '添付あり'}（「一式保存」で書き出し、この依頼と一緒に添付してください）` : 'なし'}
+- 実行証拠: ${feature.insight.evidencePath || 'なし'}
+- スクリーンショット: ${feature.insight.screenshot ? `${feature.insight.screenshotName || '添付あり'}（「一式保存」で書き出し、この依頼と一緒に添付してください）` : feature.insight.screenshotPath || 'なし'}
 ` : '';
       const b0Context = feature.stage === 'B0' && baseInventory.b0Alicization ? `
 ■ B0アリシゼーション自動探索
@@ -1160,6 +1280,7 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
     function openInsightForm(featureKey = '') {
       closeDrawer();
       document.querySelector('#insightForm').reset();
+      syncInsightSourceField();
       clearPendingScreenshot();
       const select = document.querySelector('#insightFeature');
       select.value = [...select.options].some((option) => option.value === featureKey) ? featureKey : 'cross-cutting';
@@ -1194,11 +1315,17 @@ ${feature.refs.map((item) => `- ${item}`).join('\n')}
     }
 
     function insightMarkdown(insight) {
-      const screenshotName = insight.screenshot ? `screenshot.${screenshotExtension(insight)}` : 'なし';
+      const source = insightSourceDetails(insight);
+      const screenshotName = insight.screenshot ? `screenshot.${screenshotExtension(insight)}` : insight.screenshotPath || 'なし';
       return `# ${insight.title}
 
 - ID: ${insight.id}
 - feature_key: ${insight.featureKey}
+- 登録元: ${source.sourceLabel}
+- 発見者: ${source.personaLabel || '私'}
+- B0 journey: ${insight.journeyId || '該当なし'}
+- runId: ${insight.runId || '該当なし'}
+- 実行証拠: ${insight.evidencePath || 'なし'}
 - 優先度: ${insight.priority}
 - 状態: ${insight.status}
 - 発見画面: ${insight.page || '未記録'}
@@ -1374,6 +1501,7 @@ ${insight.detail}
     document.querySelector('#copyKey').addEventListener('click', () => copyText(selectedFeature?.key || '', 'IDをコピーしました'));
     document.querySelector('#chooseShot').addEventListener('click', () => document.querySelector('#shotInput').click());
     document.querySelector('#shotInput').addEventListener('change', (event) => setPendingScreenshot(event.target.files[0]));
+    document.querySelector('#insightSource').addEventListener('change', syncInsightSourceField);
     const shotDrop = document.querySelector('#shotDrop');
     ['dragenter', 'dragover'].forEach((type) => shotDrop.addEventListener(type, (event) => {
       event.preventDefault();
@@ -1396,6 +1524,9 @@ ${insight.detail}
     document.querySelector('#insightForm').addEventListener('submit', async (event) => {
       event.preventDefault();
       const createdAt = Date.now();
+      const registrationSource = document.querySelector('#insightSource').value;
+      const personaId = registrationSource === 'alicization' ? document.querySelector('#insightPersona').value : '';
+      const persona = personaId ? alicizationPersonas.get(personaId) : null;
       const insight = {
         id: createInsightId(createdAt),
         featureKey: document.querySelector('#insightFeature').value,
@@ -1404,6 +1535,13 @@ ${insight.detail}
         page: document.querySelector('#insightPage').value.trim(),
         detail: document.querySelector('#insightDetail').value.trim(),
         status: 'inbox',
+        registrationSource,
+        personaId,
+        personaArchetype: persona?.archetype || '',
+        journeyId: '',
+        runId: '',
+        evidencePath: '',
+        screenshotPath: '',
         createdAt,
         updatedAt: createdAt,
         screenshot: pendingScreenshot,
@@ -1426,14 +1564,22 @@ ${insight.detail}
     document.querySelector('#themeToggle').addEventListener('click', () => {
       const root = document.documentElement;
       root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, root.dataset.theme);
+      } catch {
+        showToast('テーマ設定を保存できませんでした');
+      }
     });
 
     const generatedAt = new Date(window.BETA_INVENTORY_DATA.generatedAt).toLocaleString('ja-JP');
     const proposedDecisions = Object.values(decisions?.features || {}).filter((decision) => (decision.decisionStatus || decisions.decisionStatusDefault) === 'proposed').length;
     document.querySelector('#sourceNote').textContent = `正本大分類 ${sourceCounts.features}件 / 表示能力 ${sourceCounts.capabilities}件 / 分割親 ${sourceCounts.splitParents}件 / CMP ${sourceCounts.campaigns}件 / Phase 2A分類 ${sourceCounts.features - proposedDecisions}分類承認済・${proposedDecisions}分類未承認 / 生成 ${generatedAt}`;
     populateInsightFeatures();
+    populateInsightPersonas();
+    syncInsightSourceField();
     renderBoard();
     readInsights()
+      .then(syncAlicizationInsights)
       .then((storedInsights) => {
         insights = storedInsights;
         if (selectedView === 'insights') renderBoard();
