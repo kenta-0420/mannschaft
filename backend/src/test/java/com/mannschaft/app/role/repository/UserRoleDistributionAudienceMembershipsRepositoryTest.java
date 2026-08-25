@@ -223,8 +223,8 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
         List<Long> acc = new ArrayList<>();
         long cursor = 0L;
         while (true) {
-            List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
-                    orgId, includeSupporters, maxDepth, cursor, chunk, PageRequest.of(0, chunk));
+            List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeyset(
+                    orgId, includeSupporters, maxDepth, cursor, chunk, PageRequest.of(0, chunk)));
             if (page.isEmpty()) {
                 return acc;
             }
@@ -239,9 +239,9 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
         for (int shardIndex = 0; shardIndex < shardCount; shardIndex++) {
             long cursor = 0L;
             while (true) {
-                List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
+                List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
                         orgId, includeSupporters, maxDepth, cursor, chunk, shardIndex, shardCount,
-                        PageRequest.of(0, chunk));
+                        PageRequest.of(0, chunk)));
                 if (page.isEmpty()) {
                     break;
                 }
@@ -514,8 +514,8 @@ class UserRoleDistributionAudienceMembershipsRepositoryTest extends AbstractMySq
         for (int shardIndex = 0; shardIndex < shardCount; shardIndex++) {
             long cursor = 0L;
             while (true) {
-                List<Long> page = userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
-                        rootOrg, false, MAX_DEPTH, cursor, 3, shardIndex, shardCount, PageRequest.of(0, 3));
+                List<Long> page = com.mannschaft.app.notification.fanout.FanoutRecipientRowMapper.userIdsOf(userRoleRepository.findDistributionUserIdsForOrganizationRecursiveKeysetSharded(
+                        rootOrg, false, MAX_DEPTH, cursor, 3, shardIndex, shardCount, PageRequest.of(0, 3)));
                 if (page.isEmpty()) {
                     break;
                 }

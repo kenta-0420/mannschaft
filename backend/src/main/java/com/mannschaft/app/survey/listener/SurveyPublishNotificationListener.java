@@ -2,6 +2,7 @@ package com.mannschaft.app.survey.listener;
 
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.fanout.FanoutMessageKind;
 import com.mannschaft.app.notification.fanout.NotificationFanoutJobService;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.fanout.OrgFanoutRecipientSource;
@@ -74,18 +75,18 @@ public class SurveyPublishNotificationListener {
                 // 組織スコープ×ALL: 受信者を展開せず耐久 fan-out ジョブを 1 件 enqueue（O(1)）。
                 // 配下チーム展開・応援者トグル適用・ACTIVE/未削除の母集団条件はワーカー（OrgFanoutRecipientSource）が
                 // keyset クエリで処理する。
-                // Issue #2715 CMP-055 ロットC-5: このジョブは描画済みの title/body を enqueue し、
-                // 受信者はワーカー（NotificationFanoutWorker）が後から展開するため、受信者ごとの i18n は
-                // 構造的に不可能。ジョブのペイロード形式を変える設計変更は Issue #2871 の範囲であり、
-                // 本ロットでは対象外とする（手を付けない）。
+                // Issue #2871 で解消: ジョブは描画済み文字列ではなく「文面種別＋利用者が書いた中身」を
+                // 運ぶようになった。enqueue が 6 配信ロケールぶんの文面を描画して子表に保存し、
+                // ワーカーが受信者の locale で選んで配る。翻訳するのは枠だけで、アンケート名は
+                // 利用者が書いた文字列としてそのまま差し込む（翻訳も改変もしない）。
                 fanoutJobService.enqueue(
                         OrgFanoutRecipientSource.SCOPE_TYPE,               // 戦略キー: ORGANIZATION
                         String.valueOf(event.getScopeId()),                // scope_ref: 組織 ID 文字列
                         SurveyNotificationType.SURVEY_CREATED.name(),
                         sourceEventUuid(event.getSurveyId(), event.occurredAt()), // 冪等キー: 公開イベント（surveyId×occurredAt）
                         event.getScopeId(),                                // organizationId: テナント（組織 ID）
-                        "新しいアンケートが公開されました",
-                        "「" + event.getTitle() + "」が公開されました。回答にご協力ください。",
+                        FanoutMessageKind.SURVEY_PUBLISHED,
+                        new String[]{event.getTitle()},    // 利用者が書いたアンケート名（翻訳しない）
                         NotificationPriority.NORMAL,
                         "SURVEY", event.getSurveyId(),
                         "/surveys/" + event.getSurveyId(),

@@ -174,7 +174,16 @@
       "team_page": "予約"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "{label}の使い方",
+      "cards": {
+        "business_hours": { "title": "営業時間", "description": "予約受付時間を設定" },
+        "lines": { "title": "予約対象", "description": "{n}件の予約対象を管理" },
+        "menus": { "title": "メニュー", "description": "{n}件のメニューを管理" },
+        "weekly_schedule": { "title": "週間スケジュール", "description": "{n}件の枠・定期設定" },
+        "exception_day": { "title": "例外日", "description": "特定日の営業を調整" },
+        "advanced": { "title": "詳細設定", "description": "公開範囲や通知を設定" }
+      }
     },
     "column": {
       "datetime": "日時",
@@ -578,6 +587,8 @@
       "delete_confirm": "このテンプレートを削除しますか？（生成済みの枠は残ります）",
       "day_of_week": "曜日",
       "time_range": "時間帯",
+      "ends_next_day": "終了は翌日",
+      "next_day_time": "翌 {time}",
       "line": "予約対象",
       "line_common": "共通枠",
       "capacity": "定員",
@@ -647,6 +658,7 @@
     "business_hours": {
       "title": "営業時間",
       "day_open": "営業する",
+      "ends_next_day": "終了は翌日",
       "save_success": "保存し、枠を{generated}件更新しました",
       "generating": "枠を更新しています…",
       "generation_failed": "営業時間は保存しましたが、枠の自動更新に失敗しました。明朝に自動で追い付きます",
@@ -679,6 +691,7 @@
       "state": {
         "available": "空き",
         "booked": "埋まっている",
+        "reserved": "予約済み",
         "closed": "受付終了",
         "unavailable": "予約不可"
       },
@@ -699,6 +712,9 @@
       "no_menu_single": "メニューなしで30分だけ予約",
       "preview_title": "この内容で予約します",
       "extend_30": "＋30分延長",
+      "open_all": "すべて表示",
+      "close_all": "すべて閉じる",
+      "open_day_hint": "日付を選ぶと予約枠を表示します",
       "date_line_header": "日付・{resourceName}",
       "help_toggle": "使い方を見る",
       "help_body": "空いている時間（緑）をタップし、メニューを選ぶと必要な枠数が自動で選ばれます。「＋30分延長」でさらに枠を追加できます。共通枠を選んだ場合は{resourceName}を選んでください。",

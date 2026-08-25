@@ -40,6 +40,10 @@ public class ReservationBlockedTimeEntity extends BaseEntity {
 
     private LocalTime endTime;
 
+    @Column(name = "ends_next_day", nullable = false)
+    @lombok.Builder.Default
+    private Boolean endsNextDay = false;
+
     @Column(length = 200)
     private String reason;
 
@@ -79,5 +83,11 @@ public class ReservationBlockedTimeEntity extends BaseEntity {
         this.reason = reason;
         this.resourceType = resourceType;
         this.resourceId = resourceId;
+    }
+
+    public void update(LocalDate blockedDate, LocalTime startTime, LocalTime endTime, String reason,
+                       ReservationBlockedResourceType resourceType, Long resourceId, Boolean endsNextDay) {
+        update(blockedDate, startTime, endTime, reason, resourceType, resourceId);
+        this.endsNextDay = endsNextDay == null ? false : endsNextDay;
     }
 }

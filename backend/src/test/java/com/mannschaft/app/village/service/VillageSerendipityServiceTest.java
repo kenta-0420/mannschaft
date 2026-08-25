@@ -9,9 +9,11 @@ import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.VillageSerendipityScoreEntity;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.entity.enums.VillageVisibility;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.repository.VillageSerendipityScoreRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +31,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -64,8 +67,23 @@ class VillageSerendipityServiceTest {
     @Mock
     private VillageMembershipRepository membershipRepository;
 
+    /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
+    @Mock
+    private VillageAccessGate accessGate;
+
     @InjectMocks
     private VillageSerendipityService service;
+
+    /**
+     * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
+     * モックのゲートに実物のゲート（同じモックのリポジトリを注入）を委譲させることで、
+     * 本テストが積み上げてきた {@code villageRepository.findById} の stub をそのまま生かしつつ、
+     * 可視性判定は実物のロジックで走らせる。
+     */
+    @BeforeEach
+    void wireVillageAccessGate() {
+        VillageAccessGateTestSupport.delegateToRealGate(accessGate, villageRepository, membershipRepository);
+    }
 
     private void givenActiveMember(Long userId) {
         VillageMembershipEntity m = VillageMembershipEntity.builder()
@@ -142,6 +160,53 @@ class VillageSerendipityServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    /**
+     * 村存在確認が {@link VillageAccessGate#loadReadableVillage} に移り、
+     * 凍結済み村も不在と同じ 404 に畳まれるようになった（従来は凍結を見ておらず素通りしていた）。
+     * read 経路に 409 を新設すると「凍結された村がそこに在る」と分かる別経路の存在オラクルになるため、
+     * 404 側へ倒すのが正しい。その挙動をここで見張る。
+     */
+    @Test
+    @DisplayName("getMyScore: 凍結済み村 → VILLAGE_001 VILLAGE_NOT_FOUND（409 を漏らさない）")
+    void getMyScore_villageArchived() {
+        VillageEntity v = new VillageEntity();
+        v.setId(VILLAGE_ID);
+        v.setVisibility(VillageVisibility.PUBLIC);
+        v.setArchivedAt(LocalDateTime.now());
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(v));
+
+        assertThatThrownBy(() -> service.getMyScore(VILLAGE_ID, USER_A))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("getMyScore: 非公開(UNLISTED)村を非村人が叩く → VILLAGE_001 VILLAGE_NOT_FOUND（存在秘匿）")
+    void getMyScore_unlistedVillageByStranger() {
+        givenActiveUnlistedVillage();
+
+        assertThatThrownBy(() -> service.getMyScore(VILLAGE_ID, USER_A))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("getMyScore: 非公開(UNLISTED)村でも現役村人は従来どおり取得できる")
+    void getMyScore_unlistedVillageByMember() {
+        givenActiveUnlistedVillage();
+        givenActiveMember(USER_A);
+        VillageSerendipityScoreEntity me = score(USER_A, 10L, 50L);
+        given(serendipityRepository.findByVillageIdAndUserId(VILLAGE_ID, USER_A))
+                .willReturn(Optional.of(me));
+        // rank 計算用（自分が単独 1 位）
+        given(serendipityRepository.findByVillageIdOrderByInteractionScoreDesc(eq(VILLAGE_ID), any(Pageable.class)))
+                .willReturn(new PageImpl<>(List.of(me)));
+
+        assertThatCode(() -> service.getMyScore(VILLAGE_ID, USER_A)).doesNotThrowAnyException();
     }
 
     // ========================================================================
@@ -264,9 +329,26 @@ class VillageSerendipityServiceTest {
     // helpers
     // ========================================================================
 
+    /**
+     * 稼働中の公開村を用意する。
+     *
+     * <p>村の存在確認が {@link VillageAccessGate} に移り、可視性（{@code visibility}）まで見るようになったため、
+     * {@code id} と {@code visibility} の設定が必須になった。未設定のままだと非 PUBLIC 扱いとなり、
+     * 「非村人には存在ごと秘匿」の正しい挙動によって全ケースが 404 になってしまう。</p>
+     */
     private void givenActiveVillage() {
         VillageEntity v = new VillageEntity();
-        // deletedAt=null, archivedAt は本 Service では参照しないため設定不要
+        v.setId(VILLAGE_ID);
+        v.setVisibility(VillageVisibility.PUBLIC);
+        // deletedAt=null, archivedAt=null（＝稼働中）
+        given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(v));
+    }
+
+    /** 非公開(UNLISTED)村。非村人には存在ごと秘匿されることの検証に使う。 */
+    private void givenActiveUnlistedVillage() {
+        VillageEntity v = new VillageEntity();
+        v.setId(VILLAGE_ID);
+        v.setVisibility(VillageVisibility.UNLISTED);
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(v));
     }
 

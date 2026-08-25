@@ -529,6 +529,7 @@ public class TeamService {
                 req.getSupporterEnabled(),
                 // F15.4 Phase 5-β: Google Maps 埋め込み URL。指定時のみ更新（null は既存値を維持）
                 req.getMapEmbedUrl());
+        team.updateTimezone(req.getTimezone());
         teamRepository.save(team);
 
         int memberCount = (int) userRoleRepository.countByTeamId(teamId);
@@ -868,6 +869,7 @@ public class TeamService {
                 .visibility(new TeamResponse.TeamVisibilityDto(
                         team.getVisibility() != null ? team.getVisibility().name() : null,
                         team.getSupporterEnabled()))
+                .timezone(team.getTimezone())
                 .metadata(new TeamResponse.TeamMetadataDto(
                         team.getVersion(), memberCount,
                         // 画像 URL 根治 Phase 1: icon/banner は生 R2 キーを署名付き表示 URL へ解決する。
