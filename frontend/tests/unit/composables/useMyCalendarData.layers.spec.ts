@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
 import type { Ref } from 'vue'
+import { setActivePinia, createPinia } from 'pinia'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
+import { useTeamStore } from '~/stores/useTeamStore'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 
 /**
@@ -15,12 +17,21 @@ import type { CalendarEventItem } from '~/composables/useCalendarEvents'
  *   AC-02相当: 予定0件のレイヤーも選択肢（allScopeOptions）に出る
  *   AC-03相当: 月を往復してもレイヤーの個数・並び順が変わらない（layers は events と独立）
  *
- * 検分修繕（Codex検分 P1/P2、2026-08-25）:
+ * 検分修繕（Codex検分 P1/P2、2026-08-25 一巡目）:
  *   P1修繕: レイヤーキーに slug が混入し、チーム予定が一切絞り込めない欠陥の再発防止。
  *     モックはレイヤー側（数値 scopeId）とイベント側（scopeId=数値文字列 + 別途 scopeSlug）の
  *     形をわざと非対称にする＝実データの形そのもの。両側を同じ形で揃えたモックは偽の安心である。
  *   P2修繕a: 明示的に解除したフォールバックチップが復活しない
  *   P2修繕b: レイヤー取得の失敗がカレンダー全体（予定取得）を巻き込まない
+ *
+ * 検分修繕（Codex検分 P1/P2、2026-08-26 二巡目 — 一巡目の修繕自身が生んだ欠陥）:
+ *   P2-1: availableScopes をイベント走査に戻したため、予定0件の所属スコープが作成候補から消える。
+ *     レイヤー一覧（予定に依存しない）を典拠にし、slug は team/organization ストアという
+ *     別経路から補う（表示フィルタ用の数値キーと作成API用のslugを別フィールドで持つ）。
+ *   P2-2: レイヤー取得が失敗した初回利用で、selectedScopes=[] のままイベントが全滅する。
+ *     layersDegraded フラグでフィルタそのものを迂回させ、取得できた予定は見えるようにする。
+ *   P2-3: 旧V2状態（knownFallbackKeysを持たない）からの移行で、既に選択済みのフォールバック
+ *     キーが newlySeen に紛れ込み selectedScopes に二重登録される（1回目のクリックで外せない）。
  */
 
 const mockListPersonalSchedules = vi.fn()
@@ -28,6 +39,12 @@ const mockGetCalendarRange = vi.fn()
 const mockGetMyCalendarLayers = vi.fn()
 const mockGetPersonalGanttTodos = vi.fn()
 const mockHandleApiError = vi.fn()
+/**
+ * team/organization ストアの fetchMyTeams/fetchMyOrganizations が内部で呼ぶ useApi。
+ * 実ネットワーク呼び出しに落ちて非決定的に遅くなるのを避けるため既定で空応答にする。
+ * P2-1 のテストは teamStore.myTeams を直接プリセットして fetch 自体をスキップさせる。
+ */
+const mockApi = vi.fn()
 
 let capturedFetcher: ((from: string, to: string) => Promise<CalendarEventItem[]>) | null = null
 /**
@@ -38,6 +55,9 @@ let capturedFetcher: ((from: string, to: string) => Promise<CalendarEventItem[]>
  */
 let capturedEventsRef: Ref<CalendarEventItem[]> | null = null
 
+vi.mock('~/composables/useApi', () => ({
+  useApi: () => mockApi,
+}))
 vi.mock('~/composables/useScheduleApi', () => ({
   useScheduleApi: () => ({
     listPersonalSchedules: mockListPersonalSchedules,
@@ -105,6 +125,7 @@ const LAYERS_FIXTURE = [
 
 describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
     capturedFetcher = null
     capturedEventsRef = null
     mockListPersonalSchedules.mockReset()
@@ -116,6 +137,8 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
     mockGetCalendarRange.mockResolvedValue({ data: [] })
     mockGetPersonalGanttTodos.mockResolvedValue({ data: [] })
     mockGetMyCalendarLayers.mockResolvedValue({ data: LAYERS_FIXTURE })
+    mockApi.mockReset()
+    mockApi.mockResolvedValue({ data: [] })
     localStorage.clear()
     __resetCalendarLayerMigrationForTest()
   })
@@ -346,5 +369,94 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
     })
     const merged = await capturedFetcher!('2026-08-01', '2026-08-31')
     expect(merged.map((e) => e.uniqueKey)).toContain('shared:20')
+  })
+
+  it('P2-1: 表示月に予定が1件も無い所属チームも作成スコープ候補（availableScopes）に出る。slugはteamストア由来で、レイヤーAPIのslug欠如を穴埋めする', async () => {
+    // 実データの非対称性を再現する: レイヤー API（LAYERS_FIXTURE）は TEAM:42/TEAM:99 を
+    // 数値IDのみで返す。slug は別経路（team ストア）にしか無い。イベントは1件も無い
+    // （beforeEach の既定モックのまま）＝「予定0件でも候補に出る」ことの直接証拠になる。
+    const teamStore = useTeamStore()
+    teamStore.myTeams = [
+      { id: 42, slug: 'aoba-fc', name: '青葉FC', nickname1: null, iconUrl: null, role: 'MEMBER', template: 'default', memberCount: 5 },
+    ]
+
+    const cal = useMyCalendarData()
+    await cal.loadLayers()
+
+    // TEAM:99 は teamStore に slug が無いため作成候補には出さない（誤ったIDで404を起こさない）。
+    expect(cal.availableScopes.value).toEqual([
+      { label: '青葉FC', value: 'TEAM:aoba-fc', scopeType: 'TEAM', scopeId: 'aoba-fc' },
+    ])
+    // フィルタ用のレイヤー一覧（allScopeOptions）は数値キーのまま・予定の有無に依存しない。
+    expect(cal.allScopeOptions.value.map((o) => o.value)).toEqual(['PERSONAL:0', 'TEAM:42', 'TEAM:99'])
+  })
+
+  it('P2-2: レイヤー取得が失敗した初回利用でも、取得できた予定は見える（フィルタが劣化して全件表示になる）', async () => {
+    mockGetMyCalendarLayers.mockRejectedValue(new Error('layers 500'))
+    mockGetCalendarRange.mockResolvedValue({
+      data: [{
+        id: 30,
+        scheduleId: 30,
+        content: { title: '障害時でも見えるはずの予定', eventType: 'PRACTICE', status: 'CONFIRMED' },
+        time: { startAt: '2026-08-15T10:00:00+09:00', endAt: '2026-08-15T11:00:00+09:00', allDay: false },
+        scope: { scopeType: 'TEAM', scopeId: '42', scopeName: '青葉FC', scopeIconUrl: null },
+        myAttendanceStatus: 'PENDING',
+      }],
+    })
+
+    const cal = useMyCalendarData()
+    // 初回利用: 永続化済み選択が無い状態で initStorage を呼ぶ（layers 取得は失敗する）。
+    await cal.initStorage()
+
+    expect(cal.layersFailed.value).toBe(true)
+    expect(cal.layersDegraded.value).toBe(true)
+    // 前回修繕の再発ポイント: selectedScopes が空でも、劣化モードでは予定が弾かれない。
+    expect(cal.selectedScopes.value).toEqual([])
+
+    const merged = await capturedFetcher!('2026-08-01', '2026-08-31')
+    capturedEventsRef!.value = merged
+    await nextTick()
+
+    expect(cal.filteredEvents.value.map((e) => e.uniqueKey)).toContain('shared:30')
+
+    // 回復後は劣化モードを抜け、通常の初期選択（hidden=false 全選択）へ戻る。
+    mockGetMyCalendarLayers.mockResolvedValue({ data: LAYERS_FIXTURE })
+    await cal.loadLayers()
+    expect(cal.layersDegraded.value).toBe(false)
+    expect(cal.selectedScopes.value).toEqual(['PERSONAL:0', 'TEAM:42'])
+    expect(cal.filteredEvents.value.map((e) => e.uniqueKey)).toContain('shared:30') // 回復後も選択に含まれ引き続き見える
+  })
+
+  it('P2-3: knownFallbackKeysを持たない旧V2状態からの移行で、既に選択済みのフォールバックキーが二重登録されない', async () => {
+    const fallbackEvent = {
+      id: 40,
+      scheduleId: 40,
+      content: { title: 'アーカイブ済みチームの予定', eventType: 'TEAM', status: 'CONFIRMED' },
+      time: { startAt: '2026-08-12T10:00:00+09:00', endAt: '2026-08-12T11:00:00+09:00', allDay: false },
+      scope: { scopeType: 'TEAM', scopeId: 'team-888', scopeName: '解散済みチーム', scopeIconUrl: null },
+      myAttendanceStatus: 'PENDING',
+    }
+    mockGetCalendarRange.mockResolvedValue({ data: [fallbackEvent] })
+
+    // 旧V2状態（knownFallbackKeys フィールドが無い）を模す。フォールバックキーは既に選択済み。
+    localStorage.setItem(LAYER_STATE_KEY, JSON.stringify({
+      version: 2,
+      selected: ['PERSONAL:0', 'TEAM:42', 'TEAM:team-888'],
+      view: 'month',
+    }))
+
+    const cal = useMyCalendarData()
+    await cal.loadLayers()
+    await cal.initStorage()
+    await capturedFetcher!('2026-08-01', '2026-08-31')
+    await nextTick() // watch(fallbackScopeOptions) の反映を待つ
+
+    // 二重登録されていないこと（同じキーが1回だけ存在する）。
+    const occurrences = cal.selectedScopes.value.filter((v) => v === 'TEAM:team-888')
+    expect(occurrences).toHaveLength(1)
+
+    // 二重登録されていれば1回の toggleScope では消えないはずだが、ここでは1回で消える。
+    cal.toggleScope('TEAM:team-888')
+    expect(cal.selectedScopes.value).not.toContain('TEAM:team-888')
   })
 })

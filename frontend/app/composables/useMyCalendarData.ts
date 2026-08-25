@@ -233,6 +233,8 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
   const errorHandler = useErrorHandler()
   const errorReport = useErrorReport()
   const authStore = useAuthStore()
+  const teamStore = useTeamStore()
+  const orgStore = useOrganizationStore()
   const { t } = useI18n()
 
   const extendedEvents = ref<CalEvent[]>([])
@@ -241,6 +243,13 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
   const layersLoaded = ref(false)
   /** P2修繕: レイヤー一覧の取得に失敗したか（部分失敗をユーザーと利用側に見せる。todosFailed と同じ流儀）。 */
   const layersFailed = ref(false)
+  /**
+   * P2修繕: レイヤー取得が初回から失敗し、選択肢を組み立てられない間の劣化モード。
+   * true の間は filteredEvents がスコープフィルタを掛けず全件表示する
+   * （「レイヤーが読めない＝予定も見えない」という前回修繕漏れの再発防止）。
+   * loadLayers が成功すると自動的に解除し、通常の初期選択へ復帰する。
+   */
+  const layersDegraded = ref(false)
   const view = ref<CalendarViewMode>('month')
   /** TODO レイヤの取得に失敗したか（Issue #2637: 部分失敗をユーザーと利用側に見せる） */
   const todosFailed = ref(false)
@@ -401,10 +410,23 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
    */
   async function loadLayers(): Promise<void> {
     try {
-      const res = await scheduleApi.getMyCalendarLayers()
+      // P2修繕: 作成スコープ選択（availableScopes）が要る slug を、レイヤー API とは別経路
+      // （既存の /me/teams・/me/organizations を持つ team/organization ストア）から補う。
+      // 未取得なら取得する（取得済みなら再取得しない＝月移動等で無駄打ちしない）。
+      const [res] = await Promise.all([
+        scheduleApi.getMyCalendarLayers(),
+        teamStore.myTeams.length ? Promise.resolve() : teamStore.fetchMyTeams(),
+        orgStore.myOrganizations.length ? Promise.resolve() : orgStore.fetchMyOrganizations(),
+      ])
       layers.value = ((res.data ?? []) as unknown as CalendarLayerRaw[]).map(normalizeLayer)
       layersLoaded.value = true
       layersFailed.value = false
+      if (layersDegraded.value) {
+        // P2修繕: 障害から回復した。劣化モード（フィルタなしの全件表示）を解除し、
+        // 通常の初期選択（hidden=false 全選択）へ復帰する。
+        layersDegraded.value = false
+        selectedScopes.value = layers.value.filter((l) => !l.hidden).map((l) => layerKey(l.scopeType, l.scopeId))
+      }
     }
     catch (e) {
       layersFailed.value = true
@@ -424,23 +446,40 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
   }
 
   /**
+   * scopeType:数値scopeId → slug のマップ。team/organization ストア
+   * （既存の GET /me/teams・GET /me/organizations。design doc §4.2 参照）由来。
+   *
+   * P2修繕: レイヤー API（`/me/calendar-layers`）は slug を持たないため、作成スコープ選択
+   * （`availableScopes`）をレイヤー由来にする際に slug が必要になる。events から拾う旧実装は
+   * 「表示月に予定が1件も無い所属チーム／組織が作成候補に出ない」という鶏卵問題を持つため、
+   * slug の出所を events から切り離し、この別経路（team/organization ストア）に一本化する。
+   */
+  const scopeSlugMap = computed(() => {
+    const map = new Map<string, string>()
+    for (const t of teamStore.myTeams) map.set(layerKey('TEAM', t.id), t.slug)
+    for (const o of orgStore.myOrganizations) map.set(layerKey('ORGANIZATION', o.id), o.slug)
+    return map
+  })
+
+  /**
    * 作成スコープ選択 UI（`createScopeOptions`）向けの候補。
    *
-   * P1修繕: レイヤー API（`/me/calendar-layers`）は slug を持たないため、ここをレイヤー由来に
-   * すると `scheduleApi.createSchedule`/`updateSchedule` が要求する公開スコープID（slug）と
-   * 数値IDが混同され、予定作成・編集が壊れる。よって従来どおり events 由来の scopeRouteId を
-   * 使う（§5.2 の「レイヤー一覧を BE から取る」対象はフィルタ用の allScopeOptions のみで、
-   * 作成スコープ選択の候補源はこの戦役の変更対象外）。
+   * P1/P2修繕: 予定の有無に依存しないよう、レイヤー API（`/me/calendar-layers`）を典拠にする
+   * （§5.2）。ただしレイヤー API は slug を返さないため、作成 API（`scheduleApi.createSchedule`
+   * 等・buildBase 経由で公開スコープID＝slug を要求する）に渡す `scopeId` は scopeSlugMap から
+   * 補う。**表示フィルタ用の数値キー（allScopeOptions/layerKeySet 側）とはここで初めて
+   * 交わる**が、この ScopeOption.value はあくまで「作成スコープ選択」専用の値であり、
+   * 表示フィルタ（selectedScopes）へ混入させてはならない（結合切り自体は W2-b の担当）。
+   * slug が解決できない（team/organization ストア未取得・該当スコープが所属外 等）間は、
+   * 誤った ID を渡して 404 を起こすより「候補に出さない」方を選ぶ（対処療法禁止）。
    */
   const availableScopes = computed<ScopeOption[]>(() => {
-    const seen = new Set<string>()
     const result: ScopeOption[] = []
-    for (const e of extendedEvents.value) {
-      if (!e.scopeType || e.scopeType === 'PERSONAL' || !e.scopeRouteId) continue
-      const key = `${e.scopeType}:${e.scopeRouteId}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      result.push({ label: e.scopeName ?? `${e.scopeType} ${e.scopeRouteId}`, value: key, scopeType: e.scopeType, scopeId: e.scopeRouteId })
+    for (const l of layers.value) {
+      if (l.scopeType === 'PERSONAL') continue
+      const slug = scopeSlugMap.value.get(layerKey(l.scopeType, l.scopeId))
+      if (!slug) continue
+      result.push({ label: layerLabel(l), value: `${l.scopeType}:${slug}`, scopeType: l.scopeType, scopeId: slug })
     }
     return result
   })
@@ -498,6 +537,9 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
       // §6.2/AC-21: id は reflection 行で衝突する（id=null/-1）ため uniqueKey でルックアップする。
       const ext = eventsByUniqueKey.value.get(e.uniqueKey)
       if (!ext) return false
+      // P2修繕: レイヤー取得が初回から失敗し選択肢を組み立てられない間は、フィルタを掛けず
+      // 全件表示に劣化させる。「レイヤーが読めない＝予定も一切見えない」を再発させないため。
+      if (layersDegraded.value) return true
       return selectedScopes.value.includes(eventLayerKey(ext))
     }),
   )
@@ -535,8 +577,14 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
   watch(fallbackScopeOptions, (opts) => {
     const newlySeen = opts.map((o) => o.value).filter((v) => !knownFallbackKeys.value.has(v))
     if (!newlySeen.length) return
+    // P2修繕: knownFallbackKeys を持たない旧 V2 状態から移行した直後は、既に selectedScopes に
+    // 入っている値（=以前のセッションで選択済みだったキー）も newlySeen に紛れ込む。
+    // それを無条件で追加すると selectedScopes に同じキーが二重登録され、toggleScope は
+    // indexOf ベースで1件しか消さないため「最初のクリックでチップが外れない」バグになる。
+    // 既に選択済みのキーは既知集合への登録だけ行い、選択の追加はしない。
+    const toAdd = newlySeen.filter((v) => !selectedScopes.value.includes(v))
     for (const v of newlySeen) knownFallbackKeys.value.add(v)
-    selectedScopes.value = [...selectedScopes.value, ...newlySeen]
+    if (toAdd.length) selectedScopes.value = [...selectedScopes.value, ...toAdd]
     persistLayerState() // knownFallbackKeys の更新も即座に永続化する（selectedScopes の watch と二重書きにはなるが冪等）
   })
 
@@ -571,6 +619,18 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
     }
     catch { /* 壊れたデータは初期化フォールバックへ */ }
 
+    if (!layersLoaded.value) {
+      // P2修繕: レイヤー取得が失敗し、かつ永続化済みの選択も無い（初回利用中の障害）。
+      // layers.value が空のため「hidden=false を全選択」は空集合になり、そのまま selectedScopes
+      // へ適用すると全予定が弾かれて画面が真っ白になる（前回修繕が達成できていなかった箇所）。
+      // 選択肢を組み立てられない以上フィルタは機能させようがないため、劣化モードへ入り
+      // filteredEvents 側でフィルタそのものを迂回させ、取得できた予定は見えるようにする。
+      layersDegraded.value = true
+      selectedScopes.value = []
+      view.value = 'month'
+      return
+    }
+
     // 初回訪問、または localStorage が壊れている場合: hidden=false のレイヤーを全選択（P1・AC-15c）。
     selectedScopes.value = layers.value.filter((l) => !l.hidden).map((l) => layerKey(l.scopeType, l.scopeId))
     view.value = 'month'
@@ -580,6 +640,6 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
     currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth,
     extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
     toggleScope, multiSelectScopes, initStorage,
-    layers, layersLoaded, layersFailed, loadLayers, view,
+    layers, layersLoaded, layersFailed, layersDegraded, loadLayers, view,
   }
 }
