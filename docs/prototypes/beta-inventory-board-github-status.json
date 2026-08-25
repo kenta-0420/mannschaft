@@ -1,0 +1,6 @@
+{
+  "status": "error",
+  "error": "GitHub参照 #902-#2660 の取得失敗: gh: API rate limit exceeded for 133.106.51.243. (But here's the good news: Authenticated requests get a higher rate limit. Check out the documentation for more details.) (HTTP 403)",
+  "synchronizedAt": null,
+  "referenceCount": 122
+}

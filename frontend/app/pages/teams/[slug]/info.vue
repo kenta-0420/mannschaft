@@ -49,8 +49,10 @@ const {
       :description="null"
       :is-admin="isAdmin"
       :map-embed-url="team.metadata?.mapEmbedUrl ?? null"
+      :timezone="team.timezone ?? 'Asia/Tokyo'"
       @updated:map-embed-url="mutators.updateTeamMapEmbed"
       @updated:region-codes="mutators.updateTeamRegionCodes"
+      @updated:timezone="mutators.updateTeamTimezone"
     />
   </div>
 </template>

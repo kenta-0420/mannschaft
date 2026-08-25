@@ -1875,6 +1875,13 @@
     "mapEmbedUrlHelp": "In Google Maps auf \"Teilen > Karte einbetten > HTML kopieren\" klicken und die src= URL einfügen",
     "mapEmbedUrlInvalidFormat": "Muss eine Google Maps Einbettungs-URL sein (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "Standortkarten-URL gespeichert",
+    "timezone": {
+      "label": "Zeitzone für Reservierungen",
+      "help": "IANA-Zeitzone für die Start- und Endzeiten von Reservierungen.",
+      "placeholder": "z. B. Asia/Tokyo",
+      "invalid": "Geben Sie eine gültige IANA-Zeitzone ein",
+      "saved": "Zeitzone gespeichert"
+    },
     "regionCode": {
       "label": "Standort (Präfektur / Stadt)",
       "help": "Die Auswahl von Präfektur und Stadt legt die Standardwerte für regionale Suche und Inserate fest.",
@@ -1892,6 +1899,7 @@
     "bulletinOpen": "Im Forum diskutieren"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "Speicher", "personal": "Persönlich", "team": "Team", "organization": "Organisation", "details": "Details anzeigen", "error": "Speicher konnte nicht geladen werden", "retry": "Erneut versuchen", "unconfigured": "Kontingent nicht konfiguriert", "not_available": "Keine Speicherdaten", "meterLabel": "Speichernutzung {scope}", "meterValue": "Nutzung {percent}%", "warningTitle": "Speicherlimit wird erreicht", "warningMessage": "{scope} verwendet {percent}%. Erwägen Sie ein kostenpflichtiges Upgrade.", "viewPlans": "Tarife anzeigen", "checkStorage": "Speicher prüfen", "cancel": "Abbrechen" },
     "tabs": {
       "personal": "Persönlich",
       "team": "Team",

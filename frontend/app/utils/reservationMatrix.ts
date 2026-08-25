@@ -12,10 +12,16 @@ export type MatrixCellState = 'AVAILABLE' | 'BOOKED' | 'CLOSED' | 'UNAVAILABLE'
 /** BE GridCellDto 相当の最小構造（生成型に依存させず純関数を独立させる）。 */
 export interface MatrixCellInput {
   slotId?: number
+  /** 枠の業務日（通常は行の日付）。 */
+  slotDate?: string
+  /** 日跨ぎ枠の終了業務日。 */
+  endDate?: string
   startTime?: string
   endTime?: string
   state?: MatrixCellState
   price?: number
+  /** 現在のユーザーが PENDING / CONFIRMED の予約を持つ枠か（PII を返さない本人フラグ）。 */
+  reservedByCurrentUser?: boolean
   /**
    * F03.4.5 §4.4: state=UNAVAILABLE かつ判定元が is_public=TRUE の定期予約不可ルールのときのみ
    * BE が値を詰める（それ以外＝単発 blocked_times 由来・is_public=FALSE は null/undefined）。
@@ -61,6 +67,14 @@ export function formatMinutes(minutes: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
 
+/** endDate が翌日の実 slot は、壁時計の endTime を翌日分として扱う。 */
+function endMinutesForCell(cell: MatrixCellInput): number {
+  const end = toMinutes(cell.endTime)
+  if (end < 0) return end
+  if (cell.slotDate && cell.endDate && cell.endDate !== cell.slotDate) return end + 24 * 60
+  return end
+}
+
 /**
  * 表示対象の全セルから min(startTime)〜max(endTime) を取り、30分刻みの固定ヘッダ列を構築する（B4手順1）。
  * セルが1件もない場合は空配列。
@@ -70,7 +84,7 @@ export function buildTimeHeader(cells: MatrixCellInput[]): HeaderSlot[] {
   let maxEnd = Number.NEGATIVE_INFINITY
   for (const c of cells) {
     const s = toMinutes(c.startTime)
-    const e = toMinutes(c.endTime)
+    const e = endMinutesForCell(c)
     if (s < 0 || e < 0) continue
     if (s < minStart) minStart = s
     if (e > maxEnd) maxEnd = e
@@ -97,7 +111,7 @@ export function alignRowToHeader(cells: MatrixCellInput[], header: HeaderSlot[])
 
   for (const c of cells) {
     const s = toMinutes(c.startTime)
-    const e = toMinutes(c.endTime)
+    const e = endMinutesForCell(c)
     if (s < 0 || e < 0 || e <= s) continue
     const startIndex = indexByMinutes.get(s)
     if (startIndex === undefined) continue

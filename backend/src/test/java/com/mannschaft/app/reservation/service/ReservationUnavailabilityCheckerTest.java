@@ -11,9 +11,14 @@ import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.when;
 
 /**
  * {@link ReservationUnavailabilityChecker}（機能B・§5.B の単一 overlap ユーティリティ）の単体テスト。
@@ -101,6 +106,19 @@ class ReservationUnavailabilityCheckerTest {
     class TimeOverlap {
 
         @Test
+        @DisplayName("日跨ぎ単発 blocked は翌日セルへ反映し、半開区間の隣接は重複しない")
+        void overnightBlockedUsesNextDayHalfOpenInterval() {
+            assertThat(checker.overlaps(
+                    DATE.plusDays(1), DATE.plusDays(1), LocalTime.of(0, 30), LocalTime.of(1, 30),
+                    DATE, DATE.plusDays(1), LocalTime.of(23, 0), LocalTime.of(1, 0),
+                    ZoneId.of("Asia/Tokyo"))).isTrue();
+            assertThat(checker.overlaps(
+                    DATE.plusDays(1), DATE.plusDays(1), LocalTime.of(1, 0), LocalTime.of(2, 0),
+                    DATE, DATE.plusDays(1), LocalTime.of(22, 0), LocalTime.of(1, 0),
+                    ZoneId.of("Asia/Tokyo"))).isFalse();
+        }
+
+        @Test
         @DisplayName("B-4: 全日（start/end 両 NULL）はその日・軸の全 slot に該当")
         void 全日() {
             var b = block(ReservationBlockedResourceType.TEAM, null, DATE, null, null);
@@ -131,6 +149,17 @@ class ReservationUnavailabilityCheckerTest {
     @Nested
     @DisplayName("定期予約不可枠 isRecurringBlocked（F03.4.5 §4.2 W2-2）")
     class Recurring {
+
+        @Test
+        @DisplayName("前日開始の日跨ぎ繰返し blocked は翌日の深夜セルへ反映する")
+        void overnightRecurringRuleCarriesIntoNextDay() {
+            LocalDate nextDay = DATE.plusDays(1);
+            ReservationDayOfWeek previousDay = ReservationDayOfWeek.from(DATE);
+            assertThat(checker.isRecurringBlocked(
+                    nextDay, nextDay, LocalTime.of(0, 30), LocalTime.of(1, 0), null,
+                    true, previousDay, LocalTime.of(23, 0), LocalTime.of(1, 0), null, true,
+                    ZoneId.of("Asia/Tokyo"))).isTrue();
+        }
 
         @Test
         @DisplayName("曜日一致・時間overlapで該当")
@@ -200,6 +229,22 @@ class ReservationUnavailabilityCheckerTest {
     @Nested
     @DisplayName("isBlockedByAny 集約（単発+定期・F03.4.5 §4.2）")
     class AggregatedByAny {
+
+        @Test
+        @DisplayName("複数block/ruleの評価でもチームTZ解決は1回だけ")
+        void teamTimezoneResolvedOncePerEvaluation() {
+            var resolver = mock(com.mannschaft.app.common.timezone.TeamTimezoneResolver.class);
+            when(resolver.resolveZone(1L)).thenReturn(ZoneId.of("Asia/Tokyo"));
+            var sut = new ReservationUnavailabilityChecker(resolver);
+            ReservationSlotEntity target = slot(50L, LocalTime.of(19, 0), LocalTime.of(20, 0));
+            var block = block(ReservationBlockedResourceType.TEAM, null, DATE,
+                    LocalTime.of(19, 0), LocalTime.of(20, 0));
+            var rule = rule(null, ReservationDayOfWeek.from(DATE), LocalTime.of(19, 0),
+                    LocalTime.of(20, 0), true);
+
+            assertThat(sut.isBlockedByAny(target, List.of(block, block), List.of(rule, rule))).isTrue();
+            verify(resolver, times(1)).resolveZone(1L);
+        }
 
         @Test
         @DisplayName("単発が空でも定期ルールで該当すればtrue")

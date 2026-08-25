@@ -193,9 +193,10 @@ public class ReservationBusinessHourController {
             @RequestParam(required = false, defaultValue = "TEAM") ReservationBlockedResourceType resourceType,
             @RequestParam(required = false) Long resourceId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime startTime,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime endTime) {
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime endTime,
+            @RequestParam(required = false, defaultValue = "false") boolean endsNextDay) {
         BlockedTimeImpactResponse response = businessHourService.getBlockedTimeImpact(
-                teamId, date, resourceType, resourceId, startTime, endTime);
+                teamId, date, resourceType, resourceId, startTime, endTime, endsNextDay);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

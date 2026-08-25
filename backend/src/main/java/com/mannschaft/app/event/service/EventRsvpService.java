@@ -3,7 +3,6 @@ package com.mannschaft.app.event.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.EventErrorCode;
 import com.mannschaft.app.event.dto.AbsenceNoticeRequest;
 import com.mannschaft.app.event.dto.AdvanceNoticeResponse;
@@ -14,23 +13,17 @@ import com.mannschaft.app.event.dto.LateNoticeRequest;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventRsvpResponseEntity;
+import com.mannschaft.app.event.event.EventAdvanceNoticeNotificationEvent;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
-import com.mannschaft.app.family.EventCareNotificationType;
 import com.mannschaft.app.family.service.CareEventNotificationService;
-import com.mannschaft.app.family.service.CareLinkService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
-import com.mannschaft.app.notification.service.NotificationDispatchService;
-import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -50,13 +43,11 @@ public class EventRsvpService {
     private final UserRepository userRepository;
     private final EventService eventService;
     private final CareEventNotificationService careEventNotificationService;
-    private final CareLinkService careLinkService;
-    private final NotificationService notificationService;
-    private final NotificationDispatchService notificationDispatchService;
 
-    /** Issue #2715 CMP-055 ロットC-2: 受信者 locale 別に通知本文を組み立てるための依存。 */
-    private final UserLocaleCache userLocaleCache;
-    private final MessageSource messageSource;
+    /** Issue #2834 / CMP-056: 通知は業務コミット後に発火する（業務サービスから Runner を直接呼ばない）。
+     * 見守り者解決（{@code CareLinkService}）・ロケール解決・件名/本文組み立ては
+     * {@code EventAdvanceNoticeNotificationListener}（AFTER_COMMIT）側の責務（Codex検分[P2]是正）。 */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * RSVP回答を送信する（初回）。
@@ -220,26 +211,13 @@ public class EventRsvpService {
 
         String displayName = getUserDisplayName(targetUserId);
 
-        // Issue #2715 CMP-055 ロットC-2 / AC-4: locale解決・件名/本文の組み立て・イベント再取得を
-        // 隔離tryで囲む。ここで防げるのは MessageFormat エラーや業務例外など「非DB例外」であり、
-        // notifyOrganizer/sendAdvanceNoticeNotifications 内の createNotification は本メソッドと同一
-        // トランザクション（REQUIRED）に参加するため、DataAccessException 等の DB 層例外はこの catch
-        // で捕まえても JPA 側で rollback-only が立ち、メソッド終了時のコミットで
-        // rsvpResponseRepository.save(rsvp) ごと巻き戻る。このトランザクション境界の構造的課題は
-        // Issue #2834 / CMP-056 の対象であり、EventRsvpService もその該当箇所である（本PRのスコープ外）。
-        // catch は log.warn で握りつぶさず可視化した上で継続する。
-        try {
-            EventEntity event = eventService.findEventOrThrow(eventId);
-            sendAdvanceNoticeNotifications(event, teamId, operatorUserId, targetUserId, eventId,
-                    EventCareNotificationType.EVENT_LATE_ARRIVAL_NOTICE,
-                    "notification.event.rsvp.lateNotice.title", "遅刻連絡",
-                    "notification.event.rsvp.lateNotice.body",
-                    new Object[]{displayName, req.getExpectedArrivalMinutesLate()},
-                    displayName + " が " + req.getExpectedArrivalMinutesLate() + "分遅刻予定です");
-        } catch (Exception e) {
-            log.warn("遅刻連絡通知の送信に失敗（本処理は継続）: eventId={}, targetUserId={}, operatorUserId={}, error={}",
-                    eventId, targetUserId, operatorUserId, e.getMessage(), e);
-        }
+        // Issue #2834 / CMP-056: 通知は AFTER_COMMIT + REQUIRES_NEW + Async のリスナーへ委譲する。
+        // 本メソッドは ID・数値のみを publish するだけに留め、createNotification は直接呼ばず、
+        // 文面組み立て（DB読み取り・MessageFormat）も業務トランザクションの内側では行わない
+        // （Codex検分[P2]是正: 組み立てもリスナー側=AFTER_COMMIT後に完全に移した）。
+        publishAdvanceNoticeNotification(eventId, teamId, operatorUserId, targetUserId,
+                EventAdvanceNoticeNotificationEvent.Kind.LATE,
+                req.getExpectedArrivalMinutesLate(), null);
 
         log.info("遅刻連絡送信: eventId={}, targetUserId={}, minutes={}, operatorUserId={}",
                 eventId, targetUserId, req.getExpectedArrivalMinutesLate(), operatorUserId);
@@ -284,26 +262,10 @@ public class EventRsvpService {
 
         String displayName = getUserDisplayName(targetUserId);
 
-        // Issue #2715 CMP-055 ロットC-2 / AC-4: locale解決・件名/本文の組み立て・イベント再取得を
-        // 隔離tryで囲む。ここで防げるのは MessageFormat エラーや業務例外など「非DB例外」であり、
-        // notifyOrganizer/sendAdvanceNoticeNotifications 内の createNotification は本メソッドと同一
-        // トランザクション（REQUIRED）に参加するため、DataAccessException 等の DB 層例外はこの catch
-        // で捕まえても JPA 側で rollback-only が立ち、メソッド終了時のコミットで
-        // rsvpResponseRepository.save(rsvp) ごと巻き戻る。このトランザクション境界の構造的課題は
-        // Issue #2834 / CMP-056 の対象であり、EventRsvpService もその該当箇所である（本PRのスコープ外）。
-        // catch は log.warn で握りつぶさず可視化した上で継続する。
-        try {
-            EventEntity event = eventService.findEventOrThrow(eventId);
-            sendAdvanceNoticeNotifications(event, teamId, operatorUserId, targetUserId, eventId,
-                    EventCareNotificationType.EVENT_ABSENCE_NOTICE,
-                    "notification.event.rsvp.absenceNotice.title", "欠席連絡",
-                    "notification.event.rsvp.absenceNotice.body",
-                    new Object[]{displayName, req.getAbsenceReason()},
-                    displayName + " が事前欠席連絡を送りました（理由: " + req.getAbsenceReason() + "）");
-        } catch (Exception e) {
-            log.warn("欠席連絡通知の送信に失敗（本処理は継続）: eventId={}, targetUserId={}, operatorUserId={}, error={}",
-                    eventId, targetUserId, operatorUserId, e.getMessage(), e);
-        }
+        // Issue #2834 / CMP-056: 通知は AFTER_COMMIT + REQUIRES_NEW + Async のリスナーへ委譲する。
+        publishAdvanceNoticeNotification(eventId, teamId, operatorUserId, targetUserId,
+                EventAdvanceNoticeNotificationEvent.Kind.ABSENCE,
+                null, req.getAbsenceReason());
 
         log.info("欠席連絡送信: eventId={}, targetUserId={}, reason={}, operatorUserId={}",
                 eventId, targetUserId, req.getAbsenceReason(), operatorUserId);
@@ -356,91 +318,30 @@ public class EventRsvpService {
     // =========================================================
 
     /**
-     * イベントの主催者（createdBy）へ通知を送信する。
+     * 事前遅刻・欠席連絡の通知イベントを publish する（Issue #2834 / CMP-056）。
      *
-     * @param event           イベントエンティティ
-     * @param teamId          チームID（スコープID）
-     * @param type            通知種別
-     * @param title           通知タイトル
-     * @param body            通知本文
-     * @param operatorUserId  操作者のユーザーID（本人または見守り者の userId）
+     * <p><b>Codex 独立検分 [P2]（2026-08-21）是正</b>: 以前は主催者・見守り者の解決やロケール解決・
+     * 件名/本文組み立てまで本メソッド（＝業務トランザクションの内側）で行い、組み立て済みの
+     * {@link NotificationDeliveryRequest} 一覧をイベントに積んでいた。組み立て中の DB 例外や
+     * {@code MessageFormat} 例外が {@code rsvp} の save を巻き戻す退行を生んでいたため、
+     * 現在は ID と数値のみを {@link EventAdvanceNoticeNotificationEvent} に積んで publish するだけに
+     * 留め、組み立ては {@code EventAdvanceNoticeNotificationListener}（AFTER_COMMIT）へ完全に移した。</p>
+     *
+     * @param eventId                    イベントID
+     * @param teamId                     チームID
+     * @param operatorUserId             操作者ユーザーID（本人または見守り者の userId）
+     * @param targetUserId               ケア対象者（＝連絡対象）のユーザーID
+     * @param kind                       事前連絡種別（遅刻／欠席）
+     * @param expectedArrivalMinutesLate 遅刻予定分数（欠席時は {@code null}）
+     * @param absenceReason              欠席理由（遅刻時は {@code null}）
      */
-    private void notifyOrganizer(EventEntity event, Long teamId,
-                                  EventCareNotificationType type,
-                                  String title, String body, Long operatorUserId) {
-        Long organizerUserId = event.getCreatedBy();
-        if (organizerUserId == null) return;
-
-        NotificationEntity notification = notificationService.createNotification(
-                organizerUserId,
-                type.name(),
-                NotificationPriority.NORMAL,
-                title, body,
-                "EVENT", event.getId(),
-                NotificationScopeType.TEAM, teamId,
-                "/teams/" + teamId + "/events/" + event.getId(), operatorUserId);
-        notificationDispatchService.dispatch(notification);
-    }
-
-    /**
-     * 事前遅刻・欠席連絡の通知を主催者・見守り者へ送信する。Issue #2715 CMP-055 ロットC-2。
-     *
-     * <p>主催者へは常に単発通知（{@link UserLocaleCache#getLocale}）、操作者がケア対象者の
-     * アクティブな見守り者である場合は他の見守り者へも通知する（{@link UserLocaleCache#getLocales}
-     * によるバルク解決で N+1 を防止する）。件名・本文は受信者ごとの locale で
-     * {@link MessageSource} から組み立てる。</p>
-     *
-     * @param event          イベントエンティティ（主催者取得用）
-     * @param teamId         チームID（スコープID・actionUrl 構築用）
-     * @param operatorUserId 操作者ユーザーID（本人または見守り者の userId）
-     * @param targetUserId   ケア対象者（＝連絡対象）のユーザーID
-     * @param eventId        イベントID
-     * @param type           通知種別
-     * @param titleKey       件名のメッセージキー
-     * @param defaultTitle   件名のデフォルト文言（ja）
-     * @param bodyKey        本文のメッセージキー
-     * @param bodyArgs       本文のプレースホルダ引数
-     * @param defaultBody    本文のデフォルト文言（ja、フォールバック時にも使用）
-     */
-    private void sendAdvanceNoticeNotifications(EventEntity event, Long teamId, Long operatorUserId,
-                                                 Long targetUserId, Long eventId,
-                                                 EventCareNotificationType type,
-                                                 String titleKey, String defaultTitle,
-                                                 String bodyKey, Object[] bodyArgs, String defaultBody) {
-        // 主催者へ通知
-        Long organizerUserId = event.getCreatedBy();
-        if (organizerUserId != null) {
-            Locale organizerLocale = Locale.forLanguageTag(userLocaleCache.getLocale(organizerUserId));
-            String title = messageSource.getMessage(titleKey, null, defaultTitle, organizerLocale);
-            String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, organizerLocale);
-            notifyOrganizer(event, teamId, type, title, body, operatorUserId);
-        }
-
-        // 操作者がケア対象者の見守り者かどうかを確認し、そうであれば他の見守り者にも通知する（代理申告の共有）
-        List<Long> allWatcherIds = careLinkService.getActiveWatchers(targetUserId, "RSVP");
-        if (!allWatcherIds.contains(operatorUserId)) return;
-
-        // 見守り者の locale をバルク解決（N+1 防止・AC-3）
-        Map<Long, String> watcherLocales = userLocaleCache.getLocales(allWatcherIds);
-
-        // 操作者自身を除いた他の見守り者へ通知を送る
-        for (Long watcherId : allWatcherIds) {
-            if (watcherId.equals(operatorUserId)) continue;
-
-            Locale watcherLocale = Locale.forLanguageTag(watcherLocales.getOrDefault(watcherId, "ja"));
-            String title = messageSource.getMessage(titleKey, null, defaultTitle, watcherLocale);
-            String body = messageSource.getMessage(bodyKey, bodyArgs, defaultBody, watcherLocale);
-
-            NotificationEntity notification = notificationService.createNotification(
-                    watcherId,
-                    type.name(),
-                    NotificationPriority.NORMAL,
-                    title, body,
-                    "EVENT", eventId,
-                    NotificationScopeType.PERSONAL, watcherId,
-                    "/teams/" + teamId + "/events/" + eventId, operatorUserId);
-            notificationDispatchService.dispatch(notification);
-        }
+    private void publishAdvanceNoticeNotification(Long eventId, Long teamId, Long operatorUserId,
+                                                   Long targetUserId,
+                                                   EventAdvanceNoticeNotificationEvent.Kind kind,
+                                                   Integer expectedArrivalMinutesLate, String absenceReason) {
+        eventPublisher.publishEvent(new EventAdvanceNoticeNotificationEvent(
+                eventId, teamId, operatorUserId, targetUserId, kind,
+                expectedArrivalMinutesLate, absenceReason));
     }
 
     private void validateRsvpMode(EventEntity event) {
