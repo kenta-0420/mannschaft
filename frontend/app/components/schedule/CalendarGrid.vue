@@ -5,11 +5,18 @@ import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 const { userTimezone } = useDatetime()
 const { t } = useI18n()
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   year: number
   month: number
   events: CalendarEventItem[]
-}>()
+  // 「今日」ボタン（§6.3/AC-12d）の表示可否。CalendarGrid はチーム/組織スケジュール画面や
+  // ダッシュボードウィジェットでも再利用されており、それらの親は today イベントを購読していない。
+  // 既定 false とし、押しても無反応なボタンをそれらの画面に出さない。統合カレンダー（pages/calendar.vue）
+  // でのみ明示的に true を渡して有効化する契約とする。
+  showTodayButton?: boolean
+}>(), {
+  showTodayButton: false,
+})
 
 const emit = defineEmits<{
   dateClick: [date: string]
@@ -46,9 +53,12 @@ const BAR_STRIDE = 21     // バー高さ + 3px ギャップ
 // 単日イベントの既定表示件数（§6.2）。3件以下は全件表示、4件以上は先頭2件＋「他N件」。
 const SINGLE_VISIBLE = 2
 const SINGLE_VISIBLE_THRESHOLD = 3
-// 複数日バーの実表示レーン数（§6.2）。超過時はレーン2の位置に日ごとの「+N件」を出す。
-const MAX_VISIBLE_BAR_LANES = 2
-const OVERFLOW_LANE_INDEX = MAX_VISIBLE_BAR_LANES
+// 複数日バーのレーン数がこの本数以下なら全バー表示（§6.2 の表）。
+const MAX_LANES = 3
+// 超過（4本以上）時にのみ実バーとして表示するレーン数。溢れた残りをレーン2の位置に
+// 日ごとの「+N件」として出す。3本ちょうどのときは超過扱いにせず MAX_LANES 全てを表示する
+// （閾値と描画レーン数は別物。同一視すると3本ちょうどの週で3本目が消える表示退行になる）。
+const OVERFLOW_VISIBLE_LANES = MAX_LANES - 1
 
 interface DayInfo {
   date: number
@@ -72,6 +82,9 @@ interface WeekData {
   slots: MultiDaySlot[]
   singleByCol: CalendarEventItem[][]
   lanesUsed: number
+  // 実バーとして表示するレーン数の上限（この週のレーン数が MAX_LANES 以下ならレーン数そのもの＝
+  // 全バー表示、超過時のみ OVERFLOW_VISIBLE_LANES に切り詰める）。
+  visibleBarLaneCap: number
   // 日ごとの複数日バー非表示件数（§6.2・AC-12b）。列 di に対応。0 なら「+N件」を出さない。
   laneOverflowByCol: number[]
 }
@@ -146,14 +159,17 @@ const weeks = computed<WeekData[]>(() =>
       })
     }
 
+    // 週のレーン数が MAX_LANES(3) 以下なら全バー表示、超過（4本以上）時のみ
+    // OVERFLOW_VISIBLE_LANES(2) 本に切り詰めて残りを「+N件」に回す（§6.2 の表）。
     const lanesUsedRaw = slots.length > 0 ? Math.max(...slots.map(s => s.lane)) + 1 : 0
-    const hasLaneOverflow = lanesUsedRaw > MAX_VISIBLE_BAR_LANES
-    // 表示に確保する高さ（レーン）。超過時は実バー2本＋「+N件」行の3行分を確保する。
-    const lanesUsed = hasLaneOverflow ? MAX_VISIBLE_BAR_LANES + 1 : lanesUsedRaw
+    const hasLaneOverflow = lanesUsedRaw > MAX_LANES
+    const visibleBarLaneCap = hasLaneOverflow ? OVERFLOW_VISIBLE_LANES : lanesUsedRaw
+    // 表示に確保する高さ（レーン）。超過時は実バー ＋「+N件」行の1行分を追加で確保する。
+    const lanesUsed = hasLaneOverflow ? OVERFLOW_VISIBLE_LANES + 1 : lanesUsedRaw
 
     // 日ごとの非表示バー件数を数える（週で1つの数字にすると日によって嘘になるため必ず日単位）。
     const laneOverflowByCol = days.map((_, di) =>
-      slots.filter(s => s.lane >= MAX_VISIBLE_BAR_LANES && s.startCol <= di && s.endCol >= di).length,
+      slots.filter(s => s.lane >= visibleBarLaneCap && s.startCol <= di && s.endCol >= di).length,
     )
 
     // 1日イベント（複数日でないもの）を日列ごとに分類
@@ -161,7 +177,7 @@ const weeks = computed<WeekData[]>(() =>
       props.events.filter(e => !isMultiDay(e) && dateOf(e.startAt) === day.dateStr),
     )
 
-    return { days, slots, singleByCol, lanesUsed, laneOverflowByCol }
+    return { days, slots, singleByCol, lanesUsed, visibleBarLaneCap, laneOverflowByCol }
   }),
 )
 
@@ -210,11 +226,11 @@ function barStyle(slot: MultiDaySlot): Record<string, string> {
   }
 }
 
-/** 複数日バーのレーン超過「+N件」チップの位置（該当日1列分・§6.2）。 */
-function laneOverflowStyle(di: number): Record<string, string> {
+/** 複数日バーのレーン超過「+N件」チップの位置（該当日1列分・§6.2）。行はその週の実バー本数の直後。 */
+function laneOverflowStyle(di: number, visibleBarLaneCap: number): Record<string, string> {
   const colW = 100 / 7
   return {
-    top: `${OVERFLOW_LANE_INDEX * BAR_STRIDE}px`,
+    top: `${visibleBarLaneCap * BAR_STRIDE}px`,
     left: `calc(${di * colW}% + 2px)`,
     width: `calc(${colW}% - 4px)`,
     height: `${BAR_H}px`,
@@ -276,8 +292,10 @@ defineExpose({ focusToday })
         <h2 class="text-lg font-extrabold">{{ monthLabel }}</h2>
         <Button icon="pi pi-chevron-right" text rounded @click="emit('nextMonth')" />
       </div>
-      <!-- 「今日」ボタン（§6.3・AC-12d）: 既に当月表示中でも押すたびフォーカスは今日のセルへ移る -->
+      <!-- 「今日」ボタン（§6.3・AC-12d）: 既に当月表示中でも押すたびフォーカスは今日のセルへ移る。
+           showTodayButton=true の呼び出し元（統合カレンダー）でのみ表示する。 -->
       <Button
+        v-if="showTodayButton"
         :label="t('schedule.calendarGrid.today')"
         text
         size="small"
@@ -363,12 +381,14 @@ defineExpose({ focusToday })
                 class="ml-auto shrink-0"
               />
             </div>
-            <!-- 単日イベント溢れ分（§6.2・AC-12） -->
+            <!-- 単日イベント溢れ分（§6.2・AC-12）。タップ領域は44px以上を確保する
+                 （FRONTEND_CODING_CONVENTION.md §3b）。文字サイズ・見た目の詰め方は変えず、
+                 min-h/flex でパディング側だけ拡大する（既存の通知既読ボタン等と同じパターン）。 -->
             <button
               v-if="singleOverflowCount(week.singleByCol[di]) > 0"
               type="button"
               :data-testid="`day-overflow-${day.dateStr}`"
-              class="w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700"
+              class="flex min-h-11 w-full items-center truncate rounded px-1 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700"
               @click.stop="openDayOverflow(day.dateStr, $event)"
             >
               {{ t('schedule.calendarGrid.dayOverflow', { count: singleOverflowCount(week.singleByCol[di]) }) }}
@@ -385,7 +405,7 @@ defineExpose({ focusToday })
       >
         <div class="relative" :style="{ height: `${week.lanesUsed * BAR_STRIDE}px` }">
           <div
-            v-for="slot in week.slots.filter(s => s.lane < MAX_VISIBLE_BAR_LANES)"
+            v-for="slot in week.slots.filter(s => s.lane < week.visibleBarLaneCap)"
             :key="`${slot.event.uniqueKey}-w${wi}`"
             class="pointer-events-auto absolute flex cursor-pointer select-none items-center overflow-hidden text-xs font-medium"
             :style="barStyle(slot)"
@@ -414,15 +434,17 @@ defineExpose({ focusToday })
             <i v-if="slot.continuesAfter" class="pi pi-angle-right shrink-0 text-[9px]" />
           </div>
 
-          <!-- 複数日バーのレーン超過「+N件」（§6.2・AC-12b・日ごとに数える） -->
+          <!-- 複数日バーのレーン超過「+N件」（§6.2・AC-12b・日ごとに数える）。
+               見た目の高さ（BAR_H=18px）はバー行との整列上変えられないため、タップ領域は
+               `lane-overflow-hit-area` の疑似要素で不可視に拡張する（見た目は変えない）。 -->
           <button
             v-for="(count, di) in week.laneOverflowByCol"
             v-show="count > 0"
             :key="`overflow-w${wi}-${di}`"
             type="button"
             :data-testid="`day-overflow-${week.days[di]?.dateStr}`"
-            class="pointer-events-auto absolute rounded bg-surface-100 px-1 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600"
-            :style="laneOverflowStyle(di)"
+            class="lane-overflow-hit-area pointer-events-auto absolute rounded bg-surface-100 px-1 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600"
+            :style="laneOverflowStyle(di, week.visibleBarLaneCap)"
             @click.stop="openDayOverflow(week.days[di]!.dateStr, $event)"
           >
             {{ t('schedule.calendarGrid.laneOverflow', { count }) }}
@@ -451,3 +473,21 @@ defineExpose({ focusToday })
     </Popover>
   </div>
 </template>
+
+<style scoped>
+/*
+ * 複数日バーのレーン超過「+N件」（AC-12b）のタップ領域拡張（FRONTEND_CODING_CONVENTION.md §3b）。
+ * 見た目のボックスは BAR_H=18px のまま（バー行との整列を保つため変えられない）だが、
+ * ::before の透明な疑似要素を負のinsetで重ねることで、視覚サイズを変えずにヒット領域だけ
+ * 44x44px 相当まで広げる（生成コンテンツはホスト要素の一部としてヒットテストされるため、
+ * クリックはボタン自身のイベントとして届く）。
+ */
+.lane-overflow-hit-area {
+  position: absolute;
+}
+.lane-overflow-hit-area::before {
+  content: '';
+  position: absolute;
+  inset: -13px -4px;
+}
+</style>

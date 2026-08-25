@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { GanttResponse, GanttTodo } from '~/types/todo'
-import { useMyCalendarData, PERSONAL_KEY, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
+import { useMyCalendarData, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -252,16 +252,12 @@ const selectedCreateScope = computed(
   () => createScopeOptions.value.find(o => o.value === createScopeKey.value) ?? createScopeOptions.value[0]!,
 )
 
-// 上部セレクト変更でカレンダー表示を絞り込む（ガントタブ表示中は再読み込みも行う）
-watch(createScopeKey, (key) => {
-  withScopeLoading(() => {
-    if (key === 'personal') {
-      selectedScopes.value = [PERSONAL_KEY]
-    } else {
-      selectedScopes.value = [PERSONAL_KEY, key]
-    }
-  })
-  // スコープ変更時はキャッシュを破棄して再取得（ガントビューのみ）
+// 作成スコープ（作成フォームの初期スコープ）と表示フィルタ（selectedScopes）は分離する（§5.4/AC-11）。
+// 以前はここで selectedScopes を強制的に書き換えていたが、それだと表示中のレイヤーチップの選択状態が
+// 作成スコープの変更につられて勝手に変わってしまう（P2 違反）。作成スコープは createScopeKey /
+// selectedCreateScope（作成ダイアログへの引き渡し）にのみ影響させ、表示フィルタには一切触れない。
+watch(createScopeKey, () => {
+  // スコープ変更時はキャッシュを破棄して再取得（ガントビューのみ・データ取得対象の変更という正当な副作用）
   if (activeTab.value === 'gantt') {
     ganttCache.clear()
     ganttKey.value++
@@ -344,18 +340,10 @@ async function loadGantt() {
   prefetchAdjacentMonths(year, month)
 }
 
-async function withScopeLoading(fn: () => void) {
-  calendarLoading.value = true
-  await nextTick()
-  await new Promise<void>(resolve => setTimeout(resolve, 0))
-  fn()
-  await nextTick()
-  calendarLoading.value = false
-}
-
 // レイヤーチップでの表示絞り込みは filteredEvents（手元データのみ）で完結し、再取得を伴わない
 // （AC-12c: 全画面スピナーを一度も出さない・ネットワークリクエストも発生しない）。
-// withScopeLoading の全画面スピナーは実際の再取得を伴う createScopeKey 変更専用とし、ここでは使わない。
+// 疑似的な calendarLoading 演出（旧 withScopeLoading）は撤去した。calendarLoading 自体は
+// 月移動（本物の通信）のためだけに使う。
 function onToggleScope(value: string) {
   toggleScope(value)
 }
@@ -498,6 +486,7 @@ onMounted(async () => {
                 :year="currentYear"
                 :month="currentMonth"
                 :events="filteredEvents"
+                show-today-button
                 @date-click="onDateClick"
                 @event-click="onEventClick"
                 @reflection-click="onReflectionClick"

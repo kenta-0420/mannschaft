@@ -79,6 +79,29 @@ describe('CalendarGrid', () => {
     expect(audience.attributes('data-count')).toBe('2')
   })
 
+  // CalendarGrid はチーム/組織スケジュール画面・ダッシュボードウィジェットでも再利用される。
+  // それらの親は today イベントを購読していないため、既定では「今日」ボタンを出してはならない
+  // （押しても無反応なボタンを出さない）。
+  it('showTodayButton を渡さない既定では「今日」ボタンを描画しない（無反応ボタンの露出防止）', async () => {
+    const wrapper = await mountSuspended(CalendarGrid, {
+      props: { year: 2026, month: 7, events: [] },
+      global: { stubs: { Button: true, ScheduleTargetAudience: AudienceStub, Popover: PopoverStub } },
+    })
+
+    expect(wrapper.find('[data-testid="calendar-today-button"]').exists()).toBe(false)
+  })
+
+  it('showTodayButton=true では「今日」ボタンを描画し、クリックで today イベントを発火する', async () => {
+    const wrapper = await mountSuspended(CalendarGrid, {
+      props: { year: 2026, month: 7, events: [], showTodayButton: true },
+      global: { stubs: { Button: true, ScheduleTargetAudience: AudienceStub, Popover: PopoverStub } },
+    })
+
+    const todayButton = wrapper.get('[data-testid="calendar-today-button"]')
+    await todayButton.trigger('click')
+    expect(wrapper.emitted('today')).toBeTruthy()
+  })
+
   // AC-12: 単日イベントの「+N件」オーバーフロー（§6.2）
   it('AC-12: 単日イベントが5件のセルは先頭2件のみ表示し「他3件」を出す。クリックで5件全てが日別ポップオーバーに並ぶ', async () => {
     const events: CalendarEventItem[] = Array.from({ length: 5 }, (_, i) => ({
@@ -219,6 +242,87 @@ describe('CalendarGrid', () => {
     await overflow0803.trigger('click')
     const rows = wrapper.findAll('[data-testid^="popover-row-"]')
     expect(rows.map(r => r.text())).toEqual(['複数日A', '複数日B', '複数日C'])
+  })
+
+  // §6.2 の表: 「その週のレーン数が MAX_LANES(3) 以下なら全バー表示」の境界。
+  // 3本ちょうどのときに「+N件」へ切り詰めてしまう表示退行（改修前より悪化）を防ぐ回帰テスト。
+  it('複数日バーが3本ちょうどの週は全バー表示し「+N件」を出さない（3レーン境界・表示退行の回帰）', async () => {
+    const events: CalendarEventItem[] = [
+      {
+        id: 201, uniqueKey: 'md3-1', title: '境界バーA',
+        startAt: '2026-08-03T00:00:00+09:00', endAt: '2026-08-04T23:59:59+09:00',
+        allDay: true, color: '#6366f1', isPersonal: false, scopeType: 'TEAM',
+      },
+      {
+        id: 202, uniqueKey: 'md3-2', title: '境界バーB',
+        startAt: '2026-08-03T00:00:00+09:00', endAt: '2026-08-04T23:59:59+09:00',
+        allDay: true, color: '#6366f1', isPersonal: false, scopeType: 'TEAM',
+      },
+      {
+        id: 203, uniqueKey: 'md3-3', title: '境界バーC',
+        startAt: '2026-08-03T00:00:00+09:00', endAt: '2026-08-04T23:59:59+09:00',
+        allDay: true, color: '#6366f1', isPersonal: false, scopeType: 'TEAM',
+      },
+    ]
+
+    const wrapper = await mountSuspended(CalendarGrid, {
+      props: { year: 2026, month: 8, events },
+      global: {
+        stubs: {
+          Button: true,
+          ScheduleTargetAudience: AudienceStub,
+          Popover: PopoverStub,
+          ScheduleListRow: ScheduleListRowStub,
+        },
+      },
+    })
+
+    // 3本すべて実バーとして描画される（3本目を「+1件」に化けさせて消してはならない）
+    expect(wrapper.text()).toContain('境界バーA')
+    expect(wrapper.text()).toContain('境界バーB')
+    expect(wrapper.text()).toContain('境界バーC')
+    // 「+N件」ボタン自体は v-show で常に DOM 上に存在するため、存在ではなく非表示（display:none）で
+    // 判定する。isVisible()（getComputedStyle 経由の CSS カスケード評価）は jsdom 環境で疑似要素を
+    // 伴う要素に対して不安定だったため、v-show が書き込む inline style を直接見る（原因切り分け済み:
+    // 純粋な算出ロジックを Node 単体で再現し laneOverflowByCol が両列とも 0 になることを確認済み）。
+    const overflow0803 = wrapper.get('[data-testid="day-overflow-2026-08-03"]')
+    const overflow0804 = wrapper.get('[data-testid="day-overflow-2026-08-04"]')
+    expect(overflow0803.attributes('style')).toContain('display: none')
+    expect(overflow0804.attributes('style')).toContain('display: none')
+  })
+
+  it('複数日バーが4本になった週で初めて「+N件」の溢れが出る（3本境界の対比）', async () => {
+    const events: CalendarEventItem[] = Array.from({ length: 4 }, (_, i) => ({
+      id: 301 + i,
+      uniqueKey: `md4-${i + 1}`,
+      title: `4本目境界${i + 1}`,
+      startAt: '2026-08-03T00:00:00+09:00',
+      endAt: '2026-08-04T23:59:59+09:00',
+      allDay: true,
+      color: '#6366f1',
+      isPersonal: false,
+      scopeType: 'TEAM',
+    }))
+
+    const wrapper = await mountSuspended(CalendarGrid, {
+      props: { year: 2026, month: 8, events },
+      global: {
+        stubs: {
+          Button: true,
+          ScheduleTargetAudience: AudienceStub,
+          Popover: PopoverStub,
+          ScheduleListRow: ScheduleListRowStub,
+        },
+      },
+    })
+
+    // 実バーは2本のみ（レーン0・1）、3・4本目はレーン2の「+2件」へ回る
+    expect(wrapper.text()).toContain('4本目境界1')
+    expect(wrapper.text()).toContain('4本目境界2')
+    expect(wrapper.text()).not.toContain('4本目境界3')
+    expect(wrapper.text()).not.toContain('4本目境界4')
+    const overflow = wrapper.get('[data-testid="day-overflow-2026-08-03"]')
+    expect(overflow.text()).toContain('2')
   })
 
   // AC-12d: 「今日」ボタン押下時のフォーカス移動（月移動は親コンポーネントの責務のため、
