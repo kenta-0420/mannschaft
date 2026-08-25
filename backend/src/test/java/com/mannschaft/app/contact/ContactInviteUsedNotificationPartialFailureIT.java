@@ -22,10 +22,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -140,6 +144,8 @@ class ContactInviteUsedNotificationPartialFailureIT extends AbstractMySqlIntegra
                 .andExpect(status().isOk());
 
         // 本丸: 通知の永続化が失敗しても、業務処理（usedCount インクリメント）はコミットされて残る。
+        // acceptInvite 自体は @Transactional で mockMvc の呼び出し中に同期コミットされるため、
+        // ここは awaiting 不要。
         ContactInviteTokenEntity persisted = transactionTemplate.execute(
                 tx -> tokenRepository.findById(tokenId).orElseThrow());
         assertThat(persisted.getUsedCount())
@@ -151,6 +157,14 @@ class ContactInviteUsedNotificationPartialFailureIT extends AbstractMySqlIntegra
         assertThat(contactCount)
                 .as("連絡先の双方向追加も通知失敗に巻き込まれずコミットされている")
                 .isEqualTo(1);
+
+        // 通知配送は AFTER_COMMIT + @Async で非同期に発火するため、配送が実際に試みられる
+        // （= spy が呼ばれる）まで有界のタイムアウトで待つ。Mockito は呼び出し自体を、その中で
+        // 例外が投げられたかどうかに関わらず記録するため、verify が通った時点で
+        // 配送（NOT NULL 制約違反による失敗）は同期的に完了している。
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(notificationService).createNotification(
+                        eq(issuerId), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()));
 
         // 通知自体は失敗しているため作られていないことも確認する（配送失敗の実測）。
         long notificationCount = transactionTemplate.execute(tx -> countNotifications(em, issuerId));
@@ -170,8 +184,12 @@ class ContactInviteUsedNotificationPartialFailureIT extends AbstractMySqlIntegra
                 tx -> tokenRepository.findById(tokenId).orElseThrow());
         assertThat(persisted.getUsedCount()).isEqualTo(1);
 
-        long notificationCount = transactionTemplate.execute(tx -> countNotifications(em, issuerId));
-        assertThat(notificationCount).isEqualTo(1);
+        // 通知配送は AFTER_COMMIT + @Async で非同期に発火するため、有界のタイムアウトで待つ
+        // （マスター指摘: 固定 sleep ではなく Awaitility の untilAsserted を使う）。
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            long notificationCount = transactionTemplate.execute(tx -> countNotifications(em, issuerId));
+            assertThat(notificationCount).isEqualTo(1);
+        });
     }
 
     private void setAuthentication(Long userId) {

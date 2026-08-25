@@ -22,10 +22,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -154,16 +158,26 @@ class CirculationReminderNotificationPartialFailureIT extends AbstractMySqlInteg
         assertThat(status).isEqualTo("ACTIVE");
 
         // 本丸2: 失敗した受信者以外の通知が実際にコミットされて残っていること（1受信者=1独立トランザクション）。
-        long okCount = transactionTemplate.execute(tx -> countNotifications(em, recipientOkId));
-        long ok2Count = transactionTemplate.execute(tx -> countNotifications(em, recipientOk2Id));
-        long brokenCount = transactionTemplate.execute(tx -> countNotifications(em, recipientBrokenId));
+        // 通知配送は AFTER_COMMIT + @Async で受信者ごとに非同期処理されるため、有界のタイムアウトで
+        // 全受信者ぶんの処理完了（成功2件・失敗1件）を待つ（マスター指摘: 固定 sleep 禁止）。
+        // recipientBrokenId 宛の呼び出しは、その中で例外が投げられたかどうかに関わらず Mockito に
+        // 記録されるため、verify を先に待つことで「失敗側の処理も既に完了している」ことを保証する。
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(notificationService).createNotification(
+                        eq(recipientBrokenId), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()));
 
-        assertThat(okCount)
-                .as("失敗させていない受信者Bの通知は、他受信者の失敗に巻き添えられずコミットされて残る")
-                .isEqualTo(1);
-        assertThat(ok2Count)
-                .as("失敗させていない受信者Dの通知も同様にコミットされて残る")
-                .isEqualTo(1);
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            long okCount = transactionTemplate.execute(tx -> countNotifications(em, recipientOkId));
+            long ok2Count = transactionTemplate.execute(tx -> countNotifications(em, recipientOk2Id));
+            assertThat(okCount)
+                    .as("失敗させていない受信者Bの通知は、他受信者の失敗に巻き添えられずコミットされて残る")
+                    .isEqualTo(1);
+            assertThat(ok2Count)
+                    .as("失敗させていない受信者Dの通知も同様にコミットされて残る")
+                    .isEqualTo(1);
+        });
+
+        long brokenCount = transactionTemplate.execute(tx -> countNotifications(em, recipientBrokenId));
         assertThat(brokenCount)
                 .as("NOT NULL 制約違反で失敗した受信者Cの通知は作られない（他へは巻き添えない）")
                 .isZero();
@@ -176,12 +190,16 @@ class CirculationReminderNotificationPartialFailureIT extends AbstractMySqlInteg
         mockMvc.perform(post(REMIND, documentId))
                 .andExpect(status().isOk());
 
-        long okCount = transactionTemplate.execute(tx -> countNotifications(em, recipientOkId));
-        long brokenCount = transactionTemplate.execute(tx -> countNotifications(em, recipientBrokenId));
-        long ok2Count = transactionTemplate.execute(tx -> countNotifications(em, recipientOk2Id));
-        assertThat(okCount).isEqualTo(1);
-        assertThat(brokenCount).isEqualTo(1);
-        assertThat(ok2Count).isEqualTo(1);
+        // 通知配送は AFTER_COMMIT + @Async で非同期に発火するため、有界のタイムアウトで待つ
+        // （マスター指摘: 固定 sleep ではなく Awaitility の untilAsserted を使う）。
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            long okCount = transactionTemplate.execute(tx -> countNotifications(em, recipientOkId));
+            long brokenCount = transactionTemplate.execute(tx -> countNotifications(em, recipientBrokenId));
+            long ok2Count = transactionTemplate.execute(tx -> countNotifications(em, recipientOk2Id));
+            assertThat(okCount).isEqualTo(1);
+            assertThat(brokenCount).isEqualTo(1);
+            assertThat(ok2Count).isEqualTo(1);
+        });
     }
 
     private void setAuthentication(Long userId) {

@@ -24,10 +24,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -143,11 +147,21 @@ class SafetyCheckReminderNotificationPartialFailureIT extends AbstractMySqlInteg
                 .andExpect(status().isNoContent());
 
         // 本丸: 通知の永続化が失敗しても、業務処理（lastReminderAt 更新）はコミットされて残る。
+        // sendReminder 自体は @Transactional で mockMvc の呼び出し中に同期コミットされるため、
+        // ここは awaiting 不要。
         SafetyCheckEntity persisted = transactionTemplate.execute(
                 tx -> safetyCheckRepository.findById(safetyCheckId).orElseThrow());
         assertThat(persisted.getLastReminderAt())
                 .as("通知の永続化失敗が業務トランザクション（lastReminderAt 更新）を巻き戻していない")
                 .isNotNull();
+
+        // 通知配送は AFTER_COMMIT + @Async で非同期に発火するため、配送が実際に試みられる
+        // （= spy が呼ばれる）まで有界のタイムアウトで待つ。Mockito は呼び出しを、その中で
+        // 例外が投げられたかどうかに関わらず記録するため、verify が通った時点で
+        // 配送（NOT NULL 制約違反による失敗）は同期的に完了している。
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() ->
+                verify(notificationService).createNotification(
+                        eq(adminId), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()));
 
         // 通知自体は失敗しているため作られていないことも確認する（配送失敗の実測）。
         long notificationCount = transactionTemplate.execute(tx -> countNotifications(em, adminId));
@@ -167,8 +181,12 @@ class SafetyCheckReminderNotificationPartialFailureIT extends AbstractMySqlInteg
                 tx -> safetyCheckRepository.findById(safetyCheckId).orElseThrow());
         assertThat(persisted.getLastReminderAt()).isNotNull();
 
-        long notificationCount = transactionTemplate.execute(tx -> countNotifications(em, adminId));
-        assertThat(notificationCount).isEqualTo(1);
+        // 通知配送は AFTER_COMMIT + @Async で非同期に発火するため、有界のタイムアウトで待つ
+        // （マスター指摘: 固定 sleep ではなく Awaitility の untilAsserted を使う）。
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            long notificationCount = transactionTemplate.execute(tx -> countNotifications(em, adminId));
+            assertThat(notificationCount).isEqualTo(1);
+        });
     }
 
     private void setAuthentication(Long userId) {
