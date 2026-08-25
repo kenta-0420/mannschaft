@@ -36,7 +36,14 @@ interface PersonalScheduleRaw {
 }
 
 export interface CalEvent extends CalendarEventItem {
+  /**
+   * レイヤーキー照合用の**数値スコープID**（文字列化）。レイヤー API（`/me/calendar-layers`）の
+   * `scopeId` と同じ形式で揃える。詳細API・画面URL用の識別子とは別物 — {@link CalEvent.scopeRouteId} を使うこと
+   * （P1修繕: 旧実装はここに slug を格納しており、レイヤーの数値 scopeId と永久に一致しなかった）。
+   */
   scopeId?: string
+  /** 詳細API・画面URLに渡す公開スコープID（slug があれば slug、無ければ数値IDへフォールバック）。 */
+  scopeRouteId?: string
   scopeIconUrl?: string | null
   isTodo?: boolean
 }
@@ -98,6 +105,13 @@ interface LayerStateV2 {
   version: 2
   selected: string[]
   view: CalendarViewMode
+  /**
+   * P2修繕: これまでに一度でも自動選択したフォールバックチップのキー（§5.2.1）。
+   * 「初めて現れたときだけ既定選択にする」の判定に使う。ユーザーが明示的に外した後、
+   * 月移動・再取得・リロードのたびに selectedScopes へ強制で戻されるのを防ぐため、
+   * selectedScopes とは独立に永続化する（一度知ったキーは知ったままにする）。
+   */
+  knownFallbackKeys: string[]
 }
 
 function isValidView(v: unknown): v is CalendarViewMode {
@@ -138,6 +152,7 @@ function migrateLegacyStorage(): void {
         version: 2,
         selected: parsed.filter((v): v is string => typeof v === 'string').map(migrateLegacyScopeValue),
         view: 'month',
+        knownFallbackKeys: [],
       }
       localStorage.setItem(LAYER_STATE_KEY, JSON.stringify(migrated))
     }
@@ -224,6 +239,8 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
   /** `/me/calendar-layers` 由来のレイヤー一覧。events とは独立に取得し、月移動では再取得しない（AC-03）。 */
   const layers = ref<CalendarLayerView[]>([])
   const layersLoaded = ref(false)
+  /** P2修繕: レイヤー一覧の取得に失敗したか（部分失敗をユーザーと利用側に見せる。todosFailed と同じ流儀）。 */
+  const layersFailed = ref(false)
   const view = ref<CalendarViewMode>('month')
   /** TODO レイヤの取得に失敗したか（Issue #2637: 部分失敗をユーザーと利用側に見せる） */
   const todosFailed = ref(false)
@@ -321,8 +338,11 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
         color: e.content?.color ?? null,
         isPersonal: false,
         scopeType: e.scope?.scopeType ?? '',
+        // P1修繕: scopeId は必ずレイヤー API と同じ「数値ID文字列」にする（フィルタ照合用）。
+        // slug が要るのは詳細API・画面URLの経路のみで、それは scopeRouteId 側に分離した。
+        scopeId: e.scope?.scopeId != null ? String(e.scope.scopeId) : undefined,
         // 詳細API・画面URLは内部数値IDではなく公開slugを要求する。
-        scopeId: resolveCalendarScopeRouteId(e.scope),
+        scopeRouteId: resolveCalendarScopeRouteId(e.scope),
         scopeName: e.scope?.scopeName ?? null,
         scopeIconUrl: e.scope?.scopeIconUrl ?? null,
         targetMode: e.targetMode,
@@ -353,7 +373,9 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
           : '#3b82f6',
         isPersonal: t.scopeType === 'PERSONAL',
         scopeType: t.scopeType,
+        // TODO は元々レイヤー API と同じ数値IDを持つ（MyCalendarTodo.scopeId: number）。
         scopeId: t.scopeId == null ? undefined : String(t.scopeId),
+        scopeRouteId: t.scopeSlug ?? (t.scopeId == null ? undefined : String(t.scopeId)),
         scopeName: t.scopeName,
         scopeIconUrl: null,
         isTodo: true,
@@ -367,11 +389,29 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
   const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth } =
     useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
 
-  /** レイヤー一覧の取得（§5.1）。events とは独立。月移動では呼ばない（AC-03）。 */
+  /**
+   * レイヤー一覧の取得（§5.1）。events とは独立。月移動では呼ばない（AC-03）。
+   *
+   * P2修繕: 失敗しても re-throw しない。設計書 §5.1/AC-03 は layers と events を独立取得する
+   * 方針であり、レイヤー取得の失敗で予定の取得（loadEvents）まで止まってはならない
+   * （呼び出し元 initStorage が reject すると calendar.vue の onMounted が後続の
+   * loadEvents を一度も呼ばずに終わり、取得できるはずの予定まで空になっていた）。
+   * ただし握りつぶしはしない — errorHandler へ委譲して報告し、layersFailed で
+   * 利用側（画面）に部分失敗を明示できるようにする（todosFailed と同じ流儀）。
+   */
   async function loadLayers(): Promise<void> {
-    const res = await scheduleApi.getMyCalendarLayers()
-    layers.value = ((res.data ?? []) as unknown as CalendarLayerRaw[]).map(normalizeLayer)
-    layersLoaded.value = true
+    try {
+      const res = await scheduleApi.getMyCalendarLayers()
+      layers.value = ((res.data ?? []) as unknown as CalendarLayerRaw[]).map(normalizeLayer)
+      layersLoaded.value = true
+      layersFailed.value = false
+    }
+    catch (e) {
+      layersFailed.value = true
+      errorHandler.handleApiError(e, 'useMyCalendarData.getMyCalendarLayers')
+      // layersLoaded は false のまま。layers.value は空配列のまま（初期値）で、
+      // 呼び出し元（initStorage）はレイヤー情報無しの前提で続行できる。
+    }
   }
 
   function layerKey(scopeType: string, scopeId: number | string): string {
@@ -383,12 +423,27 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
     return l.scopeName || t('schedule.calendar.layer.unknown')
   }
 
-  /** BE レイヤー一覧のうち PERSONAL を除いたもの（作成スコープ選択 UI 向け・従来互換）。 */
-  const availableScopes = computed<ScopeOption[]>(() =>
-    layers.value
-      .filter((l) => l.scopeType !== 'PERSONAL')
-      .map((l) => ({ label: layerLabel(l), value: layerKey(l.scopeType, l.scopeId), scopeType: l.scopeType, scopeId: String(l.scopeId) })),
-  )
+  /**
+   * 作成スコープ選択 UI（`createScopeOptions`）向けの候補。
+   *
+   * P1修繕: レイヤー API（`/me/calendar-layers`）は slug を持たないため、ここをレイヤー由来に
+   * すると `scheduleApi.createSchedule`/`updateSchedule` が要求する公開スコープID（slug）と
+   * 数値IDが混同され、予定作成・編集が壊れる。よって従来どおり events 由来の scopeRouteId を
+   * 使う（§5.2 の「レイヤー一覧を BE から取る」対象はフィルタ用の allScopeOptions のみで、
+   * 作成スコープ選択の候補源はこの戦役の変更対象外）。
+   */
+  const availableScopes = computed<ScopeOption[]>(() => {
+    const seen = new Set<string>()
+    const result: ScopeOption[] = []
+    for (const e of extendedEvents.value) {
+      if (!e.scopeType || e.scopeType === 'PERSONAL' || !e.scopeRouteId) continue
+      const key = `${e.scopeType}:${e.scopeRouteId}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      result.push({ label: e.scopeName ?? `${e.scopeType} ${e.scopeRouteId}`, value: key, scopeType: e.scopeType, scopeId: e.scopeRouteId })
+    }
+    return result
+  })
 
   /**
    * レイヤー一覧に存在しないスコープの予定を集めたフォールバックチップ（§5.2.1・AC-23）。
@@ -426,6 +481,8 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
   ])
 
   const selectedScopes = ref<string[]>([])
+  /** P2修繕: 自動選択済みフォールバックキーの記録（§5.2.1）。initStorage で永続化状態から復元する。 */
+  const knownFallbackKeys = ref<Set<string>>(new Set())
 
   // §5.2: extendedEvents を uniqueKey で索引化し、filteredEvents は O(N) の Map 参照にする
   // （旧実装はイベント1件ごとに extendedEvents を線形探索する O(N²) だった）。
@@ -458,7 +515,12 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
 
   function persistLayerState(): void {
     try {
-      const payload: LayerStateV2 = { version: 2, selected: selectedScopes.value, view: view.value }
+      const payload: LayerStateV2 = {
+        version: 2,
+        selected: selectedScopes.value,
+        view: view.value,
+        knownFallbackKeys: [...knownFallbackKeys.value],
+      }
       localStorage.setItem(LAYER_STATE_KEY, JSON.stringify(payload))
     }
     catch { /* localStorage 不可時は永続化を諦めるが、選択状態そのものはメモリ上で機能し続ける */ }
@@ -467,10 +529,15 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
   watch(selectedScopes, persistLayerState, { deep: true })
   watch(view, persistLayerState)
 
-  // §5.2.1: レイヤー一覧に無いフォールバックチップは「既定で選択状態」で現れる（AC-23）。
+  // §5.2.1: レイヤー一覧に無いフォールバックチップは「初めて現れたときだけ」既定選択にする（AC-23）。
+  // P2修繕: knownFallbackKeys に無いキーだけを新規とみなす。一度選択したキーをユーザーが
+  // 明示的に外した後、月移動・再取得のたびに selectedScopes へ戻すと「外せない」バグになる。
   watch(fallbackScopeOptions, (opts) => {
-    const missing = opts.map((o) => o.value).filter((v) => !selectedScopes.value.includes(v))
-    if (missing.length) selectedScopes.value = [...selectedScopes.value, ...missing]
+    const newlySeen = opts.map((o) => o.value).filter((v) => !knownFallbackKeys.value.has(v))
+    if (!newlySeen.length) return
+    for (const v of newlySeen) knownFallbackKeys.value.add(v)
+    selectedScopes.value = [...selectedScopes.value, ...newlySeen]
+    persistLayerState() // knownFallbackKeys の更新も即座に永続化する（selectedScopes の watch と二重書きにはなるが冪等）
   })
 
   /**
@@ -494,6 +561,10 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
           selectedScopes.value = selected.map(migrateLegacyScopeValue)
           const parsedView = Array.isArray(parsed) ? undefined : parsed.view
           view.value = isValidView(parsedView) ? parsedView : 'month'
+          // P2修繕: 永続化済みの knownFallbackKeys を復元する。復元し損ねると、リロードのたびに
+          // 「初めて見た」扱いになり、ユーザーが外したフォールバックチップが復活してしまう。
+          const parsedKnown = Array.isArray(parsed) ? undefined : parsed.knownFallbackKeys
+          knownFallbackKeys.value = new Set(Array.isArray(parsedKnown) ? parsedKnown.filter((v): v is string => typeof v === 'string') : [])
           return
         }
       }
@@ -509,6 +580,6 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
     currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth,
     extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
     toggleScope, multiSelectScopes, initStorage,
-    layers, layersLoaded, loadLayers, view,
+    layers, layersLoaded, layersFailed, loadLayers, view,
   }
 }

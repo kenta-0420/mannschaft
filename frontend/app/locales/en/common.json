@@ -1330,7 +1330,11 @@
     "calendar": {
       "layer": {
         "personal": "Personal",
-        "unknown": "Other events"
+        "unknown": "Other events",
+        "loadError": {
+          "summary": "Failed to load layers",
+          "detail": "Team/organization filters are temporarily unavailable. Events are still shown. Please reload later."
+        }
       }
     }
   },

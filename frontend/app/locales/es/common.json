@@ -1330,7 +1330,11 @@
     "calendar": {
       "layer": {
         "personal": "Personal",
-        "unknown": "Otros eventos"
+        "unknown": "Otros eventos",
+        "loadError": {
+          "summary": "Error al cargar las capas",
+          "detail": "Los filtros de equipo/organización no están disponibles temporalmente. Los eventos siguen mostrándose. Vuelve a intentarlo más tarde."
+        }
       }
     }
   },

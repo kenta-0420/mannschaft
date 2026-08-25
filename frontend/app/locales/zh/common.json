@@ -1330,7 +1330,11 @@
     "calendar": {
       "layer": {
         "personal": "个人",
-        "unknown": "其他日程"
+        "unknown": "其他日程",
+        "loadError": {
+          "summary": "图层列表加载失败",
+          "detail": "团队・组织的显示切换暂时无法使用。日程仍会显示。请稍后重新加载。"
+        }
       }
     }
   },
