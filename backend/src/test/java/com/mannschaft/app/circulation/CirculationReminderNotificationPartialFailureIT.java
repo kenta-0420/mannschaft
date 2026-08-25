@@ -2,6 +2,9 @@ package com.mannschaft.app.circulation;
 
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.entity.NotificationEntity;
+import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.support.test.MembershipTestHelper;
@@ -17,7 +20,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -48,11 +50,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 受信者ごと {@code REQUIRES_NEW} で1件ずつ独立実行することで、1受信者の失敗が他へ波及しないことを
  * 実測する。</p>
  *
- * <h2>実際の永続化例外を起こす方法</h2>
- * <p>{@link NotificationService#createNotification} をモックで直接例外送出させるのではなく、
- * {@code notifications.notification_type}（{@code @Column(nullable = false)}）に意図的に
- * {@code null} を渡して実際のサービス実体（{@link AopTestUtils} でプロキシを外した本体）を
- * 呼び出し、MySQL の NOT NULL 制約違反という本物の永続化例外を発生させる。</p>
+ * <h2>実際の永続化例外を起こす方法（マスター指摘で是正: 2026-08-25）</h2>
+ * <p>初版は {@link NotificationService#createNotification} を spy し、対象受信者宛の呼び出しだけ
+ * {@code org.springframework.test.util.AopTestUtils#getUltimateTargetObject} で「実体」を取得して
+ * 呼び直す方式だったが、{@code @MockitoSpyBean} は Bean 定義そのものを Mockito スパイに差し替える
+ * ため、{@code getUltimateTargetObject} は同じスパイをそのまま返してしまい、
+ * <b>スパイが自分自身を再帰的に呼び出す無限ループ</b>（CI 実測で多数回）を引き起こしていた。
+ * 本版は {@link NotificationRepository#saveAndFlush} を直接呼ぶことで、
+ * {@code NotificationDeliveryRunner}（{@code REQUIRES_NEW}）が実行中の非同期ワーカースレッド上で
+ * 同じトランザクションに参加させたまま、{@code notification_type} に {@code null} を渡して
+ * MySQL の NOT NULL 制約違反という<b>本物の永続化例外</b>を発生させる。</p>
  *
  * <h2>クラスに {@code @Transactional} を付けない理由</h2>
  * <p>通知は {@code AFTER_COMMIT} で発火する。テストメソッドをトランザクションで包むとコミットが
@@ -75,11 +82,13 @@ class CirculationReminderNotificationPartialFailureIT extends AbstractMySqlInteg
 
     /**
      * {@link NotificationService#createNotification} を spy し、受信者Cだけ NOT NULL 制約違反
-     * （実際の永続化例外）に差し替える。プロキシ経由の再帰呼び出しを避けるため、
-     * {@link AopTestUtils#getUltimateTargetObject} で実体を取得してから呼び直す。
+     * （実際の永続化例外）に差し替える。
      */
     @MockitoSpyBean
     private NotificationService notificationService;
+
+    @Autowired
+    private NotificationRepository notificationRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -126,19 +135,16 @@ class CirculationReminderNotificationPartialFailureIT extends AbstractMySqlInteg
         willAnswer(invocation -> {
             Long targetUserId = invocation.getArgument(0);
             if (targetUserId.equals(recipientBrokenId)) {
-                NotificationService real = AopTestUtils.getUltimateTargetObject(notificationService);
-                return real.createNotification(
-                        invocation.getArgument(0),
-                        null, // notificationType に null → NOT NULL 制約違反で実際の永続化例外
-                        invocation.getArgument(2),
-                        invocation.getArgument(3),
-                        invocation.getArgument(4),
-                        invocation.getArgument(5),
-                        invocation.getArgument(6),
-                        invocation.getArgument(7),
-                        invocation.getArgument(8),
-                        invocation.getArgument(9),
-                        invocation.getArgument(10));
+                // NotificationDeliveryRunner の REQUIRES_NEW トランザクション実行中の同一スレッド上で
+                // notification_type=null の INSERT を行い、MySQL の NOT NULL 制約違反という
+                // 実際の永続化例外を起こす（saveAndFlush で即座にflushして例外を確定させる）。
+                return notificationRepository.saveAndFlush(NotificationEntity.builder()
+                        .userId(targetUserId)
+                        .notificationType(null)
+                        .title("模擬通知（NOT NULL違反検証用）")
+                        .sourceType("CIRCULATION_DOCUMENT")
+                        .scopeType(NotificationScopeType.TEAM)
+                        .build());
             }
             return invocation.callRealMethod();
         }).given(notificationService).createNotification(
