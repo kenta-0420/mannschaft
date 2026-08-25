@@ -204,7 +204,7 @@ class BackgroundEntryPolicyDeclarationGuardTest {
                 .as("禁止域リストが空では AC-1 は永久に緑になる（空虚 green）")
                 .isNotEmpty();
 
-        List<String> fqcns = loadSources().stream()
+        List<String> fqcns = sources().stream()
                 .map(BackgroundEntryPolicyDeclarationGuardTest::fqcnOf)
                 .toList();
         assertThat(fqcns).as("本番ソースを1件も読めていない（走査根の想定が崩れている）").isNotEmpty();
@@ -280,8 +280,13 @@ class BackgroundEntryPolicyDeclarationGuardTest {
                         + "巻き込むと所要時間が跳ね、検出対象も汚れる）")
                 .endsWith("src/main/java");
 
-        assertTimeout(Duration.ofSeconds(60), (ThrowingSupplier<Scan>) this::scan,
-                "全ソース走査が60秒以内に終わらない。線形走査が壊れている疑いがある");
+        // この予算が守っているのは「走査が線形であること」であって、マシンの空き具合ではない。
+        // 走査は O(n) だが、本テストは開発機で他の Gradle ビルドと並走しうる。
+        // 実測（2026-08-25、ビルド4本並走中）で読み取り込みの1回が約64秒かかったため、
+        // ファイル読み取りは sources() で1回に畳んだうえで、予算は余裕を持たせてある。
+        // 破滅的バックトラック等で超線形になれば、この余裕をもってしても落ちる。
+        assertTimeout(Duration.ofMinutes(3), (ThrowingSupplier<Scan>) this::scan,
+                "全ソース走査が3分以内に終わらない。線形走査が壊れている（超線形になった）疑いがある");
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -341,8 +346,26 @@ class BackgroundEntryPolicyDeclarationGuardTest {
     // 走査
     // ═══════════════════════════════════════════════════════════════════
 
+    /**
+     * 本番ソースのキャッシュ。
+     *
+     * <p>本クラスの各テストはいずれも全ソース走査を要するため、素直に書くと
+     * 7000 件超のファイル読み取りをテストの数だけ繰り返すことになる。
+     * 実測（2026-08-25、Gradle ビルドが4本並走している最中）で、
+     * 走査 1 回あたりの所要が 60 秒を超え AC-16 が落ちた。
+     * 支配的なのは解析ではなくファイル I/O なので、読み取りは 1 回に畳んで共有する。</p>
+     */
+    private static List<Source> cachedSources;
+
+    private static synchronized List<Source> sources() throws IOException {
+        if (cachedSources == null) {
+            cachedSources = loadSources();
+        }
+        return cachedSources;
+    }
+
     private Scan scan() throws IOException {
-        List<Source> sources = loadSources();
+        List<Source> sources = sources();
         List<Entry> entries = new ArrayList<>();
         for (Source s : sources) {
             entries.addAll(analyze(s));
