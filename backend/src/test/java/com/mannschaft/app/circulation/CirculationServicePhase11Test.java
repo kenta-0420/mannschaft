@@ -103,34 +103,20 @@ class CirculationServicePhase11Test {
     private CirculationService circulationService;
 
     /**
-     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
-     * title/body. Return the supplied default message so existing assertions keep working.
-     */
-    @org.junit.jupiter.api.BeforeEach
-    void stubI18nMessageSource() {
-        org.mockito.Mockito.lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.any()))
-                .thenReturn(java.util.Map.of());
-        org.mockito.Mockito.lenient().when(messageSource.getMessage(
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any(),
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(inv -> inv.getArgument(2));
-    }
-
-    /**
      * {@code auditLogService} は {@code CirculationService} 側で
      * {@code @Autowired(required = false)} の非 final フィールドとして定義されているため、
      * Mockito の {@code @InjectMocks} はコンストラクタ注入を優先しフィールド注入が
      * スキップされるケースがある。{@link ReflectionTestUtils#setField} で確実に注入する。
+     *
+     * <p>Issue #2834 / CMP-056 横展開: {@code userLocaleCache} / {@code messageSource} は
+     * 通知の文面組み立て責務ごと {@code CirculationReminderNotificationListener}
+     * （AFTER_COMMIT）へ移管され、{@code CirculationService} 自体のフィールドではなくなった
+     * ため、ここでの reflective 注入は不要になった（{@code @Mock} 宣言自体は他ロジックとの
+     * 互換のため残すが、{@code CirculationService} には注入しない）。</p>
      */
     @BeforeEach
     void injectOptionalFields() {
         ReflectionTestUtils.setField(circulationService, "auditLogService", auditLogService);
-        // Issue #2715 CMP-055: same @InjectMocks constructor-injection caveat applies to the
-        // newly added i18n dependencies, so force them in explicitly.
-        ReflectionTestUtils.setField(circulationService, "userLocaleCache", userLocaleCache);
-        ReflectionTestUtils.setField(circulationService, "messageSource", messageSource);
     }
 
     private static final Long DOCUMENT_ID = 100L;
