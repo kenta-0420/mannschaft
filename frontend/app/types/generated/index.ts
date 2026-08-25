@@ -28969,6 +28969,24 @@ export interface paths {
         patch: operations["updateNotifySettings"];
         trace?: never;
     };
+    "/api/v1/me/calendar-layers/{scopeType}/{scopeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** カレンダーレイヤー設定の削除（自動色へ戻す） */
+        delete: operations["deleteMyCalendarLayer"];
+        options?: never;
+        head?: never;
+        /** カレンダーレイヤー設定の部分更新 */
+        patch: operations["updateMyCalendarLayer"];
+        trace?: never;
+    };
     "/api/v1/matching/proposals/{id}/withdraw": {
         parameters: {
             query?: never;
@@ -41654,6 +41672,23 @@ export interface paths {
         };
         /** カレンダー同期設定一覧 */
         get: operations["getSyncSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/calendar-layers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** カレンダーレイヤー一覧（合成ビュー） */
+        get: operations["getMyCalendarLayers"];
         put?: never;
         post?: never;
         delete?: never;
@@ -63639,6 +63674,8 @@ export interface components {
         };
         PersonalContentDto: {
             color?: string;
+            /** @enum {string} */
+            colorSource?: "LAYER_USER" | "SCHEDULE" | "CATEGORY" | "LAYER_AUTO";
             description?: string;
             eventType?: string;
             location?: string;
@@ -68242,6 +68279,64 @@ export interface components {
             notifyOnCheckout?: boolean;
             notifyOnDismissal?: boolean;
             notifyOnRsvp?: boolean;
+        };
+        /** @description カレンダーレイヤー設定の部分更新（null/未指定 = 変更しない） */
+        CalendarLayerUpdateRequest: {
+            /**
+             * @description ユーザー指定色（#RRGGBB。null/未指定 = 変更しない）
+             * @example #DC2626
+             */
+            color?: string;
+            /**
+             * @description 既定で非表示にするか（null/未指定 = 変更しない）
+             * @example true
+             */
+            hidden?: boolean;
+        };
+        ApiResponseCalendarLayerResponse: {
+            data?: components["schemas"]["CalendarLayerResponse"];
+        };
+        /** @description カレンダーレイヤー（所属スコープ＋解決済み色＋表示可否） */
+        CalendarLayerResponse: {
+            /**
+             * @description 解決済み表示色（#RRGGBB 大文字）
+             * @example #059669
+             */
+            color?: string;
+            /**
+             * @description 色の由来。本 API は LAYER_USER / LAYER_AUTO のみ返す
+             * @enum {string}
+             */
+            colorSource?: "LAYER_USER" | "SCHEDULE" | "CATEGORY" | "LAYER_AUTO";
+            /**
+             * @description 既定で非表示にするか
+             * @example false
+             */
+            hidden?: boolean;
+            /** @description アイコン表示URL（未設定は null） */
+            scopeIconUrl?: string;
+            /**
+             * Format: int64
+             * @description レイヤー対象ID（PERSONAL は常に 0）
+             * @example 42
+             */
+            scopeId?: number;
+            /**
+             * @description 表示名（PERSONAL は i18n キーを FE が翻訳するためのプレースホルダ）
+             * @example 青葉FC
+             */
+            scopeName?: string;
+            /**
+             * @description PERSONAL のみ非 null の i18n キー。TEAM/ORGANIZATION は null
+             * @example schedule.calendar.layer.personal
+             */
+            scopeNameKey?: string;
+            /**
+             * @description レイヤー種別
+             * @example TEAM
+             * @enum {string}
+             */
+            scopeType?: "PERSONAL" | "TEAM" | "ORGANIZATION";
         };
         StatusReasonRequest: {
             statusReason?: string;
@@ -76541,6 +76636,10 @@ export interface components {
             data?: components["schemas"]["CalendarEntryResponse"][];
         };
         CalendarContentDto: {
+            categoryColor?: string;
+            color?: string;
+            /** @enum {string} */
+            colorSource?: "LAYER_USER" | "SCHEDULE" | "CATEGORY" | "LAYER_AUTO";
             eventType?: string;
             referenceKind?: string;
             referenceUuid?: string;
@@ -77329,6 +77428,9 @@ export interface components {
             scopeId?: number;
             scopeName?: string;
             scopeType?: string;
+        };
+        ApiResponseListCalendarLayerResponse: {
+            data?: components["schemas"]["CalendarLayerResponse"][];
         };
         ApiResponseBetaPerkMyPerksResponse: {
             data?: components["schemas"]["BetaPerkMyPerksResponse"];
@@ -140069,6 +140171,54 @@ export interface operations {
             };
         };
     };
+    deleteMyCalendarLayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateMyCalendarLayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CalendarLayerUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCalendarLayerResponse"];
+                };
+            };
+        };
+    };
     withdrawProposal: {
         parameters: {
             query?: never;
@@ -158266,6 +158416,26 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCalendarSyncSettingsResponse"];
+                };
+            };
+        };
+    };
+    getMyCalendarLayers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListCalendarLayerResponse"];
                 };
             };
         };
