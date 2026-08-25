@@ -155,15 +155,17 @@ public class MultipartUploadService {
         MultipartUploadSessionEntity session = findSessionOrThrow(uploadId);
         validateInProgress(session);
         validateSessionOwner(session, requesterId);
+        validateFileKeyMatchesSession(session, req.getFileKey());
 
         List<PresignedPartUrl> presignedUrls = r2StorageService.createPresignedPartUrls(
-                req.getFileKey(), uploadId, req.getPartNumbers(), PART_URL_TTL);
+                session.getR2Key(), uploadId, req.getPartNumbers(), PART_URL_TTL);
 
         List<PresignedPartUrlDto> dtos = presignedUrls.stream()
                 .map(p -> new PresignedPartUrlDto(p.partNumber(), p.uploadUrl()))
                 .collect(Collectors.toList());
 
-        log.info("Multipart パート URL 発行: uploadId={}, parts={}", uploadId, req.getPartNumbers().size());
+        log.info("Multipart パート URL 発行: uploadId={}, fileKey={}, parts={}",
+                uploadId, session.getR2Key(), req.getPartNumbers().size());
         return new PartUrlResponse(dtos, PART_URL_TTL_SECONDS);
     }
 
@@ -183,6 +185,7 @@ public class MultipartUploadService {
         MultipartUploadSessionEntity session = findSessionOrThrow(uploadId);
         validateInProgress(session);
         validateSessionOwner(session, requesterId);
+        validateFileKeyMatchesSession(session, req.getFileKey());
 
         // AWS SDK の CompletedPart に変換
         List<CompletedPart> completedParts = req.getParts().stream()
@@ -193,10 +196,10 @@ public class MultipartUploadService {
                 .collect(Collectors.toList());
 
         // R2 で Multipart Upload を完了
-        r2StorageService.completeMultipartUpload(req.getFileKey(), uploadId, completedParts);
+        r2StorageService.completeMultipartUpload(session.getR2Key(), uploadId, completedParts);
 
         // R2 HeadObject で最終ファイルサイズを取得
-        long fileSize = r2StorageService.getObjectSize(req.getFileKey());
+        long fileSize = r2StorageService.getObjectSize(session.getR2Key());
 
         // セッションステータスを COMPLETED に更新
         MultipartUploadSessionEntity updated = session.toBuilder()
@@ -204,8 +207,8 @@ public class MultipartUploadService {
                 .build();
         sessionRepository.save(updated);
 
-        log.info("Multipart Upload 完了: uploadId={}, fileKey={}, fileSize={}", uploadId, req.getFileKey(), fileSize);
-        return new CompleteMultipartResponse(req.getFileKey(), fileSize);
+        log.info("Multipart Upload 完了: uploadId={}, fileKey={}, fileSize={}", uploadId, session.getR2Key(), fileSize);
+        return new CompleteMultipartResponse(session.getR2Key(), fileSize);
     }
 
     /**
@@ -254,6 +257,21 @@ public class MultipartUploadService {
      * @param uploadId R2 Multipart Upload ID
      * @return セッションエンティティ
      */
+    /**
+     * セッション作成時に採番した R2 キーとリクエストの fileKey が一致することを検証する。
+     *
+     * @param session Multipart Upload セッション
+     * @param fileKey リクエストのファイルキー
+     * @throws ResponseStatusException 不一致の場合（400 Bad Request）
+     */
+    private void validateFileKeyMatchesSession(MultipartUploadSessionEntity session, String fileKey) {
+        if (!session.getR2Key().equals(fileKey)) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "Multipart Upload セッションの fileKey とリクエストが一致しません");
+        }
+    }
+
     private MultipartUploadSessionEntity findSessionOrThrow(String uploadId) {
         return sessionRepository.findByUploadId(uploadId)
                 .orElseThrow(() -> new ResponseStatusException(
