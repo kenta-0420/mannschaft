@@ -25,7 +25,9 @@ test.info().annotations.push({
   description: JSON.stringify({
     id: 'B0-J3-P06-001',
     featureKey: 'village-events-attendance-response',
+    featureDetail: '出欠回答',
     personaId: 'P06',
+    urgency: 'urgent',
     priority: 'should',
     title: '回答後の次の操作が分からない',
     detail: '回答保存後も画面の変化が小さく、完了したか判断できない',
@@ -34,6 +36,8 @@ test.info().annotations.push({
   })
 });
 ```
+
+`featureDetail`は任意の文字列です。`urgency`は`urgent`（急ぎ）、`normal`（通常）、`when-free`（空いた時）から指定し、省略時は`normal`になります。
 
 `personaId`は計画に定義した`P01`〜`P20`だけを許可します。省略時は「統括／ペルソナ未特定」です。テスト失敗も統括による気づきとして記録されます。
 
