@@ -13,6 +13,12 @@
       "prevMonth": "이전 달",
       "nextMonth": "다음 달"
     },
+    "calendarGrid": {
+      "today": "오늘",
+      "dayOverflow": "외 {count}건",
+      "laneOverflow": "+{count}건",
+      "dayDetailTitle": "{date}의 일정"
+    },
     "common_delete": "삭제",
     "description_label": "설명",
     "error_title_required": "제목은 필수입니다",

@@ -79,10 +79,23 @@ const pad = (n: number) => String(n).padStart(2, '0')
 
 const {
   currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
-  onPrevMonth: calPrevMonth, onNextMonth: calNextMonth,
+  onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday,
   extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes,
   filteredEvents, toggleScope, multiSelectScopes, initStorage,
 } = useMyCalendarData()
+
+// 「今日」ボタン（§6.3・AC-12d）: 月グリッド本体の DOM 操作（フォーカス）は CalendarGrid に委譲する。
+const calendarGridRef = ref<{ focusToday: () => void } | null>(null)
+
+async function onToday() {
+  goToToday()
+  if (activeTab.value === 'gantt') await loadGantt()
+  // 月移動時は年月 props が変わってから DOM が再描画されるまで待つ必要がある
+  // （既に当月表示中でも focusToday は必ず呼ぶ＝無反応にしない）。
+  await nextTick()
+  await nextTick()
+  calendarGridRef.value?.focusToday()
+}
 
 // #49-B: 日別一覧
 const dayEvents = computed(() => {
@@ -340,12 +353,15 @@ async function withScopeLoading(fn: () => void) {
   calendarLoading.value = false
 }
 
+// レイヤーチップでの表示絞り込みは filteredEvents（手元データのみ）で完結し、再取得を伴わない
+// （AC-12c: 全画面スピナーを一度も出さない・ネットワークリクエストも発生しない）。
+// withScopeLoading の全画面スピナーは実際の再取得を伴う createScopeKey 変更専用とし、ここでは使わない。
 function onToggleScope(value: string) {
-  withScopeLoading(() => toggleScope(value))
+  toggleScope(value)
 }
 
 function onMultiSelectChange(vals: string[]) {
-  withScopeLoading(() => { selectedScopes.value = vals })
+  selectedScopes.value = vals
 }
 
 async function onTabChange(tab: CalendarTab) {
@@ -478,6 +494,7 @@ onMounted(async () => {
           <div class="relative">
             <DashboardWidgetCard :scrollable="false">
               <CalendarGrid
+                ref="calendarGridRef"
                 :year="currentYear"
                 :month="currentMonth"
                 :events="filteredEvents"
@@ -486,6 +503,7 @@ onMounted(async () => {
                 @reflection-click="onReflectionClick"
                 @prev-month="onPrevMonth"
                 @next-month="onNextMonth"
+                @today="onToday"
               />
             </DashboardWidgetCard>
             <Transition name="fade">

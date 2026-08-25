@@ -251,7 +251,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
     return merged
   }
 
-  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth } =
+  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday } =
     useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
 
   const availableScopes = computed<ScopeOption[]>(() => {
@@ -323,7 +323,7 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
   })
 
   return {
-    currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth,
+    currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday,
     extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
     toggleScope, multiSelectScopes, initStorage,
   }

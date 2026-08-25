@@ -13,6 +13,12 @@
       "prevMonth": "Previous month",
       "nextMonth": "Next month"
     },
+    "calendarGrid": {
+      "today": "Today",
+      "dayOverflow": "{count} more",
+      "laneOverflow": "+{count} more",
+      "dayDetailTitle": "Events on {date}"
+    },
     "common_delete": "Delete",
     "description_label": "Description",
     "error_title_required": "Title is required",

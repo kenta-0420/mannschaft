@@ -13,6 +13,12 @@
       "prevMonth": "前の月",
       "nextMonth": "次の月"
     },
+    "calendarGrid": {
+      "today": "今日",
+      "dayOverflow": "他{count}件",
+      "laneOverflow": "+{count}件",
+      "dayDetailTitle": "{date} の予定"
+    },
     "common_delete": "削除",
     "description_label": "説明",
     "error_title_required": "タイトルは必須です",

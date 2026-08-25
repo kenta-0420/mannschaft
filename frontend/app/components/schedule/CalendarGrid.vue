@@ -3,6 +3,7 @@ import dayjs from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 
 const { userTimezone } = useDatetime()
+const { t } = useI18n()
 
 const props = defineProps<{
   year: number
@@ -17,6 +18,8 @@ const emit = defineEmits<{
   reflectionClick: [referenceUuid: string, referenceKind: string]
   prevMonth: []
   nextMonth: []
+  // 「今日」ボタン（§6.3/AC-12d）。月移動は親（currentYear/currentMonth の所有者）に委ねる。
+  today: []
 }>()
 
 /**
@@ -40,7 +43,12 @@ const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
 const DATE_HEADER_H = 30  // p-1(4) + h-6(24) + mb-0.5(2) = 30px
 const BAR_H = 18
 const BAR_STRIDE = 21     // バー高さ + 3px ギャップ
-const MAX_LANES = 3       // 1週に表示するバーの最大行数
+// 単日イベントの既定表示件数（§6.2）。3件以下は全件表示、4件以上は先頭2件＋「他N件」。
+const SINGLE_VISIBLE = 2
+const SINGLE_VISIBLE_THRESHOLD = 3
+// 複数日バーの実表示レーン数（§6.2）。超過時はレーン2の位置に日ごとの「+N件」を出す。
+const MAX_VISIBLE_BAR_LANES = 2
+const OVERFLOW_LANE_INDEX = MAX_VISIBLE_BAR_LANES
 
 interface DayInfo {
   date: number
@@ -64,6 +72,8 @@ interface WeekData {
   slots: MultiDaySlot[]
   singleByCol: CalendarEventItem[][]
   lanesUsed: number
+  // 日ごとの複数日バー非表示件数（§6.2・AC-12b）。列 di に対応。0 なら「+N件」を出さない。
+  laneOverflowByCol: number[]
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -136,18 +146,36 @@ const weeks = computed<WeekData[]>(() =>
       })
     }
 
-    const lanesUsed = slots.length > 0
-      ? Math.min(MAX_LANES, Math.max(...slots.map(s => s.lane)) + 1)
-      : 0
+    const lanesUsedRaw = slots.length > 0 ? Math.max(...slots.map(s => s.lane)) + 1 : 0
+    const hasLaneOverflow = lanesUsedRaw > MAX_VISIBLE_BAR_LANES
+    // 表示に確保する高さ（レーン）。超過時は実バー2本＋「+N件」行の3行分を確保する。
+    const lanesUsed = hasLaneOverflow ? MAX_VISIBLE_BAR_LANES + 1 : lanesUsedRaw
+
+    // 日ごとの非表示バー件数を数える（週で1つの数字にすると日によって嘘になるため必ず日単位）。
+    const laneOverflowByCol = days.map((_, di) =>
+      slots.filter(s => s.lane >= MAX_VISIBLE_BAR_LANES && s.startCol <= di && s.endCol >= di).length,
+    )
 
     // 1日イベント（複数日でないもの）を日列ごとに分類
     const singleByCol = days.map(day =>
       props.events.filter(e => !isMultiDay(e) && dateOf(e.startAt) === day.dateStr),
     )
 
-    return { days, slots, singleByCol, lanesUsed }
+    return { days, slots, singleByCol, lanesUsed, laneOverflowByCol }
   }),
 )
+
+/** 単日イベントの表示分（§6.2）。3件以下は全件、4件以上は先頭2件のみ。 */
+function visibleSingleEvents(events: CalendarEventItem[] | undefined): CalendarEventItem[] {
+  const list = events ?? []
+  return list.length > SINGLE_VISIBLE_THRESHOLD ? list.slice(0, SINGLE_VISIBLE) : list
+}
+
+/** 単日イベントの「他N件」件数（0 なら非表示）。 */
+function singleOverflowCount(events: CalendarEventItem[] | undefined): number {
+  const list = events ?? []
+  return list.length > SINGLE_VISIBLE_THRESHOLD ? list.length - SINGLE_VISIBLE : 0
+}
 
 function isToday(d: string) {
   return d === dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
@@ -182,16 +210,80 @@ function barStyle(slot: MultiDaySlot): Record<string, string> {
   }
 }
 
+/** 複数日バーのレーン超過「+N件」チップの位置（該当日1列分・§6.2）。 */
+function laneOverflowStyle(di: number): Record<string, string> {
+  const colW = 100 / 7
+  return {
+    top: `${OVERFLOW_LANE_INDEX * BAR_STRIDE}px`,
+    left: `calc(${di * colW}% + 2px)`,
+    width: `calc(${colW}% - 4px)`,
+    height: `${BAR_H}px`,
+  }
+}
+
 const monthLabel = computed(() => `${props.year}年${props.month}月`)
+
+// ---- 日別ポップオーバー（§6.2・AC-12/AC-12b・data-testid="day-detail-popover"） ----
+const dayPopover = ref<{ show: (ev: Event) => void; hide: () => void } | null>(null)
+const popoverDateStr = ref('')
+
+/** ポップオーバー対象日に掛かる予定の全件（単日・複数日バーの両方を含む）。 */
+const popoverEvents = computed<CalendarEventItem[]>(() => {
+  if (!popoverDateStr.value) return []
+  const d = popoverDateStr.value
+  return props.events.filter(e => dateOf(e.startAt) <= d && dateOf(e.endAt) >= d)
+})
+
+function openDayOverflow(dateStr: string, ev: Event) {
+  popoverDateStr.value = dateStr
+  dayPopover.value?.show(ev)
+}
+
+/** ポップオーバー内の行クリック（ScheduleListRow の `open` イベント）を種別で振り分ける。 */
+function onPopoverRowOpen(event: CalendarEventItem) {
+  dayPopover.value?.hide()
+  if (event.isReflection && event.referenceUuid && event.referenceKind) {
+    emit('reflectionClick', event.referenceUuid, event.referenceKind)
+    return
+  }
+  onEventClick(event)
+}
+
+// ---- 「今日」ボタン（§6.3・AC-12d） ----
+// 月グリッドの日付セル DOM 要素（フォーカスリング付与対象）。dateStr をキーに保持する。
+const dayCellEls = new Map<string, HTMLElement>()
+
+function setDayCellRef(el: Element | null, dateStr: string) {
+  if (el instanceof HTMLElement) dayCellEls.set(dateStr, el)
+  else dayCellEls.delete(dateStr)
+}
+
+/** 今日のセルへフォーカスを移す（既に当月表示中でも必ず呼ばれる。AC-12d）。 */
+function focusToday() {
+  const key = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
+  dayCellEls.get(key)?.focus()
+}
+
+defineExpose({ focusToday })
 </script>
 
 <template>
   <div>
     <!-- ヘッダー -->
     <div class="mb-4 flex items-center justify-between">
-      <Button icon="pi pi-chevron-left" text rounded @click="emit('prevMonth')" />
-      <h2 class="text-lg font-extrabold">{{ monthLabel }}</h2>
-      <Button icon="pi pi-chevron-right" text rounded @click="emit('nextMonth')" />
+      <div class="flex items-center gap-1">
+        <Button icon="pi pi-chevron-left" text rounded @click="emit('prevMonth')" />
+        <h2 class="text-lg font-extrabold">{{ monthLabel }}</h2>
+        <Button icon="pi pi-chevron-right" text rounded @click="emit('nextMonth')" />
+      </div>
+      <!-- 「今日」ボタン（§6.3・AC-12d）: 既に当月表示中でも押すたびフォーカスは今日のセルへ移る -->
+      <Button
+        :label="t('schedule.calendarGrid.today')"
+        text
+        size="small"
+        data-testid="calendar-today-button"
+        @click="emit('today')"
+      />
     </div>
 
     <!-- 曜日ヘッダー -->
@@ -213,7 +305,9 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
         <div
           v-for="(day, di) in week.days"
           :key="di"
-          class="cursor-pointer overflow-hidden border-b border-r border-surface-400 p-1 transition-colors hover:bg-primary/10 dark:border-surface-500 dark:hover:bg-primary/10"
+          :ref="(el) => setDayCellRef(el as Element | null, day.dateStr)"
+          tabindex="-1"
+          class="cursor-pointer overflow-hidden border-b border-r border-surface-400 p-1 transition-colors hover:bg-primary/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary dark:border-surface-500 dark:hover:bg-primary/10"
           :class="{
             'bg-surface-50/50 dark:bg-surface-800/30': !day.isCurrentMonth,
             'border-l': di === 0,
@@ -242,7 +336,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
           <!-- 1日イベント -->
           <div class="space-y-0.5">
             <div
-              v-for="event in week.singleByCol[di]?.slice(0, 3)"
+              v-for="event in visibleSingleEvents(week.singleByCol[di])"
               :key="event.uniqueKey"
               class="flex items-center rounded px-1 py-0.5 text-xs gap-0.5"
               :style="{ backgroundColor: (event.color ?? '#6366f1') + '20', color: event.color ?? '#6366f1' }"
@@ -269,6 +363,16 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
                 class="ml-auto shrink-0"
               />
             </div>
+            <!-- 単日イベント溢れ分（§6.2・AC-12） -->
+            <button
+              v-if="singleOverflowCount(week.singleByCol[di]) > 0"
+              type="button"
+              :data-testid="`day-overflow-${day.dateStr}`"
+              class="w-full truncate rounded px-1 py-0.5 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700"
+              @click.stop="openDayOverflow(day.dateStr, $event)"
+            >
+              {{ t('schedule.calendarGrid.dayOverflow', { count: singleOverflowCount(week.singleByCol[di]) }) }}
+            </button>
           </div>
         </div>
       </div>
@@ -281,7 +385,7 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
       >
         <div class="relative" :style="{ height: `${week.lanesUsed * BAR_STRIDE}px` }">
           <div
-            v-for="slot in week.slots.filter(s => s.lane < MAX_LANES)"
+            v-for="slot in week.slots.filter(s => s.lane < MAX_VISIBLE_BAR_LANES)"
             :key="`${slot.event.uniqueKey}-w${wi}`"
             class="pointer-events-auto absolute flex cursor-pointer select-none items-center overflow-hidden text-xs font-medium"
             :style="barStyle(slot)"
@@ -309,8 +413,41 @@ const monthLabel = computed(() => `${props.year}年${props.month}月`)
             />
             <i v-if="slot.continuesAfter" class="pi pi-angle-right shrink-0 text-[9px]" />
           </div>
+
+          <!-- 複数日バーのレーン超過「+N件」（§6.2・AC-12b・日ごとに数える） -->
+          <button
+            v-for="(count, di) in week.laneOverflowByCol"
+            v-show="count > 0"
+            :key="`overflow-w${wi}-${di}`"
+            type="button"
+            :data-testid="`day-overflow-${week.days[di]?.dateStr}`"
+            class="pointer-events-auto absolute rounded bg-surface-100 px-1 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600"
+            :style="laneOverflowStyle(di)"
+            @click.stop="openDayOverflow(week.days[di]!.dateStr, $event)"
+          >
+            {{ t('schedule.calendarGrid.laneOverflow', { count }) }}
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- 日別ポップオーバー（§6.2・AC-12/AC-12b） -->
+    <Popover ref="dayPopover">
+      <div data-testid="day-detail-popover" class="flex flex-col" style="min-width: 260px; max-width: 320px">
+        <div class="px-2 pb-1 text-xs font-semibold text-surface-500">
+          {{ t('schedule.calendarGrid.dayDetailTitle', { date: popoverDateStr }) }}
+        </div>
+        <div class="max-h-80 overflow-y-auto">
+          <ScheduleListRow
+            v-for="event in popoverEvents"
+            :key="event.uniqueKey"
+            :event="event"
+            scope-type="team"
+            :scope-id="''"
+            @open="onPopoverRowOpen(event)"
+          />
+        </div>
+      </div>
+    </Popover>
   </div>
 </template>
