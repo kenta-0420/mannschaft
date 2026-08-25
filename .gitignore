@@ -82,3 +82,5 @@ config/scheduler/
 *_response.txt
 # 大名システムの引継ぎ書（実データ・内部事情を含み得る揮発物）
 .claude/handoffs/
+.b0-local/
+docs/prototypes/.b0-local/

@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.event;
 
 import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.entity.ReservationPolicyEntity;
 import com.mannschaft.app.reservation.service.ReservationPolicyService;
 import com.mannschaft.app.reservation.service.ReservationReminderService;
@@ -13,6 +14,7 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +50,8 @@ public class ReservationReminderEventListener {
     private final ReservationPolicyService policyService;
     private final ReservationReminderService reminderService;
     private final Clock clock;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /**
      * 予約確定イベントを受信し、ポリシーに従ってリマインダーを自動生成する。
@@ -73,13 +77,17 @@ public class ReservationReminderEventListener {
             // （slot_date/start_time 由来）のため、Clock の瞬間を JVM 既定ゾーンで解釈し直してから
             // 比較する。ここで生成される remindAt も業務ローカル基準になるため、消費側
             // （ReservationReminderService#findDueReminders）も同じ基準に揃える必要がある。
-            LocalDateTime now = LocalDateTime.now(clock.withZone(UserZoneLocalDateTimeParser.SERVER_ZONE));
             LocalDateTime slotStartAt = event.getSlotStartAt();
             List<LocalDateTime> remindAtList = new ArrayList<>();
+            Instant slotStartInstant = teamTimezoneResolver == null
+                    ? slotStartAt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                    : teamTimezoneResolver.toInstant(event.getTeamId(),
+                            slotStartAt.toLocalDate(), slotStartAt.toLocalTime());
             for (Integer h : hours) {
-                LocalDateTime remindAt = slotStartAt.minusHours(h);
-                if (remindAt.isAfter(now)) {
-                    remindAtList.add(remindAt);
+                Instant remindAt = slotStartInstant.minusSeconds(h * 3600L);
+                if (remindAt.isAfter(clock.instant())) {
+                    // DB の既存 LocalDateTime 表現（サーバー UTC/JST policy）へ戻して保存する。
+                    remindAtList.add(LocalDateTime.ofInstant(remindAt, UserZoneLocalDateTimeParser.SERVER_ZONE));
                 }
             }
 

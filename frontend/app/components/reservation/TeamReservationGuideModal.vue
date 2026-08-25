@@ -11,6 +11,7 @@ const props = defineProps<{
   isAdminOrDeputy: boolean
   /** モーダルを開いたときの TeamReservationsPanel のアクティブタブ（0=予約する/1=予約一覧/2=予約対象の管理/3=緊急休業）。 */
   activeTab: number
+  managementSection?: string | null
 }>()
 const visible = defineModel<boolean>('visible', { default: false })
 
@@ -53,6 +54,7 @@ const headerLabel = computed(() => {
         :is-admin="isAdmin"
         :is-admin-or-deputy="isAdminOrDeputy"
         :active-tab="activeTab"
+        :management-section="managementSection"
         :resource-name="resourceName"
       />
     </div>

@@ -7,6 +7,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -30,6 +31,18 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @SuperBuilder(toBuilder = true)
 public class TeamEntity extends BaseEntity {
+
+    @PrePersist
+    protected void normalizeTimezone() {
+        if (timezone != null) {
+            timezone = timezone.trim();
+        }
+    }
+
+    /** 予約等の業務ローカル時刻を解釈する IANA タイムゾーン。既存データは移行で Asia/Tokyo に補完する。 */
+    @Column(nullable = false, length = 64, columnDefinition = "VARCHAR(64) NOT NULL DEFAULT 'Asia/Tokyo'")
+    @Builder.Default
+    private String timezone = "Asia/Tokyo";
 
     /**
      * URL 公開用カスタムスラッグ（人間可読な識別子）。
@@ -340,6 +353,13 @@ public class TeamEntity extends BaseEntity {
         }
         if (mapEmbedUrl != null) {
             this.mapEmbedUrl = mapEmbedUrl;
+        }
+    }
+
+    /** チームの業務タイムゾーンを更新する。入力の IANA 検証は API 層で行う。 */
+    public void updateTimezone(String timezone) {
+        if (timezone != null) {
+            this.timezone = timezone.trim();
         }
     }
 

@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.reservation.ReservationMapper;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.event.ReservationSlotReopenedEvent;
@@ -59,6 +60,8 @@ class ReservationSlotServiceReopenEventTest {
     private ApplicationEventPublisher eventPublisher;
     @Mock
     private ReservationViewAccessGuard viewAccessGuard;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     private ReservationSlotService service;
 
@@ -67,7 +70,7 @@ class ReservationSlotServiceReopenEventTest {
         service = new ReservationSlotService(
                 slotRepository, reservationRepository, reservationMapper, blockedTimeRepository,
                 recurringBlockedTimeRepository, unavailabilityChecker, lineRepository,
-                Clock.systemUTC(), eventPublisher, viewAccessGuard);
+                Clock.systemUTC(), eventPublisher, viewAccessGuard, teamTimezoneResolver);
     }
 
     /**

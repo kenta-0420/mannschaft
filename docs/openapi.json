@@ -102687,6 +102687,86 @@
         }
       }
     },
+    "/api/v1/me/calendar-layers/{scopeType}/{scopeId}": {
+      "delete": {
+        "tags": [
+          "カレンダーレイヤー"
+        ],
+        "summary": "カレンダーレイヤー設定の削除（自動色へ戻す）",
+        "operationId": "deleteMyCalendarLayer",
+        "parameters": [
+          {
+            "name": "scopeType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "削除成功"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "カレンダーレイヤー"
+        ],
+        "summary": "カレンダーレイヤー設定の部分更新",
+        "operationId": "updateMyCalendarLayer",
+        "parameters": [
+          {
+            "name": "scopeType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scopeId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CalendarLayerUpdateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseCalendarLayerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/matching/proposals/{id}/withdraw": {
       "patch": {
         "tags": [
@@ -112101,6 +112181,15 @@
             "schema": {
               "type": "string",
               "format": "date-time"
+            }
+          },
+          {
+            "name": "endsNextDay",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false
             }
           }
         ],
@@ -134849,6 +134938,27 @@
         }
       }
     },
+    "/api/v1/me/calendar-layers": {
+      "get": {
+        "tags": [
+          "カレンダーレイヤー"
+        ],
+        "summary": "カレンダーレイヤー一覧（合成ビュー）",
+        "operationId": "getMyCalendarLayers",
+        "responses": {
+          "200": {
+            "description": "取得成功",
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponseListCalendarLayerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/me/beta-perks": {
       "get": {
         "tags": [
@@ -151175,6 +151285,9 @@
             "maxLength": 3,
             "minLength": 0
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "isOpen": {
             "type": "boolean"
           },
@@ -151250,6 +151363,10 @@
           },
           "dayOfWeek": {
             "type": "string"
+          },
+          "endsNextDay": {
+            "type": "boolean",
+            "description": "終了時刻が翌日"
           },
           "isOpen": {
             "type": "boolean"
@@ -155721,6 +155838,10 @@
           },
           "timestamps": {
             "$ref": "#/components/schemas/TeamTimestampsDto"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "チームのIANAタイムゾーン"
           },
           "visibility": {
             "$ref": "#/components/schemas/TeamVisibilityDto"
@@ -173163,13 +173284,19 @@
       "SlotBasicDto": {
         "type": "object",
         "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "枠終了日"
+          },
           "endTime": {
             "type": "string",
             "example": "14:30:00"
           },
           "slotDate": {
             "type": "string",
-            "format": "date"
+            "format": "date",
+            "description": "枠開始日"
           },
           "startTime": {
             "type": "string",
@@ -173307,6 +173434,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "lineId": {
             "type": "integer",
             "format": "int64"
@@ -173372,6 +173502,10 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean",
+            "description": "終了時刻が翌日"
           },
           "id": {
             "type": "string",
@@ -173507,6 +173641,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "reason": {
             "type": "string",
             "maxLength": 200,
@@ -173567,6 +173704,10 @@
         "properties": {
           "audit": {
             "$ref": "#/components/schemas/BlockedAuditDto"
+          },
+          "endsNextDay": {
+            "type": "boolean",
+            "description": "終了時刻が翌日"
           },
           "id": {
             "type": "integer",
@@ -173635,6 +173776,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "forceCancelConflicting": {
             "type": "boolean"
           },
@@ -173682,6 +173826,10 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean",
+            "description": "終了時刻が翌日"
           },
           "forceCancelledCount": {
             "type": "integer",
@@ -191566,6 +191714,15 @@
           "color": {
             "type": "string"
           },
+          "colorSource": {
+            "type": "string",
+            "enum": [
+              "LAYER_USER",
+              "SCHEDULE",
+              "CATEGORY",
+              "LAYER_AUTO"
+            ]
+          },
           "description": {
             "type": "string"
           },
@@ -200348,6 +200505,9 @@
             "type": "string",
             "example": "14:30:00"
           },
+          "endsNextDay": {
+            "type": "boolean"
+          },
           "isActive": {
             "type": "boolean"
           },
@@ -200542,6 +200702,9 @@
           "endTime": {
             "type": "string",
             "example": "14:30:00"
+          },
+          "endsNextDay": {
+            "type": "boolean"
           },
           "forceCancelConflicting": {
             "type": "boolean"
@@ -202061,6 +202224,10 @@
           },
           "template": {
             "type": "string"
+          },
+          "timezone": {
+            "type": "string",
+            "description": "チームのIANAタイムゾーン"
           },
           "version": {
             "type": "integer",
@@ -204556,6 +204723,86 @@
           },
           "notifyOnRsvp": {
             "type": "boolean"
+          }
+        }
+      },
+      "CalendarLayerUpdateRequest": {
+        "type": "object",
+        "description": "カレンダーレイヤー設定の部分更新（null/未指定 \u003d 変更しない）",
+        "properties": {
+          "color": {
+            "type": "string",
+            "description": "ユーザー指定色（#RRGGBB。null/未指定 \u003d 変更しない）",
+            "example": "#DC2626"
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "既定で非表示にするか（null/未指定 \u003d 変更しない）",
+            "example": true
+          }
+        }
+      },
+      "ApiResponseCalendarLayerResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/CalendarLayerResponse"
+          }
+        }
+      },
+      "CalendarLayerResponse": {
+        "type": "object",
+        "description": "カレンダーレイヤー（所属スコープ＋解決済み色＋表示可否）",
+        "properties": {
+          "color": {
+            "type": "string",
+            "description": "解決済み表示色（#RRGGBB 大文字）",
+            "example": "#059669"
+          },
+          "colorSource": {
+            "type": "string",
+            "description": "色の由来。本 API は LAYER_USER / LAYER_AUTO のみ返す",
+            "enum": [
+              "LAYER_USER",
+              "SCHEDULE",
+              "CATEGORY",
+              "LAYER_AUTO"
+            ]
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "既定で非表示にするか",
+            "example": false
+          },
+          "scopeIconUrl": {
+            "type": "string",
+            "description": "アイコン表示URL（未設定は null）"
+          },
+          "scopeId": {
+            "type": "integer",
+            "format": "int64",
+            "description": "レイヤー対象ID（PERSONAL は常に 0）",
+            "example": 42
+          },
+          "scopeName": {
+            "type": "string",
+            "description": "表示名（PERSONAL は i18n キーを FE が翻訳するためのプレースホルダ）",
+            "example": "青葉FC"
+          },
+          "scopeNameKey": {
+            "type": "string",
+            "description": "PERSONAL のみ非 null の i18n キー。TEAM/ORGANIZATION は null",
+            "example": "schedule.calendar.layer.personal"
+          },
+          "scopeType": {
+            "type": "string",
+            "description": "レイヤー種別",
+            "enum": [
+              "PERSONAL",
+              "TEAM",
+              "ORGANIZATION"
+            ],
+            "example": "TEAM"
           }
         }
       },
@@ -210642,12 +210889,26 @@
       "GridCellDto": {
         "type": "object",
         "properties": {
+          "endDate": {
+            "type": "string",
+            "format": "date",
+            "description": "枠終了日"
+          },
           "endTime": {
             "type": "string",
             "example": "14:30:00"
           },
           "price": {
             "type": "number"
+          },
+          "reservedByCurrentUser": {
+            "type": "boolean",
+            "description": "現在のユーザーが有効予約を持つ枠か"
+          },
+          "slotDate": {
+            "type": "string",
+            "format": "date",
+            "description": "枠開始日"
           },
           "slotId": {
             "type": "integer",
@@ -226643,6 +226904,21 @@
       "CalendarContentDto": {
         "type": "object",
         "properties": {
+          "categoryColor": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "colorSource": {
+            "type": "string",
+            "enum": [
+              "LAYER_USER",
+              "SCHEDULE",
+              "CATEGORY",
+              "LAYER_AUTO"
+            ]
+          },
           "eventType": {
             "type": "string"
           },
@@ -228688,6 +228964,17 @@
           },
           "scopeType": {
             "type": "string"
+          }
+        }
+      },
+      "ApiResponseListCalendarLayerResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CalendarLayerResponse"
+            }
           }
         }
       },

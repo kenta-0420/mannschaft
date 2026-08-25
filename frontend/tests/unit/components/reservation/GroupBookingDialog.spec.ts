@@ -162,6 +162,34 @@ describe('GroupBookingDialog.vue', () => {
     expect(findByTestId<HTMLButtonElement>('group-extend')!.disabled).toBe(true)
   })
 
+  it('AC-2a: ステッパーはメニューの必要枠数未満へ減らせず、延長分だけを戻せる', async () => {
+    await mountSuspended(GroupBookingDialog, {
+      props: {
+        visible: true,
+        teamId: 'team-slug',
+        lines: [{ id: 1, name: 'Seat1' }],
+        menus: [cutMenu],
+        context: buildContext(),
+      },
+    })
+    await flush()
+    findByTestId<HTMLButtonElement>('group-menu-option-menu-cut')!.click()
+    await flush()
+
+    expect(findByTestId<HTMLButtonElement>('group-reduce')!.disabled).toBe(true)
+    findByTestId<HTMLButtonElement>('group-extend')!.click()
+    await flush()
+    expect(findByTestId<HTMLButtonElement>('group-reduce')!.disabled).toBe(false)
+    expect(findByTestId('group-slot-stepper')!.textContent).toContain('3')
+    expect(document.body.textContent).toContain('10:00 - 11:30')
+
+    findByTestId<HTMLButtonElement>('group-reduce')!.click()
+    await flush()
+    expect(findByTestId<HTMLButtonElement>('group-reduce')!.disabled).toBe(true)
+    expect(findByTestId('group-slot-stepper')!.textContent).toContain('2')
+    expect(document.body.textContent).toContain('10:00 - 11:00')
+  })
+
   it('AC-3: N=1・メニューなしの確定は createReservation を呼ぶ（createGroup は呼ばない）', async () => {
     mockCreateReservation.mockResolvedValue({ data: {} })
     await mountSuspended(GroupBookingDialog, {

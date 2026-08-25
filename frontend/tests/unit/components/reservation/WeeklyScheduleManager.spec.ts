@@ -1037,4 +1037,41 @@ describe('WeeklyScheduleManager.vue — 週グリッドのドラッグ範囲選�
     expect(body.startTime).toBe('14:00:00')
     expect(body.endTime).toBe('16:00:00')
   })
+
+  it('endsNextDay=trueをテンプレートと定期blockedの作成payloadへ保持する', async () => {
+    mockGetSlotTemplates.mockResolvedValue({ data: { templates: [], meta: { totalTemplates: 0, limit: 500 } } })
+    mockCreateSlotTemplate.mockResolvedValue(saveResponse())
+    mockCreateRecurringBlockedTime.mockResolvedValue({ data: { id: 'rule-next-day', endsNextDay: true } })
+    const wrapper = await mountSuspended(WeeklyScheduleManager, { props: { teamId: 'team-slug' } })
+    await flush()
+    await wrapper.find('[data-testid="template-add"]').trigger('click')
+    await flush()
+    document.body.querySelector<HTMLButtonElement>('[data-day="MON"]')!.click()
+    await flush()
+    const templateForm = (wrapper.vm as unknown as { form: { startTime: string; endTime: string } }).form
+    templateForm.startTime = '19:00'
+    templateForm.endTime = '18:00'
+    await wrapper.vm.$nextTick()
+    document.body.querySelector<HTMLInputElement>('[data-testid="template-ends-next-day"] input')!.click()
+    await flush()
+    document.body.querySelector<HTMLButtonElement>('[data-testid="template-save"]')!.click()
+    await flush()
+    expect((mockCreateSlotTemplate.mock.calls[0] as [string, Record<string, unknown>])[1].endsNextDay).toBe(true)
+
+    await wrapper.find('[data-testid="recurring-add"]').trigger('click')
+    await flush()
+    const recurringForm = (wrapper.vm as unknown as { recurringForm: { startTime: string; endTime: string } }).recurringForm
+    recurringForm.startTime = '23:00'
+    recurringForm.endTime = '01:00'
+    await wrapper.vm.$nextTick()
+    document.body.querySelector<HTMLInputElement>('[data-testid="recurring-ends-next-day"] input')!.click()
+    await flush()
+    const reason = document.body.querySelector<HTMLInputElement>('[data-testid="recurring-reason"]')!
+    reason.value = 'overnight'
+    reason.dispatchEvent(new Event('input'))
+    await flush()
+    document.body.querySelector<HTMLButtonElement>('[data-testid="recurring-save"]')!.click()
+    await flush()
+    expect((mockCreateRecurringBlockedTime.mock.calls[0] as [string, Record<string, unknown>])[1].endsNextDay).toBe(true)
+  })
 })

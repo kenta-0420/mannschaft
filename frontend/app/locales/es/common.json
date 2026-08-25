@@ -1875,6 +1875,13 @@
     "mapEmbedUrlHelp": "En Google Maps, haz clic en \"Compartir > Insertar mapa > Copiar HTML\" y pega la URL de src= aquí",
     "mapEmbedUrlInvalidFormat": "Debe ser una URL de inserción de Google Maps (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "URL del mapa de la tienda guardada",
+    "timezone": {
+      "label": "Zona horaria de reservas",
+      "help": "Zona horaria IANA para interpretar las horas de inicio y fin.",
+      "placeholder": "p. ej., Asia/Tokyo",
+      "invalid": "Introduce una zona horaria IANA válida",
+      "saved": "Zona horaria guardada"
+    },
     "regionCode": {
       "label": "Ubicación (prefectura / municipio)",
       "help": "Al seleccionar una prefectura y un municipio se establecen los valores predeterminados para la búsqueda regional y las publicaciones.",
@@ -1892,6 +1899,7 @@
     "bulletinOpen": "Discutir en el tablón"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "Almacenamiento", "personal": "Personal", "team": "Equipo", "organization": "Organización", "details": "Ver detalles", "error": "No se pudo cargar el almacenamiento", "retry": "Reintentar", "unconfigured": "Cuota no configurada", "not_available": "Sin datos de almacenamiento", "meterLabel": "Uso de almacenamiento de {scope}", "meterValue": "Uso {percent}%", "warningTitle": "Límite de almacenamiento cercano", "warningMessage": "{scope} usa el {percent}%. Considera actualizar a un plan de pago.", "viewPlans": "Ver planes", "checkStorage": "Comprobar almacenamiento", "cancel": "Cancelar" },
     "tabs": {
       "personal": "Personal",
       "team": "Equipo",
