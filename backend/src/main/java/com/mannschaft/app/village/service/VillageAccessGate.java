@@ -13,8 +13,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * 村ドメインの<b>共通アクセスゲート</b>。村の存在確認と可視性判定を一元化する。
@@ -199,6 +206,78 @@ public class VillageAccessGate {
         return villageRepository.findById(villageId)
                 .filter(v -> v.getDeletedAt() == null)
                 .filter(v -> isVisibleTo(v, actorUserId));
+    }
+
+    /**
+     * 複数の村について可視性をまとめて判定し、可視なものだけを<b>与えられた順序のまま</b>返す。
+     *
+     * <h3>なぜ一括版が要るのか</h3>
+     * <p>{@link #isVisibleTo} を村ごとにループで呼ぶと、非 PUBLIC 村1件につき所属判定が 1 クエリ、
+     * さらに非メンバーなら {@code isSystemAdmin} が 1 クエリ走る。
+     * <b>操作者は 1 人しか居ないのに、同じ問い合わせを村の数だけ繰り返す</b>ことになり、
+     * ピン一覧・フィードのように「自分に紐づく村を N 件まとめて描画する」経路では
+     * {@code backend/BACKEND_CODING_CONVENTION.md} の N+1 防止規約に反する。</p>
+     *
+     * <p>本メソッドは操作者を軸に問い合わせを畳む。<b>村の件数によらず追加クエリは最大 2 本</b>
+     * （現役所属の一括取得 1 本＋ SYSTEM_ADMIN 判定 1 本）で、
+     * PUBLIC 村しか含まれない通常のケースでは<b>追加クエリ 0 本</b>である。</p>
+     *
+     * <h3>判定は {@link #isVisibleTo} と同一であること</h3>
+     * <p>可視性の規則そのものは単一版と<b>完全に同じ</b>でなければならない
+     * （PUBLIC のみ許可リストで無条件可視／それ以外は現役 USER メンバーまたは SYSTEM_ADMIN のみ）。
+     * 一括版だけが緩いと、同じ村が経路によって見えたり見えなかったりする穴になる。
+     * 参照する現役所属の述語も単一版と揃えてある
+     * （{@code findActiveUserMemberships} は {@code leftAt IS NULL AND bannedAt IS NULL} で、
+     * 単一版の {@code findActiveByVillageIdAndSubject} と同一条件）。</p>
+     *
+     * @param villages    判定対象の村（{@code null} 要素は不可視として落とす）
+     * @param actorUserId 閲覧者ユーザー ID（{@code null} は非メンバー扱い＝PUBLIC のみ可視）
+     * @return 可視な村のみを入力順で並べたリスト
+     */
+    @Transactional(readOnly = true)
+    public List<VillageEntity> filterVisible(
+            Collection<VillageEntity> villages, @Nullable Long actorUserId) {
+        if (villages == null || villages.isEmpty()) {
+            return List.of();
+        }
+
+        // 重複 ID を畳みつつ入力順を保つ。
+        Map<UUID, VillageEntity> ordered = new LinkedHashMap<>();
+        for (VillageEntity v : villages) {
+            if (v != null && v.getId() != null) {
+                ordered.putIfAbsent(v.getId(), v);
+            }
+        }
+
+        // 許可リスト方式: PUBLIC は無条件可視（追加クエリを撃たない）。
+        boolean hasHidden = ordered.values().stream()
+                .anyMatch(v -> v.getVisibility() != VillageVisibility.PUBLIC);
+
+        // 非 PUBLIC が 1 件も無ければ問い合わせ不要。未ログインなら PUBLIC 以外は見えない。
+        Set<UUID> memberVillageIds = Set.of();
+        boolean systemAdmin = false;
+        if (hasHidden && actorUserId != null) {
+            memberVillageIds = new HashSet<>(membershipRepository
+                    .findActiveUserMemberships(actorUserId).stream()
+                    .map(m -> m.getVillageId())
+                    .collect(Collectors.toSet()));
+            // メンバーで解決しきれない村が残る場合にのみ SYSTEM_ADMIN を 1 度だけ問い合わせる。
+            Set<UUID> resolved = memberVillageIds;
+            boolean needsAdminCheck = ordered.values().stream()
+                    .anyMatch(v -> v.getVisibility() != VillageVisibility.PUBLIC
+                            && !resolved.contains(v.getId()));
+            if (needsAdminCheck) {
+                systemAdmin = accessControlService.isSystemAdmin(actorUserId);
+            }
+        }
+
+        Set<UUID> members = memberVillageIds;
+        boolean admin = systemAdmin;
+        return ordered.values().stream()
+                .filter(v -> v.getVisibility() == VillageVisibility.PUBLIC
+                        || members.contains(v.getId())
+                        || admin)
+                .toList();
     }
 
     /**

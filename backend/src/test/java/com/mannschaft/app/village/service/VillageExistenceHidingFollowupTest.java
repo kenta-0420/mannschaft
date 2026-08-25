@@ -128,8 +128,11 @@ class VillageExistenceHidingFollowupTest {
     }
 
     private void givenVillage(VillageVisibility visibility) {
-        lenient().when(villageRepository.findById(VILLAGE_ID))
-                .thenReturn(Optional.of(village(VILLAGE_ID, visibility)));
+        VillageEntity v = village(VILLAGE_ID, visibility);
+        lenient().when(villageRepository.findById(VILLAGE_ID)).thenReturn(Optional.of(v));
+        // ピン一覧・フィードは村を findAllById で一括取得する（N+1 回避）。
+        // 単一取得だけを stub すると、その経路が空を返して試練が意味を失う。
+        lenient().when(villageRepository.findAllById(any(Iterable.class))).thenReturn(List.of(v));
     }
 
     private void givenActiveMember(Long userId) {
@@ -143,6 +146,11 @@ class VillageExistenceHidingFollowupTest {
         m.setId(UUID.randomUUID());
         lenient().when(membershipRepository.findActiveByVillageIdAndSubject(
                 eq(VILLAGE_ID), eq(VillageSubjectType.USER), eq(userId))).thenReturn(Optional.of(m));
+        // 一括版 filterVisible は操作者軸の findActiveUserMemberships を引く。
+        // 単一版だけを stub すると一括経路では非メンバー扱いになり、
+        // 「現役村人には見える」試練が理由の違うところで落ちる。
+        lenient().when(membershipRepository.findActiveUserMemberships(eq(userId)))
+                .thenReturn(List.of(m));
     }
 
     private VillageErrorCode codeOf(Throwable t) {

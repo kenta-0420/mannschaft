@@ -265,19 +265,25 @@ public class VillagePinService {
      * ここで {@link VillageAccessGate#isVisibleTo} を通す。
      * 同じ欠陥がフィードの {@code VillageFeedService#loadVillagesByPin} にもあった。</p>
      *
-     * <p>可視性判定はロード済みエンティティのフィールドで行うため、
-     * PUBLIC 村だけをピンしている通常のユーザーでは<b>追加クエリは 0 件</b>のままである。</p>
+     * <p>可視性判定は<b>操作者を軸に畳んだ一括版</b>（{@link VillageAccessGate#filterVisible}）へ渡す。
+     * 村ごとに {@code isVisibleTo} を呼ぶと、非 PUBLIC 村1件につき所属判定が 1 クエリ、
+     * 非メンバーならさらに SYSTEM_ADMIN 判定が 1 クエリ走り、ピン上限（30 件）に比例して増えてしまう。
+     * 一括版なら村の件数によらず追加クエリは最大 2 本で、
+     * PUBLIC 村だけをピンしている通常のユーザーでは<b>追加クエリ 0 件</b>のままである。</p>
      */
     private Map<UUID, VillageEntity> loadVillageMap(List<UserVillagePinEntity> pins, Long actorUserId) {
         if (pins.isEmpty()) {
             return Map.of();
         }
         List<UUID> ids = pins.stream().map(UserVillagePinEntity::getVillageId).toList();
-        Map<UUID, VillageEntity> map = new HashMap<>();
-        villageRepository.findAllById(ids).stream()
+        List<VillageEntity> alive = villageRepository.findAllById(ids).stream()
                 .filter(v -> v.getDeletedAt() == null && v.getArchivedAt() == null)
-                .filter(v -> accessGate.isVisibleTo(v, actorUserId))
-                .forEach(v -> map.put(v.getId(), v));
+                .toList();
+
+        Map<UUID, VillageEntity> map = new HashMap<>();
+        for (VillageEntity v : accessGate.filterVisible(alive, actorUserId)) {
+            map.put(v.getId(), v);
+        }
         return map;
     }
 

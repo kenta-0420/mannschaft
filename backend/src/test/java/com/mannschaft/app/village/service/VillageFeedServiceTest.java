@@ -180,7 +180,8 @@ class VillageFeedServiceTest {
         UUID vId = UUID.randomUUID();
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
                 .willReturn(List.of(pin(vId, 0L)));
-        given(villageRepository.findById(vId)).willReturn(Optional.of(deletedVillage(vId)));
+        given(villageRepository.findAllById(any(Iterable.class)))
+                .willReturn(List.of(deletedVillage(vId)));
 
         VillageFeedResponse res = service.build(USER_ID, 20);
 
@@ -200,8 +201,7 @@ class VillageFeedServiceTest {
                 .willReturn(List.of(pin(vId1, 0L), pin(vId2, 1L)));
         given(postingIdentityService.getActiveVillageIdsByUser(USER_ID))
                 .willReturn(List.of(vId1, vId2));
-        given(villageRepository.findById(vId1)).willReturn(Optional.of(v1));
-        given(villageRepository.findById(vId2)).willReturn(Optional.of(v2));
+        given(villageRepository.findAllById(any(Iterable.class))).willReturn(List.of(v1, v2));
 
         given(timelinePostRepository.findLatestByVillageId(eq(vId1), any()))
                 .willReturn(List.of(timelinePost(10L, vId1, "東の投稿", t(10))));
@@ -244,7 +244,7 @@ class VillageFeedServiceTest {
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
                 .willReturn(List.of(pin(vId, 0L)));
         given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(vId));
-        given(villageRepository.findById(vId)).willReturn(Optional.of(v));
+        given(villageRepository.findAllById(any(Iterable.class))).willReturn(List.of(v));
         given(timelinePostRepository.findLatestByVillageId(eq(vId), any()))
                 .willReturn(List.of(
                         timelinePost(1L, vId, "1", t(1)),
@@ -271,7 +271,8 @@ class VillageFeedServiceTest {
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
                 .willReturn(List.of(pin(vId, 0L)));
         given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(vId));
-        given(villageRepository.findById(vId)).willReturn(Optional.of(activeVillage(vId, "新規村")));
+        given(villageRepository.findAllById(any(Iterable.class)))
+                .willReturn(List.of(activeVillage(vId, "新規村")));
         given(timelinePostRepository.findLatestByVillageId(eq(vId), any()))
                 .willReturn(List.of(timelinePost(1L, vId, "投稿だけ", t(5))));
         given(bulletinThreadRepository.findLatestByVillageId(eq(vId), any()))
@@ -292,7 +293,8 @@ class VillageFeedServiceTest {
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
                 .willReturn(List.of(pin(vId, 0L)));
         given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of(vId));
-        given(villageRepository.findById(vId)).willReturn(Optional.of(activeVillage(vId, "板の村")));
+        given(villageRepository.findAllById(any(Iterable.class)))
+                .willReturn(List.of(activeVillage(vId, "板の村")));
         given(timelinePostRepository.findLatestByVillageId(eq(vId), any()))
                 .willReturn(List.of());
         BulletinThreadEntity t = BulletinThreadEntity.builder()
@@ -320,7 +322,8 @@ class VillageFeedServiceTest {
         UUID vId = UUID.randomUUID();
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
                 .willReturn(List.of(pin(vId, 0L)));
-        given(villageRepository.findById(vId)).willReturn(Optional.of(activeVillage(vId, "余所の村")));
+        given(villageRepository.findAllById(any(Iterable.class)))
+                .willReturn(List.of(activeVillage(vId, "余所の村")));
         // 現役メンバーである村は 0 件 → 本文の集約対象にならない
         given(postingIdentityService.getActiveVillageIdsByUser(USER_ID)).willReturn(List.of());
 

@@ -13,6 +13,7 @@ import com.mannschaft.app.timeline.repository.TimelinePostRepository;
 import com.mannschaft.app.village.dto.VillageFeedItemResponse;
 import com.mannschaft.app.village.dto.VillageFeedResponse;
 import com.mannschaft.app.village.dto.VillagePinnedSummaryResponse;
+import com.mannschaft.app.village.repository.VillageRepository;
 import com.mannschaft.app.village.entity.UserVillagePinEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.repository.UserVillagePinRepository;
@@ -68,6 +69,9 @@ public class VillageFeedService {
 
     private final UserVillagePinRepository pinRepository;
     private final VillageAccessGate accessGate;
+    // ピン村の一括取得専用（findAllById は ID 群の実体化であり、存在確認ではない）。
+    // 村の存在確認・可視性判定は必ず accessGate を通すこと（番人が findById 系の直接呼び出しを禁じている）。
+    private final VillageRepository villageRepository;
     private final TimelinePostRepository timelinePostRepository;
     private final BulletinThreadRepository bulletinThreadRepository;
     private final ChatChannelRepository chatChannelRepository;
@@ -171,16 +175,29 @@ public class VillageFeedService {
      * 投稿本文は現役村人判定で除外されるが、ピン村サマリーはその判定の外側にあるため、
      * 「もう村人ではないユーザーに非公開村の実在と名称を見せる」漏洩経路になっていた。</p>
      *
-     * <p>そこで {@link VillageAccessGate#findVisibleVillage} を通し、可視でない村は黙って落とす。
+     * <p>そこで {@link VillageAccessGate#filterVisible} を通し、可視でない村は黙って落とす。
      * 落ちた村は既存の null 防御（{@code v == null} で continue）でそのまま非表示になるため、
      * 応答形状は変わらない。PUBLIC 村はゲートを素通りするので従来どおり表示される。</p>
+     *
+     * <h3>1 件ずつ引かない理由（N+1 の回避）</h3>
+     * <p>村を ID ごとに引くと、ピン上限（30 件）に比例してクエリが増える。
+     * ここは<b>ダッシュボードで頻繁に開かれる経路</b>なので、村の取得は {@code findAllById} で 1 本に束ね、
+     * 可視性判定も操作者を軸に畳む一括版へ渡す（村の件数によらず追加クエリは最大 2 本、
+     * PUBLIC 村のみなら 0 本）。{@code findAllById} は「クライアント指定 ID の存在確認」ではなく
+     * 取得済み ID 群の実体化なので、存在オラクルの経路にはならない。</p>
      */
     private Map<UUID, VillageEntity> loadVillagesByPin(List<UserVillagePinEntity> pins, Long actorUserId) {
+        if (pins.isEmpty()) {
+            return new HashMap<>();
+        }
+        List<UUID> ids = pins.stream().map(UserVillagePinEntity::getVillageId).toList();
+        List<VillageEntity> alive = villageRepository.findAllById(ids).stream()
+                .filter(v -> v.getDeletedAt() == null && v.getArchivedAt() == null)
+                .toList();
+
         Map<UUID, VillageEntity> result = new HashMap<>();
-        for (UserVillagePinEntity pin : pins) {
-            accessGate.findVisibleVillage(pin.getVillageId(), actorUserId)
-                    .filter(v -> v.getArchivedAt() == null)
-                    .ifPresent(v -> result.put(v.getId(), v));
+        for (VillageEntity v : accessGate.filterVisible(alive, actorUserId)) {
+            result.put(v.getId(), v);
         }
         return result;
     }
