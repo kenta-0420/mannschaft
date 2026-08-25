@@ -4,8 +4,6 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.safetycheck.SafetyCheckErrorCode;
@@ -20,12 +18,14 @@ import com.mannschaft.app.safetycheck.dto.UnrespondedUserResponse;
 import com.mannschaft.app.safetycheck.entity.SafetyCheckEntity;
 import com.mannschaft.app.safetycheck.entity.SafetyCheckTemplateEntity;
 import com.mannschaft.app.safetycheck.entity.SafetyResponseEntity;
+import com.mannschaft.app.safetycheck.event.SafetyCheckReminderNotificationEvent;
 import com.mannschaft.app.safetycheck.repository.SafetyCheckRepository;
 import com.mannschaft.app.safetycheck.repository.SafetyCheckTemplateRepository;
 import com.mannschaft.app.safetycheck.repository.SafetyResponseRepository;
 import com.mannschaft.app.safetycheck.SafetyResponseStatus;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -57,6 +57,7 @@ public class SafetyCheckService {
     private final MessageSource messageSource;
     private final UserLocaleCache userLocaleCache;
     private final AccessControlService accessControlService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
      * 安否確認を発信する。
@@ -291,7 +292,6 @@ public class SafetyCheckService {
      * @param userId        操作者ID
      */
     @Transactional
-    // TODO: SafetycheckドメインとNotificationドメインをまたいでいる。将来はReminderRequestedEventで分離予定
     public void sendReminder(Long safetyCheckId, Long userId) {
         SafetyCheckEntity entity = findSafetyCheckOrThrow(safetyCheckId);
         // 束3 AC-1-4: リマインド送信はスコープの ADMIN/DEPUTY_ADMIN のみ許可
@@ -312,24 +312,10 @@ public class SafetyCheckService {
 
         // 未回答者にリマインド通知を送信
         // NOTE: 全メンバーから回答済みを除いた未回答者への通知は、メンバー一覧取得実装後に拡張
-        try {
-            java.util.Locale locale = java.util.Locale.forLanguageTag(userLocaleCache.getLocale(userId));
-            notificationHelper.notify(userId, "SAFETY_CHECK_REMINDER", NotificationPriority.URGENT,
-                    messageSource.getMessage(
-                            "notification.safetycheck.reminder.title", null, "安否確認リマインド", locale),
-                    messageSource.getMessage(
-                            "notification.safetycheck.reminder.body", null,
-                            "安否確認に未回答です。至急回答をお願いします。", locale),
-                    "SAFETY_CHECK", safetyCheckId,
-                    NotificationScopeType.valueOf(entity.getScopeType().name()), entity.getScopeId(),
-                    "/safety-checks/" + safetyCheckId, userId);
-        } catch (Exception e) {
-            // 通知失敗を隔離する（非DB例外・MessageFormatエラー等が対象。本処理の巻き戻りは防がない。
-            // NotificationService.createNotification は本メソッドと同一トランザクションに参加するため、
-            // DB層例外はrollback-onlyが残り本処理ごと巻き戻る。根治はIssue #2834/CMP-056の範囲）。
-            log.warn("安否確認リマインド送信失敗: safetyCheckId={}, userId={}, error={}",
-                    safetyCheckId, userId, e.getMessage());
-        }
+        // Issue #2834 / CMP-056 横展開: 業務TX内ではイベントを publish するだけに留め、
+        // 文面組み立て・配送は AFTER_COMMIT の SafetyCheckReminderNotificationListener に委譲する。
+        applicationEventPublisher.publishEvent(new SafetyCheckReminderNotificationEvent(
+                safetyCheckId, userId, entity.getScopeType(), entity.getScopeId()));
         log.info("リマインド送信: safetyCheckId={}, sentBy={}", safetyCheckId, userId);
     }
 

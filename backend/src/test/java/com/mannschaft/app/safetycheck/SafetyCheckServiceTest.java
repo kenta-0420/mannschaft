@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -71,6 +72,9 @@ class SafetyCheckServiceTest {
     /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
     @Mock private UserLocaleCache userLocaleCache;
     @Mock private MessageSource messageSource;
+
+    /** Issue #2834 / CMP-056 横展開: sendReminder はイベント publish のみに留める。 */
+    @Mock private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private SafetyCheckService safetyCheckService;
@@ -528,6 +532,8 @@ class SafetyCheckServiceTest {
             // Then
             assertThat(entity.getLastReminderAt()).isNotNull();
             verify(safetyCheckRepository).save(entity);
+            verify(applicationEventPublisher).publishEvent(
+                    any(com.mannschaft.app.safetycheck.event.SafetyCheckReminderNotificationEvent.class));
         }
 
         @Test

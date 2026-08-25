@@ -4,30 +4,26 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.contact.ContactErrorCode;
 import com.mannschaft.app.contact.dto.ContactInvitePreviewResponse;
 import com.mannschaft.app.contact.dto.ContactInviteTokenResponse;
 import com.mannschaft.app.contact.dto.CreateInviteTokenBody;
 import com.mannschaft.app.contact.dto.SendContactRequestResponse;
 import com.mannschaft.app.contact.entity.ContactInviteTokenEntity;
+import com.mannschaft.app.contact.event.ContactInviteUsedNotificationEvent;
 import com.mannschaft.app.contact.repository.ContactInviteTokenRepository;
 import com.mannschaft.app.contact.repository.ContactRequestBlockRepository;
 import com.mannschaft.app.common.qr.BrandedQrImageWriter;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.MessageSource;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -47,11 +43,9 @@ public class ContactInviteTokenService {
     private final UserBlockRepository userBlockRepository;
     private final ContactRequestBlockRepository contactRequestBlockRepository;
     private final ContactService contactService;
-    private final NotificationService notificationService;
-    private final MessageSource messageSource;
-    private final UserLocaleCache userLocaleCache;
     private final BrandedQrImageWriter brandedQrImageWriter;
     private final NameResolverService nameResolverService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     /**
      * 招待トークンを発行する。
@@ -216,35 +210,15 @@ public class ContactInviteTokenService {
         };
     }
 
+    /**
+     * 招待リンク使用通知イベントを publish する（Issue #2834 / CMP-056 横展開）。
+     *
+     * <p>業務トランザクションの内側ではイベントを publish するだけに留め、通知の文面組み立て・配送は
+     * {@link com.mannschaft.app.contact.event.ContactInviteUsedNotificationListener}
+     * （{@code AFTER_COMMIT}）に委譲する。</p>
+     */
     private void sendInviteUsedNotification(Long actorId, Long issuerId, Long tokenId) {
-        try {
-            UserEntity actor = userRepository.findById(actorId).orElse(null);
-            Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(issuerId));
-            String defaultActorName = messageSource.getMessage(
-                    "notification.contact.common.defaultActorName", null, "ユーザー", locale);
-            String actorName = actor != null ? actor.getLastName() + " " + actor.getFirstName() : defaultActorName;
-            notificationService.createNotification(
-                    issuerId,
-                    "CONTACT_INVITE_USED",
-                    NotificationPriority.NORMAL,
-                    messageSource.getMessage(
-                            "notification.contact.inviteUsed.title", null,
-                            "招待リンクが使用されました", locale),
-                    messageSource.getMessage(
-                            "notification.contact.inviteUsed.body",
-                            new Object[]{actorName},
-                            actorName + " さんが招待リンクを使用しました", locale),
-                    "CONTACT_INVITE_TOKEN",
-                    tokenId,
-                    NotificationScopeType.PERSONAL,
-                    issuerId,
-                    "/settings/contact-invite-tokens",
-                    actorId
-            );
-        } catch (Exception e) {
-            // 通知失敗を隔離する（非DB例外・MessageFormatエラー等が対象。本処理の巻き戻りは防がない）。
-            log.warn("招待リンク使用通知の送信に失敗しました: issuerId={}, tokenId={}, error={}",
-                    issuerId, tokenId, e.getMessage());
-        }
+        applicationEventPublisher.publishEvent(
+                new ContactInviteUsedNotificationEvent(actorId, issuerId, tokenId));
     }
 }

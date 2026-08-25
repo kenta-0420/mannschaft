@@ -265,23 +265,19 @@ class CirculationServicePhase11Test {
         @Test
         @DisplayName("ACTIVE文書_PENDING2件_remindedCount2件")
         void 手動リマインド_正常() {
+            // Issue #2834 / CMP-056 横展開: remindDocument は業務TX内で受信者数（PENDING件数）を
+            // カウントしてイベントを publish するだけに留め、通知の解決・組み立て・配送は
+            // AFTER_COMMIT の CirculationReminderNotificationListener に委譲する。
             CirculationDocumentEntity entity = buildActive();
             given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
-
-            CirculationRecipientEntity r1 = CirculationRecipientEntity.builder()
-                    .documentId(DOCUMENT_ID).userId(30L).sortOrder(0).build();
-            CirculationRecipientEntity r2 = CirculationRecipientEntity.builder()
-                    .documentId(DOCUMENT_ID).userId(31L).sortOrder(1).build();
-            given(recipientRepository.findByDocumentIdAndStatusOrderBySortOrderAsc(
-                    DOCUMENT_ID, RecipientStatus.PENDING))
-                    .willReturn(List.of(r1, r2));
+            given(recipientRepository.countByDocumentIdAndStatus(DOCUMENT_ID, RecipientStatus.PENDING))
+                    .willReturn(2L);
 
             RemindResponse result = circulationService.remindDocument(DOCUMENT_ID, ACTOR_ID);
 
             assertThat(result.getRemindedCount()).isEqualTo(2);
-            verify(notificationService, times(2)).createNotification(
-                    anyLong(), eq("CIRCULATION_REMINDER"), any(), anyString(), anyString(),
-                    eq("CIRCULATION_DOCUMENT"), eq(DOCUMENT_ID), any(), anyLong(), anyString(), eq(ACTOR_ID));
+            verify(applicationEventPublisher).publishEvent(
+                    any(com.mannschaft.app.circulation.event.CirculationReminderNotificationEvent.class));
         }
 
         @Test
