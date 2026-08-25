@@ -172,6 +172,9 @@ for (const requiredUiSource of [
   'id="insightPersona"',
   'registrationSource',
   'syncAlicizationInsights',
+  'data-insight-source="self"',
+  'data-insight-source="alicization"',
+  'selectedInsightSource',
   'personaArchetype',
   'journeyId',
   'runId'

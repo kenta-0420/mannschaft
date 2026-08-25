@@ -116,6 +116,7 @@
     .view-button small { display: block; margin-top: 2px; color: inherit; opacity: .72; font-size: 10px; font-weight: 600; }
     .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
     .cmp-tag-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 12px 0 2px; }
+    .insight-source-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; margin: 0 0 12px; }
     .cmp-tag-filter-label { color: var(--muted); font-size: 12px; font-weight: 800; margin-right: 2px; }
     .cmp-tag-button { border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; background: var(--panel); color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; }
     .cmp-tag-button:hover { border-color: var(--brand); }
@@ -548,6 +549,7 @@
     let selectedView = 'focus';
     let selectedStage = 'B0';
     let selectedAudience = 'all';
+    let selectedInsightSource = 'all';
     const selectedCampaignTags = new Set();
     let selectedFeature = null;
     let insights = [];
@@ -1007,13 +1009,21 @@
     function renderInsights() {
       releaseInsightObjectUrls();
       const query = document.querySelector('#search').value.trim().toLowerCase();
-      const visibleInsights = insights.filter((insight) => {
+      const stageAndQueryInsights = insights.filter((insight) => {
         const feature = getFeatureInfo(insight.featureKey);
         const source = insightSourceDetails(insight);
         const stageMatches = feature.stage === selectedStage;
         const queryMatches = !query || `${insight.id} ${insight.title} ${insight.detail} ${insight.page} ${feature.title} ${insight.featureKey} ${source.sourceLabel} ${source.personaLabel} ${insight.journeyId || ''}`.toLowerCase().includes(query);
         return stageMatches && queryMatches;
       });
+      const sourceCounts = {
+        all: stageAndQueryInsights.length,
+        self: stageAndQueryInsights.filter((insight) => insightSourceDetails(insight).source === 'self').length,
+        alicization: stageAndQueryInsights.filter((insight) => insightSourceDetails(insight).source === 'alicization').length
+      };
+      const visibleInsights = stageAndQueryInsights.filter((insight) =>
+        selectedInsightSource === 'all' || insightSourceDetails(insight).source === selectedInsightSource
+      );
       const groups = new Map();
       visibleInsights.forEach((insight) => {
         if (!groups.has(insight.featureKey)) groups.set(insight.featureKey, []);
@@ -1034,6 +1044,12 @@
         <div class="insight-intro">
           <div><b>記録は30秒で十分</b><p>対象機能・一言・状況・スクショだけ残し、優先順位やCMP化は後で行います。</p></div>
           <button class="primary-button" type="button" data-open-insight-form>＋ 気づきを追加</button>
+        </div>
+        <div class="insight-source-filter" aria-label="気づきの登録元で絞り込む">
+          <span class="cmp-tag-filter-label">登録元</span>
+          <button class="cmp-tag-button ${selectedInsightSource === 'all' ? 'active' : ''}" type="button" data-insight-source="all">すべて ${sourceCounts.all}</button>
+          <button class="cmp-tag-button ${selectedInsightSource === 'self' ? 'active' : ''}" type="button" data-insight-source="self">私 ${sourceCounts.self}</button>
+          <button class="cmp-tag-button ${selectedInsightSource === 'alicization' ? 'active' : ''}" type="button" data-insight-source="alicization">アリシゼーション ${sourceCounts.alicization}</button>
         </div>
         <div class="insight-groups">
           ${groups.size ? [...groups.entries()].map(([featureKey, groupInsights]) => {
@@ -1081,7 +1097,7 @@
                   }).join('')}
                 </div>
               </section>`;
-          }).join('') : '<div class="empty">まだ気づきはありません。「＋ 気づきを追加」から最初の1件を残せます。</div>'}
+          }).join('') : `<div class="empty">${insights.length ? 'この条件に一致する気づきはありません。' : 'まだ気づきはありません。「＋ 気づきを追加」から最初の1件を残せます。'}</div>`}
         </div>`;
       return visibleInsights;
     }
@@ -1451,9 +1467,15 @@ ${insight.detail}
         return;
       }
       const openInsightButton = event.target.closest('[data-open-insight-form]');
+      const insightSourceButton = event.target.closest('[data-insight-source]');
       const insightPromptButton = event.target.closest('[data-insight-prompt]');
       const insightExportButton = event.target.closest('[data-insight-export]');
       const insightStatusButton = event.target.closest('[data-insight-status]');
+      if (insightSourceButton) {
+        selectedInsightSource = insightSourceButton.dataset.insightSource;
+        renderBoard();
+        return;
+      }
       if (openInsightButton) {
         openInsightForm();
         return;
@@ -1552,6 +1574,7 @@ ${insight.detail}
         insights = await readInsights();
         closeInsightForm();
         selectedView = 'insights';
+        selectedInsightSource = registrationSource;
         selectedStage = getFeatureInfo(insight.featureKey).stage;
         document.querySelectorAll('[data-view]').forEach((button) => button.classList.toggle('active', button.dataset.view === 'insights'));
         document.querySelectorAll('[data-stage]').forEach((button) => button.classList.toggle('active', button.dataset.stage === selectedStage));
