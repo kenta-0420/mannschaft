@@ -948,6 +948,19 @@ class GlobalExceptionHandlerTest {
         }
 
         @Test
+        @DisplayName("F03.19 CMP-112: CALENDAR_LAYER_LIMIT_EXCEEDED（SCHEDULE_104）は件数上限なので既定の 400 BadRequest"
+                + "（.claudecode.md §3.2.1「上限超過は 409 ではない」の回帰固定）")
+        void resolveHttpStatus_SCHEDULE_104_400() {
+            // 当初 ERROR_CODE_STATUS_MAP に 409 で登録していたが、規約 §3.2.1 の表は
+            // 「件数/サイズの上限超過」を 400（既定のまま・上書き不要）と定めている。
+            // 上書き登録ごと削除し、Severity.WARN 既定の 400 に戻した。
+            HttpStatus result = globalExceptionHandler.resolveHttpStatus(
+                    com.mannschaft.app.schedule.ScheduleErrorCode.CALENDAR_LAYER_LIMIT_EXCEEDED);
+
+            assertThat(result).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @Test
         @DisplayName("F03.4 バグ#5: INVALID_TIME_RANGE（start>=end）は WARN severity で 400 BadRequest になる（500 漏れ防止の回帰固定）")
         void resolveHttpStatus_INVALID_TIME_RANGE_400() {
             // 実機 E2E で start>=end が 500 を返していた（旧 Severity.ERROR）。
