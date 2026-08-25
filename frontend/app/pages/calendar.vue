@@ -409,7 +409,7 @@ async function clearLinkedQuery() {
 }
 
 onMounted(async () => {
-  initStorage()
+  await initStorage()
   await loadEvents()
   // クエリパラメータ ?tab=gantt で直接ガントタブを開いた場合は初期読み込みを行う
   if (activeTab.value === 'gantt') {

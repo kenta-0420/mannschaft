@@ -1326,6 +1326,12 @@
     "filter": {
       "allTeamsOrgs": "チーム・組織 (全て)",
       "selectScope": "作成先を選択"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "個人",
+        "unknown": "その他の予定"
+      }
     }
   },
   "handoff": {

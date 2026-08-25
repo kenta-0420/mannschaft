@@ -13,6 +13,8 @@ interface CalendarEntryRaw {
     // UUID 主キードメイン（reflection・F06.5 §6.2）の識別子。schedule 行は両者 null。
     referenceUuid?: string | null
     referenceKind?: string | null
+    // F03.19 §4.6: BE が解決済みの表示色（LAYER_USER > SCHEDULE > CATEGORY > LAYER_AUTO の優先順位で決定済み）。
+    color?: string | null
   }
   time: { startAt: string; endAt: string; allDay: boolean }
   scope: { scopeType: string; scopeId: string; scopeName: string | null; scopeIconUrl: string | null; scopeSlug?: string | null }
@@ -46,8 +48,113 @@ export interface ScopeOption {
   scopeId: string
 }
 
-export const PERSONAL_KEY = 'PERSONAL'
+/** `/me/calendar-layers` 応答を正規化した1レイヤー分の表示情報（F03.19 §4.3）。 */
+export interface CalendarLayerView {
+  scopeType: string
+  scopeId: number
+  scopeName: string
+  scopeNameKey: string | null
+  scopeIconUrl: string | null
+  color: string
+  colorSource: string
+  hidden: boolean
+}
+
+interface CalendarLayerRaw {
+  scopeType?: string
+  scopeId?: number
+  scopeName?: string
+  scopeNameKey?: string
+  scopeIconUrl?: string
+  color?: string
+  colorSource?: string
+  hidden?: boolean
+}
+
+function normalizeLayer(raw: CalendarLayerRaw): CalendarLayerView {
+  return {
+    scopeType: raw.scopeType ?? 'PERSONAL',
+    scopeId: raw.scopeId ?? 0,
+    scopeName: raw.scopeName ?? '',
+    scopeNameKey: raw.scopeNameKey ?? null,
+    scopeIconUrl: raw.scopeIconUrl ?? null,
+    color: raw.color ?? '#94a3b8',
+    colorSource: raw.colorSource ?? 'LAYER_AUTO',
+    hidden: raw.hidden ?? false,
+  }
+}
+
+/** F03.19 §4.3.1: PERSONAL の scopeId は DB・API・URL・FE レイヤーキーのすべてで 0 に統一する。 */
+export const PERSONAL_KEY = 'PERSONAL:0'
 export const FILTER_OVERFLOW = 5
+
+/** F03.19 §5.3: localStorage の新スキーマ・旧キー2種。 */
+const LAYER_STATE_KEY = 'mannschaft:calendar:layerState'
+const LEGACY_CALENDAR_KEY = 'mannschaft:calendar:scopeFilter'
+const LEGACY_WIDGET_KEY = 'mannschaft:widget:calendar:scopeFilter'
+type CalendarViewMode = 'month' | 'week' | 'agenda'
+
+interface LayerStateV2 {
+  version: 2
+  selected: string[]
+  view: CalendarViewMode
+}
+
+function isValidView(v: unknown): v is CalendarViewMode {
+  return v === 'month' || v === 'week' || v === 'agenda'
+}
+
+/** 旧キー値 "PERSONAL" を新形式 "PERSONAL:0" へ読み替える（§4.3.1）。 */
+function migrateLegacyScopeValue(value: string): string {
+  return value === 'PERSONAL' ? PERSONAL_KEY : value
+}
+
+/**
+ * 【R15 裁定】旧 localStorage キーから新キーへの移行を「セッション中に1度だけ」実行する。
+ * `/calendar` とウィジェットの双方が同じ `useMyCalendarData` を共有するため、
+ * モジュールスコープのフラグで多重実行を防ぐ（片方が先に旧キーを消すと、もう片方が
+ * 初期化フォールバックに落ちて選択状態を失う事故を防止する・設計書 R15）。
+ */
+let legacyStorageMigrated = false
+
+function migrateLegacyStorage(): void {
+  if (legacyStorageMigrated) return
+  legacyStorageMigrated = true
+  try {
+    if (localStorage.getItem(LAYER_STATE_KEY)) return // 新キーが既にあれば移行不要
+
+    // 両方の旧キーが併存する場合は必ず `/calendar` 側（LEGACY_CALENDAR_KEY）を採用する（R15）。
+    const calendarRaw = localStorage.getItem(LEGACY_CALENDAR_KEY)
+    const widgetRaw = localStorage.getItem(LEGACY_WIDGET_KEY)
+    const source = calendarRaw ?? widgetRaw
+    if (source == null) return
+
+    let parsed: unknown = null
+    try { parsed = JSON.parse(source) }
+    catch { parsed = null }
+
+    if (Array.isArray(parsed)) {
+      const migrated: LayerStateV2 = {
+        version: 2,
+        selected: parsed.filter((v): v is string => typeof v === 'string').map(migrateLegacyScopeValue),
+        view: 'month',
+      }
+      localStorage.setItem(LAYER_STATE_KEY, JSON.stringify(migrated))
+    }
+    // 併存有無に関わらず両方の旧キーを削除する（両系統が残って再分裂するのを防ぐ）。
+    localStorage.removeItem(LEGACY_CALENDAR_KEY)
+    localStorage.removeItem(LEGACY_WIDGET_KEY)
+  }
+  catch {
+    // localStorage が使えない環境（プライベートモード等）。移行できないだけで、
+    // これは握りつぶしではなく「新規訪問と同じ扱いで進める」という明示的な劣化。
+  }
+}
+
+/** テスト専用: 「セッション中1度だけ」のモジュールスコープ移行フラグをリセットする（AC-15b3）。 */
+export function __resetCalendarLayerMigrationForTest(): void {
+  legacyStorageMigrated = false
+}
 
 /**
  * エラーから HTTP ステータスを取り出す（ofetch の FetchError は statusCode と response.status の双方を持つ）。
@@ -104,16 +211,20 @@ export function resolveCalendarScopeRouteId(scope: CalendarEntryRaw['scope']): s
   return scope?.scopeSlug ?? String(scope?.scopeId ?? '')
 }
 
-export function useMyCalendarData(options?: { storageKey?: string }) {
-  const SCOPE_FILTER_KEY = options?.storageKey ?? 'mannschaft:calendar:scopeFilter'
+export function useMyCalendarData(_options?: { storageKey?: string }) {
   const scheduleApi = useScheduleApi()
   const ganttApi = useTodoGantt()
   const { buildDayStartStr, buildDayEndStr } = useDatetime()
   const errorHandler = useErrorHandler()
   const errorReport = useErrorReport()
   const authStore = useAuthStore()
+  const { t } = useI18n()
 
   const extendedEvents = ref<CalEvent[]>([])
+  /** `/me/calendar-layers` 由来のレイヤー一覧。events とは独立に取得し、月移動では再取得しない（AC-03）。 */
+  const layers = ref<CalendarLayerView[]>([])
+  const layersLoaded = ref(false)
+  const view = ref<CalendarViewMode>('month')
   /** TODO レイヤの取得に失敗したか（Issue #2637: 部分失敗をユーザーと利用側に見せる） */
   const todosFailed = ref(false)
 
@@ -205,7 +316,9 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
         startAt: e.time?.startAt ?? '',
         endAt: e.time?.endAt ?? '',
         allDay: e.time?.allDay ?? false,
-        color: null,
+        // F03.19 §4.6/§5.2: BE が解決済みの色を使う（FE でハッシュ計算しない）。
+        // 未デプロイ環境等で content.color が来ない場合のみ null へフォールバックする（明示的な劣化）。
+        color: e.content?.color ?? null,
         isPersonal: false,
         scopeType: e.scope?.scopeType ?? '',
         // 詳細API・画面URLは内部数値IDではなく公開slugを要求する。
@@ -254,34 +367,81 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
   const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth } =
     useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
 
-  const availableScopes = computed<ScopeOption[]>(() => {
+  /** レイヤー一覧の取得（§5.1）。events とは独立。月移動では呼ばない（AC-03）。 */
+  async function loadLayers(): Promise<void> {
+    const res = await scheduleApi.getMyCalendarLayers()
+    layers.value = ((res.data ?? []) as unknown as CalendarLayerRaw[]).map(normalizeLayer)
+    layersLoaded.value = true
+  }
+
+  function layerKey(scopeType: string, scopeId: number | string): string {
+    return `${scopeType}:${scopeId}`
+  }
+
+  function layerLabel(l: CalendarLayerView): string {
+    if (l.scopeType === 'PERSONAL' && l.scopeNameKey) return t(l.scopeNameKey)
+    return l.scopeName || t('schedule.calendar.layer.unknown')
+  }
+
+  /** BE レイヤー一覧のうち PERSONAL を除いたもの（作成スコープ選択 UI 向け・従来互換）。 */
+  const availableScopes = computed<ScopeOption[]>(() =>
+    layers.value
+      .filter((l) => l.scopeType !== 'PERSONAL')
+      .map((l) => ({ label: layerLabel(l), value: layerKey(l.scopeType, l.scopeId), scopeType: l.scopeType, scopeId: String(l.scopeId) })),
+  )
+
+  /**
+   * レイヤー一覧に存在しないスコープの予定を集めたフォールバックチップ（§5.2.1・AC-23）。
+   * 「イベントが1件でも存在するスコープには必ず対応するチップが存在する」不変条件を守る。
+   */
+  const layerKeySet = computed(() => new Set(layers.value.map((l) => layerKey(l.scopeType, l.scopeId))))
+
+  function eventLayerKey(ext: CalEvent): string {
+    if (ext.isPersonal || ext.scopeType === 'PERSONAL') return PERSONAL_KEY
+    return layerKey(ext.scopeType ?? '', ext.scopeId ?? '')
+  }
+
+  const fallbackScopeOptions = computed<ScopeOption[]>(() => {
+    if (!layersLoaded.value) return []
     const seen = new Set<string>()
     const result: ScopeOption[] = []
     for (const e of extendedEvents.value) {
-      if (!e.scopeType || e.scopeType === 'PERSONAL' || !e.scopeId) continue
-      const key = `${e.scopeType}:${e.scopeId}`
-      if (!seen.has(key)) {
-        seen.add(key)
-        result.push({ label: e.scopeName ?? `${e.scopeType} ${e.scopeId}`, value: key, scopeType: e.scopeType, scopeId: e.scopeId as string })
-      }
+      const key = eventLayerKey(e)
+      if (key === PERSONAL_KEY || layerKeySet.value.has(key) || seen.has(key)) continue
+      seen.add(key)
+      result.push({
+        label: e.scopeName ?? t('schedule.calendar.layer.unknown'),
+        value: key,
+        scopeType: e.scopeType ?? '',
+        scopeId: e.scopeId ?? '',
+      })
     }
     return result
   })
 
+  /** レイヤー一覧（BE 由来・予定の有無に依存しない）＋フォールバックチップ（§5.1/§5.2.1）。 */
   const allScopeOptions = computed<ScopeOption[]>(() => [
-    { label: '個人', value: PERSONAL_KEY, scopeType: 'PERSONAL', scopeId: '' },
-    ...availableScopes.value,
+    ...layers.value.map((l) => ({ label: layerLabel(l), value: layerKey(l.scopeType, l.scopeId), scopeType: l.scopeType, scopeId: String(l.scopeId) })),
+    ...fallbackScopeOptions.value,
   ])
 
   const selectedScopes = ref<string[]>([])
 
+  // §5.2: extendedEvents を uniqueKey で索引化し、filteredEvents は O(N) の Map 参照にする
+  // （旧実装はイベント1件ごとに extendedEvents を線形探索する O(N²) だった）。
+  // extendedEvents の配列自体は既存利用箇所（CalendarGrid 等）のため残す。
+  const eventsByUniqueKey = computed(() => {
+    const map = new Map<string, CalEvent>()
+    for (const e of extendedEvents.value) map.set(e.uniqueKey, e)
+    return map
+  })
+
   const filteredEvents = computed(() =>
     events.value.filter((e) => {
       // §6.2/AC-21: id は reflection 行で衝突する（id=null/-1）ため uniqueKey でルックアップする。
-      const ext = extendedEvents.value.find((x) => x.uniqueKey === e.uniqueKey)
+      const ext = eventsByUniqueKey.value.get(e.uniqueKey)
       if (!ext) return false
-      if (ext.isPersonal || ext.scopeType === 'PERSONAL') return selectedScopes.value.includes(PERSONAL_KEY)
-      return selectedScopes.value.includes(`${ext.scopeType}:${ext.scopeId}`)
+      return selectedScopes.value.includes(eventLayerKey(ext))
     }),
   )
 
@@ -296,35 +456,59 @@ export function useMyCalendarData(options?: { storageKey?: string }) {
     set: (vals: string[]) => { selectedScopes.value = vals },
   })
 
-  let hasSavedFilter = false
-  let scopesInitialized = false
-
-  function initStorage() {
+  function persistLayerState(): void {
     try {
-      const saved = localStorage.getItem(SCOPE_FILTER_KEY)
-      if (saved) {
-        selectedScopes.value = JSON.parse(saved)
-        hasSavedFilter = true
-      }
+      const payload: LayerStateV2 = { version: 2, selected: selectedScopes.value, view: view.value }
+      localStorage.setItem(LAYER_STATE_KEY, JSON.stringify(payload))
     }
-    catch { /* ignore */ }
+    catch { /* localStorage 不可時は永続化を諦めるが、選択状態そのものはメモリ上で機能し続ける */ }
   }
 
-  watch(selectedScopes, (val) => {
-    try { localStorage.setItem(SCOPE_FILTER_KEY, JSON.stringify(val)) }
-    catch { /* ignore */ }
-  }, { deep: true })
+  watch(selectedScopes, persistLayerState, { deep: true })
+  watch(view, persistLayerState)
 
-  watch(allScopeOptions, (opts) => {
-    if (!scopesInitialized && opts.length > 1) {
-      scopesInitialized = true
-      if (!hasSavedFilter) selectedScopes.value = opts.map((s) => s.value)
-    }
+  // §5.2.1: レイヤー一覧に無いフォールバックチップは「既定で選択状態」で現れる（AC-23）。
+  watch(fallbackScopeOptions, (opts) => {
+    const missing = opts.map((o) => o.value).filter((v) => !selectedScopes.value.includes(v))
+    if (missing.length) selectedScopes.value = [...selectedScopes.value, ...missing]
   })
+
+  /**
+   * localStorage 初期化（§5.3）。レイヤー一覧を（未取得なら）取得したうえで、
+   * 1) 新キーがあればそれを使う 2) 無ければ旧キーから移行する 3) どちらも無ければ
+   * `hidden=false` のレイヤーを全選択する（AC-15c）。移行そのものは
+   * migrateLegacyStorage 内でセッション中1度だけに限定される（R15）。
+   */
+  async function initStorage(): Promise<void> {
+    if (!layersLoaded.value) await loadLayers()
+
+    migrateLegacyStorage()
+
+    try {
+      const raw = localStorage.getItem(LAYER_STATE_KEY)
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<LayerStateV2> | string[]
+        // 移行直後を含め、新形式 { version, selected, view } を前提とする。
+        const selected = Array.isArray(parsed) ? parsed : parsed.selected
+        if (Array.isArray(selected)) {
+          selectedScopes.value = selected.map(migrateLegacyScopeValue)
+          const parsedView = Array.isArray(parsed) ? undefined : parsed.view
+          view.value = isValidView(parsedView) ? parsedView : 'month'
+          return
+        }
+      }
+    }
+    catch { /* 壊れたデータは初期化フォールバックへ */ }
+
+    // 初回訪問、または localStorage が壊れている場合: hidden=false のレイヤーを全選択（P1・AC-15c）。
+    selectedScopes.value = layers.value.filter((l) => !l.hidden).map((l) => layerKey(l.scopeType, l.scopeId))
+    view.value = 'month'
+  }
 
   return {
     currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth,
     extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
     toggleScope, multiSelectScopes, initStorage,
+    layers, layersLoaded, loadLayers, view,
   }
 }
