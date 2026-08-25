@@ -399,6 +399,23 @@ public class RoleService {
     }
 
     /**
+     * 指定チームで指定ロールを持つユーザー ID 一覧を返す。
+     *
+     * <p>Issue #2834 / CMP-056 第1群ロットB で追加。{@code social} ドメインの通知配送リスナー
+     * （{@code TeamFriendNotificationListener}）が両チームの ADMIN を解決するために使う。
+     * {@link #getAdminUserIdsByOrganizationId} と同じ趣旨で、他ドメインが {@code role} ドメインの
+     * {@code UserRoleRepository} を直接注入することを避けるための Service 経路
+     * （D-5 ArchUnit 準拠）。プリミティブ（{@code List<Long>}）のみを返し Entity を漏らさない。</p>
+     *
+     * @param teamId   対象チーム ID
+     * @param roleName ロール名（例: {@code "ADMIN"}）
+     * @return 当該チームで当該ロールを持つユーザー ID 一覧
+     */
+    public List<Long> getUserIdsByTeamIdAndRoleName(Long teamId, String roleName) {
+        return userRoleRepository.findUserIdsByTeamIdAndRoleName(teamId, roleName);
+    }
+
+    /**
      * ユーザーの有効権限リストを解決する。
      * ロール由来 + 権限グループ由来の統合リスト。
      *

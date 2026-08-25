@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.payment.entity.TeamPaymentAdvanceEntity;
+import com.mannschaft.app.payment.event.PaymentAdvanceSettledNotificationEvent;
 import com.mannschaft.app.payment.repository.TeamPaymentAdvanceRepository;
 import com.mannschaft.app.payment.service.TeamPaymentAdvanceService;
 import org.junit.jupiter.api.DisplayName;
@@ -38,9 +39,13 @@ class TeamPaymentAdvanceServiceTest {
     @Mock private TeamPaymentAdvanceRepository teamPaymentAdvanceRepository;
     @Mock private AccessControlService accessControlService;
     @Mock private com.mannschaft.app.auth.service.AuditLogService auditLogService;
-    @Mock private com.mannschaft.app.notification.service.NotificationHelper notificationHelper;
-    @Mock private com.mannschaft.app.role.repository.UserRoleRepository userRoleRepository;
-    @Mock private org.springframework.context.MessageSource messageSource;
+    /**
+     * Issue #2834 / CMP-056 第1群ロットB: 通知は業務コミット後に
+     * {@code PaymentAdvanceSettledNotificationListener} が配送するため、本サービスの通知系依存は
+     * イベントパブリッシャーのみになった（NotificationHelper / UserRoleRepository / MessageSource は
+     * 配送リスナーへ移動した）。
+     */
+    @Mock private org.springframework.context.ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private TeamPaymentAdvanceService service;
@@ -119,19 +124,34 @@ class TeamPaymentAdvanceServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: 精算確認の成立を協会 ADMIN へ軽量通知する（第二波）")
+        @DisplayName("正常系: 精算確認の成立を配送イベントとして publish する（通知は AFTER_COMMIT で配送）")
         void 精算確認で協会ADMINへ通知() {
             TeamPaymentAdvanceEntity a = advance(AdvanceSettlementStatus.PENDING, TEAM_ID);
             given(teamPaymentAdvanceRepository.findByIdAndDeletedAtIsNull(a.getId())).willReturn(Optional.of(a));
             given(teamPaymentAdvanceRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
-            given(userRoleRepository.findAdminUserIdsByOrganizationId(ORG_ID)).willReturn(java.util.List.of(21L, 22L));
-            given(messageSource.getMessage(any(String.class), any(), any(), any())).willReturn("通知文言");
 
             service.confirmSettlement(TEAM_ID, a.getId(), ADMIN_USER_ID);
 
-            verify(notificationHelper).notifyAll(
-                    eq(java.util.List.of(21L, 22L)), any(), any(), any(),
-                    any(), any(), any(), eq(ORG_ID), any(), any());
+            org.mockito.ArgumentCaptor<PaymentAdvanceSettledNotificationEvent> captor =
+                    org.mockito.ArgumentCaptor.forClass(PaymentAdvanceSettledNotificationEvent.class);
+            verify(applicationEventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().organizationId()).isEqualTo(ORG_ID);
+            assertThat(captor.getValue().advancedAmount()).isEqualTo(30000);
+            assertThat(captor.getValue().currency()).isEqualTo("JPY");
+            assertThat(captor.getValue().actorUserId()).isEqualTo(ADMIN_USER_ID);
+        }
+
+        @Test
+        @DisplayName("AC-2: 二重確認で失敗した場合は配送イベントも publish しない")
+        void 業務失敗時は配送イベントを出さない() {
+            TeamPaymentAdvanceEntity a = advance(AdvanceSettlementStatus.SETTLED, TEAM_ID);
+            given(teamPaymentAdvanceRepository.findByIdAndDeletedAtIsNull(a.getId())).willReturn(Optional.of(a));
+
+            assertThatThrownBy(() -> service.confirmSettlement(TEAM_ID, a.getId(), ADMIN_USER_ID))
+                    .isInstanceOf(BusinessException.class);
+
+            verify(applicationEventPublisher, never())
+                    .publishEvent(any(PaymentAdvanceSettledNotificationEvent.class));
         }
 
         @Test
