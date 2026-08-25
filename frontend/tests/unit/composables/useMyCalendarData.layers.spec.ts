@@ -4,6 +4,7 @@ import type { Ref } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import { mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { useTeamStore } from '~/stores/useTeamStore'
+import { useAuthStore } from '~/stores/useAuthStore'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 
 /**
@@ -32,6 +33,19 @@ import type { CalendarEventItem } from '~/composables/useCalendarEvents'
  *     layersDegraded フラグでフィルタそのものを迂回させ、取得できた予定は見えるようにする。
  *   P2-3: 旧V2状態（knownFallbackKeysを持たない）からの移行で、既に選択済みのフォールバック
  *     キーが newlySeen に紛れ込み selectedScopes に二重登録される（1回目のクリックで外せない）。
+ *
+ * 検分修繕（Codex検分 P1/P2、2026-08-26 三巡目 — 二巡目の修繕自身が生んだ欠陥）:
+ *   P1: 劣化モード（layersDegraded）中の selectedScopes=[] が persistLayerState で
+ *     localStorage に保存されてしまい、次回リロード時に「正当な永続化済み選択」として
+ *     復元される。レイヤー API が回復してイベントが取れても、空の選択のまま全件が弾かれ
+ *     続ける恒久的な「カレンダーが真っ白」状態になる。persistLayerState を劣化モード中は
+ *     no-op にすることで、劣化中の空選択そのものを保存対象から外す。
+ *   P2: 同一SPAセッション内のユーザー切替で useAuthStore.logout() が team/organization
+ *     ストアをクリアしないため、旧ユーザーの所属データが残ったまま再取得がスキップされ、
+ *     新ユーザーの所属チーム／組織が作成候補から消える。ストア自体のクリアは logout 側の
+ *     根治であり、他機能にも波及する横断的な修正（本戦役の外）。カレンダー機能側の自衛として
+ *     モジュールスコープでユーザーIDの変化を検知し、変化していればストアを強制的に空にして
+ *     再取得させる。
  */
 
 const mockListPersonalSchedules = vi.fn()
@@ -111,6 +125,7 @@ import {
   useMyCalendarData,
   PERSONAL_KEY,
   __resetCalendarLayerMigrationForTest,
+  __resetScopeStoreUserTrackingForTest,
 } from '~/composables/useMyCalendarData'
 
 const LAYER_STATE_KEY = 'mannschaft:calendar:layerState'
@@ -141,6 +156,7 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
     mockApi.mockResolvedValue({ data: [] })
     localStorage.clear()
     __resetCalendarLayerMigrationForTest()
+    __resetScopeStoreUserTrackingForTest()
   })
 
   it('AC-15b: 旧キー（/calendar 側）のみ存在 → 新キーへ移行され旧キーが消え、PERSONAL が PERSONAL:0 になる', async () => {
@@ -458,5 +474,94 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
     // 二重登録されていれば1回の toggleScope では消えないはずだが、ここでは1回で消える。
     cal.toggleScope('TEAM:team-888')
     expect(cal.selectedScopes.value).not.toContain('TEAM:team-888')
+  })
+
+  it('P1: レイヤーAPI障害で開く → 再読み込みする → 障害が回復すると予定が見える（劣化中の空選択を永続化しない）', async () => {
+    mockGetCalendarRange.mockResolvedValue({
+      data: [{
+        id: 50,
+        scheduleId: 50,
+        content: { title: '障害をまたいで見えるべき予定', eventType: 'PRACTICE', status: 'CONFIRMED' },
+        time: { startAt: '2026-08-18T10:00:00+09:00', endAt: '2026-08-18T11:00:00+09:00', allDay: false },
+        scope: { scopeType: 'TEAM', scopeId: '42', scopeName: '青葉FC', scopeIconUrl: null },
+        myAttendanceStatus: 'PENDING',
+      }],
+    })
+
+    // --- 1回目の訪問: レイヤー API が障害中・永続化済み選択も無い ---
+    mockGetMyCalendarLayers.mockRejectedValue(new Error('layers 500'))
+    const first = useMyCalendarData()
+    await first.initStorage()
+
+    expect(first.layersDegraded.value).toBe(true)
+    expect(first.selectedScopes.value).toEqual([])
+
+    const merged1 = await capturedFetcher!('2026-08-01', '2026-08-31')
+    capturedEventsRef!.value = merged1
+    await nextTick()
+    expect(first.filteredEvents.value.map((e) => e.uniqueKey)).toContain('shared:50') // 劣化モードで全件表示
+
+    // watch(selectedScopes, persistLayerState) の flush を確実に待つ。
+    await nextTick()
+    // P1修繕の核心: 劣化中の空選択は「正当な永続化済み選択」として保存されていないこと。
+    expect(localStorage.getItem(LAYER_STATE_KEY)).toBeNull()
+
+    // --- 再読み込み（新しい composable インスタンス）: レイヤー API が回復している ---
+    mockGetMyCalendarLayers.mockResolvedValue({ data: LAYERS_FIXTURE })
+    const second = useMyCalendarData()
+    await second.initStorage()
+
+    // 前回修繕の再発ポイント: ここで selectedScopes が [] のまま復元されてはならない。
+    expect(second.layersDegraded.value).toBe(false)
+    expect(second.selectedScopes.value).toEqual(['PERSONAL:0', 'TEAM:42'])
+
+    const merged2 = await capturedFetcher!('2026-08-01', '2026-08-31')
+    capturedEventsRef!.value = merged2
+    await nextTick()
+    expect(second.filteredEvents.value.map((e) => e.uniqueKey)).toContain('shared:50') // 回復後も見える
+  })
+
+  it('P2: 同一SPAセッション内のユーザー切替を検知し、旧ユーザーの所属ストアを残さず再取得する', async () => {
+    const authStore = useAuthStore()
+    const teamStore = useTeamStore()
+
+    // --- ユーザーA（id=1）: 所属チーム 42（slug=a-team）を持つ ---
+    authStore.user = { id: 1, email: 'a@example.com', fullName: 'ユーザーA', profileImageUrl: null }
+    teamStore.myTeams = [
+      { id: 42, slug: 'a-team', name: 'Aのチーム', nickname1: null, iconUrl: null, role: 'MEMBER', template: 'default', memberCount: 5 },
+    ]
+    mockGetMyCalendarLayers.mockResolvedValue({ data: LAYERS_FIXTURE }) // TEAM:42 を含む
+
+    const forA = useMyCalendarData()
+    await forA.loadLayers()
+    expect(forA.availableScopes.value).toContainEqual({ label: '青葉FC', value: 'TEAM:a-team', scopeType: 'TEAM', scopeId: 'a-team' })
+
+    // --- 同一SPAセッション内でユーザーB（id=2）へ切替。
+    //     useAuthStore.logout() は team/organization ストアをクリアしないため、
+    //     teamStore.myTeams には依然として A のチームが残っている（この欠陥の前提条件）。
+    authStore.user = { id: 2, email: 'b@example.com', fullName: 'ユーザーB', profileImageUrl: null }
+    mockGetMyCalendarLayers.mockResolvedValue({
+      data: [
+        { scopeType: 'PERSONAL', scopeId: 0, scopeName: '個人', scopeNameKey: 'schedule.calendar.layer.personal', scopeIconUrl: null, color: '#059669', colorSource: 'LAYER_AUTO', hidden: false },
+        { scopeType: 'TEAM', scopeId: 77, scopeName: 'Bのチーム', scopeNameKey: null, scopeIconUrl: null, color: '#0EA5E9', colorSource: 'LAYER_AUTO', hidden: false },
+      ],
+    })
+    mockApi.mockImplementation((url: string) => {
+      if (typeof url === 'string' && url.includes('/me/teams')) {
+        return Promise.resolve({
+          data: [{ id: 77, slug: 'b-team', name: 'Bのチーム', nickname1: null, iconUrl: null, role: 'MEMBER', template: 'default', memberCount: 3 }],
+        })
+      }
+      return Promise.resolve({ data: [] })
+    })
+
+    const forB = useMyCalendarData()
+    await forB.loadLayers()
+
+    // 旧ユーザー（A）のチームが残っていないこと。
+    expect(teamStore.myTeams.map((t) => t.id)).toEqual([77])
+    // B の所属チームが作成候補に正しく出ること（slugはBの再取得結果由来）。
+    expect(forB.availableScopes.value).toContainEqual({ label: 'Bのチーム', value: 'TEAM:b-team', scopeType: 'TEAM', scopeId: 'b-team' })
+    expect(forB.availableScopes.value.some((o) => o.value === 'TEAM:a-team')).toBe(false)
   })
 })

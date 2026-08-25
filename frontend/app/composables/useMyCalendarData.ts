@@ -172,6 +172,26 @@ export function __resetCalendarLayerMigrationForTest(): void {
 }
 
 /**
+ * P2修繕: 直近に team/organization ストアを検証したユーザーID（モジュールスコープ）。
+ *
+ * `undefined` = まだ検証していない（この場合は既存のストア内容を信用し、勝手に消さない —
+ * ScopeNavDropdown 等、本 composable 以外が既に正しいユーザーの所属データを読み込んでいる
+ * 可能性があるため）。一度検証した後にユーザーIDが変われば「ユーザー切替」とみなす。
+ *
+ * `useAuthStore.logout()` は team/organization ストアをクリアしない（本戦役の外の既存の
+ * 横断的欠陥・別課題として報告する）。このモジュール変数は、その隙間をカレンダー機能側で
+ * 自衛するための最小限の状態であり、`legacyStorageMigrated` と同じ「モジュールスコープで
+ * SPA セッションを跨いで生存させる」パターンに倣う（composable インスタンス自体は
+ * ログアウト時の /login 遷移でページごと破棄され、インスタンス内 state では検知できない）。
+ */
+let lastScopeStoreUserId: number | null | undefined = undefined
+
+/** テスト専用: ユーザー切替検知のモジュールスコープ状態をリセットする。 */
+export function __resetScopeStoreUserTrackingForTest(): void {
+  lastScopeStoreUserId = undefined
+}
+
+/**
  * エラーから HTTP ステータスを取り出す（ofetch の FetchError は statusCode と response.status の双方を持つ）。
  * ネットワーク断・タイムアウトなど応答が無い失敗では undefined を返す。
  */
@@ -410,7 +430,20 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
    */
   async function loadLayers(): Promise<void> {
     try {
-      // P2修繕: 作成スコープ選択（availableScopes）が要る slug を、レイヤー API とは別経路
+      // P2修繕: 同一SPAセッション内でのユーザー切替を検知する。useAuthStore.logout() は
+      // team/organization ストアをクリアしないため、旧ユーザーの所属データが残ったままだと
+      // 下の「取得済みなら再取得しない」判定が誤って再取得をスキップし、新ユーザーの
+      // 所属チーム／組織が作成スコープ候補から消える。ここではカレンダー機能側の自衛として
+      // ユーザーIDの変化を検知したときだけストアを強制的に空にし、再取得させる
+      // （ストア自体のクリアは logout 側の根治であり本戦役の範囲外・別課題として報告する）。
+      const currentUserId = authStore.currentUser?.id ?? null
+      if (lastScopeStoreUserId !== undefined && lastScopeStoreUserId !== currentUserId) {
+        teamStore.myTeams = []
+        orgStore.myOrganizations = []
+      }
+      lastScopeStoreUserId = currentUserId
+
+      // 作成スコープ選択（availableScopes）が要る slug を、レイヤー API とは別経路
       // （既存の /me/teams・/me/organizations を持つ team/organization ストア）から補う。
       // 未取得なら取得する（取得済みなら再取得しない＝月移動等で無駄打ちしない）。
       const [res] = await Promise.all([
@@ -555,7 +588,20 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
     set: (vals: string[]) => { selectedScopes.value = vals },
   })
 
+  /**
+   * P1修繕: 劣化モード（layersDegraded）中は永続化しない。
+   *
+   * 劣化中の selectedScopes=[] は「ユーザーが意図して全解除した」のではなく
+   * 「レイヤー一覧を組み立てられず選択肢そのものが無かった」ことの副産物であり、
+   * 正当な選択状態ではない。これを他の選択状態と区別せず保存すると、次回リロード時に
+   * initStorage が「永続化済みの正当な選択」として復元してしまい、レイヤー API が
+   * 回復してイベントが取れても空の選択のまま全件が弾かれ続ける
+   * （一度の API 障害が再読み込み後も消えない「カレンダーが真っ白」状態を作る）。
+   * 劣化状態そのものを保存対象から外すことで、次回 initStorage は localStorage に
+   * 何も無い状態から再判定する（layersLoaded の成否に応じて通常初期化 or 再度劣化）。
+   */
   function persistLayerState(): void {
+    if (layersDegraded.value) return
     try {
       const payload: LayerStateV2 = {
         version: 2,
