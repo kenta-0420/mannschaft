@@ -171,8 +171,17 @@ class BackgroundEntryPolicyDeclarationGuardTest {
         }
     }
 
-    /** 走査結果。 */
-    record Scan(List<Entry> entries, int sourceCount) {
+    /**
+     * 走査結果。
+     *
+     * <p><b>ソース本文は保持しない。</b>本番ソースは 7000 件超あり、本文を一括で抱えると
+     * 数百 MB の String がテスト JVM に載る。本テストは Spring 結合テストと同じ
+     * Gradle テストワーカー上で走るため、それらのヒープを圧迫して
+     * {@code OutOfMemoryError} の引き金になりうる（実際に CI の shard 5 が
+     * ヒープダンプ 6.9GB を吐いて落ちた）。よって走査は<b>1ファイルずつ読んで捨てる</b>方式とし、
+     * 残すのは入口一覧（数百件）と FQCN 一覧（数千件の短い文字列）だけにする。</p>
+     */
+    record Scan(List<Entry> entries, int sourceCount, List<String> fqcns) {
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -204,9 +213,7 @@ class BackgroundEntryPolicyDeclarationGuardTest {
                 .as("禁止域リストが空では AC-1 は永久に緑になる（空虚 green）")
                 .isNotEmpty();
 
-        List<String> fqcns = sources().stream()
-                .map(BackgroundEntryPolicyDeclarationGuardTest::fqcnOf)
-                .toList();
+        List<String> fqcns = scan().fqcns();
         assertThat(fqcns).as("本番ソースを1件も読めていない（走査根の想定が崩れている）").isNotEmpty();
 
         List<String> dead = new ArrayList<>();
@@ -283,9 +290,10 @@ class BackgroundEntryPolicyDeclarationGuardTest {
         // この予算が守っているのは「走査が線形であること」であって、マシンの空き具合ではない。
         // 走査は O(n) だが、本テストは開発機で他の Gradle ビルドと並走しうる。
         // 実測（2026-08-25、ビルド4本並走中）で読み取り込みの1回が約64秒かかったため、
-        // ファイル読み取りは sources() で1回に畳んだうえで、予算は余裕を持たせてある。
+        // ファイル読み取りは 1 件ずつ読んで捨てる方式にしたうえで、予算は余裕を持たせてある。
         // 破滅的バックトラック等で超線形になれば、この余裕をもってしても落ちる。
-        assertTimeout(Duration.ofMinutes(3), (ThrowingSupplier<Scan>) this::scan,
+        assertTimeout(Duration.ofMinutes(3),
+                (ThrowingSupplier<Scan>) BackgroundEntryPolicyDeclarationGuardTest::freshScan,
                 "全ソース走査が3分以内に終わらない。線形走査が壊れている（超線形になった）疑いがある");
     }
 
@@ -347,30 +355,53 @@ class BackgroundEntryPolicyDeclarationGuardTest {
     // ═══════════════════════════════════════════════════════════════════
 
     /**
-     * 本番ソースのキャッシュ。
+     * 走査結果のキャッシュ（本文は含まない。{@link Scan} の Javadoc 参照）。
      *
      * <p>本クラスの各テストはいずれも全ソース走査を要するため、素直に書くと
      * 7000 件超のファイル読み取りをテストの数だけ繰り返すことになる。
-     * 実測（2026-08-25、Gradle ビルドが4本並走している最中）で、
-     * 走査 1 回あたりの所要が 60 秒を超え AC-16 が落ちた。
-     * 支配的なのは解析ではなくファイル I/O なので、読み取りは 1 回に畳んで共有する。</p>
+     * 実測（2026-08-25、Gradle ビルドが4本並走している最中）で走査 1 回あたりが 60 秒を超え、
+     * AC-16 が落ちた。支配的なのは解析ではなくファイル I/O なので結果を共有する。</p>
      */
-    private static List<Source> cachedSources;
+    private static Scan cachedScan;
 
-    private static synchronized List<Source> sources() throws IOException {
-        if (cachedSources == null) {
-            cachedSources = loadSources();
+    private static synchronized Scan scan() throws IOException {
+        if (cachedScan == null) {
+            cachedScan = freshScan();
         }
-        return cachedSources;
+        return cachedScan;
     }
 
-    private Scan scan() throws IOException {
-        List<Source> sources = sources();
+    /**
+     * 全ソースを走査する（キャッシュを使わない実走）。
+     *
+     * <p>ファイルは 1 件ずつ読んで解析し、<b>本文は直ちに捨てる</b>。
+     * 同時にメモリへ載るソース本文は常に 1 件分だけである。</p>
+     */
+    private static Scan freshScan() throws IOException {
+        Path root = sourceRoot();
         List<Entry> entries = new ArrayList<>();
-        for (Source s : sources) {
-            entries.addAll(analyze(s));
+        List<String> fqcns = new ArrayList<>();
+        int[] count = {0};
+
+        try (Stream<Path> stream = Files.walk(root)) {
+            stream.filter(Files::isRegularFile)
+                    .filter(p -> p.getFileName().toString().endsWith(".java"))
+                    .forEach(p -> {
+                        String relPath = p.toString().replace('\\', '/');
+                        String content;
+                        try {
+                            content = Files.readString(p, StandardCharsets.UTF_8);
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
+                        }
+                        // Source は本ループの中だけで生き、本文は次の反復で回収される。
+                        Source src = new Source(relPath, content);
+                        count[0]++;
+                        fqcns.add(fqcnOf(src));
+                        entries.addAll(analyze(src));
+                    });
         }
-        return new Scan(entries, sources.size());
+        return new Scan(entries, count[0], fqcns);
     }
 
     /**
@@ -605,24 +636,6 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             }
         }
         throw new IllegalStateException("src/main/java が見つからない（cwd=" + Paths.get("").toAbsolutePath() + "）");
-    }
-
-    private static List<Source> loadSources() throws IOException {
-        Path root = sourceRoot();
-        List<Source> out = new ArrayList<>();
-        try (Stream<Path> stream = Files.walk(root)) {
-            stream.filter(Files::isRegularFile)
-                    .filter(p -> p.getFileName().toString().endsWith(".java"))
-                    .forEach(p -> {
-                        try {
-                            out.add(new Source(p.toString().replace('\\', '/'),
-                                    Files.readString(p, StandardCharsets.UTF_8)));
-                        } catch (IOException e) {
-                            throw new UncheckedIOException(e);
-                        }
-                    });
-        }
-        return out;
     }
 
     private static Map<String, Integer> readFreeze() throws IOException {
