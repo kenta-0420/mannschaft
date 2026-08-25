@@ -33,6 +33,7 @@
         "failed": "Fallido",
         "running": "En ejecución",
         "skipped": "Omitido",
+        "resumed": "Reanudado",
         "locked": "Bloqueado",
         "accepted": "Aceptado",
         "completed": "Completado",
