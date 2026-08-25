@@ -95,6 +95,13 @@ if (JSON.stringify(strategy.stages?.map((stage) => [stage.id, stage.personas])) 
 if (!Array.isArray(strategy.personas) || strategy.personas.length !== 20 || new Set(strategy.personas.map((persona) => persona.id)).size !== 20) throw new Error('B0自律テスト戦略のpersonaが20人一意ではありません');
 const personaFields = ['age', 'itProficiency', 'adhdTendency', 'useCase', 'role', 'permission', 'membership', 'notificationResponse', 'usagePattern', 'relationships', 'history', 'account', 'browserContext'];
 for (const persona of strategy.personas) if (!persona.id || personaFields.some((field) => persona[field] === undefined || persona[field] === '')) throw new Error(`B0 persona項目不足: ${persona.id}`);
+const personaIds = new Set(strategy.personas.map((persona) => persona.id));
+const journeyIds = new Set((b0Plan.journeys || []).map((journey) => journey.id));
+for (const insight of data.b0RunOverlay?.insights || []) {
+  if (!insight.id || !insight.featureKey || !insight.title || !insight.detail) throw new Error('B0気づきの必須項目が不足しています');
+  if (insight.personaId && !personaIds.has(insight.personaId)) throw new Error(`B0気づきのpersonaが未定義です: ${insight.personaId}`);
+  if (!journeyIds.has(insight.journeyId)) throw new Error(`B0気づきのjourneyが未定義です: ${insight.journeyId}`);
+}
 if (!Array.isArray(strategy.timeline) || strategy.timeline.length < 6 || !Array.isArray(strategy.evidence) || strategy.evidence.length < 4) throw new Error('B0自律テスト戦略の時間軸・証拠定義が不足しています');
 if (strategy.safety?.database !== '開発DB限定' || strategy.safety?.externalSending !== false || strategy.safety?.cookies !== 'personaごとに分離' || !String(strategy.safety?.passCriteria || '').includes('0件・全skip・途中停止は非合格')) throw new Error('B0自律テスト戦略の安全条件が不正です');
 if (JSON.stringify(b0Plan) !== JSON.stringify(b0PlanSource)) throw new Error('B0アリシゼーション計画と生成データが不一致です');
@@ -157,6 +164,20 @@ const inlineScripts = [...html.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script
   .map((match) => match[1])
   .filter((source) => source.trim());
 inlineScripts.forEach((source) => new Function(source));
+
+for (const requiredUiSource of [
+  "localStorage.getItem('mannschaft-beta-inventory-theme')",
+  'localStorage.setItem(THEME_STORAGE_KEY',
+  'id="insightSource"',
+  'id="insightPersona"',
+  'registrationSource',
+  'syncAlicizationInsights',
+  'personaArchetype',
+  'journeyId',
+  'runId'
+]) {
+  if (!html.includes(requiredUiSource)) throw new Error(`テーマ・気づき統合UIの必須要素がありません: ${requiredUiSource}`);
+}
 
 for (const label of ['不備あり', '未棚卸', '実装未完', '検証中', 'β準備完了']) {
   if (!html.includes(label)) throw new Error(`5状態レーンが不足しています: ${label}`);

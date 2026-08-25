@@ -8,8 +8,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const coveragePath = path.join(root, 'docs/prototypes/beta-inventory-board-b0-coverage.json');
+const planPath = path.join(root, 'docs/prototypes/beta-inventory-board-b0-alicization.json');
 const outputDir = path.join(root, 'docs/prototypes/.b0-local');
 const coverage = JSON.parse(fs.readFileSync(coveragePath, 'utf8'));
+const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'));
+const personaIds = new Set(plan.autonomousTestStrategy.personas.map((persona) => persona.id));
 const args = process.argv.slice(2);
 const mode = args[0] || 'list';
 const selected = args.filter((value) => /^B0-J\d+$/.test(value));
@@ -65,6 +68,45 @@ function normalizeSpecPath(spec) {
   return spec.slice('frontend/'.length);
 }
 
+function collectAnnotatedInsights(suites, context, collected = []) {
+  for (const suite of suites || []) {
+    for (const spec of suite.specs || []) {
+      for (const test of spec.tests || []) {
+        for (const annotation of test.annotations || []) {
+          if (annotation.type !== 'inventory-insight') continue;
+          let finding;
+          try {
+            finding = JSON.parse(annotation.description || '{}');
+          } catch {
+            throw new Error(`${context.journeyId}: inventory-insight annotationがJSONではありません`);
+          }
+          if (!finding.featureKey || !finding.title || !finding.detail) {
+            throw new Error(`${context.journeyId}: inventory-insightにfeatureKey/title/detailが必要です`);
+          }
+          if (finding.personaId && !personaIds.has(finding.personaId)) {
+            throw new Error(`${context.journeyId}: 未定義personaです: ${finding.personaId}`);
+          }
+          collected.push({
+            id: finding.id || `${context.journeyId}-${finding.personaId || 'COORD'}-${collected.length + 1}`,
+            journeyId: context.journeyId,
+            featureKey: finding.featureKey,
+            priority: finding.priority || 'should',
+            title: finding.title,
+            detail: finding.detail,
+            page: finding.page || '',
+            personaId: finding.personaId || '',
+            observedAt: finding.observedAt || context.observedAt,
+            evidencePath: finding.evidencePath || context.evidencePath,
+            screenshotPath: finding.screenshotPath || ''
+          });
+        }
+      }
+    }
+    collectAnnotatedInsights(suite.suites, context, collected);
+  }
+  return collected;
+}
+
 function selfTestFixtures() {
   assert.deepEqual(summarizeSuites([{ specs: [{ tests: [{ status: 'expected', results: [{}] }] }], suites: [{ specs: [{ tests: [{ status: 'unexpected', results: [{}] }] }] }] }]), { expected: 1, unexpected: 1, skipped: 0, results: 2 });
   assert.deepEqual(summarizeSuites([]), { expected: 0, unexpected: 0, skipped: 0, results: 0 });
@@ -73,6 +115,17 @@ function selfTestFixtures() {
   assert.deepEqual(summarizeSuites([{ specs: [{ tests: [{ status: 'expected', results: [{}] }] }] }]), { expected: 1, unexpected: 0, skipped: 0, results: 1 });
   assert.equal(normalizeSpecPath('frontend/tests/e2e/x.spec.ts'), 'tests/e2e/x.spec.ts');
   assert.throws(() => normalizeSpecPath('backend/tests/x.spec.ts'));
+  const annotated = collectAnnotatedInsights(
+    [{ specs: [{ tests: [{ annotations: [{ type: 'inventory-insight', description: JSON.stringify({ featureKey: 'dashboard', title: '次の操作が不明', detail: '導線を発見できない', personaId: 'P06' }) }] }] }] }],
+    { journeyId: 'B0-J1', observedAt: '2026-08-25T00:00:00.000Z', evidencePath: 'docs/prototypes/.b0-local/B0-J1.json' }
+  );
+  assert.equal(annotated.length, 1);
+  assert.equal(annotated[0].personaId, 'P06');
+  assert.equal(annotated[0].journeyId, 'B0-J1');
+  assert.throws(() => collectAnnotatedInsights(
+    [{ specs: [{ tests: [{ annotations: [{ type: 'inventory-insight', description: JSON.stringify({ featureKey: 'dashboard', title: 'x', detail: 'y', personaId: 'P99' }) }] }] }] }],
+    { journeyId: 'B0-J1', observedAt: '2026-08-25T00:00:00.000Z', evidencePath: '' }
+  ));
   const blocked = { status: 'blocked', recordedAt: new Date().toISOString(), selectedJourneys: ['B0-J1'] };
   assert.equal(blocked.status, 'blocked');
   console.log('run-b0-alicization fixture self-test: ok');
@@ -84,7 +137,8 @@ async function run() {
   if (!journeys().length) throw new Error('実行対象journeyが0件です');
   fs.mkdirSync(outputDir, { recursive: true });
   const startedAt = new Date().toISOString();
-  const result = { schemaVersion: 1, startedAt, mode: 'real-ui-real-db', selectedJourneys: [], conditions: { baseUrlConfigured: true, apiBaseUrlConfigured: true, realDb: true, threeUsers: 'operator-declared', separateBrowserContexts: 'not-proven' }, journeys: [] };
+  const runId = `B0-${startedAt.replaceAll(':', '-')}`;
+  const result = { schemaVersion: 2, runId, startedAt, mode: 'real-ui-real-db', selectedJourneys: journeys().map(([id]) => id), conditions: { baseUrlConfigured: true, apiBaseUrlConfigured: true, realDb: true, threeUsers: 'operator-declared', separateBrowserContexts: 'not-proven' }, journeys: [], insights: [] };
   const dedicatedProof = 'frontend/tests/e2e/real/b0-j1-dashboard-scope.spec.ts';
   for (const [id, item] of journeys()) {
     if (id !== 'B0-J1') {
@@ -102,7 +156,26 @@ async function run() {
     const summary = summarizeSuites(parsed?.suites);
     const status = child.status === 0 && summary.results > 0 && summary.expected > 0 && summary.unexpected === 0 && summary.skipped === 0 ? 'test-passed' : 'test-failed';
     fs.writeFileSync(jsonPath, JSON.stringify(parsed || { error: 'Playwright JSONを解釈できません', exitCode: child.status }, null, 2));
-    result.journeys.push({ id, status, specPaths: item.specPaths, summary, evidencePath: path.relative(root, jsonPath).replaceAll('\\', '/') });
+    const evidencePath = path.relative(root, jsonPath).replaceAll('\\', '/');
+    const annotatedInsights = collectAnnotatedInsights(parsed?.suites, { journeyId: id, observedAt: new Date().toISOString(), evidencePath });
+    result.insights.push(...annotatedInsights);
+    if (status === 'test-failed' && summary.unexpected > 0) {
+      const journey = plan.journeys.find((candidate) => candidate.id === id);
+      result.insights.push({
+        id: `${id}-TEST-FAILURE`,
+        journeyId: id,
+        featureKey: journey?.capabilities?.[0] || 'cross-cutting',
+        priority: 'must',
+        title: `${id} 自動テスト失敗`,
+        detail: `unexpected=${summary.unexpected}、expected=${summary.expected}、skipped=${summary.skipped}。実行証拠を確認して原因を切り分ける。`,
+        page: '',
+        personaId: '',
+        observedAt: new Date().toISOString(),
+        evidencePath,
+        screenshotPath: ''
+      });
+    }
+    result.journeys.push({ id, status, specPaths: item.specPaths, summary, evidencePath, insightCount: result.insights.filter((insight) => insight.journeyId === id).length });
     if (status === 'test-passed') result.conditions.separateBrowserContexts = 'proven';
   }
   result.finishedAt = new Date().toISOString();
