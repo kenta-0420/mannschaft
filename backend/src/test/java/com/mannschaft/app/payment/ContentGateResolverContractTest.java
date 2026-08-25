@@ -25,6 +25,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
+/**
+ * 課金ゲートResolverの登録・スコープ委譲契約を検証する。
+ */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ContentGateResolver SPI 契約")
 class ContentGateResolverContractTest {
@@ -70,8 +73,6 @@ class ContentGateResolverContractTest {
     void registryRejectsDuplicateContentType() {
         given(post.contentType()).willReturn(ContentGateType.POST);
         given(file.contentType()).willReturn(ContentGateType.POST);
-        given(announcement.contentType()).willReturn(ContentGateType.ANNOUNCEMENT);
-        given(schedule.contentType()).willReturn(ContentGateType.SCHEDULE);
 
         assertThatThrownBy(() -> new ContentGateResolverRegistry(List.of(post, file, announcement, schedule)))
                 .isInstanceOf(IllegalStateException.class);

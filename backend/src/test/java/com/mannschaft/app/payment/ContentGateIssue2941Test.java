@@ -5,6 +5,7 @@ import com.mannschaft.app.payment.dto.ContentPaymentGateRequest;
 import com.mannschaft.app.payment.entity.ContentPaymentGateEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.ContentPaymentGateRepository;
+import com.mannschaft.app.payment.service.ContentGateResolverRegistry;
 import com.mannschaft.app.payment.service.ContentPaymentGateService;
 import com.mannschaft.app.payment.service.PaymentItemService;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /** Issue #2941: コンテンツゲートの対象スコープと監査情報を固定する red テスト。 */
@@ -32,22 +34,27 @@ class ContentGateIssue2941Test {
 
     @Mock private ContentPaymentGateRepository gateRepository;
     @Mock private PaymentItemService paymentItemService;
+    @Mock private ContentGateResolverRegistry contentGateResolverRegistry;
     @InjectMocks private ContentPaymentGateService service;
 
     @Test
     @DisplayName("AC-1: 管理者でも対象チーム外コンテンツにはゲートを設定できない")
     void 管理者でも対象スコープ外コンテンツは拒否() {
-        given(paymentItemService.findByIdOrThrow(20L)).willReturn(item(20L, 1L));
         ContentPaymentGateRequest request = request(999L);
+        given(contentGateResolverRegistry.existsInScope("POST", 999L, 1L, null)).willReturn(false);
 
         assertThatThrownBy(() -> service.setTeamContentGates(1L, 100L, request))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(PaymentErrorCode.CONTENT_NOT_FOUND);
+        verify(gateRepository, never()).deleteByContentTypeAndContentId("POST", 999L);
     }
 
     @Test
     @DisplayName("AC-2: 対象チーム内コンテンツはゲート設定に成功する")
     void 対象スコープ内コンテンツは成功() {
         given(paymentItemService.findByIdOrThrow(20L)).willReturn(item(20L, 1L));
+        given(contentGateResolverRegistry.existsInScope("POST", 101L, 1L, null)).willReturn(true);
         ContentPaymentGateEntity saved = ContentPaymentGateEntity.builder()
                 .id(1L).paymentItemId(20L).contentType("POST").contentId(101L)
                 .createdBy(100L).createdAt(LocalDateTime.now()).build();
@@ -55,7 +62,7 @@ class ContentGateIssue2941Test {
 
         var result = service.setTeamContentGates(1L, 100L, request(101L));
 
-        assertThat(result.gates()).hasSize(1);
+        assertThat(result.getGates()).hasSize(1);
         verify(gateRepository).deleteByContentTypeAndContentId("POST", 101L);
     }
 
@@ -66,6 +73,7 @@ class ContentGateIssue2941Test {
                 .contentType("POST").contentId(101L).createdBy(100L)
                 .createdAt(LocalDateTime.of(2026, 8, 25, 10, 0)).build();
         given(paymentItemService.findTeamPaymentItems(1L)).willReturn(List.of(item(20L, 1L)));
+        given(paymentItemService.findByIdOrThrow(20L)).willReturn(item(20L, 1L));
         var pageable = PageRequest.of(0, 10);
         given(gateRepository.findByPaymentItemIdIn(List.of(20L), pageable))
                 .willReturn(new PageImpl<>(List.of(gate), pageable, 1));

@@ -30,6 +30,7 @@ public class ContentPaymentGateService {
 
     private final ContentPaymentGateRepository contentPaymentGateRepository;
     private final PaymentItemService paymentItemService;
+    private final ContentGateResolverRegistry contentGateResolverRegistry;
 
     /**
      * チーム内のコンテンツゲート一覧を取得する。
@@ -101,6 +102,11 @@ public class ContentPaymentGateService {
         // content_type バリデーション
         if (!ContentGateType.isSupported(request.getContentType())) {
             throw new BusinessException(PaymentErrorCode.UNSUPPORTED_CONTENT_TYPE);
+        }
+
+        if (!contentGateResolverRegistry.existsInScope(
+                request.getContentType(), request.getContentId(), teamId, organizationId)) {
+            throw new BusinessException(PaymentErrorCode.CONTENT_NOT_FOUND);
         }
 
         // 各 payment_item_id の検証

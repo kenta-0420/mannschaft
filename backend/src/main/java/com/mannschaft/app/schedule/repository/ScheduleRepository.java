@@ -16,6 +16,10 @@ import java.util.Optional;
  */
 public interface ScheduleRepository extends AbstractTenantAwareRepository<ScheduleEntity, Long> {
 
+    boolean existsByIdAndTeamId(Long id, Long teamId);
+
+    boolean existsByIdAndOrganizationId(Long id, Long organizationId);
+
     /**
      * チームスコープのスケジュールを期間指定で取得する。
      */
