@@ -64,6 +64,20 @@ public class EventEndReminderBatchService {
     /** バッチ開始時の粗フィルタ基準（最小経過分 = 1回目の基準） */
     private static final int MINIMUM_ELAPSED_MINUTES = REMINDER_1_MINUTES;
 
+    /**
+     * 鮮度の下限（時間）。終了からこれより古いイベントはリマインド対象にしない。
+     *
+     * <p>段階リマインドは終了から {@value REMINDER_3_MINUTES} 分以内で完結する設計であり、
+     * それを大きく過ぎたイベントを今さらエスカレーションしても意味が無い。
+     * 一方、短時間の障害停止（数時間）からの復帰では取りこぼしたくないため、
+     * 段階の完結時間より十分長い 24 時間を下限とする。</p>
+     *
+     * <p>この下限が無いと、バッチが長く走らなかった後の再開時に、
+     * とうに終わった過去イベントの主催者へリマインドが 3 回飛び、
+     * 最後には管理者への緊急通知まで発火する。</p>
+     */
+    private static final int STALE_AFTER_HOURS = 24;
+
     /** チームスコープ識別子 */
     private static final String SCOPE_TYPE_TEAM = "TEAM";
 
@@ -92,6 +106,7 @@ public class EventEndReminderBatchService {
      *   <li>schedules.end_at が現在時刻より前（終了時刻を過ぎている）</li>
      *   <li>organizer_reminder_sent_count が {@value MAX_REMINDER_COUNT} 未満</li>
      *   <li>終了時刻から {@value MINIMUM_ELAPSED_MINUTES} 分以上経過</li>
+     *   <li><b>終了時刻が {@value STALE_AFTER_HOURS} 時間以内（古すぎるものは対象外）</b></li>
      * </ul>
      *
      * <p>冪等性: 同一イベントに対して1回のバッチ実行で複数回通知しない。
@@ -99,7 +114,7 @@ public class EventEndReminderBatchService {
      */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
             gateKeys = "FEATURE_FAMILY_CARE_ENABLED",
-            reason = "止まるのは解散リマインドのエスカレーション送信のみで、イベント本体の状態は書き換えずカウント値も DB に残る")
+            reason = "止まるのは解散リマインドの送信のみでイベント本体の状態は書き換えない。再開時に過去分を一斉送信しないことはクエリ側の鮮度下限（終了から 24 時間以内のみ対象）で保証している")
     // TODO: familyドメインがeventドメイン（EventRepository）とroleドメイン（UserRoleRepository）をまたいでいる。将来はEventQueryServiceとUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @BatchEndpoint(name = "family-event-end-reminder", description = "未解散イベントの解散リマインドを 5 分毎にエスカレーション送信する")
     @Scheduled(fixedDelay = 300_000) // 5分間隔
@@ -110,10 +125,13 @@ public class EventEndReminderBatchService {
         log.debug("解散通知リマインドバッチ開始");
 
         LocalDateTime now = LocalDateTime.now();
-        // 最低 MINIMUM_ELAPSED_MINUTES 分経過したイベントのみを対象とする粗フィルタ
+        // 最低 MINIMUM_ELAPSED_MINUTES 分経過したイベントのみを対象とする粗フィルタ（上限）
         LocalDateTime cutoff = now.minusMinutes(MINIMUM_ELAPSED_MINUTES);
+        // 古すぎるイベントを除外する下限。これが無いと停止明けに過去分を一斉送信する。
+        LocalDateTime staleBefore = now.minusHours(STALE_AFTER_HOURS);
 
-        List<EventEntity> targets = eventRepository.findDismissalReminderTargets(now, cutoff, MAX_REMINDER_COUNT);
+        List<EventEntity> targets =
+                eventRepository.findDismissalReminderTargets(now, cutoff, staleBefore, MAX_REMINDER_COUNT);
 
         if (targets.isEmpty()) {
             log.debug("解散通知リマインド: 対象イベントなし");

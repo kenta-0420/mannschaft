@@ -15,6 +15,7 @@ import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentReminderRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.context.MessageSource;
@@ -39,6 +40,10 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class RecruitmentReminderBatch {
 
+    /** 1 回のバッチで処理する最大件数。
+     * fixedDelay=1分・上限100件で、通常の発生量に対して十分な処理能力を持つ。 */
+    private static final int BATCH_SIZE = 100;
+
     private final RecruitmentReminderRepository reminderRepository;
     private final RecruitmentListingRepository listingRepository;
     private final RecruitmentParticipantRepository participantRepository;
@@ -49,12 +54,16 @@ public class RecruitmentReminderBatch {
     private final MessageSource messageSource;
 
     /**
-     * 未送信リマインダーを処理する。
+     * 送信すべきリマインダーを処理する。
      * {@code fixedDelay = 60_000} ms = 1分間隔（前回実行完了から1分後に次の実行）。
+     *
+     * <p>対象の絞り込みは {@link RecruitmentReminderRepository#findSendableReminders} が行う。
+     * <b>既に開始した募集は対象外</b>であり、長期停止から再開しても
+     * 過去の募集へ「24時間後に開催」を一斉送信しない。</p>
      */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
             gateKeys = "FEATURE_RECRUITMENT_ENABLED",
-            reason = "未送信リマインドは DB に残り続けるため消失せず、募集機能を閉じている間は通知を送る意味自体が無い")
+            reason = "止まるのは開始前リマインドの送信のみで DB の募集データは書き換えない。募集機能を閉じている間は通知を受け取る画面も閉じており、再開時に古い分を吐き出さないことはクエリ側（開始済みの募集を対象外にする下限）で保証している")
     @BatchEndpoint(name = "recruitment-reminder", description = "募集型予約の未送信リマインドを毎分処理する")
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "recruitment-reminder-batch",
@@ -64,7 +73,7 @@ public class RecruitmentReminderBatch {
     public void reminderBatch() {
         LocalDateTime now = LocalDateTime.now();
         List<RecruitmentReminderEntity> pending =
-                reminderRepository.findTop100BySentAtIsNullAndRemindAtLessThanEqual(now);
+                reminderRepository.findSendableReminders(now, PageRequest.of(0, BATCH_SIZE));
 
         if (pending.isEmpty()) {
             return;
