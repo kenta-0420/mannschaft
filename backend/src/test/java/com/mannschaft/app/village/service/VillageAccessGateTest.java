@@ -403,4 +403,146 @@ class VillageAccessGateTest {
             assertThat(gate.isVisibleTo(null, STRANGER_ID)).isFalse();
         }
     }
+
+    // ==================================================================
+    // filterVisible（一括版）
+    // ==================================================================
+
+    @Nested
+    @DisplayName("filterVisible — 一括判定でも規則は単一版と同一であること")
+    class FilterVisible {
+
+        private static final UUID PUBLIC_ID = UUID.fromString("018f0000-0000-7000-8000-00000000000a");
+        private static final UUID UNLISTED_MEMBER_ID = UUID.fromString("018f0000-0000-7000-8000-00000000000b");
+        private static final UUID UNLISTED_OTHER_ID = UUID.fromString("018f0000-0000-7000-8000-00000000000c");
+
+        private VillageEntity villageOf(UUID id, VillageVisibility visibility) {
+            VillageEntity v = VillageEntity.builder()
+                    .slug("bulk-" + id)
+                    .name("一括判定村")
+                    .visibility(visibility)
+                    .build();
+            v.setId(id);
+            return v;
+        }
+
+        private VillageMembershipEntity membershipOf(UUID villageId, Long userId) {
+            VillageMembershipEntity m = new VillageMembershipEntity();
+            m.setVillageId(villageId);
+            m.setSubjectType(VillageSubjectType.USER);
+            m.setSubjectId(userId);
+            return m;
+        }
+
+        @Test
+        @DisplayName("PUBLIC は素通りし、UNLISTED は現役メンバーの村だけが残る")
+        void keepsPublicAndOwnUnlistedOnly() {
+            lenient().when(membershipRepository.findActiveUserMemberships(MEMBER_ID))
+                    .thenReturn(java.util.List.of(membershipOf(UNLISTED_MEMBER_ID, MEMBER_ID)));
+            lenient().when(accessControlService.isSystemAdmin(anyLong())).thenReturn(false);
+
+            var result = gate.filterVisible(java.util.List.of(
+                    villageOf(PUBLIC_ID, VillageVisibility.PUBLIC),
+                    villageOf(UNLISTED_MEMBER_ID, VillageVisibility.UNLISTED),
+                    villageOf(UNLISTED_OTHER_ID, VillageVisibility.UNLISTED)), MEMBER_ID);
+
+            assertThat(result).extracting(VillageEntity::getId)
+                    .as("非メンバーの UNLISTED 村が混じると、村名・村紋から存在が漏れる")
+                    .containsExactly(PUBLIC_ID, UNLISTED_MEMBER_ID);
+        }
+
+        @Test
+        @DisplayName("PUBLIC 村しか無ければ追加クエリを一切撃たない")
+        void publicOnlyIssuesNoQuery() {
+            var result = gate.filterVisible(
+                    java.util.List.of(villageOf(PUBLIC_ID, VillageVisibility.PUBLIC)), STRANGER_ID);
+
+            assertThat(result).hasSize(1);
+            verifyNoInteractions(membershipRepository);
+            verifyNoInteractions(accessControlService);
+        }
+
+        @Test
+        @DisplayName("村が何件あっても SYSTEM_ADMIN 判定は 1 回しか撃たない（N+1 の再発防止）")
+        void systemAdminIsQueriedOnce() {
+            lenient().when(membershipRepository.findActiveUserMemberships(anyLong()))
+                    .thenReturn(java.util.List.of());
+            lenient().when(accessControlService.isSystemAdmin(anyLong())).thenReturn(false);
+
+            gate.filterVisible(java.util.List.of(
+                    villageOf(UNLISTED_MEMBER_ID, VillageVisibility.UNLISTED),
+                    villageOf(UNLISTED_OTHER_ID, VillageVisibility.UNLISTED),
+                    villageOf(PUBLIC_ID, VillageVisibility.PUBLIC)), STRANGER_ID);
+
+            verify(accessControlService).isSystemAdmin(STRANGER_ID);
+            verify(membershipRepository).findActiveUserMemberships(STRANGER_ID);
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN には UNLISTED も見える（単一版と同じ）")
+        void systemAdminSeesUnlisted() {
+            lenient().when(membershipRepository.findActiveUserMemberships(ADMIN_ID))
+                    .thenReturn(java.util.List.of());
+            givenSystemAdmin(ADMIN_ID);
+
+            var result = gate.filterVisible(
+                    java.util.List.of(villageOf(UNLISTED_OTHER_ID, VillageVisibility.UNLISTED)), ADMIN_ID);
+
+            assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("未ログイン(null)には PUBLIC しか見えず、問い合わせも撃たない")
+        void anonymousSeesPublicOnly() {
+            var result = gate.filterVisible(java.util.List.of(
+                    villageOf(PUBLIC_ID, VillageVisibility.PUBLIC),
+                    villageOf(UNLISTED_OTHER_ID, VillageVisibility.UNLISTED)), null);
+
+            assertThat(result).extracting(VillageEntity::getId).containsExactly(PUBLIC_ID);
+            verifyNoInteractions(membershipRepository);
+            verifyNoInteractions(accessControlService);
+        }
+
+        @Test
+        @DisplayName("空・null 入力でも落ちない")
+        void emptyInputIsSafe() {
+            assertThat(gate.filterVisible(java.util.List.of(), MEMBER_ID)).isEmpty();
+            assertThat(gate.filterVisible(null, MEMBER_ID)).isEmpty();
+        }
+
+        /**
+         * 一括版だけが緩いと、同じ村が経路によって見えたり見えなかったりする穴になる。
+         * 規則そのものが単一版と一致していることを、全組合せで機械的に突き合わせる。
+         */
+        @Test
+        @DisplayName("等価性: 全組合せで isVisibleTo と同じ判定を返す")
+        void agreesWithSingleVersion() {
+            for (VillageVisibility visibility : VillageVisibility.values()) {
+                for (boolean isMember : new boolean[]{true, false}) {
+                    for (boolean isAdmin : new boolean[]{true, false}) {
+                        VillageEntity v = villageOf(UNLISTED_OTHER_ID, visibility);
+
+                        lenient().when(membershipRepository.findActiveUserMemberships(MEMBER_ID))
+                                .thenReturn(isMember
+                                        ? java.util.List.of(membershipOf(UNLISTED_OTHER_ID, MEMBER_ID))
+                                        : java.util.List.of());
+                        lenient().when(membershipRepository.findActiveByVillageIdAndSubject(
+                                        eq(UNLISTED_OTHER_ID), eq(VillageSubjectType.USER), eq(MEMBER_ID)))
+                                .thenReturn(isMember
+                                        ? Optional.of(membershipOf(UNLISTED_OTHER_ID, MEMBER_ID))
+                                        : Optional.empty());
+                        lenient().when(accessControlService.isSystemAdmin(MEMBER_ID)).thenReturn(isAdmin);
+
+                        boolean single = gate.isVisibleTo(v, MEMBER_ID);
+                        boolean bulk = !gate.filterVisible(java.util.List.of(v), MEMBER_ID).isEmpty();
+
+                        assertThat(bulk)
+                                .as("visibility=%s member=%s admin=%s で単一版と一括版の判定が食い違う",
+                                        visibility, isMember, isAdmin)
+                                .isEqualTo(single);
+                    }
+                }
+            }
+        }
+    }
 }
