@@ -1,5 +1,7 @@
 package com.mannschaft.app.analytics.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +47,8 @@ public class PageViewPartitionMaintenanceBatchService {
     /**
      * パーティション保守バッチ本体。翌月・翌々月分を追加し、保持期間超過分を DROP する。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると page_views の翌月パーティションが作られず、挿入先が枯渇して閲覧ログの書き込み自体が失敗する（単なる集計遅延では済まない）")
     @BatchEndpoint(
             name = "analytics-pageview-partition-maintenance",
             description = "page_view_logs テーブルの翌々月分パーティションを毎月 1 日 01:00 に追加し、保持期間(13ヶ月)超過分を DROP する")

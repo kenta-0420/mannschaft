@@ -1,5 +1,7 @@
 package com.mannschaft.app.notification.fanout;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +39,8 @@ public class NotificationFanoutStuckRecoveryBatch {
     private final ObjectProvider<MeterRegistry> meterRegistryProvider;
 
     /** 毎時 0 分に RUNNING 残骸を PENDING に戻す。 */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると処理中のまま停止した fan-out ジョブが復旧されず、配信されない通知が復旧不能なまま滞留する")
     @Scheduled(cron = "0 0 * * * *")
     @SchedulerLock(name = "notificationFanoutStuckRecovery", lockAtMostFor = "PT2H", lockAtLeastFor = "PT10S")
     @BatchEndpoint(name = "notification-fanout-stuck-recovery",

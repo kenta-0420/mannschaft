@@ -1,5 +1,7 @@
 package com.mannschaft.app.gdpr.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.event.WithdrawalRequestedEvent;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
 import com.mannschaft.app.payment.entity.TeamSubscriptionEntity;
@@ -28,6 +30,8 @@ public class WithdrawalStripeHandler {
     private final StripeCustomerRepository stripeCustomerRepository;
     private final TeamSubscriptionRepository teamSubscriptionRepository;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会時に Stripe 側の顧客・サブスクリプションが解約されず、退会済み利用者へ課金が継続して決済側と DB の整合が壊れる")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handleWithdrawal(WithdrawalRequestedEvent event) {
