@@ -1,21 +1,15 @@
 package com.mannschaft.app.weather.repository;
 
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.weather.entity.PostalCodeEntity;
 import com.mannschaft.app.weather.entity.PostalCodeId;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -28,30 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>自然複合主キー {@code (country_code, postal_code)} のマスタテーブルに対する
  * save / findByCountryCodeAndPostalCode の挙動を確認する。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("PostalCodeRepository 結合テスト")
-class PostalCodeRepositoryTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+class PostalCodeRepositoryTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private PostalCodeRepository repository;

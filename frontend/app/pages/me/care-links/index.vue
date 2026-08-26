@@ -342,7 +342,7 @@ onMounted(() => loadAll())
       </div>
       <template #footer>
         <Button
-          :label="$t('common.button.cancel')"
+          :label="$t('button.cancel')"
           severity="secondary"
           @click="showNotifyDialog = false"
         />
@@ -366,7 +366,7 @@ onMounted(() => loadAll())
       </p>
       <template #footer>
         <Button
-          :label="$t('common.button.cancel')"
+          :label="$t('button.cancel')"
           severity="secondary"
           @click="showDeleteDialog = false"
         />

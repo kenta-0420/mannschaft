@@ -4,7 +4,7 @@ import { ref, computed } from 'vue'
 import type { FamilyAttendanceNoticeRequest, FamilyNoticeType, FamilyNoticeReason } from '~/types/school'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   studentUserId: number
   submitting?: boolean
 }>()

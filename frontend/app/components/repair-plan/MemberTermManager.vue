@@ -3,7 +3,7 @@ import type { MemberResponse } from '~/types/member'
 import type { CreateTermRequest, MemberTerm } from '~/types/repairPlanHandover'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   isAdmin: boolean
 }>()
 

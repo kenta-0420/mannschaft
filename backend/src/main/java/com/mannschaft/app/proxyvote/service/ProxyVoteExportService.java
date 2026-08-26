@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
@@ -35,12 +36,15 @@ public class ProxyVoteExportService {
     private final ProxyVoteMotionRepository motionRepository;
     private final ProxyVoteRepository voteRepository;
     private final PdfGeneratorService pdfGeneratorService;
+    private final AccessControlService accessControlService;
 
     /**
      * 投票結果を CSV でエクスポートする。
      */
-    public byte[] exportResultsCsv(Long sessionId) {
+    public byte[] exportResultsCsv(Long sessionId, Long currentUserId) {
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(sessionId);
+        // 認可: セッションスコープの会員のみエクスポート可（entity 由来スコープで BOLA 防止）
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.CLOSED && session.getStatus() != SessionStatus.FINALIZED) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_CLOSED_OR_FINALIZED);
         }
@@ -48,12 +52,11 @@ public class ProxyVoteExportService {
         List<ProxyVoteMotionEntity> motions = motionRepository.findBySessionIdOrderByMotionNumberAsc(sessionId);
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        // BOM を付与（Excel 対応）
-        try {
-            baos.write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
-        } catch (Exception e) {
-            // ignore
-        }
+        // BOM を付与（Excel 対応）。
+        // ByteArrayOutputStream#writeBytes はメモリバッファへの書き込みのみで I/O を伴わず
+        // IOException を宣言しないため、握りつぶし用の try/catch は不要（旧 write(byte[]) は
+        // OutputStream のシグネチャ上 checked 例外を強制されていただけ）。
+        baos.writeBytes(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
 
         try (PrintWriter writer = new PrintWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))) {
             if (session.getIsAnonymous()) {
@@ -99,8 +102,10 @@ public class ProxyVoteExportService {
     /**
      * 議事録 PDF をエクスポートする。
      */
-    public byte[] exportMinutesPdf(Long sessionId) {
+    public byte[] exportMinutesPdf(Long sessionId, Long currentUserId) {
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(sessionId);
+        // 認可: セッションスコープの会員のみエクスポート可（entity 由来スコープで BOLA 防止）
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.FINALIZED) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_FINALIZED);
         }

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { escapeJsonLdForHtml } from '~/utils/escapeJsonLdForHtml'
+
 const { t, locale } = useI18n()
 
 definePageMeta({
@@ -20,7 +22,9 @@ useHead({
   script: [
     {
       type: 'application/ld+json',
-      innerHTML: JSON.stringify({
+      // F21.1 セキュリティ（XSS 対策）: 現状は静的値のみだが、JSON-LD 注入箇所は
+      // 一律で小なり記号をエスケープし、将来の動的化でもブレイクアウトを防ぐ。
+      innerHTML: escapeJsonLdForHtml(JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
         'name': 'Mannschaft',
@@ -31,7 +35,7 @@ useHead({
           'price': '0',
           'priceCurrency': 'JPY',
         },
-      }),
+      })),
     },
   ],
 })
@@ -39,12 +43,12 @@ useHead({
 
 <template>
   <div>
-    <LandingHero />
-    <LandingStats />
-    <LandingFeatures />
-    <LandingSteps />
-    <LandingUseCases />
-    <LandingFaq />
-    <LandingCta />
+    <!-- pageTransition out-in の制約により template 直下はこの <div> 1ノードのみ（コメントも置くと非要素根で遷移先が空白になる） -->
+    <LpHero />
+    <LpFeatureChips />
+    <LpUseCaseRow />
+    <LpPwaInstall />
+    <LpTrustBadges />
+    <LpFinalCta />
   </div>
 </template>

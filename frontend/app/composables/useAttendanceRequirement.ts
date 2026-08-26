@@ -13,7 +13,7 @@ export function useAttendanceRequirement() {
   const { error: notifyError, success: notifySuccess } = useNotification()
   const api = useAttendanceRequirementApi()
 
-  async function loadOrganizationRules(orgId: number, academicYear: number): Promise<void> {
+  async function loadOrganizationRules(orgId: string, academicYear: number): Promise<void> {
     loading.value = true
     try {
       const res = await api.listOrganizationRules(orgId, academicYear)
@@ -25,7 +25,7 @@ export function useAttendanceRequirement() {
     }
   }
 
-  async function loadTeamRules(teamId: number, academicYear: number): Promise<void> {
+  async function loadTeamRules(teamId: string, academicYear: number): Promise<void> {
     loading.value = true
     try {
       const res = await api.listTeamRules(teamId, academicYear)
@@ -38,7 +38,7 @@ export function useAttendanceRequirement() {
   }
 
   async function createRule(
-    scope: { orgId?: number; teamId?: number },
+    scope: { orgId?: string; teamId?: string },
     req: CreateRequirementRuleRequest,
     onSuccess?: () => void,
   ): Promise<void> {

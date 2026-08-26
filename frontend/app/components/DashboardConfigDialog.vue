@@ -12,7 +12,7 @@ const props = withDefaults(
     widgets: WidgetDefinition[]
     isVisible: (key: string) => boolean
     scopeType?: 'personal' | 'team' | 'organization'
-    scopeId?: number
+    scopeId?: string
     isAdminOrDeputy?: boolean
   }>(),
   {
@@ -38,7 +38,7 @@ const showRoleTab = computed(
 const activeTab = ref(0)
 
 // === ロール別設定 (管理者タブ) ===
-const scopeIdRef = computed(() => props.scopeId ?? 0)
+const scopeIdRef = computed(() => props.scopeId ?? '')
 const visibility = useDashboardWidgetVisibility(
   props.scopeType === 'organization' ? 'organization' : 'team',
   scopeIdRef,
@@ -111,7 +111,7 @@ const managedRows = computed<ManagedWidgetRow[]>(() => {
 
 function attemptChangeRole(row: ManagedWidgetRow, next: MinRole) {
   if (next === 'PUBLIC' && row.currentMinRole !== 'PUBLIC') {
-    downgradeContext.value = { widgetKey: row.backendKey, widgetLabel: row.widget.label }
+    downgradeContext.value = { widgetKey: row.backendKey, widgetLabel: t(row.widget.labelKey) }
     pendingMinRoles.value = { ...pendingMinRoles.value, [row.backendKey]: next }
     showDowngradeConfirm.value = true
     return
@@ -246,8 +246,8 @@ function onDragEnd() {
               <i class="pi pi-bars text-sm text-surface-400" />
               <i :class="w.icon" class="text-lg text-primary" />
               <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium">{{ w.label }}</p>
-                <p class="text-xs text-surface-500">{{ w.description }}</p>
+                <p class="text-sm font-medium">{{ $t(w.labelKey) }}</p>
+                <p class="text-xs text-surface-500">{{ $t(w.descriptionKey) }}</p>
               </div>
               <ToggleSwitch
                 :model-value="isVisible(w.key)"
@@ -277,8 +277,8 @@ function onDragEnd() {
               class="flex flex-col gap-2 rounded-lg border border-surface-200 p-3 dark:border-surface-600 sm:flex-row sm:items-center"
             >
               <div class="min-w-0 flex-1">
-                <p class="text-sm font-medium">{{ row.widget.label }}</p>
-                <p class="text-xs text-surface-500">{{ row.widget.description }}</p>
+                <p class="text-sm font-medium">{{ $t(row.widget.labelKey) }}</p>
+                <p class="text-xs text-surface-500">{{ $t(row.widget.descriptionKey) }}</p>
               </div>
               <SelectButton
                 :model-value="row.currentMinRole"
@@ -354,8 +354,8 @@ function onDragEnd() {
           <i class="pi pi-bars text-sm text-surface-400" />
           <i :class="w.icon" class="text-lg text-primary" />
           <div class="min-w-0 flex-1">
-            <p class="text-sm font-medium">{{ w.label }}</p>
-            <p class="text-xs text-surface-500">{{ w.description }}</p>
+            <p class="text-sm font-medium">{{ $t(w.labelKey) }}</p>
+            <p class="text-xs text-surface-500">{{ $t(w.descriptionKey) }}</p>
           </div>
           <ToggleSwitch :model-value="isVisible(w.key)" @update:model-value="emit('toggle', w.key)" />
         </div>

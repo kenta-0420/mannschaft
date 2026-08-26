@@ -23,7 +23,7 @@ import type {
 
 const props = defineProps<{
   modelValue: boolean
-  teamId: number
+  teamId: string
   /** 指定ありで編集モード、null/undefined で作成モード */
   folder?: TeamFriendFolderView | null
 }>()

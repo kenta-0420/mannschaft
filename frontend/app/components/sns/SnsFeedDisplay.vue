@@ -3,7 +3,7 @@ import type { SnsFeedConfigResponse, FeedItem } from '~/types/sns-feed'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 const { listFeeds, previewFeed } = useSnsFeedApi()

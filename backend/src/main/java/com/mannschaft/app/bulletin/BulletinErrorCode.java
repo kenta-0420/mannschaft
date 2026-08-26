@@ -45,7 +45,7 @@ public enum BulletinErrorCode implements ErrorCode {
     NOT_AUTHOR("BULLETIN_011", "自分の投稿のみ編集できます", Severity.WARN),
 
     /** 親返信が異なるスレッドに属している */
-    PARENT_REPLY_MISMATCH("BULLETIN_012", "親返信が異なるスレッドに属しています", Severity.ERROR),
+    PARENT_REPLY_MISMATCH("BULLETIN_012", "親返信が異なるスレッドに属しています", Severity.WARN),
 
     /** 許可されていない絵文字（プリセット以外のリアクション） */
     INVALID_EMOJI("BULLETIN_013", "許可されていない絵文字です", Severity.WARN),
@@ -68,11 +68,29 @@ public enum BulletinErrorCode implements ErrorCode {
     /** 保管庫フォルダ数が上限（200）に達した（設計書 §5） */
     ARCHIVE_FOLDER_LIMIT_EXCEEDED("BULLETIN_019", "保管庫フォルダ数が上限に達しています", Severity.WARN),
 
-    /** 保管庫フォルダ・スレッドの scope が一致しない（scope 越境）（設計書 §5/§6） */
+    /**
+     * 保管庫フォルダ・スレッドの scope が一致しない（scope 越境）（設計書 §5/§6）。
+     *
+     * <p><b>越境の存在秘匿のため 404 固定</b>。不在（{@link #ARCHIVE_FOLDER_NOT_FOUND}）と
+     * 同じステータスに揃えないと、応答差から他テナントのフォルダ UUID の実在が判別できる
+     * （存在オラクル）。PARKING_020 起点の「越境は存在秘匿で 404」の流儀に従う。</p>
+     */
     ARCHIVE_FOLDER_SCOPE_MISMATCH("BULLETIN_020", "保管庫フォルダのスコープが一致しません", Severity.WARN),
 
     /** 未アーカイブのスレッドはフォルダ振り分けできない（設計書 §4 PATCH .../folder） */
-    THREAD_NOT_ARCHIVED("BULLETIN_021", "アーカイブされていないスレッドはフォルダへ振り分けできません", Severity.WARN);
+    THREAD_NOT_ARCHIVED("BULLETIN_021", "アーカイブされていないスレッドはフォルダへ振り分けできません", Severity.WARN),
+
+    /** 添付ファイル数が上限（1ターゲット 5 件）に達した */
+    ATTACHMENT_LIMIT_EXCEEDED("BULLETIN_022", "添付ファイルは1件あたり最大5個までです", Severity.WARN),
+
+    /** 添付ファイルのサイズが上限（10MB）を超過した */
+    ATTACHMENT_SIZE_EXCEEDED("BULLETIN_023", "添付ファイルのサイズが上限を超えています", Severity.WARN),
+
+    /** 添付ファイルの MIME タイプがホワイトリスト外 */
+    ATTACHMENT_INVALID_CONTENT_TYPE("BULLETIN_024", "許可されていないファイル形式です", Severity.WARN),
+
+    /** 添付対象（スレッド/返信）が見つからない */
+    ATTACHMENT_TARGET_NOT_FOUND("BULLETIN_025", "添付対象が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

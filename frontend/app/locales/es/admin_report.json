@@ -1,0 +1,90 @@
+{
+  "admin_report": {
+    "title": "Gestión de denuncias",
+    "empty": "No hay denuncias",
+    "status_options": {
+      "all": "Todas",
+      "pending": "Pendiente",
+      "reviewing": "En revisión",
+      "escalated": "Escalada",
+      "resolved": "Resuelta",
+      "dismissed": "Descartada"
+    },
+    "messages": {
+      "load_failed": "Error al cargar las denuncias",
+      "note_added": "Nota añadida",
+      "note_add_failed": "Error al añadir la nota",
+      "review_started": "Revisión iniciada",
+      "review_failed": "Error al iniciar la revisión",
+      "resolved": "Denuncia resuelta",
+      "resolve_failed": "Error al resolver",
+      "dismissed": "Denuncia descartada",
+      "dismiss_failed": "Error al descartar",
+      "escalated": "Escalada",
+      "escalate_failed": "Error al escalar",
+      "reopened": "Denuncia reabierta",
+      "reopen_failed": "Error al reabrir",
+      "content_hidden": "Contenido ocultado",
+      "hide_failed": "Error al ocultar el contenido",
+      "content_restored": "Contenido restaurado",
+      "restore_failed": "Error al restaurar el contenido"
+    },
+    "stats": {
+      "pending": "Pendiente",
+      "reviewing": "En revisión",
+      "escalated": "Escalada",
+      "resolved": "Resuelta",
+      "dismissed": "Descartada",
+      "total": "Total"
+    },
+    "table": {
+      "status": "Estado",
+      "target_type": "Tipo de objetivo",
+      "reason": "Motivo",
+      "reported_at": "Fecha de denuncia",
+      "actions": "Acciones",
+      "status_placeholder": "Estado"
+    },
+    "actions": {
+      "review": "Revisar",
+      "resolve": "Resolver",
+      "dismiss": "Descartar",
+      "escalate": "Escalar",
+      "reopen": "Reabrir"
+    },
+    "detail": {
+      "header": "Detalles de la denuncia",
+      "target_type": "Tipo de objetivo",
+      "status": "Estado",
+      "reason": "Motivo",
+      "reported_at": "Fecha de denuncia",
+      "description": "Descripción",
+      "hide_content": "Ocultar contenido",
+      "restore_content": "Restaurar contenido",
+      "internal_notes": "Notas internas",
+      "no_notes": "No hay notas",
+      "note_placeholder": "Introduce una nota...",
+      "add_note": "Añadir"
+    },
+    "resolve": {
+      "header": "Resolver denuncia",
+      "action_type": "Tipo de acción",
+      "note": "Nota",
+      "guideline_section": "Sección de directrices",
+      "cancel": "Cancelar",
+      "submit": "Resolver",
+      "action": {
+        "warning": "Advertencia",
+        "content_delete": "Eliminar contenido",
+        "account_freeze": "Congelar cuenta"
+      }
+    },
+    "escalate": {
+      "header": "Escalada",
+      "reason": "Motivo",
+      "guideline_section": "Sección de directrices",
+      "cancel": "Cancelar",
+      "submit": "Escalar"
+    }
+  }
+}

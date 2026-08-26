@@ -1,7 +1,7 @@
 export interface LineBotConfigResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   channelId: string
   webhookSecret: string | null
   botUserId: string | null
@@ -33,19 +33,19 @@ export interface UpdateLineBotConfigRequest {
 export function useLineConfigApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team'
       ? `/api/v1/teams/${scopeId}/line/config`
       : `/api/v1/organizations/${scopeId}/line/config`
   }
 
-  async function getConfig(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getConfig(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: LineBotConfigResponse }>(buildBase(scopeType, scopeId))
   }
 
   async function createConfig(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: CreateLineBotConfigRequest,
   ) {
     return api<{ data: LineBotConfigResponse }>(buildBase(scopeType, scopeId), {
@@ -56,7 +56,7 @@ export function useLineConfigApi() {
 
   async function updateConfig(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: UpdateLineBotConfigRequest,
   ) {
     return api<{ data: LineBotConfigResponse }>(buildBase(scopeType, scopeId), {
@@ -65,7 +65,7 @@ export function useLineConfigApi() {
     })
   }
 
-  async function deleteConfig(scopeType: 'team' | 'organization', scopeId: number) {
+  async function deleteConfig(scopeType: 'team' | 'organization', scopeId: string) {
     return api(buildBase(scopeType, scopeId), { method: 'DELETE' })
   }
 

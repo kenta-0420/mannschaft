@@ -10,10 +10,10 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import com.mannschaft.app.safetycheck.entity.SafetyCheckSourceType;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -24,8 +24,7 @@ import java.time.LocalDateTime;
 @Table(name = "safety_checks")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SafetyCheckEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
@@ -63,7 +62,7 @@ public class SafetyCheckEntity extends BaseEntity {
     @Builder.Default
     private Integer totalTargetCount = 0;
 
-    @Column(nullable = false)
+    @Column(name = "admin_24h_notified", nullable = false)
     @Builder.Default
     private Boolean admin24hNotified = false;
 

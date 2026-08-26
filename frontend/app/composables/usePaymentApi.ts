@@ -4,22 +4,26 @@ import type {
   CheckoutSessionResponse,
   PaymentSummaryResponse,
   MyPaymentResponse,
+  MemberPaymentReceiptResponse,
+  FeeStatementResponse,
+  BulkPaymentResponse,
+  BeneficiarySettingResponse,
 } from '~/types/payment'
 
 export function usePaymentApi() {
   const api = useApi()
 
-  function base(scopeType: 'team' | 'organization', scopeId: number) {
+  function base(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Payment Items ===
-  async function getPaymentItems(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getPaymentItems(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: PaymentItemResponse[] }>(`${base(scopeType, scopeId)}/payment-items`)
   }
   async function createPaymentItem(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: PaymentItemResponse }>(`${base(scopeType, scopeId)}/payment-items`, {
@@ -29,7 +33,7 @@ export function usePaymentApi() {
   }
   async function updatePaymentItem(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     body: Record<string, unknown>,
   ) {
@@ -37,7 +41,7 @@ export function usePaymentApi() {
   }
   async function deletePaymentItem(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
   ) {
     return api(`${base(scopeType, scopeId)}/payment-items/${itemId}`, { method: 'DELETE' })
@@ -46,7 +50,7 @@ export function usePaymentApi() {
   // === Member Payments ===
   async function getMemberPayments(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
   ) {
     return api<{ data: MemberPaymentResponse[] }>(
@@ -55,7 +59,7 @@ export function usePaymentApi() {
   }
   async function recordManualPayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     body: Record<string, unknown>,
   ) {
@@ -66,18 +70,21 @@ export function usePaymentApi() {
   }
   async function bulkRecordPayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     payments: Array<Record<string, unknown>>,
   ) {
-    return api(`${base(scopeType, scopeId)}/payment-items/${itemId}/payments/bulk`, {
-      method: 'POST',
-      body: { payments },
-    })
+    return api<{ data: BulkPaymentResponse }>(
+      `${base(scopeType, scopeId)}/payment-items/${itemId}/payments/bulk`,
+      {
+        method: 'POST',
+        body: { payments },
+      },
+    )
   }
   async function cancelPayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     paymentId: number,
   ) {
@@ -85,12 +92,12 @@ export function usePaymentApi() {
       method: 'DELETE',
     })
   }
-  async function sendReminder(scopeType: 'team' | 'organization', scopeId: number, itemId: number) {
+  async function sendReminder(scopeType: 'team' | 'organization', scopeId: string, itemId: number) {
     return api(`${base(scopeType, scopeId)}/payment-items/${itemId}/remind`, { method: 'POST' })
   }
 
   // === Summary ===
-  async function getPaymentSummary(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getPaymentSummary(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: PaymentSummaryResponse }>(`${base(scopeType, scopeId)}/payment-summary`)
   }
 
@@ -101,10 +108,18 @@ export function usePaymentApi() {
     })
   }
 
+  /**
+   * F08.9 P6 / Issue #2657: 支払い項目を ID で取得する（TERM 型の有効期間表示等に使用）。
+   * BE エンドポイント: GET /api/v1/payment-items/{itemId}（PaymentCheckoutController#getPaymentItem）
+   */
+  async function getPaymentItemById(itemId: number) {
+    return api<{ data: PaymentItemResponse }>(`/api/v1/payment-items/${itemId}`)
+  }
+
   // === Update Payment ===
   async function updatePayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     paymentId: number,
     body: Record<string, unknown>,
@@ -131,16 +146,21 @@ export function usePaymentApi() {
   // === Export ===
   async function exportPayments(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
   ) {
-    return api<Blob>(`${base(scopeType, scopeId)}/payment-items/${itemId}/payments/export`)
+    return api(
+      `${base(scopeType, scopeId)}/payment-items/${itemId}/payments/export`,
+      {
+        responseType: 'blob' as const,
+      },
+    ) as Promise<Blob>
   }
 
   // === Refund ===
   async function refundPayment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     itemId: number,
     paymentId: number,
   ) {
@@ -148,6 +168,26 @@ export function usePaymentApi() {
       `${base(scopeType, scopeId)}/payment-items/${itemId}/payments/${paymentId}/refund`,
       { method: 'POST' },
     )
+  }
+
+  // === Receipt ===
+  /**
+   * F08.9 P8: 領収書取得。
+   * BE: GET /api/v1/member-payments/{memberPaymentId}/receipt
+   */
+  async function getReceipt(memberPaymentId: number) {
+    return api<{ data: MemberPaymentReceiptResponse }>(`/api/v1/member-payments/${memberPaymentId}/receipt`)
+  }
+
+  // === Fee Statements ===
+  /**
+   * F08.9 P8: チーム月次手数料明細を取得する。
+   * BE: GET /api/v1/teams/{teamId}/fee-statements?period=YYYY-MM
+   */
+  async function getFeeStatement(teamId: string, period: string) {
+    return api<{ data: FeeStatementResponse }>(`/api/v1/teams/${teamId}/fee-statements`, {
+      query: { period },
+    })
   }
 
   // === Subscriptions ===
@@ -163,6 +203,33 @@ export function usePaymentApi() {
     })
   }
 
+  // === Beneficiary Setting (AC-S8) ===
+  /**
+   * F08.9 AC-S8: 受益者を会員のみに限定する設定を取得する。
+   * BE: GET /api/v1/teams/{id}/payment-beneficiary-setting
+   *     GET /api/v1/organizations/{id}/payment-beneficiary-setting
+   */
+  async function getBeneficiarySetting(scopeType: 'team' | 'organization', scopeId: string) {
+    return api<{ data: BeneficiarySettingResponse }>(`${base(scopeType, scopeId)}/payment-beneficiary-setting`)
+  }
+
+  /**
+   * F08.9 AC-S8: 受益者を会員のみに限定する設定を更新する。
+   * BE: PUT /api/v1/teams/{id}/payment-beneficiary-setting
+   *     PUT /api/v1/organizations/{id}/payment-beneficiary-setting
+   * @param beneficiaryMemberOnly true=会員のみ（応援者除外）/ false=応援者も含める
+   */
+  async function updateBeneficiarySetting(
+    scopeType: 'team' | 'organization',
+    scopeId: string,
+    beneficiaryMemberOnly: boolean,
+  ) {
+    return api(`${base(scopeType, scopeId)}/payment-beneficiary-setting`, {
+      method: 'PUT',
+      body: { beneficiaryMemberOnly },
+    })
+  }
+
   return {
     getPaymentItems,
     createPaymentItem,
@@ -175,6 +242,7 @@ export function usePaymentApi() {
     sendReminder,
     getPaymentSummary,
     createCheckoutSession,
+    getPaymentItemById,
     getMyPayments,
     getMySubscriptions,
     getPaymentRequirements,
@@ -183,5 +251,9 @@ export function usePaymentApi() {
     refundPayment,
     cancelSubscription,
     resumeSubscription,
+    getReceipt,
+    getFeeStatement,
+    getBeneficiarySetting,
+    updateBeneficiarySetting,
   }
 }

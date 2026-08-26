@@ -35,6 +35,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Base64;
@@ -65,6 +66,8 @@ public class AuthOAuthService {
     private final DomainEventPublisher eventPublisher;
     private final EncryptionService encryptionService;
     private final OAuthProperties oAuthProperties;
+    private final RoleClaimResolver roleClaimResolver;
+    private final StatusClaimResolver statusClaimResolver;
 
     /** OAuthプロバイダとのHTTP通信に使用するWebClient。@PostConstructで初期化する。 */
     private WebClient webClient;
@@ -168,6 +171,12 @@ public class AuthOAuthService {
                 .displayName(oauthUserInfo.displayName() != null ? oauthUserInfo.displayName() : oauthUserInfo.email())
                 .isSearchable(true)
                 .locale("ja")
+                // Issue #2487 項目 7（本 PR では見送り・意図的な固定値）:
+                // OAuth プロバイダはタイムゾーンを返さないため、ここで実 TZ を知る手段が無い。実 TZ を得るには
+                // FE がブラウザの Intl.DateTimeFormat().resolvedOptions().timeZone を OAuth 開始 URL → state →
+                // コールバックへ引き回す必要があり、FE を巻き込む設計判断になる（メール登録経路は
+                // RegisterRequest.timezone で既に受け取れる）。海外の OAuth 利用者は当面この既定値になり、
+                // 本人が設定画面で変更するまで日境界が JST に寄る。ベータ第 4 段階は国内が対象のため当面の支障は無い。
                 .timezone("Asia/Tokyo")
                 .status(UserEntity.UserStatus.ACTIVE)
                 .build();
@@ -317,7 +326,9 @@ public class AuthOAuthService {
      * Access Token + Refresh Token のペアを発行する。
      */
     private TokenResponse issueTokenPair(Long userId, String ipAddress, String userAgent) {
-        String accessToken = authTokenService.issueAccessToken(userId, List.of("MEMBER"));
+        // 認可基盤完全根治 Phase 1（§3.2）: RoleClaimResolver で SYSTEM_ADMIN を判定して roles に載せる。
+        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId),
+                statusClaimResolver.isPendingParentalConsent(userId));
         String refreshToken = authTokenService.generateRefreshToken();
         String refreshTokenHash = authTokenService.hashToken(refreshToken);
 
@@ -332,6 +343,128 @@ public class AuthOAuthService {
         RefreshTokenEntity saved = refreshTokenRepository.save(refreshTokenEntity);
 
         return new TokenResponse(accessToken, refreshToken, saved.getId(), 3600);
+    }
+
+    /**
+     * Google OAuth: 認可コードをアクセストークンに交換し、userinfo エンドポイントからユーザー情報を取得する。
+     * <p>
+     * {@code AuthOAuthLinkService}（設定画面での連携フロー）から利用するために public に公開する。
+     *
+     * @param authorizationCode 認可コード
+     * @return Googleユーザー情報
+     * @throws BusinessException AUTH_027 — Token Exchange失敗またはユーザー情報取得失敗
+     */
+    public OAuthUserInfo fetchGoogleUserInfoPublic(String authorizationCode) {
+        return fetchGoogleUserInfo(authorizationCode);
+    }
+
+    /**
+     * Google OAuth 連携フロー専用: 任意の redirect_uri でトークン交換を行いユーザー情報を返す。
+     * <p>
+     * ログインフロー（{@link #fetchGoogleUserInfoPublic}）とは別の redirect_uri を使うため分離する。
+     *
+     * @param authorizationCode 認可コード
+     * @param redirectUri       認可 URL 生成時に使用した redirect_uri
+     * @return Googleユーザー情報
+     * @throws BusinessException AUTH_027 — Token Exchange失敗またはユーザー情報取得失敗
+     */
+    public OAuthUserInfo fetchGoogleUserInfoForLink(String authorizationCode, String redirectUri) {
+        return fetchGoogleUserInfo(authorizationCode, redirectUri);
+    }
+
+    /**
+     * Google OAuth 連携フロー専用: userInfo + access_token / refresh_token を一括で返すDTO。
+     */
+    public record OAuthLinkTokenResult(OAuthUserInfo userInfo, String accessToken, String refreshToken) {}
+
+    /**
+     * Google OAuth 連携フロー専用: userInfo + access/refresh token を返す。
+     * <p>
+     * {@code includeCalendar=true} でGCal接続も行う際に使用する。
+     * codeは使い捨て（1回のみtoken exchangeで使用）のため、
+     * 通常の {@link #fetchGoogleUserInfoForLink} とは別メソッドとして提供する。
+     *
+     * @param authorizationCode 認可コード
+     * @param redirectUri       認可 URL 生成時に使用した redirect_uri
+     * @return userInfo + access_token + refresh_token をまとめたDTO
+     * @throws BusinessException AUTH_027 — Token Exchange失敗またはユーザー情報取得失敗
+     */
+    public OAuthLinkTokenResult fetchGoogleUserInfoForLinkWithTokens(String authorizationCode, String redirectUri) {
+        // 1. Token Exchange
+        MultiValueMap<String, String> tokenParams = new LinkedMultiValueMap<>();
+        tokenParams.add("code", authorizationCode);
+        tokenParams.add("client_id", oAuthProperties.getGoogleClientId());
+        tokenParams.add("client_secret", oAuthProperties.getGoogleClientSecret());
+        tokenParams.add("redirect_uri", redirectUri);
+        tokenParams.add("grant_type", "authorization_code");
+
+        Map<?, ?> tokenResponse;
+        try {
+            tokenResponse = webClient.post()
+                    .uri(oAuthProperties.getGoogleTokenUri())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(BodyInserters.fromFormData(tokenParams))
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.warn("Google Token Exchange失敗(link+calendar): status={}, body={}", e.getStatusCode(), e.getResponseBodyAsString());
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        if (tokenResponse == null || tokenResponse.get("access_token") == null) {
+            log.warn("Google Token Exchangeレスポンスにaccess_tokenが含まれていません(link+calendar)");
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        String accessToken = (String) tokenResponse.get("access_token");
+        String refreshToken = (String) tokenResponse.get("refresh_token"); // null の場合もある（access_type=offline初回のみ付与）
+
+        // 2. userinfo エンドポイントでユーザー情報取得
+        Map<?, ?> userInfo;
+        try {
+            userInfo = webClient.get()
+                    .uri(oAuthProperties.getGoogleUserinfoUri())
+                    .header("Authorization", "Bearer " + accessToken)
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .block();
+        } catch (WebClientResponseException e) {
+            log.warn("Google userinfo取得失敗(link+calendar): status={}", e.getStatusCode());
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        if (userInfo == null || userInfo.get("sub") == null) {
+            log.warn("Google userinfoレスポンスにsubが含まれていません(link+calendar)");
+            throw new BusinessException(AuthErrorCode.AUTH_027);
+        }
+
+        String sub         = (String) userInfo.get("sub");
+        String email       = (String) userInfo.get("email");
+        String givenName   = (String) userInfo.get("given_name");
+        String familyName  = (String) userInfo.get("family_name");
+        String displayName = (String) userInfo.get("name");
+
+        OAuthUserInfo oauthUserInfo = new OAuthUserInfo(sub, email, familyName, givenName, displayName);
+        return new OAuthLinkTokenResult(oauthUserInfo, accessToken, refreshToken);
+    }
+
+    /**
+     * Google OAuth ログインフロー用の認証 URL を生成する。
+     * フロントエンドのログイン画面から「Googleでログイン」ボタンがクリックされたとき呼び出す。
+     *
+     * @return Google OAuth 認証エンドポイント URL
+     */
+    public String generateGoogleLoginAuthUrl() {
+        String clientId = oAuthProperties.getGoogleClientId();
+        String redirectUri = oAuthProperties.getGoogleRedirectUri();
+        String scope = "openid email profile";
+
+        return "https://accounts.google.com/o/oauth2/v2/auth"
+                + "?client_id=" + URLEncoder.encode(clientId, StandardCharsets.UTF_8)
+                + "&redirect_uri=" + URLEncoder.encode(redirectUri, StandardCharsets.UTF_8)
+                + "&response_type=code"
+                + "&scope=" + URLEncoder.encode(scope, StandardCharsets.UTF_8);
     }
 
     /**
@@ -361,14 +494,26 @@ public class AuthOAuthService {
 
     /**
      * Google OAuth: 認可コードをアクセストークンに交換し、userinfo エンドポイントからユーザー情報を取得する。
+     * <p>
+     * ログインフローのデフォルト redirect_uri（{@code oAuthProperties.getGoogleRedirectUri()}）を使用する。
      */
     private OAuthUserInfo fetchGoogleUserInfo(String authorizationCode) {
+        return fetchGoogleUserInfo(authorizationCode, oAuthProperties.getGoogleRedirectUri());
+    }
+
+    /**
+     * Google OAuth: 任意の redirect_uri でトークン交換を行い、userinfo エンドポイントからユーザー情報を取得する。
+     * <p>
+     * Google OAuth 仕様では token exchange の redirect_uri は認可 URL 生成時と完全一致が必須。
+     * ログインフローと連携フローで異なる redirect_uri を使うため、引数で受け取る。
+     */
+    private OAuthUserInfo fetchGoogleUserInfo(String authorizationCode, String redirectUri) {
         // 1. Token Exchange
         MultiValueMap<String, String> tokenParams = new LinkedMultiValueMap<>();
         tokenParams.add("code", authorizationCode);
         tokenParams.add("client_id", oAuthProperties.getGoogleClientId());
         tokenParams.add("client_secret", oAuthProperties.getGoogleClientSecret());
-        tokenParams.add("redirect_uri", oAuthProperties.getGoogleRedirectUri());
+        tokenParams.add("redirect_uri", redirectUri);
         tokenParams.add("grant_type", "authorization_code");
 
         Map<?, ?> tokenResponse;

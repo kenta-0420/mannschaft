@@ -17,6 +17,7 @@ import com.mannschaft.app.auth.dto.WebAuthnRegisterCompleteRequest;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -66,8 +67,22 @@ class AuthWebAuthnServiceTest {
     @Mock
     private DomainEventPublisher eventPublisher;
 
+    // 認可基盤完全根治 Phase 1: トークン発行時に roles を解決するヘルパ。
+    @Mock
+    private RoleClaimResolver roleClaimResolver;
+
+    @Mock
+    private StatusClaimResolver statusClaimResolver;
+
     @InjectMocks
     private AuthWebAuthnService authWebAuthnService;
+
+    @BeforeEach
+    void setUp() {
+        // @Value フィールドは純 Mockito テストでは処理されないため手動で注入する
+        ReflectionTestUtils.setField(authWebAuthnService, "rpId", "mannschaft.app");
+        ReflectionTestUtils.setField(authWebAuthnService, "rpOrigin", "https://mannschaft.app");
+    }
 
     // ========================================
     // テスト用定数・ヘルパー

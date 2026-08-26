@@ -1,15 +1,8 @@
 package com.mannschaft.app.common.visibility.perf;
 
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.BeforeEach;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * F00 共通可視性判定 — 性能テスト基底クラス。
@@ -44,36 +37,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * {@link SqlIntentCounter} を Hibernate に登録済み。{@link #resetSqlCounter()} で
  * 各テスト開始時に捕捉リストをクリアする。
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
-public abstract class VisibilityCheckerPerformanceTestBase {
-
-    /** Testcontainers MySQL 8.0 コンテナ。Spring Boot 起動より先に立ち上がる. */
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-        .withDatabaseName("mannschaft_test")
-        .withUsername("test")
-        .withPassword("test")
-        .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
-
-    /**
-     * Spring Boot のデータソース URL を Testcontainers の動的 URL に差し替える。
-     *
-     * @param registry Spring の動的プロパティレジストリ
-     */
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    /** 性能テスト中に Redis を呼ばないようモックで差し替える. */
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+public abstract class VisibilityCheckerPerformanceTestBase extends AbstractMySqlIntegrationTest {
 
     /** 各テスト開始時に SQL 捕捉リストをクリアする. */
     @BeforeEach

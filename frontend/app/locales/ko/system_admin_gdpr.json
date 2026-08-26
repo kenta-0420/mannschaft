@@ -1,64 +1,64 @@
 {
   "systemAdmin": {
     "gdpr": {
-      "title": "GDPR パージ状況",
+      "title": "GDPR 퍼지 현황",
       "summary": {
-        "completed": "処理完了",
-        "pending": "処理待ち",
-        "alert": "アラート"
+        "completed": "처리 완료",
+        "pending": "처리 대기",
+        "alert": "알림"
       },
       "domain": {
-        "role": "ロール",
-        "team": "チーム",
-        "payment": "決済",
-        "chart": "チャート",
-        "proxy": "プロキシ",
-        "errorreport": "エラーレポート"
+        "role": "역할",
+        "team": "팀",
+        "payment": "결제",
+        "chart": "차트",
+        "proxy": "프록시",
+        "errorreport": "오류 보고"
       },
       "status": {
-        "PENDING": "処理待ち",
-        "SUCCESS": "完了"
+        "PENDING": "처리 대기",
+        "SUCCESS": "완료"
       },
       "table": {
-        "userId": "ユーザーID",
-        "emailHash": "メールハッシュ",
-        "domainName": "ドメイン",
-        "status": "ステータス",
-        "attemptedAt": "処理開始日時",
-        "completedAt": "処理完了日時",
-        "isAlert": "アラート",
-        "retryCount": "retry 回数"
+        "userId": "사용자 ID",
+        "emailHash": "이메일 해시",
+        "domainName": "도메인",
+        "status": "상태",
+        "attemptedAt": "처리 시작 일시",
+        "completedAt": "처리 완료 일시",
+        "isAlert": "알림",
+        "retryCount": "retry 횟수"
       },
       "filter": {
-        "status": "ステータス",
-        "domain": "ドメイン",
-        "dateFrom": "開始日時",
-        "dateTo": "終了日時",
-        "search": "検索",
-        "allStatuses": "全ステータス",
-        "allDomains": "全ドメイン"
+        "status": "상태",
+        "domain": "도메인",
+        "dateFrom": "시작 일시",
+        "dateTo": "종료 일시",
+        "search": "검색",
+        "allStatuses": "전체 상태",
+        "allDomains": "전체 도메인"
       },
-      "export": "CSV エクスポート",
+      "export": "CSV 내보내기",
       "detail": {
-        "title": "ユーザー詳細",
-        "close": "閉じる"
+        "title": "사용자 상세",
+        "close": "닫기"
       },
-      "noData": "データがありません",
+      "noData": "데이터가 없습니다",
       "retry": {
-        "button": "再試行",
-        "confirm": "ドメイン「{domain}」の GDPR パージを再試行しますか？",
-        "success": "retry 成功しました",
-        "failed": "retry 失敗（PENDING 継続）",
-        "alreadySuccess": "既に処理済みです",
-        "count": "{count} 回 retry 済み",
-        "lastRetried": "最終 retry: {datetime}"
+        "button": "재시도",
+        "confirm": "도메인 「{domain}」의 GDPR 퍼지를 재시도하시겠습니까?",
+        "success": "retry 성공했습니다",
+        "failed": "retry 실패（PENDING 계속）",
+        "alreadySuccess": "이미 처리 완료입니다",
+        "count": "{count}회 retry 완료",
+        "lastRetried": "마지막 retry: {datetime}"
       },
       "toast": {
-        "loadFailed": "データの取得に失敗しました",
-        "detailLoadFailed": "ユーザー詳細の取得に失敗しました",
-        "retryFailed": "retry リクエストに失敗しました"
+        "loadFailed": "데이터 불러오기 실패",
+        "detailLoadFailed": "사용자 상세 불러오기 실패",
+        "retryFailed": "retry 요청 실패"
       },
-      "quickLinkLabel": "GDPR パージ状況"
+      "quickLinkLabel": "GDPR 퍼지 현황"
     }
   }
 }

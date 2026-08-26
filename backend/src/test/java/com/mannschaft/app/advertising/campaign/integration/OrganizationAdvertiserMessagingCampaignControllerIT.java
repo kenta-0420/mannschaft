@@ -5,8 +5,10 @@ import com.mannschaft.app.advertising.campaign.controller.OrganizationAdvertiser
 import com.mannschaft.app.advertising.campaign.dto.CampaignDetailResponse;
 import com.mannschaft.app.advertising.campaign.dto.CampaignListItemResponse;
 import com.mannschaft.app.advertising.campaign.dto.CreateCampaignRequest;
+import com.mannschaft.app.advertising.campaign.dto.EstimatedReachRangeResponse;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.enums.AdModerationStatus;
+import com.mannschaft.app.advertising.campaign.enums.EstimatedReachRange;
 import com.mannschaft.app.advertising.campaign.exception.AdCampaignErrorCode;
 import com.mannschaft.app.advertising.campaign.service.AdMessagingCampaignService;
 import com.mannschaft.app.advertising.dto.AdvertiserAccountResponse;
@@ -49,6 +51,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * F09.17 Phase 11-d-2 {@link OrganizationAdvertiserMessagingCampaignController} 結合テスト。
@@ -89,6 +92,10 @@ class OrganizationAdvertiserMessagingCampaignControllerIT {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUpSecurityContext() {
@@ -253,6 +260,41 @@ class OrganizationAdvertiserMessagingCampaignControllerIT {
                             otherOrgId, CAMPAIGN_ID))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("AD_CAMPAIGN_NOT_FOUND"));
+        }
+    }
+
+    @Nested
+    @DisplayName("POST /api/v1/organizations/{organizationId}/advertiser/campaigns/messaging/{id}/preview")
+    class PreviewReach {
+
+        @Test
+        @DisplayName("F09.19.7 AC-7.2: 推定リーチのレンジ/ラベルを返す → 200")
+        void 正常系_range_label() throws Exception {
+            willDoNothing().given(accessControlService)
+                    .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+            given(campaignService.preview(CAMPAIGN_ID, ScopeType.ORGANIZATION, ORG_ID))
+                    .willReturn(EstimatedReachRangeResponse.of(EstimatedReachRange.RANGE_500_1K));
+
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{organizationId}/advertiser/campaigns/messaging/{id}/preview",
+                            ORG_ID, CAMPAIGN_ID))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.range").value("RANGE_500_1K"))
+                    .andExpect(jsonPath("$.data.label").value(EstimatedReachRange.RANGE_500_1K.getLabel()));
+        }
+
+        @Test
+        @DisplayName("F09.19.7 AC-7.2: 権限のない scope への preview は 403（checkAdminOrAbove 拒否）")
+        void 他scope_403() throws Exception {
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(accessControlService)
+                    .checkAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION");
+
+            mockMvc.perform(post(
+                            "/api/v1/organizations/{organizationId}/advertiser/campaigns/messaging/{id}/preview",
+                            ORG_ID, CAMPAIGN_ID))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.error.code").value("COMMON_002"));
         }
     }
 }

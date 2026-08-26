@@ -25,7 +25,7 @@ export function useCorkboardApi() {
    */
   async function getBoardDetail(
     scope: CorkboardScope,
-    scopeId: number | null,
+    scopeId: string | null,
     boardId: number,
   ) {
     if (scope === 'PERSONAL') {
@@ -78,32 +78,32 @@ export function useCorkboardApi() {
   }
 
   // === Team Corkboards ===
-  async function getTeamBoards(teamId: number) {
+  async function getTeamBoards(teamId: string) {
     return api<{ data: CorkboardResponse[] }>(`/api/v1/teams/${teamId}/corkboards`)
   }
-  async function createTeamBoard(teamId: number, body: Record<string, unknown>) {
+  async function createTeamBoard(teamId: string, body: Record<string, unknown>) {
     return api<{ data: CorkboardResponse }>(`/api/v1/teams/${teamId}/corkboards`, {
       method: 'POST',
       body,
     })
   }
-  async function getTeamBoard(teamId: number, id: number) {
+  async function getTeamBoard(teamId: string, id: number) {
     return api<{ data: CorkboardResponse & { cards: CorkboardCard[] } }>(
       `/api/v1/teams/${teamId}/corkboards/${id}`,
     )
   }
-  async function updateTeamBoard(teamId: number, id: number, body: Record<string, unknown>) {
+  async function updateTeamBoard(teamId: string, id: number, body: Record<string, unknown>) {
     return api(`/api/v1/teams/${teamId}/corkboards/${id}`, { method: 'PUT', body })
   }
-  async function deleteTeamBoard(teamId: number, id: number) {
+  async function deleteTeamBoard(teamId: string, id: number) {
     return api(`/api/v1/teams/${teamId}/corkboards/${id}`, { method: 'DELETE' })
   }
 
   // === Organization Corkboards ===
-  async function getOrgBoards(orgId: number) {
+  async function getOrgBoards(orgId: string) {
     return api<{ data: CorkboardResponse[] }>(`/api/v1/organizations/${orgId}/corkboards`)
   }
-  async function createOrgBoard(orgId: number, body: Record<string, unknown>) {
+  async function createOrgBoard(orgId: string, body: Record<string, unknown>) {
     return api<{ data: CorkboardResponse }>(`/api/v1/organizations/${orgId}/corkboards`, {
       method: 'POST',
       body,

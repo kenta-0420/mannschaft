@@ -31,7 +31,9 @@
       "shift_request": "교대 신청",
       "announcement_read": "공지 읽음",
       "parking_application": "주차 신청",
-      "circular": "회람판"
+      "circular": "회람판",
+      "supporter_view": "돌봄 열람",
+      "payment": "대리 결제"
     },
     "desk": {
       "pinSubject": "주민 고정",
@@ -42,7 +44,8 @@
         "label": "입력 방식",
         "paper_form": "서류 양식",
         "phone_interview": "전화 청취",
-        "in_person": "창구 대면"
+        "in_person": "창구 대면",
+        "guardianship_switch": "후견 전환"
       },
       "originalStorage": {
         "label": "원본 보관 위치",
@@ -72,6 +75,110 @@
       "byPerson": "본인 입력",
       "byProxy": "대리 입력",
       "total": "합계"
+    },
+    "guardianship": {
+      "switch": {
+        "title": "후견 전환",
+        "startAs": "{name}으로 조작하기",
+        "actingAs": "{name}으로 조작 중",
+        "end": "전환 종료",
+        "confirm": "후견 전환을 시작하시겠습니까?",
+        "empty": "전환 가능한 자녀가 없습니다",
+        "blocked": "연령 제한으로 전환 불가",
+        "success": "후견 전환을 시작했습니다",
+        "endSuccess": "후견 전환을 종료했습니다",
+        "cancelButton": "취소",
+        "startButton": "시작",
+        "otherChildren": "기타"
+      },
+      "independence": {
+        "title": "자립 전환",
+        "sealDate": "전환 봉인일",
+        "stage": "현재 단계",
+        "passwordSet": "비밀번호 설정됨",
+        "passwordNotSet": "비밀번호 미설정",
+        "handover": "인계 시작",
+        "handoverConfirm": "자녀의 이메일 주소로 비밀번호 설정 링크를 발송합니다",
+        "handoverSuccess": "인계 이메일을 발송했습니다",
+        "alreadyIndependent": "이 자녀는 이미 자립 단계입니다",
+        "childEmail": "자녀의 이메일 주소（선택사항）",
+        "passwordStatus": "비밀번호 상태"
+      },
+      "stage": {
+        "elementary": "초등학생",
+        "junior_high": "중학생",
+        "high_school": "고등학생",
+        "adult": "성인"
+      },
+      "watch": {
+        "title": "돌봄 보기",
+        "linkLabel": "돌봄 보기",
+        "linkTooltip": "돌봄 보기 화면 열기（열람 전용）",
+        "readonlyNotice": "이 화면은 열람 전용입니다. 조작이나 응답은 할 수 없습니다.",
+        "loadError": "돌봄 데이터를 가져오지 못했습니다",
+        "retryButton": "다시 시도",
+        "sections": {
+          "schedules": {
+            "title": "다가오는 일정",
+            "empty": "다가오는 일정이 없습니다"
+          },
+          "attendance": {
+            "title": "출결 현황",
+            "attended": "출석",
+            "partial": "부분 참여",
+            "absent": "결석",
+            "total": "대상 건수",
+            "rate": "출석률",
+            "empty": "출결 데이터가 없습니다"
+          },
+          "memberships": {
+            "title": "소속 팀/조직",
+            "teams": "팀",
+            "organizations": "조직",
+            "empty": "소속된 팀·조직이 없습니다"
+          },
+          "announcements": {
+            "title": "공지사항",
+            "empty": "공지사항이 없습니다"
+          }
+        },
+        "attendanceStatus": {
+          "ATTENDING": "출석",
+          "PARTIAL": "부분 참여",
+          "ABSENT": "결석",
+          "UNDECIDED": "미정"
+        },
+        "proxyActions": {
+          "title": "대리 조작 이력",
+          "badge": "대리(보호자)",
+          "empty": "대리 조작 기록이 없습니다"
+        },
+        "forbidden": {
+          "ageLocked": {
+            "title": "이 자녀는 돌봄 대상이 아닙니다",
+            "body": "12세 이상의 자녀는 자립 단계에 들어가 열람형 돌봄의 대상이 아닙니다."
+          },
+          "linkNotFound": {
+            "title": "이 자녀를 돌볼 수 없습니다",
+            "body": "보호자 연동을 확인할 수 없습니다. 연동 설정을 확인해 주세요."
+          }
+        },
+        "guide": {
+          "title": "돌봄 보기 사용 방법",
+          "readonly": {
+            "title": "열람 전용입니다",
+            "body": "이 화면에서는 자녀의 일정·출결 현황·소속·공지사항을 볼 수만 있고 조작이나 응답은 할 수 없습니다. 대신 조작하려면 「후견 전환」을 이용해 주세요."
+          },
+          "ageLimit": {
+            "title": "12세 미만 자녀만 대상",
+            "body": "12세 이상의 자녀는 자립 단계에 들어가므로 돌봄 대상에서 제외됩니다（사생활 보호를 위해）."
+          },
+          "proxyBadge": {
+            "title": "「대리」 표시의 의미",
+            "body": "보호자가 후견 전환 등으로 자녀를 대신하여 수행한 조작에는 「대리(보호자)」 표시가 붙습니다. 대리 조작 이력 섹션에서 언제 어떤 기능으로 대리 조작이 이루어졌는지 확인할 수 있습니다."
+          }
+        }
+      }
     },
     "delegation": {
       "title": "대리 출석",

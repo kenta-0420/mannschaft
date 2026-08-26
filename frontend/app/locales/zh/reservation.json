@@ -1,4 +1,4 @@
-{
+﻿{
   "emergency_closure": {
     "section": {
       "period": "休业期间",
@@ -63,6 +63,13 @@
       "reminder_sent": "已发送",
       "reminder_not_sent": "未发送"
     },
+    "connection": {
+      "live": "实时更新中",
+      "connecting": "连接中…",
+      "reconnecting": "重新连接中…",
+      "offline": "离线",
+      "denied": "无查看权限"
+    },
     "dialog": {
       "title": "确认发送",
       "confirm_message": "是否以以下内容批量发送？",
@@ -78,7 +85,8 @@
       "subject_required": "请输入主题",
       "body_required": "请输入正文",
       "send_failed": "发送失败",
-      "confirmations_failed": "确认状态加载失败"
+      "confirmations_failed": "确认状态加载失败",
+      "info_missing": "通知信息缺失"
     },
     "template": {
       "staff_sick": "员工生病",
@@ -102,6 +110,751 @@
       "CANCELLED": "已取消",
       "NO_SHOW": "未到场",
       "REJECTED": "已拒绝"
+    },
+    "confirm_button": "确认休业",
+    "already_confirmed": "已确认",
+    "confirm_success": "已确认紧急休业通知",
+    "confirm_failed": "确认失败",
+    "badge": "紧急休业"
+  },
+  "reservation": {
+    "guide": {
+      "title": "我的预约使用说明",
+      "description": "在此页面，您可以查看自己预约的时段列表以及每个预约的状态。",
+      "overview": {
+        "title": "什么是我的预约",
+        "body": "这是一个列出您所预约时段的页面。您可以一目了然地了解每个预约是否已获批准以及预约的时间。",
+        "steps": {
+          "step1": "打开页面后，系统会自动加载您的预约。",
+          "step2": "每张卡片会显示“预约对象名称、日期、开始～结束时间”。"
+        }
+      },
+      "status": {
+        "title": "如何查看状态",
+        "body": "每张预约卡片上的彩色徽章表示该预约的当前状态。",
+        "items": {
+          "item1": "黄色“待确认”……等待审批中。",
+          "item2": "绿色“已确认”……预约已确定。",
+          "item3": "蓝色“已完成”……已完成使用。",
+          "item4": "红色“已取消”……该预约已被取消。",
+          "item5": "灰色“未到场”……预约当天未使用。"
+        }
+      },
+      "empty": {
+        "title": "当没有显示预约时",
+        "body": "当没有任何预约或加载失败时的处理方法。",
+        "steps": {
+          "step1": "若显示“暂无预约”，表示您目前还没有预约。",
+          "step2": "若显示“获取预约信息失败”，则为通信错误，请重新加载页面。"
+        }
+      }
+    },
+    "status": {
+      "PENDING": "待确认",
+      "CONFIRMED": "已确认",
+      "CANCELLED": "已取消",
+      "COMPLETED": "已完成",
+      "NO_SHOW": "未到场"
+    },
+    "filter": {
+      "all": "全部"
+    },
+    "page": {
+      "my_title": "我的预约",
+      "team_title": "预约管理",
+      "settings_title": "预约管理设置",
+      "settings_subtitle": "管理预约对象（员工 / 窗口）"
+    },
+    "tab": {
+      "book": "预约",
+      "list": "预约列表",
+      "my_reservations": "我的预约",
+      "line_manage": "{resourceName}管理",
+      "emergency_closure": "緊急休業",
+      "team_page": "预约"
+    },
+    "management": {
+      "section_count": "{label} ({n})",
+      "card_help": "{label}使用方法",
+      "cards": {
+        "business_hours": { "title": "营业时间", "description": "设置预约时间" },
+        "lines": { "title": "预约对象", "description": "管理{n}个预约对象" },
+        "menus": { "title": "菜单", "description": "管理{n}个菜单" },
+        "weekly_schedule": { "title": "每周日程", "description": "{n}个时段和定期设置" },
+        "exception_day": { "title": "例外日期", "description": "调整指定日期" },
+        "advanced": { "title": "详细设置", "description": "设置公开范围和通知" }
+      }
+    },
+    "column": {
+      "datetime": "日期时间",
+      "line": "预约对象",
+      "reserver": "预约人",
+      "status": "状态",
+      "action": "操作",
+      "line_name": "预约对象名称",
+      "description": "说明",
+      "display_order": "显示顺序",
+      "state": "状态"
+    },
+    "field": {
+      "date": "日期",
+      "line": "{resourceName}",
+      "name": "名称",
+      "description": "说明",
+      "display_order": "显示顺序",
+      "active": "启用",
+      "line_name_required": "预约对象名称",
+      "note": "备注（可选）",
+      "time": "时间"
+    },
+    "placeholder": {
+      "select": "请选择",
+      "note": "菜单、症状等",
+      "line_name": "例如：负责人A",
+      "line_description": "例如：接待窗口"
+    },
+    "state": {
+      "active": "启用",
+      "inactive": "停用"
+    },
+    "slot": {
+      "available": "有空位",
+      "full": "已满"
+    },
+    "button": {
+      "add_line": "添加{resourceName}",
+      "add_line_long": "添加{resourceName}",
+      "save": "保存",
+      "cancel": "取消",
+      "reserve": "预约",
+      "cancel_reservation": "取消预约",
+      "back": "返回",
+      "go_to_line_manage": "前往预约对象管理",
+      "manage_slots": "管理时段",
+      "delete_line": "删除"
+    },
+    "dialog": {
+      "title": "确认",
+      "line_create": "创建预约对象",
+      "line_edit": "编辑预约对象",
+      "line_create_long": "添加{resourceName}",
+      "line_edit_long": "编辑{resourceName}",
+      "reserve_confirm": "预约确认",
+      "cancel_confirm": "要取消此预约吗？",
+      "line_delete_confirm": "要删除此预约对象吗？",
+      "line_delete_named_confirm": "要删除「{name}」吗？"
+    },
+    "message": {
+      "confirm_success": "已确认预约",
+      "reject_success": "已拒绝预约",
+      "cancel_success": "已取消预约",
+      "reserve_success": "预约完成",
+      "reserve_failed": "预约失败",
+      "line_create_success": "已创建预约对象",
+      "line_update_success": "已更新预约对象",
+      "line_delete_success": "已删除预约对象",
+      "line_save_failed": "保存失败",
+      "line_create_success_long": "已创建预约对象",
+      "line_update_success_long": "已更新预约对象",
+      "line_delete_success_long": "已删除预约对象",
+      "line_load_failed": "获取预约对象失败",
+      "save_failed": "保存失败",
+      "delete_failed": "删除失败",
+      "my_load_failed": "获取预约信息失败",
+      "reject_reason": "由管理员拒绝",
+      "menu_create_success": "已创建菜单",
+      "menu_update_success": "已更新菜单",
+      "menu_delete_success": "已删除菜单",
+      "menu_save_failed": "保存失败",
+      "menu_load_failed": "获取菜单失败",
+      "template_create_partial": "已创建{succeeded}/{total}个模板，其余失败",
+      "template_delete_success": "已删除模板",
+      "template_save_failed": "保存失败",
+      "template_load_failed": "获取模板失败",
+      "cancel_deadline_passed": "已超过取消期限，无法取消该预约。如需变更，请联系团队管理员",
+      "rate_limited": "创建预约的间隔过短，请稍候再试"
+    },
+    "empty": {
+      "no_reservations": "没有预约",
+      "no_my_reservations": "没有预约",
+      "no_lines": "没有预约对象",
+      "no_lines_yet": "还没有预约对象",
+      "no_available_slots": "当天没有空闲时段",
+      "book": {
+        "admin_no_lines": "还没有预约对象",
+        "admin_no_lines_hint": "在「预约对象管理」中创建预约对象和时段后，这里会显示预约时段",
+        "admin_no_slots": "本周没有空闲时段",
+        "admin_no_slots_hint": "在「每周日程」中创建时段后，将显示在此处",
+        "member_no_lines": "预约正在准备中",
+        "member_no_lines_hint": "请等待管理员准备好预约时段",
+        "member_no_slots": "本周没有空闲时段",
+        "member_no_slots_hint": "请选择其他周再试"
+      }
+    },
+    "line_manage_title": "{resourceName}管理",
+    "line": {
+      "delete_guide": "删除后，该对象的时段模板将停止使用，且没有预约的未来时段将被自动删除。如果存在有效预约，请先进行改期或取消。"
+    },
+    "resource_name": {
+      "DEFAULT": "预约对象",
+      "STAFF": "员工",
+      "SEAT": "座位",
+      "COURT": "球场",
+      "BED": "床位",
+      "LANE": "球道",
+      "setting_title": "预约对象的称呼",
+      "custom_label": "自定义称呼",
+      "custom_required": "请输入自定义称呼",
+      "deputy_hint": "副管理员只能修改预约对象的称呼。线路、菜单等管理由管理员负责。"
+    },
+    "settings": {
+      "advanced": {
+        "title": "高级设置"
+      },
+      "allow_public": {
+        "section_label": "公开预约",
+        "label": "允许非成员预约",
+        "hint_off": "当前只有成员（MEMBER及以上）可以预约",
+        "hint_on": "非成员也可以预约",
+        "save_success": "设置已保存",
+        "confirm_title": "更改设置",
+        "confirm_enable": "非成员将可以进行预约。是否继续？",
+        "confirm_disable": "非成员将无法进行预约。是否继续？",
+        "confirm_ok": "确认"
+      },
+      "policy": {
+        "section_label": "预约政策",
+        "save_success": "政策已保存",
+        "approval_mode": {
+          "label": "审批模式",
+          "hint": "AUTO=预约立即确认 / MANUAL=管理员手动审批",
+          "option_auto": "自动确认（AUTO）",
+          "option_manual": "手动审批（MANUAL）"
+        },
+        "cancel_deadline": {
+          "label": "取消截止期限",
+          "hint": "预约开始前多少小时可以取消（0=直到开始，8760=始终允许）",
+          "unit": " 小时前"
+        },
+        "remind": {
+          "label": "提醒时间（CSV）",
+          "hint": "用逗号分隔的小时数，表示预约前多少小时发送提醒（例: 24,1）",
+          "placeholder": "例: 24,1",
+          "error_empty": "请至少输入一个值",
+          "error_invalid": "请输入0到8760之间的整数，用逗号分隔"
+        },
+        "pending_expire": {
+          "label": "暂占（PENDING）自动失效",
+          "hint": "待审批的暂占预约在指定时间后将自动取消（1〜168小时・最长7天）",
+          "unit": " 小时后自动取消",
+          "no_expire_toggle": "不自动取消",
+          "no_expire_warning": "当前设置为「不自动取消」。对于人工审批（MANUAL）的团队，暂占的预约不会自动取消，请管理员单独处理",
+          "error_range": "请输入1〜168之间的数值"
+        }
+      }
+    },
+    "book": {
+      "not_affiliated_notice": "此团队的预约仅限成员",
+      "not_affiliated_hint": "请加入团队或联系管理员",
+      "error_public_forbidden": "预约仅对团队成员开放"
+    },
+    "slot_form": {
+      "dialog": {
+        "create_title": "创建预约时段",
+        "edit_title": "编辑预约时段"
+      },
+      "field": {
+        "date": "日期",
+        "start_time": "开始时间",
+        "end_time": "结束时间",
+        "title": "标题（可选）",
+        "capacity": "容量",
+        "capacity_hint": "该时段可同时预约的人数上限（默认 1＝一对一指定）",
+        "note": "备注（可选）"
+      },
+      "placeholder": {
+        "date": "例: 2026-01-01",
+        "title": "例: 初次咨询",
+        "note": "例: 备注事项"
+      },
+      "approval_mode": {
+        "label": "审批模式",
+        "hint": "遵循团队设置=继承默认策略 / 自动确认=即时确认 / 手动审批=管理员手动审批",
+        "option_inherit": "遵循团队设置（默认）",
+        "option_auto": "自动确认（AUTO）",
+        "option_manual": "手动审批（MANUAL）"
+      },
+      "message": {
+        "create_success": "预约时段已创建",
+        "update_success": "预约时段已更新",
+        "save_failed": "保存失败"
+      }
+    },
+    "slot_manager": {
+      "title": "时段管理",
+      "button": {
+        "add_slot": "添加时段",
+        "edit": "编辑",
+        "close": "关闭",
+        "reopen": "重新开放"
+      },
+      "status": {
+        "available": "可预约",
+        "full": "已满",
+        "closed": "已关闭"
+      },
+      "booked_count": "已预约 {count} 件",
+      "booked_capacity": "已预约 {count}/{capacity} 件",
+      "empty": {
+        "no_slots": "当天没有时段"
+      },
+      "message": {
+        "load_failed": "获取预约时段失败",
+        "closed": "时段已关闭",
+        "reopened": "时段已重新开放",
+        "status_change_failed": "状态更改失败"
+      }
+    },
+    "unavailability": {
+      "section_label": "预约不可时段",
+      "help": "登记无法接受预约的时间段，例如临时停业或员工休息。选择模板后会根据营业时间自动填入时间段（之后可手动修改）。登记前，如该时间段存在预约将会提示。",
+      "scope": {
+        "label": "对象",
+        "team": "整个团队",
+        "staff": "负责人"
+      },
+      "staff": {
+        "label": "预约对象（负责人）",
+        "placeholder": "选择预约对象",
+        "hint": "未设置负责人的预约对象无法选择。"
+      },
+      "field": {
+        "date": "日期",
+        "time_range": "时间段",
+        "time_range_hint": "留空则整天不可预约。",
+        "start_time": "开始",
+        "end_time": "结束",
+        "reason": "原因（可选）",
+        "reason_placeholder": "例如：临时停业、员工培训"
+      },
+      "template": {
+        "label": "模板",
+        "full_day": "全天休",
+        "late": "晚到（上午不可）",
+        "early_leave": "早退（傍晚不可）",
+        "midday": "午休（休息）",
+        "custom": "手动输入",
+        "no_business_hours": "未设置营业时间，无法自动填入。请手动输入时间段。"
+      },
+      "impact": {
+        "warning": "该时间段有 {count} 个预约。改期或取消后即可登记。",
+        "hint": "存在预约时无法登记。",
+        "checking": "正在确认对预约的影响…"
+      },
+      "button": {
+        "register": "设为不可预约",
+        "delete": "删除"
+      },
+      "message": {
+        "create_success": "已登记预约不可时段",
+        "delete_success": "已删除预约不可时段"
+      },
+      "error": {
+        "has_active_reservations": "该时间段仍有预约，无法登记。请改期或取消后再试。"
+      },
+      "dialog": {
+        "delete_confirm": "要删除该预约不可时段吗？"
+      },
+      "list": {
+        "title": "已登记的预约不可时段",
+        "empty": "尚未登记预约不可时段",
+        "all_day": "全天"
+      }
+    },
+    "recurring": {
+      "toggle_label": "每周重复此预约",
+      "weeks_option": "{n}周",
+      "weeks_more": "更多选项（5〜12周）",
+      "weeks_label": "周数",
+      "horizon_hint": "预约时段仅自动生成至28天后，超出该范围的周次在时段生成后可能需要手动预约",
+      "close_button": "关闭",
+      "badge": "定期",
+      "result": {
+        "summary": "已预约{created}次（跳过{skipped}次）",
+        "skipped_list_title": "被跳过的场次",
+        "all_skipped_notice": "所选周次均无法预约，未创建任何预约。请查看以下原因，并对需要的周次单独预约"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "该周的时段尚未生成",
+        "FULL": "该时段已满",
+        "CLOSED": "该时段已停止接受预约",
+        "BLOCKED": "该时间段不可预约",
+        "ALREADY_RESERVED": "您已预约过该时段",
+        "UNAVAILABLE": "该时段当前不可用",
+        "NOT_CANCELLABLE": "该预约无法取消",
+        "CANCEL_DEADLINE_PASSED": "已超过取消截止时间",
+        "NOT_PENDING": "该预约不处于待审核状态"
+      },
+      "cancel_scope": {
+        "dialog_title": "选择取消范围",
+        "this_only": "仅此一次",
+        "this_and_following": "此次及以后所有场次",
+        "result_summary": "已取消{cancelled}次（{skipped}次不符合条件）",
+        "all_skipped_notice": "所有场次均无法取消，请查看以下原因"
+      },
+      "confirm_series": {
+        "button": "批量审批（定期预约）",
+        "confirm_message": "是否审批该定期预约系列中所有待处理的预约？",
+        "success": "已审批{confirmed}次（跳过{skipped}次）"
+      }
+    },
+    "notify_recipients": {
+      "section_label": "预约通知邮件收件人",
+      "help": "登记每次预约成立时通过邮件通知的收件人。可添加非应用用户的邮箱，如店铺代表邮箱。免费方案最多3个，第4个及以后需要付费方案（最多10个）。",
+      "pii_notice": "登记的邮箱将收到预约者的姓名、到店日期时间和项目。登记会向外部共享的邮箱时请注意。",
+      "field": {
+        "email": "邮箱地址",
+        "email_placeholder": "例：shop{'@'}example.com",
+        "label": "标签（可选）",
+        "label_placeholder": "例：店铺代表、预约负责人"
+      },
+      "paid_lock": {
+        "title": "免费方案最多{free}个",
+        "detail": "登记第4个及以后需要升级到付费方案（最多{max}个）。"
+      },
+      "limit_reached": "最多可登记{max}个收件人，无法再添加。",
+      "count_status": "已登记 {total} / {max}",
+      "button": {
+        "add": "添加收件人",
+        "delete": "删除"
+      },
+      "list": {
+        "title": "已登记的通知邮件收件人",
+        "empty": "尚未登记收件人",
+        "disabled": "已停用"
+      },
+      "toggle": {
+        "aria": "启用 {email} 的通知"
+      },
+      "message": {
+        "create_success": "已添加通知收件人",
+        "delete_success": "已删除通知收件人"
+      },
+      "dialog": {
+        "delete_confirm": "要删除此通知收件人吗？"
+      },
+      "error": {
+        "paid_required_title": "需要付费方案",
+        "paid_required_detail": "免费方案最多可登记3个收件人。登记第4个及以后需要升级到付费方案。",
+        "limit_exceeded": "最多可登记{limit}个收件人。",
+        "duplicate": "该邮箱地址已登记。",
+        "invalid_email": "邮箱地址格式不正确。"
+      }
+    },
+    "menu": {
+      "title": "菜单管理",
+      "name": "名称",
+      "duration": "所需时间",
+      "price": "价格",
+      "price_display_only": "价格仅供参考，不会实际扣款",
+      "description": "说明",
+      "display_order": "显示顺序",
+      "is_active": "启用",
+      "lines_all": "所有预约对象均可使用",
+      "lines_selected": "仅限所选预约对象",
+      "line_scope_note": "之后新增的预约对象不会自动追加到已限定提供范围的菜单中",
+      "required_slots": "所需时段数（30分钟×{n}）",
+      "add": "添加菜单",
+      "edit": "编辑菜单",
+      "delete": "删除",
+      "delete_confirm": "确定删除此菜单吗？",
+      "limit_reached": "菜单最多可登记20个",
+      "duration_invalid": "所需时间必须为30分钟的倍数，且在30分钟至8小时之间",
+      "empty_state": "尚未登记任何菜单",
+      "empty_state_hint": "可通过“添加菜单”创建带所需时间的菜单",
+      "line_ids_invalid": "所选预约对象无效，请确认是否包含已删除的预约对象",
+      "line_not_available": "该菜单不适用于所选的预约对象",
+      "duration_minutes_label": "{m}分钟"
+    },
+    "weekly_schedule": {
+      "section_title": "每周排程"
+    },
+    "template": {
+      "title": "每周模板",
+      "add": "添加模板",
+      "edit": "编辑模板",
+      "delete": "删除",
+      "delete_confirm": "确定删除此模板吗？（已生成的时段将保留）",
+      "day_of_week": "星期",
+      "time_range": "时间段",
+      "line": "预约对象",
+      "line_common": "通用时段",
+      "capacity": "名额",
+      "is_active": "启用",
+      "cell_count": "每天{n}个时段（30分钟）",
+      "ends_next_day": "次日结束",
+      "next_day_time": "次日 {time}",
+      "price": "价格（可选）",
+      "slot_title": "标题（可选）",
+      "generate": "立即生成时段",
+      "generate_result": "已创建{generated}个时段・{skipped}个已存在",
+      "generate_rate_limited": "请稍后再试（生成操作过于频繁）",
+      "generate_no_active_templates": "这个星期没有模板",
+      "regenerate_guide": "更改会在保存时自动生效（仅新增部分）。如果希望已存在的未预约时段也套用新设置，请先删除该时段再重新保存",
+      "limit_reached": "模板最多可登记500个",
+      "empty_state": "尚未登记任何每周模板",
+      "empty_state_hint": "通过“添加模板”设置星期和时间段后，保存的同时会自动生成时段",
+      "error": {
+        "day_required": "请选择星期",
+        "time_range_invalid": "开始时间必须早于结束时间，且为30分钟的倍数"
+      },
+      "generate_skipped_closed": "{n}个时段因定休日而未创建",
+      "auto_generated": "已保存，未来{days}天内已创建{generated}个时段",
+      "auto_generated_partial": "{total}个星期中有{failed}个星期的时段创建失败（已保存的星期仍然有效）",
+      "need_business_hours_hint": "请先设置营业时间",
+      "generated_zero_hint": "未创建任何时段（因不在营业时间内或为定休日）。请确认营业时间设置",
+      "grid": {
+        "title": "ドラッグで枠を作成",
+        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
+        "legend_existing": "登録済み",
+        "legend_selected": "選択中",
+        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
+        "confirm_title": "枠を作成",
+        "create": "作成"
+      }
+    },
+    "recurring_block": {
+      "title": "每周预约不可时段",
+      "add": "添加预约不可时段",
+      "edit": "编辑预约不可时段",
+      "delete_confirm": "确定要删除此定期预约不可规则吗？",
+      "reason": "事由",
+      "reason_no_pii": "请勿在事由中包含个人姓名或客户信息（将对所有会员公开）",
+      "reason_placeholder": "例：培训、课程、清洁、维护",
+      "is_public": "向会员显示事由",
+      "is_public_note": "开启后，此标签将显示在空档状态中",
+      "line_all": "整个团队",
+      "limit_reached": "定期预约不可规则最多可注册50条",
+      "full_day_hint": "如需整天休息，请改用营业时间设置定休日",
+      "impact_warning": "未来90天内有 {n} 件重叠的预约",
+      "day_empty": "该日没有预约不可规则",
+      "message": {
+        "load_failed": "获取定期预约不可规则失败",
+        "create_success": "已注册定期预约不可规则",
+        "update_success": "已更新定期预约不可规则",
+        "delete_success": "已删除定期预约不可规则"
+      },
+      "error": {
+        "toggle_conflict": "暂停/恢复失败。该时间段存在重叠的预约，无法操作"
+      },
+      "force_cancel": {
+        "button": "取消冲突的预约并登记",
+        "confirm_title": "确认强制登记",
+        "confirm_message": "将取消{n}条预约，并通知相关预约人。是否继续？",
+        "confirm_ok": "取消并登记",
+        "result_notice": "已取消{n}条预约并完成登记"
+      }
+    },
+    "business_hours": {
+      "title": "营业时间",
+      "day_open": "营业",
+      "ends_next_day": "次日结束",
+      "save_success": "已保存，共更新{generated}个时段",
+      "generating": "正在更新时段…",
+      "generation_failed": "营业时间已保存，但时段的自动更新失败。系统将于明晨自动补齐",
+      "shrink_note": "该星期已生成的未来时段将保持不变（不会被追溯关闭）。如需永久关闭特定日期，请使用例外日历中的“将此日设为休业”"
+    },
+    "exception_day": {
+      "title": "例外日历",
+      "help": "选择日历中的日期，可以将该日设为休业，或在通常休息的日子设为临时营业。",
+      "close_day": "将此日设为休业",
+      "open_special": "设为临时营业",
+      "close_day_impact_warning": "该日有 {n} 件生效中的预约",
+      "goto_reservations": "在预约列表中处理",
+      "notify_hint": "如需通知预约者，请改用紧急休业功能",
+      "special_source_day": "应用的星期排班",
+      "special_done": "已为 {date} 创建 {generated} 个时段",
+      "blocked_conflict": "该日已设置为休业。请先解除休业设置后再执行",
+      "date_range_hint": "临时营业可设置在明天起90天以内的日期",
+      "goto_book": "前往「预约」标签确认"
+    },
+    "slot_manage": {
+      "advanced_label": "手动管理个别时段（例外操作）"
+    },
+    "grid": {
+      "view": {
+        "week": "周"
+      },
+      "column": {
+        "common": "通用"
+      },
+      "state": {
+        "available": "空位",
+        "booked": "已满",
+        "reserved": "已为您预约",
+        "closed": "已截止",
+        "unavailable": "不可预约"
+      },
+      "load_error": "加载表格失败"
+    },
+    "matrix": {
+      "title": "空档矩阵",
+      "legend_available": "空闲",
+      "legend_booked": "已预约",
+      "legend_unavailable": "不可预约",
+      "legend_closed": "已截止",
+      "legend_none": "无时段",
+      "menu_filter": "按菜单筛选",
+      "menu_filter_all": "不筛选",
+      "cannot_start_here": "从这个时间开始无法预约{menu}所需的连续时段",
+      "cannot_extend": "无法继续延长（下一个时段未开放，或已达到8小时上限）",
+      "select_menu_title": "选择菜单",
+      "no_menu_single": "不选菜单，仅预约30分钟",
+      "preview_title": "确认以下预约内容",
+      "extend_30": "+30分钟",
+      "open_all": "全部显示",
+      "close_all": "全部收起",
+      "open_day_hint": "选择日期以查看可预约时段",
+      "date_line_header": "日期・{resourceName}",
+      "help_toggle": "查看使用说明",
+      "help_body": "点击空闲（绿色）时段，选择菜单后会自动选中所需的时段数。可使用「+30分钟」继续延长。若选择的是共用时段，请选择要预约的{resourceName}。",
+      "slot_unavailable_conflict": "该时段目前不接受预约，请尝试其他时间"
+    },
+    "group": {
+      "title": "整批预约",
+      "slot_count": "30分钟×{n}个时段",
+      "time_range": "预约时间段",
+      "auto_selected": "已自动选择{menu}所需的{n}个时段",
+      "extend": "延长时段",
+      "extend_hint": "如果下一个时段空闲即可延长",
+      "confirm": "确认预约",
+      "cancel": "取消预约",
+      "cancel_confirm": "将取消全部{n}个时段",
+      "conflict_retry": "已被他人抢先预约。空档已更新，请重新选择",
+      "not_consecutive": "所选时段不连续，或与预约对象不一致",
+      "size_exceeded": "一组预约最多16个时段",
+      "row_locked": "这是一笔整批预约，请以整批为单位进行操作",
+      "deadline_passed": "已超过取消截止时间，无法取消",
+      "own_overlap": "所选时间段与您的其他预约重叠，请确认时间段"
+    },
+    "waitlist": {
+      "register_button": "加入候补",
+      "cancel_button": "取消候补",
+      "registered_badge": "候补中",
+      "dialog_title": "候补预约",
+      "notice": "出现空位时会通知您。不保证顺序，先到先得",
+      "register_success": "已加入候补",
+      "cancel_success": "已取消候补",
+      "admin_count": "候补 {n} 人",
+      "already_registered": "您已加入该时段的候补",
+      "not_found": "未找到候补记录（可能已取消或已转为预约）",
+      "limit_exceeded": "已达到候补登记上限",
+      "rate_limited": "操作过于频繁，请等待约1分钟后重试",
+      "slot_not_full": "已出现空位，您可以直接预约",
+      "my_list_title": "我的候补预约",
+      "no_entries": "当前没有候补中的预约",
+      "aria_hint_register": "按此加入候补",
+      "aria_hint_cancel": "按此取消候补"
+    },
+    "pending_expire_notice": {
+      "form_note": "如果在{n}小时内未获批准，此预约将自动取消"
+    },
+    "team_guide": {
+      "title": "预约使用说明",
+      "help_button": "使用说明",
+      "book": {
+        "matrix_title": "矩阵表的看法",
+        "matrix_steps": {
+          "0": "纵向是「日期×{resourceName}」，横向是「时间」。",
+          "1": "颜色含义：绿色「空闲」＝可预约／「已预约」＝已被占用／斜线＝「不可预约」／浅灰色＝「已截止」。"
+        },
+        "filter_title": "用菜单筛选",
+        "filter_steps": {
+          "0": "使用上方的菜单筛选后，会自动高亮显示该菜单所需的连续时段。",
+          "1": "不选菜单时，可以按30分钟为单位逐个预约。"
+        },
+        "flow_title": "预约流程",
+        "flow_steps": {
+          "0": "点击「空闲」（绿色）单元格。",
+          "1": "选择菜单后会自动整理出所需的时段数（如果已用菜单筛选，会自动跳过此步骤）。",
+          "2": "需要延长时间时点击「+30分钟」。",
+          "3": "确认日期时间和内容并填写「备注（可选）」后，点击「确认预约」完成预约。"
+        },
+        "conflict_title": "满员或冲突时",
+        "conflict_steps": {
+          "0": "灰色的时段（已预约・已截止・不可预约）无法选择，请选择其他时间或{resourceName}。",
+          "1": "如果在确认前被其他人抢先预约，会出现错误提示，画面会自动刷新为最新空位状态，请重新选择空闲时段。"
+        }
+      },
+      "list": {
+        "admin_overview_title": "查看团队整体预约",
+        "admin_overview_steps": {
+          "0": "可按状态（待处理・已通过・已取消・已完成・未到场）筛选。",
+          "1": "多个时段合并预约的「团体预约」会合并显示为一行，并标明时段数。"
+        },
+        "admin_manage_title": "审批・驳回・取消",
+        "admin_manage_steps": {
+          "0": "审批模式为「手动」的团队，可对待处理的预约进行「审批」或「驳回」。",
+          "1": "已确定的预约也可以取消。团体预约会作为整体一并操作。",
+          "2": "操作后会立即反映到「预约」标签页的空位状态。"
+        },
+        "member_mine_title": "查看自己的预约",
+        "member_mine_steps": {
+          "0": "这里只显示你自己的预约（不会显示其他成员的预约）。",
+          "1": "可按状态筛选查看。"
+        },
+        "member_cancel_title": "取消预约",
+        "member_cancel_steps": {
+          "0": "点击要撤销的预约行中的「取消预约」，并在确认画面再次点击「取消预约」即可撤销。",
+          "1": "超过取消期限时会显示错误且无法自行取消，如需变更请联系团队管理员。"
+        }
+      },
+      "line_manage": {
+        "setup0_title": "① 设置营业时间",
+        "setup0_steps": {
+          "0": "在「营业时间」中按星期设置营业的时间段。这是生成预约时段的基础。",
+          "1": "保存后会立即自动创建未来28天内的时段。"
+        },
+        "setup1_title": "② 创建{resourceName}",
+        "setup1_steps": {
+          "0": "在此标签页上方通过「添加{resourceName}」登记座位、员工、窗口等可预约的对象。",
+          "1": "没有{resourceName}时，用户的「预约」标签页将不会显示任何内容。"
+        },
+        "setup2_title": "③ 创建菜单",
+        "setup2_steps": {
+          "0": "在下方的「菜单管理」中登记具有所需时长（以30分钟为单位）的菜单。",
+          "1": "如只想限定特定{resourceName}，可在「{resourceName}」中选择「仅限所选{resourceName}」（默认对所有{resourceName}提供）。"
+        },
+        "setup3_title": "④ 创建每周排程",
+        "setup3_steps": {
+          "0": "在下方的「每周排程」中设置星期・时间段・名额，只要在营业时间内，保存后会立即自动创建时段。",
+          "1": "保存后会立即自动创建未来28天内的时段。",
+          "2": "此后每天都会自动延伸生成时段（无需任何操作）。"
+        },
+        "daily_title": "日常运营",
+        "daily_steps": {
+          "0": "只要创建一次每周排程，时段就会每天自动延伸，基本上无需任何操作。",
+          "1": "只有想更改星期或时间段时才需要编辑每周排程。"
+        },
+        "exception_title": "例外情况的处理",
+        "exception_steps": {
+          "0": "如需将特定日期设为休业或临时营业，请使用例外日历中的「将此日设为休业」「设为临时营业」。如需精细调整个别时段，可在「详细设置」的「手动管理个别时段」中创建、编辑或关闭（结束受理）。",
+          "1": "只想在特定时间段停止接受预约时，可使用高级设置中的「不可预约时段」。",
+          "2": "删除{resourceName}后，该模板将停止使用，没有预约的未来时段会自动删除。如仍有生效中的预约，请先改约或取消。"
+        }
+      },
+      "emergency_closure": {
+        "send_title": "发送后会发生什么",
+        "send_steps": {
+          "0": "在停业期间・时间段内有预约的所有人都会收到邮件和应用内通知的停业公告。",
+          "1": "勾选「取消受影响的预约」后，停业期间的预约也会自动取消。"
+        },
+        "status_title": "确认状态的看法",
+        "status_steps": {
+          "0": "展开发送历史后，可实时查看谁已确认（已读）该公告。",
+          "1": "「n/m件已确认」表示在m位对象中有n位已确认。"
+        }
+      }
     }
   }
 }

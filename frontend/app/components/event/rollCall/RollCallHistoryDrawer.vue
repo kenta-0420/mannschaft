@@ -36,7 +36,7 @@ const isVisible = computed({
     data-testid="roll-call-history-drawer"
   >
     <div v-if="loading" class="rc-history__loading">
-      {{ $t('common.loading') }}
+      <i class="pi pi-spin pi-spinner mr-2" />{{ $t('button.loading') }}
     </div>
     <ul v-else-if="sessionIds.length > 0" class="rc-history__list">
       <li

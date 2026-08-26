@@ -41,6 +41,10 @@ public interface RecruitmentMapper {
     @Mapping(target = "status", expression = "java(entity.getStatus().name())")
     @Mapping(target = "categoryNameI18nKey", ignore = true)
     @Mapping(target = "subcategoryName", ignore = true)
+    // F22.1 市: region / regions / friendTargets は Service 層でマスタ・宛先を引いて enrich する
+    @Mapping(target = "region", ignore = true)
+    @Mapping(target = "regions", ignore = true)
+    @Mapping(target = "friendTargets", ignore = true)
     RecruitmentListingResponse toListingResponse(RecruitmentListingEntity entity);
 
     @Mapping(target = "participationType", expression = "java(entity.getParticipationType().name())")

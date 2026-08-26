@@ -114,6 +114,9 @@ onMounted(() => {
 // Helpers
 // =====================================================================
 
+/** 使い方モーダル表示制御。 */
+const showGuide = ref(false)
+
 function avatarLabel(v: VillageResponse): string {
   // アイコン URL 未解決時の頭文字フォールバック
   return v.name.charAt(0) || '村'
@@ -122,26 +125,27 @@ function avatarLabel(v: VillageResponse): string {
 
 <template>
   <div class="mx-auto max-w-6xl p-6">
-    <!-- ヘッダー -->
-    <div class="mb-6 flex flex-wrap items-center gap-3">
-      <PageHeader :title="$t('village.search.title')" class="flex-1" />
-      <Button
-        :label="$t('village.action.create')"
-        icon="pi pi-plus"
-        @click="navigateTo('/villages/create-request')"
-      />
-    </div>
+    <!-- ヘッダー（PageHeader に作成ボタンと使い方を集約） -->
+    <PageHeader :title="$t('village.search.title')" help @help="showGuide = true">
+      <template #actions>
+        <Button
+          :label="$t('village.action.create')"
+          icon="pi pi-plus"
+          @click="navigateTo('/villages/create-request')"
+        />
+      </template>
+    </PageHeader>
 
     <!-- 検索 + フィルタバー -->
     <div class="mb-6 flex flex-wrap items-center gap-3">
-      <span class="p-input-icon-left flex-1 min-w-[240px]">
-        <i class="pi pi-search" />
+      <IconField class="flex-1 min-w-[240px]">
+        <InputIcon class="pi pi-search" />
         <InputText
           v-model="searchQuery"
           :placeholder="$t('village.search.placeholder')"
-          class="w-full"
+          class="w-full field-bordered"
         />
-      </span>
+      </IconField>
       <Select
         v-model="filterType"
         :options="typeOptions"
@@ -149,12 +153,12 @@ function avatarLabel(v: VillageResponse): string {
         option-value="value"
         :placeholder="$t('village.search.filterType')"
         show-clear
-        class="w-48"
+        class="w-48 field-bordered"
       />
       <InputText
         v-model="filterCategory"
         :placeholder="$t('village.search.filterCategory')"
-        class="w-48"
+        class="w-48 field-bordered"
       />
     </div>
 
@@ -171,11 +175,14 @@ function avatarLabel(v: VillageResponse): string {
     <!-- 村カード一覧 -->
     <template v-else>
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div
+        <SectionCard
           v-for="village in villages"
           :key="village.id"
-          class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
+          class="cursor-pointer transition-shadow hover:shadow-md"
+          role="button"
+          tabindex="0"
           @click="navigateTo(`/villages/${village.id}`)"
+          @keydown.enter="navigateTo(`/villages/${village.id}`)"
         >
           <!-- ヘッダー: アイコン + 名前 + 公式バッジ -->
           <div class="mb-3 flex items-center gap-3">
@@ -206,13 +213,13 @@ function avatarLabel(v: VillageResponse): string {
           <!-- 説明文（最大 2 行省略） -->
           <p
             v-if="village.description"
-            class="mb-3 line-clamp-2 text-sm text-gray-600"
+            class="mb-3 line-clamp-2 text-sm text-surface-600 dark:text-surface-300"
           >
             {{ village.description }}
           </p>
 
           <!-- メタ情報 -->
-          <div class="flex items-center justify-between text-sm text-gray-500">
+          <div class="flex items-center justify-between text-sm text-surface-500 dark:text-surface-400">
             <span>
               <i class="pi pi-tag mr-1" />
               {{ $t(`village.type.${village.type}`) }}
@@ -222,7 +229,7 @@ function avatarLabel(v: VillageResponse): string {
               {{ $t('village.field.memberCount') }}: {{ village.memberCount }}
             </span>
           </div>
-        </div>
+        </SectionCard>
       </div>
 
       <!-- ページネーション -->
@@ -235,5 +242,8 @@ function avatarLabel(v: VillageResponse): string {
         />
       </div>
     </template>
+
+    <!-- 使い方モーダル -->
+    <VillageListGuideModal v-model:visible="showGuide" />
   </div>
 </template>

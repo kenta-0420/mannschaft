@@ -61,6 +61,9 @@ class BlogPostControllerTest {
     private static final Long TEAM_ID = 10L;
     private static final Long ORG_ID = 20L;
     private static final Long POST_ID = 100L;
+    /** GET /posts の teamId / organizationId クエリパラメータ（String型） */
+    private static final String TEAM_ID_STR = TEAM_ID.toString();
+    private static final String ORG_ID_STR = ORG_ID.toString();
 
     @BeforeEach
     void setUp() {
@@ -97,10 +100,10 @@ class BlogPostControllerTest {
         @DisplayName("正常系: teamIdで記事一覧が返却される")
         void チームID指定_記事一覧_正常() {
             Page<BlogPostResponse> page = new PageImpl<>(List.of(mockResponse()));
-            given(postService.listByTeam(eq(TEAM_ID), any())).willReturn(page);
+            given(postService.listByTeam(eq(TEAM_ID_STR), any())).willReturn(page);
 
             ResponseEntity<PagedResponse<BlogPostResponse>> result =
-                    controller.listPosts(TEAM_ID, null, null, null, null, null, null, null, 0, 20);
+                    controller.listPosts(TEAM_ID_STR, null, null, null, null, null, null, null, 0, 20);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(result.getBody()).isNotNull();
@@ -111,10 +114,23 @@ class BlogPostControllerTest {
         @DisplayName("正常系: organizationIdで記事一覧が返却される")
         void 組織ID指定_記事一覧_正常() {
             Page<BlogPostResponse> page = new PageImpl<>(List.of(mockResponse()));
-            given(postService.listByOrganization(eq(ORG_ID), any())).willReturn(page);
+            given(postService.listByOrganization(eq(ORG_ID_STR), any())).willReturn(page);
 
             ResponseEntity<PagedResponse<BlogPostResponse>> result =
-                    controller.listPosts(null, ORG_ID, null, null, null, null, null, null, 0, 20);
+                    controller.listPosts(null, ORG_ID_STR, null, null, null, null, null, null, 0, 20);
+
+            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        }
+
+        @Test
+        @DisplayName("正常系: UUID文字列のteamIdで記事一覧が返却される")
+        void チームUUID指定_記事一覧_正常() {
+            String teamUuid = "01961234-5678-7000-9abc-def012345678";
+            Page<BlogPostResponse> page = new PageImpl<>(List.of(mockResponse()));
+            given(postService.listByTeam(eq(teamUuid), any())).willReturn(page);
+
+            ResponseEntity<PagedResponse<BlogPostResponse>> result =
+                    controller.listPosts(teamUuid, null, null, null, null, null, null, null, 0, 20);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
@@ -169,7 +185,7 @@ class BlogPostControllerTest {
         @DisplayName("正常系: 記事が作成される (201)")
         void 記事作成_正常_201() {
             CreateBlogPostRequest request = new CreateBlogPostRequest(
-                    TEAM_ID, null, null, "新記事", null, "本文",
+                    TEAM_ID_STR, null, null, "新記事", null, "本文",
                     null, null, null, null, null, null, null, null, null, null, null);
             given(postService.createPost(eq(USER_ID), any())).willReturn(mockResponse());
 
@@ -214,7 +230,7 @@ class BlogPostControllerTest {
             ResponseEntity<Void> result = controller.deletePost(POST_ID);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(postService).deletePost(POST_ID);
+            verify(postService).deletePost(POST_ID, USER_ID);
         }
     }
 
@@ -230,7 +246,7 @@ class BlogPostControllerTest {
         @DisplayName("正常系: ステータス変更される")
         void ステータス変更_正常() {
             PublishRequest request = new PublishRequest("PUBLISHED", null, null);
-            given(postService.changeStatus(eq(POST_ID), any())).willReturn(mockResponse());
+            given(postService.changeStatus(eq(POST_ID), eq(USER_ID), any())).willReturn(mockResponse());
 
             ResponseEntity<ApiResponse<BlogPostResponse>> result = controller.changeStatus(POST_ID, request);
 
@@ -271,7 +287,7 @@ class BlogPostControllerTest {
         void 一括操作_正常() {
             BulkActionRequest request = new BulkActionRequest(List.of(1L, 2L), "DELETE");
             BulkActionResponse response = new BulkActionResponse(2, List.of(), "DELETE");
-            given(postService.bulkAction(any())).willReturn(response);
+            given(postService.bulkAction(any(), eq(USER_ID))).willReturn(response);
 
             ResponseEntity<ApiResponse<BulkActionResponse>> result = controller.bulkAction(request);
 
@@ -386,7 +402,7 @@ class BlogPostControllerTest {
         @Test
         @DisplayName("正常系: プレビュートークンが発行される")
         void プレビュートークン発行_正常() {
-            given(postService.issuePreviewToken(POST_ID)).willReturn(mockResponse());
+            given(postService.issuePreviewToken(POST_ID, USER_ID)).willReturn(mockResponse());
 
             ResponseEntity<ApiResponse<BlogPostResponse>> result = controller.issuePreviewToken(POST_ID);
 
@@ -404,7 +420,7 @@ class BlogPostControllerTest {
             ResponseEntity<Void> result = controller.revokePreviewToken(POST_ID);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(postService).revokePreviewToken(POST_ID);
+            verify(postService).revokePreviewToken(POST_ID, USER_ID);
         }
     }
 }

@@ -9,7 +9,7 @@ import type {
 export function useTodoMemo() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team'
       ? `/api/v1/teams/${scopeId}`
       : `/api/v1/organizations/${scopeId}`
@@ -23,7 +23,7 @@ export function useTodoMemo() {
    */
   async function getSharedMemos(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     page: number = 0,
   ): Promise<SharedMemoListResponse> {
@@ -38,7 +38,7 @@ export function useTodoMemo() {
    */
   async function createSharedMemo(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: CreateSharedMemoRequest,
   ) {
@@ -54,7 +54,7 @@ export function useTodoMemo() {
    */
   async function updateSharedMemo(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     memoId: number,
     body: UpdateSharedMemoRequest,
@@ -71,7 +71,7 @@ export function useTodoMemo() {
    */
   async function deleteSharedMemo(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     memoId: number,
   ) {
@@ -89,7 +89,7 @@ export function useTodoMemo() {
    */
   async function getPersonalMemo(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
   ): Promise<{ data: PersonalMemo | null }> {
     return api<{ data: PersonalMemo | null }>(
@@ -103,7 +103,7 @@ export function useTodoMemo() {
    */
   async function upsertPersonalMemo(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: UpsertPersonalMemoRequest,
   ) {

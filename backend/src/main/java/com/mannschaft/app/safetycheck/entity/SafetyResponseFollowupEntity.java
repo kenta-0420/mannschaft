@@ -8,10 +8,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 /**
  * 安否確認フォローアップエンティティ。要支援者へのフォローアップ状態を管理する。
@@ -20,8 +20,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "safety_response_followups")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class SafetyResponseFollowupEntity extends BaseEntity {
 
     @Column(nullable = false)

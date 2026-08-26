@@ -7,8 +7,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -43,8 +43,7 @@ import java.time.LocalDateTime;
 @Table(name = "announcement_feeds")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AnnouncementFeedEntity extends BaseEntity {
 
     /**
@@ -121,11 +120,11 @@ public class AnnouncementFeedEntity extends BaseEntity {
 
     /**
      * 閲覧可能範囲（元コンテンツから継承・同期更新）。
-     * 値: MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / PUBLIC
+     * 値: MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC
      */
     @Column(nullable = false, length = 30)
     @Builder.Default
-    private String visibility = "MEMBERS_ONLY";
+    private String visibility = "MEMBERS_AND_ABOVE";
 
     /**
      * 組織告知でのチーム絞り込み対象（JSON 配列で team.id を保持）。

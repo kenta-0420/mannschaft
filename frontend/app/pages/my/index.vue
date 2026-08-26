@@ -3,6 +3,7 @@ definePageMeta({ middleware: 'auth' })
 
 const onboardingApi = useOnboardingApi()
 const { captureQuiet } = useErrorReport()
+const { t } = useI18n()
 
 const onboardingActiveCount = ref(0)
 
@@ -47,6 +48,13 @@ const cards: MyPageCard[] = [
     to: '/my/performance',
   },
   {
+    // F08.10 個人分析の発見可能性（§G.9）。i18n 済みラベルで「試合分析」への入口を追加。
+    label: t('match.analytics.my_title'),
+    description: t('match.analytics.my_subtitle'),
+    icon: 'pi pi-chart-bar',
+    to: '/me/match-analytics',
+  },
+  {
     label: 'マイプロジェクト',
     description: '個人プロジェクトの管理',
     icon: 'pi pi-briefcase',
@@ -69,6 +77,21 @@ const cards: MyPageCard[] = [
     description: '履歴書・職務経歴書の作成・出力',
     icon: 'pi pi-file-pdf',
     to: '/my/resume',
+  },
+  {
+    // F22.1 謝礼の受け取り・返金管理（受取側 ADMIN/本人）。
+    label: t('market.payment.received.pageTitle'),
+    description: t('market.payment.received.pageSubtitle'),
+    icon: 'pi pi-wallet',
+    to: '/me/recruitment-payments',
+  },
+  {
+    // F03.11.1 キャンセル料の免除（受取先側の精算管理者・受取先本人・SYSTEM_ADMIN）。
+    // 受取側の金銭を扱う画面であるため、謝礼の受け取り（/me/recruitment-payments）の隣に置く。
+    label: t('recruitment.cancellationFeeWaive.pageTitle'),
+    description: t('recruitment.cancellationFeeWaive.pageDescription'),
+    icon: 'pi pi-ban',
+    to: '/me/recruitment-cancellation-fees',
   },
 ]
 

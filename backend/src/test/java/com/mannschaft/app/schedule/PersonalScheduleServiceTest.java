@@ -10,25 +10,37 @@ import com.mannschaft.app.schedule.dto.UpdatePersonalScheduleRequest;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.PersonalScheduleReminderRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity;
 import com.mannschaft.app.schedule.service.PersonalScheduleService;
+import com.mannschaft.app.schedule.service.ScheduleAccessGuard;
+import com.mannschaft.app.schedule.service.ScheduleRecurrenceService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
+
+import org.mockito.ArgumentCaptor;
+
+import java.util.ArrayList;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -54,6 +66,20 @@ class PersonalScheduleServiceTest {
     @Mock
     private NameResolverService nameResolverService;
 
+    @Mock
+    private ScheduleRecurrenceService recurrenceService;
+
+    // F03.19 W1-c: 個人予定一覧の色解決でレイヤー設定を読む（既定 mock は空 Map を返す＝設定なし）。
+    @Mock
+    private com.mannschaft.app.schedule.service.CalendarLayerService calendarLayerService;
+
+    /**
+     * 認可ガードは状態を持たない純粋な判定のため、モックではなく実体を注入して
+     * 本物の所有者判定を通す（@Spy により @InjectMocks の注入対象になる）。
+     */
+    @Spy
+    private ScheduleAccessGuard scheduleAccessGuard = new ScheduleAccessGuard();
+
     @InjectMocks
     private PersonalScheduleService personalScheduleService;
 
@@ -66,6 +92,9 @@ class PersonalScheduleServiceTest {
     private static final Long OTHER_USER_ID = 999L;
     private static final LocalDateTime START = LocalDateTime.of(2026, 4, 1, 10, 0);
     private static final LocalDateTime END = LocalDateTime.of(2026, 4, 1, 12, 0);
+    /** JST(+09:00) のオフセットを付与した OffsetDateTime（テスト用）。 */
+    private static final OffsetDateTime START_ODT = OffsetDateTime.of(2026, 4, 1, 10, 0, 0, 0, ZoneOffset.ofHours(9));
+    private static final OffsetDateTime END_ODT = OffsetDateTime.of(2026, 4, 1, 12, 0, 0, 0, ZoneOffset.ofHours(9));
 
     private ScheduleEntity createPersonalScheduleEntity() {
         return ScheduleEntity.builder()
@@ -125,8 +154,8 @@ class PersonalScheduleServiceTest {
                     .willAnswer(invocation -> invocation.getArgument(0));
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
-                    "個人予定", "テスト", "自宅", START, END, false, "OTHER", "#FF0000",
-                    null, null);
+                    "個人予定", "テスト", "自宅", START_ODT, END_ODT, false, "OTHER", "#FF0000",
+                    null, null, null);
 
             // when
             PersonalScheduleResponse result = personalScheduleService.createPersonalSchedule(req, USER_ID);
@@ -147,7 +176,7 @@ class PersonalScheduleServiceTest {
                     .willReturn(List.of());
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
-                    "個人予定", null, null, END, START, false, null, null, null, null);
+                    "個人予定", null, null, END_ODT, START_ODT, false, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> personalScheduleService.createPersonalSchedule(req, USER_ID))
@@ -169,7 +198,7 @@ class PersonalScheduleServiceTest {
                     .willReturn(thousandSchedules);
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
-                    "個人予定", null, null, START, END, false, null, null, null, null);
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> personalScheduleService.createPersonalSchedule(req, USER_ID))
@@ -189,8 +218,8 @@ class PersonalScheduleServiceTest {
                     .willAnswer(invocation -> invocation.getArgument(0));
 
             CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
-                    "個人予定", null, null, START, END, false, null, null,
-                    List.of(10, 30), null);
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    List.of(10, 30), null, null);
 
             // when
             personalScheduleService.createPersonalSchedule(req, USER_ID);
@@ -198,6 +227,170 @@ class PersonalScheduleServiceTest {
             // then
             verify(reminderRepository).deleteByScheduleId(any());
             verify(reminderRepository).saveAll(any());
+        }
+
+        @Test
+        @DisplayName("繰り返し+相対リマインダー_各子スケジュールへ複製される")
+        void 繰り返し_相対リマインダー_各子スケジュールへ複製される() {
+            // given
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // 子スケジュール 2 件（DAILY count=2 に相当）
+            ScheduleEntity child1 = ScheduleEntity.builder()
+                    .userId(USER_ID)
+                    .title("個人予定")
+                    .startAt(START.plusDays(1))
+                    .endAt(END.plusDays(1))
+                    .allDay(false)
+                    .eventType(EventType.OTHER)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.ADMIN_ONLY)
+                    .minResponseRole(MinResponseRole.ADMIN_ONLY)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(false)
+                    .attendanceStatus(AttendanceGenerationStatus.READY)
+                    .commentOption(CommentOption.HIDDEN)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+            ScheduleEntity child2 = ScheduleEntity.builder()
+                    .userId(USER_ID)
+                    .title("個人予定")
+                    .startAt(START.plusDays(2))
+                    .endAt(END.plusDays(2))
+                    .allDay(false)
+                    .eventType(EventType.OTHER)
+                    .visibility(ScheduleVisibility.MEMBERS_ONLY)
+                    .minViewRole(MinViewRole.ADMIN_ONLY)
+                    .minResponseRole(MinResponseRole.ADMIN_ONLY)
+                    .status(ScheduleStatus.SCHEDULED)
+                    .attendanceRequired(false)
+                    .attendanceStatus(AttendanceGenerationStatus.READY)
+                    .commentOption(CommentOption.HIDDEN)
+                    .isException(false)
+                    .createdBy(USER_ID)
+                    .build();
+
+            given(scheduleRepository.findByParentScheduleIdOrderByStartAtAsc(org.mockito.ArgumentMatchers.nullable(Long.class)))
+                    .willReturn(List.of(child1, child2));
+
+            // 繰り返しルール付きリクエスト（DAILY, count=2, 相対リマインダー [15]）
+            com.mannschaft.app.schedule.dto.RecurrenceRuleDto rule =
+                    new com.mannschaft.app.schedule.dto.RecurrenceRuleDto(
+                            "DAILY", 1, null, "COUNT", null, 2);
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    List.of(15), null, rule);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then: 子2件 × リマインダー1件 = saveAll に 2 エンティティが渡される
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<PersonalScheduleReminderEntity>> captor =
+                    ArgumentCaptor.forClass((Class) List.class);
+            // saveAll は 親リマインダー保存 + 子複製保存 の 2 回呼ばれる
+            verify(reminderRepository, org.mockito.Mockito.times(2)).saveAll(captor.capture());
+            List<PersonalScheduleReminderEntity> childReminders = captor.getAllValues().get(1);
+            assertThat(childReminders).hasSize(2);
+            assertThat(childReminders).allSatisfy(r -> {
+                assertThat(r.getReminderKind()).isEqualTo(ReminderKind.RELATIVE);
+                assertThat(r.getRemindBeforeMinutes()).isEqualTo(15);
+            });
+        }
+
+        @Test
+        @DisplayName("繰り返し+絶対リマインダーのみ_子へは複製されない")
+        void 繰り返し_絶対リマインダーのみ_子へは複製されない() {
+            // given
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            com.mannschaft.app.schedule.dto.RecurrenceRuleDto rule =
+                    new com.mannschaft.app.schedule.dto.RecurrenceRuleDto(
+                            "DAILY", 1, null, "COUNT", null, 2);
+
+            // 相対リマインダーは null、絶対リマインダーのみ指定
+            OffsetDateTime absReminder = OffsetDateTime.of(2026, 4, 1, 9, 0, 0, 0, ZoneOffset.ofHours(9));
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "個人予定", null, null, START_ODT, END_ODT, false, null, null,
+                    null, List.of(absReminder), rule);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then: findByParentScheduleIdOrderByStartAtAsc は呼ばれない（子への複製をスキップ）
+            verify(scheduleRepository, never()).findByParentScheduleIdOrderByStartAtAsc(org.mockito.ArgumentMatchers.nullable(Long.class));
+        }
+    }
+
+    // ========================================
+    // createPersonalSchedule - タイムゾーン変換
+    // ========================================
+
+    @Nested
+    @DisplayName("createPersonalSchedule_タイムゾーン変換")
+    class CreatePersonalScheduleTimezoneConversion {
+
+        @Test
+        @DisplayName("UTC入力_JST(+9h)に変換してEntityに保存される")
+        void UTC入力_JSTに変換してEntityに保存される() {
+            // given: UTC 01:00 = JST 10:00
+            OffsetDateTime startUtc = OffsetDateTime.of(2026, 4, 1, 1, 0, 0, 0, ZoneOffset.UTC);
+            OffsetDateTime endUtc = OffsetDateTime.of(2026, 4, 1, 3, 0, 0, 0, ZoneOffset.UTC);
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            ScheduleEntity[] saved = new ScheduleEntity[1];
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> {
+                        saved[0] = invocation.getArgument(0);
+                        return saved[0];
+                    });
+
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "UTC入力テスト", null, null, startUtc, endUtc, false, null, null, null, null, null);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then: UTC 01:00 は JST 10:00 に変換される
+            assertThat(saved[0].getStartAt())
+                    .isEqualTo(LocalDateTime.of(2026, 4, 1, 10, 0, 0));
+            assertThat(saved[0].getEndAt())
+                    .isEqualTo(LocalDateTime.of(2026, 4, 1, 12, 0, 0));
+        }
+
+        @Test
+        @DisplayName("JST入力_そのままEntityに保存される")
+        void JST入力_そのままEntityに保存される() {
+            // given: JST 10:00 はそのまま 10:00 として保存される
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(
+                    eq(USER_ID), any(LocalDateTime.class), any(LocalDateTime.class)))
+                    .willReturn(List.of());
+            ScheduleEntity[] saved = new ScheduleEntity[1];
+            given(scheduleRepository.save(any(ScheduleEntity.class)))
+                    .willAnswer(invocation -> {
+                        saved[0] = invocation.getArgument(0);
+                        return saved[0];
+                    });
+
+            CreatePersonalScheduleRequest req = new CreatePersonalScheduleRequest(
+                    "JST入力テスト", null, null, START_ODT, END_ODT, false, null, null, null, null, null);
+
+            // when
+            personalScheduleService.createPersonalSchedule(req, USER_ID);
+
+            // then: JST 10:00 → 変換後も 10:00
+            assertThat(saved[0].getStartAt()).isEqualTo(START);
+            assertThat(saved[0].getEndAt()).isEqualTo(END);
         }
     }
 
@@ -273,12 +466,59 @@ class PersonalScheduleServiceTest {
             // given
             ScheduleEntity entity = createPersonalScheduleEntity();
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+            given(reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(SCHEDULE_ID))
+                    .willReturn(List.of());
 
             // when
             PersonalScheduleResponse result = personalScheduleService.getPersonalSchedule(SCHEDULE_ID, USER_ID);
 
             // then
             assertThat(result.getContent().title()).isEqualTo("個人予定");
+        }
+
+        @Test
+        @DisplayName("詳細取得_相対と絶対の両リマインダーがdetailedRemindersに載る（機能55第三陣）")
+        void 詳細取得_相対と絶対両リマインダーが載る() {
+            // given: 相対(30分前) + 絶対(固定日時) の2件
+            ScheduleEntity entity = createPersonalScheduleEntity();
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
+
+            LocalDateTime absoluteAt = LocalDateTime.of(2026, 4, 1, 9, 0);
+            com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity relative =
+                    com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity.builder()
+                            .scheduleId(SCHEDULE_ID)
+                            .reminderKind(ReminderKind.RELATIVE)
+                            .remindBeforeMinutes(30)
+                            .notified(false)
+                            .build();
+            com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity absolute =
+                    com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity.builder()
+                            .scheduleId(SCHEDULE_ID)
+                            .reminderKind(ReminderKind.ABSOLUTE)
+                            .remindAt(absoluteAt)
+                            .notified(true)
+                            .build();
+            given(reminderRepository.findByScheduleIdOrderByRemindBeforeMinutesAsc(SCHEDULE_ID))
+                    .willReturn(List.of(relative, absolute));
+
+            // when
+            PersonalScheduleResponse result = personalScheduleService.getPersonalSchedule(SCHEDULE_ID, USER_ID);
+
+            // then: detailedReminders に両方載る
+            assertThat(result.getDetailedReminders()).hasSize(2);
+            assertThat(result.getDetailedReminders())
+                    .anySatisfy(r -> {
+                        assertThat(r.getReminderKind()).isEqualTo("RELATIVE");
+                        assertThat(r.getRemindBeforeMinutes()).isEqualTo(30);
+                        assertThat(r.getNotified()).isFalse();
+                    })
+                    .anySatisfy(r -> {
+                        assertThat(r.getReminderKind()).isEqualTo("ABSOLUTE");
+                        assertThat(r.getRemindAt()).isEqualTo(absoluteAt);
+                        assertThat(r.getNotified()).isTrue();
+                    });
+            // 後方互換の reminders には相対分のみ
+            assertThat(result.getReminders()).containsExactly(30);
         }
 
         @Test
@@ -329,7 +569,7 @@ class PersonalScheduleServiceTest {
                     .willReturn(List.of());
 
             UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
-                    "更新タイトル", null, null, null, null, null, null, null, null, null, null);
+                    "更新タイトル", null, null, null, null, null, null, null, null, null, null, null);
 
             // when
             personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
@@ -351,7 +591,7 @@ class PersonalScheduleServiceTest {
                     .willReturn(List.of());
 
             UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
-                    "更新タイトル", "更新説明", "更新場所", null, null, null, null, "#00FF00", null, null, null);
+                    "更新タイトル", "更新説明", "更新場所", null, null, null, null, "#00FF00", null, null, null, null);
 
             // when
             PersonalScheduleResponse result = personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
@@ -379,7 +619,7 @@ class PersonalScheduleServiceTest {
 
             // titleのみ更新（他はnull→変更なし）
             UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
-                    "タイトルのみ更新", null, null, null, null, null, null, null, null, null, null);
+                    "タイトルのみ更新", null, null, null, null, null, null, null, null, null, null, null);
 
             // when
             PersonalScheduleResponse result = personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID);
@@ -400,7 +640,7 @@ class PersonalScheduleServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(entity));
 
             UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
-                    "更新", null, null, null, null, null, null, null, null, null, null);
+                    "更新", null, null, null, null, null, null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, OTHER_USER_ID))
@@ -417,7 +657,7 @@ class PersonalScheduleServiceTest {
             given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(cancelled));
 
             UpdatePersonalScheduleRequest req = new UpdatePersonalScheduleRequest(
-                    "更新", null, null, null, null, null, null, null, null, null, null);
+                    "更新", null, null, null, null, null, null, null, null, null, null, null);
 
             // when & then
             assertThatThrownBy(() -> personalScheduleService.updatePersonalSchedule(SCHEDULE_ID, req, USER_ID))

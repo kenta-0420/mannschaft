@@ -1,0 +1,40 @@
+{
+  "systemAdmin": {
+    "feePolicy": {
+      "title": "手续费方案管理",
+      "description": "管理统一支付的手续费方案（费率＋固定金额）及其适用范围",
+      "policyKey": "方案键",
+      "displayName": "显示名称",
+      "percentRate": "费率（%）",
+      "flatFee": "固定金额（日元）",
+      "enabled": "启用",
+      "assignmentCount": "分配数",
+      "totalFeeHint": "总手续费 = 费率 × 面额 ＋ 固定金额（由付款方与收款方平摊）",
+      "create": "添加方案",
+      "update": "更新",
+      "disable": "停用",
+      "defaultImmutable": "标准（DEFAULT）方案无法停用",
+      "feeExceedsHint": "在小额支付时，此固定金额可能超过面额",
+      "validation": {
+        "policyKeyFormat": "方案键只能使用大写字母、数字和下划线",
+        "displayNameRequired": "请输入显示名称",
+        "percentRateRange": "费率必须大于等于 0 且小于 1",
+        "flatFeeNonNegative": "固定金额必须为 0 或更大",
+        "feeZeroNotAllowed": "费率和固定金额不能同时为 0",
+        "alreadyExists": "已存在相同键的方案（请更新）",
+        "notFound": "未找到对应的手续费方案"
+      },
+      "assignment": {
+        "title": "手续费分配",
+        "sourceKind": "对象类型",
+        "subKey": "细分键（可选，例如帮手类别）",
+        "policy": "适用方案",
+        "add": "添加分配",
+        "remove": "解除分配",
+        "applyNote": "分配变更仅适用于新的扣款（不影响既有交易）",
+        "duplicate": "已存在相同条件的分配",
+        "policyDisabled": "分配的手续费方案已停用"
+      }
+    }
+  }
+}

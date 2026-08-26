@@ -49,6 +49,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * Admin コントローラー群の結合テスト。
@@ -480,6 +481,10 @@ public class AdminControllerTest {
         @MockitoBean
         private PermissionGroupService permissionGroupService;
 
+        // 束1 権限昇格根治: AdminPermissionGroupController が入口二重防御で注入する認可基盤
+        @MockitoBean
+        private com.mannschaft.app.common.AccessControlService accessControlService;
+
         @MockitoBean
         private com.mannschaft.app.auth.service.AuthTokenService authTokenService;
 
@@ -492,6 +497,10 @@ public class AdminControllerTest {
         private ProxyInputConsentRepository proxyInputConsentRepository;
         @MockitoBean
         private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
         private PermissionGroupResponse buildGroupResponse(Long id) {
             return new PermissionGroupResponse(
@@ -553,7 +562,7 @@ public class AdminControllerTest {
                     1L, "更新グループ", "ADMIN",
                     List.of("READ", "WRITE", "DELETE"),
                     LocalDateTime.of(2026, 3, 27, 10, 0));
-            given(permissionGroupService.updatePermissionGroup(anyLong(), any(PermissionGroupRequest.class)))
+            given(permissionGroupService.updatePermissionGroup(anyLong(), any(PermissionGroupRequest.class), anyLong()))
                     .willReturn(ApiResponse.of(updated));
 
             String body = """
@@ -575,7 +584,7 @@ public class AdminControllerTest {
         @Test
         @DisplayName("DELETE /permission-groups/{id} — 正常系: 204 を返却する")
         void deletePermissionGroup_success_returns204() throws Exception {
-            doNothing().when(permissionGroupService).deletePermissionGroup(1L);
+            doNothing().when(permissionGroupService).deletePermissionGroup(anyLong(), anyLong());
 
             mockMvc.perform(delete("/api/v1/admin/permission-groups/1"))
                     .andExpect(status().isNoContent());

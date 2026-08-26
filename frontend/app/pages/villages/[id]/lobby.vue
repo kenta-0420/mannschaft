@@ -1,39 +1,36 @@
 <script setup lang="ts">
 /**
- * F17.1 村機能 — 井戸端会議タブ
+ * F17.1 村機能 — 井戸端会議タブ（永続シェル子）
  *
  * 設計書: docs/features/F17.1_village_community.md §4.10
+ *
+ * 永続シェル方式（SPA）: 村データ・権限・VillageHeader・アクションは親
+ * `pages/villages/[id].vue` に集約。本ファイルはロビーパネル本体のみ。
  *
  * 構成（2 ペイン）:
  *   - 左ペイン: 日付ナビ（過去 7 日分の日次スレッド一覧 + メッセージ件数バッジ）
  *   - 右ペイン: 選択された日付のメッセージ表示
  *       - 「今日」選択時: リアルタイムチャット UI（送信フォーム表示 + WebSocket 購読）
- *       - 過去日選択時: 読み取り専用（既存 DailyThreadResponse.messages から表示）
- *
- * 既存資産の再利用:
- *   - useVillageApi: getVillage / getLobbyChannel / listDailyThreads / getDailyThread
- *   - useChatApi: getMessages / sendMessage / subscribeChannel / unsubscribeChannel
- *   - VillageHeader: 上部ヘッダー + タブナビ
+ *       - 過去日選択時: 読み取り専用
  *
  * 注意:
- *   - FE1 の types/village.ts の DailyThreadResponse には threadDate / messages フィールドが
- *     定義されていないが、設計書 §4.10.3 では threadDate と messages が返ることが明記されており、
- *     バックエンド DTO (DailyThreadResponse.java) でも threadDate を返している。
- *     型補強のため、本ファイル内で拡張インターフェースを用意する（FE1 の改変はしない）。
+ *   - WebSocket 購読 / presence は本タブのライフサイクル（onMounted / onBeforeUnmount）
+ *     に紐づく。永続シェル下でもタブを離れる際に必ず購読解除・presence 停止する。
+ *   - FE1 の DailyThreadResponse には threadDate / messages が無いため本ファイル内で
+ *     拡張インターフェースを用意する（FE1 の改変はしない）。
  */
 import dayjs from 'dayjs'
-import type { Ref } from 'vue'
 import type { ChatMessageResponse } from '~/types/chat'
+import { mapBeMessage, type BeMessageResponse } from '~/composables/chat/chatMessageMapper'
 import type {
   DailyThreadResponse,
   LobbyChannelResponse,
-  VillageResponse,
 } from '~/types/village'
 import { useVillageLobbyPresence } from '~/composables/village/useVillageLobbyPresence'
+import { useVillageContext } from '~/composables/useVillageContext'
 
-definePageMeta({
-  middleware: 'auth',
-})
+// auth は各タブで明示宣言（本コードベースの規約。親シェルも auth を持つ）。
+definePageMeta({ middleware: 'auth' })
 
 // =============================================================================
 // 型補強 — FE1 の DailyThreadResponse には threadDate / messages が無い
@@ -60,13 +57,16 @@ const route = useRoute()
 const { t } = useI18n()
 const villageApi = useVillageApi()
 const chatApi = useChatApi()
+const authStore = useAuthStore()
 const { userTimezone } = useDatetime()
 
 const villageId = String(route.params.id)
 const presence = useVillageLobbyPresence(villageId)
 
+// 村本体は親シェルから inject（再フェッチしない）
+const { village } = useVillageContext()
+
 // 状態
-const village = ref<VillageResponse | null>(null)
 const lobbyChannel = ref<LobbyChannelResponse | null>(null)
 const dailyThreads = ref<LobbyDailyThreadItem[]>([])
 const selectedDate = ref<string>('') // YYYY-MM-DD
@@ -86,9 +86,23 @@ const todayIso = computed(() => dayjs().tz(userTimezone.value).format('YYYY-MM-D
 /** 「今日」ボタンが選択されているか */
 const isTodaySelected = computed(() => selectedDate.value === todayIso.value)
 
+/**
+ * BE から渡された ISO 文字列が dayjs.tz() へ安全に渡せるかを判定する。
+ *
+ * dayjs の timezone プラグインは内部で Intl.DateTimeFormat を使ってオフセットを
+ * 算出するため、不正値（NaN Date）を渡すと `dayjs.tz()` 呼び出しの時点で
+ * `RangeError: Invalid time value` を投げてタブ全体がクラッシュする
+ * （Issue #2358）。tz プラグインを経由しないプレーンな `dayjs()` で
+ * 事前に isValid() を確認してから tz 変換を行うことで根治する。
+ */
+function isValidIso(value: string | null | undefined): value is string {
+  return !!value && dayjs(value).isValid()
+}
+
 /** 日付の表示ラベル（今日 / 昨日 / それ以外は localized 短縮形） */
 function formatDateLabel(iso: string): string {
   if (iso === todayIso.value) return t('village.lobby.today')
+  if (!isValidIso(iso)) return iso
   const today = dayjs.tz(todayIso.value, userTimezone.value)
   const target = dayjs.tz(iso, userTimezone.value)
   const diffDays = today.diff(target, 'day')
@@ -97,13 +111,18 @@ function formatDateLabel(iso: string): string {
   return target.format('M月D日')
 }
 
+/**
+ * メッセージの送信時刻を安全にフォーマットする。
+ * createdAt が不正・欠落の場合は RangeError を投げず `--:--` にフォールバックする。
+ */
+function formatMessageTime(iso: string | null | undefined): string {
+  if (!isValidIso(iso)) return '--:--'
+  return dayjs.tz(iso, userTimezone.value).format('HH:mm')
+}
+
 // =============================================================================
 // データ取得
 // =============================================================================
-
-async function loadVillage() {
-  village.value = await villageApi.getVillage(villageId)
-}
 
 async function loadLobbyChannel() {
   lobbyChannel.value = await villageApi.getLobbyChannel(villageId)
@@ -154,13 +173,14 @@ async function loadTodayMessages() {
 // WebSocket リアルタイム受信
 // =============================================================================
 
-const wsEventBus = useEventBus<{ type: string; data: unknown }>('chat:ws:event')
+const wsEventBus = useEventBus<{ type: string, data: unknown }>('chat:ws:event')
 
 const offWsEvent = wsEventBus.on((event) => {
   // 今日のチャネルへの MESSAGE_CREATED のみ反映
   if (!isTodaySelected.value || !lobbyChannel.value) return
   if (event.type === 'MESSAGE_CREATED') {
-    const newMsg = event.data as ChatMessageResponse
+    // WS の data は BE ネスト生形状のため、マッパーで FE フラット型へ変換する
+    const newMsg = mapBeMessage(event.data as BeMessageResponse, authStore.user?.id)
     if (newMsg.channelId !== lobbyChannel.value.chatChannelId) return
     if (!messages.value.some(m => m.id === newMsg.id)) {
       messages.value.push(newMsg)
@@ -228,61 +248,13 @@ function scrollToBottom() {
 }
 
 // =============================================================================
-// アクション handler（VillageHeader 経由）
-// =============================================================================
-
-async function onJoin() {
-  if (!village.value) return
-  await villageApi.joinVillage(village.value.id, { subjectType: 'USER', subjectId: 0 })
-  await loadVillage()
-}
-
-function onRequestJoin() {
-  navigateTo(`/villages/${villageId}/join-request`)
-}
-
-async function onLeave() {
-  // 退村は MembershipResponse を別途取得する必要があるため、Phase 1 ではメンバーページに誘導
-  navigateTo(`/villages/${villageId}/members`)
-}
-
-async function onPin() {
-  if (!village.value) return
-  await villageApi.addPin(village.value.id)
-  await loadVillage()
-}
-
-async function onUnpin() {
-  if (!village.value) return
-  await villageApi.removePin(village.value.id)
-  await loadVillage()
-}
-
-/** 編集ダイアログ表示状態 — VillageEditDialog (FE α2 で新規実装) を組み込む */
-const showEditDialog = ref(false)
-function onEdit() {
-  showEditDialog.value = true
-}
-
-/** 編集 Dialog から更新成功時に村情報を差し替え */
-function onVillageUpdated(updated: VillageResponse) {
-  village.value = updated
-}
-
-/** 通報ダイアログ表示状態 — VillageReportDialog (FE5 完成済) を組み込む */
-const showReportDialog = ref(false)
-function onReportClick() {
-  showReportDialog.value = true
-}
-
-// =============================================================================
 // ライフサイクル
 // =============================================================================
 
 async function initialize() {
-  await Promise.all([loadVillage(), loadLobbyChannel(), loadDailyThreads()])
+  await Promise.all([loadLobbyChannel(), loadDailyThreads()])
   // 今日のスレッドが一覧に無ければ仮想的に追加
-  const hasToday = dailyThreads.value.some(t => t.threadDate === todayIso.value)
+  const hasToday = dailyThreads.value.some(thread => thread.threadDate === todayIso.value)
   if (!hasToday) {
     // バックエンド未生成の場合に備えてダミー要素を先頭に挿入（メッセージ件数 0）
     dailyThreads.value = [
@@ -320,29 +292,10 @@ onBeforeUnmount(() => {
   }
   presence.stop()
 })
-
-// =============================================================================
-// 型ガード（テンプレ表示用）
-// =============================================================================
-
-const villageRef = village as Ref<VillageResponse | null>
 </script>
 
 <template>
-  <div>
-    <VillageHeader
-      v-if="villageRef"
-      :village="villageRef"
-      active-tab="lobby"
-      @join="onJoin"
-      @request-join="onRequestJoin"
-      @leave="onLeave"
-      @pin="onPin"
-      @unpin="onUnpin"
-      @report-click="onReportClick"
-      @edit="onEdit"
-    />
-
+  <div v-if="village">
     <div class="flex h-[calc(100vh-18rem)] overflow-hidden rounded-xl border border-surface-200 dark:border-surface-700 mt-4 mx-2 sm:mx-4">
       <!-- ============================================================ -->
       <!-- A. 左ペイン: 日付ナビ                                          -->
@@ -452,7 +405,7 @@ const villageRef = village as Ref<VillageResponse | null>
                   <span class="font-semibold text-surface-700 dark:text-surface-200">
                     {{ msg.sender?.displayName ?? '—' }}
                   </span>
-                  <span>{{ dayjs.tz(msg.createdAt, userTimezone).format('HH:mm') }}</span>
+                  <span>{{ formatMessageTime(msg.createdAt) }}</span>
                   <span v-if="msg.isEdited" class="italic">*</span>
                 </div>
                 <div
@@ -492,22 +445,5 @@ const villageRef = village as Ref<VillageResponse | null>
         </footer>
       </section>
     </div>
-
-    <!-- 通報ダイアログ — 対象は村本体 (VILLAGE) -->
-    <VillageReportDialog
-      v-if="villageRef"
-      v-model:visible="showReportDialog"
-      :village-id="villageRef.id"
-      target-type="VILLAGE"
-      :target-ref-id="villageRef.id"
-    />
-
-    <!-- 村本体編集ダイアログ — 村長のみ（VillageHeader 側で制御） -->
-    <VillageEditDialog
-      v-if="villageRef"
-      v-model:visible="showEditDialog"
-      :village="villageRef"
-      @updated="onVillageUpdated"
-    />
   </div>
 </template>

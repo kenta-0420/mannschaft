@@ -11,15 +11,15 @@ export function useShiftPositionApi() {
    * チームのポジション一覧を取得する（board.vue 互換）。
    * @param teamId チーム ID（省略時は teamId なしで取得）
    */
-  async function getPositions(teamId?: number): Promise<{ data: ShiftPositionResponse[] }> {
+  async function getPositions(teamId?: string): Promise<{ data: ShiftPositionResponse[] }> {
     const query = new URLSearchParams()
-    if (teamId) query.set('teamId', String(teamId))
+    if (teamId) query.set('teamId', teamId)
     const qs = teamId ? `?${query.toString()}` : ''
     return api<{ data: ShiftPositionResponse[] }>(`/api/v1/shifts/positions${qs}`)
   }
 
   async function createPosition(
-    teamId: number,
+    teamId: string,
     payload: CreatePositionRequest,
   ): Promise<ShiftPositionResponse> {
     const query = new URLSearchParams()

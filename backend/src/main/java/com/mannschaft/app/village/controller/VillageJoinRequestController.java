@@ -2,6 +2,8 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.village.dto.JoinRequestCreateRequest;
 import com.mannschaft.app.village.dto.JoinRequestResponse;
 import com.mannschaft.app.village.dto.JoinRequestReviewRequest;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -28,6 +31,7 @@ import java.util.UUID;
  *
  * <ul>
  *   <li>{@code POST /api/v1/villages/{villageId}/join-requests} 参加申請（認証ユーザー）</li>
+ *   <li>{@code GET  /api/v1/villages/{villageId}/join-requests/me} 自分の申請一覧（申請者本人）</li>
  *   <li>{@code GET  /api/v1/villages/{villageId}/join-requests}  村長/長老用 一覧</li>
  *   <li>{@code POST /api/v1/villages/{villageId}/join-requests/{id}/approve}  承認</li>
  *   <li>{@code POST /api/v1/villages/{villageId}/join-requests/{id}/reject}   拒否</li>
@@ -48,6 +52,7 @@ public class VillageJoinRequestController {
     // 申請（申請者向け）
     // ------------------------------------------------------------------
 
+    @AuthorizedInService
     @PostMapping("/api/v1/villages/{villageId}/join-requests")
     @Operation(summary = "村参加申請を行う（APPROVAL 村のみ）")
     public ResponseEntity<ApiResponse<JoinRequestResponse>> create(
@@ -59,9 +64,38 @@ public class VillageJoinRequestController {
     }
 
     // ------------------------------------------------------------------
+    // 自分の申請（申請者向け）
+    // ------------------------------------------------------------------
+
+    /**
+     * 申請者が自分の参加申請を取得する。
+     *
+     * <p>審査者向け一覧（{@link #list}）は HEADMAN/ELDER 限定のため、申請者（＝非メンバー）は
+     * 自分の申請状態すら確認できず、取下げに必要な id も復元できなかった。本 EP がそれを解消する。</p>
+     *
+     * <p><b>IDOR 閉塞</b>: 「誰の申請を返すか」をパス・クエリで一切受け取らず、
+     * {@link SecurityUtils#getCurrentUserId()} だけで解決する。したがって他人の申請を
+     * 要求する余地が構造的に存在しない（403/404 の判定自体が不要）。</p>
+     */
+    @SelfScopedEndpoint(
+            "パス・クエリで対象ユーザーを一切受け取らず、SecurityUtils.getCurrentUserId() が解決した"
+            + "認証済みユーザーIDのみを検索条件に使う（VillageJoinRequestService#listMine が"
+            + "requesterUserId で絞り込む）。他人の識別子を指定する余地が構造的に無い"
+            + "（設計書 F17.1_village_community.md §4.4.4 表）。")
+    @GetMapping("/api/v1/villages/{villageId}/join-requests/me")
+    @Operation(summary = "自分の村参加申請一覧（申請者本人）")
+    public ResponseEntity<ApiResponse<List<JoinRequestResponse>>> listMine(
+            @PathVariable("villageId") UUID villageId) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        List<JoinRequestResponse> result = service.listMine(villageId, actorUserId);
+        return ResponseEntity.ok(ApiResponse.of(result));
+    }
+
+    // ------------------------------------------------------------------
     // 一覧（村長/長老向け）
     // ------------------------------------------------------------------
 
+    @AuthorizedInService
     @GetMapping("/api/v1/villages/{villageId}/join-requests")
     @Operation(summary = "村の参加申請一覧（村長/長老）")
     public ResponseEntity<ApiResponse<Page<JoinRequestResponse>>> list(
@@ -78,6 +112,7 @@ public class VillageJoinRequestController {
     // 審査・取下げ
     // ------------------------------------------------------------------
 
+    @AuthorizedInService
     @PostMapping("/api/v1/villages/{villageId}/join-requests/{id}/approve")
     @Operation(summary = "参加申請を承認（村長/長老）")
     public ResponseEntity<ApiResponse<JoinRequestResponse>> approve(
@@ -89,6 +124,7 @@ public class VillageJoinRequestController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    @AuthorizedInService
     @PostMapping("/api/v1/villages/{villageId}/join-requests/{id}/reject")
     @Operation(summary = "参加申請を拒否（村長/長老）")
     public ResponseEntity<ApiResponse<JoinRequestResponse>> reject(
@@ -100,6 +136,7 @@ public class VillageJoinRequestController {
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
+    @AuthorizedInService
     @PostMapping("/api/v1/villages/{villageId}/join-requests/{id}/withdraw")
     @Operation(summary = "参加申請を取下げ（申請者本人）")
     public ResponseEntity<ApiResponse<JoinRequestResponse>> withdraw(

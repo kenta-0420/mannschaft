@@ -6,6 +6,7 @@ import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.event.dto.DismissalReminderTargetResponse;
 import com.mannschaft.app.event.service.EventDismissalService;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link EventDismissalController} のコントローラーテスト。F03.12 §16 / Phase11。
@@ -46,6 +48,11 @@ class EventDismissalControllerTest {
     @MockitoBean
     private EventDismissalService eventDismissalService;
 
+    // Wave3-B12event: EventDismissalController に EventScopeAccessGuard 依存を新規注入したため
+    // @WebMvcTest コンテキストの Bean 解決用に必要。
+    @MockitoBean
+    private EventScopeAccessGuard eventScopeAccessGuard;
+
     // JwtAuthenticationFilter の依存解決用
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -59,6 +66,10 @@ class EventDismissalControllerTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     private static final Long USER_ID = 100L;
 

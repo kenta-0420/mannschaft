@@ -19,7 +19,7 @@ import type { DisclosureExport } from '~/types/disclosure'
  */
 
 const props = defineProps<{
-  organizationId: number
+  organizationId: string
   export: DisclosureExport
   open: boolean
 }>()
@@ -31,7 +31,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const { success, error: notifyError } = useNotification()
-const { userTimezone } = useDatetime()
+const { userTimezone, buildOffsetDateTimeStr } = useDatetime()
 
 const orgIdRef = computed(() => props.organizationId)
 const api = computed(() => useDisclosureApi(orgIdRef.value))
@@ -103,20 +103,6 @@ function close() {
   emit('update:open', false)
 }
 
-/**
- * Date を ISO-8601 LocalDateTime 形式 (YYYY-MM-DDTHH:mm:ss) に変換。
- * バックエンド {@code LocalDateTime} は タイムゾーン情報なしの ISO 文字列を要求する。
- */
-function toLocalDateTimeString(d: Date): string {
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  const hh = String(d.getHours()).padStart(2, '0')
-  const mi = String(d.getMinutes()).padStart(2, '0')
-  const ss = String(d.getSeconds()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`
-}
-
 function formatDate(d: Date): string {
   return dayjs(d).tz(userTimezone.value).format('YYYY/MM/DD HH:mm')
 }
@@ -132,9 +118,13 @@ async function handleSubmit() {
   if (!canSubmit.value || !newExpiresAt.value) return
   submitting.value = true
   try {
+    // Issue #2508: BE の LocalDateTime は受信時オフセットを無視するため、
+    // ユーザーTZのオフセット付き ISO 文字列を明示的に送る（useDatetime の共通道具を使用）。
+    const isoValue = buildOffsetDateTimeStr(newExpiresAt.value)
+    if (!isoValue) return
     const updated = await api.value.extendExpiry(
-      props.export.id,
-      toLocalDateTimeString(newExpiresAt.value),
+      props.export.exportId,
+      isoValue,
     )
     success(t('disclosure.extend_expiry_success', { date: formatDate(newExpiresAt.value) }))
     emit('extended', updated)

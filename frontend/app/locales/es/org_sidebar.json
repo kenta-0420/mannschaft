@@ -55,6 +55,10 @@
     "webhooks": "Webhooks",
     "settingsModules": "Configuración de módulos",
     "notificationCredits": "Créditos de notificación",
-    "todoStatusLabels": "Etiquetas de tareas"
+    "todoStatusLabels": "Etiquetas de tareas",
+    "faqSettings": "Configuración de FAQ",
+    "billing": "Facturación y gestión de planes",
+    "leagueTransfers": "Ascensos y descensos",
+    "adminConsole": "Consola de administración"
   }
 }

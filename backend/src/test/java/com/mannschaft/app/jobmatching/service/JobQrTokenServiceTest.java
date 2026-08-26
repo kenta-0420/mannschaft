@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
@@ -129,9 +130,12 @@ class JobQrTokenServiceTest {
             JobQrTokenService.IssueResult result =
                     service.issue(CONTRACT_ID, JobCheckInType.OUT, null, REQUESTER_ID);
 
-            // 発行した JWT を JJWT parser で検証
+            // 発行した JWT を JJWT parser で検証。
+            // 発行は固定時刻 NOW（exp=NOW+60s）で行うため、検証も同じ NOW を JJWT の Clock に
+            // 注入して決定論的に評価する。注入しないとデフォルトの実システム時刻で exp 判定され、
+            // 実時間が exp（NOW+60s）を過ぎた瞬間に ExpiredJwtException で落ちる date-pin バグになる。
             SecretKey key = keyProvider.find(KID).orElseThrow();
-            var claims = Jwts.parser().verifyWith(key).build()
+            var claims = Jwts.parser().verifyWith(key).clock(() -> Date.from(NOW)).build()
                     .parseSignedClaims(result.token()).getPayload();
 
             assertThat(claims.get("cid", Long.class)).isEqualTo(CONTRACT_ID);
@@ -165,8 +169,8 @@ class JobQrTokenServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: Requester 以外からの発行は JOB_PERMISSION_DENIED")
-        void 発行者が別人で403() {
+        @DisplayName("異常系: Requester 以外からの発行は JOB_PERMISSION_DENIED（404 に写像され契約不在と区別できない）")
+        void 発行者が別人でJOB_PERMISSION_DENIED() {
             given(contractRepository.findById(CONTRACT_ID)).willReturn(Optional.of(contract()));
 
             assertThatThrownBy(() -> service.issue(CONTRACT_ID, JobCheckInType.IN, null, OTHER_USER_ID))

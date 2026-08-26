@@ -7,8 +7,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -25,8 +27,7 @@ import java.util.UUID;
 @Table(name = "tournament_entry_template_members")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TournamentEntryTemplateMemberEntity extends UuidV7Entity {
 
     /** テンプレートID（tournament_entry_templates.id、UUIDv7） */
@@ -43,6 +44,10 @@ public class TournamentEntryTemplateMemberEntity extends UuidV7Entity {
     /** ポジション（nullable） */
     @Column(length = 50)
     private String position;
+
+    /** 協会選手登録番号（背番号 jerseyNumber とは別・NULL 可／F08.7.1/05 §8.1） */
+    @Column(length = 32)
+    private String registrationNumber;
 
     /** 並び順 */
     @Column(nullable = false)
@@ -70,6 +75,17 @@ public class TournamentEntryTemplateMemberEntity extends UuidV7Entity {
     public void update(Integer jerseyNumber, String position, Short sortOrder) {
         this.jerseyNumber = jerseyNumber;
         this.position = position;
+        this.sortOrder = sortOrder;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * テンプレートメンバー情報を更新する（協会登録番号を含む／F08.7.1/05 §8.1）。
+     */
+    public void update(Integer jerseyNumber, String position, String registrationNumber, Short sortOrder) {
+        this.jerseyNumber = jerseyNumber;
+        this.position = position;
+        this.registrationNumber = registrationNumber;
         this.sortOrder = sortOrder;
         this.updatedAt = LocalDateTime.now();
     }

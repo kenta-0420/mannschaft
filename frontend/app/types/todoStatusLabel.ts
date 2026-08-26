@@ -13,7 +13,7 @@ export type TodoStatusLabelBucket = 'OPEN' | 'IN_PROGRESS' | 'COMPLETED'
 export interface TodoStatusLabel {
   id: number
   scopeType: TodoStatusLabelScopeType
-  scopeId: number | null
+  scopeId: string | null
   name: string
   bucket: TodoStatusLabelBucket
   /** HEX カラー (#RRGGBB) — null の場合は bucket 既定色にフォールバック */

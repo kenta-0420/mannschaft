@@ -30,6 +30,7 @@ import com.mannschaft.app.chart.repository.ChartPhotoRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chart.repository.ChartRecordTemplateRepository;
 import com.mannschaft.app.chart.repository.ChartSectionSettingRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.StorageService;
@@ -70,14 +71,20 @@ public class ChartRecordService {
     private final ChartPhotoUrlProvider photoUrlProvider;
     private final NameResolverService nameResolverService;
     private final StorageService storageService;
+    private final AccessControlService accessControlService;
+
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     /**
      * カルテ一覧をフィルタ付きでページング取得する。
      */
-    public Page<ChartRecordSummaryResponse> listCharts(Long teamId, Long customerUserId, Long staffUserId,
+    public Page<ChartRecordSummaryResponse> listCharts(Long teamId, Long actorUserId, Long customerUserId, Long staffUserId,
                                                         LocalDate visitDateFrom, LocalDate visitDateTo,
                                                         Boolean isSharedToCustomer, String keyword,
                                                         Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         Page<ChartRecordEntity> page;
         if (keyword != null && !keyword.isBlank()) {
             page = recordRepository.searchByKeyword(teamId, keyword, pageable);
@@ -104,8 +111,10 @@ public class ChartRecordService {
     /**
      * カルテ詳細を取得する。
      */
-    public ChartRecordResponse getChart(Long teamId, Long chartId) {
+    public ChartRecordResponse getChart(Long teamId, Long chartId, Long actorUserId) {
         ChartRecordEntity entity = findChartOrThrow(teamId, chartId);
+        // BOLA厳禁: entity 由来 teamId で認可する（path teamId 鵜呑み禁止）。
+        accessControlService.checkMembership(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         return buildChartResponse(entity);
     }
 
@@ -113,7 +122,10 @@ public class ChartRecordService {
      * カルテを作成する。
      */
     @Transactional
-    public ChartRecordResponse createChart(Long teamId, CreateChartRecordRequest request) {
+    public ChartRecordResponse createChart(Long teamId, Long actorUserId, CreateChartRecordRequest request) {
+        // createは作成先スコープ（request/pathのteamId）でcheckAdminOrAbove。
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TEAM);
+
         // テンプレート適用
         String chiefComplaint = request.getChiefComplaint();
         String treatmentNote = request.getTreatmentNote();
@@ -163,8 +175,10 @@ public class ChartRecordService {
      * カルテを更新する。
      */
     @Transactional
-    public ChartRecordResponse updateChart(Long teamId, Long chartId, UpdateChartRecordRequest request) {
+    public ChartRecordResponse updateChart(Long teamId, Long chartId, Long actorUserId, UpdateChartRecordRequest request) {
         ChartRecordEntity entity = findChartOrThrow(teamId, chartId);
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
         entity.update(
                 request.getChiefComplaint(),
@@ -198,8 +212,10 @@ public class ChartRecordService {
      * カルテを論理削除する。
      */
     @Transactional
-    public void deleteChart(Long teamId, Long chartId) {
+    public void deleteChart(Long teamId, Long chartId, Long actorUserId) {
         ChartRecordEntity entity = findChartOrThrow(teamId, chartId);
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         entity.softDelete();
         recordRepository.save(entity);
         log.info("カルテ削除: chartId={}", chartId);
@@ -209,8 +225,10 @@ public class ChartRecordService {
      * 顧客共有設定を変更する。
      */
     @Transactional
-    public ShareResponse updateShareStatus(Long teamId, Long chartId, boolean isSharedToCustomer) {
+    public ShareResponse updateShareStatus(Long teamId, Long chartId, Long actorUserId, boolean isSharedToCustomer) {
         ChartRecordEntity entity = findChartOrThrow(teamId, chartId);
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
         entity.updateShareStatus(isSharedToCustomer);
         ChartRecordEntity saved = recordRepository.save(entity);
         log.info("カルテ共有設定変更: chartId={}, isShared={}", chartId, isSharedToCustomer);
@@ -221,8 +239,10 @@ public class ChartRecordService {
      * ピン留めを変更する。
      */
     @Transactional
-    public PinResponse updatePinStatus(Long teamId, Long chartId, boolean isPinned) {
+    public PinResponse updatePinStatus(Long teamId, Long chartId, Long actorUserId, boolean isPinned) {
         ChartRecordEntity entity = findChartOrThrow(teamId, chartId);
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getTeamId(), SCOPE_TEAM);
 
         if (isPinned) {
             long pinnedCount = recordRepository.countByTeamIdAndCustomerUserIdAndIsPinnedTrue(
@@ -242,8 +262,10 @@ public class ChartRecordService {
      * カルテをコピーする。
      */
     @Transactional
-    public ChartRecordResponse copyChart(Long teamId, Long chartId, CopyChartRequest request) {
+    public ChartRecordResponse copyChart(Long teamId, Long chartId, Long actorUserId, CopyChartRequest request) {
         ChartRecordEntity source = findChartOrThrow(teamId, chartId);
+        // BOLA厳禁: entity 由来 teamId で認可する（コピーは新規作成に相当するため checkAdminOrAbove）。
+        accessControlService.checkAdminOrAbove(actorUserId, source.getTeamId(), SCOPE_TEAM);
 
         LocalDate visitDate = request.getVisitDate() != null ? request.getVisitDate() : LocalDate.now(TimezoneContextHolder.get());
 
@@ -293,7 +315,9 @@ public class ChartRecordService {
     /**
      * 特定顧客の全カルテ一覧を取得する。
      */
-    public Page<ChartRecordSummaryResponse> listCustomerCharts(Long teamId, Long customerUserId, Pageable pageable) {
+    public Page<ChartRecordSummaryResponse> listCustomerCharts(Long teamId, Long customerUserId, Long actorUserId,
+                                                                Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         Page<ChartRecordEntity> page = recordRepository.findByTeamIdAndCustomerUserIdOrderByIsPinnedDescVisitDateDesc(
                 teamId, customerUserId, pageable);
         return page.map(entity -> chartMapper.toSummaryResponse(
@@ -324,8 +348,8 @@ public class ChartRecordService {
      * PDF エクスポート用にカルテデータを取得する。
      * 実際の PDF 生成はコントローラー層で {@link PdfGeneratorService} を使って行う。
      */
-    public ChartRecordResponse getChartForPdf(Long teamId, Long chartId) {
-        return getChart(teamId, chartId);
+    public ChartRecordResponse getChartForPdf(Long teamId, Long chartId, Long actorUserId) {
+        return getChart(teamId, chartId, actorUserId);
     }
 
     /**

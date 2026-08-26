@@ -3,14 +3,20 @@ definePageMeta({
   middleware: 'auth',
   layout: 'default',
 })
+
+const { t } = useI18n()
+const showGuide = ref(false)
 </script>
 
 <template>
-  <div class="mx-auto max-w-2xl p-6">
-    <PageHeader title="連絡先プライバシー設定" />
-    <p class="mb-6 mt-1 text-sm text-gray-500">
-      連絡先追加・DM・オンライン状態に関するプライバシーを設定します
-    </p>
-    <ContactPrivacyForm />
+  <div>
+    <div class="mx-auto max-w-2xl p-6">
+      <PageHeader :title="t('contact_privacy.title')" help @help="showGuide = true" />
+      <p class="mb-6 text-sm text-surface-500 dark:text-surface-300">
+        {{ t('contact_privacy.description') }}
+      </p>
+      <ContactPrivacyForm />
+      <ContactPrivacyGuideModal v-model:visible="showGuide" />
+    </div>
   </div>
 </template>

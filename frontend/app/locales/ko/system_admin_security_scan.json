@@ -1,15 +1,15 @@
 {
   "systemAdmin": {
     "securityScan": {
-      "title": "セキュリティスキャン",
+      "title": "보안 스캔",
       "status": {
-        "SUCCESS": "正常",
-        "FAILURE": "脆弱性検出",
-        "IN_PROGRESS": "スキャン実行中",
-        "UNKNOWN": "取得失敗"
+        "SUCCESS": "정상",
+        "FAILURE": "취약점 감지",
+        "IN_PROGRESS": "스캔 실행 중",
+        "UNKNOWN": "가져오기 실패"
       },
-      "viewDetails": "詳細を確認",
-      "lastScanned": "最終スキャン"
+      "viewDetails": "상세 확인",
+      "lastScanned": "최종 스캔"
     }
   }
 }

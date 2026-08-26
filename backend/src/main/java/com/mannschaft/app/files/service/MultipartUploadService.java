@@ -1,5 +1,6 @@
 package com.mannschaft.app.files.service;
 
+import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.common.storage.R2StorageService.PresignedPartUrl;
 import com.mannschaft.app.files.dto.CompleteMultipartRequest;
@@ -41,13 +42,19 @@ public class MultipartUploadService {
             "timeline/", "gallery/", "blog/", "files/", "schedules/"
     );
 
-    /** 許可される Content-Type（動画・画像・アーカイブ等） */
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "video/mp4", "video/webm", "video/quicktime",
-            "image/jpeg", "image/png", "image/webp", "image/gif", "image/heic",
-            "application/zip", "application/x-tar", "application/gzip",
-            "application/octet-stream"
-    );
+    /**
+     * 許可される Content-Type（動画・画像・アーカイブ等）。
+     * {@link FileTypeValidator} の定数を合成して使用する。
+     */
+    private static final Set<String> ALLOWED_CONTENT_TYPES;
+
+    static {
+        var merged = new java.util.HashSet<String>();
+        merged.addAll(FileTypeValidator.ALLOWED_IMAGE_TYPES);
+        merged.addAll(FileTypeValidator.ALLOWED_VIDEO_TYPES);
+        merged.addAll(FileTypeValidator.ALLOWED_ARCHIVE_TYPES);
+        ALLOWED_CONTENT_TYPES = java.util.Collections.unmodifiableSet(merged);
+    }
 
     /** Multipart Upload の最大ファイルサイズ（5TB） */
     private static final long MAX_FILE_SIZE = 5_497_558_138_880L;
@@ -88,8 +95,14 @@ public class MultipartUploadService {
                     "不正なターゲットプレフィックスです: " + prefix + "（許可: " + ALLOWED_PREFIXES + "）");
         }
 
+        // Content-Type のブロックリスト検証（危険な MIME タイプを明示排除）
+        if (FileTypeValidator.isBlocked(req.getContentType())) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "このファイル種別はセキュリティ上の理由により禁止されています: " + req.getContentType());
+        }
         // Content-Type のホワイトリスト検証
-        if (!ALLOWED_CONTENT_TYPES.contains(req.getContentType())) {
+        if (!FileTypeValidator.isAllowed(req.getContentType(), ALLOWED_CONTENT_TYPES)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "許可されていない Content-Type です: " + req.getContentType());

@@ -1,0 +1,63 @@
+{
+  "feedback": {
+    "nav_button": "Feedback",
+    "nav_tooltip": "Send feedback or suggestions",
+    "submit": {
+      "title": "Feedback / Suggestion Box",
+      "success": "Sent successfully. Thank you!",
+      "error": "Failed to send feedback"
+    },
+    "category": {
+      "label": "Category",
+      "placeholder": "Please select",
+      "bug": "Bug Report",
+      "feature": "Feature Request",
+      "improvement": "Improvement",
+      "other": "Other"
+    },
+    "title": {
+      "label": "Title",
+      "placeholder": "Enter a subject"
+    },
+    "body": {
+      "label": "Details",
+      "placeholder": "Enter details here"
+    },
+    "anonymous": {
+      "label": "Send anonymously"
+    },
+    "submitter": "Submitter",
+    "votes": "Votes",
+    "status": {
+      "NEW": "New",
+      "OPEN": "Open",
+      "IN_PROGRESS": "In Progress",
+      "RESPONDED": "Responded",
+      "CLOSED": "Closed"
+    },
+    "inbox": {
+      "title": "Feedback Inbox (Global)",
+      "description": "View and respond to all GENERAL scope feedback",
+      "noData": "No feedback found",
+      "filter": {
+        "all": "All",
+        "label": "Filter by status"
+      },
+      "respond": {
+        "title": "Respond",
+        "adminResponse": "Response",
+        "adminResponsePlaceholder": "Enter your response to the user",
+        "publicResponse": "Display as public response",
+        "submit": "Send Response",
+        "success": "Response sent",
+        "error": "Failed to send response"
+      },
+      "statusChange": {
+        "success": "Status updated",
+        "error": "Failed to update status"
+      },
+      "viewAsUser": "View as user",
+      "anonymous": "Anonymous"
+    }
+  }
+}

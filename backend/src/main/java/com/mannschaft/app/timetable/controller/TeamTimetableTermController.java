@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 import java.util.List;
 
@@ -34,7 +35,8 @@ public class TeamTimetableTermController {
     public ResponseEntity<ApiResponse<List<TimetableTermResponse>>> listTeamTerms(
             @PathVariable Long teamId,
             @RequestParam Long organizationId) {
-        List<TimetableTermResponse> terms = termService.getTeamTerms(teamId, organizationId).stream()
+        List<TimetableTermResponse> terms = termService
+                .getTeamTerms(teamId, organizationId, SecurityUtils.getCurrentUserId()).stream()
                 .map(e -> new TimetableTermResponse(e.getId(), e.getName(), e.getStartDate(),
                         e.getEndDate(), e.getAcademicYear(),
                         e.getTeamId() != null ? "TEAM" : "ORGANIZATION", e.getCreatedAt()))
@@ -52,7 +54,7 @@ public class TeamTimetableTermController {
                 request.getAcademicYear(), request.getName(),
                 request.getStartDate(), request.getEndDate(),
                 request.getSortOrder());
-        var entity = termService.createTerm(teamId, true, data);
+        var entity = termService.createTerm(teamId, true, data, SecurityUtils.getCurrentUserId());
         var response = new TimetableTermResponse(entity.getId(), entity.getName(),
                 entity.getStartDate(), entity.getEndDate(), entity.getAcademicYear(),
                 "TEAM", entity.getCreatedAt());

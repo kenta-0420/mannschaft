@@ -6,16 +6,23 @@ import com.mannschaft.app.bulletin.BulletinMapper;
 import com.mannschaft.app.bulletin.Priority;
 import com.mannschaft.app.bulletin.ReadTrackingMode;
 import com.mannschaft.app.bulletin.ScopeType;
+import com.mannschaft.app.bulletin.TargetType;
 import com.mannschaft.app.bulletin.dto.CreateThreadRequest;
 import com.mannschaft.app.bulletin.dto.ThreadResponse;
 import com.mannschaft.app.bulletin.dto.UpdateThreadRequest;
 import com.mannschaft.app.bulletin.entity.BulletinCategoryEntity;
 import com.mannschaft.app.bulletin.entity.BulletinThreadEntity;
+import com.mannschaft.app.bulletin.repository.BulletinCategoryRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReactionRepository;
+import com.mannschaft.app.bulletin.repository.BulletinReadStatusRepository;
 import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.service.PostingIdentityService;
+import com.mannschaft.app.village.service.VillageBulletinAccessService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -70,8 +77,26 @@ class BulletinThreadServiceTest {
     @Mock
     private PostingIdentityService postingIdentityService;
 
+    @Mock
+    private VillageBulletinAccessService villageBulletinAccessService;
+
+    @Mock
+    private NameResolverService nameResolverService;
+
+    @Mock
+    private BulletinCategoryRepository categoryRepository;
+
+    @Mock
+    private BulletinReadStatusRepository readStatusRepository;
+
+    @Mock
+    private BulletinReactionRepository reactionRepository;
+
     @InjectMocks
     private BulletinThreadService bulletinThreadService;
+
+    private static final UUID VILLAGE_ID = UUID.fromString("00000000-0000-0000-0000-0000000000aa");
+    private static final UUID OTHER_VILLAGE_ID = UUID.fromString("00000000-0000-0000-0000-0000000000bb");
 
     private static final Long THREAD_ID = 100L;
     private static final Long SCOPE_ID = 1L;
@@ -95,12 +120,22 @@ class BulletinThreadServiceTest {
     private ThreadResponse createThreadResponse() {
         return ThreadResponse.builder()
                 .id(THREAD_ID)
-                .scope(new ThreadResponse.ThreadScopeDto(CATEGORY_ID, "TEAM", SCOPE_ID))
-                .content(new ThreadResponse.ThreadContentDto("テストスレッド", "テスト本文", "INFO", "COUNT_ONLY"))
-                .state(new ThreadResponse.ThreadStateDto(false, false, false, null))
-                .stats(new ThreadResponse.ThreadStatsDto(0, 0, null))
-                .source(new ThreadResponse.ThreadSourceDto(null, null))
-                .audit(new ThreadResponse.ThreadAuditDto(USER_ID, null, null))
+                .categoryId(CATEGORY_ID)
+                .scopeType("TEAM")
+                .scopeId(SCOPE_ID)
+                .author(new ThreadResponse.AuthorDto(USER_ID, null, null))
+                .title("テストスレッド")
+                .body("テスト本文")
+                .priority("INFO")
+                .readTrackingMode("COUNT_ONLY")
+                .isPinned(false)
+                .isLocked(false)
+                .isArchived(false)
+                .replyCount(0)
+                .readCount(0)
+                .isRead(false)
+                .reactionSummary(java.util.Collections.emptyMap())
+                .myReactions(java.util.Collections.emptyList())
                 .build();
     }
 
@@ -161,8 +196,8 @@ class BulletinThreadServiceTest {
             BulletinThreadEntity entity = createDefaultThread();
             ThreadResponse response = createThreadResponse();
             Page<BulletinThreadEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 10), 1);
-            given(threadRepository.findByCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
-                    CATEGORY_ID, PageRequest.of(0, 10))).willReturn(page);
+            given(threadRepository.findByScopeTypeAndScopeIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                    SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, PageRequest.of(0, 10))).willReturn(page);
             given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
 
             // When
@@ -172,6 +207,27 @@ class BulletinThreadServiceTest {
             // Then
             assertThat(result.getContent()).hasSize(1);
             verify(accessGuard).checkMembership(USER_ID, SCOPE_TYPE, SCOPE_ID);
+            // カテゴリの帰属検証が呼ばれること（越境 categoryId 差し込みの封鎖）
+            verify(categoryService).findCategoryOrThrow(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
+        }
+
+        @Test
+        @DisplayName("カテゴリ指定一覧取得_越境categoryId_CATEGORY_NOT_FOUNDで遮断されスレッド取得に到達しない")
+        void カテゴリ指定一覧取得_越境categoryId_遮断() {
+            // Given: 当該スコープに属さない categoryId は findCategoryOrThrow が 404 を投げる
+            given(categoryService.findCategoryOrThrow(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID))
+                    .willThrow(new BusinessException(BulletinErrorCode.CATEGORY_NOT_FOUND));
+
+            // When & Then
+            assertThatThrownBy(() -> bulletinThreadService.listThreadsByCategory(
+                    SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, USER_ID, PageRequest.of(0, 10)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(BulletinErrorCode.CATEGORY_NOT_FOUND));
+            // 遮断後にスレッド取得クエリへ到達していないこと
+            verify(threadRepository, never())
+                    .findByScopeTypeAndScopeIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                            any(), anyLong(), anyLong(), any());
         }
     }
 
@@ -197,7 +253,7 @@ class BulletinThreadServiceTest {
             ThreadResponse result = bulletinThreadService.getThread(SCOPE_TYPE, SCOPE_ID, THREAD_ID, USER_ID);
 
             // Then
-            assertThat(result.getContent().title()).isEqualTo("テストスレッド");
+            assertThat(result.getTitle()).isEqualTo("テストスレッド");
         }
 
         @Test
@@ -809,6 +865,631 @@ class BulletinThreadServiceTest {
 
             assertThat(result.getContent()).hasSize(1);
             verify(archiveFolderService).validateFolderInScope(SCOPE_TYPE, SCOPE_ID, folderId);
+        }
+    }
+
+    // ========================================================================
+    // F17.1 村掲示板グローバル方式 — 村スレッド一覧・詳細（読取経路 + 可視性認可）
+    // ========================================================================
+
+    private BulletinThreadEntity createVillageThread() {
+        return BulletinThreadEntity.builder()
+                .categoryId(CATEGORY_ID)
+                .scopeType(ScopeType.VILLAGE)
+                .scopeId(0L)
+                .scopeVillageId(VILLAGE_ID)
+                .authorId(USER_ID)
+                .title("村のスレッド")
+                .body("村の本文")
+                .priority(Priority.INFO)
+                .readTrackingMode(ReadTrackingMode.COUNT_ONLY)
+                .build();
+    }
+
+    @Nested
+    @DisplayName("listVillageThreads（村スレッド一覧）")
+    class ListVillageThreads {
+
+        @Test
+        @DisplayName("村スレッド一覧_カテゴリ未指定_可視性認可してピン優先一覧")
+        void 村一覧_カテゴリ未指定() {
+            BulletinThreadEntity entity = createVillageThread();
+            ThreadResponse response = createThreadResponse();
+            Page<BulletinThreadEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 20), 1);
+            given(threadRepository.findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(
+                    VILLAGE_ID, PageRequest.of(0, 20))).willReturn(page);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            Page<ThreadResponse> result = bulletinThreadService.listVillageThreads(
+                    VILLAGE_ID, null, USER_ID, PageRequest.of(0, 20));
+
+            assertThat(result.getContent()).hasSize(1);
+            // 可視性認可が呼ばれること
+            verify(villageBulletinAccessService).checkVillageBulletinViewAccess(VILLAGE_ID, USER_ID);
+            // カテゴリ未指定なので全件メソッドを使う
+            verify(threadRepository).findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(
+                    VILLAGE_ID, PageRequest.of(0, 20));
+        }
+
+        @Test
+        @DisplayName("村スレッド一覧_カテゴリ指定_カテゴリ絞り込みクエリ")
+        void 村一覧_カテゴリ指定() {
+            BulletinThreadEntity entity = createVillageThread();
+            ThreadResponse response = createThreadResponse();
+            Page<BulletinThreadEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 20), 1);
+            given(threadRepository.findByScopeVillageIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                    VILLAGE_ID, CATEGORY_ID, PageRequest.of(0, 20))).willReturn(page);
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            Page<ThreadResponse> result = bulletinThreadService.listVillageThreads(
+                    VILLAGE_ID, CATEGORY_ID, USER_ID, PageRequest.of(0, 20));
+
+            assertThat(result.getContent()).hasSize(1);
+            verify(threadRepository).findByScopeVillageIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                    VILLAGE_ID, CATEGORY_ID, PageRequest.of(0, 20));
+        }
+
+        @Test
+        @DisplayName("村スレッド一覧_MEMBERS_ONLY非メンバー_403で弾かれクエリは走らない")
+        void 村一覧_認可失敗_403() {
+            doThrow(new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN))
+                    .when(villageBulletinAccessService)
+                    .checkVillageBulletinViewAccess(VILLAGE_ID, USER_ID);
+
+            assertThatThrownBy(() -> bulletinThreadService.listVillageThreads(
+                    VILLAGE_ID, null, USER_ID, PageRequest.of(0, 20)))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN);
+
+            verify(threadRepository, never()).findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(
+                    any(), any());
+        }
+    }
+
+    @Nested
+    @DisplayName("getVillageThread / getThreadGlobal（村スレッド詳細）")
+    class GetVillageThread {
+
+        @Test
+        @DisplayName("村スレッド詳細_所有村一致_可視性認可して200相当")
+        void 村詳細_正常() {
+            BulletinThreadEntity entity = createVillageThread();
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findByIdAndScopeVillageId(THREAD_ID, VILLAGE_ID))
+                    .willReturn(Optional.of(entity));
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            ThreadResponse result = bulletinThreadService.getVillageThread(VILLAGE_ID, THREAD_ID, USER_ID);
+
+            assertThat(result).isNotNull();
+            verify(villageBulletinAccessService).checkVillageBulletinViewAccess(VILLAGE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("村スレッド詳細_他村のスレッド_THREAD_NOT_FOUND（404相当）")
+        void 村詳細_他村_404() {
+            given(threadRepository.findByIdAndScopeVillageId(THREAD_ID, OTHER_VILLAGE_ID))
+                    .willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> bulletinThreadService.getVillageThread(OTHER_VILLAGE_ID, THREAD_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(BulletinErrorCode.THREAD_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("グローバル詳細_VILLAGEスレッド_村可視性認可経路")
+        void グローバル詳細_村スレッド() {
+            BulletinThreadEntity entity = createVillageThread();
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            ThreadResponse result = bulletinThreadService.getThreadGlobal(THREAD_ID, USER_ID);
+
+            assertThat(result).isNotNull();
+            // VILLAGE は村可視性認可、所属認可（accessGuard）は呼ばれない
+            verify(villageBulletinAccessService).checkVillageBulletinViewAccess(VILLAGE_ID, USER_ID);
+            verify(accessGuard, never()).checkMembership(anyLong(), any(), anyLong());
+        }
+
+        @Test
+        @DisplayName("グローバル詳細_TEAMスレッド_所属認可経路へ委譲")
+        void グローバル詳細_チームスレッド() {
+            BulletinThreadEntity entity = createDefaultThread();
+            ThreadResponse response = createThreadResponse();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
+
+            ThreadResponse result = bulletinThreadService.getThreadGlobal(THREAD_ID, USER_ID);
+
+            assertThat(result).isNotNull();
+            // TEAM は所属認可、村可視性認可は呼ばれない
+            verify(accessGuard).checkMembership(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            verify(villageBulletinAccessService, never()).checkVillageBulletinViewAccess(any(), any());
+        }
+
+        @Test
+        @DisplayName("グローバル詳細_スレッド不在_THREAD_NOT_FOUND（404相当）")
+        void グローバル詳細_不在_404() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> bulletinThreadService.getThreadGlobal(THREAD_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(BulletinErrorCode.THREAD_NOT_FOUND);
+        }
+    }
+
+    // ========================================================================
+    // F17.1 村掲示板グローバル方式 — 書込・モデレーション（足軽C）
+    // ========================================================================
+
+    private static final Long OTHER_USER_ID = 99L;
+
+    /** author が別ユーザーの村スレッド（モデレーション/他者投稿の検証用）。 */
+    private BulletinThreadEntity villageThreadByOther() {
+        return BulletinThreadEntity.builder()
+                .categoryId(CATEGORY_ID)
+                .scopeType(ScopeType.VILLAGE)
+                .scopeId(0L)
+                .scopeVillageId(VILLAGE_ID)
+                .authorId(OTHER_USER_ID)
+                .title("他者の村スレッド")
+                .body("本文")
+                .priority(Priority.INFO)
+                .readTrackingMode(ReadTrackingMode.COUNT_ONLY)
+                .build();
+    }
+
+    @Nested
+    @DisplayName("updateThreadGlobal（グローバル更新）")
+    class UpdateThreadGlobal {
+
+        @Test
+        @DisplayName("村スレッド_投稿者本人_モデレーター認可不要で更新")
+        void 村_本人更新() {
+            BulletinThreadEntity entity = createVillageThread(); // author = USER_ID
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            UpdateThreadRequest req = new UpdateThreadRequest("新題名", "新本文", "URGENT");
+            bulletinThreadService.updateThreadGlobal(THREAD_ID, USER_ID, req);
+
+            // 本人なのでモデレーター認可は呼ばれない
+            verify(villageBulletinAccessService, never()).checkVillageBulletinModerator(any(), any());
+            assertThat(entity.getTitle()).isEqualTo("新題名");
+        }
+
+        @Test
+        @DisplayName("村スレッド_他者投稿_モデレーターなら更新可")
+        void 村_他者投稿モデレーター更新() {
+            BulletinThreadEntity entity = villageThreadByOther();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            UpdateThreadRequest req = new UpdateThreadRequest("題名", "本文", null);
+            bulletinThreadService.updateThreadGlobal(THREAD_ID, USER_ID, req);
+
+            verify(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+        }
+
+        @Test
+        @DisplayName("村スレッド_他者投稿_非モデレーター_403")
+        void 村_他者投稿非モデレーター_403() {
+            BulletinThreadEntity entity = villageThreadByOther();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            doThrow(new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN))
+                    .when(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+
+            UpdateThreadRequest req = new UpdateThreadRequest("題名", "本文", null);
+            assertThatThrownBy(() -> bulletinThreadService.updateThreadGlobal(THREAD_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("TEAMスレッド_既存updateThreadへ委譲")
+        void チーム_委譲() {
+            BulletinThreadEntity entity = createDefaultThread(); // TEAM, author = USER_ID
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            UpdateThreadRequest req = new UpdateThreadRequest("題名", "本文", null);
+            bulletinThreadService.updateThreadGlobal(THREAD_ID, USER_ID, req);
+
+            // 既存経路の所属認可が効く
+            verify(accessGuard).checkMembership(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            verify(villageBulletinAccessService, never()).checkVillageBulletinModerator(any(), any());
+        }
+
+        @Test
+        @DisplayName("スレッド不在_THREAD_NOT_FOUND")
+        void 不在_404() {
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.empty());
+            UpdateThreadRequest req = new UpdateThreadRequest("題名", "本文", null);
+            assertThatThrownBy(() -> bulletinThreadService.updateThreadGlobal(THREAD_ID, USER_ID, req))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(BulletinErrorCode.THREAD_NOT_FOUND);
+        }
+    }
+
+    @Nested
+    @DisplayName("deleteThreadGlobal（グローバル削除）")
+    class DeleteThreadGlobal {
+
+        @Test
+        @DisplayName("村スレッド_本人削除_モデレーター認可不要")
+        void 村_本人削除() {
+            BulletinThreadEntity entity = createVillageThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+
+            bulletinThreadService.deleteThreadGlobal(THREAD_ID, USER_ID);
+
+            assertThat(entity.getDeletedAt()).isNotNull();
+            verify(villageBulletinAccessService, never()).checkVillageBulletinModerator(any(), any());
+        }
+
+        @Test
+        @DisplayName("村スレッド_他者投稿_非モデレーター_403")
+        void 村_他者投稿非モデレーター_403() {
+            BulletinThreadEntity entity = villageThreadByOther();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            doThrow(new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN))
+                    .when(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+
+            assertThatThrownBy(() -> bulletinThreadService.deleteThreadGlobal(THREAD_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("TEAMスレッド_既存deleteThreadへ委譲")
+        void チーム_委譲() {
+            BulletinThreadEntity entity = createDefaultThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+
+            bulletinThreadService.deleteThreadGlobal(THREAD_ID, USER_ID);
+
+            verify(accessGuard).checkMembership(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            assertThat(entity.getDeletedAt()).isNotNull();
+        }
+    }
+
+    @Nested
+    @DisplayName("モデレーション set 方式（priority/pin/lock/archive）")
+    class Moderation {
+
+        @Test
+        @DisplayName("村_pin設定_モデレーター認可してset")
+        void 村_pin設定() {
+            BulletinThreadEntity entity = createVillageThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.setPinGlobal(THREAD_ID, USER_ID, true);
+
+            verify(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+            assertThat(entity.getIsPinned()).isTrue();
+        }
+
+        @Test
+        @DisplayName("村_lock解除_set方式でfalseを反映")
+        void 村_lock解除() {
+            BulletinThreadEntity entity = createVillageThread();
+            entity.setLocked(true);
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.setLockGlobal(THREAD_ID, USER_ID, false);
+
+            verify(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+            assertThat(entity.getIsLocked()).isFalse();
+        }
+
+        @Test
+        @DisplayName("村_priority変更_モデレーターのみ")
+        void 村_priority変更() {
+            BulletinThreadEntity entity = createVillageThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.changePriorityGlobal(THREAD_ID, USER_ID, "URGENT");
+
+            verify(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+            assertThat(entity.getPriority()).isEqualTo(Priority.URGENT);
+        }
+
+        @Test
+        @DisplayName("村_pin設定_非モデレーター_403")
+        void 村_pin非モデレーター_403() {
+            BulletinThreadEntity entity = createVillageThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            doThrow(new BusinessException(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN))
+                    .when(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+
+            assertThatThrownBy(() -> bulletinThreadService.setPinGlobal(THREAD_ID, USER_ID, true))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(VillageErrorCode.VILLAGE_BULLETIN_MODERATE_FORBIDDEN);
+        }
+
+        @Test
+        @DisplayName("TEAM_pin設定_既存管理権限を要求")
+        void チーム_pin設定_管理権限() {
+            BulletinThreadEntity entity = createDefaultThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.setPinGlobal(THREAD_ID, USER_ID, true);
+
+            verify(accessGuard).checkMembership(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            verify(accessGuard).requireManageContent(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            verify(villageBulletinAccessService, never()).checkVillageBulletinModerator(any(), any());
+        }
+
+        @Test
+        @DisplayName("村_archive_モデレーター認可してアーカイブ")
+        void 村_archive() {
+            BulletinThreadEntity entity = createVillageThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.archiveGlobal(THREAD_ID, USER_ID, true);
+
+            verify(villageBulletinAccessService).checkVillageBulletinModerator(VILLAGE_ID, USER_ID);
+            assertThat(entity.getIsArchived()).isTrue();
+        }
+
+        @Test
+        @DisplayName("TEAM_archive_既存archiveへ委譲")
+        void チーム_archive委譲() {
+            BulletinThreadEntity entity = createDefaultThread();
+            given(threadRepository.findById(THREAD_ID)).willReturn(Optional.of(entity));
+            given(threadRepository.findByIdAndScopeTypeAndScopeId(THREAD_ID, ScopeType.TEAM, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            bulletinThreadService.archiveGlobal(THREAD_ID, USER_ID, true);
+
+            verify(accessGuard).requireManageContent(USER_ID, ScopeType.TEAM, SCOPE_ID);
+            assertThat(entity.getIsArchived()).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("createThreadGlobal（グローバル作成）")
+    class CreateThreadGlobal {
+
+        /**
+         * VILLAGE 作成は村ドメインの主体検証に委譲し、共通ガードの所属判定は<b>呼ばない</b>。
+         *
+         * <p>共通ガード {@link BulletinAccessGuard#checkMembership} は村を判定できず fail-closed で
+         * 拒否するようになったため、村分岐を入れ忘れると村スレッド作成が全滅する。
+         * 「村では共通ガードを呼ばず村検証へ委譲する」という契約を明示的に固定する。</p>
+         */
+        @Test
+        @DisplayName("VILLAGE作成_共通ガードを呼ばず村ドメインの主体検証へ委譲")
+        void 村_作成委譲() {
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            CreateThreadRequest req = new CreateThreadRequest(
+                    null, "題名", "本文", "INFO", "COUNT_ONLY", null, null,
+                    VILLAGE_ID, VillageSubjectType.USER, USER_ID);
+            bulletinThreadService.createThreadGlobal(ScopeType.VILLAGE, 0L, USER_ID, req);
+
+            // 村は共通ガードの守備範囲外。呼べば fail-closed で 403 になるため呼んではならない。
+            verify(accessGuard, never()).checkMembership(any(), eq(ScopeType.VILLAGE), any());
+            // 村メンバー判定は村ドメインの主体検証が担う
+            verify(postingIdentityService)
+                    .validatePostingIdentity(USER_ID, VILLAGE_ID, VillageSubjectType.USER, USER_ID);
+        }
+
+        /** 非村スコープ（TEAM）の作成では従来どおり共通ガードの所属判定が走る（非回帰）。 */
+        @Test
+        @DisplayName("TEAM作成_共通ガードの所属判定が走る（非回帰）")
+        void チーム_作成は共通ガードを通る() {
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            CreateThreadRequest req = new CreateThreadRequest(
+                    null, "題名", "本文", "INFO", "COUNT_ONLY", null, null);
+            bulletinThreadService.createThreadGlobal(SCOPE_TYPE, SCOPE_ID, USER_ID, req);
+
+            verify(accessGuard).checkMembership(USER_ID, SCOPE_TYPE, SCOPE_ID);
+        }
+    }
+
+    // ========================================================================
+    // enrichment（投稿者名/アバター・カテゴリ名/色・既読・リアクション集計）契約テスト
+    // ========================================================================
+
+    @Nested
+    @DisplayName("enrichThreads（一覧/詳細の enrichment 契約 + N+1 番人）")
+    class EnrichThreads {
+
+        private static final Long THREAD_ID_2 = 200L;
+        private static final Long THREAD_ID_3 = 300L;
+        private static final Long AUTHOR_2 = 22L;
+        private static final Long AUTHOR_3 = 33L;
+        private static final Long CATEGORY_ID_2 = 6L;
+
+        private BulletinThreadEntity threadWith(Long id, Long authorId, Long categoryId) {
+            BulletinThreadEntity e = BulletinThreadEntity.builder()
+                    .categoryId(categoryId)
+                    .scopeType(ScopeType.TEAM)
+                    .scopeId(SCOPE_ID)
+                    .authorId(authorId)
+                    .title("スレ" + id)
+                    .body("本文" + id)
+                    .priority(Priority.INFO)
+                    .readTrackingMode(ReadTrackingMode.COUNT_ONLY)
+                    .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(e, "id", id);
+            return e;
+        }
+
+        private void stubBaseMapper() {
+            // 基底変換はフラット DTO を返す（実 mapper を模した素直なフラット応答）
+            given(bulletinMapper.toThreadResponse(any(BulletinThreadEntity.class)))
+                    .willAnswer(inv -> {
+                        BulletinThreadEntity e = inv.getArgument(0);
+                        return ThreadResponse.builder()
+                                .id(e.getId())
+                                .categoryId(e.getCategoryId())
+                                .scopeType("TEAM")
+                                .scopeId(e.getScopeId())
+                                .author(new ThreadResponse.AuthorDto(e.getAuthorId(), null, null))
+                                .title(e.getTitle())
+                                .body(e.getBody())
+                                .priority("INFO")
+                                .readTrackingMode("COUNT_ONLY")
+                                .isPinned(false).isLocked(false).isArchived(false)
+                                .replyCount(0).readCount(0).isRead(false)
+                                .reactionSummary(java.util.Collections.emptyMap())
+                                .myReactions(java.util.Collections.emptyList())
+                                .build();
+                    });
+        }
+
+        @Test
+        @DisplayName("AC-2: author.displayName が NameResolver 解決値で入る")
+        void 投稿者表示名が解決される() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            stubBaseMapper();
+            given(nameResolverService.resolveUserDisplayNames(any()))
+                    .willReturn(java.util.Map.of(USER_ID, "田中太郎"));
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getAuthor().id()).isEqualTo(USER_ID);
+            assertThat(result.get(0).getAuthor().displayName()).isEqualTo("田中太郎");
+        }
+
+        @Test
+        @DisplayName("AC-2: 未解決の投稿者はフォールバック表示名になる")
+        void 投稿者表示名_未解決はフォールバック() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            stubBaseMapper();
+            given(nameResolverService.resolveUserDisplayNames(any()))
+                    .willReturn(java.util.Collections.emptyMap());
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
+
+            assertThat(result.get(0).getAuthor().displayName()).isEqualTo("不明なユーザー");
+        }
+
+        @Test
+        @DisplayName("AC-2: avatarUrl が NameResolverService から解決される（auth 直参照を避け common 経由）")
+        void アバターURLが解決される() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            stubBaseMapper();
+            given(nameResolverService.resolveUserAvatarUrls(any()))
+                    .willReturn(java.util.Map.of(USER_ID, "https://cdn/avatar.png"));
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
+
+            assertThat(result.get(0).getAuthor().avatarUrl()).isEqualTo("https://cdn/avatar.png");
+        }
+
+        @Test
+        @DisplayName("AC-3: isRead が既読 threadId 集合に基づき true/false")
+        void 既読フラグが集合で決まる() {
+            BulletinThreadEntity read = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            BulletinThreadEntity unread = threadWith(THREAD_ID_2, AUTHOR_2, CATEGORY_ID);
+            stubBaseMapper();
+            given(readStatusRepository.findReadThreadIds(any(), eq(USER_ID)))
+                    .willReturn(List.of(THREAD_ID));
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(read, unread), USER_ID);
+
+            assertThat(result.get(0).getIsRead()).isTrue();
+            assertThat(result.get(1).getIsRead()).isFalse();
+        }
+
+        @Test
+        @DisplayName("AC-4: categoryName/color が categoryId から解決される")
+        void カテゴリ名と色が解決される() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            stubBaseMapper();
+            BulletinCategoryEntity category = BulletinCategoryEntity.builder()
+                    .scopeType(ScopeType.TEAM).scopeId(SCOPE_ID).name("お知らせ").color("#00FF00").build();
+            org.springframework.test.util.ReflectionTestUtils.setField(category, "id", CATEGORY_ID);
+            given(categoryRepository.findAllById(any())).willReturn(List.of(category));
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
+
+            assertThat(result.get(0).getCategoryName()).isEqualTo("お知らせ");
+            assertThat(result.get(0).getCategoryColor()).isEqualTo("#00FF00");
+        }
+
+        @Test
+        @DisplayName("AC-5: reactionSummary/myReactions が集計で入る")
+        void リアクション集計が入る() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            stubBaseMapper();
+            given(reactionRepository.countByTargetIdsGroupedByEmoji(eq(TargetType.THREAD), any()))
+                    .willReturn(List.of(
+                            new Object[]{THREAD_ID, "👍", 3L},
+                            new Object[]{THREAD_ID, "❤️", 1L}));
+            given(reactionRepository.findUserReactionsByTargetIds(eq(TargetType.THREAD), any(), eq(USER_ID)))
+                    .willReturn(List.<Object[]>of(new Object[]{THREAD_ID, "👍"}));
+
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(t1), USER_ID);
+
+            assertThat(result.get(0).getReactionSummary()).containsEntry("👍", 3).containsEntry("❤️", 1);
+            assertThat(result.get(0).getMyReactions()).containsExactly("👍");
+        }
+
+        @Test
+        @DisplayName("AC-8: N+1 番人 — スレッド3件でも各依存呼び出しは1回")
+        void N1番人_各依存は1回のみ() {
+            BulletinThreadEntity t1 = threadWith(THREAD_ID, USER_ID, CATEGORY_ID);
+            BulletinThreadEntity t2 = threadWith(THREAD_ID_2, AUTHOR_2, CATEGORY_ID_2);
+            BulletinThreadEntity t3 = threadWith(THREAD_ID_3, AUTHOR_3, CATEGORY_ID);
+            stubBaseMapper();
+
+            bulletinThreadService.enrichThreads(List.of(t1, t2, t3), USER_ID);
+
+            // 件数に比例しない（各 1 回）
+            verify(nameResolverService, org.mockito.Mockito.times(1)).resolveUserDisplayNames(any());
+            verify(nameResolverService, org.mockito.Mockito.times(1)).resolveUserAvatarUrls(any());
+            verify(categoryRepository, org.mockito.Mockito.times(1)).findAllById(any());
+            verify(readStatusRepository, org.mockito.Mockito.times(1)).findReadThreadIds(any(), eq(USER_ID));
+            verify(reactionRepository, org.mockito.Mockito.times(1))
+                    .countByTargetIdsGroupedByEmoji(eq(TargetType.THREAD), any());
+            verify(reactionRepository, org.mockito.Mockito.times(1))
+                    .findUserReactionsByTargetIds(eq(TargetType.THREAD), any(), eq(USER_ID));
+        }
+
+        @Test
+        @DisplayName("AC-10: 空一覧は空リストを返し例外を投げない")
+        void 空一覧は空リスト() {
+            List<ThreadResponse> result = bulletinThreadService.enrichThreads(List.of(), USER_ID);
+
+            assertThat(result).isEmpty();
+            // 空ならどの依存も呼ばれない
+            verify(nameResolverService, never()).resolveUserDisplayNames(any());
+            verify(reactionRepository, never()).countByTargetIdsGroupedByEmoji(any(), any());
         }
     }
 }

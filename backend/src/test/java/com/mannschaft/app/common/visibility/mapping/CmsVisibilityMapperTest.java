@@ -33,10 +33,14 @@ class CmsVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_ONLY")
-    void members_only_maps_to_MEMBERS_ONLY() {
+    @DisplayName("MEMBERS_ONLY → StandardVisibility.MEMBERS_AND_ABOVE（W2: 内輪=応援者除外）")
+    void members_only_maps_to_MEMBERS_AND_ABOVE() {
+        // W2: 設計書 F06.1 §「ブログ/活動記録 一覧」で MEMBERS_ONLY="MEMBER 以上"、
+        // SUPPORTERS_AND_ABOVE="SUPPORTER 以上" と別値で定義（docs/features/F06.1_cms_blog.md L799-801/L1667-1668）。
+        // cms enum は SUPPORTERS_AND_ABOVE を別途持つため MEMBERS_ONLY は内輪(i)の意図が確定。
+        // Mapper 出力先のみ正準ラダー MEMBERS_AND_ABOVE へ変更（機能 enum 名・DB 値は据え置き＝④A）。
         assertThat(CmsVisibilityMapper.toStandard(Visibility.MEMBERS_ONLY))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
     }
 
     @Test
@@ -44,6 +48,28 @@ class CmsVisibilityMapperTest {
     void supporters_and_above_maps_to_SUPPORTERS_AND_ABOVE() {
         assertThat(CmsVisibilityMapper.toStandard(Visibility.SUPPORTERS_AND_ABOVE))
             .isEqualTo(StandardVisibility.SUPPORTERS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("MEMBERS_AND_ABOVE → StandardVisibility.MEMBERS_AND_ABOVE（#1341 新ラダー値名・FE送信値）")
+    void members_and_above_maps_to_MEMBERS_AND_ABOVE() {
+        // 可視性ラダー統一(#1341)で FE が送る新ラダー値名。旧 MEMBERS_ONLY と同一の可視範囲へ写像。
+        assertThat(CmsVisibilityMapper.toStandard(Visibility.MEMBERS_AND_ABOVE))
+            .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("ADMINS_AND_ABOVE → StandardVisibility.ADMINS_AND_ABOVE（#1341 新ラダー値名）")
+    void admins_and_above_maps_to_ADMINS_AND_ABOVE() {
+        assertThat(CmsVisibilityMapper.toStandard(Visibility.ADMINS_AND_ABOVE))
+            .isEqualTo(StandardVisibility.ADMINS_AND_ABOVE);
+    }
+
+    @Test
+    @DisplayName("SCOPE_AFFILIATED → StandardVisibility.SCOPE_AFFILIATED（直接所属軸・旧MEMBERS_ONLY相当の正準値）")
+    void scope_affiliated_maps_to_SCOPE_AFFILIATED() {
+        assertThat(CmsVisibilityMapper.toStandard(Visibility.SCOPE_AFFILIATED))
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
     }
 
     @Test

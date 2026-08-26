@@ -4,7 +4,7 @@ import type { KbScopeType } from '~/composables/useKnowledgeBaseApi'
 
 const props = defineProps<{
   scopeType: KbScopeType
-  scopeId: number
+  scopeId: string
   canManage?: boolean
 }>()
 
@@ -91,8 +91,8 @@ async function loadPages() {
       const params: Record<string, string> = { q: searchQuery.value.trim() }
       if (filterAuthor.value) params.author = filterAuthor.value
       if (filterStatus.value) params.status = filterStatus.value
-      if (filterDateFrom.value) params.date_from = filterDateFrom.value.toISOString().slice(0, 10)
-      if (filterDateTo.value) params.date_to = filterDateTo.value.toISOString().slice(0, 10)
+      if (filterDateFrom.value) params.date_from = toLocalDateString(filterDateFrom.value)
+      if (filterDateTo.value) params.date_to = toLocalDateString(filterDateTo.value)
       res = await searchPages(props.scopeId, params)
     } else if (activeTab.value === 'recent') {
       res = await getRecentPages(props.scopeId)

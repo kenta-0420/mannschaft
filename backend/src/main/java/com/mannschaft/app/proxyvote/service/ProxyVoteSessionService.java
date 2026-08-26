@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.proxyvote.AttachmentTargetType;
 import com.mannschaft.app.proxyvote.DelegationStatus;
@@ -69,6 +70,7 @@ public class ProxyVoteSessionService {
     private final ProxyVoteQuorumCalculator quorumCalculator;
     private final ProxyVoteCastService castService;
     private final ProxyVoteResultService resultService;
+    private final AccessControlService accessControlService;
 
     /**
      * 投票セッション一覧を取得する。
@@ -76,6 +78,10 @@ public class ProxyVoteSessionService {
     public Page<SessionListResponse> listSessions(ProxyVoteScopeType scopeType, Long teamId,
                                                    Long organizationId, SessionStatus status,
                                                    Long currentUserId, Pageable pageable) {
+        // 認可: 対象スコープの会員のみ一覧参照可（越境の一覧漏洩を防止）
+        Long scopeId = scopeType == ProxyVoteScopeType.TEAM ? teamId : organizationId;
+        accessControlService.checkMembership(currentUserId, scopeId, scopeType.name());
+
         Page<ProxyVoteSessionEntity> sessions;
         if (scopeType == ProxyVoteScopeType.TEAM) {
             sessions = status != null
@@ -94,6 +100,8 @@ public class ProxyVoteSessionService {
      */
     public SessionResponse getSession(Long id, Long currentUserId) {
         ProxyVoteSessionEntity session = findSessionOrThrow(id);
+        // 認可: セッションスコープの会員のみ詳細参照可（entity 由来スコープで BOLA 防止）
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
         return toSessionResponse(session, currentUserId);
     }
 
@@ -106,6 +114,11 @@ public class ProxyVoteSessionService {
         ResolutionMode resolutionMode = ResolutionMode.valueOf(request.getResolutionMode());
 
         validateScopeIds(scopeType, request.getTeamId(), request.getOrganizationId());
+
+        // 認可: 作成先スコープの管理者（ADMIN/DEPUTY_ADMIN）のみセッションを作成可
+        Long requestScopeId = scopeType == ProxyVoteScopeType.TEAM ? request.getTeamId() : request.getOrganizationId();
+        accessControlService.checkAdminOrAbove(currentUserId, requestScopeId, scopeType.name());
+
         if (resolutionMode == ResolutionMode.MEETING && request.getMeetingDate() == null) {
             throw new BusinessException(ProxyVoteErrorCode.MEETING_DATE_REQUIRED);
         }
@@ -149,6 +162,9 @@ public class ProxyVoteSessionService {
     @Transactional
     public SessionResponse updateSession(Long id, UpdateSessionRequest request, Long currentUserId) {
         ProxyVoteSessionEntity session = findSessionOrThrow(id);
+        // 認可: 作成者またはスコープ管理者のみ更新可（entity 由来スコープで BOLA 防止）
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
 
         if (session.getStatus() == SessionStatus.CLOSED || session.getStatus() == SessionStatus.FINALIZED) {
             throw new BusinessException(ProxyVoteErrorCode.SESSION_NOT_UPDATABLE);
@@ -187,8 +203,11 @@ public class ProxyVoteSessionService {
      * 投票セッションを論理削除する（DRAFT のみ）。
      */
     @Transactional
-    public void deleteSession(Long id) {
+    public void deleteSession(Long id, Long currentUserId) {
         ProxyVoteSessionEntity session = findSessionOrThrow(id);
+        // 認可: 作成者またはスコープ管理者のみ削除可
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.DRAFT) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_DRAFT);
         }
@@ -202,6 +221,9 @@ public class ProxyVoteSessionService {
     @Transactional
     public SessionResponse openSession(Long id, Long currentUserId) {
         ProxyVoteSessionEntity session = findSessionOrThrow(id);
+        // 認可: 作成者またはスコープ管理者のみ受付開始可
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.DRAFT) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_DRAFT);
         }
@@ -233,6 +255,9 @@ public class ProxyVoteSessionService {
     @Transactional
     public SessionResponse closeSession(Long id, Long currentUserId) {
         ProxyVoteSessionEntity session = findSessionOrThrow(id);
+        // 認可: 作成者またはスコープ管理者のみ締切可
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.OPEN) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
         }
@@ -260,6 +285,10 @@ public class ProxyVoteSessionService {
      */
     @Transactional
     public FinalizeResponse finalizeSession(Long id, FinalizeRequest request, Long currentUserId) {
+        ProxyVoteSessionEntity session = findSessionOrThrow(id);
+        // 認可: 作成者またはスコープ管理者のみ結果確定可
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
         return resultService.finalizeSession(id, request, currentUserId);
     }
 
@@ -285,6 +314,8 @@ public class ProxyVoteSessionService {
     @Transactional
     public SessionResponse cloneSession(Long id, CloneSessionRequest request, Long currentUserId) {
         ProxyVoteSessionEntity source = findSessionOrThrow(id);
+        // 認可: 複製元スコープの管理者のみ複製可（複製先も同一スコープ）
+        accessControlService.checkAdminOrAbove(currentUserId, source.resolveScopeId(), source.scopeTypeName());
 
         String title = request.getTitle() != null ? request.getTitle() : source.getTitle() + "（コピー）";
 
@@ -325,7 +356,10 @@ public class ProxyVoteSessionService {
     /**
      * 投票結果を取得する。{@link ProxyVoteResultService} へ委譲。
      */
-    public VoteResultsResponse getResults(Long id) {
+    public VoteResultsResponse getResults(Long id, Long currentUserId) {
+        ProxyVoteSessionEntity session = findSessionOrThrow(id);
+        // 認可: セッションスコープの会員のみ結果参照可（entity 由来スコープで BOLA 防止）
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
         return resultService.getResults(id);
     }
 
@@ -333,7 +367,11 @@ public class ProxyVoteSessionService {
      * リマインド送信する。{@link ProxyVoteResultService} へ委譲。
      */
     @Transactional
-    public RemindResponse remind(Long id) {
+    public RemindResponse remind(Long id, Long currentUserId) {
+        ProxyVoteSessionEntity session = findSessionOrThrow(id);
+        // 認可: 作成者またはスコープ管理者のみリマインド送信可
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
         return resultService.remind(id);
     }
 
@@ -352,8 +390,11 @@ public class ProxyVoteSessionService {
      * 議案を追加する。
      */
     @Transactional
-    public MotionResponse addMotion(Long sessionId, MotionRequest request) {
+    public MotionResponse addMotion(Long sessionId, MotionRequest request, Long currentUserId) {
         ProxyVoteSessionEntity session = findSessionOrThrow(sessionId);
+        // 認可: 作成者またはスコープ管理者のみ議案追加可
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.DRAFT) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_DRAFT);
         }
@@ -381,9 +422,12 @@ public class ProxyVoteSessionService {
      * 議案を更新する。
      */
     @Transactional
-    public MotionResponse updateMotion(Long motionId, MotionRequest request) {
+    public MotionResponse updateMotion(Long motionId, MotionRequest request, Long currentUserId) {
         ProxyVoteMotionEntity motion = findMotionOrThrow(motionId);
         ProxyVoteSessionEntity session = findSessionOrThrow(motion.getSessionId());
+        // 認可: 作成者またはスコープ管理者のみ議案更新可
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
 
         if (session.getStatus() == SessionStatus.DRAFT) {
             RequiredApproval approval = request.getRequiredApproval() != null
@@ -403,9 +447,12 @@ public class ProxyVoteSessionService {
      * 議案を削除する（DRAFT のみ）。
      */
     @Transactional
-    public void deleteMotion(Long motionId) {
+    public void deleteMotion(Long motionId, Long currentUserId) {
         ProxyVoteMotionEntity motion = findMotionOrThrow(motionId);
         ProxyVoteSessionEntity session = findSessionOrThrow(motion.getSessionId());
+        // 認可: 作成者またはスコープ管理者のみ議案削除可
+        accessControlService.checkOwnerOrAdmin(currentUserId, session.getCreatedBy(),
+                session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.DRAFT) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_DRAFT);
         }

@@ -2,6 +2,7 @@ package com.mannschaft.app.membership.query;
 
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -54,6 +55,7 @@ public class MemberQueryDispatcher {
     private final MembershipRepository membershipRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /** OQ-2 優先度マップ（小さいほど優先）。 */
     private static final Map<String, Integer> ROLE_PRIORITY = Map.of(
@@ -109,7 +111,8 @@ public class MemberQueryDispatcher {
             }
             UserRepository.MemberSummary user = userRepository.findMemberSummaryById(ur.getUserId()).orElse(null);
             String displayName = user != null ? user.getDisplayName() : null;
-            String avatarUrl = user != null ? user.getAvatarUrl() : null;
+            // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+            String avatarUrl = user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null;
             mergeAggregated(aggregated, ur.getUserId(), displayName, avatarUrl, urRoleName, ur.getCreatedAt() != null ? ur.getCreatedAt() : null);
         }
 
@@ -119,7 +122,8 @@ public class MemberQueryDispatcher {
             }
             UserRepository.MemberSummary user = userRepository.findMemberSummaryById(m.getUserId()).orElse(null);
             String displayName = user != null ? user.getDisplayName() : null;
-            String avatarUrl = user != null ? user.getAvatarUrl() : null;
+            // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+            String avatarUrl = user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null;
             mergeAggregated(aggregated, m.getUserId(), displayName, avatarUrl,
                     m.getRoleKind().name(), m.getJoinedAt());
         }
@@ -156,7 +160,7 @@ public class MemberQueryDispatcher {
             result.add(new MemberDto(
                     ur.getUserId(),
                     user != null ? user.getDisplayName() : null,
-                    user != null ? user.getAvatarUrl() : null,
+                    user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null,
                     roleName,
                     ur.getCreatedAt()
             ));
@@ -182,7 +186,7 @@ public class MemberQueryDispatcher {
             result.add(new MemberDto(
                     m.getUserId(),
                     user != null ? user.getDisplayName() : null,
-                    user != null ? user.getAvatarUrl() : null,
+                    user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null,
                     roleKind.name(),
                     m.getJoinedAt()
             ));

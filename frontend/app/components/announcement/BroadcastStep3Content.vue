@@ -3,7 +3,6 @@ import type { AnnouncementScopeType } from '~/types/announcement'
 import type {
   BroadcastPriority,
   BulletinThreadContent,
-  TimelinePostContent,
   BlogPostContent,
   TodoContent,
   ScheduleContent,
@@ -14,7 +13,7 @@ import type {
 const props = defineProps<{
   modelValue: WizardFormState
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
   broadcasting: boolean
   /** ADMIN以上かどうか（優先度選択の表示制御） */
   isAdmin?: boolean
@@ -27,6 +26,21 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { buildOffsetDateTimeStr } = useDatetime()
+
+/**
+ * Date を ISO-8601 オフセット付き文字列に変換する（Issue #2508 FEオフセット明示）。
+ *
+ * <p>BE の {@code expiresAt}（リクエスト直下）と SURVEY の {@code closesAt} は
+ * {@code LocalDateTime} 宣言だが、受信時にユーザーTZを無視して壁時計として保持してしまう
+ * 非対称バグがある（送信時はユーザーTZへ変換して出力するのに受信時は無視する）。
+ * BE 側の是正（オフセット付き入力を正しく解釈する）と対で、FE はユーザーTZのオフセットを
+ * 明示的に付与した ISO 文字列を送る（useDatetime の共通道具 buildOffsetDateTimeStr を使用）。
+ * 一方 SCHEDULE の startAt/endAt は既に OffsetDateTime なので {@code toISOString()} のままで良い。</p>
+ */
+function toLocalDateTimeString(d: Date): string {
+  return buildOffsetDateTimeStr(d) ?? d.toISOString()
+}
 
 /** 共通タイトルフィールド（チャネルをまたいで引き継ぐ） */
 const title = computed({
@@ -56,20 +70,6 @@ const body = computed({
   },
 })
 
-/** タイムラインのcontentフィールド */
-const timelineContent = computed({
-  get() {
-    const c = props.modelValue.content as Partial<TimelinePostContent>
-    return c.content ?? ''
-  },
-  set(value: string) {
-    emit('update:modelValue', {
-      ...props.modelValue,
-      content: { ...props.modelValue.content, content: value },
-    })
-  },
-})
-
 const priority = computed({
   get() {
     return props.modelValue.priority
@@ -84,9 +84,10 @@ const expiresAt = computed({
     return props.modelValue.expiresAt ? new Date(props.modelValue.expiresAt) : null
   },
   set(value: Date | null) {
+    // expiresAt は BE で LocalDateTime（オフセット非対応）。Z 付き ISO は 400 になる。
     emit('update:modelValue', {
       ...props.modelValue,
-      expiresAt: value ? value.toISOString() : null,
+      expiresAt: value ? toLocalDateTimeString(value) : null,
     })
   },
 })
@@ -186,9 +187,10 @@ const surveyClosesAt = computed({
     return c.closesAt ? new Date(c.closesAt) : null
   },
   set(value: Date | null) {
+    // closesAt は BE で LocalDateTime（オフセット非対応）。Z 付き ISO は 400 になる。
     emit('update:modelValue', {
       ...props.modelValue,
-      content: { ...props.modelValue.content, closesAt: value ? value.toISOString() : null },
+      content: { ...props.modelValue.content, closesAt: value ? toLocalDateTimeString(value) : null },
     })
   },
 })
@@ -206,7 +208,7 @@ const canSubmit = computed(() => {
   if (!channel.value) return false
   const c = props.modelValue.content as Record<string, unknown>
   if (channel.value === 'TIMELINE_POST') {
-    return typeof c.content === 'string' && c.content.trim().length > 0
+    return typeof c.body === 'string' && c.body.trim().length > 0
   }
   if (channel.value === 'SCHEDULE') {
     // タイトルと開始日時が必須
@@ -246,7 +248,7 @@ const canSubmit = computed(() => {
           {{ $t('announcement.form_body') }}
           <span class="text-red-500">*</span>
         </label>
-        <Textarea v-model="timelineContent" rows="5" class="w-full resize-none" />
+        <Textarea v-model="body" rows="5" class="w-full resize-none" />
       </div>
     </template>
 

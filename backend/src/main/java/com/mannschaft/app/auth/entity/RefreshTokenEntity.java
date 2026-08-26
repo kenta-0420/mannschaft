@@ -8,8 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -22,8 +21,7 @@ import java.time.LocalDateTime;
 @Table(name = "refresh_tokens")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class RefreshTokenEntity {
 
     @Id
@@ -35,6 +33,18 @@ public class RefreshTokenEntity {
 
     @Column(nullable = false, unique = true, length = 64)
     private String tokenHash;
+
+    /**
+     * ローテーションで発行した後継リフレッシュトークンの SHA-256 ハッシュ。
+     *
+     * <p>非 NULL = このトークンはローテーションによって正規に失効させられた（後継が存在する）印。
+     * {@link #revokedAt} からの経過が grace window 以内なら並行更新として正規化し（リプレイ扱いにしない）、
+     * grace window を超過していれば真のリプレイとして扱う。
+     * NULL のまま {@link #revokedAt} が設定されている場合は明示ログアウト等（後継なし revoke）で、
+     * grace window の対象外とする。</p>
+     */
+    @Column(length = 64)
+    private String replacedByTokenHash;
 
     @Column(nullable = false)
     private Boolean rememberMe;
@@ -75,6 +85,21 @@ public class RefreshTokenEntity {
      */
     public void revoke() {
         this.revokedAt = LocalDateTime.now();
+    }
+
+    /**
+     * ローテーションによりトークンを失効させ、後継トークンのハッシュを記録する。
+     *
+     * <p>{@link #revoke()} 相当の失効に加えて {@link #replacedByTokenHash} を設定することで、
+     * 「このトークンはリプレイではなくローテーションで正規に置き換えられた」ことを表す。
+     * これにより並行更新（同一トークンでの near-simultaneous な refresh）を
+     * grace window 内なら正規化でき、リプレイ誤判定による全セッション無効化を防ぐ。</p>
+     *
+     * @param successorTokenHash 後継リフレッシュトークンの SHA-256 ハッシュ
+     */
+    public void markRotated(String successorTokenHash) {
+        this.revokedAt = LocalDateTime.now();
+        this.replacedByTokenHash = successorTokenHash;
     }
 
     /**

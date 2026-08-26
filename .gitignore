@@ -30,6 +30,10 @@ docker-compose.override.yml
 .claude/worktrees/
 .claude/scheduled_tasks.lock
 
+# --- 大名システム 戦役台帳（クラッシュ耐性。戦役完了時に削除。テンプレート _TEMPLATE.md のみ追跡） ---
+.claude/campaigns/*
+!.claude/campaigns/_TEMPLATE.md
+
 # --- ローカルログ ---
 *.log
 
@@ -40,3 +44,50 @@ logs/mysql-slow/
 k6/results/
 k6/*.json
 k6/*.csv
+
+# --- F08.9 P5 Stripe PoC 出力 (API レスポンス JSON。秘密を含み得るため除外) ---
+scripts/poc/out/
+
+# --- F08.7 E2E seed 実行サマリ（seed-f087-visibility-e2e.js が実行時に生成。環境固有 ID のため除外） ---
+backend/scripts/f087-e2e-seed-summary.json
+
+# --- Terraform (infra/terraform) ---
+# 注: .terraform.lock.hcl はプロバイダ固定のため除外しない（コミット対象）
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.auto.tfvars
+infra/terraform/envs/*/prod.tfvars
+# C11: bootstrap の tfvars にはアカウントID・メールアドレス等が入るため除外
+# bootstrap/README.md §2 が「gitignore 済み」と謳う通りに実装
+infra/terraform/bootstrap/terraform.tfvars
+
+# Claude Code マシンローカル設定（許可リスト等。コミット禁止 — 2026-07-08 鍵混入事故の再発防止）
+.claude/settings.local.json
+frontend/.claude/settings.local.json
+
+# --- 秘密情報混入の機械的防止（PUBLIC リポジトリ運用のため。実測: 本陣に e2e_cookies.txt 等が未追跡で散乱していた） ---
+# ディレクトリごと除外（既存の *.log だけでは .err/.bat/.js 等の付随ログが漏れる）
+logs/
+data/scheduler/
+config/scheduler/
+# PR差分の作業ファイル（実トークン・実データを含み得る）
+*.diff
+*.patch
+# curl 等の Cookie ジャー（実 refresh_token / JWT を含む）
+*cookie*.txt
+*cookies*.txt
+# API レスポンスのダンプ
+*_response.txt
+# 大名システムの引継ぎ書（実データ・内部事情を含み得る揮発物）
+.claude/handoffs/
+.b0-local/
+docs/prototypes/.b0-local/
+
+# npx skills add が生成するシンボリックリンク置き場。
+# 本リポジトリは core.symlinks=false のため、コミットするとクローン先で
+# リンク先パスを書いただけの壊れたテキストファイルになる。
+# スキルの実体は .agents/skills/ 配下にコミットしているので、リンクが要る場合は
+# `npx skills add https://docs.stripe.com` を再実行して張り直すこと。
+.claude/skills/

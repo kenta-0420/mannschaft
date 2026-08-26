@@ -2,7 +2,7 @@
 import type { TeamProfileResponse, TeamOfficerResponse, TeamCustomFieldResponse } from '~/types/team'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   isAdminOrDeputy: boolean
 }>()
 

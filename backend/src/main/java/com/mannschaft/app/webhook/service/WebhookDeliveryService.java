@@ -2,6 +2,7 @@ package com.mannschaft.app.webhook.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.webhook.DeliveryStatus;
 import com.mannschaft.app.webhook.WebhookErrorCode;
@@ -45,6 +46,7 @@ public class WebhookDeliveryService {
     private final WebhookDeliveryLogRepository deliveryLogRepository;
     private final HmacSignatureUtil hmacSignatureUtil;
     private final ObjectMapper objectMapper;
+    private final AccessControlService accessControlService;
 
     // ========================================
     // DTOクラス定義
@@ -107,10 +109,16 @@ public class WebhookDeliveryService {
     /**
      * 配信ログ一覧を取得する。
      *
-     * @param endpointId エンドポイントID
+     * @param actorUserId 操作者ユーザーID（認可検証用）
+     * @param endpointId  エンドポイントID
      * @return 配信ログ一覧
      */
-    public List<DeliveryLogResponse> listDeliveryLogs(Long endpointId) {
+    public List<DeliveryLogResponse> listDeliveryLogs(Long actorUserId, Long endpointId) {
+        // ★BOLA対策: pathのendpointIdから対象entityを先にfetchし、entity由来のscopeで認可する
+        WebhookEndpointEntity endpoint = endpointRepository.findById(endpointId)
+                .orElseThrow(() -> new BusinessException(WebhookErrorCode.WEBHOOK_001));
+        accessControlService.checkAdminOrAbove(actorUserId, endpoint.getScopeId(), endpoint.getScopeType());
+
         List<WebhookDeliveryLogEntity> logs =
                 deliveryLogRepository.findByEndpointIdOrderByCreatedAtDesc(endpointId);
         return logs.stream()
@@ -121,15 +129,18 @@ public class WebhookDeliveryService {
     /**
      * 指定配信ログIDの内容を使って再送する。
      *
+     * @param actorUserId   操作者ユーザーID（認可検証用）
      * @param deliveryLogId 再送対象の配信ログID
      */
     @Transactional
-    public void retryDelivery(Long deliveryLogId) {
+    public void retryDelivery(Long actorUserId, Long deliveryLogId) {
         WebhookDeliveryLogEntity deliveryLog = deliveryLogRepository.findById(deliveryLogId)
                 .orElseThrow(() -> new BusinessException(WebhookErrorCode.WEBHOOK_001));
 
+        // ★BOLA対策: 配信ログ経由でエンドポイントentityをfetchし、entity由来のscopeで認可する
         WebhookEndpointEntity endpoint = endpointRepository.findById(deliveryLog.getEndpointId())
                 .orElseThrow(() -> new BusinessException(WebhookErrorCode.WEBHOOK_001));
+        accessControlService.checkAdminOrAbove(actorUserId, endpoint.getScopeId(), endpoint.getScopeType());
 
         log.info("Webhook再送開始: deliveryLogId={}, endpointId={}", deliveryLogId, deliveryLog.getEndpointId());
         deliverAsync(endpoint, deliveryLog.getEventType(), deliveryLog.getRequestPayload());
@@ -228,13 +239,10 @@ public class WebhookDeliveryService {
 
         long durationMs = System.currentTimeMillis() - startMs;
 
-        // 配信ログを更新（結果を反映）
-        WebhookDeliveryLogEntity finalLog = deliveryLog.toBuilder()
-                .responseStatus(responseStatus)
-                .deliveryStatus(deliveryStatus)
-                .errorMessage(errorMessage)
-                .build();
-        deliveryLogRepository.save(finalLog);
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        deliveryLog.applyDeliveryResult(responseStatus, deliveryStatus, errorMessage);
+        deliveryLogRepository.save(deliveryLog);
         endpointRepository.save(endpoint);
 
         log.debug("Webhook配信ログ記録: endpointId={}, eventId={}, status={}, durationMs={}",

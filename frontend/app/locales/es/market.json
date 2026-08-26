@@ -1,0 +1,247 @@
+{
+  "market": {
+    "title": "市（いち）",
+    "listing": {
+      "label": "Anuncio",
+      "count": "{count} anuncios",
+      "regionNone": "Nacional (incluye sin región)"
+    },
+    "page": {
+      "newListing": "Publicar anuncio"
+    },
+    "action": {
+      "post": "Publicar",
+      "apply": "Postularse",
+      "takeDown": "Retirar",
+      "loginToApply": "Inicia sesión",
+      "selectTeam": "Selecciona un equipo para postularte",
+      "goToDashboard": "Ir al panel",
+      "postFromDashboard": "Publica desde el panel de tu equipo/organización"
+    },
+    "region": {
+      "add": "Agregar región",
+      "selected": "Regiones seleccionadas",
+      "none": "Ninguna región seleccionada (cualquier región)"
+    },
+    "filter": {
+      "prefecture": "Prefectura",
+      "city": "Ciudad",
+      "category": "Categoría",
+      "keyword": "Buscar por palabra clave",
+      "allPrefectures": "Nacional",
+      "allCities": "Seleccionar ciudad",
+      "allCategories": "Todas las categorías",
+      "includeRegionNone": "Incluir sin región",
+      "mobileToggle": "Filtrar"
+    },
+    "breadcrumb": {
+      "national": "Nacional",
+      "count": "({count})"
+    },
+    "card": {
+      "deadline": "Fecha límite",
+      "capacity": "{confirmed}/{capacity} inscritos",
+      "region": "Región",
+      "regionNone": "Cualquier región",
+      "category": "Categoría",
+      "organizer": "Organizador"
+    },
+    "status": {
+      "OPEN": "Abierto",
+      "FULL": "Completo (pendiente)",
+      "COMPLETED": "Completado",
+      "CANCELLED": "Retirado",
+      "AUTO_CANCELLED": "Cancelado automáticamente"
+    },
+    "visibility": {
+      "public": "Público",
+      "friendsOnly": "Solo equipos amigos",
+      "label": "Visibilidad"
+    },
+    "friendTarget": {
+      "allFriends": "Todos los equipos amigos",
+      "folder": "Por carpeta",
+      "team": "Equipos específicos",
+      "addTeam": "Agregar equipo",
+      "selectFolder": "Seleccionar carpeta",
+      "noFolders": "Sin carpetas"
+    },
+    "empty": {
+      "title": "Sin anuncios",
+      "cta": {
+        "canPost": "¡Sé el primero en publicar un anuncio para tu equipo!",
+        "noPermission": "Para publicar, conviértete en administrador o pídele a uno que lo haga.",
+        "guest": "Inicia sesión para publicar o postularte"
+      }
+    },
+    "detail": {
+      "organizer": "Organizador",
+      "region": "Región",
+      "regionNone": "Cualquier región",
+      "startAt": "Fecha del evento",
+      "deadline": "Fecha límite",
+      "capacity": "Capacidad",
+      "confirmedCount": "Inscritos",
+      "status": "Estado",
+      "location": "Lugar",
+      "category": "Categoría",
+      "notFound": "Anuncio no encontrado",
+      "notPublic": "Este anuncio no es público"
+    },
+    "notify": {
+      "applicationReceived": "Recibiste una postulación ({owner} / {title})",
+      "friendListing": "{team} te envió: \"{title}\"",
+      "finalizeRequest": "Tu anuncio está lleno. ¿Confirmas y lo cierras?",
+      "reminderShortfall": "La fecha límite se acerca. Aún necesitas {count} postulantes.",
+      "autoCancelled": "\"{title}\" fue cerrado por falta de postulantes.",
+      "cancelledToApplicant": "Lo sentimos, \"{title}\" fue retirado por el organizador.",
+      "seeOtherListings": "Ver otros anuncios de {team}"
+    },
+    "error": {
+      "loadFailed": "Error al cargar el mercado",
+      "MARKET_001": "Código de región inválido o prefectura/ciudad no coinciden",
+      "MARKET_002": "Se requiere al menos un destinatario para anuncios solo para amigos",
+      "MARKET_003": "No se puede especificar un equipo que no sea amigo confirmado",
+      "MARKET_004": "No se puede especificar una carpeta de otro equipo",
+      "MARKET_005": "No se puede combinar solo amigos con destinos de distribución"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "* El total del pago incluye la comisión de procesamiento del pago.",
+        "refundFeeConditionalNote": "* En caso de reembolso, es posible que la comisión de procesamiento no se reembolse (las condiciones de reembolso dependen de la configuración del organizador).",
+        "title": "Desglose del pago",
+        "faceAmountLabel": "Recompensa (valor nominal)",
+        "feeLabel": "Comisión de pago",
+        "totalLabel": "Total a pagar"
+      },
+      "refund": {
+        "title": "Reembolso",
+        "feeBearerLabel": "Quién asume la comisión de procesamiento",
+        "feeBearer": {
+          "PAYER": "La asume el pagador (cancelación a petición del pagador)",
+          "PAYEE": "La asume el receptor (por nuestra parte / cancelación)"
+        },
+        "feeBearerHint": {
+          "PAYER": "Reembolsa al pagador el importe neto (tras deducir las comisiones). La comisión de procesamiento la asume el pagador.",
+          "PAYEE": "Reembolsa al pagador el importe íntegro. La comisión de procesamiento la asumimos nosotros (el receptor) y se liquida finalmente con los pagos futuros, etc."
+        },
+        "submit": "Emitir reembolso",
+        "confirmTitle": "Confirmar reembolso",
+        "confirmPayee": "Este es un reembolso asumido por el receptor. Se reembolsará al pagador el importe íntegro y usted asumirá la comisión de procesamiento. ¿Continuar?",
+        "amountLabel": "Importe del reembolso",
+        "amountFull": "Reembolso total",
+        "amountPartial": "Reembolso parcial",
+        "amountRequired": "Introduce el importe del reembolso.",
+        "amountTooLarge": "El importe del reembolso supera el importe reembolsable.",
+        "reasonLabel": "Motivo (opcional)",
+        "failed": "El reembolso ha fallado."
+      },
+      "connect": {
+        "title": "Cuenta de cobro (recibir recompensas)",
+        "loading": "Cargando…",
+        "statusLabel": "Estado",
+        "status": {
+          "ready": "Completado",
+          "onboarding": "En revisión",
+          "restricted": "Se requiere más información",
+          "notRegistered": "No registrada"
+        },
+        "registrationRequired": "Necesitas registrar una cuenta de cobro para recibir recompensas.",
+        "register": "Registrar cuenta de cobro",
+        "continue": "Continuar registro",
+        "redirecting": "Redirigiendo…",
+        "linkFailed": "No se pudo obtener el enlace de registro de la cuenta de cobro."
+      },
+      "confirm": {
+        "title": "Confirmar pago de recompensa",
+        "intro": "Antes de confirmar al solicitante, confirma el pago de la recompensa (autorización de la tarjeta).",
+        "expiryNotice": "Esta autorización es válida durante unos 7 días. Se requiere la aprobación final de la finalización del servicio en un plazo de 7 días (después se vuelve a cobrar al finalizar).",
+        "deferredNotice": "Como pasan más de 7 días entre la confirmación y el servicio, ahora no se realiza ninguna autorización. Pagarás de nuevo en la aprobación final de la finalización del servicio.",
+        "alreadyAuthorized": "Este pago ya ha sido confirmado.",
+        "preparing": "Preparando los datos de pago. Espera un momento e inténtalo de nuevo.",
+        "retry": "Recargar",
+        "submit": "Confirmar pago",
+        "processing": "Procesando…",
+        "succeeded": "Confirmación de pago completada.",
+        "loadFailed": "No se pudieron obtener los datos de pago.",
+        "payeeNotReady": "El destinatario aún no ha registrado una cuenta de cobro, por lo que el pago no es posible.",
+        "proceed": "Continuar para confirmar"
+      },
+      "received": {
+        "pageTitle": "Pagos recibidos y reembolsos",
+        "pageSubtitle": "Revisa los pagos que has recibido y emite reembolsos cuando sea necesario.",
+        "scopeLabel": "Destinatario",
+        "scope": {
+          "self": "Yo (individual)",
+          "team": "Equipo",
+          "org": "Organización"
+        },
+        "statusFilterLabel": "Filtrar por estado",
+        "statusFilterAll": "Todos",
+        "loading": "Cargando…",
+        "empty": "Aún no has recibido pagos.",
+        "loadFailed": "No se pudo cargar la lista de pagos recibidos.",
+        "noScope": "No hay destinatarios disponibles. Conviértete en administrador de un equipo/organización para ver su lista de pagos recibidos.",
+        "col": {
+          "source": "Origen",
+          "status": "Estado",
+          "faceAmount": "Importe nominal",
+          "chargeAmount": "Cobrado",
+          "fee": "Comisión",
+          "refunded": "Reembolsado",
+          "createdAt": "Recibido el",
+          "actions": "Acciones"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "Recompensa (anuncio del mercado)",
+          "MEMBERSHIP": "Cuota de membresía",
+          "JOBMATCHING": "Búsqueda de empleo",
+          "FLEAMARKET": "Mercadillo"
+        },
+        "refundButton": "Reembolsar",
+        "refundUnavailable": "No reembolsable",
+        "refundSucceeded": "Reembolso aceptado.",
+        "status": {
+          "PENDING_CONFIRMATION": "Pendiente de confirmación",
+          "DEFERRED": "Pago al completar",
+          "AUTHORIZED": "Autorizado",
+          "HELD": "Pago retenido",
+          "CAPTURED": "Recibido",
+          "PARTIALLY_REFUNDED": "Reembolsado parcialmente",
+          "REFUNDED": "Reembolsado totalmente",
+          "CANCELLED": "Cancelado",
+          "DISPUTED": "En disputa"
+        }
+      }
+    },
+    "market_guide": {
+      "page_title": "市の使い方",
+      "what": {
+        "title": "市とは？",
+        "body": "チームや組織が出す「一緒に活動しよう」という公募情報を誰でも閲覧できる公開掲示板です。ログイン不要で検索・閲覧でき、参加したい募集を見つけたら「札に応じる」で応募できます。"
+      },
+      "search": {
+        "title": "絞り込み検索",
+        "body": "都道府県・市区町村・ジャンル・キーワードで条件を絞り込めます。",
+        "steps": {
+          "step1": "都道府県を選ぶと、市区町村のドロップダウンが有効になります",
+          "step2": "ジャンルや自由入力キーワードを追加してさらに絞り込めます",
+          "step3": "絞り込み条件はURLに保存されるため、リンクで共有・ブックマークが可能です"
+        }
+      },
+      "apply": {
+        "title": "札に応じる（応募する）",
+        "body": "気になる募集をクリックして詳細を確認し、「札に応じる」ボタンで応募できます。応募にはログインが必要です。",
+        "steps": {
+          "step1": "一覧から気になる札をクリックして詳細ページを開く",
+          "step2": "開催日時・応募締切・定員・地域を確認する",
+          "step3": "「札に応じる」ボタンを押すと応募完了"
+        }
+      },
+      "team_apply": {
+        "title": "チーム名義での応募",
+        "body": "「チームで参加」と記載された募集は、自分の所属チームを選んで応募します。ドロップダウンでチームを選択してから「札に応じる」ボタンを押してください。"
+      }
+    }
+  }
+}

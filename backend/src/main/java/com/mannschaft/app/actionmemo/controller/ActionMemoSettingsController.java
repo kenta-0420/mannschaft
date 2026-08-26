@@ -5,6 +5,7 @@ import com.mannschaft.app.actionmemo.dto.UpdateActionMemoSettingsRequest;
 import com.mannschaft.app.actionmemo.service.ActionMemoSettingsService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -21,6 +22,16 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>レコード未作成のユーザーに対しては Service 層がデフォルト値（mood_enabled = false）を返す。
  * 更新は UPSERT（1回目で INSERT、2回目以降は UPDATE）。</p>
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService}）</b>: 両 EP とも自己スコープ。
+ * {@code user_action_memo_settings} の主キーは userId であり、
+ * {@code ActionMemoSettingsService}（getSettings: ActionMemoSettingsService.java:69 /
+ * updateSettings: ActionMemoSettingsService.java:100）は
+ * {@link SecurityUtils#getCurrentUserId()} を主キーとして参照・UPSERT する。
+ * 対象ユーザーをリクエストで指定する余地がないため他ユーザーの設定には到達できない。
+ * また {@code default_post_team_id} は所属チームであることを検証する
+ * （ActionMemoSettingsService.java:116）。
+ * 回帰は {@code ActionMemoScopeContractIT} の設定隔離テストで固定する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/action-memo-settings")
@@ -35,6 +46,7 @@ public class ActionMemoSettingsController {
      */
     @GetMapping
     @Operation(summary = "行動メモ設定取得")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<ActionMemoSettingsResponse>> getSettings() {
         ActionMemoSettingsResponse response = settingsService.getSettings(SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
@@ -45,6 +57,7 @@ public class ActionMemoSettingsController {
      */
     @PatchMapping
     @Operation(summary = "行動メモ設定更新")
+    @AuthorizedInService
     public ResponseEntity<ApiResponse<ActionMemoSettingsResponse>> updateSettings(
             @Valid @RequestBody UpdateActionMemoSettingsRequest request) {
         ActionMemoSettingsResponse response = settingsService.updateSettings(

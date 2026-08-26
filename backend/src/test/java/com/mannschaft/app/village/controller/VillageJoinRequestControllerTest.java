@@ -34,10 +34,13 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * F17.1 Phase 1 B6 — VillageJoinRequestController 統合テスト。
@@ -65,6 +68,10 @@ class VillageJoinRequestControllerTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     private static final UUID VILLAGE_ID = UUID.randomUUID();
     private static final UUID REQUEST_ID = UUID.randomUUID();
@@ -183,6 +190,84 @@ class VillageJoinRequestControllerTest {
         mockMvc.perform(get("/api/v1/villages/{villageId}/join-requests", VILLAGE_ID))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error.code").value("VILLAGE_024"));
+    }
+
+    // ------------------------------------------------------------------
+    // GET /api/v1/villages/{id}/join-requests/me
+    //  申請者が「自分の」申請を取得する。審査者限定の一覧（上記）とは別 EP。
+    // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("GET join-requests/me — 申請者は自分の申請を取得できる 200")
+    void listMine_success() throws Exception {
+        given(service.listMine(eq(VILLAGE_ID), eq(USER_ID)))
+                .willReturn(List.of(pendingResponse()));
+
+        mockMvc.perform(get("/api/v1/villages/{villageId}/join-requests/me", VILLAGE_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.data[0].id").value(REQUEST_ID.toString()))
+                .andExpect(jsonPath("$.data[0].subjectId").value(USER_ID));
+    }
+
+    @Test
+    @DisplayName("GET join-requests/me — 申請が無ければ空配列 200（404 にしない）")
+    void listMine_empty() throws Exception {
+        given(service.listMine(eq(VILLAGE_ID), eq(USER_ID))).willReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/villages/{villageId}/join-requests/me", VILLAGE_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data").isEmpty());
+    }
+
+    /**
+     * IDOR 閉塞の要（AC2）。
+     *
+     * <p>本 EP は「誰の申請を返すか」をパス・クエリで一切受け取らず、認証済みユーザー ID
+     * （{@code SecurityUtils.getCurrentUserId()}）だけを Service へ渡す。したがって攻撃者が
+     * 他人の ID を送り込む余地が構造的に無い。ここでは細工した {@code userId} /
+     * {@code requesterUserId} パラメータが**無視される**ことを固定する。</p>
+     */
+    @Test
+    @DisplayName("GET join-requests/me — 細工した userId パラメータは無視され認証ユーザーで解決される")
+    void listMine_ignoresClientSuppliedUserId() throws Exception {
+        Long otherUserId = 999L;
+        given(service.listMine(eq(VILLAGE_ID), eq(USER_ID))).willReturn(List.of(pendingResponse()));
+
+        mockMvc.perform(get("/api/v1/villages/{villageId}/join-requests/me", VILLAGE_ID)
+                        .param("userId", String.valueOf(otherUserId))
+                        .param("requesterUserId", String.valueOf(otherUserId)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].subjectId").value(USER_ID));
+
+        // 認証ユーザーでのみ解決され、細工された ID では絶対に呼ばれない
+        verify(service).listMine(VILLAGE_ID, USER_ID);
+        verify(service, never()).listMine(VILLAGE_ID, otherUserId);
+    }
+
+    @Test
+    @DisplayName("GET join-requests/me — 村が存在しなければ 404")
+    void listMine_villageNotFound() throws Exception {
+        willThrow(new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND))
+                .given(service).listMine(eq(VILLAGE_ID), eq(USER_ID));
+
+        mockMvc.perform(get("/api/v1/villages/{villageId}/join-requests/me", VILLAGE_ID))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error.code").value("VILLAGE_001"));
+    }
+
+    /**
+     * 本 EP が存在すること自体の番人（red 時はここが 404 で落ちた）。
+     *
+     * <p>Service を一切スタブしないため、実装が無ければ 404 で、在れば Mockito 既定の
+     * 空リストが返って 200 になる。EP の URL・HTTP メソッドの取り違えを機械的に検知する。</p>
+     */
+    @Test
+    @DisplayName("GET join-requests/me — 申請者向け EP が存在する（欠落なら 404）")
+    void listMine_endpointExists() throws Exception {
+        mockMvc.perform(get("/api/v1/villages/{villageId}/join-requests/me", VILLAGE_ID))
+                .andExpect(status().isOk());
     }
 
     // ------------------------------------------------------------------

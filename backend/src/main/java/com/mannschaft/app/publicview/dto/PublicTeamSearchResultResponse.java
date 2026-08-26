@@ -15,15 +15,21 @@ import java.time.LocalDateTime;
  * </ul>
  *
  * @param id           チーム ID
+ * @param slug         チームのスラッグ（URL 識別子）
  * @param name         チーム名
  * @param iconUrl      アイコン URL（null 可）
  * @param memberCount  アクティブメンバー数（{@code teams.member_count} 集約カラムから取得）
  * @param lastPostDate 最新投稿日時（{@code blog_posts.created_at} MAX、投稿なしの場合は null）
+ * @param prefectureCode 都道府県コード（JIS X 0401・2桁・null可。F22.1 市の地域フィルタ用。行政区画コードでPIIではない）
+ * @param cityCode     市区町村コード（JIS X 0402・5桁・null可。同上）
  */
 public record PublicTeamSearchResultResponse(
         Long id,
+        String slug,
         String name,
         String iconUrl,
         int memberCount,
-        LocalDateTime lastPostDate
+        LocalDateTime lastPostDate,
+        String prefectureCode,
+        String cityCode
 ) {}

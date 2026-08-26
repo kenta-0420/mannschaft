@@ -74,7 +74,7 @@ public class AnnouncementRangeTemplateService {
                 .scopeType(scopeTypeEnum)
                 .scopeId(scopeId)
                 .name(req.getName())
-                .targetRole(req.getTargetRole() != null ? req.getTargetRole() : "MEMBERS_ONLY")
+                .targetRole(req.getTargetRole() != null ? req.getTargetRole() : "MEMBERS_AND_ABOVE")
                 .targetTeamIds(req.getTargetTeamIdsJson())
                 .preferredChannel(req.getPreferredChannel())
                 .isDefault(Boolean.TRUE.equals(req.getIsDefault()))

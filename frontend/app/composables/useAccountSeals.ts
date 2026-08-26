@@ -2,6 +2,7 @@ import type { ElectronicSeal, ScopeDefault } from '~/types/seal'
 
 export function useAccountSeals() {
   const notification = useNotification()
+  const { t } = useI18n()
   const sealApi = useSealApi()
 
   const seals = ref<ElectronicSeal[]>([])
@@ -28,9 +29,9 @@ export function useAccountSeals() {
     regeneratingSeals.value = true
     try {
       seals.value = await sealApi.regenerateSeals(userId)
-      notification.success('印鑑を再生成しました')
+      notification.success(t('settings.seal.toast.regenerate_success'))
     } catch {
-      notification.error('再生成に失敗しました（1時間に3回まで）')
+      notification.error(t('settings.seal.toast.regenerate_error'))
     } finally {
       regeneratingSeals.value = false
     }
@@ -43,9 +44,9 @@ export function useAccountSeals() {
         userId,
         defaults.map((d) => ({ scopeType: d.scopeType, scopeId: d.scopeId, variant: d.variant })),
       )
-      notification.success('デフォルト設定を保存しました')
+      notification.success(t('settings.seal.toast.save_defaults_success'))
     } catch {
-      notification.error('設定の保存に失敗しました')
+      notification.error(t('settings.seal.toast.save_defaults_error'))
     }
   }
 

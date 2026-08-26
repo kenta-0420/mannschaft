@@ -1,6 +1,7 @@
 package com.mannschaft.app.errorreport.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
 import com.mannschaft.app.errorreport.ErrorReportStatus;
 import com.mannschaft.app.errorreport.entity.ErrorReportAiAnalysisEntity;
@@ -13,19 +14,26 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -48,6 +56,10 @@ class ErrorReportNotifierTest {
     private NotificationService notificationService;
     @Mock
     private UserRoleRepository userRoleRepository;
+    @Mock
+    private UserLocaleCache userLocaleCache;
+    @Mock
+    private MessageSource messageSource;
 
     @InjectMocks
     private ErrorReportNotifier notifier;
@@ -57,6 +69,22 @@ class ErrorReportNotifierTest {
         // Slack Webhook URL は未設定とし、HTTP 副作用を排除する
         ReflectionTestUtils.setField(notifier, "slackWebhookUrl", "");
         ReflectionTestUtils.setField(notifier, "notifyThreshold", "HIGH");
+        // Issue #2715 ロットC-1: 新規依存 UserLocaleCache/MessageSource の既定スタブ
+        // （未スタブだと null 返却/NPE で通知が握りつぶされ、既存テストが偽装的に失敗する）。
+        // 既存（i18n 非対象）テストはデフォルト文言との一致を検証したいので、
+        // messageSource はそのままデフォルト文言（第3引数）を返すパススルーにする。
+        lenient().when(userLocaleCache.getLocales(any())).thenReturn(Map.of());
+        lenient().when(userLocaleCache.getLocale(anyLong())).thenReturn("ja");
+        lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
+                .thenAnswer(invocation -> invocation.getArgument(2));
+    }
+
+    /** 実物の MessageSource（messages*.properties）を差し込む（Issue #2715 ロットC-1 テスト方針）。 */
+    private void useRealMessageSource() {
+        ResourceBundleMessageSource realMessageSource = new ResourceBundleMessageSource();
+        realMessageSource.setBasename("messages");
+        realMessageSource.setDefaultEncoding("UTF-8");
+        ReflectionTestUtils.setField(notifier, "messageSource", realMessageSource);
     }
 
     private ErrorReportEntity sampleReport(ErrorReportSeverity severity) {
@@ -393,5 +421,207 @@ class ErrorReportNotifierTest {
             m.invoke(e, java.time.Instant.now());
         }
         return e;
+    }
+
+    // ============================================================
+    // Issue #2715 CMP-055 ロットC-1: 通知本文の i18n
+    // ============================================================
+
+    @org.junit.jupiter.api.Nested
+    @DisplayName("Issue #2715 ロットC-1: 通知本文の locale 別組み立て")
+    class LocalizedNotificationBody {
+
+        @Test
+        @DisplayName("notifySystemAdmins: 受信者 locale が en なら件名・本文が英語になり、locale 解決は getLocales 1回のみ（N+1防止）")
+        void notifySystemAdmins_en_localizesAndResolvesLocalesInBulk() {
+            useRealMessageSource();
+            ErrorReportEntity report = sampleReport(ErrorReportSeverity.CRITICAL);
+            ReflectionTestUtils.setField(report, "id", 100L);
+
+            given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(1L, 2L));
+            given(userLocaleCache.getLocales(List.of(1L, 2L)))
+                    .willReturn(Map.of(1L, "en", 2L, "en"));
+
+            notifier.notifySystemAdmins(report);
+
+            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+            verify(notificationService, times(2)).createNotification(
+                    anyLong(), eq("ERROR_REPORT_CRITICAL"), eq(NotificationPriority.HIGH),
+                    titleCaptor.capture(), bodyCaptor.capture(),
+                    eq("ERROR_REPORT"), eq(100L),
+                    eq(NotificationScopeType.SYSTEM), eq(null),
+                    anyString(), eq(null));
+            assertThat(titleCaptor.getValue()).isEqualTo("Frontend error (CRITICAL)");
+            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").doesNotContain("{1}")
+                    .contains("3").contains("TypeError");
+
+            // AC-3: N+1 防止 — バルク解決 (getLocales) は 1 回、単体解決 (getLocale) は 0 回。
+            verify(userLocaleCache, times(1)).getLocales(any());
+            verify(userLocaleCache, never()).getLocale(anyLong());
+        }
+
+        @Test
+        @DisplayName("notifyEscalation: 受信者 locale が en なら件名・本文が英語になる")
+        void notifyEscalation_en() {
+            useRealMessageSource();
+            ErrorReportEntity report = sampleReport(ErrorReportSeverity.CRITICAL);
+            ReflectionTestUtils.setField(report, "id", 100L);
+            ReflectionTestUtils.setField(notifier, "slackWebhookUrl", "");
+
+            given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(1L));
+            given(userLocaleCache.getLocales(List.of(1L))).willReturn(Map.of(1L, "en"));
+
+            notifier.notifyEscalation(report, ErrorReportSeverity.MEDIUM, ErrorReportSeverity.CRITICAL);
+
+            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+            verify(notificationService).createNotification(
+                    eq(1L), eq("ERROR_REPORT_ESCALATION"), eq(NotificationPriority.HIGH),
+                    titleCaptor.capture(), bodyCaptor.capture(),
+                    eq("ERROR_REPORT"), eq(100L),
+                    eq(NotificationScopeType.SYSTEM), eq(null),
+                    anyString(), eq(null));
+            assertThat(titleCaptor.getValue()).isEqualTo("Error severity escalated from MEDIUM to CRITICAL");
+            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").doesNotContain("{1}");
+        }
+
+        @Test
+        @DisplayName("notifyRegression: 受信者 locale が en なら件名・本文が英語になる")
+        void notifyRegression_en() {
+            useRealMessageSource();
+            ErrorReportEntity report = sampleReport(ErrorReportSeverity.HIGH);
+            ReflectionTestUtils.setField(report, "id", 100L);
+            ReflectionTestUtils.setField(notifier, "slackWebhookUrl", "");
+
+            given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(1L));
+            given(userLocaleCache.getLocales(List.of(1L))).willReturn(Map.of(1L, "en"));
+
+            notifier.notifyRegression(report);
+
+            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+            verify(notificationService).createNotification(
+                    eq(1L), eq("ERROR_REPORT_REGRESSION"), eq(NotificationPriority.HIGH),
+                    titleCaptor.capture(), bodyCaptor.capture(),
+                    eq("ERROR_REPORT"), eq(100L),
+                    eq(NotificationScopeType.SYSTEM), eq(null),
+                    anyString(), eq(null));
+            assertThat(titleCaptor.getValue()).isEqualTo("A resolved error has recurred");
+            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").contains("TypeError");
+        }
+
+        @Test
+        @DisplayName("notifyAssignment: 担当者 locale が en なら件名が英語になる")
+        void notifyAssignment_en() {
+            useRealMessageSource();
+            ErrorReportEntity report = sampleReport(ErrorReportSeverity.HIGH);
+            ReflectionTestUtils.setField(report, "id", 100L);
+            given(userLocaleCache.getLocale(99L)).willReturn("en");
+
+            notifier.notifyAssignment(report, 99L);
+
+            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
+            verify(notificationService).createNotification(
+                    eq(99L), eq("ERROR_REPORT_ASSIGNED"), eq(NotificationPriority.NORMAL),
+                    titleCaptor.capture(), anyString(),
+                    eq("ERROR_REPORT"), eq(100L),
+                    eq(NotificationScopeType.PERSONAL), eq(null),
+                    eq("/system-admin/error-reports/100"), eq(null));
+            assertThat(titleCaptor.getValue()).isEqualTo("An error report has been assigned to you");
+        }
+
+        @Test
+        @DisplayName("notifyAiAnalysisCompleted: 受信者 locale が en なら件名が英語になる")
+        void notifyAiAnalysisCompleted_en() {
+            useRealMessageSource();
+            ErrorReportEntity report = sampleReport(ErrorReportSeverity.CRITICAL);
+            ReflectionTestUtils.setField(report, "id", 100L);
+            ErrorReportAiAnalysisEntity analysis = ErrorReportAiAnalysisEntity.builder()
+                    .errorReportId(100L)
+                    .modelName("claude-haiku-4-5")
+                    .estimatedCause("null チェック漏れ")
+                    .status("SUCCESS")
+                    .build();
+            given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(1L));
+            given(userLocaleCache.getLocales(List.of(1L))).willReturn(Map.of(1L, "en"));
+
+            notifier.notifyAiAnalysisCompleted(report, analysis);
+
+            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
+            verify(notificationService).createNotification(
+                    eq(1L), eq("ERROR_REPORT_AI_ANALYZED"), eq(NotificationPriority.NORMAL),
+                    titleCaptor.capture(), anyString(),
+                    eq("ERROR_REPORT"), eq(100L),
+                    eq(NotificationScopeType.SYSTEM), eq(null),
+                    anyString(), eq(null));
+            assertThat(titleCaptor.getValue()).isEqualTo("AI analysis of the error report is complete");
+        }
+
+        @Test
+        @DisplayName("notifyBudgetWarning: 受信者 locale が en なら件名・本文が英語になる")
+        void notifyBudgetWarning_en() {
+            useRealMessageSource();
+            given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(1L));
+            given(userLocaleCache.getLocales(List.of(1L))).willReturn(Map.of(1L, "en"));
+
+            notifier.notifyBudgetWarning(5000, 4000L);
+
+            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+            verify(notificationService).createNotification(
+                    eq(1L), eq("ERROR_REPORT_AI_BUDGET"), eq(NotificationPriority.HIGH),
+                    titleCaptor.capture(), bodyCaptor.capture(),
+                    eq("ERROR_REPORT"), eq(null),
+                    eq(NotificationScopeType.SYSTEM), eq(null),
+                    anyString(), eq(null));
+            assertThat(titleCaptor.getValue()).isEqualTo("AI monthly budget reached 80%");
+            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").doesNotContain("{1}")
+                    .contains("5000").contains("4000");
+        }
+
+        @Test
+        @DisplayName("notifyAiHealthDegraded: 受信者 locale が en なら件名・本文が英語になる")
+        void notifyAiHealthDegraded_en() {
+            useRealMessageSource();
+            given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(1L));
+            given(userLocaleCache.getLocales(List.of(1L))).willReturn(Map.of(1L, "en"));
+
+            notifier.notifyAiHealthDegraded(7L);
+
+            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+            verify(notificationService).createNotification(
+                    eq(1L), eq("ERROR_REPORT_AI_HEALTH"), eq(NotificationPriority.HIGH),
+                    titleCaptor.capture(), bodyCaptor.capture(),
+                    eq("ERROR_REPORT"), eq(null),
+                    eq(NotificationScopeType.SYSTEM), eq(null),
+                    anyString(), eq(null));
+            assertThat(titleCaptor.getValue()).isEqualTo("AI analysis service anomaly detected");
+            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").contains("7");
+        }
+
+        @Test
+        @DisplayName("notifyResolution: 報告者 locale が en なら件名・本文が英語になる")
+        void notifyResolution_en() {
+            useRealMessageSource();
+            ErrorReportEntity report = sampleReport(ErrorReportSeverity.MEDIUM);
+            ReflectionTestUtils.setField(report, "id", 100L);
+            ReflectionTestUtils.setField(report, "userId", 50L);
+            given(userLocaleCache.getLocale(50L)).willReturn("en");
+
+            notifier.notifyResolution(report);
+
+            ArgumentCaptor<String> titleCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> bodyCaptor = ArgumentCaptor.forClass(String.class);
+            verify(notificationService).createNotification(
+                    eq(50L), eq("ERROR_REPORT_RESOLVED"), eq(NotificationPriority.NORMAL),
+                    titleCaptor.capture(), bodyCaptor.capture(),
+                    eq("ERROR_REPORT"), eq(100L),
+                    eq(NotificationScopeType.PERSONAL), eq(null),
+                    eq(null), eq(null));
+            assertThat(titleCaptor.getValue()).isEqualTo("The issue you reported has been resolved");
+            assertThat(bodyCaptor.getValue()).doesNotContain("{0}").contains("TypeError");
+        }
     }
 }

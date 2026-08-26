@@ -80,7 +80,7 @@ export interface ListingDetailResponse {
 export interface ParkingSettingsResponse {
   id: number
   scopeType: string
-  scopeId: number
+  scopeId: string
   maxSpacesPerUser: number
   maxVisitorReservationsPerDay: number
   visitorReservationMaxDaysAhead: number

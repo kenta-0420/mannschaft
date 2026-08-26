@@ -147,6 +147,7 @@ Phase 4 以降の各機能実装時に、アップロード処理へ `StorageQuo
 | 個人チャット DM に添付 | 個人クォータ | 自分→相手の DM → 送信者の使用量 |
 | チームチャットに添付 | チームクォータ | チームAのチャット → チームAの使用量 |
 | タイムライン投稿（チームスコープ） | チームクォータ | チームAのタイムライン → チームAの使用量 |
+| 大会/ディビジョン単位のファイル置き場（F08.7.1 領域④） | **主催組織クォータ** | 大会・ディビジョン（`TOURNAMENT` / `TOURNAMENT_DIVISION` スコープ）のアップロードは、その大会の**主催組織**の使用量に集約する（`shared_folders.organization_id` = 主催組織。`storage_subscriptions(scope_type=ORGANIZATION)` に紐付け） |
 
 ---
 
@@ -833,6 +834,7 @@ V14.020__create_storage_migration_errors_table.sql  -- 移行エラー記録テ�
 
 | 日付 | 変更内容 |
 |------|---------|
+| 2026-05-31 | F08.7.1 連携: 大会/ディビジョン単位のファイル置き場（`TOURNAMENT` / `TOURNAMENT_DIVISION` スコープ）のクォータは**主催組織に集約**する旨をスコープ帰属ルール（§2）に追記。物理パスは大会/ディビジョン単位で分離しつつ、計量は `shared_folders.organization_id`（主催組織）に帰属させ `storage_subscriptions(scope_type=ORGANIZATION)` に紐付ける。詳細は [F08.7.1/04_file_storage.md](../features/F08.7.1_tournament_extensions/04_file_storage.md) |
 | 2026-03-15 | 初版作成: 統合ストレージクォータの横断設計。独立プール型（組織/チーム/個人）。DB 3テーブル（storage_plans / storage_subscriptions / storage_usage_logs）。API 11本。クォータチェック共通フロー。SYSTEM_ADMIN によるプラン管理。80/90/100% の3段階通知。週次ドリフト検出バッチ。F05.5 既存テーブルからの移行計画 |
 | 2026-03-15 | 2段階実装フェーズを明記。Phase 3（基盤: DB・StorageQuotaService・ハードブロック・通知・使用状況API 4本・バッチ2本）+ Phase 8（課金: SYSTEM_ADMIN管理画面・プラン購入UI・Stripe連携・超過課金・API 7本）。Flyway を V3.020〜V3.023（基盤）+ V5.050（F05.5移行）に再編。エンドポイント一覧に Phase 列を追加 |
 | 2026-04-11 | ストレージ基盤を AWS S3 → Cloudflare R2 に全面差し替え。クォータ計上ロジック（GB 単位・組織/チーム/個人の独立プール）はそのまま維持。動画ファイル（F04.1 VIDEO_FILE、F06.2 動画、F06.1 ブログ動画）もクォータ計上対象として明記。R2 のエグレス料金ゼロに伴い、視聴回数による追加課金は行わず容量ベースの計量のみに統一。ドリフト検出バッチを R2 ListObjectsV2 ベースに更新。Lambda 生成物 → Cloudflare Workers / Cloudflare Images / Cloudflare Stream 生成物に呼称変更（カウント除外扱いは同じ）。動画アップロード時の `StorageQuotaService` 呼び出し順序を明示 |

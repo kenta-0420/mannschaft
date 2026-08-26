@@ -1,34 +1,449 @@
 {
   "data_export": {
-    "section_title": "データエクスポート",
-    "export_button": "個人データをエクスポート",
-    "status_completed": "完了",
-    "status_failed": "失敗",
-    "status_processing": "処理中",
-    "download_button": "ダウンロード",
-    "fetch_error": "エクスポート状態の取得に失敗しました",
-    "step_completed": "エクスポート完了 — ダウンロード期限: {expiry}",
-    "step_failed": "エクスポートに失敗しました",
-    "step_processing": "エクスポート中...",
-    "step_preparing": "準備中..."
+    "section_title": "Exportación de datos",
+    "export_button": "Exportar datos personales",
+    "status_completed": "Completado",
+    "status_failed": "Fallido",
+    "status_processing": "Procesando",
+    "download_button": "Descargar",
+    "fetch_error": "Error al obtener el estado de exportación",
+    "step_completed": "Exportación completa — Descarga expira: {expiry}",
+    "step_failed": "La exportación falló",
+    "step_processing": "Exportando...",
+    "step_preparing": "Preparando...",
+    "description": "Puede exportar sus datos personales como un archivo ZIP."
   },
   "deletion_preview": {
-    "dialog_title": "アカウント削除の確認",
-    "confirm_message": "この操作は取り消せません。本当にアカウントを削除しますか？",
-    "loading": "削除プレビューを読み込み中...",
-    "warning_title": "注意事項",
-    "deleted_data_title": "削除されるデータ",
-    "anonymized_data_title": "匿名化されるデータ",
-    "table_category": "カテゴリ",
-    "table_count": "件数",
-    "table_count_unit": "{count}件",
-    "table_entity": "対象",
-    "table_field": "フィールド",
-    "cancel_button": "キャンセル",
-    "delete_button": "削除する",
-    "fetch_error": "削除プレビューの取得に失敗しました"
+    "dialog_title": "Confirmar eliminación de cuenta",
+    "confirm_message": "Esta acción no se puede deshacer. ¿Está seguro de que desea eliminar su cuenta?",
+    "loading": "Cargando vista previa de eliminación...",
+    "warning_title": "Notas importantes",
+    "deleted_data_title": "Datos que se eliminarán",
+    "anonymized_data_title": "Datos que se anonimizarán",
+    "table_category": "Categoría",
+    "table_count": "Cantidad",
+    "table_count_unit": "{count} elementos",
+    "table_entity": "Objetivo",
+    "table_field": "Campo",
+    "cancel_button": "Cancelar",
+    "delete_button": "Eliminar",
+    "fetch_error": "Error al obtener la vista previa de eliminación"
   },
   "signature": {
-    "clear": "クリア"
+    "clear": "Limpiar"
+  },
+  "nav": {
+    "calendar": "Calendario",
+    "settings": "Configuración",
+    "todo": "Tareas",
+    "shiftManagement": "Gestión de Turnos",
+    "timeline": "Línea de Tiempo",
+    "chat": "Chat",
+    "myShift": "Mi Turno",
+    "myPage": "Mi Página",
+    "qa": "P&R",
+    "blog": "Blog",
+    "reservations": "Reservas",
+    "wallet": "Tarjetas de puntos",
+    "inbox": "Bandeja de entrada",
+    "market": "Mercado",
+    "jobs": "Empleos",
+    "matching": "Matching",
+    "myFiles": "Mis Archivos"
+  },
+  "settings": {
+    "navigation": {
+      "title": "Configuración de Navegación",
+      "description": "Personaliza los elementos de navegación mostrados",
+      "required": "Obligatorio",
+      "resetToDefault": "Restablecer valores predeterminados",
+      "saveSuccess": "Configuración guardada",
+      "saveError": "Error al guardar la configuración",
+      "reorderHint": "Arrastra el controlador para reordenar los elementos de navegación",
+      "dragHandleLabel": "Controlador de arrastre",
+      "pinnedBottom": "Fijado al final"
+    },
+    "account": {
+      "page_title": "Configuración de cuenta",
+      "notification_settings": "Configuración de notificaciones"
+    },
+    "profile": {
+      "section_title": "Información de perfil",
+      "avatar_alt": "Avatar",
+      "change_image": "Cambiar imagen",
+      "image_hint": "JPG, PNG de menos de 5MB",
+      "display_name": "Nombre para mostrar",
+      "phone_number": "Número de teléfono",
+      "phone_placeholder": "090-0000-0000",
+      "postal_code": "Código postal",
+      "postal_placeholder": "000-0000",
+      "postal_unsupported_region": "La validación del código postal no es compatible con su región. Se omitirá la verificación de formato.",
+      "searchable_label": "Mostrar en búsqueda de usuarios",
+      "searchable_description": "Cuando está activado, otros usuarios pueden encontrarte mediante búsqueda",
+      "toast": {
+        "save_success": "Perfil actualizado",
+        "save_error": "Error al actualizar el perfil",
+        "avatar_size_error": "El tamaño del archivo debe ser de 5MB o menos",
+        "avatar_success": "Avatar actualizado",
+        "avatar_error": "Error al subir el avatar",
+        "weather_postal_not_found": "Código postal guardado, pero no se pudo determinar la ubicación del tiempo. Por favor, verifique que el código postal sea correcto",
+        "weather_country_not_supported": "Código postal guardado, pero la información del tiempo para su país o región no está disponible aún"
+      }
+    },
+    "email": {
+      "section_title": "Cambiar dirección de correo",
+      "current_email": "Dirección de correo actual",
+      "new_email": "Nueva dirección de correo",
+      "new_email_placeholder": "new{'@'}example.com",
+      "current_password": "Contraseña actual",
+      "send_confirmation": "Enviar correo de confirmación",
+      "sent_title": "Correo de confirmación enviado",
+      "sent_description": "Se ha enviado un correo de confirmación a {email}. Haga clic en el enlace para completar el cambio.",
+      "toast": {
+        "send_success": "Correo de confirmación enviado",
+        "send_error": "Error al solicitar el cambio de dirección de correo"
+      }
+    },
+    "password": {
+      "section_title_change": "Cambiar contraseña",
+      "section_title_set": "Establecer contraseña",
+      "no_password_description": "Actualmente no hay contraseña configurada. Establecer una contraseña le permitirá iniciar sesión con correo y contraseña.",
+      "current_password": "Contraseña actual",
+      "new_password": "Nueva contraseña",
+      "confirm_password": "Confirmar nueva contraseña",
+      "policy_hint": "Al menos 8 caracteres, incluyendo 3 o más de: mayúsculas, minúsculas, números y símbolos.",
+      "load_error": "No se pudo cargar la información del perfil",
+      "length_error": "La contraseña debe tener al menos 8 caracteres",
+      "policy_violation": "Incluya 3 o más de: mayúsculas, minúsculas, números y símbolos",
+      "mismatch_error": "Las contraseñas no coinciden",
+      "change_button": "Cambiar contraseña",
+      "set_button": "Establecer contraseña",
+      "change_success": "Contraseña cambiada correctamente",
+      "change_error": "No se pudo cambiar la contraseña. Compruebe su contraseña actual",
+      "toast": {
+        "change_success": "Contraseña cambiada correctamente",
+        "setup_success": "Contraseña establecida correctamente",
+        "change_error": "No se pudo cambiar la contraseña. Compruebe su contraseña actual",
+        "setup_error": "Error al establecer la contraseña"
+      },
+      "redirecting": "Contraseña cambiada. Redirigiendo a la página de inicio de sesión…"
+    },
+    "locale": {
+      "section_title": "Idioma y zona horaria",
+      "display_language": "Idioma de visualización",
+      "timezone": "Zona horaria",
+      "toast": {
+        "save_success": "Idioma y zona horaria actualizados",
+        "save_error": "Error al actualizar el idioma y la zona horaria"
+      }
+    },
+    "appearance": {
+      "section_title": "Apariencia",
+      "hide_chat_preview_label": "Ocultar vista previa del chat",
+      "hide_chat_preview_description": "No mostrar el contenido del chat en los banners de notificación",
+      "save_button": "Guardar apariencia",
+      "save_success": "Configuración de apariencia guardada"
+    },
+    "security": {
+      "two_fa_section_title": "Autenticación de dos factores (2FA)",
+      "two_fa_description": "Use una aplicación de autenticación (como Google Authenticator) para reforzar la seguridad de su cuenta.",
+      "setup_2fa_button": "Configurar 2FA",
+      "regenerate_backup_codes_button": "Regenerar códigos de respaldo",
+      "scan_qr_description": "Escanee el código QR con su aplicación de autenticación.",
+      "totp_qr_alt": "Código QR TOTP",
+      "secret_key": "Clave secreta",
+      "sessions_section_title": "Sesiones activas",
+      "logout_all_button": "Cerrar todas las sesiones",
+      "no_sessions": "No hay información de sesión disponible",
+      "unknown_device": "Dispositivo desconocido",
+      "current_session_tag": "Actual",
+      "webauthn_section_title": "Claves de seguridad (WebAuthn)",
+      "webauthn_description": "Registre claves de seguridad compatibles con FIDO2/WebAuthn o autenticación biométrica.",
+      "no_credentials": "No hay claves de seguridad registradas",
+      "default_credential_name": "Clave de seguridad",
+      "last_used": "Último uso: {date}",
+      "registered": "Registrado: {date}",
+      "backup_codes_dialog_title": "Códigos de respaldo",
+      "backup_codes_description": "Guarde los siguientes códigos de respaldo en un lugar seguro. Cada código solo se puede usar una vez.",
+      "rename_dialog_title": "Renombrar dispositivo",
+      "device_name_label": "Nombre del dispositivo",
+      "webauthn": {
+        "register_button": "Registrar una clave de acceso",
+        "register_dialog_title": "Registrar una clave de acceso",
+        "device_name_label": "Nombre del dispositivo (opcional)",
+        "device_name_placeholder": "ej. Touch ID en iPhone",
+        "register_confirm": "Registrar",
+        "register_cancel": "Cancelar",
+        "register_success": "Clave de acceso registrada correctamente",
+        "register_error": "Error al registrar la clave de acceso"
+      },
+      "session": {
+        "device_label": "{browser} en {os}",
+        "unknown_device": "Dispositivo desconocido"
+      },
+      "toast": {
+        "setup_2fa_error": "Error al iniciar la configuración de 2FA",
+        "regenerate_success": "Códigos de respaldo regenerados",
+        "regenerate_error": "Error al regenerar los códigos de respaldo",
+        "revoke_success": "Sesión revocada",
+        "revoke_error": "Error al revocar la sesión",
+        "revoke_all_success": "Sesión cerrada en todos los dispositivos",
+        "revoke_all_error": "Error al cerrar sesión en todos los dispositivos",
+        "delete_key_success": "Clave de seguridad eliminada",
+        "delete_key_error": "Error al eliminar la clave de seguridad",
+        "rename_success": "Nombre del dispositivo actualizado",
+        "rename_error": "Error al actualizar el nombre del dispositivo"
+      }
+    },
+    "linked_accounts": {
+      "page_title": "Cuentas vinculadas",
+      "oauth_section_title": "Conexiones OAuth",
+      "no_oauth": "No hay cuentas conectadas",
+      "connected_at": "Conectado: {date}",
+      "unlink_button": "Desconectar",
+      "google_link_button": "Vincular con Google",
+      "google_link_loading": "Vinculando...",
+      "line_section_title": "Conexión LINE",
+      "line_icon_alt": "Icono de LINE",
+      "line_default_user": "Usuario de LINE",
+      "line_linked_at": "Conectado: {date}",
+      "line_unlink_button": "Desconectar LINE",
+      "line_not_linked": "No hay cuenta LINE conectada",
+      "line_link_instruction": "Conecte LINE desde la aplicación LINE",
+      "toast": {
+        "load_error": "Error al cargar las cuentas vinculadas",
+        "unlink_success": "{provider} desconectado",
+        "unlink_error": "Error al desconectar",
+        "line_unlink_success": "LINE desconectado",
+        "line_unlink_error": "Error al desconectar LINE",
+        "link_success": "Vinculado con {provider}",
+        "link_error": "Error al obtener URL de vinculación",
+        "already_linked": "Esta cuenta ya está vinculada a {provider}",
+        "taken_by_other": "Esta cuenta de Google ya es utilizada por otro usuario",
+        "oauth_denied": "La autenticación de Google fue cancelada",
+        "link_with_calendar_success": "Cuenta de Google y Calendario vinculados"
+      },
+      "calendar_sync_toggle": "Configurar también la sincronización de Google Calendar",
+      "guide": {
+        "title": "Acerca de la vinculación de cuentas",
+        "google_title": "Iniciar sesión con Google",
+        "google_desc": "Puede iniciar sesión fácilmente con su cuenta de Google sin contraseña.",
+        "apple_title": "Iniciar sesión con Apple (próximamente)",
+        "apple_desc": "Un método de inicio de sesión conveniente para usuarios de iPhone. Próximamente.",
+        "line_title": "Notificaciones de LINE",
+        "line_desc": "Agregue el bot a su grupo de LINE para recibir notificaciones de horarios y asistencia en LINE. Vincule desde la aplicación LINE."
+      }
+    },
+    "member_card": {
+      "section_title": "Tarjeta de socio QR",
+      "tab_list": "Lista de tarjetas",
+      "tab_history": "Historial de registro",
+      "toast": {
+        "suspend_success": "Tarjeta de socio suspendida",
+        "suspend_error": "Error al suspender",
+        "reactivate_success": "Tarjeta de socio reactivada",
+        "reactivate_error": "Error al reactivar"
+      }
+    },
+    "social_profile": {
+      "section_title": "Perfiles sociales",
+      "create_button": "Crear nuevo",
+      "count_description": "Puede crear hasta 3 perfiles ({count}/3)",
+      "no_profiles": "Aún no hay perfiles",
+      "dialog_title_create": "Crear perfil",
+      "dialog_title_edit": "Editar perfil",
+      "handle_label": "Nombre de usuario *",
+      "handle_placeholder": "my_handle",
+      "handle_hint": "Solo alfanumérico y guiones bajos (cambios permitidos una vez cada 30 días)",
+      "display_name_label": "Nombre para mostrar *",
+      "bio_label": "Biografía",
+      "bio_count": "{count}/300",
+      "update_button": "Actualizar",
+      "create_submit_button": "Crear",
+      "toast": {
+        "update_success": "Perfil actualizado",
+        "create_success": "Perfil creado",
+        "save_error": "Error al guardar",
+        "delete_success": "Perfil eliminado",
+        "delete_error": "Error al eliminar"
+      }
+    },
+    "seal_guide": {
+      "title": "Cómo usar los sellos electrónicos",
+      "description": "Use sellos electrónicos para estampar y gestionar documentos.",
+      "preview": {
+        "title": "Vista previa del sello",
+        "body": "Vea los 3 tipos de sellos electrónicos (apellido, nombre completo, nombre) generados automáticamente a partir de su nombre registrado.",
+        "steps": {
+          "step1": "Abra la pestaña «Vista previa del sello»",
+          "step2": "Revise los 3 sellos (apellido, nombre completo, nombre) mostrados en la cuadrícula"
+        }
+      },
+      "regenerate": {
+        "title": "Regenerar sello",
+        "body": "Recree su sello actual con un nuevo diseño. Úselo cuando cambie su nombre o desee actualizar el diseño.",
+        "note": "Puede ejecutar esto hasta 3 veces por hora. Si alcanza el límite, espere antes de intentarlo de nuevo.",
+        "steps": {
+          "step1": "Abra la pestaña «Vista previa del sello»",
+          "step2": "Haga clic en el botón «Regenerar sello»",
+          "step3": "Tras completarse, el nuevo sello aparecerá en la cuadrícula"
+        }
+      },
+      "defaults": {
+        "title": "Configuración predeterminada",
+        "body": "Configure qué variante (apellido, nombre completo, nombre) se usa automáticamente al sellar documentos. Evita tener que seleccionarla cada vez.",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
+        "steps": {
+          "step1": "Abra la pestaña «Configuración predeterminada»",
+          "step2": "Seleccione la variante preferida (apellido, nombre completo, nombre) en el menú desplegable",
+          "step3": "Haga clic en «Guardar» para guardar la configuración"
+        }
+      },
+      "history": {
+        "title": "Historial de sellos",
+        "body": "Vea una lista de sus sellos anteriores. Se muestran la fecha, la variante usada, el destino y el estado (válido / cancelado).",
+        "steps": {
+          "step1": "Abra la pestaña «Historial de sellos»",
+          "step2": "Desplácese por la lista para revisar",
+          "step3": "Cargue historial más antiguo con el botón «Cargar más»"
+        }
+      }
+    },
+    "seal": {
+      "section_title": "Sello electrónico",
+      "tab_preview": "Vista previa del sello",
+      "tab_defaults": "Configuración predeterminada",
+      "tab_history": "Historial de sellos",
+      "regenerate_button": "Regenerar sello",
+      "regenerate_hint": "Los sellos se generan automáticamente a partir de su nombre registrado (hasta 3 veces por hora)",
+      "toast": {
+        "regenerate_success": "Sello regenerado",
+        "regenerate_error": "Error al regenerar (hasta 3 veces por hora)",
+        "save_defaults_success": "Configuración predeterminada guardada",
+        "save_defaults_error": "Error al guardar la configuración"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
+      }
+    },
+    "login_history": {
+      "section_title": "Historial de inicio de sesión",
+      "no_history": "No hay historial de inicio de sesión",
+      "load_more": "Cargar más",
+      "event_login_success": "Inicio de sesión exitoso",
+      "event_login_failure": "Error de inicio de sesión",
+      "event_logout": "Cierre de sesión",
+      "event_token_refresh": "Actualización de token",
+      "event_password_change": "Cambio de contraseña",
+      "event_mfa_verify": "Verificación 2FA"
+    },
+    "gcal": {
+      "section_title": "Integración con Google Calendar",
+      "connection_status_title": "Estado de la conexión",
+      "connected_label": "Conectado",
+      "last_synced": "Última sincronización: {date}",
+      "last_sync_error": "Error de sincronización: {message}",
+      "manual_sync_button": "Sincronización manual",
+      "disconnect_button": "Desconectar",
+      "disconnect_confirm": "¿Desconectar la integración con Google Calendar?",
+      "sync_settings_title": "Configuración de sincronización",
+      "personal_calendar_label": "Calendario personal",
+      "personal_calendar_description": "Sincronizar eventos personales con Google Calendar",
+      "team_calendars_label": "Calendarios de equipo",
+      "org_calendars_label": "Calendarios de organización",
+      "no_team_calendars": "No perteneces a ningún equipo",
+      "no_org_calendars": "No perteneces a ninguna organización",
+      "not_connected_description": "Conecte su cuenta de Google para sincronizar calendarios",
+      "connect_button": "Conectar cuenta de Google",
+      "detail_link_button": "Ir a la configuración detallada",
+      "toast": {
+        "connect_error": "Error al conectar",
+        "oauth_connected": "Conectado con Google Calendar",
+        "oauth_connect_failed": "Error al conectar con Google Calendar",
+        "disconnect_success": "Desconectado",
+        "disconnect_error": "Error al desconectar",
+        "sync_success": "Sincronización completada",
+        "sync_error": "Error al sincronizar",
+        "load_error": "Error al cargar",
+        "toggle_on_success": "Sincronización activada para {name}",
+        "toggle_off_success": "Sincronización desactivada para {name}",
+        "backfill_info": "{count} eventos añadidos a la cola de sincronización"
+      }
+    },
+    "delete_account": {
+      "section_title": "Eliminar cuenta",
+      "description": "Eliminar su cuenta borrará permanentemente todos sus datos. Esta acción no se puede deshacer.",
+      "delete_button": "Eliminar cuenta",
+      "confirm_message": "Eliminar su cuenta borrará permanentemente todos sus datos. ¿Realmente desea continuar?",
+      "confirm_dialog_title": "Confirmar eliminación de cuenta",
+      "confirm_reject_label": "Cancelar",
+      "confirm_accept_label": "Proceder a la eliminación",
+      "password_confirm_label": "Ingrese su contraseña actual para confirmar",
+      "password_placeholder": "Contraseña actual",
+      "retention_note": "※ Algunos datos pueden retenerse durante {days} días por requisitos legales antes de ser eliminados.",
+      "delete_success": "Su cuenta ha sido eliminada. Gracias por usar nuestro servicio.",
+      "delete_error": "No se pudo eliminar la cuenta"
+    },
+    "notification": {
+      "load_error": "Error al cargar la configuración",
+      "save_success": "Configuración de notificaciones guardada",
+      "save_error": "Error al guardar",
+      "save_button": "Guardar configuración",
+      "global_section_title": "Entrega automática",
+      "priority_auto_delivery_label": "Entrega automática por prioridad",
+      "priority_auto_delivery_desc": "Envía automáticamente las notificaciones importantes también como notificaciones push.",
+      "scope_section_title": "Notificaciones por equipo / organización",
+      "scope_section_desc": "Configure la recepción de notificaciones para cada equipo u organización al que pertenece.",
+      "scope_type_team": "Equipo",
+      "scope_type_organization": "Organización",
+      "scope_receiving": "Recibiendo",
+      "scope_muted": "Silenciado",
+      "scope_empty": "No pertenece a ningún equipo u organización",
+      "type_section_title": "Tipos de notificación",
+      "type_section_desc": "Configure la recepción por tipo. Use \"Expandir\" para controlar la app y push por separado.",
+      "expand": "Expandir",
+      "collapse": "Contraer",
+      "channel_in_app": "En la app",
+      "channel_push": "Push",
+      "locked_tag": "Urgente",
+      "locked_desc": "Esta notificación no se puede desactivar"
+    },
+    "storage": {
+      "page_title": "Almacenamiento",
+      "group_personal": "Personal",
+      "group_team": "Equipos",
+      "group_org": "Organizaciones",
+      "scope_personal": "Almacenamiento personal",
+      "file_count": "{count} archivos",
+      "limit": "Límite",
+      "unlimited": "Sin límite",
+      "error_fetch": "No se pudo cargar el uso de almacenamiento",
+      "empty": "No hay información de almacenamiento para mostrar"
+    },
+    "fileBrowser": {
+      "upload_button": "Subir archivo",
+      "upload_need_folder": "Abre una carpeta antes de subir archivos",
+      "upload_success": "«{name}» subido correctamente",
+      "upload_error": "Error al subir «{name}»",
+      "uploading": "Subiendo..."
+    }
   }
 }

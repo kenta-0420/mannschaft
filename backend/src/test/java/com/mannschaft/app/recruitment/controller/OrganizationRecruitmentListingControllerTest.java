@@ -72,7 +72,9 @@ class OrganizationRecruitmentListingControllerTest {
                     future, future.plusHours(2), future.minusDays(1), future.minusDays(1),
                     20, 5, 0, 0, 100, false, null,
                     "PUBLIC", "DRAFT", null, null, null, null, 1L,
-                    null, null, null, null, null);
+                    null, null, null, null, null,
+                    null, null, null, null, null,
+                    null, null); // F22.1 prefectureCode, cityCode, region, regions, friendTargets, payeeKind, payeeUserId
 
             CreateRecruitmentListingRequest request = mock(CreateRecruitmentListingRequest.class);
             given(listingService.create(
@@ -99,7 +101,9 @@ class OrganizationRecruitmentListingControllerTest {
                     future, future.plusHours(2), future.minusDays(1), future.minusDays(1),
                     20, 5, 0, 0, 100, false, null,
                     "PUBLIC", "DRAFT", null, null, null, null, 1L,
-                    null, null, null, null, null);
+                    null, null, null, null, null,
+                    null, null, null, null, null,
+                    null, null); // F22.1 prefectureCode, cityCode, region, regions, friendTargets, payeeKind, payeeUserId
 
             CreateRecruitmentListingRequest request = mock(CreateRecruitmentListingRequest.class);
             given(listingService.create(

@@ -2,10 +2,8 @@ package com.mannschaft.app.notification;
 
 import com.mannschaft.app.notification.dto.NotificationResponse;
 import com.mannschaft.app.notification.dto.PreferenceResponse;
-import com.mannschaft.app.notification.dto.TypePreferenceResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.entity.NotificationPreferenceEntity;
-import com.mannschaft.app.notification.entity.NotificationTypePreferenceEntity;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -29,24 +27,20 @@ public interface NotificationMapper {
         return NotificationResponse.builder()
                 .id(entity.getId())
                 .userId(entity.getUserId())
-                .content(new NotificationResponse.NotificationContentDto(
-                        entity.getNotificationType(),
-                        entity.getPriority().name(),
-                        entity.getTitle(),
-                        entity.getBody(),
-                        entity.getActionUrl()))
-                .source(new NotificationResponse.NotificationSourceDto(
-                        entity.getSourceType(),
-                        entity.getSourceId()))
-                .scope(new NotificationResponse.NotificationScopeDto(
-                        entity.getScopeType().name(),
-                        entity.getScopeId(),
-                        entity.getActorId()))
-                .status(new NotificationResponse.NotificationStatusDto(
-                        entity.getIsRead(),
-                        entity.getReadAt(),
-                        entity.getChannelsSent(),
-                        entity.getSnoozedUntil()))
+                .notificationType(entity.getNotificationType())
+                .priority(entity.getPriority().name())
+                .title(entity.getTitle())
+                .body(entity.getBody())
+                .actionUrl(entity.getActionUrl())
+                .sourceType(entity.getSourceType())
+                .sourceId(entity.getSourceId())
+                .scopeType(entity.getScopeType().name())
+                .scopeId(entity.getScopeId())
+                .actorId(entity.getActorId())
+                .isRead(entity.getIsRead())
+                .readAt(entity.getReadAt())
+                .channelsSent(entity.getChannelsSent())
+                .snoozedUntil(entity.getSnoozedUntil())
                 .createdAt(entity.getCreatedAt())
                 .build();
     }
@@ -55,15 +49,16 @@ public interface NotificationMapper {
 
     @Mapping(target = "scope.scopeType", source = "scopeType")
     @Mapping(target = "scope.scopeId", source = "scopeId")
+    @Mapping(target = "scopeName", ignore = true)
     @Mapping(target = "audit.createdAt", source = "createdAt")
     @Mapping(target = "audit.updatedAt", source = "updatedAt")
     PreferenceResponse toPreferenceResponse(NotificationPreferenceEntity entity);
 
     List<PreferenceResponse> toPreferenceResponseList(List<NotificationPreferenceEntity> entities);
 
-    @Mapping(target = "audit.createdAt", source = "createdAt")
-    @Mapping(target = "audit.updatedAt", source = "updatedAt")
-    TypePreferenceResponse toTypePreferenceResponse(NotificationTypePreferenceEntity entity);
-
-    List<TypePreferenceResponse> toTypePreferenceResponseList(List<NotificationTypePreferenceEntity> entities);
+    /**
+     * 通知種別設定のレスポンス変換は、enum カタログ（label / priority / isLocked）の
+     * マージが必要なため {@code NotificationPreferenceService} 側で行う。
+     * MapStruct の自動生成では enum メタデータを解決できないため本マッパーには定義しない。
+     */
 }

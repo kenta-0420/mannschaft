@@ -19,7 +19,7 @@ export function useFileSharingApi() {
   }
 
   // === Folders ===
-  async function getFolders(scopeType: string, scopeId: number, parentId?: number) {
+  async function getFolders(scopeType: string, scopeId: string, parentId?: number) {
     const qs = buildQuery({ scope_type: scopeType, scope_id: scopeId, parent_id: parentId })
     return api<{ data: SharedFolder[] }>(`/api/v1/files/folders?${qs}`)
   }
@@ -179,30 +179,30 @@ export function useFileSharingApi() {
   }
 
   // === Scoped Folders (Team) ===
-  async function getTeamFolders(teamId: number) {
+  async function getTeamFolders(teamId: string) {
     return api<{ data: SharedFolder[] }>(`/api/v1/teams/${teamId}/folders`)
   }
 
-  async function createTeamFolder(teamId: number, body: Record<string, unknown>) {
+  async function createTeamFolder(teamId: string, body: Record<string, unknown>) {
     return api<{ data: SharedFolder }>(`/api/v1/teams/${teamId}/folders`, { method: 'POST', body })
   }
 
-  async function getTeamFolder(teamId: number, folderId: number) {
+  async function getTeamFolder(teamId: string, folderId: number) {
     return api<FolderDetailResponse>(`/api/v1/teams/${teamId}/folders/${folderId}`)
   }
 
-  async function updateTeamFolder(teamId: number, folderId: number, body: Record<string, unknown>) {
+  async function updateTeamFolder(teamId: string, folderId: number, body: Record<string, unknown>) {
     return api<{ data: SharedFolder }>(`/api/v1/teams/${teamId}/folders/${folderId}`, {
       method: 'PATCH',
       body,
     })
   }
 
-  async function deleteTeamFolder(teamId: number, folderId: number) {
+  async function deleteTeamFolder(teamId: string, folderId: number) {
     return api(`/api/v1/teams/${teamId}/folders/${folderId}`, { method: 'DELETE' })
   }
 
-  async function getTeamFolderChildren(teamId: number, folderId: number) {
+  async function getTeamFolderChildren(teamId: string, folderId: number) {
     return api<{ data: SharedFolder[] }>(`/api/v1/teams/${teamId}/folders/${folderId}/children`)
   }
 

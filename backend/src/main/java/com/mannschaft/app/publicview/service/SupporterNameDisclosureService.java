@@ -1,5 +1,6 @@
 package com.mannschaft.app.publicview.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -47,6 +48,7 @@ public class SupporterNameDisclosureService {
     private final TeamNameDisclosureChangeLogRepository teamChangeLogRepository;
     private final OrganizationNameDisclosureChangeLogRepository orgChangeLogRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
 
     /**
      * チームの supporter_name_disclosure を更新する。
@@ -65,6 +67,9 @@ public class SupporterNameDisclosureService {
             Long operatorUserId,
             SupporterNameDisclosurePatchRequest request) {
 
+        // per-scope 認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）
+        checkScopeAdminAccess(operatorUserId, teamId, "TEAM");
+
         if (!request.confirmed()) {
             throw new BusinessException(PublicViewErrorCode.NAME_DISCLOSURE_CONFIRM_REQUIRED);
         }
@@ -81,11 +86,11 @@ public class SupporterNameDisclosureService {
             return new SupporterNameDisclosureResponse(oldMode, null);
         }
 
-        // DB 更新（toBuilder パターン）
-        TeamEntity updated = team.toBuilder()
-                .supporterNameDisclosure(newMode)
-                .build();
-        teamRepository.save(updated);
+        // DB 更新（直接ミューテート・PR #1643 と同型）。
+        // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化し、
+        // slug 一意制約違反で 500 になるため使わない。
+        team.updateSupporterNameDisclosure(newMode);
+        teamRepository.save(team);
 
         // change_log INSERT
         LocalDateTime changedAt = LocalDateTime.now();
@@ -120,6 +125,9 @@ public class SupporterNameDisclosureService {
             Long operatorUserId,
             SupporterNameDisclosurePatchRequest request) {
 
+        // per-scope 認可（SYSTEM_ADMIN 短絡 or 当該組織の ADMIN/DEPUTY_ADMIN）
+        checkScopeAdminAccess(operatorUserId, organizationId, "ORGANIZATION");
+
         if (!request.confirmed()) {
             throw new BusinessException(PublicViewErrorCode.NAME_DISCLOSURE_CONFIRM_REQUIRED);
         }
@@ -136,11 +144,11 @@ public class SupporterNameDisclosureService {
             return new SupporterNameDisclosureResponse(oldMode, null);
         }
 
-        // DB 更新（toBuilder パターン）
-        OrganizationEntity updated = org.toBuilder()
-                .supporterNameDisclosure(newMode)
-                .build();
-        organizationRepository.save(updated);
+        // DB 更新（直接ミューテート・PR #1643 と同型）。
+        // toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化し、
+        // slug 一意制約違反で 500 になるため使わない。
+        org.updateSupporterNameDisclosure(newMode);
+        organizationRepository.save(org);
 
         // change_log INSERT
         LocalDateTime changedAt = LocalDateTime.now();
@@ -166,11 +174,15 @@ public class SupporterNameDisclosureService {
      *
      * <p>設計書 §7.7「過去 1 年の切替履歴」に使用する。</p>
      *
-     * @param teamId チーム ID
+     * @param teamId         チーム ID
+     * @param operatorUserId 操作者のユーザー ID（per-scope 認可用）
      * @return 変更履歴リスト（変更日時降順）
      */
     @Transactional(readOnly = true)
-    public List<NameDisclosureChangeLogResponse> getTeamChangeHistory(Long teamId) {
+    public List<NameDisclosureChangeLogResponse> getTeamChangeHistory(Long teamId, Long operatorUserId) {
+        // per-scope 認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）
+        checkScopeAdminAccess(operatorUserId, teamId, "TEAM");
+
         return teamChangeLogRepository.findByTeamIdOrderByChangedAtDesc(teamId).stream()
                 .map(e -> new NameDisclosureChangeLogResponse(
                         e.getId(),
@@ -186,10 +198,14 @@ public class SupporterNameDisclosureService {
      * 組織の変更履歴を取得する（降順）。
      *
      * @param organizationId 組織 ID
+     * @param operatorUserId 操作者のユーザー ID（per-scope 認可用）
      * @return 変更履歴リスト（変更日時降順）
      */
     @Transactional(readOnly = true)
-    public List<NameDisclosureChangeLogResponse> getOrganizationChangeHistory(Long organizationId) {
+    public List<NameDisclosureChangeLogResponse> getOrganizationChangeHistory(Long organizationId, Long operatorUserId) {
+        // per-scope 認可（SYSTEM_ADMIN 短絡 or 当該組織の ADMIN/DEPUTY_ADMIN）
+        checkScopeAdminAccess(operatorUserId, organizationId, "ORGANIZATION");
+
         return orgChangeLogRepository.findByOrganizationIdOrderByChangedAtDesc(organizationId).stream()
                 .map(e -> new NameDisclosureChangeLogResponse(
                         e.getId(),
@@ -199,5 +215,23 @@ public class SupporterNameDisclosureService {
                         e.getChangedBy(),
                         e.getChangedAt()))
                 .toList();
+    }
+
+    /**
+     * 投稿者識別モード切替・履歴閲覧に対する per-scope 認可を強制する（認可根治 Phase 3-a）。
+     *
+     * <p>Controller の {@code @PreAuthorize} に加え、Service 層でも明示的に認可する。
+     * SYSTEM_ADMIN は短絡的に許可し、それ以外は当該スコープの
+     * ADMIN/DEPUTY_ADMIN でなければ {@code COMMON_002}（403）をスローする。</p>
+     *
+     * @param userId    操作ユーザー ID
+     * @param scopeId   スコープ ID（チーム ID または組織 ID）
+     * @param scopeType スコープ種別（"TEAM" / "ORGANIZATION"）
+     */
+    private void checkScopeAdminAccess(Long userId, Long scopeId, String scopeType) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
     }
 }

@@ -1,0 +1,247 @@
+{
+  "market": {
+    "title": "市（いち）",
+    "listing": {
+      "label": "모집",
+      "count": "{count}건",
+      "regionNone": "전국（지역 미지정 포함）"
+    },
+    "page": {
+      "newListing": "모집 올리기"
+    },
+    "action": {
+      "post": "모집 올리기",
+      "apply": "응모하기",
+      "takeDown": "내리기",
+      "loginToApply": "로그인하고 응모",
+      "selectTeam": "응모할 팀을 선택",
+      "goToDashboard": "대시보드로 이동",
+      "postFromDashboard": "팀/조직 대시보드에서 모집 올리기"
+    },
+    "region": {
+      "add": "지역 추가",
+      "selected": "선택한 지역",
+      "none": "지역 미선택（지역 무관）"
+    },
+    "filter": {
+      "prefecture": "도도부현",
+      "city": "시구정촌",
+      "category": "장르",
+      "keyword": "키워드 검색",
+      "allPrefectures": "전국",
+      "allCities": "시구정촌 선택",
+      "allCategories": "모든 장르",
+      "includeRegionNone": "지역 미지정 포함",
+      "mobileToggle": "필터"
+    },
+    "breadcrumb": {
+      "national": "전국",
+      "count": "({count}건)"
+    },
+    "card": {
+      "deadline": "마감일",
+      "capacity": "{confirmed}/{capacity}명",
+      "region": "지역",
+      "regionNone": "지역 무관",
+      "category": "장르",
+      "organizer": "주최"
+    },
+    "status": {
+      "OPEN": "모집 중",
+      "FULL": "마감（확인 대기）",
+      "COMPLETED": "성립",
+      "CANCELLED": "취하",
+      "AUTO_CANCELLED": "불성립（자동 취소）"
+    },
+    "visibility": {
+      "public": "공개",
+      "friendsOnly": "친구 팀만",
+      "label": "공개 범위"
+    },
+    "friendTarget": {
+      "allFriends": "모든 친구 팀",
+      "folder": "폴더 지정",
+      "team": "개별 지정",
+      "addTeam": "팀 추가",
+      "selectFolder": "폴더 선택",
+      "noFolders": "폴더 없음"
+    },
+    "empty": {
+      "title": "모집 정보가 없습니다",
+      "cta": {
+        "canPost": "팀의 첫 번째 모집을 올려보세요！",
+        "noPermission": "모집을 올리려면 팀/조직의 관리자가 되거나 관리자에게 요청하세요.",
+        "guest": "로그인하여 모집을 올리거나 응모하세요"
+      }
+    },
+    "detail": {
+      "organizer": "주최",
+      "region": "지역",
+      "regionNone": "지역 무관",
+      "startAt": "행사 일시",
+      "deadline": "응모 마감",
+      "capacity": "정원",
+      "confirmedCount": "응모 중",
+      "status": "상태",
+      "location": "장소",
+      "category": "장르",
+      "notFound": "모집을 찾을 수 없습니다",
+      "notPublic": "이 모집은 공개되지 않았습니다"
+    },
+    "notify": {
+      "applicationReceived": "모집에 응모가 왔습니다（{owner} / {title}）",
+      "friendListing": "{team}으로부터 「{title}」가 도착했습니다",
+      "finalizeRequest": "모집이 정원에 도달했습니다. 확정하여 내리겠습니까？",
+      "reminderShortfall": "마감이 다가옵니다. 아직 {count}명의 응모가 필요합니다",
+      "autoCancelled": "「{title}」은 응모자가 모이지 않아 마감되었습니다",
+      "cancelledToApplicant": "죄송합니다. 「{title}」은 주최자에 의해 취하되었습니다",
+      "seeOtherListings": "{team}의 다른 모집 보기"
+    },
+    "error": {
+      "loadFailed": "장터 정보 로드 실패",
+      "MARKET_001": "지역 코드가 잘못되었거나 도도부현/시구정촌이 일치하지 않습니다",
+      "MARKET_002": "친구만 공개 시 수신자를 1명 이상 지정해야 합니다",
+      "MARKET_003": "친구 관계가 성립되지 않은 팀은 지정할 수 없습니다",
+      "MARKET_004": "다른 팀이 소유한 폴더는 지정할 수 없습니다",
+      "MARKET_005": "친구만 공개와 배포 대상을 함께 사용할 수 없습니다"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "※결제 총액에는 결제 수수료가 포함되어 있습니다.",
+        "refundFeeConditionalNote": "※환불 시 결제 수수료가 환불되지 않을 수 있습니다(환불 조건은 모집자의 설정에 따릅니다).",
+        "title": "결제 내역",
+        "faceAmountLabel": "사례금(액면)",
+        "feeLabel": "결제 수수료",
+        "totalLabel": "결제 합계"
+      },
+      "refund": {
+        "title": "환불",
+        "feeBearerLabel": "결제 수수료 부담자",
+        "feeBearer": {
+          "PAYER": "지불자 부담(지불자 사정에 의한 취소)",
+          "PAYEE": "수취 측 부담(당사 사정·중지)"
+        },
+        "feeBearerHint": {
+          "PAYER": "지불자에게 실수령액(수수료를 제외한 금액)을 환불합니다. 결제 수수료는 지불자 부담입니다.",
+          "PAYEE": "지불자에게 전액을 환불합니다. 결제 수수료는 당사(수취 측) 부담이 되며 최종적으로 다음 입금 등으로 정산됩니다."
+        },
+        "submit": "환불하기",
+        "confirmTitle": "환불 확인",
+        "confirmPayee": "수취 측 부담 환불입니다. 지불자에게 전액이 환불되고 결제 수수료는 귀하의 부담이 됩니다. 진행하시겠습니까?",
+        "amountLabel": "환불 금액",
+        "amountFull": "전액 환불",
+        "amountPartial": "부분 환불",
+        "amountRequired": "환불 금액을 입력하세요.",
+        "amountTooLarge": "환불 금액이 환불 가능 금액을 초과합니다.",
+        "reasonLabel": "사유(선택)",
+        "failed": "환불에 실패했습니다."
+      },
+      "connect": {
+        "title": "수령 계좌(사례 수령)",
+        "loading": "불러오는 중…",
+        "statusLabel": "상태",
+        "status": {
+          "ready": "등록 완료",
+          "onboarding": "심사 중",
+          "restricted": "추가 정보 필요",
+          "notRegistered": "미등록"
+        },
+        "registrationRequired": "사례를 받으려면 수령 계좌 등록이 필요합니다.",
+        "register": "수령 계좌 등록",
+        "continue": "등록 계속하기",
+        "redirecting": "이동 중…",
+        "linkFailed": "수령 계좌 등록 링크를 가져오지 못했습니다."
+      },
+      "confirm": {
+        "title": "사례금 결제 확인",
+        "intro": "지원자를 확정하기 전에 사례금 결제(카드 승인)를 확인해 주세요.",
+        "expiryNotice": "이 승인은 약 7일간 유효합니다. 7일 이내에 용역 완료 최종 인증이 필요합니다(초과 시 완료 시점에 다시 결제됩니다).",
+        "deferredNotice": "확정부터 용역 완료까지 7일을 초과하므로 지금은 승인하지 않습니다. 용역 완료 최종 인증 시 다시 결제됩니다.",
+        "alreadyAuthorized": "이 결제는 이미 확인되었습니다.",
+        "preparing": "결제 정보를 준비 중입니다. 잠시 후 다시 시도해 주세요.",
+        "retry": "다시 불러오기",
+        "submit": "결제 확인",
+        "processing": "처리 중…",
+        "succeeded": "결제 확인이 완료되었습니다.",
+        "loadFailed": "결제 정보를 가져오지 못했습니다.",
+        "payeeNotReady": "수취 측의 수취 계좌가 미등록 상태여서 아직 결제할 수 없습니다.",
+        "proceed": "확정 진행"
+      },
+      "received": {
+        "pageTitle": "수령 사례금·환불 관리",
+        "pageSubtitle": "받은 사례금을 확인하고 필요 시 환불할 수 있습니다.",
+        "scopeLabel": "수령처",
+        "scope": {
+          "self": "본인(개인)",
+          "team": "팀",
+          "org": "조직"
+        },
+        "statusFilterLabel": "상태로 필터",
+        "statusFilterAll": "전체",
+        "loading": "불러오는 중…",
+        "empty": "아직 받은 사례금이 없습니다.",
+        "loadFailed": "수령 목록을 불러오지 못했습니다.",
+        "noScope": "수령처가 없습니다. 팀/조직 관리자가 되면 해당 수령 목록을 볼 수 있습니다.",
+        "col": {
+          "source": "출처",
+          "status": "상태",
+          "faceAmount": "액면가",
+          "chargeAmount": "청구액",
+          "fee": "수수료",
+          "refunded": "환불됨",
+          "createdAt": "수령일",
+          "actions": "작업"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "사례금(마켓 모집)",
+          "MEMBERSHIP": "회비",
+          "JOBMATCHING": "잡 매칭",
+          "FLEAMARKET": "벼룩시장"
+        },
+        "refundButton": "환불",
+        "refundUnavailable": "환불 불가",
+        "refundSucceeded": "환불이 접수되었습니다.",
+        "status": {
+          "PENDING_CONFIRMATION": "확인 대기",
+          "DEFERRED": "완료 시 결제 예정",
+          "AUTHORIZED": "승인됨",
+          "HELD": "지급 보류",
+          "CAPTURED": "수령 확정",
+          "PARTIALLY_REFUNDED": "부분 환불",
+          "REFUNDED": "전액 환불",
+          "CANCELLED": "취소",
+          "DISPUTED": "분쟁 중"
+        }
+      }
+    },
+    "market_guide": {
+      "page_title": "市の使い方",
+      "what": {
+        "title": "市とは？",
+        "body": "チームや組織が出す「一緒に活動しよう」という公募情報を誰でも閲覧できる公開掲示板です。ログイン不要で検索・閲覧でき、参加したい募集を見つけたら「札に応じる」で応募できます。"
+      },
+      "search": {
+        "title": "絞り込み検索",
+        "body": "都道府県・市区町村・ジャンル・キーワードで条件を絞り込めます。",
+        "steps": {
+          "step1": "都道府県を選ぶと、市区町村のドロップダウンが有効になります",
+          "step2": "ジャンルや自由入力キーワードを追加してさらに絞り込めます",
+          "step3": "絞り込み条件はURLに保存されるため、リンクで共有・ブックマークが可能です"
+        }
+      },
+      "apply": {
+        "title": "札に応じる（応募する）",
+        "body": "気になる募集をクリックして詳細を確認し、「札に応じる」ボタンで応募できます。応募にはログインが必要です。",
+        "steps": {
+          "step1": "一覧から気になる札をクリックして詳細ページを開く",
+          "step2": "開催日時・応募締切・定員・地域を確認する",
+          "step3": "「札に応じる」ボタンを押すと応募完了"
+        }
+      },
+      "team_apply": {
+        "title": "チーム名義での応募",
+        "body": "「チームで参加」と記載された募集は、自分の所属チームを選んで応募します。ドロップダウンでチームを選択してから「札に応じる」ボタンを押してください。"
+      }
+    }
+  }
+}

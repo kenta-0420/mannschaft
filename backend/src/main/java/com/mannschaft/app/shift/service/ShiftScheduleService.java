@@ -1,6 +1,8 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.shift.ShiftAssignmentStatus;
 import com.mannschaft.app.shift.ShiftErrorCode;
@@ -38,6 +40,22 @@ import java.util.stream.Collectors;
 
 /**
  * シフトスケジュールサービス。シフトスケジュールのCRUD・ステータス遷移を担当する。
+ *
+ * <p><b>認可の粒度（認可根治 Wave6）:</b> 全 public メソッドが操作者 {@code userId} を受け取り、
+ * <b>スケジュール実体から解決した teamId</b> に対して per-scope 認可する
+ *（パス変数・クエリの scope 値を鵜呑みにしないことで BOLA を封鎖する）。</p>
+ *
+ * <ul>
+ *   <li><b>参照</b>（{@code listSchedules} / {@code listSchedulesByPeriod} / {@code getSchedule}）:
+ *       当該チームのメンバー、ただし SUPPORTER は不可（{@link #checkTeamReadAccess}）。
+ *       シフト表の閲覧は一般メンバーの日常操作であるため管理者に限定しない。</li>
+ *   <li><b>更新・状態遷移・複製・サマリ</b>: ADMIN/DEPUTY_ADMIN 以上（SYSTEM_ADMIN 短絡。
+ *       {@link #checkScheduleAdminAccess}）。</li>
+ * </ul>
+ *
+ * <p>認可失敗は参照・更新とも {@code COMMON_002}（403）とする。越境を 404 に寄せず 403 とするのは
+ * 同ドメインの既存契約テスト {@code ShiftScheduleScopeContractIT} が別 scope ADMIN に 403 を
+ * 期待しており、そちらへ揃えるため。</p>
  */
 @Slf4j
 @Service
@@ -52,6 +70,7 @@ public class ShiftScheduleService {
     private final ShiftPositionRepository positionRepository;
     private final ShiftMapper shiftMapper;
     private final DomainEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
 
     /** 循環依存を避けるため @Lazy で注入する */
     @Lazy
@@ -61,9 +80,11 @@ public class ShiftScheduleService {
      * チームのシフトスケジュール一覧を取得する。
      *
      * @param teamId チームID
+     * @param userId 操作者ユーザーID（認可チェック用）
      * @return シフトスケジュール一覧
      */
-    public List<ShiftScheduleResponse> listSchedules(Long teamId) {
+    public List<ShiftScheduleResponse> listSchedules(Long teamId, Long userId) {
+        checkTeamReadAccess(teamId, userId);
         List<ShiftScheduleEntity> entities = scheduleRepository.findByTeamIdOrderByStartDateDesc(teamId);
         return shiftMapper.toScheduleResponseList(entities);
     }
@@ -74,9 +95,11 @@ public class ShiftScheduleService {
      * @param teamId チームID
      * @param from   期間開始
      * @param to     期間終了
+     * @param userId 操作者ユーザーID（認可チェック用）
      * @return シフトスケジュール一覧
      */
-    public List<ShiftScheduleResponse> listSchedulesByPeriod(Long teamId, LocalDate from, LocalDate to) {
+    public List<ShiftScheduleResponse> listSchedulesByPeriod(Long teamId, LocalDate from, LocalDate to, Long userId) {
+        checkTeamReadAccess(teamId, userId);
         List<ShiftScheduleEntity> entities = scheduleRepository
                 .findByTeamIdAndStartDateBetweenOrderByStartDateDesc(teamId, from, to);
         return shiftMapper.toScheduleResponseList(entities);
@@ -85,11 +108,16 @@ public class ShiftScheduleService {
     /**
      * シフトスケジュールを単体取得する。
      *
-     * @param id スケジュールID
+     * <p>scope はパス変数でなく <b>スケジュール実体の teamId</b> で解決してから認可する
+     * （呼び出し側から渡された scope 値を鵜呑みにしないことで BOLA を封鎖する）。</p>
+     *
+     * @param id     スケジュールID
+     * @param userId 操作者ユーザーID（認可チェック用）
      * @return シフトスケジュール
      */
-    public ShiftScheduleResponse getSchedule(Long id) {
+    public ShiftScheduleResponse getSchedule(Long id, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        checkTeamReadAccess(entity.getTeamId(), userId);
         return shiftMapper.toScheduleResponse(entity);
     }
 
@@ -103,6 +131,7 @@ public class ShiftScheduleService {
      */
     @Transactional
     public ShiftScheduleResponse createSchedule(Long teamId, CreateShiftScheduleRequest req, Long userId) {
+        checkTeamAdminAccess(teamId, userId);
         validateDateRange(req.getStartDate(), req.getEndDate());
 
         ShiftScheduleEntity entity = ShiftScheduleEntity.builder()
@@ -131,23 +160,29 @@ public class ShiftScheduleService {
      * @return 更新されたシフトスケジュール
      */
     @Transactional
-    public ShiftScheduleResponse updateSchedule(Long id, UpdateShiftScheduleRequest req) {
+    public ShiftScheduleResponse updateSchedule(Long id, UpdateShiftScheduleRequest req, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        checkScheduleAdminAccess(entity, userId);
 
-        ShiftScheduleEntity.ShiftScheduleEntityBuilder builder = entity.toBuilder();
-
-        if (req.getTitle() != null) builder.title(req.getTitle());
-        if (req.getPeriodType() != null) builder.periodType(ShiftPeriodType.valueOf(req.getPeriodType()));
-        if (req.getStartDate() != null) builder.startDate(req.getStartDate());
-        if (req.getEndDate() != null) builder.endDate(req.getEndDate());
-        if (req.getRequestDeadline() != null) builder.requestDeadline(req.getRequestDeadline());
-        if (req.getNote() != null) builder.note(req.getNote());
-
+        // 日付整合性検証（更新後の組み合わせで確認）
         LocalDate startDate = req.getStartDate() != null ? req.getStartDate() : entity.getStartDate();
         LocalDate endDate = req.getEndDate() != null ? req.getEndDate() : entity.getEndDate();
         validateDateRange(startDate, endDate);
 
-        entity = scheduleRepository.save(builder.build());
+        // managed entity を直接ミューテート（toBuilder().build() でなくドメインメソッドで更新）。
+        // ShiftScheduleEntity は @Builder(toBuilder=true) / @SuperBuilder でない / BaseEntity継承(自前id無)
+        // の3条件が揃うため、toBuilder().build()→save では id=null の新インスタンスが生成され
+        // UPDATE でなく INSERT が走る行重複バグになる。
+        entity.applyUpdate(
+                req.getTitle(),
+                req.getPeriodType() != null ? ShiftPeriodType.valueOf(req.getPeriodType()) : null,
+                req.getStartDate(),
+                req.getEndDate(),
+                req.getRequestDeadline(),
+                req.getNote()
+        );
+
+        scheduleRepository.save(entity);
 
         log.info("シフトスケジュール更新: id={}", id);
         return shiftMapper.toScheduleResponse(entity);
@@ -159,8 +194,9 @@ public class ShiftScheduleService {
      * @param id スケジュールID
      */
     @Transactional
-    public void deleteSchedule(Long id) {
+    public void deleteSchedule(Long id, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        checkScheduleAdminAccess(entity, userId);
         entity.softDelete();
         scheduleRepository.save(entity);
         log.info("シフトスケジュール削除: id={}", id);
@@ -177,6 +213,7 @@ public class ShiftScheduleService {
     @Transactional
     public ShiftScheduleResponse transitionStatus(Long id, String status, Long userId) {
         ShiftScheduleEntity entity = findScheduleOrThrow(id);
+        checkScheduleAdminAccess(entity, userId);
         ShiftScheduleStatus targetStatus = ShiftScheduleStatus.valueOf(status);
 
         switch (targetStatus) {
@@ -195,7 +232,8 @@ public class ShiftScheduleService {
 
         // イベント発行は save() 後（AFTER_COMMIT リスナーがコミット済みデータを参照するため）
         if (targetStatus == ShiftScheduleStatus.PUBLISHED) {
-            eventPublisher.publish(new ShiftPublishedEvent(entity.getId(), entity.getTeamId(), userId));
+            eventPublisher.publish(new ShiftPublishedEvent(
+                    entity.getId(), entity.getTeamId(), userId, entity.getPublishedAt()));
         }
 
         log.info("シフトスケジュールステータス遷移: id={}, status={}", id, targetStatus);
@@ -212,6 +250,10 @@ public class ShiftScheduleService {
     @Transactional
     public ShiftScheduleResponse duplicateSchedule(Long id, Long userId) {
         ShiftScheduleEntity source = findScheduleOrThrow(id);
+        // BOLA是正（認可根治 Wave3-B6）: 複製元(source)のscope由来で認可する。shift ドメイン内に
+        // duplicateSchedule の内部呼び出し元は存在しない（grep 確認済み）ため、この共有メソッド自体に
+        // 認可を敷設してよい（schedule ドメインの ScheduleService.duplicateSchedule とは事情が異なる）。
+        checkScheduleAdminAccess(source, userId);
 
         ShiftScheduleEntity duplicate = source.toBuilder()
                 .status(ShiftScheduleStatus.DRAFT)
@@ -235,15 +277,19 @@ public class ShiftScheduleService {
      * <p>管理者のシフト調整画面の概観表示で使用する。スロット・確定アサイン・希望提出を
      * それぞれ集計し、未充足の箇所を一望できるマトリクスとして返す。</p>
      *
-     * <p>認可は Controller 側で {@code @PreAuthorize("hasRole('ADMIN')")} を付与しているため、
-     * 本メソッドでは追加チェックを行わない（既存パターン踏襲）。</p>
+     * <p><b>認可の真の強制点（Track2 第二陣 / 2026-05-29）</b>: コントローラーの
+     * {@code @PreAuthorize("hasRole('ADMIN')")} は、JWT には {@code MEMBER} しか乗らないため
+     * per-scope 認可にならない。本メソッド内の {@link #checkScheduleAdminAccess} が実際の per-scope 認可
+     * （当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN）を強制する。</p>
      *
-     * @param id スケジュール ID
+     * @param id     スケジュール ID
+     * @param userId 操作ユーザー ID（認可チェック用）
      * @return 日付別・ポジション別の充足状況サマリー
-     * @throws BusinessException スケジュールが存在しない場合
+     * @throws BusinessException スケジュールが存在しない場合 / 権限がない場合（COMMON_002）
      */
-    public ShiftScheduleSummaryResponse getScheduleSummary(Long id) {
+    public ShiftScheduleSummaryResponse getScheduleSummary(Long id, Long userId) {
         ShiftScheduleEntity schedule = findScheduleOrThrow(id);
+        checkScheduleAdminAccess(schedule, userId);
 
         // 1) スロット一覧（日付・開始時刻昇順）を取得
         List<ShiftSlotEntity> slots = slotRepository
@@ -346,6 +392,69 @@ public class ShiftScheduleService {
     ShiftScheduleEntity findScheduleOrThrow(Long id) {
         return scheduleRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
+    }
+
+    /**
+     * シフトスケジュールに対する管理操作の per-scope 認可を強制する。
+     *
+     * <p>SYSTEM_ADMIN は短絡的に許可する。それ以外は、当該スケジュールが属するチームの
+     * ADMIN/DEPUTY_ADMIN でなければ {@code COMMON_002}（403）をスローする。
+     * circulation ドメインの {@code CirculationService#checkScopeAdminAccess}（#1183）と同一の方針。</p>
+     *
+     * @param schedule 対象スケジュール
+     * @param userId   操作ユーザー ID
+     * @throws BusinessException 権限がない場合（COMMON_002）
+     */
+    void checkScheduleAdminAccess(ShiftScheduleEntity schedule, Long userId) {
+        // 認可根治 Wave6: 判定内容は checkTeamAdminAccess と同一だが、ArchUnit 認可番人の
+        // 委譲追跡が 2 ホップまで（MAX_DELEGATION_DEPTH=2）のため、AccessControlService を
+        // 本メソッドから直接呼んでフラット化してある（委譲すると番人から見えなくなる）。
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
+    }
+
+    /**
+     * シフトスケジュールの参照認可（当該チームのメンバー。ただし SUPPORTER は不可）。
+     *
+     * <p>SYSTEM_ADMIN は短絡的に許可する。粒度を「管理者」でなく「メンバー」としているのは、
+     * シフト表の閲覧が一般メンバーの日常的な利用であるため。SUPPORTER を除外するのは
+     * {@code ShiftSlotService#checkScheduleReadAccess} / {@code ShiftPdfService} と同一方針
+     *（PDF で SUPPORTER に伏せている情報を生 API から取れては意味がないため）。</p>
+     *
+     * @param teamId 対象チームID
+     * @param userId 操作者ユーザーID
+     * @throws BusinessException メンバーでない場合、または SUPPORTER の場合（COMMON_002 / 403）
+     */
+    private void checkTeamReadAccess(Long teamId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        if (!accessControlService.isMember(userId, teamId, "TEAM")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        if (accessControlService.isSupporter(userId, teamId, "TEAM")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * チーム ID 直接指定での管理操作 per-scope 認可（認可根治 Wave3-B6）。
+     *
+     * <p>{@link #createSchedule} はエンティティ未生成の時点（path 由来 teamId のみ）で
+     * 認可が必要なため、{@link #checkScheduleAdminAccess} と同じ判定ロジックを teamId 直接指定で
+     * 呼べるように分離した。SYSTEM_ADMIN は短絡的に許可する。</p>
+     *
+     * @param teamId 対象チームID
+     * @param userId 操作ユーザーID
+     * @throws BusinessException 権限がない場合（COMMON_002）
+     */
+    private void checkTeamAdminAccess(Long teamId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
     }
 
     /**

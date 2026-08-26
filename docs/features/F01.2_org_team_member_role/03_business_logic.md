@@ -222,27 +222,115 @@
 
 > - `invite_token_id` をメタデータに含めることで、どの招待トークン経由で参加したかを事後追跡可能にする（トークン発行者の特定・悪用調査に有用）
 
-### ADMIN 権限移譲フロー（1ステップ）
+### オーナー委譲 承諾フロー（2ステップ・承諾型 / 2026-07-18 マスター御裁可）
+
+**方針転換の背景**: 従来のオーナー委譲は「即時型」（操作者が押した瞬間に対象ユーザーを ADMIN 昇格＋自分を降格し、事後通知のみ）だった。しかし **指名相手の承諾がないまま管理責任を押し付けられる** 問題があり、[`account_purge_last_admin_succession.md` §10.11](../../architecture/account_purge_last_admin_succession.md) で未解決事項として残されていた。**2026-07-18 のマスター御裁可により、オーナー委譲も承諾型（オファー→承諾）に統一する。** これは F04.12（チャットからの承諾型招待）・team-invites/org-invites の PENDING→ACTIVE と同一の「承諾型オファー」思想である。
+
+#### 状態機械
 
 ```
-1. POST /api/v1/teams/{id}/transfer-ownership を受付（body: {"target_user_id": X}）
+        打診(POST transfer-ownership-offers)
+              │
+              ▼
+          [PENDING]
+          /   │    \   \
+   accept  decline expire cancel(発行者取消)
+      │       │      │      │
+      ▼       ▼      ▼      ▼
+ [ACCEPTED][DECLINED][EXPIRED][CANCELLED]
+ = 委譲実行   = いずれも現状維持（ロール不変）
+```
+
+**指名相手だけが承諾できる（宛先照合 = IDOR 防止）。** 承諾があって初めて対象ユーザーを ADMIN 昇格＋発行者を降格する。辞退・期限切れ・取消のいずれでもロールは一切変わらない。
+
+#### ステップ1: オファー作成
+
+```
+1. POST /api/v1/teams/{slug}/transfer-ownership-offers を受付（body: {"targetUserId": X}）
 2. 操作者が対象チームの ADMIN か確認 → ADMIN 未満は 403
 3. チームがアーカイブ済みでないか確認 → アーカイブ済みは 422
-4. 対象ユーザーが当該チームのメンバーか確認 → メンバーでなければ 404
+4. 対象ユーザーが当該チームのメンバーか、かつ操作者 ≠ 対象 か確認 → 否なら 404 / 422
 5. 【2FA必須チェック】対象ユーザーが 2FA を設定済みか確認 → 未設定は 422
-6. 1トランザクション内で以下を実行:
-   a. 対象ユーザーの user_roles.role_id を ADMIN に UPDATE
-   b. 操作者（自分）の user_roles.role_id を DEPUTY_ADMIN に UPDATE
-   c. 対象ユーザーの user_permission_groups（当該チームスコープ）を DELETE（ADMIN は権限グループ不要）
-   d. 操作者の user_permission_groups（当該チームスコープ）を DELETE（DEPUTY_ADMIN として再割り当てが必要）
-7. audit_logs に TEAM_ADMIN_TRANSFERRED を記録
+   （承諾時に再チェックもするが、無駄なオファー作成を防ぐため作成時にも確認）
+6. 同一スコープに PENDING オファーが既存なら 409（重複打診防止・古いものを取消してから）
+7. ownership_transfer_offers に INSERT（status=PENDING, target_user_id=X, expires_at=発行から7日）
+8. audit_logs に TEAM_OWNERSHIP_TRANSFER_OFFERED を記録
    metadata: {"from_user_id": 操作者ID, "to_user_id": 対象ユーザーID}
-8. 200 OK を返す
+9. 対象ユーザーへ到達通知（F04.3/F04.9）「管理者への就任を打診されています」
+10. 201 Created を返す（オファー ID・PENDING）
 ```
 
-> - 組織の場合（`POST /organizations/{id}/transfer-ownership`）も同一フロー（`team_id` → `organization_id` に読み替え、イベントは `ORGANIZATION_ADMIN_TRANSFERRED`）
-> - 移譲後、旧 ADMIN は DEPUTY_ADMIN となるが権限グループ未割り当て（実効パーミッション 0）。新 ADMIN が必要に応じて権限グループを割り当てる
-> - 複数 ADMIN が存在する場合でも移譲は可能（操作者のみが DEPUTY_ADMIN に降格し、他の ADMIN はそのまま）
+#### ステップ2: 承諾（委譲実行）／辞退／取消
+
+```
+承諾: POST /api/v1/teams/{slug}/transfer-ownership-offers/{offerId}/accept
+1. オファーを取得。status=PENDING かつ未期限か確認 → 否なら 409/410（EXPIRED/CANCELLED/既処理）
+2. 【宛先照合 = IDOR 防止】offer.target_user_id == 実行ユーザー ID か確認 → 不一致は 403
+3. 【2FA再チェック】実行ユーザーが 2FA 設定済みか確認 → 未設定は 422（FE は 2FA 設定画面へ誘導・U2）
+4. チームが依然アーカイブ済みでないか・発行者が依然 ADMIN か再確認 → 否なら 409
+5. 【薄いラッパで既存 RoleService#transferOwnership を呼ぶ（H-3・下記「実装ノート」参照）】
+   a. transferOwnership(scopeId, scopeType, currentUserId=発行者ID, targetUserId=実行ユーザーID) を呼ぶ
+      → 対象ユーザーを ADMIN 昇格・発行者を MEMBER 降格・MembershipChangedEvent(CHANGED)×2（既存挙動）
+   b. offer.status を ACCEPTED に UPDATE、accepted_at=NOW()
+6. audit_logs に TEAM_ADMIN_TRANSFERRED を記録（metadata に offer_id を含める）
+7. 200 OK を返す
+
+辞退: POST .../transfer-ownership-offers/{offerId}/decline
+- 宛先照合（target_user_id == 実行ユーザー）→ status を DECLINED に。ロール不変。発行者へ通知。
+
+取消: DELETE .../transfer-ownership-offers/{offerId}
+- 発行者（または対象スコープ ADMIN）のみ。status を CANCELLED に。ロール不変。
+```
+
+#### 実装ノート: accept は既存 `transferOwnership` の「薄いラッパ」であり無改修流用ではない（H-3）
+
+現行 `RoleService#transferOwnership(scopeId, scopeType, currentUserId, targetUserId)` は退会・即時委譲を前提に作られており、accept から流用する際は**以下の差分を薄いラッパ層（承諾 Service）で埋める**こと。「既存流用」の一語で無改修と誤読しないための明示:
+
+1. **引数の組み替え**: `currentUserId` には **発行者（オファーの `issued_by`）** を渡す（実行ユーザー=承諾者ではない）。`targetUserId` には実行ユーザー（承諾者）を渡す。現行実装は `currentUserId` が ADMIN であることを前提に降格対象とするため、発行者を渡さないと降格対象を誤る。
+2. **2FA チェックの新規追加**: 現行 `transferOwnership` は **2FA を一切チェックしない**。ADMIN 昇格には 2FA 必須（§6 セキュリティ）のため、**ラッパ層で承諾者の 2FA 設定を検証**してから呼ぶ（未設定は 422）。
+3. **エラーの再マッピング**: 現行 `transferOwnership` は違反（自己譲渡・ADMIN でない・対象未所属・ロール未検出）を**すべて `ROLE_001` で投げる**。承諾 API では文脈に応じて **403（宛先/権限）/ 404（スコープ・メンバー不在）/ 409（状態不整合）/ 422（2FA・アーカイブ）** に再マッピングして返す（`ROLE_001` を素通しにしない）。
+4. **降格先は MEMBER**（現行実装どおり。下記「降格先ロール」参照）。
+
+> - 組織の場合（`.../organizations/{slug}/transfer-ownership-offers`）も同一フロー（`team_id` → `organization_id` に読み替え、イベントは `ORGANIZATION_OWNERSHIP_TRANSFER_OFFERED` / `ORGANIZATION_ADMIN_TRANSFERRED`）
+> - 複数 ADMIN が存在する場合でも委譲は可能（承諾時に発行者のみ降格し、他の ADMIN はそのまま）
+> - 承諾（accept）は `checkLastAdmin` を呼ばない（委譲完了後は新 ADMIN が存在するため正当）
+>
+> **⚠️ 降格先ロールは MEMBER（実装が正・旧 doc 記述が誤り / 実装時に統一）**: 実装 `RoleService#transferOwnership` は発行者を **MEMBER** に降格している（コード確認済み・javadoc「現オーナーは MEMBER にダウングレード」）。旧 F01.2 記述の「DEPUTY_ADMIN 降格」は実装と乖離した誤記であり、マスター御裁可（2026-07-18「発行者 MEMBER 降格」）とも一致する **MEMBER に統一**する。02_api_design のレスポンス例（`previous_admin.role`）も MEMBER に修正済み。
+>
+> **⚠️ FE-BE 不一致は「方式ごとの乖離」で既存バグ（M-4・実装時に刷新）**: 旧 BE `POST /{scope}/{slug}/transfer-ownership` は **`@RequestParam Long targetUserId`（クエリパラメータ）** でボディを読まない（`TeamController.transferOwnership` 実装確認済み）。一方 FE composable [`useTeamCrud.ts`](../../../frontend/app/composables/team/useTeamCrud.ts) は `transferOwnership(slug, newAdminUserId)` で **body `{ newAdminUserId }` のみ**送っており、**クエリ未付与のため現行は 400 になる既存バグ**。承諾型化に伴い FE を 2 ステップ API（オファー作成→承諾/辞退）へ**方式ごと刷新**し、新 API は **JSON body `{ targetUserId }`** に統一する（クエリパラメータ方式は廃止）。
+
+#### 退会 purge 経由の承継は「承諾スキップの強制委譲」（H-2・GDPR 30日タイムリミット順守）
+
+通常のオーナー委譲は上記の承諾型2段だが、**退会（アカウント purge）に伴う最後の ADMIN 承継だけは承諾を待てない**。承諾待ちで退会が詰まる／承継先が 2FA 未設定で承諾不能なら退会不能となり、GDPR Art.17 の 30 日タイムリミットに抵触する（[`account_purge_last_admin_succession.md` §10.11](../../architecture/account_purge_last_admin_succession.md) で決着）。よって:
+
+| 経路 | 委譲方式 | 承諾 | 2FA | 監査 |
+|---|---|---|---|---|
+| 通常のオーナー委譲（本節）| 承諾型2段（オファー→accept）| **必要**（指名相手が accept）| accept 時に必須チェック | `*_ADMIN_TRANSFERRED`（metadata に offer_id）|
+| 退会 purge 経由の最後の ADMIN 承継 | **システム強制の即時委譲**（承諾スキップ）| **不要**（本人不在で完結）| **チェックしない**（退会完遂を優先）| `*_ADMIN_TRANSFERRED`（metadata に `forced=true` / 承継元退会 user_id）|
+
+- purge 経路は既存 `AccountPurgeService` / `RolePurgeEventListener` から `transferOwnership`（または承継バッチ）を**同期即時**で呼ぶ現行設計を維持し、承諾型オファーを介さない。強制委譲であることを **audit に FORCED（`forced=true`）で明示**する。
+- 通常委譲との使い分けを実装・レビューで取り違えないため、**承諾型 accept と強制委譲は別メソッド**（例: 承諾 Service の `acceptOffer` と purge 経路の `forceTransferForPurge`）として分離する。
+
+#### i18n 新規キー（承諾/辞退 UI・打診通知 / U1・U2・6言語 ja 初版同値）
+
+オーナー委譲の承諾型化で必要な UI 文言は直書き禁止。以下を 6 言語（ja/en/zh/ko/es/de）に追加（未翻訳は ja 同値で投入）:
+
+| キー | ja 値（初版）| 用途 |
+|---|---|---|
+| `role.transfer.offer.button` | 管理者を引き継ぐ | 打診ボタン（ADMIN 側）|
+| `role.transfer.offer.notification` | {scope} の管理者への就任を打診されています | 打診到達通知（宛先）|
+| `role.transfer.offer.pending` | 管理者就任の打診が届いています | オファーカード見出し |
+| `role.transfer.offer.accept` | 引き受ける | 承諾ボタン |
+| `role.transfer.offer.decline` | 辞退する | 辞退ボタン |
+| `role.transfer.offer.accepted` | 管理者を引き継ぎました | 承諾完了 |
+| `role.transfer.offer.declined` | 打診を辞退しました | 辞退完了 |
+| `role.transfer.offer.expired` | 打診は期限切れです | EXPIRED |
+| `role.transfer.offer.cancelled` | 打診は取り消されました | CANCELLED |
+| `role.transfer.error.notTarget` | この打診はあなた宛てではありません | 宛先不一致 403 |
+| `role.transfer.error.need2fa` | 管理者になるには2段階認証の設定が必要です | 2FA 未設定 422（U2）|
+| `role.transfer.error.need2fa.cta` | 2段階認証を設定する | 2FA 設定画面への導線（U2）|
+
+> **U2（2FA 未設定で accept 422 の導線）**: 承諾者が 2FA 未設定で accept が 422 になった場合、エラー表示に留めず **2FA 設定画面（`/settings/security` 等）への CTA** を提示し、設定後に再度承諾できる導線を UX 要件とする。上記 `role.transfer.error.need2fa` / `.cta` を用いる。
 
 ---
 

@@ -2,21 +2,15 @@ package com.mannschaft.app.proxy;
 
 import com.mannschaft.app.proxy.entity.ProxyInputConsentEntity;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -31,31 +25,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * OOM 対策として ActionMemoIntegrationTest と同一の ApplicationContext を再利用できるよう
  * 同じ設定パターンを採用している。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("ProxyInputConsentRepository 結合テスト（カスタムクエリ）")
-class ProxyInputConsentRepositoryTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    // Redis 関連 Bean をモック化（OOM 対策 — ActionMemoIntegrationTest と同パターン）
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+class ProxyInputConsentRepositoryTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ProxyInputConsentRepository repository;

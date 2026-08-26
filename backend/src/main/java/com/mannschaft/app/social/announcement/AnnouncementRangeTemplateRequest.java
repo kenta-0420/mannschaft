@@ -25,7 +25,7 @@ public class AnnouncementRangeTemplateRequest {
 
     /**
      * 告知対象ロール。
-     * 値: MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / PUBLIC
+     * 値: MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC
      */
     private String targetRole;
 

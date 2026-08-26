@@ -9,6 +9,7 @@ import com.mannschaft.app.common.visibility.StandardVisibility;
 import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityDecision;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
+import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -119,7 +120,7 @@ class ScheduleVisibilityResolverTest {
                     1L, null, null, /*userId*/ 100L,
                     /*createdBy*/ null,
                     ScheduleVisibility.MEMBERS_ONLY, null,
-                    ScheduleStatus.SCHEDULED);
+                    ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
             stubProjection(row);
             stubSnapshotEmpty(100L);
 
@@ -186,45 +187,187 @@ class ScheduleVisibilityResolverTest {
     }
 
     // ========================================================================
-    // ORGANIZATION スコープ × ORGANIZATION（→ ORGANIZATION_WIDE）
+    // ORGANIZATION スコープ × ORGANIZATION
+    //   フェーズ M2: ORG スコープのコンテンツは下向き再帰 ORGANIZATION_AND_DESCENDANTS へ昇格する。
     // ========================================================================
 
     @Nested
-    @DisplayName("ORGANIZATION スコープ × ORGANIZATION（→ ORGANIZATION_WIDE）")
-    class OrgOrganizationWide {
+    @DisplayName("ORGANIZATION スコープ × ORGANIZATION（→ ORGANIZATION_AND_DESCENDANTS / 下向き再帰）")
+    class OrgOrganizationAndDescendants {
 
         @Test
-        @DisplayName("親 ORG メンバーは閲覧可")
-        void orgMember_canView() {
+        @DisplayName("配下再帰メンバー（孫組織配下チームのみ所属も含む）は閲覧可")
+        void descendantMember_canView() {
             ScheduleVisibilityProjection row = org(1L, 20L, ScheduleVisibility.ORGANIZATION);
             stubProjection(row);
             ScopeKey orgScope = new ScopeKey("ORGANIZATION", 20L);
-            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any()))
+            // 新段では 4 引数版が呼ばれ、descendantMemberOfOrgIds で判定される。
+            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any(), any()))
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             Map.of(),
                             Map.of(orgScope, 20L),
-                            Set.of(orgScope),
-                            Set.of()));
+                            Set.of(),          // 直接所属（orgMemberOf）は無くてよい（G3）
+                            Set.of(),
+                            Set.of(20L)));     // descendantMemberOfOrgIds
 
             assertThat(resolver.canView(1L, 300L)).isTrue();
         }
 
         @Test
-        @DisplayName("親 ORG 非アクティブなら fail-closed")
-        void parentOrgInactive_denied() {
+        @DisplayName("配下再帰メンバーでない無関係ユーザーは閲覧不可")
+        void nonDescendant_denied() {
             ScheduleVisibilityProjection row = org(1L, 20L, ScheduleVisibility.ORGANIZATION);
             stubProjection(row);
             ScopeKey orgScope = new ScopeKey("ORGANIZATION", 20L);
-            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any()))
+            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any(), any()))
+                    .thenReturn(new UserScopeRoleSnapshot(
+                            false,
+                            Map.of(),
+                            Map.of(orgScope, 20L),
+                            Set.of(),
+                            Set.of(),
+                            Set.of()));        // どの根の配下にもいない
+
+            assertThat(resolver.canView(1L, 300L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("組織直接所属者も（配下再帰メンバー集合に含まれるため）閲覧可")
+        void directOrgMember_canView() {
+            ScheduleVisibilityProjection row = org(1L, 20L, ScheduleVisibility.ORGANIZATION);
+            stubProjection(row);
+            ScopeKey orgScope = new ScopeKey("ORGANIZATION", 20L);
+            // 直接所属者はバルク SQL の「直属」条件にもヒットするため descendantMemberOfOrgIds に入る。
+            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any(), any()))
                     .thenReturn(new UserScopeRoleSnapshot(
                             false,
                             Map.of(),
                             Map.of(orgScope, 20L),
                             Set.of(orgScope),
+                            Set.of(),
                             Set.of(20L)));
 
+            assertThat(resolver.canView(1L, 300L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("§11.6 鏡像: 当該 ORG 自身が非アクティブなら配下メンバーでも fail-closed")
+        void orgInactive_denied() {
+            ScheduleVisibilityProjection row = org(1L, 20L, ScheduleVisibility.ORGANIZATION);
+            stubProjection(row);
+            ScopeKey orgScope = new ScopeKey("ORGANIZATION", 20L);
+            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any(), any()))
+                    .thenReturn(new UserScopeRoleSnapshot(
+                            false,
+                            Map.of(),
+                            Map.of(orgScope, 20L),
+                            Set.of(),
+                            Set.of(20L),       // suspendedOrgIds に当該 ORG
+                            Set.of(20L)));     // 配下メンバーではある
+
             assertThat(resolver.canView(1L, 300L)).isFalse();
+        }
+
+        // ── CMP-017b 三b: 下向き再帰段にも min_view_role の閾値を効かせる ──
+
+        @Test
+        @DisplayName("CMP-017b MEMBER_PLUS の組織予定は配下 SUPPORTER に不可視")
+        void descendantSupporter_memberPlus_denied() {
+            stubProjection(orgWithThreshold(1L, 20L, MinViewRole.MEMBER_PLUS));
+            stubDescendantSnapshot(300L, 20L, /*descendantRole*/ "SUPPORTER", /*directRole*/ null);
+
+            assertThat(resolver.canView(1L, 300L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("CMP-017b MEMBER_PLUS の組織予定は配下 MEMBER には可視（M2 を殺さない）")
+        void descendantMember_memberPlus_canView() {
+            stubProjection(orgWithThreshold(1L, 20L, MinViewRole.MEMBER_PLUS));
+            stubDescendantSnapshot(300L, 20L, /*descendantRole*/ "MEMBER", /*directRole*/ null);
+
+            assertThat(resolver.canView(1L, 300L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("CMP-017b SUPPORTER_PLUS なら配下 SUPPORTER にも可視（塞ぎすぎない）")
+        void descendantSupporter_supporterPlus_canView() {
+            stubProjection(orgWithThreshold(1L, 20L, MinViewRole.SUPPORTER_PLUS));
+            stubDescendantSnapshot(300L, 20L, /*descendantRole*/ "SUPPORTER", /*directRole*/ null);
+
+            assertThat(resolver.canView(1L, 300L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("CMP-017b 配下ロールが未知でも当該 ORG への直接所属ロールが閾値を満たせば可視")
+        void directOrgRole_satisfiesThreshold() {
+            stubProjection(orgWithThreshold(1L, 20L, MinViewRole.MEMBER_PLUS));
+            stubDescendantSnapshot(300L, 20L, /*descendantRole*/ null, /*directRole*/ "MEMBER");
+
+            assertThat(resolver.canView(1L, 300L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("CMP-017b ADMIN_ONLY は配下 DEPUTY_ADMIN に可視・配下 MEMBER に不可視")
+        void adminOnly_deputyAdminOnly() {
+            stubProjection(orgWithThreshold(1L, 20L, MinViewRole.ADMIN_ONLY));
+            stubDescendantSnapshot(300L, 20L, "DEPUTY_ADMIN", null);
+            assertThat(resolver.canView(1L, 300L)).isTrue();
+
+            stubProjection(orgWithThreshold(2L, 20L, MinViewRole.ADMIN_ONLY));
+            stubDescendantSnapshot(301L, 20L, "MEMBER", null);
+            assertThat(resolver.canView(2L, 301L)).isFalse();
+        }
+
+        /** 下向き再帰段の snapshot スタブ（配下ロール／当該 ORG 直接ロールを任意に置ける）。 */
+        private void stubDescendantSnapshot(
+                Long viewerId, Long organizationId, String descendantRole, String directRole) {
+            ScopeKey orgScope = new ScopeKey("ORGANIZATION", organizationId);
+            when(membershipBatchQueryService.snapshotForUser(eq(viewerId), any(), any(), any()))
+                    .thenReturn(new UserScopeRoleSnapshot(
+                            false,
+                            directRole != null ? Map.of(orgScope, directRole) : Map.of(),
+                            Map.of(orgScope, organizationId),
+                            Set.of(),
+                            Set.of(),
+                            Set.of(organizationId),
+                            Map.of(),
+                            descendantRole != null
+                                    ? Map.of(organizationId, descendantRole) : Map.of()));
+        }
+    }
+
+    private static ScheduleVisibilityProjection orgWithThreshold(
+            long id, Long orgId, MinViewRole minViewRole) {
+        return new ScheduleVisibilityProjection(
+                id, null, orgId, null, 100L,
+                ScheduleVisibility.ORGANIZATION, null, ScheduleStatus.SCHEDULED, minViewRole);
+    }
+
+    // ========================================================================
+    // TEAM スコープ × ORGANIZATION（上向き 1 段 ORGANIZATION_WIDE は不変）
+    // ========================================================================
+
+    @Nested
+    @DisplayName("TEAM スコープ × ORGANIZATION（→ ORGANIZATION_WIDE / 上向き 1 段・不変）")
+    class TeamOrganizationWideUnchanged {
+
+        @Test
+        @DisplayName("TEAM スコープは従来どおり親 ORG 上向き判定（3 引数版・新段に昇格しない）")
+        void teamScope_parentOrgMember_canView() {
+            ScheduleVisibilityProjection row = team(1L, 30L, ScheduleVisibility.ORGANIZATION);
+            stubProjection(row);
+            ScopeKey teamScope = new ScopeKey("TEAM", 30L);
+            // TEAM スコープは新段に昇格しないため従来 3 引数版が呼ばれる。
+            when(membershipBatchQueryService.snapshotForUser(eq(300L), any(), any()))
+                    .thenReturn(new UserScopeRoleSnapshot(
+                            false,
+                            Map.of(),
+                            Map.of(teamScope, 40L),       // TEAM30 → 親 ORG40
+                            Set.of(new ScopeKey("ORGANIZATION", 40L)),
+                            Set.of()));
+
+            assertThat(resolver.canView(1L, 300L)).isTrue();
         }
     }
 
@@ -242,7 +385,7 @@ class ScheduleVisibilityResolverTest {
             ScheduleVisibilityProjection row = new ScheduleVisibilityProjection(
                     1L, 10L, null, null, 100L,
                     ScheduleVisibility.CUSTOM_TEMPLATE, /*templateId*/ 555L,
-                    ScheduleStatus.SCHEDULED);
+                    ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
             stubProjection(row);
             stubSnapshotEmpty(200L);
             when(templateEvaluator.canView(200L, 555L, 100L)).thenReturn(true);
@@ -256,7 +399,7 @@ class ScheduleVisibilityResolverTest {
             ScheduleVisibilityProjection row = new ScheduleVisibilityProjection(
                     1L, 10L, null, null, 100L,
                     ScheduleVisibility.CUSTOM_TEMPLATE, 555L,
-                    ScheduleStatus.SCHEDULED);
+                    ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
             stubProjection(row);
             stubSnapshotEmpty(200L);
             when(templateEvaluator.canView(200L, 555L, 100L)).thenReturn(false);
@@ -270,7 +413,7 @@ class ScheduleVisibilityResolverTest {
             ScheduleVisibilityProjection row = new ScheduleVisibilityProjection(
                     1L, 10L, null, null, 100L,
                     ScheduleVisibility.CUSTOM_TEMPLATE, /*templateId*/ null,
-                    ScheduleStatus.SCHEDULED);
+                    ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
             stubProjection(row);
             stubSnapshotEmpty(200L);
 
@@ -304,7 +447,7 @@ class ScheduleVisibilityResolverTest {
             ScheduleVisibilityProjection row = new ScheduleVisibilityProjection(
                     1L, 10L, null, null, 100L,
                     ScheduleVisibility.MEMBERS_ONLY, null,
-                    /*status*/ null);
+                    /*status*/ null, MinViewRole.ANYONE);
             stubProjection(row);
             stubSnapshotEmpty(200L);
 
@@ -328,18 +471,21 @@ class ScheduleVisibilityResolverTest {
 
         ScopeKey teamScope = new ScopeKey("TEAM", 10L);
         ScopeKey orgScope = new ScopeKey("ORGANIZATION", 20L);
-        when(membershipBatchQueryService.snapshotForUser(eq(200L), any(), any()))
+        // orgRow（ORG スコープ × ORGANIZATION）はフェーズ M2 で下向き再帰段へ昇格するため、
+        // descendantScopes 非空 → 4 引数版が呼ばれる。判定は descendantMemberOfOrgIds で行う。
+        when(membershipBatchQueryService.snapshotForUser(eq(200L), any(), any(), any()))
                 .thenReturn(new UserScopeRoleSnapshot(
                         false,
                         Map.of(teamScope, "MEMBER"),
                         Map.of(orgScope, 20L),
                         Set.of(orgScope),
-                        Set.of()));
+                        Set.of(),
+                        Set.of(20L)));   // viewer は ORG20 の配下再帰メンバー
 
         Set<Long> accessible = resolver.filterAccessible(List.of(1L, 2L, 3L, 4L), 200L);
 
         // teamRow (1L): メンバー → 可
-        // orgRow (2L): 親 ORG メンバー → 可
+        // orgRow (2L): 配下再帰メンバー（ORGANIZATION_AND_DESCENDANTS）→ 可
         // personalOwnerRow (3L): 作成者本人 → 可
         // personalOtherRow (4L): 他人 → 不可
         assertThat(accessible).containsExactlyInAnyOrder(1L, 2L, 3L);
@@ -359,23 +505,27 @@ class ScheduleVisibilityResolverTest {
                 .thenReturn(UserScopeRoleSnapshot.empty());
     }
 
+    // 本テストが固定するのは «scope 軸»（visibility × status）の判定である。
+    // CMP-017b で射影に加わった閲覧閾値軸（min_view_role）は独立した軸のため、
+    // ここでは閾値なし（ANYONE）を与えて中立化し、scope 軸の期待値をそのまま保つ。
+    // 閾値軸そのものの契約は ScheduleMinViewRoleContractIT が固定する。
     private static ScheduleVisibilityProjection personal(long id, Long createdBy) {
         return new ScheduleVisibilityProjection(
                 id, null, null, /*userId*/ createdBy,
                 createdBy,
                 ScheduleVisibility.MEMBERS_ONLY, null,
-                ScheduleStatus.SCHEDULED);
+                ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
     }
 
     private static ScheduleVisibilityProjection team(long id, Long teamId, ScheduleVisibility v) {
         return new ScheduleVisibilityProjection(
                 id, teamId, null, null, 100L,
-                v, null, ScheduleStatus.SCHEDULED);
+                v, null, ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
     }
 
     private static ScheduleVisibilityProjection org(long id, Long orgId, ScheduleVisibility v) {
         return new ScheduleVisibilityProjection(
                 id, null, orgId, null, 100L,
-                v, null, ScheduleStatus.SCHEDULED);
+                v, null, ScheduleStatus.SCHEDULED, MinViewRole.ANYONE);
     }
 }

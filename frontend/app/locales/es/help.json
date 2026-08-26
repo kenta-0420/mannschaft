@@ -1,4 +1,72 @@
 {
+  "security_help": {
+    "title": "セキュリティの使い方ガイド",
+    "description": "二要素認証・アクティブセッション・セキュリティキーの使い方と、不審なログインを見つけたときの対処方法をまとめました。",
+    "link_label": "❔ 使い方ガイド",
+    "twofa": {
+      "title": "二要素認証（2FA）",
+      "intro": "パスワードに加えて、もう一段階の本人確認を追加してアカウントを守るしくみです。万が一パスワードが漏れても、第三者だけではログインできなくなります。",
+      "setup_title": "有効化のしかた",
+      "setup_steps": {
+        "step1": "認証アプリ（Google Authenticator など）をスマートフォンに用意します。",
+        "step2": "「2FAをセットアップ」を押すと、QRコードとシークレットキーが表示されます。",
+        "step3": "認証アプリでそのQRコードを読み取ります（読み取れない場合はシークレットキーを手入力します）。",
+        "step4": "認証アプリに表示された6桁のコードを入力して有効化を完了します。"
+      },
+      "backup_title": "バックアップコードについて",
+      "backup_desc": "バックアップコードは、スマートフォンを紛失するなどして認証アプリが使えなくなったときの予備の入り口です。安全な場所に保管してください。各コードは一度だけ使えます。「バックアップコード再生成」を押すと新しいコードが発行され、古いコードはすべて無効になります。"
+    },
+    "sessions": {
+      "title": "アクティブセッション",
+      "intro": "いま自分のアカウントにログインしている端末の一覧です。心当たりのない端末がないか、ここで確認できます。",
+      "row_desc": "各行は1つの端末を表し、ブラウザ／OSの情報・IPアドレス・ログインした日時が並びます。先頭の英字の羅列は、使われたブラウザとOSの情報です。",
+      "current_tag_desc": "「現在」タグが付いている行は、いま見ているこの端末です。",
+      "revoke_desc": "怪しい行は「×」ボタンで個別に無効化（ログアウト）できます。",
+      "revoke_all_desc": "「全てログアウト」を押すと、ほかの端末をまとめて締め出せます。",
+      "current_note": "いま使っているこのセッションは、誤操作で自分を締め出さないように個別では削除できません（その操作はサーバー側で拒否されます）。すべて締め出したいときは「全てログアウト」を使ってください。"
+    },
+    "webauthn": {
+      "title": "セキュリティキー（WebAuthn）",
+      "intro": "指紋認証・顔認証や、物理的なセキュリティキー（FIDO2）を使ってログインできるしくみです。パスワードを入力せず、すばやく安全にログインできます。",
+      "manage_desc": "登録した鍵には分かりやすい名前を付けられます（リネーム）。使わなくなった鍵は削除できます。"
+    },
+    "suspicious": {
+      "title": "身に覚えのないログインを見つけたら",
+      "intro": "アクティブセッションに知らない端末があるなど、不審な点に気づいたら、上から順に対処してください。",
+      "steps": {
+        "step1": "心当たりのないセッションを「×」で無効化する",
+        "step2": "不安なら「全てログアウト」で全端末から締め出す",
+        "step3": "パスワードを変更する",
+        "step4": "二要素認証（2FA）を有効化する",
+        "step5": "バックアップコードを安全な場所に保管する"
+      }
+    }
+  },
+  "contact_request_blocks_help": {
+    "title": "Cómo usar la lista de bloqueo de solicitudes de contacto",
+    "description": "Esta configuración te permite ignorar automáticamente las solicitudes de «agregar como contacto» de personas específicas desde el principio.",
+    "what": {
+      "title": "¿Qué es la lista de bloqueo de solicitudes de contacto?",
+      "body": "Si alguien en esta lista intenta agregarte como contacto, su solicitud se ignora automáticamente. No recibirás ninguna notificación ni sabrás que lo intentaron.",
+      "note": "La otra persona nunca es informada de que fue bloqueada. Puedes detener silenciosamente las solicitudes de personas específicas sin crear ninguna incomodidad."
+    },
+    "list": {
+      "title": "Cómo leer la lista",
+      "body": "Todos los usuarios bloqueados se muestran en una lista. Cada fila contiene la siguiente información.",
+      "item_name": "Icono y nombre — quién estás bloqueando",
+      "item_handle": "Identificador de contacto que comienza con {'@'} — el ID único de esa persona",
+      "item_date": "«Establecido el» — la fecha en que se registró el bloqueo"
+    },
+    "unblock": {
+      "title": "Cómo eliminar un bloqueo",
+      "body": "Puedes eliminar un bloqueo en cualquier momento. Una vez eliminado, esa persona podrá enviarte solicitudes de contacto nuevamente.",
+      "steps": {
+        "step1": "Encuentra la fila de la persona que quieres desbloquear.",
+        "step2": "Pulsa el botón «Desbloquear» en el lado derecho de la fila.",
+        "step3": "Cuando la persona desaparezca de la lista, el bloqueo habrá sido eliminado correctamente."
+      }
+    }
+  },
   "qa": {
     "title": "Preguntas frecuentes (Q&A)",
     "description": "Respuestas a preguntas comunes sobre el uso de Mannschaft, la instalacion de la PWA y mas.",
@@ -82,6 +150,29 @@
           "answer": "Primero borra la cache del navegador. Si no mejora, prueba a desinstalar y reinstalar la PWA. Si aun asi no se soluciona, contacta con soporte."
         }
       }
+    }
+  },
+  "calendar_sync_help": {
+    "title": "Como usar la integracion con Google Calendar",
+    "description": "Sincroniza automaticamente tus horarios con Google Calendar para poder consultarlos desde tu telefono u otras aplicaciones.",
+    "what": {
+      "title": "Que es la integracion con Google Calendar",
+      "body": "Los horarios de Mannschaft (personal, de equipo y de organizacion) se reflejan automaticamente en Google Calendar. Una vez conectado, siempre puedes consultar tus horarios desde cualquier dispositivo o app compatible con Google Calendar."
+    },
+    "connect": {
+      "title": "Conectar tu cuenta",
+      "body": "Pulsa \"Conectar cuenta de Google\" para ir a la pantalla de inicio de sesion de Google. Al conceder acceso al calendario se completa la conexion. Puedes desconectarte en cualquier momento con el boton \"Desconectar\"."
+    },
+    "toggles": {
+      "title": "Activar/desactivar la sincronizacion de forma individual",
+      "body": "Puedes activar o desactivar la sincronizacion por separado para el \"Calendario personal\", los \"Calendarios de equipo\" y los \"Calendarios de organizacion\". Los cambios se aplican de inmediato, no hay boton de guardar.",
+      "item_personal": "Calendario personal: sincroniza tus propios horarios personales",
+      "item_team": "Calendarios de equipo: sincroniza los horarios de los equipos a los que perteneces",
+      "item_org": "Calendarios de organizacion: sincroniza los horarios de las organizaciones a las que perteneces"
+    },
+    "sync_behavior": {
+      "title": "Cuando ocurre la sincronizacion",
+      "body": "Al activar la sincronizacion se sincronizan de una vez todos los horarios que aun no estaban sincronizados (backfill). Si son muchos, puede tardar unos minutos. Usa el boton \"Sincronizacion manual\" siempre que quieras reflejar el estado mas reciente de inmediato."
     }
   }
 }

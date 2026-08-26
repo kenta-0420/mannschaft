@@ -7,7 +7,41 @@
     "back_to_memo": "행동 메모로 돌아가기",
     "closing_link": "오늘 마치기",
     "weekly_link": "주간 요약",
-    "tags_link": "태그 관리"
+    "tags_link": "태그 관리",
+    "date_picker_label": "날짜 선택",
+    "back_to_today": "오늘로 돌아가기",
+    "selected_date_memos": "{date} 메모"
+  },
+  "guide": {
+    "title": "행동 메모 사용 방법",
+    "description": "지금 하고 있는 일을 기록하고 하루 행동을 돌아봅니다. ADHD를 위해 마찰을 최소화했습니다.",
+    "record": {
+      "title": "메모 기록하기",
+      "body": "짧은 한 문장이면 충분합니다. 나중에 세부 사항을 추가할 수 있습니다.",
+      "steps": {
+        "step1": "입력란에 방금 한 일을 입력",
+        "step2": "Enter 또는 「기록하기」 버튼으로 저장",
+        "step3": "고급 필드에서 시간, 진행률, 팀 공유를 설정"
+      }
+    },
+    "past": {
+      "title": "과거 메모 보기",
+      "body": "날짜 선택기로 과거 기록을 확인하세요. 「오늘로 돌아가기」로 바로 돌아올 수 있습니다.",
+      "steps": {
+        "step1": "날짜 선택기에서 날짜를 선택",
+        "step2": "그날의 모든 메모 확인",
+        "step3": "「오늘로 돌아가기」로 오늘 메모로 복귀"
+      }
+    },
+    "review": {
+      "title": "회고하기",
+      "body": "주간 요약과 일일 마무리로 행동, 기분, TODO를 점검하세요.",
+      "steps": {
+        "step1": "「주간 요약」에서 최근 7일 차트 확인",
+        "step2": "「오늘 마치기」로 회고와 내일 TODO 설정",
+        "step3": "태그 관리로 자주 쓰는 카테고리 정리"
+      }
+    }
   },
   "mood": {
     "great": "최고",
@@ -187,25 +221,25 @@
   },
   "phase4": {
     "org_scope": {
-      "label": "組織に共有",
-      "select_org": "共有先組織を選択",
-      "visibility_label": "公開範囲",
-      "team_only": "チームメンバーのみ",
-      "org_wide": "組織全体に公開",
-      "no_orgs": "所属組織がありません",
-      "already_set": "組織スコープ設定済み",
-      "clear": "組織共有を解除"
+      "label": "조직에 공유",
+      "select_org": "공유할 조직 선택",
+      "visibility_label": "공개 범위",
+      "team_only": "팀 멤버만",
+      "org_wide": "조직 전체 공개",
+      "no_orgs": "소속 조직이 없습니다",
+      "already_set": "조직 범위 이미 설정됨",
+      "clear": "조직 공유 해제"
     },
     "audit": {
-      "toggle": "変更履歴",
-      "empty": "変更履歴はありません",
-      "loading": "読み込み中...",
-      "error": "履歴の取得に失敗しました",
-      "event_todo_completed": "関連TODO を完了にしました",
-      "event_created": "メモを作成しました",
-      "event_updated": "メモを更新しました",
-      "event_deleted": "メモを削除しました",
-      "event_todo_reverted": "TODOを差し戻しました"
+      "toggle": "변경 내역",
+      "empty": "변경 내역이 없습니다",
+      "loading": "불러오는 중...",
+      "error": "내역 불러오기 실패",
+      "event_todo_completed": "관련 TODO를 완료로 표시했습니다",
+      "event_created": "메모를 작성했습니다",
+      "event_updated": "메모를 수정했습니다",
+      "event_deleted": "메모를 삭제했습니다",
+      "event_todo_reverted": "TODO를 되돌렸습니다"
     }
   }
 }

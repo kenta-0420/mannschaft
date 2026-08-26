@@ -1,209 +1,242 @@
 {
   "village": {
-    "title": "村",
-    "subtitle": "コミュニティ広場",
+    "title": "Dorf",
+    "subtitle": "Gemeinschaftsplatz",
+    "archivedNotice": "Dieses Dorf ist eingefroren. Es ist schreibgeschützt.",
     "action": {
-      "create": "村を作る",
-      "edit": "村を編集",
-      "delete": "村を削除",
-      "archive": "村を凍結",
-      "join": "参加する",
-      "leave": "退村する",
-      "pin": "お気に入りに追加",
-      "unpin": "お気に入りから外す",
-      "report": "通報する",
-      "search": "検索",
-      "save": "保存",
-      "cancel": "キャンセル",
-      "submit": "送信",
-      "approve": "承認",
-      "reject": "却下",
-      "withdraw": "取り下げ",
-      "resolve": "対応完了",
-      "dismiss": "却下",
+      "create": "Dorf erstellen",
+      "edit": "Dorf bearbeiten",
+      "delete": "Dorf löschen",
+      "archive": "Dorf archivieren",
+      "join": "Beitreten",
+      "leave": "Dorf verlassen",
+      "pin": "Zu Favoriten hinzufügen",
+      "unpin": "Aus Favoriten entfernen",
+      "report": "Melden",
+      "search": "Suchen",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "submit": "Absenden",
+      "approve": "Genehmigen",
+      "reject": "Ablehnen",
+      "withdraw": "Zurückziehen",
+      "resolve": "Als erledigt markieren",
+      "dismiss": "Verwerfen",
       "ban": "Ban",
       "unban": "Unban",
       "changeRole": "Change role",
       "viewAll": "View all villages"
     },
     "field": {
-      "name": "村名",
-      "slug": "スラッグ",
-      "category": "カテゴリ",
-      "description": "説明文",
-      "iconUrl": "アイコン",
-      "coverUrl": "カバー画像",
-      "type": "種別",
-      "joinPolicy": "参加方式",
-      "visibility": "公開範囲",
-      "guideline": "村ガイドライン",
-      "purpose": "活動目的",
-      "memberCount": "村人数",
-      "createdAt": "作成日",
-      "archivedAt": "凍結日"
+      "name": "Dorfname",
+      "slug": "Slug",
+      "category": "Kategorie",
+      "description": "Beschreibung",
+      "iconUrl": "Symbol",
+      "coverUrl": "Titelbild",
+      "type": "Typ",
+      "joinPolicy": "Beitrittsrichtlinie",
+      "visibility": "Sichtbarkeit",
+      "bulletinVisibility": "Sichtbarkeit des Schwarzen Bretts",
+      "guideline": "Dorfrichtlinien",
+      "purpose": "Zweck",
+      "memberCount": "Mitgliederzahl",
+      "createdAt": "Erstellt am",
+      "archivedAt": "Archiviert am"
     },
     "type": {
-      "OFFICIAL": "公式村",
-      "COMMUNITY": "コミュニティ村"
+      "OFFICIAL": "Offizielles Dorf",
+      "COMMUNITY": "Gemeinschaftsdorf"
     },
     "joinPolicy": {
-      "FREE": "自由参加",
-      "APPROVAL": "承認制"
+      "FREE": "Freier Beitritt",
+      "APPROVAL": "Genehmigung erforderlich"
     },
     "visibility": {
-      "PUBLIC": "公開",
-      "UNLISTED": "限定公開"
+      "PUBLIC": "Öffentlich",
+      "UNLISTED": "Nicht gelistet"
+    },
+    "bulletinVisibility": {
+      "PUBLIC": "Auch für Nichtmitglieder sichtbar",
+      "MEMBERS_ONLY": "Nur für Mitglieder"
     },
     "role": {
-      "HEADMAN": "村長",
-      "ELDER": "長老",
-      "VILLAGER": "村人",
-      "VISITOR": "訪問者"
+      "HEADMAN": "Dorfvorsteher",
+      "ELDER": "Ältester",
+      "VILLAGER": "Dorfbewohner",
+      "VISITOR": "Besucher"
     },
     "subjectType": {
-      "USER": "個人",
-      "TEAM": "チーム",
-      "ORGANIZATION": "組織"
+      "USER": "Einzelperson",
+      "TEAM": "Team",
+      "ORGANIZATION": "Organisation"
     },
     "tab": {
-      "bulletin": "掲示板",
-      "timeline": "タイムライン",
-      "lobby": "ロビー",
-      "members": "村人一覧",
-      "settings": "設定",
-      "reports": "通報管理",
-      "calendar": "歳時記",
-      "festival": "お祭り",
-      "matchRecruit": "練習試合・募集",
-      "meetup": "寄合",
-      "chronicle": "村史"
+      "bulletin": "Schwarzes Brett",
+      "timeline": "Zeitstrahl",
+      "lobby": "Foyer",
+      "members": "Mitgliederliste",
+      "calendar": "Kalender",
+      "festival": "Festival",
+      "matchRecruit": "Spielrekrutierung",
+      "meetup": "Treffen",
+      "chronicle": "Dorfchronik",
+      "charter": "Dorfsatzung"
+    },
+    "systemPost": {
+      "authorName": "Dorf-Veranstaltungshinweis",
+      "eventCreated": "Eine Veranstaltung wurde erstellt",
+      "eventUpcoming": "Eine Veranstaltung steht bevor",
+      "meetupConfirmed": "Der Treffentermin wurde bestätigt",
+      "festivalStarted": "Das Festival hat begonnen"
     },
     "lobby": {
-      "title": "ロビー",
-      "today": "本日",
-      "yesterday": "昨日",
-      "daily": "日次スレッド",
-      "realtime": "リアルタイム",
-      "placeholder": "メッセージを入力...",
-      "empty": "まだメッセージはありません",
-      "loadMore": "もっと見る",
+      "title": "Foyer",
+      "today": "Heute",
+      "yesterday": "Gestern",
+      "daily": "Täglicher Thread",
+      "realtime": "Echtzeit",
+      "placeholder": "Nachricht eingeben...",
+      "empty": "Noch keine Nachrichten",
+      "loadMore": "Mehr laden",
       "presence": {
         "count": "{count} Personen sind hier"
       }
     },
     "pin": {
-      "title": "お気に入りの村",
-      "empty": "ピン留めした村はまだありません",
-      "limit": "ピン留めは{max}件まで可能です",
-      "reorder": "並び替え",
-      "reorderSuccess": "並び順を保存しました"
+      "title": "Lieblingsdörfer",
+      "empty": "Noch keine angehefteten Dörfer",
+      "limit": "Sie können bis zu {max} Dörfer anheften",
+      "reorder": "Neu anordnen",
+      "reorderSuccess": "Reihenfolge gespeichert"
     },
     "nickname": {
-      "title": "村ニックネーム",
-      "placeholder": "村で使うニックネーム",
-      "bio": "自己紹介",
-      "avatar": "アバター",
-      "changeLimit": "ニックネーム変更は月{limit}回までです",
-      "remaining": "今月の残り変更回数: {count}回",
-      "saveSuccess": "ニックネームを保存しました"
+      "title": "Dorf-Spitzname",
+      "placeholder": "Spitzname für dieses Dorf",
+      "bio": "Kurzbiografie",
+      "avatar": "Avatar",
+      "changeLimit": "Der Spitzname kann bis zu {limit} Mal pro Monat geändert werden",
+      "remaining": "Verbleibende Änderungen diesen Monat: {count}",
+      "saveSuccess": "Spitzname gespeichert"
     },
     "report": {
       "dialog": {
-        "title": "通報する",
-        "reason": "通報理由",
-        "detail": "詳細（任意）",
-        "submit": "通報を送信",
-        "submitted": "通報を受け付けました。運営が確認します。",
-        "anonymous": "通報は匿名で送信されます"
+        "title": "Melden",
+        "reason": "Meldegrund",
+        "detail": "Details (optional)",
+        "submit": "Meldung absenden",
+        "submitted": "Ihre Meldung wurde entgegengenommen. Unser Team wird sie prüfen.",
+        "anonymous": "Meldungen werden anonym eingereicht"
       },
       "list": {
-        "title": "通報一覧",
-        "empty": "通報はありません",
-        "status": "状態",
-        "target": "対象",
-        "reportedAt": "通報日時"
+        "title": "Meldungen",
+        "empty": "Keine Meldungen",
+        "status": "Status",
+        "target": "Ziel",
+        "reportedAt": "Gemeldet am"
       },
       "status": {
-        "PENDING": "未対応",
-        "REVIEWING": "確認中",
-        "RESOLVED": "対応済み",
-        "DISMISSED": "却下"
+        "PENDING": "Ausstehend",
+        "REVIEWING": "In Prüfung",
+        "RESOLVED": "Erledigt",
+        "DISMISSED": "Verworfen"
       },
       "targetType": {
-        "POST": "投稿",
-        "MESSAGE": "メッセージ",
-        "MEMBERSHIP": "村人",
-        "VILLAGE": "村"
+        "POST": "Beitrag",
+        "MESSAGE": "Nachricht",
+        "MEMBERSHIP": "Mitglied",
+        "VILLAGE": "Dorf"
       },
       "reason": {
-        "spam": "スパム・宣伝",
-        "harassment": "嫌がらせ・誹謗中傷",
-        "offensive": "不快・不適切な内容",
-        "other": "その他"
+        "spam": "Spam / Werbung",
+        "harassment": "Belästigung / Verleumdung",
+        "offensive": "Beleidigender / unangemessener Inhalt",
+        "other": "Sonstiges"
       }
     },
     "creationRequest": {
-      "title": "村作成申請",
-      "adminTitle": "村作成申請審査",
-      "guideline": "村ガイドラインに同意する",
-      "submitted": "申請を送信しました。運営の審査をお待ちください。",
-      "pending": "審査待ち",
-      "approved": "承認済み",
-      "rejected": "却下",
-      "withdrawn": "取り下げ済み",
-      "reviewComment": "審査コメント",
-      "reviewCommentPlaceholder": "審査コメントを入力してください",
-      "purpose": "活動目的・運営方針",
-      "empty": "申請はありません",
+      "title": "Dorferstellungsantrag",
+      "adminTitle": "Prüfung von Dorferstellungsanträgen",
+      "guideline": "Dorfrichtlinien zustimmen",
+      "submitted": "Ihr Antrag wurde eingereicht. Bitte warten Sie auf die Prüfung.",
+      "pending": "Ausstehende Prüfung",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt",
+      "withdrawn": "Zurückgezogen",
+      "reviewComment": "Prüfkommentar",
+      "reviewCommentPlaceholder": "Prüfkommentar eingeben",
+      "purpose": "Zweck / Verwaltungsrichtlinie",
+      "empty": "Keine Anträge",
       "filter": {
-        "all": "すべて",
-        "PENDING": "審査待ち",
-        "APPROVED": "承認済み",
-        "REJECTED": "却下",
-        "WITHDRAWN": "取り下げ済み"
+        "all": "Alle",
+        "PENDING": "Ausstehende Prüfung",
+        "APPROVED": "Genehmigt",
+        "REJECTED": "Abgelehnt",
+        "WITHDRAWN": "Zurückgezogen"
       },
       "column": {
-        "requester": "申請者",
-        "village": "村名",
-        "category": "カテゴリ",
-        "purpose": "目的",
-        "requestedAt": "申請日",
-        "actions": "操作"
+        "requester": "Antragsteller",
+        "village": "Dorfname",
+        "category": "Kategorie",
+        "purpose": "Zweck",
+        "requestedAt": "Antragsdatum",
+        "actions": "Aktionen"
       },
       "confirm": {
-        "approve": "この村作成申請を承認します。よろしいですか?",
-        "reject": "この村作成申請を却下します。却下理由を入力してください。"
+        "approve": "Diesen Dorferstellungsantrag genehmigen?",
+        "reject": "Diesen Antrag ablehnen. Bitte geben Sie den Ablehnungsgrund an."
       },
-      "detailTitle": "村作成申請の詳細",
-      "rejectCommentRequired": "却下時は審査コメントが必須です",
-      "noPermission": "この画面を閲覧する権限がありません",
-      "loadFailed": "村作成申請一覧の取得に失敗しました",
-      "approveSuccess": "申請を承認しました",
-      "rejectSuccess": "申請を却下しました",
-      "reviewFailed": "審査の処理に失敗しました"
+      "detailTitle": "Dorferstellungsantrag – Details",
+      "rejectCommentRequired": "Bei Ablehnung ist ein Prüfkommentar erforderlich",
+      "noPermission": "Sie haben keine Berechtigung, diese Seite anzuzeigen",
+      "loadFailed": "Dorferstellungsanträge konnten nicht geladen werden",
+      "approveSuccess": "Antrag genehmigt",
+      "rejectSuccess": "Antrag abgelehnt",
+      "reviewFailed": "Fehler bei der Prüfungsverarbeitung"
     },
     "joinRequest": {
-      "title": "参加申請",
-      "message": "申請メッセージ（任意）",
-      "submitted": "参加申請を送信しました",
-      "pending": "審査待ち",
-      "approved": "承認済み",
-      "rejected": "却下",
-      "withdrawn": "取り下げ済み",
-      "reviewComment": "審査コメント",
-      "empty": "参加申請はありません"
+      "title": "Beitrittsantrag",
+      "message": "Antragsnachricht (optional)",
+      "submitted": "Beitrittsantrag eingereicht",
+      "pending": "Ausstehende Prüfung",
+      "approved": "Genehmigt",
+      "rejected": "Abgelehnt",
+      "withdrawn": "Zurückgezogen",
+      "reviewComment": "Prüfkommentar",
+      "empty": "Keine Beitrittsanträge",
+      "description": "Dieses Dorf erfordert eine Genehmigung. Du wirst Dorfbewohner, sobald der Dorfvorsteher oder ein Ältester deinen Antrag genehmigt. Eine Nachricht erhöht deine Chancen.",
+      "formTitle": "Beitritt beantragen",
+      "messagePlaceholder": "Beschreibe, was du im Dorf vorhast und warum du beitreten möchtest (optional, max. 500 Zeichen)",
+      "submittedTitle": "Dein gesendeter Antrag",
+      "submittedBody": "Bitte warte auf die Prüfung durch den Dorfvorsteher oder einen Ältesten. Solange der Antrag aussteht, kannst du ihn jederzeit auf dieser Seite zurückziehen.",
+      "withdrawSuccess": "Beitrittsantrag zurückgezogen",
+      "approveSuccess": "Beitrittsantrag genehmigt",
+      "rejectSuccess": "Beitrittsantrag abgelehnt",
+      "rejectCommentRequired": "Bei einer Ablehnung ist ein Prüfkommentar erforderlich",
+      "reviewCommentPlaceholder": "Kommentar für die antragstellende Person eingeben (max. 500 Zeichen)",
+      "reviewDescription": "Prüfe die Beitrittsanträge für dieses Dorf. Nach der Genehmigung wird die antragstellende Person Dorfbewohner.",
+      "column": {
+        "requester": "Antragsteller",
+        "message": "Nachricht",
+        "status": "Status",
+        "actions": "Aktionen"
+      },
+      "confirm": {
+        "approve": "Diesen Beitrittsantrag genehmigen? Die antragstellende Person wird Dorfbewohner.",
+        "reject": "Diesen Beitrittsantrag ablehnen?"
+      }
     },
     "feed": {
-      "title": "Village feed",
-      "dashboardTitle": "Your villages",
-      "pinned": "Pinned villages",
-      "empty": "No favorite villages yet",
-      "emptyHint": "Join a village you like and the latest posts will appear here.",
-      "loadingError": "Failed to load the village feed",
-      "retry": "Retry",
+      "title": "Dorf-Feed",
+      "dashboardTitle": "Ihre Dörfer",
+      "pinned": "Angeheftete Dörfer",
+      "empty": "Noch keine Lieblingsdörfer",
+      "emptyHint": "Treten Sie einem Dorf bei, das Ihnen gefällt, und die neuesten Beiträge erscheinen hier.",
+      "loadingError": "Dorf-Feed konnte nicht geladen werden",
+      "retry": "Erneut versuchen",
       "type": {
-        "TIMELINE": "Timeline",
-        "LOBBY": "Lobby"
+        "TIMELINE": "Zeitstrahl",
+        "LOBBY": "Foyer"
       }
     },
     "widget": {
@@ -214,366 +247,929 @@
     },
     "search": {
       "title": "Dörfer suchen",
-      "placeholder": "村を検索...",
-      "internalPlaceholder": "この村の中を検索...",
-      "filterType": "種別で絞り込み",
-      "filterCategory": "カテゴリで絞り込み",
-      "filterJoinPolicy": "参加方式で絞り込み",
-      "empty": "条件に一致する村が見つかりません",
-      "internalEmpty": "この村内に該当する結果はありません",
+      "placeholder": "Dörfer suchen...",
+      "internalPlaceholder": "In diesem Dorf suchen...",
+      "filterType": "Nach Typ filtern",
+      "filterCategory": "Nach Kategorie filtern",
+      "filterJoinPolicy": "Nach Beitrittsrichtlinie filtern",
+      "empty": "Keine Dörfer gefunden, die Ihren Kriterien entsprechen",
+      "internalEmpty": "Keine Ergebnisse in diesem Dorf",
       "result": {
-        "POST": "投稿",
-        "MESSAGE": "メッセージ",
-        "MEMBER": "村人"
+        "POST": "Beitrag",
+        "MESSAGE": "Nachricht",
+        "MEMBER": "Mitglied"
       }
     },
     "members": {
-      "title": "村人一覧",
-      "empty": "村人がいません",
-      "banned": "BAN済み",
-      "you": "あなた",
-      "filterRole": "ロールで絞り込み"
+      "title": "Mitgliederliste",
+      "empty": "Noch keine Mitglieder",
+      "banned": "Gesperrt",
+      "you": "Sie",
+      "filterRole": "Nach Rolle filtern",
+      "soloHeadmanHint": "Sobald weitere Mitglieder diesem Dorf beitreten, können Sie sie hier zu Ältesten ernennen."
+    },
+    "profile": {
+      "title": "Dorfbewohner-Profil",
+      "villages": {
+        "title": "Zugehörige Dörfer",
+        "empty": "Keine Dörfer zum Anzeigen",
+        "publicToggle": "Dieses Dorf in meiner Dorfliste anzeigen",
+        "publicToggleHint": "Wenn aktiviert, können Personen, die mit Ihnen ein Dorf teilen, dieses Dorf in Ihrer Dorfliste sehen."
+      }
     },
     "postingIdentity": {
-      "title": "投稿主体",
-      "asUser": "自分として投稿",
-      "asTeam": "チームとして投稿",
-      "asOrganization": "組織として投稿"
+      "title": "Beitrag als",
+      "asUser": "Als Einzelperson beitragen",
+      "asTeam": "Als Team beitragen",
+      "asOrganization": "Als Organisation beitragen"
     },
     "warn": {
-      "participationLimit": "30 村以上に参加しています。アクティブな村に絞ることをおすすめします。"
+      "participationLimit": "Sie sind Mitglied von 30 oder mehr Dörfern. Wir empfehlen, sich auf aktive Dörfer zu beschränken."
     },
     "success": {
-      "created": "村を作成しました",
-      "updated": "村情報を更新しました",
-      "deleted": "村を削除しました",
-      "archived": "村を凍結しました",
-      "joined": "村に参加しました",
-      "left": "村を退村しました",
-      "pinned": "お気に入りに追加しました",
-      "unpinned": "お気に入りから外しました",
-      "roleChanged": "ロールを変更しました",
-      "banned": "BANしました",
-      "reported": "通報を送信しました",
-      "reportResolved": "通報を対応済みにしました"
+      "created": "Dorf erstellt",
+      "updated": "Dorfinformationen aktualisiert",
+      "deleted": "Dorf gelöscht",
+      "archived": "Dorf archiviert",
+      "joined": "Dem Dorf beigetreten",
+      "left": "Dorf verlassen",
+      "pinned": "Zu Favoriten hinzugefügt",
+      "unpinned": "Aus Favoriten entfernt",
+      "roleChanged": "Rolle geändert",
+      "banned": "Benutzer gesperrt",
+      "reported": "Meldung eingereicht",
+      "reportResolved": "Meldung als erledigt markiert"
     },
     "error": {
-      "VILLAGE_001": "村が見つかりません",
-      "VILLAGE_002": "この村は非公開です",
-      "VILLAGE_003": "その村名はすでに使われています",
-      "VILLAGE_004": "スラッグの形式が不正です（3〜40文字の英小文字・数字・ハイフン）",
-      "VILLAGE_005": "そのスラッグはすでに使われています",
-      "VILLAGE_006": "すでに村人です",
-      "VILLAGE_007": "この村のメンバーではありません",
-      "VILLAGE_008": "そのニックネームはすでに使われています",
-      "VILLAGE_009": "通報の上限に達しました（1時間に10件）",
-      "VILLAGE_010": "村作成申請のレート上限に達しました（1日3件・保有10件まで）",
-      "VILLAGE_011": "ニックネーム変更は月3回までです",
-      "VILLAGE_012": "参加可能な村数の上限（100）を超えました",
-      "VILLAGE_013": "お気に入り村の上限（30件）を超えました",
-      "VILLAGE_014": "村ガイドラインへの同意が必要です（直近1時間以内）",
-      "VILLAGE_015": "この主体として参加する権限がありません",
-      "VILLAGE_016": "指定された主体は村人ではありません",
-      "VILLAGE_017": "村長は後継を指名するまで退村できません",
-      "VILLAGE_018": "他のユーザーが情報を更新しました。最新の内容を確認して再度お試しください",
-      "VILLAGE_019": "この村は承認が必要です。参加申請をご利用ください",
-      "VILLAGE_022": "新規アカウントはこの操作を行えません",
-      "VILLAGE_024": "この操作を行う権限がありません",
-      "VILLAGE_025": "短時間に参加と退出を繰り返しています。しばらく時間をおいてからお試しください",
-      "VILLAGE_026": "通報対象が不正です",
-      "VILLAGE_027": "この村は凍結されています",
-      "VILLAGE_028": "ニックネームが無効です（長さ・禁止語・使用文字を確認してください）",
-      "VILLAGE_029": "入力値が不正です",
-      "VILLAGE_031": "この村から BAN されています",
-      "VILLAGE_032": "村作成申請が見つかりません",
-      "VILLAGE_033": "この村作成申請は既に審査済みです",
-      "VILLAGE_034": "この村作成申請は拒否済みです",
-      "VILLAGE_035": "指定された slug は既に使用されています",
-      "VILLAGE_036": "一般ユーザーは公式村を申請できません",
-      "VILLAGE_037": "公式村の作成には運営権限が必要です",
-      "VILLAGE_038": "参加申請が見つかりません",
-      "VILLAGE_039": "既に審査待ちの参加申請があります",
-      "VILLAGE_040": "この参加申請は既に処理済みです",
-      "VILLAGE_041": "この村は自由参加です。参加申請ではなく直接参加してください",
-      "VILLAGE_042": "通報が見つかりません",
-      "VILLAGE_043": "この通報は既に処理済みです",
-      "VILLAGE_044": "お気に入り村のピンが見つかりません",
-      "generic": "村機能でエラーが発生しました",
-      "backToList": "村一覧へ戻る",
-      "headmanOnly": "Nur der Dorfvorsteher kann diese Einstellung ändern"
+      "VILLAGE_001": "Dorf nicht gefunden",
+      "VILLAGE_002": "Dieses Dorf ist privat",
+      "VILLAGE_003": "Dieser Dorfname ist bereits vergeben",
+      "VILLAGE_004": "Ungültiges Slug-Format (3–40 Kleinbuchstaben, Zahlen oder Bindestriche)",
+      "VILLAGE_005": "Dieser Slug ist bereits vergeben",
+      "VILLAGE_006": "Sie sind bereits Mitglied",
+      "VILLAGE_007": "Sie sind kein Mitglied dieses Dorfes",
+      "VILLAGE_008": "Dieser Spitzname ist bereits vergeben",
+      "VILLAGE_009": "Meldelimit erreicht (10 pro Stunde)",
+      "VILLAGE_010": "Limit für Dorferstellungen erreicht. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+      "VILLAGE_011": "Der Spitzname kann nur 3 Mal pro Monat geändert werden",
+      "VILLAGE_012": "Sie haben die maximale Anzahl von Dörfern erreicht, denen Sie beitreten können (100)",
+      "VILLAGE_013": "Sie haben die maximale Anzahl von Lieblingsdörfern erreicht (30)",
+      "VILLAGE_014": "Sie müssen den Dorfrichtlinien zustimmen (innerhalb der letzten Stunde)",
+      "VILLAGE_015": "Sie haben keine Berechtigung, als dieses Subjekt beizutreten",
+      "VILLAGE_016": "Das angegebene Subjekt ist kein Mitglied",
+      "VILLAGE_017": "Der Dorfvorsteher muss einen Nachfolger benennen, bevor er das Dorf verlässt",
+      "VILLAGE_018": "Ein anderer Benutzer hat die Informationen aktualisiert. Bitte prüfen Sie den neuesten Inhalt und versuchen Sie es erneut",
+      "VILLAGE_019": "Dieses Dorf erfordert eine Genehmigung. Bitte stellen Sie einen Beitrittsantrag",
+      "VILLAGE_022": "Neue Konten können diese Aktion nicht durchführen",
+      "VILLAGE_024": "Sie haben keine Berechtigung, diese Aktion durchzuführen",
+      "VILLAGE_025": "Sie treten dem Dorf zu häufig bei und verlassen es wieder. Bitte warten Sie eine Weile",
+      "VILLAGE_026": "Ungültiges Meldeziel",
+      "VILLAGE_027": "Dieses Dorf ist archiviert",
+      "VILLAGE_028": "Ungültiger Spitzname (Länge, verbotene Wörter und erlaubte Zeichen prüfen)",
+      "VILLAGE_029": "Ungültige Eingabe",
+      "VILLAGE_031": "Sie sind in diesem Dorf gesperrt",
+      "VILLAGE_032": "Dorferstellungsantrag nicht gefunden",
+      "VILLAGE_033": "Dieser Dorferstellungsantrag wurde bereits geprüft",
+      "VILLAGE_034": "Dieser Dorferstellungsantrag wurde bereits abgelehnt",
+      "VILLAGE_035": "Der angegebene Slug ist bereits vergeben",
+      "VILLAGE_036": "Normale Benutzer können kein offizielles Dorf beantragen",
+      "VILLAGE_037": "Zum Erstellen eines offiziellen Dorfes sind Administratorrechte erforderlich",
+      "VILLAGE_038": "Beitrittsantrag nicht gefunden",
+      "VILLAGE_039": "Es gibt bereits einen ausstehenden Beitrittsantrag",
+      "VILLAGE_040": "Dieser Beitrittsantrag wurde bereits bearbeitet",
+      "VILLAGE_041": "Dieses Dorf ist offen für alle. Bitte treten Sie direkt bei, anstatt einen Antrag zu stellen",
+      "VILLAGE_042": "Meldung nicht gefunden",
+      "VILLAGE_043": "Diese Meldung wurde bereits bearbeitet",
+      "VILLAGE_044": "Angeheftetes Lieblingsdorf nicht gefunden",
+      "VILLAGE_052": "Vertreterdelegierung nicht gefunden",
+      "VILLAGE_053": "Diese Kombination aus Mitgliedschaft und Benutzer wurde bereits als Vertreter delegiert",
+      "VILLAGE_054": "Die Ziel-Mitgliedschaft ist kein Team/keine Organisation",
+      "VILLAGE_055": "Der delegierte Benutzer ist kein Mitglied des Ziel-Teams/der Ziel-Organisation",
+      "generic": "In der Dorffunktion ist ein Fehler aufgetreten",
+      "backToList": "Zurück zur Dorfliste",
+      "moderatorOnly": "Nur der Dorfvorsteher und Älteste können diese Einstellung ändern"
     },
     "placeholder": {
-      "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",
-      "timelineComingSoon": "村のタイムラインは Phase 2 で実装予定です"
+      "bulletinComingSoon": "Das Schwarze Brett des Dorfes ist für Phase 2 geplant",
+      "timelineComingSoon": "Der Zeitstrahl des Dorfes ist für Phase 2 geplant"
     },
     "editDialog": {
-      "title": "村を編集",
-      "save": "更新する",
-      "iconLabel": "アイコン画像（R2 キー）",
-      "coverLabel": "カバー画像（R2 キー）",
-      "guidelineLabel": "村ガイドライン (Markdown)",
-      "r2KeyPlaceholder": "villages/{villageId}/icon.png など",
-      "saveSuccess": "村情報を更新しました",
-      "errorNameRequired": "村名は必須です",
-      "errorNameTooLong": "村名は {max} 文字以内で入力してください",
-      "errorDescriptionTooLong": "説明文は {max} 文字以内で入力してください",
-      "errorCategoryTooLong": "カテゴリは {max} 文字以内で入力してください",
-      "errorGuidelineTooLong": "ガイドラインは {max} 文字以内で入力してください",
-      "errorR2KeyTooLong": "R2 キーは {max} 文字以内で入力してください"
+      "title": "Dorf bearbeiten",
+      "save": "Aktualisieren",
+      "iconLabel": "Symbolbild (R2-Schlüssel)",
+      "coverLabel": "Titelbild (R2-Schlüssel)",
+      "guidelineLabel": "Dorfrichtlinien (Markdown)",
+      "r2KeyPlaceholder": "z.B.: villages/{villageId}/icon.png",
+      "saveSuccess": "Dorfinformationen aktualisiert",
+      "errorNameRequired": "Dorfname ist erforderlich",
+      "errorNameTooLong": "Dorfname darf maximal {max} Zeichen haben",
+      "errorDescriptionTooLong": "Beschreibung darf maximal {max} Zeichen haben",
+      "errorCategoryTooLong": "Kategorie darf maximal {max} Zeichen haben",
+      "errorGuidelineTooLong": "Richtlinien dürfen maximal {max} Zeichen haben",
+      "errorR2KeyTooLong": "R2-Schlüssel darf maximal {max} Zeichen haben"
     },
     "monsho": {
-      "title": "村紋",
-      "upload": "村紋をアップロード",
-      "remove": "村紋を削除"
+      "title": "Dorfwappen",
+      "upload": "Dorfwappen hochladen",
+      "remove": "Dorfwappen entfernen",
+      "label": "Dorfwappen (Emblem / Logo)",
+      "change": "Wappen ändern",
+      "uploading": "Wird hochgeladen…",
+      "hint": "JPG / PNG / WebP, bis zu 5MB",
+      "errorMime": "Nur JPG-, PNG- und WebP-Bilder werden unterstützt",
+      "errorSize": "Die Dateigröße darf höchstens 5MB betragen",
+      "uploadSuccess": "Dorfwappen hochgeladen",
+      "removeSuccess": "Dorfwappen entfernt"
     },
     "calendar": {
-      "title": "歳時記カレンダー",
-      "create": "行事を追加",
-      "createTitle": "行事を追加",
-      "editTitle": "行事を編集",
-      "eventTitle": "行事名",
-      "description": "説明",
-      "eventDate": "開催日",
-      "eventEndDate": "終了日（任意）",
-      "annualRecurring": "毎年繰り返す",
-      "icon": "アイコン絵文字",
-      "color": "テーマカラー",
-      "edit": "編集",
-      "delete": "削除",
-      "prev": "前月",
-      "next": "翌月",
-      "today": "今月",
-      "confirmDelete": "この行事を削除します。よろしいですか?",
-      "saveSuccess": "行事を保存しました",
-      "deleteSuccess": "行事を削除しました",
-      "empty": "登録された行事はありません",
-      "noEventsInMonth": "今月の行事はありません",
-      "loadFailed": "歳時記の取得に失敗しました"
+      "title": "Dorfkalender",
+      "create": "Veranstaltung hinzufügen",
+      "createTitle": "Veranstaltung hinzufügen",
+      "editTitle": "Veranstaltung bearbeiten",
+      "eventTitle": "Veranstaltungsname",
+      "description": "Beschreibung",
+      "eventDate": "Veranstaltungsdatum",
+      "eventEndDate": "Enddatum (optional)",
+      "annualRecurring": "Jährlich wiederholen",
+      "icon": "Symbol-Emoji",
+      "color": "Themenfarbe",
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "prev": "Vorheriger Monat",
+      "next": "Nächster Monat",
+      "today": "Dieser Monat",
+      "confirmDelete": "Diese Veranstaltung löschen?",
+      "saveSuccess": "Veranstaltung gespeichert",
+      "deleteSuccess": "Veranstaltung gelöscht",
+      "empty": "Keine Veranstaltungen eingetragen",
+      "noEventsInMonth": "Keine Veranstaltungen in diesem Monat",
+      "loadFailed": "Kalender konnte nicht geladen werden",
+      "log": {
+        "title": "Rückblick auf letztes Jahr",
+        "lastYear": "Rückblick {year}",
+        "addLog": "Eintrag hinzufügen",
+        "year": "Jahr",
+        "note": "Notiz",
+        "notePlaceholder": "Ein kurzer Kommentar dazu, wie es war",
+        "photoKey": "Foto (R2-Schlüssel, optional)",
+        "photoKeyHint": "Der Bild-Upload folgt bald. Falls bereits ein R2-Schlüssel existiert, kann er hier eingetragen werden",
+        "submit": "Speichern",
+        "delete": "Löschen",
+        "empty": "Noch keine Einträge",
+        "loadFailed": "Einträge konnten nicht geladen werden",
+        "addSuccess": "Eintrag gespeichert",
+        "addFailed": "Eintrag konnte nicht hinzugefügt werden",
+        "deleteConfirm": "Diesen Eintrag löschen?",
+        "deleteSuccess": "Eintrag gelöscht",
+        "deleteFailed": "Eintrag konnte nicht gelöscht werden"
+      }
     },
     "festival": {
-      "title": "お祭り",
-      "festivalTitle": "お祭り名",
-      "description": "概要",
-      "starts": "開始",
-      "ends": "終了",
-      "period": "開催期間",
-      "bannerImage": "バナー画像（R2 キー）",
-      "themeColor": "テーマカラー",
-      "create": "お祭りを企画",
-      "createTitle": "お祭りを企画",
-      "editTitle": "お祭りを編集",
-      "edit": "編集",
-      "cancel": "お祭りを中止",
-      "confirmCancel": "このお祭りを中止します。よろしいですか?",
-      "empty": "開催中・予定のお祭りはありません",
-      "noBanner": "バナー画像なし",
-      "saveSuccess": "お祭りを保存しました",
-      "cancelSuccess": "お祭りを中止しました",
-      "loadFailed": "お祭り一覧の取得に失敗しました",
-      "filterAll": "すべて",
+      "title": "Festival",
+      "festivalTitle": "Festivalname",
+      "description": "Überblick",
+      "starts": "Beginn",
+      "ends": "Ende",
+      "period": "Zeitraum",
+      "bannerImage": "Bannerbild (R2-Schlüssel)",
+      "themeColor": "Themenfarbe",
+      "create": "Festival planen",
+      "createTitle": "Festival planen",
+      "editTitle": "Festival bearbeiten",
+      "edit": "Bearbeiten",
+      "cancel": "Festival absagen",
+      "confirmCancel": "Dieses Festival absagen?",
+      "empty": "Keine laufenden oder geplanten Festivals",
+      "noBanner": "Kein Bannerbild",
+      "saveSuccess": "Festival gespeichert",
+      "cancelSuccess": "Festival abgesagt",
+      "loadFailed": "Festivalliste konnte nicht geladen werden",
+      "invalidDateTime": "Start-/Enddatum bzw. -uhrzeit ist ungültig. Bitte erneut eingeben.",
+      "filterAll": "Alle",
       "status": {
-        "SCHEDULED": "開催予定",
-        "ACTIVE": "開催中",
-        "ENDED": "終了",
-        "CANCELLED": "中止"
+        "SCHEDULED": "Geplant",
+        "ACTIVE": "Laufend",
+        "ENDED": "Beendet",
+        "CANCELLED": "Abgesagt"
+      },
+      "rsvp": {
+        "title": "Teilnahmezusage",
+        "going": "Ich komme",
+        "maybe": "Vielleicht",
+        "roleLabel": "Rolle",
+        "roleLabelPlaceholder": "Rolle (optional, z. B. Standbetreuung)",
+        "submit": "Senden",
+        "cancel": "Zusage zurückziehen",
+        "empty": "Noch niemand hat zugesagt",
+        "loadFailed": "Teilnehmerliste konnte nicht geladen werden",
+        "saveSuccess": "Teilnahmezusage gespeichert",
+        "saveFailed": "Teilnahmezusage konnte nicht gespeichert werden",
+        "cancelSuccess": "Teilnahmezusage zurückgezogen",
+        "cancelFailed": "Zusage konnte nicht zurückgezogen werden"
+      },
+      "live": {
+        "title": "Live-Updates",
+        "tagAsLive": "Schreibe etwas als Live-Update",
+        "submit": "Als Live-Update posten",
+        "empty": "Noch keine Live-Updates",
+        "viewPost": "Beitrag ansehen",
+        "loadFailed": "Live-Updates konnten nicht geladen werden",
+        "tagSuccess": "Als Live-Update gepostet",
+        "tagFailed": "Live-Update konnte nicht gepostet werden"
       }
     },
     "matchRecruit": {
-      "title": "練習試合・募集",
-      "recruitTitle": "募集タイトル",
-      "description": "詳細",
-      "venue": "場所",
-      "matchDate": "試合日",
-      "matchTime": "試合時間",
-      "matchTimeStart": "開始時刻",
-      "matchTimeEnd": "終了時刻",
-      "requiredCount": "必要人数 / チーム数",
-      "contactMethod": "連絡方法",
-      "deadline": "応募締切",
-      "empty": "募集中の案件はありません",
-      "create": "募集を作成",
-      "createTitle": "募集を作成",
-      "editTitle": "募集を編集",
-      "apply": "応募する",
-      "applyTitle": "応募する",
-      "applyMessage": "応募メッセージ（任意）",
-      "applyAsTeam": "チームとして応募する場合のチーム ID（任意）",
-      "applySuccess": "応募を送信しました",
-      "applications": "応募一覧",
-      "noApplications": "応募はまだありません",
-      "applicantUser": "応募者ユーザー",
-      "close": "募集を締切",
-      "fulfill": "成立にする",
-      "cancelRecruit": "募集を取消",
-      "confirmClose": "この募集を締切ります。よろしいですか?",
-      "confirmFulfill": "この募集を成立として確定します。よろしいですか?",
-      "confirmCancel": "この募集を取消します。よろしいですか?",
-      "filterAllCategory": "全カテゴリ",
-      "filterAllStatus": "全ステータス",
-      "loadFailed": "募集一覧の取得に失敗しました",
-      "saveSuccess": "募集を保存しました",
+      "title": "Spielrekrutierung",
+      "recruitTitle": "Rekrutierungstitel",
+      "description": "Details",
+      "venue": "Ort",
+      "matchDate": "Spieltag",
+      "matchTime": "Spielzeit",
+      "matchTimeStart": "Startzeit",
+      "matchTimeEnd": "Endzeit",
+      "requiredCount": "Benötigte Anzahl / Teams",
+      "contactMethod": "Kontaktmethode",
+      "deadline": "Bewerbungsschluss",
+      "empty": "Keine offenen Ausschreibungen",
+      "create": "Ausschreibung erstellen",
+      "createTitle": "Ausschreibung erstellen",
+      "editTitle": "Ausschreibung bearbeiten",
+      "apply": "Bewerben",
+      "applyTitle": "Bewerben",
+      "applyMessage": "Bewerbungsnachricht (optional)",
+      "applyAsTeam": "Team-ID bei Bewerbung als Team (optional)",
+      "applySuccess": "Bewerbung eingereicht",
+      "applications": "Bewerbungen",
+      "noApplications": "Noch keine Bewerbungen",
+      "applicantUser": "Bewerber",
+      "close": "Ausschreibung schließen",
+      "fulfill": "Als erfüllt markieren",
+      "cancelRecruit": "Ausschreibung absagen",
+      "confirmClose": "Diese Ausschreibung schließen?",
+      "confirmFulfill": "Diese Ausschreibung als erfüllt bestätigen?",
+      "confirmCancel": "Diese Ausschreibung absagen?",
+      "filterAllCategory": "Alle Kategorien",
+      "filterAllStatus": "Alle Status",
+      "loadFailed": "Ausschreibungen konnten nicht geladen werden",
+      "saveSuccess": "Ausschreibung gespeichert",
       "category": {
-        "PRACTICE_MATCH": "練習試合",
-        "REFEREE": "審判",
-        "VENUE": "会場",
-        "OTHER": "その他"
+        "PRACTICE_MATCH": "Übungsspiel",
+        "REFEREE": "Schiedsrichter",
+        "VENUE": "Spielstätte",
+        "OTHER": "Sonstiges"
       },
       "status": {
-        "OPEN": "募集中",
-        "CLOSED": "募集締切",
-        "FULFILLED": "成立",
-        "CANCELLED": "取消"
+        "OPEN": "Offen",
+        "CLOSED": "Geschlossen",
+        "FULFILLED": "Erfüllt",
+        "CANCELLED": "Abgesagt"
       }
     },
     "matchApplication": {
-      "review": "応募を審査",
-      "accept": "受諾",
-      "reject": "辞退",
-      "withdraw": "応募を取下げ",
-      "confirmWithdraw": "この応募を取下げます。よろしいですか?",
-      "acceptSuccess": "応募を受諾しました",
-      "rejectSuccess": "応募を辞退しました",
-      "withdrawSuccess": "応募を取下げました",
-      "reviewComment": "審査コメント（任意）",
+      "review": "Bewerbung prüfen",
+      "accept": "Annehmen",
+      "reject": "Ablehnen",
+      "withdraw": "Bewerbung zurückziehen",
+      "confirmWithdraw": "Diese Bewerbung zurückziehen?",
+      "acceptSuccess": "Bewerbung angenommen",
+      "rejectSuccess": "Bewerbung abgelehnt",
+      "withdrawSuccess": "Bewerbung zurückgezogen",
+      "reviewComment": "Prüfkommentar (optional)",
       "status": {
-        "PENDING": "審査中",
-        "ACCEPTED": "受諾",
-        "REJECTED": "辞退",
-        "WITHDRAWN": "取下げ"
+        "PENDING": "Ausstehend",
+        "ACCEPTED": "Angenommen",
+        "REJECTED": "Abgelehnt",
+        "WITHDRAWN": "Zurückgezogen"
       }
     },
     "representative": {
-      "title": "代表委任",
-      "grant": "代表に委任する",
-      "revoke": "委任を取消",
-      "empty": "委任された代表はいません",
-      "grantedBy": "委任元",
-      "note": "メモ"
+      "title": "Vertreterdelegierung",
+      "subtitle": "Delegieren Sie das Recht, als Vertreter zu posten, an einen einzelnen Benutzer im Namen einer Team-/Organisationsmitgliedschaft in diesem Dorf.",
+      "grant": "Als Vertreter delegieren",
+      "revoke": "Delegation widerrufen",
+      "empty": "Keine delegierten Vertreter",
+      "grantedBy": "Delegiert von",
+      "grantedAt": "Delegiert am",
+      "note": "Notiz",
+      "target": "Ziel (Team/Organisation)",
+      "targetPlaceholder": "Team/Organisation zum Delegieren auswählen",
+      "noTargets": "Keine Team-/Organisationsmitgliedschaften für die Delegation verfügbar",
+      "unknownTarget": "Unbekanntes Ziel",
+      "representativeUser": "Vertreterbenutzer",
+      "loadFailed": "Vertreterdelegierungen konnten nicht geladen werden",
+      "confirmRevokeTitle": "Diese Delegation widerrufen?",
+      "confirmRevokeBody": "Die Vertreterdelegierung für {name} wird widerrufen. Sind Sie sicher?",
+      "revokeSuccess": "Delegation widerrufen"
     },
     "meetup": {
-      "title": "寄合",
-      "create": "寄合を企画",
-      "createTitle": "寄合を企画",
-      "editTitle": "寄合を編集",
-      "meetupTitle": "寄合名",
-      "description": "説明",
-      "venue": "場所",
-      "candidateDates": "候補日",
-      "addCandidateDate": "候補日を追加",
-      "removeCandidateDate": "候補日を削除",
-      "candidateDate": "候補日",
-      "candidateTimeStart": "開始時刻",
-      "candidateTimeEnd": "終了時刻",
-      "vote": "投票",
-      "voteComment": "コメント（任意）",
-      "voteSubmit": "投票する",
-      "confirm": "この日に決定",
-      "confirmedDate": "確定日",
-      "cancel": "寄合を中止",
-      "confirmCancel": "この寄合を中止します。よろしいですか?",
-      "empty": "予定されている寄合はありません",
-      "participantCount": "参加予定",
-      "saveSuccess": "寄合を保存しました",
-      "voteSuccess": "投票しました",
-      "confirmSuccess": "開催日を確定しました",
-      "cancelSuccess": "寄合を中止しました",
-      "loadFailed": "寄合の取得に失敗しました",
+      "title": "Treffen",
+      "create": "Treffen planen",
+      "createTitle": "Treffen planen",
+      "editTitle": "Treffen bearbeiten",
+      "meetupTitle": "Treffenname",
+      "description": "Beschreibung",
+      "location": "Ort",
+      "candidateDates": "Kandidatentermine",
+      "addCandidateDate": "Kandidatentermin hinzufügen",
+      "removeCandidateDate": "Kandidatentermin entfernen",
+      "candidateDate": "Kandidatentermin",
+      "candidateTime": "Uhrzeit",
+      "allDay": "Ganztägig",
+      "timeOptionalHint": "Die Uhrzeit ist optional (leer lassen für ganztägig)",
+      "vote": "Abstimmen",
+      "confirm": "Diesen Termin bestätigen",
+      "confirmedDate": "Bestätigter Termin",
+      "cancel": "Treffen absagen",
+      "confirmCancel": "Dieses Treffen absagen?",
+      "empty": "Keine geplanten Treffen",
+      "saveSuccess": "Treffen gespeichert",
+      "voteSuccess": "Abstimmung eingereicht",
+      "confirmSuccess": "Termin bestätigt",
+      "cancelSuccess": "Treffen abgesagt",
+      "loadFailed": "Treffen konnten nicht geladen werden",
       "voteType": {
-        "YES": "参加",
-        "NO": "不参加",
-        "MAYBE": "未定"
+        "AVAILABLE": "Kann teilnehmen",
+        "MAYBE": "Vielleicht",
+        "UNAVAILABLE": "Kann nicht"
       },
       "status": {
-        "DRAFT": "下書き",
-        "OPEN": "投票受付中",
-        "CONFIRMED": "開催確定",
-        "CANCELLED": "中止",
-        "CLOSED": "終了"
+        "PLANNING": "Abstimmung offen",
+        "CONFIRMED": "Bestätigt",
+        "CANCELLED": "Abgesagt"
+      },
+      "attendance": {
+        "title": "Teilnahme",
+        "going": "Ich komme",
+        "maybe": "Vielleicht",
+        "absent": "Ich komme nicht",
+        "notConfirmedHint": "Du kannst deine Teilnahme eintragen, sobald der Termin bestätigt ist",
+        "empty": "Noch niemand hat geantwortet",
+        "unknownMember": "Dorfbewohner",
+        "saveSuccess": "Teilnahme gespeichert",
+        "saveFailed": "Teilnahme konnte nicht gespeichert werden"
+      },
+      "comment": {
+        "title": "Kommentare",
+        "placeholder": "Kommentar schreiben",
+        "submit": "Absenden",
+        "empty": "Noch keine Kommentare",
+        "delete": "Löschen",
+        "postFailed": "Kommentar konnte nicht gesendet werden",
+        "deleteConfirm": "Diesen Kommentar löschen?",
+        "deleteSuccess": "Kommentar gelöscht",
+        "deleteFailed": "Kommentar konnte nicht gelöscht werden"
+      },
+      "decisions": {
+        "title": "Beschlüsse",
+        "placeholder": "Notiere, was beschlossen wurde, was mitzubringen ist usw.",
+        "edit": "Bearbeiten",
+        "empty": "Noch nichts beschlossen",
+        "saveSuccess": "Beschlüsse gespeichert",
+        "saveFailed": "Beschlüsse konnten nicht gespeichert werden"
+      },
+      "todo": {
+        "title": "Aufgaben",
+        "titlePlaceholder": "Was ist zu tun? (z. B. Snacks kaufen)",
+        "add": "Hinzufügen",
+        "claim": "Ich übernehme das",
+        "complete": "Als erledigt markieren",
+        "release": "Aufgabe abgeben",
+        "unassigned": "Nicht zugewiesen",
+        "empty": "Noch keine Aufgaben",
+        "alreadyClaimed": "Diese Aufgabe ist bereits vergeben",
+        "addSuccess": "Aufgabe hinzugefügt",
+        "addFailed": "Aufgabe konnte nicht hinzugefügt werden",
+        "claimSuccess": "Du hast diese Aufgabe übernommen",
+        "completeSuccess": "Als erledigt markiert",
+        "completeFailed": "Status konnte nicht aktualisiert werden",
+        "releaseSuccess": "Aufgabe abgegeben",
+        "releaseFailed": "Aufgabe konnte nicht abgegeben werden"
       }
     },
     "chronicle": {
-      "title": "村史",
-      "subtitle": "村の月次まとめ",
-      "yearMonth": "対象月",
-      "generatedAt": "生成日時",
-      "postCount": "投稿数",
-      "newMemberCount": "新規村人",
-      "topicTags": "話題タグ",
-      "empty": "村史はまだ生成されていません",
-      "loadFailed": "村史の取得に失敗しました",
-      "viewDetail": "詳細を見る"
+      "title": "Chronik",
+      "subtitle": "Monatliche Dorfzusammenfassung",
+      "yearMonth": "Zielmonat",
+      "generatedAt": "Erstellt am",
+      "postCount": "Beitragsanzahl",
+      "newMemberCount": "Neue Mitglieder",
+      "topicTags": "Themenschlagwörter",
+      "empty": "Noch keine Chroniken erstellt",
+      "loadFailed": "Chroniken konnten nicht geladen werden",
+      "viewDetail": "Details anzeigen"
+    },
+    "archive": {
+      "title": "Chronik",
+      "subtitle": "Aufzeichnungen der Feste, Kalenderereignisse und Treffen des Dorfes",
+      "empty": "Noch keine Chronikeinträge",
+      "loadFailed": "Chronik konnte nicht geladen werden",
+      "archivedAt": "Aufgezeichnet am",
+      "filterAll": "Alle",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Kalenderereignis",
+        "meetup": "Treffen"
+      }
+    },
+    "charter": {
+      "title": "Dorfsatzung",
+      "subtitle": "Die gemeinsamen Versprechen des Dorfes",
+      "empty": "Für dieses Dorf wurde noch keine Satzung erlassen",
+      "enactedAt": "Erlassen am",
+      "lastRevisedAt": "Zuletzt geändert am",
+      "article": {
+        "label": "Artikel {n}",
+        "add": "+ Artikel hinzufügen",
+        "bodyPlaceholder": "Artikeltext eingeben",
+        "bodyRequired": "Bitte gib den Artikeltext ein",
+        "delete": "Artikel löschen",
+        "deleteConfirm": "Diesen Artikel löschen?"
+      },
+      "supplement": {
+        "add": "+ Anhang hinzufügen",
+        "label": "Anhang",
+        "placeholder": "Anhang eingeben (optional)"
+      },
+      "reorder": {
+        "hint": "Mit den Auf-/Ab-Schaltflächen die Reihenfolge der Artikel ändern",
+        "up": "Nach oben",
+        "down": "Nach unten"
+      },
+      "drafters": {
+        "title": "Verfasser",
+        "add": "+ Verfasser hinzufügen",
+        "empty": "Es sind noch keine Verfasser eingetragen",
+        "delete": "Verfasser entfernen",
+        "deleteConfirm": "„{name}“ aus den Verfassern entfernen?",
+        "selectPlaceholder": "Dorfbewohner auswählen",
+        "loadMembersFailed": "Die Liste der Dorfbewohner konnte nicht geladen werden, daher können keine Verfasser hinzugefügt werden.",
+        "reloadMembers": "Neu laden"
+      },
+      "revision": {
+        "confirm": "Änderung bestätigen",
+        "confirmHint": "Dies vermerkt den aktuellen Zeitpunkt als Änderung (die Sichtbarkeit der Artikel ändert sich dadurch nicht).",
+        "confirmSuccess": "Änderung bestätigt",
+        "notePlaceholder": "Notiz zur Änderung (optional)",
+        "history": "Änderungshistorie",
+        "historyEmpty": "Noch keine Änderungen"
+      },
+      "error": {
+        "loadFailed": "Die Dorfsatzung konnte nicht geladen werden",
+        "mutationFailed": "Der Vorgang ist fehlgeschlagen",
+        "versionConflict": "Ein anderer Dorfvorsteher hat dies gleichzeitig bearbeitet. Bitte lade die neueste Version neu.",
+        "drafterDuplicate": "Dieser Dorfbewohner ist bereits Verfasser"
+      }
     },
     "serendipity": {
-      "title": "ご縁スコア",
-      "subtitle": "あなたとの相性度",
-      "rank": "順位",
-      "score": "スコア",
-      "myScore": "あなたのスコア",
-      "ranking": "ランキング",
-      "lastComputedAt": "最終計算日時",
-      "empty": "まだご縁スコアは計算されていません",
-      "loadFailed": "ご縁スコアの取得に失敗しました"
+      "title": "Affinitätspunkte",
+      "subtitle": "Gesammelte Begegnungen in diesem Dorf",
+      "rank": "Rang",
+      "score": "Punkte",
+      "myScore": "Ihre Punkte",
+      "ranking": "Rangliste",
+      "lastComputedAt": "Zuletzt berechnet",
+      "empty": "Affinitätspunkte noch nicht berechnet",
+      "loadFailed": "Affinitätspunkte konnten nicht geladen werden"
+    },
+    "affinity": {
+      "title": "Kompatibilitätshinweis",
+      "subtitle": "Sehen Sie vor dem Beitritt, ob dieses Dorf zu Ihnen passen könnte",
+      "categoryMatch": "Nahe an Ihren Interessen und Kategorien",
+      "hidden": "Derzeit kein Kompatibilitätshinweis",
+      "sharedVillagers": {
+        "hidden": "Kann noch nicht angezeigt werden",
+        "few": "Ein paar Personen",
+        "many": "10 oder mehr Personen"
+      },
+      "reason": {
+        "categoryMatch": "Dieses Dorf liegt nahe an Ihren Interessen",
+        "sharedVillagers": "Es gibt Dorfbewohner, mit denen Sie bereits verbunden sind",
+        "pioneer": "Sie können jetzt als Gründungsmitglied beitreten"
+      },
+      "pioneer": {
+        "title": "Sie können ein Gründungsmitglied werden!",
+        "body": "Dies ist noch ein kleines Dorf. Wenn Sie jetzt beitreten, werden Sie eines der Gründungsmitglieder, die es gemeinsam aufbauen."
+      }
     },
     "pilgrimage": {
-      "title": "村巡礼",
-      "subtitle": "本日のおすすめ村",
-      "todaysRecommendation": "本日のおすすめ",
-      "visit": "訪問する",
-      "recorded": "訪問済み",
-      "reason": "おすすめ理由",
-      "myVisits": "訪問履歴",
-      "empty": "本日のおすすめはありません",
-      "visitsEmpty": "訪問履歴はありません",
-      "visitSuccess": "訪問を記録しました",
-      "loadFailed": "巡礼情報の取得に失敗しました"
+      "title": "Dorfwallfahrt",
+      "subtitle": "Heutiges empfohlenes Dorf",
+      "todaysRecommendation": "Heutige Empfehlung",
+      "visit": "Besuchen",
+      "recorded": "Besucht",
+      "reason": "Empfehlungsgrund",
+      "myVisits": "Besuchsverlauf",
+      "empty": "Heute keine Empfehlungen",
+      "visitsEmpty": "Kein Besuchsverlauf",
+      "visitSuccess": "Besuch aufgezeichnet",
+      "loadFailed": "Wallfahrtsinformationen konnten nicht geladen werden"
     },
     "newsletter": {
-      "title": "ニュースレター",
-      "subtitle": "村の更新通知",
-      "settings": "ニュースレター設定",
-      "frequency": "配信頻度",
-      "lastSentAt": "最終配信日時",
-      "nextScheduledAt": "次回配信予定",
-      "optOut": "配信停止",
-      "optIn": "配信再開",
-      "optedOut": "配信を停止中です",
-      "saveSuccess": "ニュースレター設定を保存しました",
-      "optOutSuccess": "配信を停止しました",
-      "optInSuccess": "配信を再開しました",
-      "loadFailed": "ニュースレター設定の取得に失敗しました",
-      "frequencyOption": {
-        "DAILY": "毎日",
-        "WEEKLY": "毎週",
-        "MONTHLY": "毎月",
-        "NEVER": "停止"
+      "title": "Newsletter",
+      "subtitle": "Dorf-Updates",
+      "settings": "Newsletter-Einstellungen",
+      "lastSentAt": "Zuletzt gesendet",
+      "saveSuccess": "Newsletter-Einstellungen gespeichert",
+      "optOutSuccess": "Empfang beendet",
+      "optInSuccess": "Empfang wieder aktiviert",
+      "loadFailed": "Newsletter-Einstellungen konnten nicht geladen werden",
+      "manageOnlyHint": "Nur der Dorfvorsteher und die Ältesten können die Versandeinstellungen des Dorfes ändern.",
+      "comingSoonNote": "Der Newsletter-Versand ist in Vorbereitung. Einstellungen lassen sich speichern, es werden aber noch keine Newsletter versendet.",
+      "villageSection": {
+        "title": "Versandeinstellungen des Dorfes",
+        "subtitle": "Aktiviere oder deaktiviere den wöchentlichen und den monatlichen Newsletter unabhängig voneinander."
+      },
+      "weekly": {
+        "label": "Wöchentlicher Newsletter",
+        "timing": "Wird jeden Freitag versendet"
+      },
+      "monthly": {
+        "label": "Monatlicher Newsletter",
+        "timing": "Wird zum Monatsende versendet"
+      },
+      "personalSection": {
+        "title": "Dein Empfang",
+        "toggleLabel": "Newsletter dieses Dorfes empfangen",
+        "receivingHint": "Du empfängst diesen Newsletter derzeit.",
+        "stoppedHint": "Du hast den Empfang dieses Newsletters gestoppt."
       }
     },
     "slug": {
       "helpTitle": "Was ist ein Slug?",
-      "helpBody": "Ein URL-sicherer Bezeichner aus Kleinbuchstaben, Zahlen und Bindestrichen. Wird als Dorf-URL verwendet und kann spaeter nicht geaendert werden.",
+      "helpBody": "Ein URL-sicherer Bezeichner aus Kleinbuchstaben, Zahlen und Bindestrichen. Wird als Dorf-URL verwendet und kann später nicht geändert werden.",
       "helpExample": "z.B.: my-village, soccer-club-tokyo"
     },
     "categorySelect": {
-      "fromList": "Aus Liste waehlen",
+      "fromList": "Aus Liste wählen",
       "freeInput": "Direkt eingeben",
-      "level1Placeholder": "Hauptkategorie waehlen",
-      "level2Placeholder": "Unterkategorie waehlen",
-      "level3Placeholder": "Unterkategorie (3. Ebene) waehlen",
+      "level1Placeholder": "Hauptkategorie wählen",
+      "level2Placeholder": "Unterkategorie wählen",
+      "level3Placeholder": "Unterkategorie (3. Ebene) wählen",
       "customPlaceholder": "Kategorie eingeben",
       "loading": "Wird geladen..."
     },
     "categoryManagement": {
       "title": "Dorf-Kategorie-Verwaltung",
-      "addCategory": "Kategorie hinzufuegen",
+      "addCategory": "Kategorie hinzufügen",
       "editCategory": "Kategorie bearbeiten",
-      "deleteConfirm": "Diese Kategorie loeschen? Unterkategorien werden ebenfalls geloescht.",
+      "deleteConfirm": "Diese Kategorie löschen? Unterkategorien werden ebenfalls gelöscht.",
       "nameLabel": "Kategoriename",
-      "parentLabel": "Uebergeordnete Kategorie",
+      "parentLabel": "Übergeordnete Kategorie",
       "parentNone": "Keine（Wurzel）",
       "orderLabel": "Anzeigereihenfolge",
       "levelRoot": "Wurzel",
       "level2": "Unterkategorie",
       "level3": "Unterkategorie (3. Ebene)"
+    },
+    "listGuide": {
+      "page_title": "村一覧の使い方",
+      "description": "ここは「村」をさがして参加するための一覧ページです。気になる村を見つけて中に入ったり、自分で新しい村を作ったりできます。",
+      "search": {
+        "title": "村をさがす",
+        "body": "キーワードや種別・カテゴリで、公開されている村をしぼり込めます。",
+        "steps": {
+          "step1": "上の検索ボックスにキーワード（村名・話題など）を入力します。",
+          "step2": "「種別」で公式・コミュニティをしぼり込めます。",
+          "step3": "「カテゴリ」に言葉を入れると、そのカテゴリの村だけ表示されます。"
+        }
+      },
+      "cards": {
+        "title": "村カードの見方",
+        "body": "各カードに村のアイコン・名前・公式バッジ・カテゴリ・人数・紹介文が表示されます。",
+        "steps": {
+          "step1": "「公式」バッジは運営公認の村の印です。",
+          "step2": "人数が多い村ほど活発に動いています。",
+          "step3": "紹介文でその村の雰囲気を確認できます。"
+        }
+      },
+      "enter": {
+        "title": "村に入る",
+        "body": "気になる村のカードを押すと、その村の中（掲示板・チャットなど）に入れます。",
+        "steps": {
+          "step1": "村のカードをクリックします。",
+          "step2": "村の中で「参加する」を押すと正式なメンバーになれます。",
+          "step3": "村の中の各タブの使い方は、村ヘッダーの「？使い方」で確認できます。"
+        }
+      },
+      "create": {
+        "title": "新しい村をつくる",
+        "body": "自分で新しい村を立ち上げられます（運営の承認制）。",
+        "steps": {
+          "step1": "右上の「村を作る」ボタンを押します。",
+          "step2": "申請フォームに村名・種別などを入力します。",
+          "step3": "運営に承認されると村が作成されます。"
+        }
+      }
+    },
+    "guide": {
+      "page_title": "村の使い方",
+      "description": "村は、同じ目的や興味を持つ仲間が集まる小さなコミュニティです。参加すると掲示板・チャット・投稿などの機能が使えます。下のカードで、村でできることと操作の手順を順番に確認できます。",
+      "join": {
+        "title": "村に参加する／お気に入り登録",
+        "body": "村に参加すると、掲示板・タイムライン・チャットなど村のすべての機能が使えるようになります。よく見る村はお気に入り（ピン留め）にしておくと探しやすくなります。",
+        "steps": {
+          "step1": "ヘッダー右上の「参加する」ボタンを押します。",
+          "step2": "だれでも入れる村はその場で参加完了。承認制の村は参加申請の画面が開くので、申請を送って承認を待ちます。",
+          "step3": "参加後は★（お気に入りに追加）でピン留め、「退村する」で抜けられます。"
+        }
+      },
+      "bulletin": {
+        "title": "掲示板でお知らせを読む",
+        "body": "村長や長老からの大切なお知らせが、話題（スレッド）ごとに並びます。村人になると読めるようになります。",
+        "steps": {
+          "step1": "「掲示板」タブを開きます。",
+          "step2": "気になるスレッドを押すと、本文と返信が表示されます。",
+          "step3": "村長・長老は「スレッド作成」から新しいお知らせを投稿できます。"
+        }
+      },
+      "timeline": {
+        "title": "タイムラインに投稿する",
+        "body": "村の仲間みんなに見える、ひとことフィードです。村人ならだれでも気軽に投稿できます。",
+        "steps": {
+          "step1": "「タイムライン」タブを開きます。",
+          "step2": "上の入力欄に本文を書いて「送信」を押すと投稿されます。",
+          "step3": "村長・長老は投稿のピン留めや削除ができます。"
+        }
+      },
+      "lobby": {
+        "title": "井戸端（ロビー）でリアルタイムに話す",
+        "body": "その日の村人とリアルタイムで雑談できるチャットです。過去7日分のやりとりも日付ごとにさかのぼれます。",
+        "steps": {
+          "step1": "「ロビー」タブを開きます。",
+          "step2": "左の日付一覧から日を選びます（過去の日は読むだけ）。",
+          "step3": "「今日」を選ぶと入力欄が出るので、メッセージを書いてEnterまたは送信ボタンで投稿します。"
+        }
+      },
+      "members": {
+        "title": "メンバーを見る・管理する",
+        "body": "村に参加している人の一覧です。村長は役割（長老／村人）の変更や、迷惑な人の追放（BAN）ができます。",
+        "steps": {
+          "step1": "「メンバー」タブを開きます。",
+          "step2": "一覧から相手のメニューを開きます。",
+          "step3": "村長は「役割変更」「追放（BAN）」、村人はだれでも「通報」ができます。"
+        }
+      },
+      "calendar": {
+        "title": "歳時記カレンダーで行事を知る",
+        "body": "村の記念日やイベントを月ごとのカレンダーで確認できます。毎年くり返す行事も登録できます。",
+        "steps": {
+          "step1": "「カレンダー」タブを開きます。",
+          "step2": "「前月」「翌月」ボタンで月を切り替えます。",
+          "step3": "行事カードを押すと詳細が出ます。村長・長老は「行事を追加」から登録・編集・削除ができます。"
+        }
+      },
+      "events": {
+        "title": "お祭り・練習試合の募集",
+        "body": "村のイベント（お祭り）や、対外試合・審判・会場などの募集をまとめて告知できます。状態でしぼり込めます。",
+        "steps": {
+          "step1": "「お祭り」または「練習試合・募集」タブを開きます。",
+          "step2": "上のフィルタで「募集中」などにしぼり込めます。",
+          "step3": "村人は「企画」「募集を作成」から新規作成、カードを押すと詳細表示や応募ができます。"
+        }
+      },
+      "meetup": {
+        "title": "寄合で集まる日を決める",
+        "body": "村の集まりの開催日を、みんなの投票で決める機能です。複数の候補日から投票し、開催者が確定します。",
+        "steps": {
+          "step1": "「寄合」タブを開きます。",
+          "step2": "村人は「寄合を開く」から候補日をいくつか出して作成します。",
+          "step3": "詳細画面で候補日ごとに賛成／保留／反対を投票し、開催者が日を選んで「確定」します。"
+        }
+      },
+      "chronicle": {
+        "title": "村史で歩みをふり返る",
+        "body": "村の月ごとの記録です。投稿数・新しく参加した人の数・よく使われた話題が自動でまとまります（読むだけのページです）。",
+        "steps": {
+          "step1": "「村史」タブを開きます。",
+          "step2": "年でしぼり込むと、その年の月別カードが並びます。",
+          "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "Die Versprechen des Dorfes in der Satzung festhalten",
+        "body": "Der Dorfvorsteher/die Ältesten können die Regeln des Dorfes (Artikel) festlegen und sie auch für Nichtmitglieder veröffentlichen (öffentliche Dörfer zeigen sie auch künftigen Mitgliedern).",
+        "steps": {
+          "step1": "Öffne den Tab „Dorfsatzung“.",
+          "step2": "Der Dorfvorsteher/die Ältesten können mit „+ Artikel hinzufügen“ Artikel verfassen und optional einen Anhang beifügen.",
+          "step3": "Neuanordnung und Löschen wirken sofort. Mit „Änderung bestätigen“ wird dies in der Änderungshistorie vermerkt."
+        }
+      }
+    },
+    "joinRequestGuide": {
+      "page_title": "Beitrittsanträge verwenden",
+      "description": "Erklärt, wie du den Beitritt zu einem genehmigungspflichtigen Dorf beantragst und wie Dorfvorsteher und Älteste die Anträge prüfen.",
+      "apply": {
+        "title": "Beitritt beantragen",
+        "body": "Einem genehmigungspflichtigen Dorf kannst du nicht direkt beitreten. Sende einen Antrag und warte auf die Genehmigung durch den Dorfvorsteher oder einen Ältesten. Die Nachricht ist optional, erhöht aber deine Chancen.",
+        "steps": {
+          "step1": "Beschreibe in der Nachricht, was du im Dorf vorhast und warum du beitreten möchtest (optional, max. 500 Zeichen).",
+          "step2": "Mit Senden geht der Antrag an den Dorfvorsteher und die Ältesten.",
+          "step3": "Direkt nach dem Senden kannst du den Antrag über die Schaltfläche Zurückziehen abbrechen."
+        }
+      },
+      "status": {
+        "title": "Prüfstatus verfolgen",
+        "body": "Ein Antrag beginnt mit Prüfung ausstehend. Anschließend setzt der Dorfvorsteher oder ein Ältester ihn auf Genehmigt oder Abgelehnt. Nach der Genehmigung wirst du Dorfbewohner und alle Funktionen stehen offen.",
+        "steps": {
+          "step1": "Direkt nach dem Senden wird der Status Prüfung ausstehend angezeigt.",
+          "step2": "Nach der Genehmigung wirst du Dorfbewohner und alle Dorf-Tabs öffnen sich.",
+          "step3": "Bei einer Ablehnung erklärt der Prüfkommentar den Grund. Lies ihn und stelle bei Bedarf einen neuen Antrag."
+        }
+      },
+      "review": {
+        "title": "Anträge prüfen (Dorfvorsteher und Älteste)",
+        "body": "Dorfvorsteher und Älteste sehen auf dieser Seite die Liste der eingegangenen Beitrittsanträge. Lies die Nachricht und entscheide über Genehmigung oder Ablehnung.",
+        "steps": {
+          "step1": "Wechsle über die Tabs zwischen Prüfung ausstehend, Genehmigt, Abgelehnt und Zurückgezogen.",
+          "step2": "Mit Genehmigen wird die antragstellende Person Dorfbewohner. Der Prüfkommentar ist optional.",
+          "step3": "Beim Ablehnen ist ein Prüfkommentar Pflicht, damit der Grund nachvollziehbar ist."
+        }
+      }
+    },
+    "admin": {
+      "title": "Dorfverwaltung",
+      "subtitle": "Verwaltungsmenü für Dorfvorsteher und Älteste",
+      "cards": {
+        "recruitCategories": {
+          "title": "Gesuchkategorien",
+          "desc": "Gesuchkategorien hinzufügen, bearbeiten und neu anordnen."
+        },
+        "newsletter": {
+          "title": "Newsletter-Einstellungen",
+          "desc": "Versandhäufigkeit und Abmeldung konfigurieren."
+        },
+        "members": {
+          "title": "Mitglieder & Rollen",
+          "desc": "Dorfbewohner verwalten, Rollen ändern und sperren (BAN)."
+        },
+        "representatives": {
+          "title": "Vertreterdelegierung",
+          "desc": "Benutzer delegieren und verwalten, die als Vertreter einer Team-/Organisationsmitgliedschaft posten dürfen."
+        },
+        "joinRequests": {
+          "title": "Beitrittsanträge prüfen",
+          "desc": "Beitrittsanträge prüfen sowie genehmigen oder ablehnen."
+        },
+        "reports": {
+          "title": "Meldungsverwaltung",
+          "desc": "Meldungen prüfen und bearbeiten (demnächst verfügbar)."
+        },
+        "settings": {
+          "title": "Grundeinstellungen des Dorfes",
+          "desc": "Name, Beschreibung und weitere Grundinformationen des Dorfes bearbeiten."
+        }
+      },
+      "comingSoon": "Demnächst verfügbar",
+      "accessDenied": "Nur der Dorfvorsteher und Älteste können auf diesen Bildschirm zugreifen."
+    },
+    "adminGuide": {
+      "page_title": "So funktioniert die Dorfverwaltung",
+      "description": "Ein Verwaltungsmenü für Dorfvorsteher und Älteste. Jede Karte führt zu einem Bildschirm, der für den täglichen Betrieb benötigt wird.",
+      "open": {
+        "title": "Dorfverwaltung öffnen",
+        "body": "Öffnen Sie sie über die Schaltfläche mit dem Zahnradsymbol „Dorfverwaltung\" in der Dorfkopfzeile. Diese Schaltfläche wird nur Dorfvorstehern und Ältesten angezeigt.",
+        "steps": {
+          "step1": "Drücken Sie die Schaltfläche „Dorfverwaltung\" oben rechts in der Dorfkopfzeile.",
+          "step2": "Eine Liste von Karten wird angezeigt. Tippen Sie auf eine Karte, um zu diesem Bildschirm zu gelangen."
+        }
+      },
+      "cards": {
+        "title": "Was Sie mit jeder Karte tun können",
+        "body": "Sie können auf Gesuchkategorien, Newsletter-Einstellungen, Mitglieder & Rollen, die Prüfung von Beitrittsanträgen, Meldungen und die Grundeinstellungen des Dorfes zugreifen.",
+        "steps": {
+          "step1": "„Gesuchkategorien\" ermöglicht das Hinzufügen, Bearbeiten und Neuanordnen von Kategorien wie Festen oder Übungsspielen.",
+          "step2": "„Mitglieder & Rollen\" und „Beitrittsanträge prüfen\" ermöglichen die Verwaltung von Dorfbewohnern und die Prüfung neuer Bewerber.",
+          "step3": "Die „Grundeinstellungen des Dorfes\" können nur vom Dorfvorsteher geöffnet werden. Damit werden Name, Beschreibung und mehr bearbeitet."
+        }
+      },
+      "permissions": {
+        "title": "Unterschied zwischen Dorfvorsteher und Ältesten",
+        "body": "Die meisten Karten können sowohl vom Dorfvorsteher als auch von Ältesten genutzt werden, aber die Grundeinstellungen des Dorfes (und derzeit auch die Newsletter-Einstellungen) können nur vom Dorfvorsteher geöffnet werden.",
+        "steps": {
+          "step1": "Älteste können die Karten Gesuchkategorien, Mitglieder, Beitrittsanträge und Meldungen nutzen.",
+          "step2": "Nur der Dorfvorsteher kann die Grundeinstellungen des Dorfes bearbeiten."
+        }
+      }
+    },
+    "recruitCategory": {
+      "title": "Gesuchkategorien",
+      "subtitle": "Definieren Sie Gesuchkategorien frei, passend zur tatsächlichen Arbeit Ihres Dorfes.",
+      "add": "Kategorie hinzufügen",
+      "edit": "Kategorie bearbeiten",
+      "name": "Kategoriename",
+      "namePlaceholder": "z. B. Teilnehmende gesucht",
+      "description": "Beschreibung (optional)",
+      "descriptionPlaceholder": "Erläutern Sie, wofür diese Kategorie verwendet wird",
+      "color": "Farbe (optional)",
+      "displayOrder": "Anzeigereihenfolge",
+      "preset": "Standard",
+      "usage": "Verwendende Gesuche",
+      "usageCount": "{count}",
+      "empty": "Noch keine Kategorien. Erstellen Sie eine über „Kategorie hinzufügen\".",
+      "reorder": "Neu anordnen",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
+      "reorderSaved": "Reihenfolge gespeichert",
+      "created": "Kategorie hinzugefügt",
+      "updated": "Kategorie aktualisiert",
+      "deleted": "Kategorie gelöscht",
+      "confirmDelete": "Diese Kategorie löschen?",
+      "confirmDeleteBody": "„{name}\" wird gelöscht. Von einem Gesuch verwendete Kategorien können nicht gelöscht werden.",
+      "limitNote": "Bis zu {max} Kategorien pro Dorf (aktuell {count}).",
+      "error": {
+        "VILLAGE_083": "Gesuchkategorie nicht gefunden",
+        "VILLAGE_084": "Eine Gesuchkategorie mit demselben Namen existiert bereits",
+        "VILLAGE_085": "Sie können höchstens {max} Gesuchkategorien haben",
+        "VILLAGE_086": "Diese Kategorie wird von einem Gesuch verwendet und kann nicht gelöscht werden",
+        "loadFailed": "Gesuchkategorien konnten nicht geladen werden"
+      },
+      "validation": {
+        "nameRequired": "Der Kategoriename ist erforderlich",
+        "nameMax": "Der Kategoriename darf höchstens {max} Zeichen lang sein",
+        "descriptionMax": "Die Beschreibung darf höchstens {max} Zeichen lang sein"
+      },
+      "clearColor": "Farbe entfernen"
+    },
+    "recruitCategoryGuide": {
+      "page_title": "So funktionieren Gesuchkategorien",
+      "description": "Definieren Sie pro Dorf die Kategorien, mit denen Gesuche eingeteilt werden. Dorfvorsteher und Älteste können sie bearbeiten.",
+      "manage": {
+        "title": "Kategorien hinzufügen und bearbeiten",
+        "body": "Erstellen Sie über „Kategorie hinzufügen\" eine neue. Der Name ist frei wählbar, Beschreibung und Farbe sind ebenfalls möglich.",
+        "steps": {
+          "step1": "Drücken Sie die Schaltfläche „Kategorie hinzufügen\".",
+          "step2": "Geben Sie einen Kategorienamen ein (erforderlich, max. 40 Zeichen). Beschreibung und Farbe sind optional.",
+          "step3": "Mit „Speichern\" wird sie zur Liste hinzugefügt. Über das Stiftsymbol können Sie sie jederzeit bearbeiten."
+        }
+      },
+      "preset": {
+        "title": "Auch Standardkategorien lassen sich ändern",
+        "body": "Die mit dem Dorf angelegten Standardkategorien (Teilnehmende, Helfende, Sonstiges) sind nur Daten. Wenn sie nicht zu Ihrem Dorf passen, benennen Sie sie um oder löschen Sie sie.",
+        "steps": {
+          "step1": "Auch mit dem Abzeichen „Standard\" gibt es keine Einschränkung beim Bearbeiten oder Löschen.",
+          "step2": "Passt ein Name nicht zu Ihrem Dorf, schreiben Sie ihn einfach um."
+        }
+      },
+      "order": {
+        "title": "Reihenfolge und Löschen",
+        "body": "Das Umsortieren mit den Pfeilen ändert auch die Reihenfolge beim Erstellen und Filtern von Gesuchen. Verwendete Kategorien können nicht gelöscht werden, um bestehende Gesuche zu schützen.",
+        "steps": {
+          "step1": "Das Umsortieren mit den Pfeiltasten wird sofort gespeichert.",
+          "step2": "Kategorien mit null „Verwendenden Gesuchen\" lassen sich über das Papierkorbsymbol löschen.",
+          "step3": "Um eine verwendete Kategorie zu löschen, ändern Sie zuerst die Kategorie dieser Gesuche."
+        }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "So nutzt du den Newsletter",
+      "description": "Der Dorf-Newsletter bündelt Dorf-Updates in einer Benachrichtigung. Wöchentlich und monatlich lassen sich unabhängig schalten, und jedes Mitglied entscheidet selbst über den Empfang.",
+      "toggles": {
+        "title": "Wöchentlich und monatlich unabhängig schalten",
+        "body": "In den Versandeinstellungen des Dorfes kannst du wöchentlich und monatlich getrennt umschalten. Du kannst auch nur eines aktivieren.",
+        "steps": {
+          "step1": "Schalte mit dem Schalter „Wöchentlicher Newsletter“ den wöchentlichen Versand ein oder aus.",
+          "step2": "Schalte mit dem Schalter „Monatlicher Newsletter“ den monatlichen Versand ein oder aus.",
+          "step3": "Änderungen werden beim Umschalten sofort gespeichert (kein Speichern-Button nötig)."
+        }
+      },
+      "timing": {
+        "title": "Versandzeitpunkt",
+        "body": "Wöchentlich wird jeden Freitag versendet, monatlich zum Ende jedes Monats."
+      },
+      "permission": {
+        "title": "Wer es ändern kann",
+        "body": "Nur der Dorfvorsteher und die Ältesten können die „Versandeinstellungen des Dorfes“ ändern. Andere Mitglieder sehen die aktuellen Einstellungen schreibgeschützt."
+      },
+      "personal": {
+        "title": "Dein Empfang",
+        "body": "Jedes Mitglied entscheidet selbst über den Empfang des Newsletters. Standardmäßig ist der Empfang aktiviert.",
+        "steps": {
+          "step1": "Schalte den Schalter „Dein Empfang“ aus, um den Newsletter dieses Dorfes nicht mehr zu erhalten.",
+          "step2": "Schalte ihn wieder ein, um den Empfang fortzusetzen."
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ Der Newsletter-Versand ist in Vorbereitung. Einstellungen lassen sich speichern, es werden aber noch keine Newsletter tatsächlich versendet."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "Anleitung",
+      "what": {
+        "title": "Was ist das Dorfbewohner-Mini-Profil",
+        "body": "Tippen Sie in der Mitgliederliste auf einen Namen, um das einfache Profil dieses Dorfbewohners zu öffnen. Sie sehen dessen Rolle und die Dörfer, die er sichtbar gemacht hat."
+      },
+      "villages": {
+        "title": "Die Dorfliste verstehen",
+        "body": "Es werden nur Dörfer angezeigt, die der Dorfbewohner sichtbar gemacht hat. Angezeigt werden nur Dorfname, Wappen und Kategorie, niemals ein Spitzname. Tippen Sie auf eine Karte, um zur Startseite dieses Dorfes zu gelangen."
+      },
+      "toggle": {
+        "title": "Wenn Sie Ihr eigenes Profil öffnen",
+        "body": "Ihr eigenes Mini-Profil zeigt den Schalter „Dieses Dorf in meiner Dorfliste anzeigen“. Wenn Sie ihn aktivieren, können Personen, die mit Ihnen ein Dorf teilen, dieses Dorf in Ihrer Dorfliste sehen. Die Einstellung gilt pro Dorf."
+      },
+      "privacy": {
+        "title": "Zum Datenschutz",
+        "body": "Die Dorfliste wird nur angezeigt, wenn Sie und die andere Person mindestens ein Dorf gemeinsam haben. Gibt es nichts anzuzeigen, erscheint neutral „Keine Dörfer zum Anzeigen“, ohne zu verraten, ob Sie ein Dorf teilen."
+      }
     }
   }
 }

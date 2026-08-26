@@ -9,8 +9,6 @@ import com.mannschaft.app.workflow.dto.WorkflowCommentRequest;
 import com.mannschaft.app.workflow.dto.WorkflowCommentResponse;
 import com.mannschaft.app.workflow.service.WorkflowCommentService;
 import com.mannschaft.app.workflow.service.WorkflowRequestAttachmentService;
-import com.mannschaft.app.workflow.WorkflowMapper;
-import com.mannschaft.app.workflow.repository.WorkflowRequestAttachmentRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -39,9 +37,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class WorkflowCommentController {
 
     private final WorkflowCommentService commentService;
-    private final WorkflowRequestAttachmentRepository attachmentRepository;
     private final WorkflowRequestAttachmentService attachmentService;
-    private final WorkflowMapper workflowMapper;
 
 
     /**
@@ -52,7 +48,8 @@ public class WorkflowCommentController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<WorkflowCommentResponse>>> listComments(
             @PathVariable Long requestId) {
-        List<WorkflowCommentResponse> comments = commentService.listComments(requestId);
+        List<WorkflowCommentResponse> comments =
+                commentService.listComments(requestId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(comments));
     }
 
@@ -79,7 +76,8 @@ public class WorkflowCommentController {
             @PathVariable Long requestId,
             @PathVariable Long commentId,
             @Valid @RequestBody WorkflowCommentRequest request) {
-        WorkflowCommentResponse response = commentService.updateComment(requestId, commentId, request);
+        WorkflowCommentResponse response = commentService.updateComment(
+                requestId, commentId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -92,7 +90,7 @@ public class WorkflowCommentController {
     public ResponseEntity<Void> deleteComment(
             @PathVariable Long requestId,
             @PathVariable Long commentId) {
-        commentService.deleteComment(requestId, commentId);
+        commentService.deleteComment(requestId, commentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -104,8 +102,8 @@ public class WorkflowCommentController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<WorkflowAttachmentResponse>>> listAttachments(
             @PathVariable Long requestId) {
-        List<WorkflowAttachmentResponse> attachments = workflowMapper.toAttachmentResponseList(
-                attachmentRepository.findByRequestIdOrderByCreatedAtAsc(requestId));
+        List<WorkflowAttachmentResponse> attachments =
+                attachmentService.listAttachments(requestId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(attachments));
     }
 

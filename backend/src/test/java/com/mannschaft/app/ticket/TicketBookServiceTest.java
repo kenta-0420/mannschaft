@@ -5,6 +5,7 @@ import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.ticket.dto.ConsumeTicketRequest;
 import com.mannschaft.app.ticket.dto.ExtendRequest;
 import com.mannschaft.app.ticket.dto.RefundRequest;
+import com.mannschaft.app.ticket.dto.TicketBookResponse;
 import com.mannschaft.app.ticket.entity.TicketBookEntity;
 import com.mannschaft.app.ticket.entity.TicketConsumptionEntity;
 import com.mannschaft.app.ticket.entity.TicketProductEntity;
@@ -13,6 +14,7 @@ import com.mannschaft.app.ticket.repository.TicketConsumptionRepository;
 import com.mannschaft.app.ticket.repository.TicketPaymentRepository;
 import com.mannschaft.app.ticket.repository.TicketProductRepository;
 import com.mannschaft.app.ticket.service.StripeTicketService;
+import com.mannschaft.app.ticket.service.TicketAccessGuard;
 import com.mannschaft.app.ticket.service.TicketBookService;
 import com.mannschaft.app.ticket.service.TicketQrService;
 import org.junit.jupiter.api.DisplayName;
@@ -25,9 +27,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 /**
@@ -45,6 +50,9 @@ class TicketBookServiceTest {
     @Mock private TicketQrService ticketQrService;
     @Mock private TicketMapper ticketMapper;
     @Mock private NameResolverService nameResolverService;
+    // 認可根治 Wave5: 顧客面の所有者照合ガード。@InjectMocks はコンストラクタ注入のため
+    // ここに @Mock を置かないと null が注入される。
+    @Mock private TicketAccessGuard ticketAccessGuard;
 
     @InjectMocks
     private TicketBookService service;
@@ -272,6 +280,34 @@ class TicketBookServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TicketErrorCode.QR_TOKEN_INVALID);
+        }
+    }
+
+    @Nested
+    @DisplayName("getMyTickets")
+    class GetMyTickets {
+
+        private static final Long USER_ID = 200L;
+
+        @Test
+        @DisplayName("正常系: レスポンスに会員実名(userName)とuserIdが充填される")
+        void 会員実名が充填される() {
+            TicketBookEntity book = TicketBookEntity.builder()
+                    .teamId(TEAM_ID).userId(USER_ID).productId(5L).totalTickets(10).build();
+            setStatus(book, TicketBookStatus.ACTIVE);
+            given(bookRepository.findByUserIdAndTeamIdAndStatus(USER_ID, TEAM_ID, TicketBookStatus.ACTIVE))
+                    .willReturn(List.of(book));
+            given(productRepository.findById(5L))
+                    .willReturn(Optional.of(TicketProductEntity.builder().teamId(TEAM_ID).name("回数券A").build()));
+            given(nameResolverService.resolveUserFullName(USER_ID)).willReturn("鈴木 花子");
+            given(ticketMapper.calculateDaysUntilExpiry(any())).willReturn(null);
+
+            List<TicketBookResponse> result = service.getMyTickets(TEAM_ID, USER_ID, null);
+
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getUserId()).isEqualTo(USER_ID);
+            assertThat(result.get(0).getUserName()).isEqualTo("鈴木 花子");
+            assertThat(result.get(0).getProductName()).isEqualTo("回数券A");
         }
     }
 

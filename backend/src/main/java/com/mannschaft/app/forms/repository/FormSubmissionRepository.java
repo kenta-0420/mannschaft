@@ -9,11 +9,29 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * フォーム提出リポジトリ。
  */
 public interface FormSubmissionRepository extends JpaRepository<FormSubmissionEntity, Long> {
+
+    /**
+     * F08.7.1/06: 大会提出枠（tournament_submission_requirement.id）に紐付く全提出を取得する。
+     *
+     * <p>提出状況ダッシュボード（未提出/提出済/受理/差戻し）の集計に使う。論理削除は
+     * {@code @SQLRestriction} で除外される。</p>
+     */
+    List<FormSubmissionEntity> findByTournamentSubmissionRequirementId(UUID tournamentSubmissionRequirementId);
+
+    /**
+     * F08.7.1/06: 大会提出枠 + scope（提出チーム）で提出を取得する。
+     *
+     * <p>提出 = 自チーム単位（{@code scopeType='TEAM'} / {@code scopeId=teamId}）で 1 件に正規化されるため、
+     * 当該チームの既存提出（再提出の差し戻しフロー）を引くために使う。</p>
+     */
+    Optional<FormSubmissionEntity> findByTournamentSubmissionRequirementIdAndScopeTypeAndScopeId(
+            UUID tournamentSubmissionRequirementId, String scopeType, Long scopeId);
 
     /**
      * テンプレートに紐付く提出一覧をページング取得する。

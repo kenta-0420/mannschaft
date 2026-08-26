@@ -2,6 +2,8 @@ package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.recruitment.CancellationPaymentStatus;
 import com.mannschaft.app.recruitment.CancellationSource;
 import com.mannschaft.app.recruitment.ParticipantHistoryReason;
@@ -22,8 +24,11 @@ import com.mannschaft.app.recruitment.repository.RecruitmentCancellationRecordRe
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantHistoryRepository;
 import com.mannschaft.app.recruitment.repository.RecruitmentParticipantRepository;
+import com.mannschaft.app.recruitment.event.RecruitmentCancellationFeeChargeRequestedEvent;
+import com.mannschaft.app.recruitment.event.RecruitmentParticipantConfirmedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -61,6 +66,18 @@ public class RecruitmentParticipantService {
     private final RecruitmentListingService listingService;
     private final AccessControlService accessControlService;
     private final RecruitmentMapper mapper;
+    /** F22.1 市: 充足（FULL）到達時の最終認証連携。 */
+    private final MarketFinalizeService marketFinalizeService;
+    /**
+     * F22.1 市: 応募確定前の可視性ガード（02_api_design §5 / §7・04_security §1.1）。
+     * FRIEND_TEAMS_ONLY 札は宛先解決集合のみ応募可（非対象は 404 存在秘匿）。
+     */
+    private final ContentVisibilityChecker visibilityChecker;
+    /**
+     * F22.1 市の謝礼決済: 応募確定（CONFIRMED）→ 謝礼の与信（authorize）連携イベントの発火元（02_api_design §5.1）。
+     * payment.escrow リスナが購読する（クロスドメイン FK を作らず ID のみ受け渡す疎結合・README §7）。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     // ===========================================
     // §5.2 参加申込
@@ -93,6 +110,13 @@ public class RecruitmentParticipantService {
             throw new BusinessException(RecruitmentErrorCode.INVALID_STATE_TRANSITION);
         }
 
+        // F22.1 市（02_api_design §5 / §7・04_security §1.1）: 確定の「前」に可視性ガードを通す。
+        // PUBLIC/SCOPE_ONLY/SUPPORTERS_ONLY/CUSTOM_TEMPLATE は F00 標準判定、FRIEND_TEAMS_ONLY は
+        // RecruitmentListingVisibilityResolver#evaluateCustom が宛先フレンドチーム集合で判定する。
+        // 非対象ユーザーは NOT_FOUND→404（存在秘匿）/ deny→403 で弾かれ、IDOR（listingId 既知の
+        // 任意ユーザーが応募できる）を根治する。
+        visibilityChecker.assertCanView(ReferenceType.RECRUITMENT_LISTING, listingId, userId);
+
         // §5.2 step6 participation_type 整合
         boolean isIndividualListing = listing.getParticipationType() == RecruitmentParticipationType.INDIVIDUAL;
         boolean isUserApplication = request.getParticipantType() == RecruitmentParticipantType.USER;
@@ -104,8 +128,12 @@ public class RecruitmentParticipantService {
         }
 
         // §5.2 step5 (Phase 5a) 未払いキャンセル料チェック
+        // UNCOLLECTIBLE（F03.11.1 §5.3）はリトライを打ち切った状態であり、未払いであることに変わりはない。
+        // これを対象から外すと「徴収の試行が尽きるまで待てば申込制限が消える」経路が残ってしまう。
+        // 判定はユーザー単位であり、1 件でも該当があれば拒否する（免除の効き方は F03.11.1 §10.0）。
         boolean hasUnpaid = cancellationRecordRepository.existsByUserIdAndPaymentStatusIn(
-                userId, List.of(CancellationPaymentStatus.PENDING, CancellationPaymentStatus.FAILED));
+                userId, List.of(CancellationPaymentStatus.PENDING, CancellationPaymentStatus.FAILED,
+                        CancellationPaymentStatus.UNCOLLECTIBLE));
         if (hasUnpaid) {
             throw new BusinessException(RecruitmentErrorCode.CANCELLATION_PAYMENT_FAILED);
         }
@@ -130,8 +158,14 @@ public class RecruitmentParticipantService {
 
         boolean isWaitlisted;
         Integer waitlistPosition = null;
+        boolean reachedFull = false;
         if (updated == 1) {
             isWaitlisted = false;
+            // F22.1 市: この申込で OPEN→FULL に遷移したかを再ロードで検知する（§6.1）。
+            // incrementConfirmedAtomic は status=CASE で FULL に遷移させる原子 UPDATE。
+            RecruitmentListingEntity afterIncrement = listingRepository.findById(listingId).orElse(null);
+            reachedFull = afterIncrement != null
+                    && afterIncrement.getStatus() == RecruitmentListingStatus.FULL;
         } else {
             // 満員 → キャンセル待ちフロー (§5.2 step8)
             int waitlistUpdated = listingRepository.incrementWaitlistAtomic(listingId);
@@ -168,6 +202,33 @@ public class RecruitmentParticipantService {
 
         log.info("F03.11 申込: listingId={}, userId={}, status={}, waitlistPos={}",
                 listingId, userId, saved.getStatus(), waitlistPosition);
+
+        // F22.1 市: 謝礼有効な札に確定（非キャンセル待ち）したら謝礼の与信（authorize）を開始する（§5.1）。
+        // payment.escrow が購読し ConnectChargeService.authorize を呼ぶ（疎結合・クロスドメイン FK 無し）。
+        if (!isWaitlisted && Boolean.TRUE.equals(listing.getPaymentEnabled())
+                && listing.getPrice() != null && isUserApplication) {
+            eventPublisher.publishEvent(new RecruitmentParticipantConfirmedEvent(
+                    listingId,
+                    saved.getId(),
+                    userId,
+                    listing.getScopeType().name(),
+                    listing.getScopeId(),
+                    listing.getPayeeKind(),
+                    listing.getPayeeUserId(),
+                    listing.getPrice().longValue(),
+                    // 役務日（役務完了の見込み＝札の start_at）。第三陣-b で「成立〜役務日 > 7日」なら成立時に与信せず
+                    // 完了時即時払い（DEFERRED）へフォールバックする判定に使う。start_at 未設定の札は null（安全側で従来与信）。
+                    listing.getStartAt()));
+        }
+
+        // F22.1 市: この申込で FULL に到達したら最終認証の確認通知を送る（§6.1）。
+        if (reachedFull) {
+            RecruitmentListingEntity fullListing = listingRepository.findById(listingId).orElse(null);
+            if (fullListing != null) {
+                marketFinalizeService.sendFinalizeConfirmation(fullListing);
+            }
+        }
+
         return mapper.toParticipantResponse(saved);
     }
 
@@ -226,7 +287,8 @@ public class RecruitmentParticipantService {
                 .build());
 
         // §5.9 キャンセル記録 (Phase 5a)
-        cancellationRecordRepository.save(RecruitmentCancellationRecordEntity.builder()
+        RecruitmentCancellationRecordEntity cancellationRecord =
+                cancellationRecordRepository.save(RecruitmentCancellationRecordEntity.builder()
                 .participantId(participant.getId())
                 .listingId(listingId)
                 .userId(userId)
@@ -256,6 +318,21 @@ public class RecruitmentParticipantService {
         if (wasConfirmed) {
             RecruitmentListingEntity reloadedForPromotion = listingRepository.findByIdForUpdate(listingId).orElseThrow();
             promoteFromWaitlistIfPossible(reloadedForPromotion);
+        }
+
+        // F03.11.1 §3.3 ステップ 1: キャンセル料の徴収要求を発火する。
+        //
+        // 徴収そのものはここで行わない。キャンセルは利用者の意思表示であり、この時点で枠の復帰・
+        // キャンセル待ちの昇格が既に走っている。決済の失敗でそれらを巻き戻すと整合が壊れるため、
+        // 徴収は本トランザクションのコミット後（AFTER_COMMIT）に非同期で走らせる（§3.1-1 / §3.1-2）。
+        // したがってキャンセル API のレスポンスに決済の成否は乗らず、記録の paymentStatus として後から反映される。
+        //
+        // 与信は個人申込にしか立たないため（RecruitmentChargeAuthorizationListener の発火条件）、
+        // チーム申込では徴収要求も出さない（§8）。
+        boolean isUserApplication = participant.getParticipantType() == RecruitmentParticipantType.USER;
+        if (fee.feeAmount() > 0 && isUserApplication) {
+            eventPublisher.publishEvent(new RecruitmentCancellationFeeChargeRequestedEvent(
+                    cancellationRecord.getId(), listingId, participant.getId(), userId, fee.feeAmount()));
         }
 
         log.info("F03.11 本人キャンセル: listingId={}, userId={}, fee={}",

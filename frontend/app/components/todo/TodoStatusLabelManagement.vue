@@ -10,7 +10,7 @@ import {
 
 const props = defineProps<{
   scope: 'me' | 'team' | 'organization'
-  scopeId?: number
+  scopeId?: string
   canEdit: boolean
 }>()
 

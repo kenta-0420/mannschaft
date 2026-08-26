@@ -3,7 +3,7 @@ import dayjs from 'dayjs'
 import type { TranslationResponse, TranslationStatus, TranslationSourceType } from '~/types/translation'
 
 const props = defineProps<{
-  orgId: number
+  orgId: string
 }>()
 
 const { listTranslations, updateStatus, publishTranslation, getDashboard } = useTranslationApi()

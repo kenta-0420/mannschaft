@@ -1,5 +1,9 @@
 package com.mannschaft.app.common.visibility;
 
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.repository.MembershipRepository;
+import com.mannschaft.app.membership.repository.MembershipScopeRoleProjection;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -20,6 +24,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.eq;
@@ -49,6 +54,9 @@ class MembershipBatchQueryServiceTest {
 
     @Mock
     private OrganizationRepository organizationRepository;
+
+    @Mock
+    private MembershipRepository membershipRepository;
 
     @InjectMocks
     private MembershipBatchQueryService service;
@@ -247,9 +255,289 @@ class MembershipBatchQueryServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("F00.5 §8.3 根治: memberships 由来 MEMBER/SUPPORTER の roleByScope マージ")
+    class MembershipMerge {
+
+        @Test
+        @DisplayName("user_roles 行なし・memberships のみ MEMBER → roleByScope に MEMBER が入り MEMBERS_AND_ABOVE 可視")
+        void memberships専属MEMBER_roleByScope登録() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            // user_roles の direct ロールは空（V60.010 で MEMBER 行削除済み）
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of());
+            // memberships に MEMBER の active 行
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(membershipProjection(ScopeType.TEAM, 1L, RoleKind.MEMBER)));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(TEAM_1), Set.of());
+
+            assertThat(result.roleByScope()).containsEntry(TEAM_1, "MEMBER");
+            // SCOPE_AFFILIATED
+            assertThat(result.isMemberOf(TEAM_1)).isTrue();
+            // MEMBERS_AND_ABOVE
+            assertThat(result.hasRoleOrAbove(TEAM_1, "MEMBER")).isTrue();
+            // SUPPORTERS_AND_ABOVE（MEMBER は SUPPORTER 以上）
+            assertThat(result.hasRoleOrAbove(TEAM_1, "SUPPORTER")).isTrue();
+        }
+
+        @Test
+        @DisplayName("memberships のみ SUPPORTER → SUPPORTERS_AND_ABOVE 可視・MEMBERS_AND_ABOVE 不可視・SCOPE_AFFILIATED 可視")
+        void memberships専属SUPPORTER() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of());
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(membershipProjection(ScopeType.TEAM, 1L, RoleKind.SUPPORTER)));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(TEAM_1), Set.of());
+
+            assertThat(result.roleByScope()).containsEntry(TEAM_1, "SUPPORTER");
+            assertThat(result.isMemberOf(TEAM_1)).isTrue();               // SCOPE_AFFILIATED
+            assertThat(result.hasRoleOrAbove(TEAM_1, "SUPPORTER")).isTrue();  // SUPPORTERS_AND_ABOVE
+            assertThat(result.hasRoleOrAbove(TEAM_1, "MEMBER")).isFalse();    // MEMBERS_AND_ABOVE 不可視
+            assertThat(result.hasRoleOrAbove(TEAM_1, "ADMIN")).isFalse();     // ADMINS_AND_ABOVE 不可視
+        }
+
+        @Test
+        @DisplayName("user_roles ADMIN + memberships MEMBER 併存 → priority 最強の ADMIN が残る")
+        void adminUserRoleとmembershipMember_ADMIN優先() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 50L)));
+            when(roleRepository.findAllById(Set.of(50L)))
+                    .thenReturn(List.of(role(50L, "ADMIN")));
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(membershipProjection(ScopeType.TEAM, 1L, RoleKind.MEMBER)));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(TEAM_1), Set.of());
+
+            // ADMIN(2) < MEMBER(4) → ADMIN を採用
+            assertThat(result.roleByScope()).containsEntry(TEAM_1, "ADMIN");
+            assertThat(result.hasRoleOrAbove(TEAM_1, "ADMIN")).isTrue();
+        }
+
+        @Test
+        @DisplayName("親 ORG が memberships 専属所属でも ORGANIZATION_WIDE 可視（isMemberOfParentOrg=true）")
+        void 親ORGがmemberships専属_ORGANIZATION_WIDE可視() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
+                    .thenReturn(Map.of(TEAM_1, 10L));
+            // user_roles の親 ORG メンバーシップは無し
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            // memberships に親 ORG への MEMBER 行
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of(membershipProjection(ScopeType.ORGANIZATION, 10L, RoleKind.MEMBER)));
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
+                    .thenReturn(List.of());
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
+
+            assertThat(result.orgMemberOf()).contains(ORG_10);
+            assertThat(result.isMemberOfParentOrg(TEAM_1)).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("フェーズ M2: descendantScopes 経由の下向き再帰メンバーシップ解決")
+    class DescendantMembership {
+
+        @Test
+        @DisplayName("descendantScopes 空 → 下向き再帰バルク SQL は発行されない（従来挙動・SQL 0）")
+        void descendant空_バルクSQL未発行() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(any(), any(), any()))
+                    .thenReturn(List.of());
+
+            // 3 引数版（従来の Resolver 経路）。新段 SQL は決して呼ばれない。
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(TEAM_1), Set.of());
+
+            assertThat(result.descendantMemberOfOrgIds()).isEmpty();
+            verify(userRoleRepository, never())
+                    .findDescendantMembershipRolesByOrgRoots(anySet(), anyLong(), anyInt());
+        }
+
+        @Test
+        @DisplayName("配下再帰メンバーの ORG 根は descendantMemberOfOrgIds に入り isDescendantMemberOf=true")
+        void 配下再帰メンバー_isDescendantMemberOfTrue() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            // 新段の根 ORG_10 は parentOrgs に合流 → membership/非アクティブ判定が走る
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
+                    .thenReturn(List.of());
+            // 下向き再帰バルク: viewer は ORG_10 の配下再帰メンバー
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(descendantRow(10L, "MEMBER")));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.descendantMemberOfOrgIds()).containsExactly(10L);
+            assertThat(result.isDescendantMemberOf(ORG_10)).isTrue();
+            // 直接所属軸（orgMemberOf）は汚さない（G3: 昇格しない）
+            assertThat(result.orgMemberOf()).doesNotContain(ORG_10);
+            // 上向き 1 段（ORGANIZATION_WIDE 経路）とは独立
+            assertThat(result.isMemberOfParentOrg(ORG_10)).isFalse();
+        }
+
+        @Test
+        @DisplayName("配下再帰メンバーでない viewer → isDescendantMemberOf=false")
+        void 非配下メンバー_isDescendantMemberOfFalse() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
+                    .thenReturn(List.of());
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of()); // どの根にも属さない
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.descendantMemberOfOrgIds()).isEmpty();
+            assertThat(result.isDescendantMemberOf(ORG_10)).isFalse();
+        }
+
+        @Test
+        @DisplayName("§11.6 鏡像: 根 ORG 自身が非アクティブなら isOrgInactive=true（配下メンバーでも閲覧不可へ）")
+        void 根ORG非アクティブ_isOrgInactiveTrue() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            // 当該 ORG 自身が削除済
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L)))
+                    .thenReturn(List.of(10L));
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(descendantRow(10L, "MEMBER")));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.isOrgInactive(ORG_10)).isTrue();
+            // 配下メンバーではあるが ORG 非アクティブ。Resolver 側 case で fail-closed される。
+            assertThat(result.isDescendantMemberOf(ORG_10)).isTrue();
+        }
+
+        @Test
+        @DisplayName("CMP-017b 配下所属のロール名が descendantRoleByOrgId に載り閾値評価できる")
+        void 配下所属のロール名が閾値評価に使える() {
+            stubDescendantSideQueries();
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(descendantRow(10L, "SUPPORTER")));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.descendantRoleByOrgId()).containsEntry(10L, "SUPPORTER");
+            assertThat(result.hasDescendantRoleOrAbove(ORG_10, "SUPPORTER")).isTrue();
+            assertThat(result.hasDescendantRoleOrAbove(ORG_10, "MEMBER")).isFalse();
+        }
+
+        @Test
+        @DisplayName("CMP-017b 同一根に複数の所属経路がある場合は最も強いロールを採用する")
+        void 複数経路は最強ロールを採用() {
+            stubDescendantSideQueries();
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(
+                            descendantRow(10L, "SUPPORTER"),
+                            descendantRow(10L, "MEMBER")));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.descendantRoleByOrgId()).containsEntry(10L, "MEMBER");
+            assertThat(result.hasDescendantRoleOrAbove(ORG_10, "MEMBER")).isTrue();
+        }
+
+        @Test
+        @DisplayName("CMP-017b ロール名が解決できない行でも所属集合は従来どおり成立する（閾値のみ fail-closed）")
+        void ロール名不明でも所属は成立し閾値は満たさない() {
+            stubDescendantSideQueries();
+            when(userRoleRepository.findDescendantMembershipRolesByOrgRoots(
+                    eq(Set.of(10L)), eq(USER_ID), anyInt()))
+                    .thenReturn(List.of(descendantRow(10L, null)));
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    USER_ID, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.isDescendantMemberOf(ORG_10)).isTrue();
+            assertThat(result.descendantRoleByOrgId()).isEmpty();
+            assertThat(result.hasDescendantRoleOrAbove(ORG_10, "MEMBER")).isFalse();
+        }
+
+        @Test
+        @DisplayName("匿名 viewer → 下向き再帰 SQL は発行されない")
+        void 匿名_descendant_SQL未発行() {
+            UserScopeRoleSnapshot result = service.snapshotForUser(
+                    null, Set.of(), Set.of(), Set.of(ORG_10));
+
+            assertThat(result.descendantMemberOfOrgIds()).isEmpty();
+            verifyNoInteractions(userRoleRepository);
+        }
+    }
+
     // -----------------------------------------------------------------------
     // ヘルパー
     // -----------------------------------------------------------------------
+
+    /** 新段（ORG_10 が根）の周辺クエリを «該当なし» で固めるヘルパー。 */
+    private void stubDescendantSideQueries() {
+        when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+        when(membershipRepository.findActiveRoleKindsByUserAndScopes(
+                eq(USER_ID), eq(Set.of()), eq(Set.of(10L)))).thenReturn(List.of());
+        when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                .thenReturn(List.of());
+        when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());
+    }
+
+    /** 下向き再帰バルククエリの射影スタブ（根 ORG × ロール名）。 */
+    private static UserRoleRepository.DescendantMembershipRoleProjection descendantRow(
+            Long rootOrgId, String roleName) {
+        return new UserRoleRepository.DescendantMembershipRoleProjection() {
+            @Override
+            public Long getRootOrgId() {
+                return rootOrgId;
+            }
+
+            @Override
+            public String getRoleName() {
+                return roleName;
+            }
+        };
+    }
+
+    private static MembershipScopeRoleProjection membershipProjection(
+            ScopeType scopeType, Long scopeId, RoleKind roleKind) {
+        return new MembershipScopeRoleProjection() {
+            @Override
+            public ScopeType getScopeType() {
+                return scopeType;
+            }
+
+            @Override
+            public Long getScopeId() {
+                return scopeId;
+            }
+
+            @Override
+            public RoleKind getRoleKind() {
+                return roleKind;
+            }
+        };
+    }
 
     private static UserRoleProjection projection(Long id, Long teamId, Long orgId, Long roleId) {
         return new UserRoleProjection() {
@@ -278,6 +566,284 @@ class MembershipBatchQueryServiceTest {
                 return roleId;
             }
         };
+    }
+
+    @Nested
+    @DisplayName("CMP-017b: 親 ORG のロール名マップ（orgRoleByScope）")
+    class ParentOrgRoleNames {
+
+        @Test
+        @DisplayName("親 ORG の user_roles ロール名が orgRoleByScope に入り閾値評価できる")
+        void 親ORGのuser_rolesロール名が閾値評価に使える() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
+                    .thenReturn(Map.of(TEAM_1, 10L));
+            // 親 ORG に DEPUTY_ADMIN として所属
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of(projection(2L, null, 10L, 52L)));
+            when(roleRepository.findAllById(Set.of(52L)))
+                    .thenReturn(List.of(role(52L, "DEPUTY_ADMIN")));
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
+
+            assertThat(result.orgRoleByScope()).containsEntry(ORG_10, "DEPUTY_ADMIN");
+            // DEPUTY_ADMIN(3) は DEPUTY_ADMIN 閾値を満たすが ADMIN(2) 閾値は満たさない
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "DEPUTY_ADMIN")).isTrue();
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "MEMBER")).isTrue();
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "ADMIN")).isFalse();
+            // direct スコープの roleByScope は汚染されないこと
+            assertThat(result.roleByScope()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("親 ORG の memberships SUPPORTER は MEMBER+ 閾値を満たさない（AC-06 の土台）")
+        void 親ORGのSUPPORTERはMEMBER閾値を満たさない() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
+                    .thenReturn(Map.of(TEAM_1, 10L));
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(
+                    eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of(membershipProjection(ScopeType.ORGANIZATION, 10L, RoleKind.SUPPORTER)));
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
+
+            assertThat(result.orgRoleByScope()).containsEntry(ORG_10, "SUPPORTER");
+            // 所属はしている（ORGANIZATION_WIDE は従来どおり可視）
+            assertThat(result.isMemberOfParentOrg(TEAM_1)).isTrue();
+            // だが MEMBER+ の閾値は満たさない ＝ min_view_role=MEMBER+ を弾ける
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "MEMBER")).isFalse();
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "SUPPORTER")).isTrue();
+        }
+
+        @Test
+        @DisplayName("親 ORG に user_roles ADMIN と memberships MEMBER が併存 → 最強の ADMIN を採用")
+        void 親ORGの併存ロールは最強を採用() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
+                    .thenReturn(Map.of(TEAM_1, 10L));
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of(projection(2L, null, 10L, 51L)));
+            when(roleRepository.findAllById(Set.of(51L)))
+                    .thenReturn(List.of(role(51L, "ADMIN")));
+            when(membershipRepository.findActiveRoleKindsByUserAndScopes(
+                    eq(USER_ID), eq(Set.of()), eq(Set.of(10L))))
+                    .thenReturn(List.of(membershipProjection(ScopeType.ORGANIZATION, 10L, RoleKind.MEMBER)));
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
+
+            assertThat(result.orgRoleByScope()).containsEntry(ORG_10, "ADMIN");
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "ADMIN")).isTrue();
+        }
+
+        @Test
+        @DisplayName("親 ORG 非所属なら orgRoleByScope は空で閾値評価も false")
+        void 親ORG非所属なら閾値false() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(scopeAncestorResolver.resolveParentOrgIds(Set.of(TEAM_1)))
+                    .thenReturn(Map.of(TEAM_1, 10L));
+            when(userRoleRepository.findByUserIdAndOrganizationIdIn(eq(USER_ID), eq(Set.of(10L))))
+                    .thenReturn(List.of());
+            when(organizationRepository.findInactiveIdsByIdIn(Set.of(10L))).thenReturn(List.of());
+
+            UserScopeRoleSnapshot result = service.snapshotForUser(USER_ID, Set.of(), Set.of(TEAM_1));
+
+            assertThat(result.orgRoleByScope()).isEmpty();
+            assertThat(result.hasParentOrgRoleOrAbove(TEAM_1, "SUPPORTER")).isFalse();
+        }
+
+        @Test
+        @DisplayName("SystemAdmin は親 ORG 閾値も常に true")
+        void systemAdminは親ORG閾値も常にtrue() {
+            UserScopeRoleSnapshot admin = UserScopeRoleSnapshot.forSystemAdmin();
+
+            assertThat(admin.hasParentOrgRoleOrAbove(TEAM_1, "ADMIN")).isTrue();
+        }
+    }
+
+    @Nested
+    @DisplayName("CMP-028 Phase A: resolveVisibleLevels — 行に依存しない可視レベル集合")
+    class ResolveVisibleLevels {
+
+        private static final ReferenceType REF_TYPE = ReferenceType.ACTIVITY_RESULT;
+
+        /**
+         * AC-2（fail-closed）を赤にするテスト: 未認証（userId=null）では PUBLIC のみが返ることを検証する。
+         * 実装ミスで PUBLIC 以外（例: SCOPE_AFFILIATED）が漏れて返ると red になる。
+         */
+        @Test
+        @DisplayName("AC-2: 未認証（userId=null）は PUBLIC のみ（fail-closed）")
+        void 未認証はPUBLICのみ() {
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, null);
+
+            assertThat(result).containsExactly(StandardVisibility.PUBLIC);
+            verifyNoInteractions(userRoleRepository, roleRepository, scopeAncestorResolver,
+                    organizationRepository, membershipRepository);
+        }
+
+        /**
+         * AC-3（非所属）を赤にするテスト: スコープに所属しないユーザーは PUBLIC のみ。
+         * 実装ミスでロール不在なのに SCOPE_AFFILIATED 等が漏れると red になる。
+         */
+        @Test
+        @DisplayName("AC-3: 非所属ユーザーは PUBLIC のみ")
+        void 非所属ユーザーはPUBLICのみ() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of());
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).containsExactly(StandardVisibility.PUBLIC);
+        }
+
+        /**
+         * AC-3（MEMBER）を赤にするテスト: MEMBER は SCOPE_AFFILIATED / SUPPORTERS_AND_ABOVE /
+         * MEMBERS_AND_ABOVE を含み、DEPUTY_ADMINS_AND_ABOVE / ADMINS_AND_ABOVE は含まない。
+         * 実装ミスで閾値境界がずれると red になる。
+         */
+        @Test
+        @DisplayName("AC-3: MEMBER は MEMBERS_AND_ABOVE までを含み ADMIN 系は含まない")
+        void MEMBERの可視集合() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 50L)));
+            when(roleRepository.findAllById(Set.of(50L))).thenReturn(List.of(role(50L, "MEMBER")));
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).containsExactlyInAnyOrder(
+                    StandardVisibility.PUBLIC,
+                    StandardVisibility.SCOPE_AFFILIATED,
+                    StandardVisibility.SUPPORTERS_AND_ABOVE,
+                    StandardVisibility.MEMBERS_AND_ABOVE);
+            assertThat(result).doesNotContain(
+                    StandardVisibility.DEPUTY_ADMINS_AND_ABOVE, StandardVisibility.ADMINS_AND_ABOVE);
+        }
+
+        /**
+         * AC-3（最重要 / javadoc 是正確認）を赤にするテスト: ADMINS_AND_ABOVE は ADMIN のみで
+         * DEPUTY_ADMIN を<strong>含まない</strong>。実装が旧・誤った javadoc
+         * （「ADMIN / DEPUTY_ADMIN の両方」）通りに作られていると、DEPUTY_ADMIN でも
+         * ADMINS_AND_ABOVE が集合に入ってしまい red になる。
+         */
+        @Test
+        @DisplayName("AC-3: DEPUTY_ADMIN は DEPUTY_ADMINS_AND_ABOVE のみで ADMINS_AND_ABOVE は含まない")
+        void DEPUTY_ADMINはADMINS_AND_ABOVEを含まない() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 51L)));
+            when(roleRepository.findAllById(Set.of(51L))).thenReturn(List.of(role(51L, "DEPUTY_ADMIN")));
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).contains(StandardVisibility.DEPUTY_ADMINS_AND_ABOVE);
+            assertThat(result).doesNotContain(StandardVisibility.ADMINS_AND_ABOVE);
+        }
+
+        /**
+         * AC-3: ADMIN は全段（ADMINS_AND_ABOVE を含む）を得る。
+         */
+        @Test
+        @DisplayName("AC-3: ADMIN は ADMINS_AND_ABOVE を含む全段を得る")
+        void ADMINは全段() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 52L)));
+            when(roleRepository.findAllById(Set.of(52L))).thenReturn(List.of(role(52L, "ADMIN")));
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).containsExactlyInAnyOrder(
+                    StandardVisibility.PUBLIC,
+                    StandardVisibility.SCOPE_AFFILIATED,
+                    StandardVisibility.SUPPORTERS_AND_ABOVE,
+                    StandardVisibility.MEMBERS_AND_ABOVE,
+                    StandardVisibility.DEPUTY_ADMINS_AND_ABOVE,
+                    StandardVisibility.ADMINS_AND_ABOVE);
+        }
+
+        /**
+         * AC-3: SUPPORTER は SCOPE_AFFILIATED / SUPPORTERS_AND_ABOVE のみ。MEMBERS_AND_ABOVE は含まない。
+         */
+        @Test
+        @DisplayName("AC-3: SUPPORTER は SUPPORTERS_AND_ABOVE までを含み MEMBERS_AND_ABOVE は含まない")
+        void SUPPORTERの可視集合() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 53L)));
+            when(roleRepository.findAllById(Set.of(53L))).thenReturn(List.of(role(53L, "SUPPORTER")));
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).containsExactlyInAnyOrder(
+                    StandardVisibility.PUBLIC,
+                    StandardVisibility.SCOPE_AFFILIATED,
+                    StandardVisibility.SUPPORTERS_AND_ABOVE);
+            assertThat(result).doesNotContain(StandardVisibility.MEMBERS_AND_ABOVE);
+        }
+
+        /**
+         * AC-4（最重要）を赤にするテスト: SystemAdmin であっても、行に依存する値
+         * （PRIVATE / FOLLOWERS_ONLY / CUSTOM_TEMPLATE / CUSTOM）は集合に含まれてはならない。
+         * これらを含めてしまう実装が混入すると red になる（SQL 述語が誤って広がる事故の検出）。
+         */
+        @Test
+        @DisplayName("AC-4: SystemAdmin でも行依存値（PRIVATE等）は集合に含まれない")
+        void SystemAdminでも行依存値は含まれない() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(1L);
+
+            Set<StandardVisibility> result =
+                    service.resolveVisibleLevels(REF_TYPE, "TEAM", 1L, USER_ID);
+
+            assertThat(result).doesNotContain(
+                    StandardVisibility.PRIVATE,
+                    StandardVisibility.FOLLOWERS_ONLY,
+                    StandardVisibility.CUSTOM_TEMPLATE,
+                    StandardVisibility.CUSTOM,
+                    StandardVisibility.ORGANIZATION_AND_DESCENDANTS);
+            // SystemAdmin は snapshot の各判定メソッドが内部バイパスするため、ラダー段は全段 true になる。
+            assertThat(result).contains(
+                    StandardVisibility.PUBLIC,
+                    StandardVisibility.SCOPE_AFFILIATED,
+                    StandardVisibility.SUPPORTERS_AND_ABOVE,
+                    StandardVisibility.MEMBERS_AND_ABOVE,
+                    StandardVisibility.DEPUTY_ADMINS_AND_ABOVE,
+                    StandardVisibility.ADMINS_AND_ABOVE);
+        }
+
+        /**
+         * snapshot 版オーバーロードが SQL を再発行せず同一結果を返すことの確認
+         * （ActivityResultService / PhotoAlbumService が isSystemAdmin() 取得と可視集合取得を
+         * 1 回の snapshotForUser 呼び出しに統合できることの土台）。
+         */
+        @Test
+        @DisplayName("snapshot版オーバーロードは4引数版と同一結果")
+        void snapshot版と4引数版は同一結果() {
+            when(userRoleRepository.existsSystemAdminByUserId(USER_ID)).thenReturn(0L);
+            when(userRoleRepository.findByUserIdAndScopes(eq(USER_ID), eq(Set.of(1L)), eq(Set.of())))
+                    .thenReturn(List.of(projection(1L, 1L, null, 50L)));
+            when(roleRepository.findAllById(Set.of(50L))).thenReturn(List.of(role(50L, "MEMBER")));
+
+            UserScopeRoleSnapshot snapshot = service.snapshotForUser(USER_ID, Set.of(TEAM_1), Set.of(TEAM_1));
+            Set<StandardVisibility> viaSnapshot = service.resolveVisibleLevels(TEAM_1, snapshot);
+
+            assertThat(viaSnapshot).containsExactlyInAnyOrder(
+                    StandardVisibility.PUBLIC,
+                    StandardVisibility.SCOPE_AFFILIATED,
+                    StandardVisibility.SUPPORTERS_AND_ABOVE,
+                    StandardVisibility.MEMBERS_AND_ABOVE);
+        }
     }
 
     private static RoleEntity role(Long id, String name) {

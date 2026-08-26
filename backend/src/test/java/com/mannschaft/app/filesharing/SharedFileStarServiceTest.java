@@ -4,6 +4,7 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.filesharing.dto.StarResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileStarEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileStarRepository;
+import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileStarService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -34,6 +35,9 @@ class SharedFileStarServiceTest {
 
     @Mock
     private FileSharingMapper fileSharingMapper;
+
+    @Mock
+    private FolderScopeAccessGuard folderScopeAccessGuard;
 
     @InjectMocks
     private SharedFileStarService sharedFileStarService;

@@ -6,6 +6,7 @@ import com.mannschaft.app.bulletin.repository.BulletinThreadRepository;
 import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.dashboard.MinRole;
 import com.mannschaft.app.dashboard.ScopeType;
 import com.mannschaft.app.dashboard.ViewerRole;
@@ -76,6 +77,10 @@ class DashboardServiceVisibilityFilterTest {
     @Mock private PlatformAnnouncementRepository platformAnnouncementRepository;
     @Mock private UserRoleRepository userRoleRepository;
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
+    @Mock private ScopeWidgetSummaryService scopeWidgetSummaryService;
+    @Mock private ScopeActionRequiredFacade scopeActionRequiredFacade;
+    @Mock private SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+    @Mock private ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -84,8 +89,9 @@ class DashboardServiceVisibilityFilterTest {
     private static final Long TEAM_ID = 100L;
 
     /**
-     * チームスコープの全管理対象ウィジェット 8 件のデフォルト可視性マップを返す。
-     * （実コードの WidgetDefaultMinRoleMap.getDefaultsForScope と一致）
+     * チームスコープの全管理対象ウィジェット 10 件のデフォルト可視性マップを返す。
+     * （実コードの WidgetDefaultMinRoleMap.getDefaultsForScope と一致。
+     *  F08.7.1 で TEAM_TOURNAMENT_RECORD / TEAM_DIVISION_STANDINGS の 2 件追加）
      */
     private static Map<WidgetKey, MinRole> teamDefaultVisibilityMap() {
         Map<WidgetKey, MinRole> map = new EnumMap<>(WidgetKey.class);
@@ -97,6 +103,9 @@ class DashboardServiceVisibilityFilterTest {
         map.put(WidgetKey.TEAM_LATEST_POSTS, MinRole.SUPPORTER);
         map.put(WidgetKey.TEAM_UNREAD_THREADS, MinRole.MEMBER);
         map.put(WidgetKey.TEAM_MEMBER_ATTENDANCE, MinRole.MEMBER);
+        // F08.7.1: 大会成績ウィジェット
+        map.put(WidgetKey.TEAM_TOURNAMENT_RECORD, MinRole.SUPPORTER);
+        map.put(WidgetKey.TEAM_DIVISION_STANDINGS, MinRole.SUPPORTER);
         return map;
     }
 
@@ -118,6 +127,11 @@ class DashboardServiceVisibilityFilterTest {
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(widgetService.getWidgetSettings(eq(USER_ID), eq(ScopeType.TEAM), eq(TEAM_ID), anyBoolean()))
                 .willReturn(List.of());
+
+        // F22.1 第二波: SWIPE 可視性は素通し（filterIfVisible は arg3 をそのまま返す）。
+        given(swipeWidgetVisibilityResolver.resolve(any(), any())).willReturn(java.util.Map.of());
+        given(swipeWidgetVisibilityResolver.filterIfVisible(any(), any(), any(), any()))
+                .willAnswer(inv -> inv.getArgument(3));
     }
 
     // ════════════════════════════════════════════════
@@ -166,7 +180,7 @@ class DashboardServiceVisibilityFilterTest {
                     dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
 
             List<WidgetVisibilityRowDto> rows = response.getWidgetVisibility();
-            assertThat(rows).hasSize(8);
+            assertThat(rows).hasSize(10);
             assertThat(rows).allSatisfy(row -> assertThat(row.isVisible()).isTrue());
         }
     }
@@ -222,7 +236,7 @@ class DashboardServiceVisibilityFilterTest {
                     dashboardService.getTeamDashboard(USER_ID, TEAM_ID, "WEEK");
 
             List<WidgetVisibilityRowDto> rows = response.getWidgetVisibility();
-            assertThat(rows).hasSize(8);
+            assertThat(rows).hasSize(10);
 
             // PUBLIC のウィジェットだけ可視
             WidgetVisibilityRowDto noticesRow = rows.stream()

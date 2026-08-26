@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "草稿",
       "PUBLISHED": "进行中",
-      "CLOSED": "已截止"
+      "CLOSED": "已截止",
+      "ARCHIVED": "已归档"
     },
     "questionType": {
       "SINGLE_CHOICE": "单选",
@@ -17,7 +18,8 @@
       "label": "结果可见范围",
       "CREATOR_ONLY": "仅创建者",
       "RESPONDENTS": "仅回答者",
-      "ALL_MEMBERS": "全体成员"
+      "ALL_MEMBERS": "全体成员",
+      "AFTER_CLOSE": "截止后全体成员"
     },
     "unrespondedVisibility": {
       "label": "未回答者可见范围",
@@ -27,8 +29,10 @@
     },
     "list": {
       "filterAll": "全部",
+      "filterDraft": "草稿",
       "filterPlaceholder": "状态",
       "createButton": "创建问卷",
+      "editDraft": "添加/编辑题目",
       "answeredBadge": "已回答",
       "anonymous": "匿名",
       "responseCountUnit": "回答",
@@ -48,7 +52,13 @@
       "questions": "题目",
       "cancel": "取消",
       "save": "保存",
+      "saveDraft": "保存为草稿",
+      "saveAndPublish": "创建并发布",
+      "draftSaved": "草稿已保存",
+      "draftRestored": "已恢复上次输入",
+      "draftHint": "可以之后再添加题目。现在仅用标题保存即可。",
       "successToast": "问卷已创建",
+      "draftSuccessToast": "已保存为草稿。请添加题目后发布。",
       "failureToast": "无法创建问卷",
       "validation": {
         "titleRequired": "请输入标题",
@@ -57,7 +67,8 @@
         "questionsRequired": "请至少添加一道题目",
         "questionTextRequired": "请输入第{index}题的题目内容",
         "optionsTooFew": "第{index}题需要至少两个选项",
-        "optionEmpty": "第{index}题存在空选项"
+        "optionEmpty": "第{index}题存在空选项",
+        "questionTypeUnsupported": "问题 {index}：目前不支持日期题型，请重新选择题型。"
       },
       "questionEditor": {
         "empty": "暂无题目",
@@ -77,7 +88,10 @@
         "ratingScale": "评分（1〜5）",
         "textHint": "回答者将以自由文本作答",
         "dateHint": "回答者将选择日期作答"
-      }
+      },
+      "teamBreakdownEnabled": "按团队汇总",
+      "teamBreakdownHint": "按下属团队分别汇总回答结果（仅限组织分发）。",
+      "teamBreakdownAnonymousConflict": "匿名问卷无法使用团队汇总。"
     },
     "detail": {
       "scopeMissing": "缺少问卷范围信息",
@@ -88,6 +102,8 @@
       "responseCount": "回答",
       "anonymous": "匿名",
       "draftHint": "该问卷为草稿状态。发布前不会接受回答。",
+      "draftAddQuestionsHint": "发布前请添加题目。没有题目也可发布，但回答者将无法作答。",
+      "draftQuestionsSection": "添加题目",
       "publishButton": "发布",
       "publishSuccess": "问卷已发布",
       "publishFailed": "无法发布问卷",
@@ -151,6 +167,33 @@
       "unrespondedBadge": "未回答",
       "emptyResponded": "暂无回答者",
       "emptyUnresponded": "无未回答者"
+    },
+    "teamBreakdown": {
+      "title": "团队明细",
+      "reload": "重新加载",
+      "retry": "重试",
+      "fetchFailed": "加载团队明细失败。",
+      "forbidden": "您没有查看此明细的权限。",
+      "empty": "没有可用的团队明细数据。",
+      "masked": "回答者少于5人，已隐藏明细。",
+      "directMembers": "组织直属成员",
+      "totalRespondents": "回答者总数：{count}",
+      "respondentCount": "回答者 {count} 人",
+      "optionCount": "{count}（{percentage}%）",
+      "noOptionData": "暂无数据。",
+      "noQuestionData": "没有可汇总的题目。"
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "回答人数较少，暂不显示统计结果",
+        "description": "在匿名问卷中，回答后统计结果的变化可能会泄露个人的回答。回答人数达到 {threshold} 人后才会显示统计结果。（当前 {count} 人）"
+      },
+      "respondCta": "回答此问卷",
+      "editResponseCta": "修改我的回答",
+      "forbidden": {
+        "title": "您没有查看此问卷结果的权限",
+        "description": "此问卷仅面向特定人群发放，您不在发放对象中。如有疑问，请联系问卷创建者。"
+      }
     }
   }
 }

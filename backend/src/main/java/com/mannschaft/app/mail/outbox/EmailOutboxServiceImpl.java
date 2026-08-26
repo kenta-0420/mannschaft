@@ -9,19 +9,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import software.amazon.awssdk.services.sesv2.SesV2Client;
-import software.amazon.awssdk.services.sesv2.model.Body;
-import software.amazon.awssdk.services.sesv2.model.Content;
-import software.amazon.awssdk.services.sesv2.model.Destination;
-import software.amazon.awssdk.services.sesv2.model.EmailContent;
-import software.amazon.awssdk.services.sesv2.model.Message;
-import software.amazon.awssdk.services.sesv2.model.SendEmailRequest;
-import software.amazon.awssdk.services.sesv2.model.SendEmailResponse;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -60,15 +51,12 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
     private final EmailOutboxRepository repository;
     private final EncryptionService encryption;
     private final EmailTemplateRenderer renderer;
-    private final SesV2Client sesClient;
+    private final EmailTransport emailTransport;
     private final SesExceptionClassifier classifier;
     private final IdempotencyKeyGenerator keyGen;
     private final MeterRegistry meterRegistry;
     private final EmailOutboxMicrometerMetrics metrics;
     private final ObjectMapper objectMapper;
-
-    @Value("${mannschaft.email.from-address:noreply@mannschaft.app}")
-    private String fromAddress;
 
     // -----------------------------------------------------------------------
     // enqueue
@@ -151,10 +139,10 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
             RenderedEmail rendered = renderTemplate(row.getTemplateKind(), row.getLocale(), payloadVars);
 
             Instant sendStart = Instant.now();
-            SendEmailResponse response = sendViaSes(toAddress, rendered);
+            String messageId = emailTransport.send(toAddress, rendered.subject(), rendered.html());
             Duration sendDuration = Duration.between(sendStart, Instant.now());
 
-            row.markSent(response.messageId());
+            row.markSent(messageId);
             repository.save(row);
             meterRegistry.counter("email_outbox.sent",
                     "template", row.getTemplateKind()).increment();
@@ -286,6 +274,8 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
                  "GDPR_WITHDRAWAL_REMINDER",
                  "RESERVATION_EMERGENCY_REMINDER",
                  "RESERVATION_EMERGENCY_UNCONFIRMED",
+                 "RESERVATION_RECEIVED_NOTIFY",
+                 "GUARDIANSHIP_PROGRESSION_NOTICE",
                  "DIRECT_MAIL_AD" -> {
                 String subject = vars.get("subject");
                 String htmlBody = vars.get("body");
@@ -301,22 +291,6 @@ public class EmailOutboxServiceImpl implements EmailOutboxService {
                     "Unsupported templateKind: " + templateKind
             );
         };
-    }
-
-    /** SES v2 送信。永久/一時失敗の判定は呼び出し側で classifier.isPermanent() を通す。 */
-    private SendEmailResponse sendViaSes(String toAddress, RenderedEmail rendered) {
-        return sesClient.sendEmail(SendEmailRequest.builder()
-                .fromEmailAddress(fromAddress)
-                .destination(Destination.builder().toAddresses(toAddress).build())
-                .content(EmailContent.builder()
-                        .simple(Message.builder()
-                                .subject(Content.builder().data(rendered.subject()).build())
-                                .body(Body.builder()
-                                        .html(Content.builder().data(rendered.html()).build())
-                                        .build())
-                                .build())
-                        .build())
-                .build());
     }
 
     /**

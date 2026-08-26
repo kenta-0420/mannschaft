@@ -1,13 +1,16 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.filesharing.FileScopeType;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
+import com.mannschaft.app.filesharing.FileVisibilityRole;
 import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
+import com.mannschaft.app.filesharing.dto.SharedFileDownloadUrlResponse;
 import com.mannschaft.app.filesharing.dto.SharedFilePresignRequest;
 import com.mannschaft.app.filesharing.dto.SharedFilePresignResponse;
 import com.mannschaft.app.filesharing.dto.UpdateFileRequest;
@@ -25,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -43,6 +47,9 @@ public class SharedFileService {
     /** F13 Phase 5-a: presigned URL 発行に使用。 */
     private static final Duration PRESIGN_TTL = Duration.ofMinutes(15);
 
+    /** ダウンロード用 Presigned GET URL の有効期限。 */
+    private static final Duration PRESIGN_DOWNLOAD_TTL = Duration.ofMinutes(15);
+
     private final SharedFileRepository fileRepository;
     private final SharedFileVersionRepository versionRepository;
     private final FileSharingMapper fileSharingMapper;
@@ -50,6 +57,17 @@ public class SharedFileService {
     private final SharedFileQuotaService quotaService;
     /** F13 Phase 5-a: R2 presigned URL 発行に使用。 */
     private final R2StorageService r2StorageService;
+    /**
+     * ダウンロード URL 発行時のスコープ別閲覧認可に使用。
+     * ファイル → フォルダ → スコープの順に解決し、PERSONAL=本人以外404 / TEAM・ORG=非メンバー403 /
+     * 大会=連絡スペース認可を当てる（fileId を渡すだけで他チーム・他人のファイルを落とせないこと）。
+     */
+    private final SharedFolderQueryService folderQueryService;
+    /**
+     * F08.7.1 / 04: 大会・ディビジョンスコープのフォルダ／ファイルに対する横断認可ゲート。
+     * 大会以外（TEAM/ORG/PERSONAL）のスコープでは no-op（既存挙動を変えない）。
+     */
+    private final FolderScopeAccessGuard folderScopeAccessGuard;
 
     /**
      * ファイルアップロード用の Presigned PUT URL を発行する。
@@ -66,6 +84,8 @@ public class SharedFileService {
      */
     @Transactional(readOnly = true)
     public SharedFilePresignResponse presignUpload(Long folderId, Long actorId, SharedFilePresignRequest req) {
+        // F08.7.1 / 04 §5: 大会フォルダはアップロード認可（チーム代表＋主催者）を通す。
+        folderScopeAccessGuard.checkFolderPostByFolderId(folderId, actorId);
         // 1. フォルダ取得
         SharedFolderEntity folder = folderService.findFolderOrThrow(folderId);
 
@@ -73,13 +93,16 @@ public class SharedFileService {
         long fileSize = req.fileSize() != null ? req.fileSize() : 0L;
         quotaService.checkFileQuota(folder, fileSize);
 
-        // 3. スコープ解決
+        // 3. スコープ解決（物理パス用 scopeId）
+        // F08.7.1 §3.1: 大会/ディビジョンは scope_ref_id（tournament_id / division_id）を物理パスに使い、
+        // 大会単位の容量内訳を可視化できるようにする（クォータ計量は §6 で主催組織に集約・別レイヤ）。
         FileScopeType fileScopeType = folder.getScopeType();
-        String scopeTypeStr = fileScopeType.name(); // TEAM / ORGANIZATION / PERSONAL
+        String scopeTypeStr = fileScopeType.name(); // TEAM / ORGANIZATION / PERSONAL / TOURNAMENT(_DIVISION)
         Long scopeId = switch (fileScopeType) {
             case TEAM -> folder.getTeamId();
             case ORGANIZATION -> folder.getOrganizationId();
             case PERSONAL -> folder.getUserId();
+            case TOURNAMENT, TOURNAMENT_DIVISION -> folder.getScopeRefId();
         };
 
         // 4. fileKey 生成: files/{scopeType}/{scopeId}/{uuid}.{ext}
@@ -97,37 +120,152 @@ public class SharedFileService {
     }
 
     /**
+     * ファイルダウンロード用の Presigned GET URL を発行する。
+     *
+     * <p><b>根治</b>: FE {@code useFileSharingApi.getDownloadUrl(fileId)} が叩く
+     * {@code GET /api/v1/files/{fileId}/download-url} に対応する EP がこれまで存在せず、
+     * 非存在ルート → NoResourceFound → catch-all で 500 になっていた。本メソッドで実装する。</p>
+     *
+     * <p><b>認可（漏洩防止の核）</b>: file → folder を解決し、
+     * {@link SharedFolderQueryService#authorizeFolderViewById} でフォルダスコープ別の閲覧認可を当てる。
+     * PERSONAL は所有者本人以外 404（存在隠蔽）・TEAM/ORG は非メンバー 403・大会は連絡スペース認可。
+     * fileId を渡すだけで他チーム・他人のファイルを落とせないことを保証する。
+     * 認可を通過した場合のみ R2 Presigned GET URL を発行する。</p>
+     *
+     * @param fileId  ファイル ID
+     * @param actorId 操作者ユーザー ID（未認証は呼び出し元 Controller で 401 となるため非 null 想定）
+     * @return ダウンロード URL レスポンス（downloadUrl / expiresInSeconds）
+     */
+    public SharedFileDownloadUrlResponse presignDownload(Long fileId, Long actorId) {
+        // 1. ファイル取得（存在しなければ FILE_NOT_FOUND → 404）
+        SharedFileEntity file = findFileOrThrow(fileId);
+
+        // 2. 認可: file → folder → スコープ別閲覧認可（PERSONAL 404 / TEAM・ORG 403 / 大会 連絡スペース認可）
+        //    ＋ B: 最低可視ロール（ファイル値優先→フォルダ継承）＋ C: DL 禁止フラグ（実効=フォルダ OR ファイル）。
+        //    認可が通らなければここで例外が飛び、URL は一切発行されない（漏洩防止・DL 抑止）。
+        folderQueryService.authorizeDownload(fileId, actorId);
+
+        // 3. R2 Presigned GET URL 発行
+        String downloadUrl = r2StorageService.generateDownloadUrl(file.getFileKey(), PRESIGN_DOWNLOAD_TTL);
+
+        log.info("ファイル共有 download-url 発行: fileId={}, actorId={}, fileKey={}",
+                fileId, actorId, file.getFileKey());
+
+        return new SharedFileDownloadUrlResponse(downloadUrl, PRESIGN_DOWNLOAD_TTL.toSeconds());
+    }
+
+    /**
      * フォルダ内のファイル一覧を取得する。
      *
+     * <p><b>IDOR 封鎖</b>: 先頭で {@link SharedFolderQueryService#authorizeFolderViewById}
+     * を通し、フォルダスコープ別の閲覧認可を当てる。QueryService へ一本化することで、
+     * PERSONAL=本人以外404（存在隠蔽）/ TEAM・ORG=非メンバー403 / 大会=連絡スペース認可（guard 委譲）を
+     * 全スコープに一貫して適用する。</p>
+     *
      * @param folderId フォルダID
+     * @param userId   操作ユーザーID（未認証は呼び出し元 Controller で 401 となるため非 null 想定）
      * @return ファイルレスポンスリスト
      */
-    public List<FileResponse> listFiles(Long folderId) {
-        List<SharedFileEntity> files = fileRepository.findByFolderIdOrderByNameAsc(folderId);
+    public List<FileResponse> listFiles(Long folderId, Long userId) {
+        // IDOR 封鎖: フォルダスコープ別の閲覧認可（PERSONAL 本人以外404 / TEAM・ORG 非メンバー403 / 大会 連絡スペース認可）。
+        // authorizeFolderViewById は内部で大会スコープを FolderScopeAccessGuard へ委譲するため、大会の従来挙動は不変。
+        folderQueryService.authorizeFolderViewById(folderId, userId);
+        // B: フォルダより厳しいファイル個別 min role のメタ露出を封鎖する。ユーザーが満たすレベルをクエリ段階で絞る
+        //    （NULL ファイルはフォルダ継承で常に可視・全許可時＝SYSTEM_ADMIN/PERSONAL は従来の絞り無しクエリ）。
+        Set<FileVisibilityRole> allowedLevels = folderQueryService.resolveVisibleFileLevels(folderId, userId);
+        List<SharedFileEntity> files;
+        if (allowedLevels == null) {
+            files = fileRepository.findByFolderIdOrderByNameAsc(folderId); // 全許可（フィルタ不要）
+        } else if (allowedLevels.isEmpty()) {
+            files = fileRepository.findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(folderId); // NULL のみ可視
+        } else {
+            files = fileRepository.findVisibleByFolderIdAndLevels(folderId, allowedLevels);
+        }
         return fileSharingMapper.toFileResponseList(files);
     }
 
     /**
      * フォルダ内のファイル一覧をページングで取得する。
      *
+     * <p><b>IDOR 封鎖（情報漏洩根治）</b>: {@link #listFiles} と同じくフォルダスコープ別の閲覧認可を
+     * 先頭で通す（folderId を渡すだけで他チーム・他人のファイルメタを列挙できないことを保証する）。</p>
+     *
      * @param folderId フォルダID
+     * @param userId   操作ユーザーID
      * @param pageable ページング情報
      * @return ファイルレスポンスのページ
      */
-    public Page<FileResponse> listFilesPaged(Long folderId, Pageable pageable) {
-        Page<SharedFileEntity> page = fileRepository.findByFolderIdOrderByNameAsc(folderId, pageable);
+    public Page<FileResponse> listFilesPaged(Long folderId, Long userId, Pageable pageable) {
+        // IDOR 封鎖: フォルダスコープ別の閲覧認可（PERSONAL 本人以外404 / TEAM・ORG 非メンバー403 / 大会 連絡スペース認可）。
+        folderQueryService.authorizeFolderViewById(folderId, userId);
+        // B: ファイル個別 min role の絞り込みをクエリ段階で行い、ページング総件数・総ページ数を整合させる
+        //    （取得後 Java フィルタだと Page の件数がズレるため必ず SQL 段階で絞る）。
+        Set<FileVisibilityRole> allowedLevels = folderQueryService.resolveVisibleFileLevels(folderId, userId);
+        Page<SharedFileEntity> page;
+        if (allowedLevels == null) {
+            page = fileRepository.findByFolderIdOrderByNameAsc(folderId, pageable); // 全許可（フィルタ不要）
+        } else if (allowedLevels.isEmpty()) {
+            page = fileRepository.findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(folderId, pageable); // NULL のみ可視
+        } else {
+            page = fileRepository.findVisibleByFolderIdAndLevels(folderId, allowedLevels, pageable);
+        }
         return page.map(fileSharingMapper::toFileResponse);
     }
 
     /**
      * ファイル詳細を取得する。
      *
+     * <p><b>IDOR 封鎖（情報漏洩根治）</b>: まず {@link #findFileOrThrow} でファイル実在を確認（不在は 404）し、
+     * 次に解決した folderId で {@link SharedFolderQueryService#authorizeFolderViewById} を通す。順序は
+     * 「fileId 実在確認（404）→ フォルダ認可（TEAM/ORG 非メンバー403 / 他人 PERSONAL 404）」を保ち、存在秘匿の
+     * 一貫性を担保する。</p>
+     *
      * @param fileId ファイルID
+     * @param userId 操作ユーザーID
      * @return ファイルレスポンス
      */
-    public FileResponse getFile(Long fileId) {
+    public FileResponse getFile(Long fileId, Long userId) {
+        // 1. fileId 実在確認（不在は FILE_NOT_FOUND → 404）。
+        SharedFileEntity entity = findFileOrThrow(fileId);
+        // 2. file → folder を解決し、フォルダスコープ別の閲覧認可＋B: 最低可視ロール（ファイル値優先→フォルダ継承）を当てる（IDOR 封鎖）。
+        folderQueryService.authorizeFileViewById(fileId, userId);
+        return fileSharingMapper.toFileResponse(entity);
+    }
+
+    /**
+     * 共有リンク経由でファイル詳細を取得する（フォルダスコープ認可を <b>通さない</b>内部用）。
+     *
+     * <p>共有リンクはトークン自体が capability（所持と任意のパスワードで閲覧可）であり、
+     * 正当に発行されたリンクからの取得はフォルダスコープ認可の対象外とする。
+     * {@link SharedFileLinkService#accessLink} からのみ呼ぶこと。</p>
+     *
+     * @param fileId ファイル ID
+     * @return ファイルレスポンス
+     */
+    public FileResponse getFileForSharedLink(Long fileId) {
         SharedFileEntity entity = findFileOrThrow(fileId);
         return fileSharingMapper.toFileResponse(entity);
+    }
+
+    /**
+     * PR-D: 公開リンク経由の DL URL を発行する（フォルダスコープ認可を <b>通さない</b>）。
+     *
+     * <p>公開リンクはトークンが capability のため membership / role 認可は当てないが、
+     * <b>C: DL 禁止フラグ（download_disabled・実効 = フォルダ OR ファイル）は必ず貫通防御</b>する
+     * （{@link SharedFolderQueryService#checkDownloadDisabledForSharedLink}）。呼び出し側
+     * {@link SharedFileLinkService#presignDownloadForLink} が事前にリンクの download_allowed（B'）を
+     * 確認済みであること（download_allowed かつ NOT download_disabled の AND）を前提とする。</p>
+     *
+     * @param fileId ファイル ID
+     * @return ダウンロード URL レスポンス（downloadUrl / expiresInSeconds）
+     */
+    public SharedFileDownloadUrlResponse presignDownloadForSharedLink(Long fileId) {
+        SharedFileEntity file = findFileOrThrow(fileId);
+        // C: DL 禁止フラグ（フォルダ OR ファイル）。公開リンクでも C は貫通防御（C 優先の AND 評価）。
+        folderQueryService.checkDownloadDisabledForSharedLink(fileId);
+        String downloadUrl = r2StorageService.generateDownloadUrl(file.getFileKey(), PRESIGN_DOWNLOAD_TTL);
+        log.info("ファイル共有 公開リンク download-url 発行: fileId={}, fileKey={}", fileId, file.getFileKey());
+        return new SharedFileDownloadUrlResponse(downloadUrl, PRESIGN_DOWNLOAD_TTL.toSeconds());
     }
 
     /**
@@ -142,6 +280,8 @@ public class SharedFileService {
      */
     @Transactional
     public FileResponse createFile(Long userId, CreateFileRequest request) {
+        // F08.7.1 / 04 §5: 大会フォルダはアップロード認可を通す。
+        folderScopeAccessGuard.checkFolderPostByFolderId(request.getFolderId(), userId);
         // F13 Phase 4-ε: クォータ事前チェック
         SharedFolderEntity folder = folderService.findFolderOrThrow(request.getFolderId());
         long fileSize = request.getFileSize() != null ? request.getFileSize() : 0L;
@@ -154,6 +294,9 @@ public class SharedFileService {
                 .fileSize(request.getFileSize())
                 .contentType(request.getContentType())
                 .description(request.getDescription())
+                // B/C: ファイル個別の最低可視ロール・DL 禁止フラグ（未指定は NULL / false = 従来挙動）。
+                .minVisibleRole(request.getMinVisibleRole())
+                .downloadDisabled(Boolean.TRUE.equals(request.getDownloadDisabled()))
                 .createdBy(userId)
                 .build();
 
@@ -186,6 +329,13 @@ public class SharedFileService {
      */
     @Transactional
     public FileResponse updateFile(Long fileId, UpdateFileRequest request) {
+        // F08.7.1 / 04 §5: 大会フォルダ配下のファイル更新は編集認可を通す。
+        Long actorId = SecurityUtils.getCurrentUserIdOrNull();
+        folderScopeAccessGuard.checkFolderPostByFileId(fileId, actorId);
+        // 別フォルダへ移動する場合は移動先フォルダの投稿認可も通す（大会フォルダへの持ち込み防止）。
+        if (request.getFolderId() != null) {
+            folderScopeAccessGuard.checkFolderPostByFolderId(request.getFolderId(), actorId);
+        }
         SharedFileEntity entity = findFileOrThrow(fileId);
 
         if (request.getName() != null) {
@@ -196,6 +346,13 @@ public class SharedFileService {
         }
         if (request.getFolderId() != null) {
             entity.moveToFolder(request.getFolderId());
+        }
+        // B/C: 指定時のみ更新（PATCH 意味論。未指定は現状維持）。
+        if (request.getMinVisibleRole() != null) {
+            entity.changeMinVisibleRole(request.getMinVisibleRole());
+        }
+        if (request.getDownloadDisabled() != null) {
+            entity.changeDownloadDisabled(request.getDownloadDisabled());
         }
 
         SharedFileEntity saved = fileRepository.save(entity);
@@ -215,6 +372,8 @@ public class SharedFileService {
      */
     @Transactional
     public void deleteFile(Long fileId, Long actorId) {
+        // F08.7.1 / 04 §5: 大会フォルダ配下のファイル削除は編集認可を通す。
+        folderScopeAccessGuard.checkFolderPostByFileId(fileId, actorId);
         SharedFileEntity entity = findFileOrThrow(fileId);
         long fileSize = entity.getFileSize() != null ? entity.getFileSize() : 0L;
 

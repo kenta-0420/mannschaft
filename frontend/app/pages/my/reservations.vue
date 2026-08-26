@@ -2,11 +2,13 @@
 import type { ReservationResponse } from '~/types/reservation'
 definePageMeta({ middleware: 'auth' })
 
+const { t } = useI18n()
 const { listMyReservations } = useReservationApi()
 const { showError } = useNotification()
 
 const reservations = ref<ReservationResponse[]>([])
 const loading = ref(false)
+const showGuide = ref(false)
 
 async function load() {
   loading.value = true
@@ -14,7 +16,7 @@ async function load() {
     const res = await listMyReservations()
     reservations.value = res.data
   } catch {
-    showError('予約情報の取得に失敗しました')
+    showError(t('reservation.message.my_load_failed'))
   } finally {
     loading.value = false
   }
@@ -35,13 +37,18 @@ function getStatusClass(s: string) {
   }
 }
 
+function statusLabel(s?: string): string {
+  if (!s) return ''
+  const known = ['PENDING', 'CONFIRMED', 'CANCELLED', 'COMPLETED', 'NO_SHOW']
+  return known.includes(s) ? t(`reservation.status.${s}`) : s
+}
+
 onMounted(() => load())
 </script>
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <BackButton to="/my" />
-    <PageHeader title="マイ予約" />
+    <PageHeader :title="t('reservation.page.my_title')" back-to="/my" help @help="showGuide = true" />
     <PageLoading v-if="loading" size="40px" />
     <div v-else class="flex flex-col gap-3">
       <SectionCard
@@ -49,14 +56,15 @@ onMounted(() => load())
         :key="r.id"
       >
         <div class="flex items-center justify-between">
-          <h3 class="text-sm font-semibold">{{ r.lineName }}</h3>
-          <span :class="getStatusClass(r.status)" class="rounded px-2 py-0.5 text-xs font-medium">{{
-            r.status
+          <h3 class="text-sm font-semibold">{{ r.slot?.lineName }}</h3>
+          <span :class="getStatusClass(r.status?.status ?? '')" class="rounded px-2 py-0.5 text-xs font-medium">{{
+            statusLabel(r.status?.status)
           }}</span>
         </div>
-        <p class="mt-1 text-xs text-surface-400">{{ r.date }} {{ r.startTime }} - {{ r.endTime }}</p>
+        <p class="mt-1 text-xs text-surface-400">{{ r.slot?.slotDate }} {{ r.slot?.startTime }} - {{ r.slot?.endTime }}</p>
       </SectionCard>
-      <DashboardEmptyState v-if="reservations.length === 0" icon="pi-calendar" message="予約がありません" />
+      <DashboardEmptyState v-if="reservations.length === 0" icon="pi-calendar" :message="t('reservation.empty.no_my_reservations')" />
     </div>
+    <ReservationGuideModal v-model:visible="showGuide" />
   </div>
 </template>

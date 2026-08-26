@@ -73,6 +73,10 @@ class DashboardServiceAdditionalTest {
     @Mock private AnnouncementFeedQueryRepository announcementFeedQueryRepository;
     @Mock private com.mannschaft.app.dashboard.service.RoleResolver roleResolver;
     @Mock private com.mannschaft.app.dashboard.service.WidgetVisibilityResolver widgetVisibilityResolver;
+    @Mock private com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService scopeWidgetSummaryService;
+    @Mock private com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
+    @Mock private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+    @Mock private com.mannschaft.app.common.visibility.ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -92,6 +96,26 @@ class DashboardServiceAdditionalTest {
                 org.mockito.ArgumentMatchers.anyString(),
                 org.mockito.ArgumentMatchers.anyLong()))
                 .thenReturn(java.util.Map.of());
+
+        // F22.1 第二波: SWIPE 可視性は素通し。
+        org.mockito.Mockito.lenient().when(swipeWidgetVisibilityResolver.resolve(
+                org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn(java.util.Map.of());
+        org.mockito.Mockito.lenient().when(swipeWidgetVisibilityResolver.filterIfVisible(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(3));
+
+        // CMP-017b 第五隊: filterAccessible は既定で「渡された ID を全て可視」として通す。
+        org.mockito.Mockito.lenient()
+                .when(contentVisibilityChecker.filterAccessible(any(), org.mockito.ArgumentMatchers.anyCollection(), any()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<Long> ids = inv.getArgument(1);
+                    return new java.util.HashSet<>(ids);
+                });
     }
 
     private void stubCommonPersonal() {
@@ -102,8 +126,8 @@ class DashboardServiceAdditionalTest {
         given(notificationRepository.countByUserId(USER_ID)).willReturn(0L);
         given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
     }
@@ -224,8 +248,8 @@ class DashboardServiceAdditionalTest {
             given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
                     .willReturn(List.of(post));
             given(chatChannelMemberRepository.findByUserId(USER_ID)).willReturn(List.of());
-            given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any()))
-                    .willReturn(List.of());
+            given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any(), any()))
+                    .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
 
             // When
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");

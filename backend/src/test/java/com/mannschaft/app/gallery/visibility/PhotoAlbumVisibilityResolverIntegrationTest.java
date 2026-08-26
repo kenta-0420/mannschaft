@@ -2,21 +2,15 @@ package com.mannschaft.app.gallery.visibility;
 
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -32,30 +26,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * で users / organizations / teams / team_org_memberships / roles / user_roles
  * および photo_albums を直接 INSERT する。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("PhotoAlbumVisibilityResolver 結合テスト")
-class PhotoAlbumVisibilityResolverIntegrationTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+class PhotoAlbumVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ContentVisibilityChecker checker;
@@ -75,18 +49,10 @@ class PhotoAlbumVisibilityResolverIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW())")
-                .executeUpdate();
-        em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('ADMIN', '管理者', 2, 0, NOW(), NOW())")
-                .executeUpdate();
-        em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
-                .executeUpdate();
+        // 冪等化: insertRoleIfAbsent 参照（存在確認してから INSERT。INSERT IGNORE は使用禁止）
+        insertRoleIfAbsent("SYSTEM_ADMIN", "システム管理者", 1, true);
+        insertRoleIfAbsent("ADMIN", "管理者", 2, false);
+        insertRoleIfAbsent("MEMBER", "メンバー", 4, false);
         em.flush();
 
         memberRoleId = ((Number) em.createNativeQuery(
@@ -146,8 +112,8 @@ class PhotoAlbumVisibilityResolverIntegrationTest {
     private Long insertOrganization(String name) {
         em.createNativeQuery(
                 "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, created_at, updated_at) "
-                        + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
+                        + "supporter_enabled, version, slug, created_at, updated_at) "
+                        + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
@@ -158,8 +124,8 @@ class PhotoAlbumVisibilityResolverIntegrationTest {
 
     private Long insertTeam(String name) {
         em.createNativeQuery(
-                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, created_at, updated_at) "
-                        + "VALUES (:name, 'PUBLIC', 1, 0, 0, NOW(), NOW())")
+                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, created_at, updated_at) "
+                        + "VALUES (:name, 'PUBLIC', 1, 0, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
@@ -298,4 +264,27 @@ class PhotoAlbumVisibilityResolverIntegrationTest {
         assertThat(checker.canView(ReferenceType.PHOTO_ALBUM, 999_999L, sysAdminUserId)).isFalse();
         assertThat(checker.canView(ReferenceType.PHOTO_ALBUM, 999_999L, null)).isFalse();
     }
+
+    private void insertRoleIfAbsent(String name, String displayName, int priority, boolean isSystem) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。INSERT IGNORE は
+        // 重複キー以外にもデータ切り詰め・NOT NULL違反等の異常を警告に格下げして黙って
+        // 通してしまうため使用禁止。CI shard 再編成で同居テストが変わり得るため
+        // 事前に SELECT で存在確認する）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
+        em.createNativeQuery(
+                        "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                                + "VALUES (:name, :dn, :priority, :sys, NOW(), NOW())")
+                .setParameter("name", name)
+                .setParameter("dn", displayName)
+                .setParameter("priority", priority)
+                .setParameter("sys", isSystem ? 1 : 0)
+                .executeUpdate();
+    }
+
 }

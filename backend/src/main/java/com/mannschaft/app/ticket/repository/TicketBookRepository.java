@@ -85,8 +85,15 @@ public interface TicketBookRepository extends JpaRepository<TicketBookEntity, Lo
 
     /**
      * 期限切れ事前通知用: 指定日数後に期限を迎えるチケットを検索する。
+     *
+     * <p>DB 依存の日付関数（MySQL {@code DATEDIFF} / Hibernate {@code timestampdiff}）を使うと
+     * H2 等の他方言でクエリ検証に失敗するため、判定基準となる期限到来日の
+     * 開始/終了時刻（半開区間 [from, to)）を呼び出し側で算出して比較する。</p>
+     *
+     * @param from 対象日の開始時刻（00:00:00）
+     * @param to   対象日の翌日の開始時刻（00:00:00、排他）
      */
-    @Query("SELECT b FROM TicketBookEntity b WHERE b.status = 'ACTIVE' AND b.expiresAt IS NOT NULL " +
-           "AND FUNCTION('DATEDIFF', b.expiresAt, :now) = :days")
-    List<TicketBookEntity> findBooksExpiringInDays(@Param("now") LocalDateTime now, @Param("days") int days);
+    @Query("SELECT b FROM TicketBookEntity b WHERE b.status = 'ACTIVE' AND b.expiresAt IS NOT NULL "
+            + "AND b.expiresAt >= :from AND b.expiresAt < :to")
+    List<TicketBookEntity> findBooksExpiringBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
 }

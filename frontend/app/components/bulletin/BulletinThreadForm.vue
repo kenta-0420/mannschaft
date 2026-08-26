@@ -15,8 +15,9 @@ const emit = defineEmits<{
 
 const { createThread, getCategories } = useBulletinApi()
 const { showSuccess, showError } = useNotification()
+const { t } = useI18n()
 // VILLAGE スコープはお知らせウィジェット非対応のため、TEAM/ORGANIZATION 時のみ有効な scopeId を渡す
-const announceScopeId = typeof props.scopeId === 'number' ? props.scopeId : 0
+const announceScopeId = typeof props.scopeId !== 'undefined' ? String(props.scopeId) : ''
 const { createAnnouncement } = useAnnouncementFeed(
   props.scopeType as 'TEAM' | 'ORGANIZATION',
   announceScopeId,
@@ -31,6 +32,8 @@ const categoryId = ref<number | undefined>(undefined)
 const priority = ref<BulletinPriority>('INFO')
 const categories = ref<BulletinCategory[]>([])
 const submitting = ref(false)
+/** アップロード中フラグ（ファイルが存在する場合のみ true になる） */
+const uploading = ref(false)
 // お知らせウィジェットに表示するフラグ
 const displayInAnnouncement = ref(false)
 
@@ -76,9 +79,18 @@ function onFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   if (!input.files) return
   const newFiles = Array.from(input.files)
-  // 合計5ファイル以下
   const remaining = 5 - attachedFiles.value.length
-  attachedFiles.value.push(...newFiles.slice(0, remaining))
+  // サイズ超過チェック（10MB）
+  for (const file of newFiles.slice(0, remaining)) {
+    if (file.size > 10 * 1024 * 1024) {
+      showError(t('bulletin.attachment.sizeLimitExceeded', { name: file.name }))
+      continue
+    }
+    attachedFiles.value.push(file)
+  }
+  if (newFiles.length > remaining) {
+    showError(t('bulletin.attachment.limitExceeded'))
+  }
   input.value = '' // リセット
 }
 
@@ -87,11 +99,11 @@ function removeFile(index: number) {
 }
 
 const priorityOptions = [
-  { label: '緊急', value: 'CRITICAL' },
-  { label: '重要', value: 'IMPORTANT' },
-  { label: '注意', value: 'WARNING' },
-  { label: '情報', value: 'INFO' },
-  { label: '低', value: 'LOW' },
+  { label: t('bulletin.archive.priority.CRITICAL'), value: 'CRITICAL' },
+  { label: t('bulletin.archive.priority.IMPORTANT'), value: 'IMPORTANT' },
+  { label: t('bulletin.archive.priority.WARNING'), value: 'WARNING' },
+  { label: t('bulletin.archive.priority.INFO'), value: 'INFO' },
+  { label: t('bulletin.archive.priority.LOW'), value: 'LOW' },
 ]
 
 async function loadCategories() {
@@ -104,18 +116,29 @@ async function loadCategories() {
 async function onSubmit() {
   if (!title.value.trim() || !body.value.trim() || submitting.value) return
   submitting.value = true
+  if (attachedFiles.value.length > 0) uploading.value = true
   try {
-    const res = await createThread(props.scopeType, props.scopeId, {
-      title: title.value.trim(),
-      body: body.value.trim(),
-      categoryId: categoryId.value,
-      priority: priority.value,
-    }, attachedFiles.value)
+    // (1) スレッド作成 → threadId 取得 → (2) presign→R2直PUT→確定
+    const { thread, uploadErrors } = await createThread(
+      props.scopeType,
+      props.scopeId,
+      {
+        title: title.value.trim(),
+        body: body.value.trim(),
+        categoryId: categoryId.value,
+        priority: priority.value,
+      },
+      attachedFiles.value,
+    )
+    // アップロード失敗があれば1件ずつ通知（スレッド作成自体は成功）
+    for (const name of uploadErrors) {
+      showError(t('bulletin.attachment.uploadFailed', { name }))
+    }
     // お知らせウィジェットに表示する場合、スレッド作成後に登録
-    if (displayInAnnouncement.value && res?.data?.id) {
+    if (displayInAnnouncement.value && thread?.id) {
       await createAnnouncement({
         sourceType: 'BULLETIN_THREAD',
-        sourceId: res.data.id,
+        sourceId: thread.id,
       }).catch(() => {
         // お知らせ登録失敗は投稿自体には影響しない（silent fail）
         showError('お知らせへの登録に失敗しました。後から手動で登録してください。')
@@ -135,6 +158,7 @@ async function onSubmit() {
     showError('作成に失敗しました')
   } finally {
     submitting.value = false
+    uploading.value = false
   }
 }
 
@@ -170,17 +194,22 @@ watch(visible, (v) => {
 
       <!-- 添付ファイル -->
       <div>
-        <label class="mb-1 block text-sm font-medium">添付ファイル（最大5件・各6MB以下）</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('bulletin.attachment.label') }}</label>
         <div class="flex flex-col gap-2">
           <div v-for="(file, i) in attachedFiles" :key="i" class="flex items-center gap-2 rounded border border-surface-200 px-3 py-2 text-sm dark:border-surface-700">
             <i class="pi pi-file text-surface-400" />
             <span class="flex-1 truncate">{{ file.name }}</span>
             <span class="text-surface-400">{{ (file.size / 1024 / 1024).toFixed(1) }}MB</span>
-            <Button icon="pi pi-times" text rounded severity="danger" size="small" @click="removeFile(i)" />
+            <Button icon="pi pi-times" text rounded severity="danger" size="small" :disabled="submitting" @click="removeFile(i)" />
+          </div>
+          <!-- アップロード進捗インジケーター -->
+          <div v-if="uploading" class="flex items-center gap-2 text-sm text-surface-400">
+            <i class="pi pi-spin pi-spinner" />
+            <span>{{ $t('bulletin.attachment.uploading') }}</span>
           </div>
           <Button
-            v-if="attachedFiles.length < 5"
-            label="ファイルを追加"
+            v-if="attachedFiles.length < 5 && !submitting"
+            :label="$t('bulletin.attachment.addFile')"
             icon="pi pi-paperclip"
             text
             size="small"
@@ -198,7 +227,7 @@ watch(visible, (v) => {
       </div>
 
       <!-- お知らせウィジェット表示フラグ（VILLAGE スコープでは非表示） -->
-      <AnnouncementAnnouncementToggle v-if="supportsAnnouncement" v-model="displayInAnnouncement" />
+      <AnnouncementToggle v-if="supportsAnnouncement" v-model="displayInAnnouncement" />
 
       <!-- 下書き保存インジケーター -->
       <div v-if="title || body" class="text-right text-xs text-surface-400">

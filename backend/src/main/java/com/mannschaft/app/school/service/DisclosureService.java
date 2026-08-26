@@ -1,5 +1,6 @@
 package com.mannschaft.app.school.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.school.dto.DisclosedEvaluationResponse;
 import com.mannschaft.app.school.dto.DisclosureRequest;
@@ -36,6 +37,7 @@ public class DisclosureService {
     private final AttendanceDisclosureRecordRepository disclosureRepository;
     private final AttendanceRequirementEvaluationRepository evaluationRepository;
     private final AttendanceRequirementRuleRepository ruleRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * 評価結果を生徒・保護者へ開示する。
@@ -49,6 +51,8 @@ public class DisclosureService {
     @Transactional
     public DisclosureResponse disclose(Long teamId, Long evaluationId,
                                        DisclosureRequest req, Long teacherUserId) {
+        // per-scope 認可（A-1: 学校チームの ADMIN/DEPUTY_ADMIN ＝教員相当。SYSTEM_ADMIN 短絡）
+        checkSchoolAdminAccess(teacherUserId, teamId);
         AttendanceRequirementEvaluationEntity evaluation = findAndVerifyEvaluation(teamId, evaluationId);
 
         AttendanceDisclosureRecordEntity record = AttendanceDisclosureRecordEntity.builder()
@@ -80,6 +84,8 @@ public class DisclosureService {
     @Transactional
     public DisclosureResponse withhold(Long teamId, Long evaluationId,
                                        WithholdRequest req, Long teacherUserId) {
+        // per-scope 認可（A-1: 学校チームの ADMIN/DEPUTY_ADMIN ＝教員相当。SYSTEM_ADMIN 短絡）
+        checkSchoolAdminAccess(teacherUserId, teamId);
         AttendanceRequirementEvaluationEntity evaluation = findAndVerifyEvaluation(teamId, evaluationId);
 
         AttendanceDisclosureRecordEntity record = AttendanceDisclosureRecordEntity.builder()
@@ -99,11 +105,14 @@ public class DisclosureService {
     /**
      * 開示・非開示判断の履歴を取得する（教員のみ）。
      *
-     * @param teamId       チームID（認可チェック用）
-     * @param evaluationId 評価ID
+     * @param teamId         チームID（認可チェック用）
+     * @param evaluationId   評価ID
+     * @param operatorUserId 操作者のユーザー ID（per-scope 認可用）
      * @return 開示判断履歴のリスト（判断日降順）
      */
-    public List<DisclosureResponse> getDisclosureHistory(Long teamId, Long evaluationId) {
+    public List<DisclosureResponse> getDisclosureHistory(Long teamId, Long evaluationId, Long operatorUserId) {
+        // per-scope 認可（A-1: 学校チームの ADMIN/DEPUTY_ADMIN ＝教員相当。SYSTEM_ADMIN 短絡）
+        checkSchoolAdminAccess(operatorUserId, teamId);
         findAndVerifyEvaluation(teamId, evaluationId);
 
         return disclosureRepository.findByEvaluationIdOrderByDecidedAtDesc(evaluationId)
@@ -140,6 +149,26 @@ public class DisclosureService {
     // ========================================
     // プライベートヘルパー
     // ========================================
+
+    /**
+     * 出席開示操作に対する per-scope 認可を強制する（認可根治 Phase 3-a / 論点 A 決定 = A-1）。
+     *
+     * <p>Controller の {@code @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")} は
+     * 幻ロール TEACHER を参照しており、Service 層で明示的に per-scope 認可する。
+     * 設計書 §7.1 の決定（A-1）に基づき、
+     * 「学校チーム（クラス）の ADMIN/DEPUTY_ADMIN ＝教員相当」として扱う。
+     * SYSTEM_ADMIN は短絡的に許可し、それ以外は当該チームの ADMIN/DEPUTY_ADMIN
+     * でなければ {@code COMMON_002}（403）をスローする。</p>
+     *
+     * @param userId 操作ユーザー ID
+     * @param teamId 学校チーム ID
+     */
+    private void checkSchoolAdminAccess(Long userId, Long teamId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+    }
 
     /**
      * 評価を取得し、チームIDとの整合性を検証する。

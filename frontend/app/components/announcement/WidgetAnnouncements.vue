@@ -3,7 +3,7 @@ import type { AnnouncementScopeType } from '~/types/announcement'
 
 const props = defineProps<{
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
   /** 表示件数（デフォルト 5） */
   limit?: number
 }>()
@@ -11,8 +11,17 @@ const props = defineProps<{
 const { t } = useI18n()
 const router = useRouter()
 
-const { feed, meta, loading, error, fetchFeed, togglePin, deleteAnnouncement, markAsRead, markAllAsRead } =
-  useAnnouncementFeed(props.scopeType, props.scopeId)
+const {
+  feed,
+  meta,
+  loading,
+  error,
+  fetchFeed,
+  togglePin,
+  deleteAnnouncement,
+  markAsReadBeforeOpen,
+  markAllAsRead,
+} = useAnnouncementFeed(props.scopeType, props.scopeId)
 
 const { isAdmin } = useRoleAccess(
   props.scopeType === 'TEAM' ? 'team' : 'organization',
@@ -42,9 +51,10 @@ onMounted(() => {
 
 /** アイテムクリック: 既読マーク → 元コンテンツへ遷移 */
 async function onItemClick(item: (typeof feed.value)[number]) {
-  if (!item.isRead) {
-    await markAsRead(item.id)
-  }
+  // #2495: 期限切れ・削除で既読 API が ANNOUNCE_001 を返した場合は遷移せず、
+  // 一覧から取り除いてトーストで知らせる（判定は composable 側に一元化）。
+  const canOpen = await markAsReadBeforeOpen(item)
+  if (!canOpen) return
   router.push(item.sourceUrl)
 }
 
@@ -126,7 +136,7 @@ async function onMarkAllRead() {
 
     <!-- お知らせ一覧 -->
     <div v-else role="list" class="divide-y divide-surface-100 dark:divide-surface-700">
-      <AnnouncementAnnouncementItem
+      <AnnouncementItem
         v-for="item in displayItems"
         :key="item.id"
         :item="item"

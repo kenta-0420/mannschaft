@@ -1,5 +1,6 @@
 package com.mannschaft.app.village.dto;
 
+import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
 import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
 import jakarta.validation.constraints.Size;
@@ -21,6 +22,8 @@ public record VillageUpdateRequest(
         VillageJoinPolicy joinPolicy,
 
         VillageVisibility visibility,
+
+        VillageBulletinVisibility bulletinVisibility,
 
         @Size(max = 40)
         String category,

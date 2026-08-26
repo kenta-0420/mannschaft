@@ -171,7 +171,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
     async addItem(
       scopeType: ScopeType,
       folderId: number,
-      scopeId: number,
+      scopeId: string,
     ): Promise<void> {
       const api = useApi()
       const res = await api<{ data: ScopeFolder }>(
@@ -189,7 +189,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
     async removeItem(
       scopeType: ScopeType,
       folderId: number,
-      scopeId: number,
+      scopeId: string,
     ): Promise<void> {
       const api = useApi()
       await api(`${BASE_PATH}/${folderId}/items/${scopeId}`, { method: 'DELETE' })
@@ -204,7 +204,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
      */
     async bulkAssign(
       folderId: number,
-      scopeIds: number[],
+      scopeIds: string[],
       scopeType: ScopeType,
     ): Promise<BulkAssignResponse> {
       const api = useApi()
@@ -276,7 +276,7 @@ export const useScopeFoldersStore = defineStore('scopeFolders', {
     removeScopeIdFromOtherFolders(
       scopeType: ScopeType,
       keepFolderId: number,
-      scopeId: number,
+      scopeId: string,
     ) {
       const list = scopeType === 'TEAM' ? this.myTeamFolders : this.myOrgFolders
       for (const folder of list) {

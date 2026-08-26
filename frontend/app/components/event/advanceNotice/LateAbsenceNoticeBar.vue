@@ -23,7 +23,7 @@ import AbsenceNoticeDialog from './AbsenceNoticeDialog.vue'
  */
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   eventId: number
   /** 自分の現在の RSVP ステータス（未回答時 null）。 */
   currentUserRsvpStatus?: RsvpResponse | null

@@ -9,6 +9,8 @@ import com.mannschaft.app.notification.dto.NotificationStatsResponse;
 import com.mannschaft.app.notification.dto.SnoozeRequest;
 import com.mannschaft.app.notification.dto.UnreadCountResponse;
 import com.mannschaft.app.notification.service.NotificationService;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -23,8 +25,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,11 +60,20 @@ class NotificationControllerTest {
         return NotificationResponse.builder()
                 .id(NOTIFICATION_ID)
                 .userId(USER_ID)
-                .content(new NotificationResponse.NotificationContentDto(
-                        "SCHEDULE_REMINDER", "NORMAL", "リマインド", "出欠未回答です", "/schedules/10"))
-                .source(new NotificationResponse.NotificationSourceDto("SCHEDULE", 10L))
-                .scope(new NotificationResponse.NotificationScopeDto("TEAM", 5L, 2L))
-                .status(new NotificationResponse.NotificationStatusDto(false, null, null, null))
+                .notificationType("SCHEDULE_REMINDER")
+                .priority("NORMAL")
+                .title("リマインド")
+                .body("出欠未回答です")
+                .actionUrl("/schedules/10")
+                .sourceType("SCHEDULE")
+                .sourceId(10L)
+                .scopeType("TEAM")
+                .scopeId(5L)
+                .actorId(2L)
+                .isRead(false)
+                .readAt(null)
+                .channelsSent(null)
+                .snoozedUntil(null)
                 .createdAt(LocalDateTime.now())
                 .build();
     }
@@ -194,7 +209,7 @@ class NotificationControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 // Given
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                SnoozeRequest request = new SnoozeRequest(LocalDateTime.now().plusHours(1));
+                SnoozeRequest request = new SnoozeRequest(OffsetDateTime.now(ZoneOffset.ofHours(9)).plusHours(1));
                 NotificationResponse resp = createNotificationResponse();
                 given(notificationService.snoozeNotification(USER_ID, NOTIFICATION_ID, request))
                         .willReturn(resp);
@@ -248,8 +263,25 @@ class NotificationControllerTest {
         @Mock
         private NotificationService adminNotificationService;
 
+        // 認可根治 Wave5: getStats は SYSTEM_ADMIN 限定になり AccessControlService を入口で呼ぶ
+        @Mock
+        private com.mannschaft.app.common.AccessControlService accessControlService;
+
         @InjectMocks
         private NotificationAdminController adminController;
+
+        @BeforeEach
+        void setUpSecurityContext() {
+            // 認可根治 Wave5: getStats が SecurityUtils.getCurrentUserId() を参照するため
+            // 認証済みコンテキストを用意する（未設定だと COMMON_000 で落ちる）。
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
+        }
+
+        @AfterEach
+        void clearSecurityContext() {
+            SecurityContextHolder.clearContext();
+        }
 
         @Test
         @DisplayName("統計取得_正常_200返却")
@@ -266,6 +298,8 @@ class NotificationControllerTest {
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
             assertThat(result.getBody().getData().getTotalNotifications()).isEqualTo(100L);
             assertThat(result.getBody().getData().getUnreadCount()).isEqualTo(30L);
+            // SYSTEM_ADMIN 認可が入口で呼ばれていること
+            verify(accessControlService).checkSystemAdmin(USER_ID);
         }
     }
 }

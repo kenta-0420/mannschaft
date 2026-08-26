@@ -1,5 +1,6 @@
 package com.mannschaft.app.forms;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.forms.dto.CreateFormSubmissionRequest;
 import com.mannschaft.app.forms.dto.FormSubmissionResponse;
@@ -47,6 +48,9 @@ class FormSubmissionServiceTest {
 
     @Mock
     private com.mannschaft.app.common.storage.StorageService storageService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private FormSubmissionService formSubmissionService;
@@ -144,7 +148,7 @@ class FormSubmissionServiceTest {
             given(formMapper.toSubmissionResponseWithValues(entity, List.of())).willReturn(response);
 
             // When
-            formSubmissionService.approveSubmission(SUBMISSION_ID);
+            formSubmissionService.approveSubmission(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID, SUBMISSION_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SubmissionStatus.APPROVED);
@@ -158,7 +162,7 @@ class FormSubmissionServiceTest {
             given(submissionRepository.findById(SUBMISSION_ID)).willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> formSubmissionService.approveSubmission(SUBMISSION_ID))
+            assertThatThrownBy(() -> formSubmissionService.approveSubmission(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID, SUBMISSION_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FormErrorCode.INVALID_SUBMISSION_STATUS));
@@ -189,7 +193,7 @@ class FormSubmissionServiceTest {
             given(formMapper.toSubmissionResponseWithValues(entity, List.of())).willReturn(response);
 
             // When
-            formSubmissionService.rejectSubmission(SUBMISSION_ID);
+            formSubmissionService.rejectSubmission(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID, SUBMISSION_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SubmissionStatus.REJECTED);
@@ -220,7 +224,7 @@ class FormSubmissionServiceTest {
             given(formMapper.toSubmissionResponseWithValues(entity, List.of())).willReturn(response);
 
             // When
-            formSubmissionService.returnSubmission(SUBMISSION_ID);
+            formSubmissionService.returnSubmission(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID, SUBMISSION_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SubmissionStatus.RETURNED);
@@ -346,6 +350,72 @@ class FormSubmissionServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FormErrorCode.TEMPLATE_NOT_PUBLISHED));
+        }
+    }
+
+    @Nested
+    @DisplayName("createSubmissionForRequirement（F08.7.1/06 大会提出枠連結）")
+    class CreateSubmissionForRequirement {
+
+        private final java.util.UUID REQUIREMENT_ID = java.util.UUID.randomUUID();
+
+        @Test
+        @DisplayName("新規提出は form_submission に requirement_id(UUID) を設定して保存する（§2.1 型整合）")
+        void linksRequirementUuidOnNewSubmission() {
+            FormTemplateEntity template = createPublishedTemplate();
+            given(templateService.getTemplateEntity(TEMPLATE_ID)).willReturn(template);
+            given(submissionRepository.findByTournamentSubmissionRequirementIdAndScopeTypeAndScopeId(
+                    REQUIREMENT_ID, SCOPE_TYPE, SCOPE_ID)).willReturn(Optional.empty());
+            given(submissionRepository.countByTemplateIdAndSubmittedBy(TEMPLATE_ID, USER_ID)).willReturn(0L);
+            given(submissionRepository.save(org.mockito.ArgumentMatchers.any(FormSubmissionEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(formMapper.toSubmissionResponseWithValues(
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                    .willReturn(FormSubmissionResponse.builder().status("SUBMITTED").build());
+
+            CreateFormSubmissionRequest request = new CreateFormSubmissionRequest(TEMPLATE_ID, true, null);
+
+            formSubmissionService.createSubmissionForRequirement(
+                    SCOPE_TYPE, SCOPE_ID, USER_ID, REQUIREMENT_ID, request);
+
+            org.mockito.ArgumentCaptor<FormSubmissionEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(FormSubmissionEntity.class);
+            verify(submissionRepository).save(captor.capture());
+            // BIGINT 連結（workflowRequestId）と UUID 連結（requirementId）が別カラムで保持されること
+            assertThat(captor.getValue().getTournamentSubmissionRequirementId()).isEqualTo(REQUIREMENT_ID);
+            assertThat(captor.getValue().getScopeType()).isEqualTo(SCOPE_TYPE);
+            assertThat(captor.getValue().getScopeId()).isEqualTo(SCOPE_ID);
+            assertThat(captor.getValue().getStatus()).isEqualTo(SubmissionStatus.SUBMITTED);
+        }
+
+        @Test
+        @DisplayName("差戻し（RETURNED）の既存提出があれば新規作成せず上書き再提出する")
+        void overwritesEditableExistingSubmission() {
+            FormTemplateEntity template = createPublishedTemplate();
+            FormSubmissionEntity existing = FormSubmissionEntity.builder()
+                    .templateId(TEMPLATE_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID)
+                    .tournamentSubmissionRequirementId(REQUIREMENT_ID)
+                    .status(SubmissionStatus.RETURNED).submittedBy(USER_ID).build();
+            given(templateService.getTemplateEntity(TEMPLATE_ID)).willReturn(template);
+            given(submissionRepository.findByTournamentSubmissionRequirementIdAndScopeTypeAndScopeId(
+                    REQUIREMENT_ID, SCOPE_TYPE, SCOPE_ID)).willReturn(Optional.of(existing));
+            given(submissionRepository.save(org.mockito.ArgumentMatchers.any(FormSubmissionEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(formMapper.toSubmissionResponseWithValues(
+                    org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                    .willReturn(FormSubmissionResponse.builder().status("SUBMITTED").build());
+
+            CreateFormSubmissionRequest request = new CreateFormSubmissionRequest(TEMPLATE_ID, true, null);
+
+            formSubmissionService.createSubmissionForRequirement(
+                    SCOPE_TYPE, SCOPE_ID, USER_ID, REQUIREMENT_ID, request);
+
+            // 既存提出が SUBMITTED に遷移し、件数カウントの新規採番（countByTemplateIdAndSubmittedBy）は呼ばれない
+            assertThat(existing.getStatus()).isEqualTo(SubmissionStatus.SUBMITTED);
+            verify(submissionRepository).save(existing);
+            verify(submissionRepository, org.mockito.Mockito.never())
+                    .countByTemplateIdAndSubmittedBy(org.mockito.ArgumentMatchers.anyLong(),
+                            org.mockito.ArgumentMatchers.anyLong());
         }
     }
 }

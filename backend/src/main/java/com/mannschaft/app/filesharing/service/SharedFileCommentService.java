@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
 import com.mannschaft.app.filesharing.dto.CommentResponse;
@@ -26,6 +27,8 @@ public class SharedFileCommentService {
 
     private final SharedFileCommentRepository commentRepository;
     private final FileSharingMapper fileSharingMapper;
+    /** F08.7.1 / 04: 大会フォルダ配下のコメント操作に対する横断認可ゲート（大会以外は no-op）。 */
+    private final FolderScopeAccessGuard folderScopeAccessGuard;
 
     /**
      * ファイルのコメント一覧を取得する。
@@ -34,6 +37,8 @@ public class SharedFileCommentService {
      * @return コメントレスポンスリスト
      */
     public List<CommentResponse> listComments(Long fileId) {
+        // F08.7.1 / 04 §3: 大会フォルダ配下のファイルコメント一覧は閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, SecurityUtils.getCurrentUserIdOrNull());
         List<SharedFileCommentEntity> comments = commentRepository.findByFileIdOrderByCreatedAtAsc(fileId);
         return fileSharingMapper.toCommentResponseList(comments);
     }
@@ -48,6 +53,8 @@ public class SharedFileCommentService {
      */
     @Transactional
     public CommentResponse createComment(Long fileId, Long userId, CreateCommentRequest request) {
+        // F08.7.1 / 04 §3: 大会フォルダ配下の非公開ファイルにコメントできるのは閲覧可能な者のみ。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, userId);
         SharedFileCommentEntity entity = SharedFileCommentEntity.builder()
                 .fileId(fileId)
                 .userId(userId)
@@ -69,6 +76,8 @@ public class SharedFileCommentService {
     @Transactional
     public CommentResponse updateComment(Long commentId, UpdateCommentRequest request) {
         SharedFileCommentEntity entity = findCommentOrThrow(commentId);
+        // F08.7.1 / 04 §3: 大会フォルダ配下のコメント更新は当該ファイルの閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFileId(entity.getFileId(), SecurityUtils.getCurrentUserIdOrNull());
         entity.updateBody(request.getBody());
         SharedFileCommentEntity saved = commentRepository.save(entity);
         log.info("コメント更新: commentId={}", commentId);
@@ -83,6 +92,8 @@ public class SharedFileCommentService {
     @Transactional
     public void deleteComment(Long commentId) {
         SharedFileCommentEntity entity = findCommentOrThrow(commentId);
+        // F08.7.1 / 04 §3: 大会フォルダ配下のコメント削除は当該ファイルの閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFileId(entity.getFileId(), SecurityUtils.getCurrentUserIdOrNull());
         entity.softDelete();
         commentRepository.save(entity);
         log.info("コメント削除: commentId={}", commentId);

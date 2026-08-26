@@ -3,11 +3,18 @@ package com.mannschaft.app.publicview.service;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
+import com.mannschaft.app.cms.media.BlogBodyMediaResolver;
+import com.mannschaft.app.cms.media.BlogMediaScope;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
 import com.mannschaft.app.family.CareCategory;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
+import com.mannschaft.app.payment.constant.ContentGateType;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.publicview.dto.PublicAuthorIdentity;
 import com.mannschaft.app.publicview.dto.PublicPostDetail;
 import com.mannschaft.app.publicview.dto.PublicPostSummary;
@@ -20,6 +27,7 @@ import com.mannschaft.app.publicview.visibility.PostAuthor;
 import com.mannschaft.app.publicview.visibility.ScopeRef;
 import com.mannschaft.app.publicview.visibility.ScopeSettings;
 import com.mannschaft.app.publicview.visibility.ViewerContext;
+import com.mannschaft.app.publicview.visibility.ViewerStatus;
 import com.mannschaft.app.team.entity.TeamEntity;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -66,6 +73,13 @@ public class PublicPostQueryService {
     private final com.mannschaft.app.team.repository.TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
     private final IdentityVisibilityResolver identityVisibilityResolver;
+    private final MediaUrlResolver mediaUrlResolver;
+    // TODO: publicview ドメインが payment ドメインを参照（CLAUDE.md 原則5）。クロスドメイン FK は張らず
+    //       PaymentGateService のメソッド呼び（ID 渡し）に限定する。将来はイベント駆動化を検討。
+    private final PaymentGateService paymentGateService;
+
+    /** 記事本文（Markdown）に埋め込まれた r2Key を署名付き表示 URL へ解決する部品。 */
+    private final BlogBodyMediaResolver blogBodyMediaResolver;
 
     // ────────────────────────────────────────────────────────────
     // 一覧
@@ -206,7 +220,9 @@ public class PublicPostQueryService {
                 PublicPostSummary.SOURCE_TYPE_BLOG_POST,
                 post.getId(),
                 post.getTitle(),
-                truncate(post.getExcerpt() != null ? post.getExcerpt() : post.getBody(), 200),
+                // 一覧サマリは excerpt のみを露出する。excerpt 未設定時に body 先頭を出すと
+                // 有料本文が一覧経由で漏洩するため、body フォールバックは廃止する（F08.9 漏洩封鎖）。
+                truncate(post.getExcerpt(), 200),
                 identity,
                 scopeRefDto,
                 toOffsetDateTime(post.getPublishedAt())
@@ -218,15 +234,108 @@ public class PublicPostQueryService {
                                       PublicScopeRef scopeRefDto,
                                       ViewerContext viewerContext) {
         PublicAuthorIdentity identity = resolveIdentity(post, author, scope, settings, viewerContext);
+        String title = post.getTitle();
+        // 公開（未認証）経路も表示経路なので、マスクを免れた本文の r2Key を署名 URL へ解決する。
+        String bodyHtml = resolveBodyMedia(post, applyPaywallToPublicDetail(post, viewerContext));
+        // titleHidden 相当（=null 返却）のケースは applyPaywallToPublicDetail が PUBLIC_003 で 404 済み。
         return new PublicPostDetail(
                 PublicPostSummary.SOURCE_TYPE_BLOG_POST,
                 post.getId(),
-                post.getTitle(),
-                post.getBody(),
+                title,
+                bodyHtml,
                 identity,
                 scopeRefDto,
                 toOffsetDateTime(post.getPublishedAt())
         );
+    }
+
+    /**
+     * 公開詳細の本文について、生の r2Key を署名付き表示 URL へ解決する。
+     *
+     * <p>{@code PublicPostDetail.bodyHtml} は名前に反して生 Markdown であり、フロントエンドは
+     * {@code sanitizeHtml} のみで描画する。ゆえに BE 側で解決しなければ画像は表示されない。</p>
+     *
+     * <p>ペイウォールでマスクされた本文（{@code null}）は解決しない
+     * （マスクを解決処理で復活させてはならない）。</p>
+     *
+     * @param post     対象記事（スコープ導出に使用）
+     * @param bodyHtml ペイウォール適用後の本文（マスク時は null）
+     * @return 署名 URL 解決後の本文。マスク時は null のまま
+     */
+    private String resolveBodyMedia(BlogPostEntity post, String bodyHtml) {
+        if (bodyHtml == null) {
+            return null;
+        }
+        BlogMediaScope scope = BlogMediaScope.of(
+                post.getTeamId(), post.getOrganizationId(), post.getUserId());
+        if (scope == null) {
+            log.warn("本文メディア: 記事のスコープを判定できないため解決を見送る: postId={}", post.getId());
+            return bodyHtml;
+        }
+        return blogBodyMediaResolver.resolveBody(bodyHtml, scope.scopeType(), scope.scopeId());
+    }
+
+    /**
+     * 公開詳細（未認証 permitAll）にペイウォール本文ゲートを適用する（F08.9 漏洩根治）。
+     *
+     * <p>判定の単一真実源は {@link PaymentGateService#checkAccess(String, Long, Long)}
+     * （content-gates/check と同一）。未認証公開経路は「存在秘匿」原則のため、
+     * {@code titleHidden=true} かつ未課金の場合は 200 でマスクせず <b>404（{@code PUBLIC_003}）</b> にする。
+     * {@code titleHidden=false} かつ未課金なら bodyHtml=null（title は残す）で 200 を返す。</p>
+     *
+     * <ul>
+     *   <li>著者本人・SystemAdmin はゲート無視で全文。</li>
+     *   <li>fail-closed: {@code checkAccess} が例外 → ゲート行有りなら bodyHtml=null、
+     *       ゲート行無しなら従来どおり body を返す。</li>
+     * </ul>
+     *
+     * @return 露出してよい bodyHtml（マスク時は null）
+     * @throws BusinessException titleHidden かつ未課金の場合（{@code PUBLIC_003}、404）
+     */
+    private String applyPaywallToPublicDetail(BlogPostEntity post, ViewerContext viewerContext) {
+        Long viewerUserId = viewerContext.userId();
+        // 著者本人はゲート無視で全文
+        if (viewerUserId != null && viewerUserId.equals(post.getAuthorId())) {
+            return post.getBody();
+        }
+        // SystemAdmin はゲート無視で全文
+        if (viewerContext.status() == ViewerStatus.SYSTEM_ADMIN) {
+            return post.getBody();
+        }
+
+        GateCheckResponse gate;
+        try {
+            gate = paymentGateService.checkAccess(ContentGateType.POST, post.getId(), viewerUserId);
+        } catch (Exception e) {
+            // 評価不能（例外）→ null 扱いで fail-closed 経路へ統一する。
+            log.warn("ペイウォール判定失敗（公開詳細）: postId={} → fail-closed 判定へ", post.getId(), e);
+            gate = null;
+        }
+
+        // checkAccess が null／例外のいずれでも、ゲート行が有るなら本文をマスク、無いなら従来どおり返す。
+        if (gate == null) {
+            return safelyHasGate(post.getId()) ? null : post.getBody();
+        }
+        if (gate.isAccessible()) {
+            return post.getBody();
+        }
+        // 未課金: titleHidden なら存在秘匿で 404、それ以外は body のみマスク
+        if (gate.isTitleHidden()) {
+            throw new BusinessException(PublicViewErrorCode.PUBLIC_003);
+        }
+        return null;
+    }
+
+    /**
+     * ゲート存在確認（fail-closed 判定用）。存在確認自体が失敗した場合は過剰遮断を避け false（非課金扱い）を返す。
+     */
+    private boolean safelyHasGate(Long postId) {
+        try {
+            return paymentGateService.hasGate(ContentGateType.POST, postId);
+        } catch (Exception e) {
+            log.warn("ペイウォールゲート存在確認に失敗: postId={} → ゲート無し扱い", postId, e);
+            return false;
+        }
     }
 
     /**
@@ -245,7 +354,8 @@ public class PublicPostQueryService {
                 author != null ? author.getDisplayName() : null,
                 post.getAuthorRealNameSnapshot(),
                 fullName,
-                author != null ? author.getAvatarUrl() : null,
+                // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決してから識別解決へ渡す
+                author != null ? mediaUrlResolver.resolve(author.getAvatarUrl()) : null,
                 isMinor);
         DisplayIdentity result = identityVisibilityResolver.resolveIdentityForViewer(
                 postAuthor, viewerContext, scope, settings);
@@ -293,6 +403,6 @@ public class PublicPostQueryService {
         if (ldt == null) {
             return null;
         }
-        return ldt.atZone(ZoneId.systemDefault()).toOffsetDateTime();
+        return ldt.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toOffsetDateTime();
     }
 }

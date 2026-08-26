@@ -1,64 +1,65 @@
 {
   "systemAdmin": {
     "batches": {
-      "title": "バッチ管理",
-      "description": "登録済みのバッチを起動・監視します",
+      "title": "Batch-Verwaltung",
+      "description": "Registrierte Batches starten und überwachen",
       "summary": {
-        "title": "バッチ実行サマリー（直近24時間）",
-        "success": "成功",
-        "failed": "失敗",
-        "viewAll": "詳細を見る"
+        "title": "Batch-Ausführungszusammenfassung (letzte 24 Stunden)",
+        "success": "Erfolgreich",
+        "failed": "Fehlgeschlagen",
+        "viewAll": "Details ansehen"
       },
       "filter": {
-        "search": "バッチ名で検索",
-        "status": "ステータスで絞り込み",
-        "statusAll": "すべて"
+        "search": "Nach Batch-Name suchen",
+        "status": "Nach Status filtern",
+        "statusAll": "Alle"
       },
       "column": {
-        "name": "バッチ名",
-        "description": "説明",
-        "lastStatus": "直近ステータス",
-        "lastRun": "直近実行",
-        "actions": "操作"
+        "name": "Batch-Name",
+        "description": "Beschreibung",
+        "lastStatus": "Letzter Status",
+        "lastRun": "Letzte Ausführung",
+        "actions": "Aktionen"
       },
       "button": {
-        "run": "実行",
-        "runSync": "同期実行",
-        "viewDetail": "詳細",
-        "close": "閉じる",
-        "refresh": "再読み込み"
+        "run": "Ausführen",
+        "runSync": "Synchron ausführen",
+        "viewDetail": "Details",
+        "close": "Schließen",
+        "refresh": "Neu laden"
       },
       "status": {
-        "success": "成功",
-        "failed": "失敗",
-        "running": "実行中",
-        "skipped": "スキップ",
-        "locked": "ロック中",
-        "accepted": "受付済",
-        "completed": "完了",
-        "unknown": "未実行"
+        "success": "Erfolgreich",
+        "failed": "Fehlgeschlagen",
+        "running": "Läuft",
+        "skipped": "Übersprungen",
+        "resumed": "Fortgesetzt",
+        "locked": "Gesperrt",
+        "accepted": "Angenommen",
+        "completed": "Abgeschlossen",
+        "unknown": "Nicht ausgeführt"
       },
       "toast": {
-        "runStarted": "バッチ起動を受け付けました: {name}",
-        "runStartedDetail": "非同期で実行中です。完了後にお知らせします。",
-        "runCompleted": "バッチ実行が完了しました: {name}",
-        "runFailed": "バッチ実行に失敗しました: {name}",
-        "locked": "他インスタンスがロック中です: {name}",
-        "loadFailed": "バッチ一覧の取得に失敗しました",
-        "statusFailed": "ステータスの取得に失敗しました"
+        "runStarted": "Batch-Start akzeptiert: {name}",
+        "runStartedDetail": "Wird asynchron ausgeführt. Sie werden nach Abschluss benachrichtigt.",
+        "runCompleted": "Batch-Ausführung abgeschlossen: {name}",
+        "runFailed": "Batch-Ausführung fehlgeschlagen: {name}",
+        "locked": "Ein anderer Prozess hält die Sperre: {name}",
+        "loadFailed": "Batch-Liste konnte nicht geladen werden",
+        "statusFailed": "Status konnte nicht abgerufen werden"
       },
       "detail": {
-        "title": "バッチ詳細",
-        "noHistory": "実行履歴がありません",
-        "jobName": "ジョブ名",
-        "status": "ステータス",
-        "startedAt": "開始時刻",
-        "finishedAt": "終了時刻",
-        "processedCount": "処理件数",
-        "errorMessage": "エラーメッセージ"
+        "title": "Batch-Details",
+        "noHistory": "Kein Ausführungsverlauf",
+        "jobName": "Job-Name",
+        "status": "Status",
+        "startedAt": "Startzeit",
+        "finishedAt": "Endzeit",
+        "processedCount": "Verarbeitete Einträge",
+        "errorMessage": "Fehlermeldung"
       },
-      "empty": "登録されているバッチがありません",
-      "noResults": "条件に一致するバッチがありません"
+      "empty": "Keine registrierten Batches",
+      "noResults": "Keine passenden Batches gefunden"
     }
   }
 }

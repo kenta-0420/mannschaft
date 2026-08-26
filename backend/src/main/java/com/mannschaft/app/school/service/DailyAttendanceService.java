@@ -67,15 +67,12 @@ public class DailyAttendanceService {
             DailyAttendanceRecordEntity record;
             if (existing.isPresent()) {
                 // 既存レコードを更新
-                record = existing.get().toBuilder()
-                        .status(entry.getStatus())
-                        .absenceReason(entry.getAbsenceReason())
-                        .arrivalTime(entry.getArrivalTime())
-                        .leaveTime(entry.getLeaveTime())
-                        .comment(entry.getComment())
-                        .familyNoticeId(entry.getFamilyNoticeId())
-                        .recordedBy(operatorUserId)
-                        .build();
+                // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
+                // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
+                record = existing.get();
+                record.applyRollCallUpdate(entry.getStatus(), entry.getAbsenceReason(),
+                        entry.getArrivalTime(), entry.getLeaveTime(),
+                        entry.getComment(), entry.getFamilyNoticeId(), operatorUserId);
             } else {
                 // 新規レコードを作成
                 record = DailyAttendanceRecordEntity.builder()
@@ -216,16 +213,13 @@ public class DailyAttendanceService {
                 .filter(r -> r.getTeamId().equals(teamId))
                 .orElseThrow(() -> new BusinessException(SchoolErrorCode.DAILY_RECORD_NOT_FOUND));
 
-        DailyAttendanceRecordEntity updated = entity.toBuilder()
-                .status(request.getStatus() != null ? request.getStatus() : entity.getStatus())
-                .absenceReason(request.getAbsenceReason() != null ? request.getAbsenceReason() : entity.getAbsenceReason())
-                .arrivalTime(request.getArrivalTime() != null ? request.getArrivalTime() : entity.getArrivalTime())
-                .leaveTime(request.getLeaveTime() != null ? request.getLeaveTime() : entity.getLeaveTime())
-                .comment(request.getComment() != null ? request.getComment() : entity.getComment())
-                .recordedBy(operatorUserId)
-                .build();
-
-        DailyAttendanceRecordEntity saved = dailyAttendanceRecordRepository.save(updated);
-        return DailyAttendanceResponse.from(saved);
+        // toBuilder().build() で作り直すと BaseEntity.id が引き継がれず INSERT 化する（行重複）。
+        // managed entity を直接ミューテートし JPA dirty checking で UPDATE する。
+        entity.applyUpdate(
+                request.getStatus(), request.getAbsenceReason(),
+                request.getArrivalTime(), request.getLeaveTime(),
+                request.getComment(), operatorUserId);
+        dailyAttendanceRecordRepository.save(entity);
+        return DailyAttendanceResponse.from(entity);
     }
 }

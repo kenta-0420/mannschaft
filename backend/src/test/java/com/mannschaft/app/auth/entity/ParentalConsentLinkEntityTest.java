@@ -2,18 +2,12 @@ package com.mannschaft.app.auth.entity;
 
 import com.mannschaft.app.auth.ParentalConsentLinkStatus;
 import com.mannschaft.app.auth.repository.ParentalConsentLinkRepository;
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -28,31 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>Testcontainers（MySQL 8.0）を使用し、Flyway マイグレーションを実行した
  * 実際のテーブル構造に対してリポジトリ操作を検証する。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("ParentalConsentLinkEntity 結合テスト")
-class ParentalConsentLinkEntityTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    /** Redis を使わないため MockitoBean でダミー差し込み */
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+class ParentalConsentLinkEntityTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ParentalConsentLinkRepository repository;

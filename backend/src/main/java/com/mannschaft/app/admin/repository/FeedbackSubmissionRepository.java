@@ -40,4 +40,16 @@ public interface FeedbackSubmissionRepository extends JpaRepository<FeedbackSubm
      * ステータス別の件数を取得する。
      */
     long countByScopeTypeAndScopeIdAndStatus(String scopeType, Long scopeId, FeedbackStatus status);
+
+    /**
+     * プラットフォームスコープ（scopeId IS NULL）のフィードバックを全件取得する。
+     */
+    Page<FeedbackSubmissionEntity> findByScopeTypeAndScopeIdIsNullOrderByCreatedAtDesc(
+            String scopeType, Pageable pageable);
+
+    /**
+     * プラットフォームスコープ（scopeId IS NULL）をステータスでフィルタリングして取得する。
+     */
+    Page<FeedbackSubmissionEntity> findByScopeTypeAndScopeIdIsNullAndStatusOrderByCreatedAtDesc(
+            String scopeType, FeedbackStatus status, Pageable pageable);
 }

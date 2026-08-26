@@ -1,9 +1,11 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.billing.BillingSubscriptionWebhookService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.notification.credit.service.NotificationCreditCheckoutService;
 import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.PaymentStatus;
+import com.mannschaft.app.payment.escrow.EscrowWebhookService;
 import com.mannschaft.app.payment.entity.MemberPaymentEntity;
 import com.mannschaft.app.payment.entity.PaymentItemEntity;
 import com.mannschaft.app.payment.repository.MemberPaymentRepository;
@@ -29,6 +31,16 @@ public class StripeWebhookService {
     private final StripePaymentProvider stripePaymentProvider;
     // TODO: notificationドメイン → paymentドメインの依存。将来はWebhookEventで分離予定
     private final NotificationCreditCheckoutService notificationCreditCheckoutService;
+    /** F22.1 統一決済 P2-b: 与信系（escrow）PaymentIntent イベントの委譲先（設計書 02 §4.2）。 */
+    private final EscrowWebhookService escrowWebhookService;
+    /** F08.9 P5 第三波: 継続課金（invoice.* / subscription.deleted）イベントの委譲先（設計書 02 §4.2）。 */
+    private final MembershipSubscriptionWebhookService membershipSubscriptionWebhookService;
+    // TODO: billing ドメイン → payment ドメインの委譲（NotificationCreditCheckoutService と同型）。将来は WebhookEvent で分離予定
+    /** F20.1 実決済: 自社受取サブスク（checkout.session.* / invoice.* / subscription.deleted）の委譲先（D-2 で F08.9 と分離）。 */
+    private final BillingSubscriptionWebhookService billingSubscriptionWebhookService;
+
+    /** F22.1 与信系 platform Webhook の対象イベント種別（payment_intent.* の接頭辞）。 */
+    private static final String ESCROW_EVENT_PREFIX = "payment_intent.";
 
     /**
      * Stripe Webhook を処理する。
@@ -44,10 +56,40 @@ public class StripeWebhookService {
             throw new BusinessException(PaymentErrorCode.WEBHOOK_SIGNATURE_INVALID, e);
         }
 
+        // F22.1: 与信系（Destination Charge の PaymentIntent）は platform 上に作られ platform Webhook で届く。
+        // event_id 冪等＋escrow 特定は EscrowWebhookService に委譲する（設計書 02 §4.2・専用 record で再パース）。
+        if (event.type() != null && event.type().startsWith(ESCROW_EVENT_PREFIX)) {
+            escrowWebhookService.handleWebhook(payload, sigHeader);
+            return;
+        }
+
+        // F08.9 P5: 継続課金（Subscription）は platform 上に作られ invoice.* / customer.subscription.deleted が
+        // platform Webhook で届く。event_id 冪等＋subscription 逆引き＋invoice.created 固定手数料上書きは
+        // MembershipSubscriptionWebhookService に委譲する（設計書 02 §4.2・専用 record で再パース）。
+        if (MembershipSubscriptionWebhookService.isSubscriptionEvent(event.type())) {
+            // F20.1: 自社受取サブスク（billing）は subscriptionId を psp_subscription_ref で逆引きしてヒットすれば
+            // billing が処理する。無関係なら false → 従来どおり F08.9 会費側へ（D-2・相互 no-op・AC-38）。
+            if (billingSubscriptionWebhookService.handleSubscriptionEventIfBilling(payload, sigHeader)) {
+                return;
+            }
+            membershipSubscriptionWebhookService.handleWebhook(payload, sigHeader);
+            return;
+        }
+
         switch (event.type()) {
-            case "checkout.session.completed" -> handleCheckoutCompleted(event);
-            case "checkout.session.expired" -> handleCheckoutExpired(event);
-            case "charge.refunded" -> handleChargeRefunded(event);
+            case "checkout.session.completed" -> {
+                // F20.1: metadata.billingContractId があれば billing（サブスク契約 PENDING→ACTIVE）が処理。
+                // 無ければ従来の会員費/通知クレジット処理へ。
+                if (!billingSubscriptionWebhookService.handleCheckoutCompletedIfBilling(payload, sigHeader)) {
+                    handleCheckoutCompleted(event);
+                }
+            }
+            case "checkout.session.expired" -> {
+                if (!billingSubscriptionWebhookService.handleCheckoutExpiredIfBilling(payload, sigHeader)) {
+                    handleCheckoutExpired(event);
+                }
+            }
+            case "charge.refunded" -> handleChargeRefunded(event, payload, sigHeader);
             default -> log.info("未対応の Webhook イベント: type={}", event.type());
         }
 
@@ -92,6 +134,8 @@ public class StripeWebhookService {
             case ANNUAL_FEE -> validFrom.plusDays(365);
             case MONTHLY_FEE -> validFrom.plusDays(31);
             case ITEM, DONATION -> null;
+            // F08.9 P6: TERM 型は paymentItem.termEndsOn を有効期限とする
+            case TERM -> paymentItem.getTermEndsOn();
         };
 
         payment.markAsPaid(
@@ -138,8 +182,18 @@ public class StripeWebhookService {
 
     /**
      * charge.refunded を処理する。
+     *
+     * <p>F22.1 P2-c 第二波: 謝礼/会費（escrow・Connect）の返金もこの event で届く。まず escrow 側
+     * （{@link EscrowWebhookService#handleChargeRefunded}・event_id 冪等＋行ロック）へ委譲を試み、対象 escrow が
+     * 無ければ {@code false} が返るので既存会員費（{@link MemberPaymentEntity}）の返金処理へフォールバックする
+     * （設計書 02 §6.1）。</p>
      */
-    private void handleChargeRefunded(StripePaymentProvider.WebhookEventInfo event) {
+    private void handleChargeRefunded(StripePaymentProvider.WebhookEventInfo event, String payload, String sigHeader) {
+        // F22.1: escrow（Connect）返金を優先委譲。対象 escrow があれば escrow 側が処理し true を返す。
+        if (escrowWebhookService.handleChargeRefunded(payload, sigHeader)) {
+            return;
+        }
+
         if (event.paymentIntentId() == null) {
             log.warn("paymentIntentId が含まれていません");
             return;

@@ -1,6 +1,10 @@
 package com.mannschaft.app.schedule.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.schedule.GoogleCalendarErrorCode;
 import com.mannschaft.app.schedule.dto.IcalTokenResponse;
 import com.mannschaft.app.schedule.dto.IcalTokenResponse.ScopedUrlItem;
@@ -9,10 +13,10 @@ import com.mannschaft.app.schedule.entity.UserIcalTokenEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.repository.UserIcalTokenRepository;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,14 +46,35 @@ public class IcalService {
     private static final int ICAL_MONTHS_PAST = 2;
     private static final int ICAL_MONTHS_FUTURE = 12;
     private static final int ICAL_MAX_EVENTS = 500;
-    private static final String ICAL_BASE_URL = "/ical/";
+    private static final String ICAL_BASE_PATH = "/ical/";
     private static final DateTimeFormatter ICAL_DATE_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss");
+
+    /**
+     * フロントエンド / iCal URL の基底 URL。
+     * 正準プロパティ {@code app.base-url}（環境変数 {@code APP_BASE_URL}）から注入。
+     * webcal URL 生成時は {@link #buildWebcalUrl(String)} でスキームを変換して使用する。
+     */
+    @Value("${app.base-url}")
+    private String appBaseUrl;
 
     private final UserIcalTokenRepository icalTokenRepository;
     private final ScheduleRepository scheduleRepository;
     private final UserRoleRepository userRoleRepository;
     private final NameResolverService nameResolverService;
+    private final AccessControlService accessControlService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
+
+    /** スコープ種別: チーム */
+    private static final String SCOPE_TYPE_TEAM = "TEAM";
+    /** スコープ種別: 組織 */
+    private static final String SCOPE_TYPE_ORGANIZATION = "ORGANIZATION";
+    /** iCal クエリのスコープ値: チーム */
+    private static final String SCOPE_PARAM_TEAM = "team";
+    /** iCal クエリのスコープ値: 組織 */
+    private static final String SCOPE_PARAM_ORGANIZATION = "organization";
+    /** スコープ配信の最低要求ロール（GUEST 不可） */
+    private static final String MIN_FEED_ROLE = "SUPPORTER";
 
     /**
      * iCalトークンを取得する。未発行の場合は自動生成する。
@@ -127,6 +152,20 @@ public class IcalService {
         }
 
         Long userId = tokenEntity.getUserId();
+
+        // スコープ指定フィードは、トークン所有者が当該スコープに所属している場合のみ配信する。
+        // （番人の委譲追跡が 2 ホップまでのため、認可呼び出しは public 入口に直接置く）
+        if (scopeId != null) {
+            if (SCOPE_PARAM_TEAM.equals(scope)
+                    && !accessControlService.hasRoleOrAbove(userId, scopeId, SCOPE_TYPE_TEAM, MIN_FEED_ROLE)) {
+                throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+            if (SCOPE_PARAM_ORGANIZATION.equals(scope)
+                    && !accessControlService.hasRoleOrAbove(userId, scopeId, SCOPE_TYPE_ORGANIZATION, MIN_FEED_ROLE)) {
+                throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+        }
+
         LocalDateTime from = LocalDateTime.now().minusMonths(ICAL_MONTHS_PAST);
         LocalDateTime to = LocalDateTime.now().plusMonths(ICAL_MONTHS_FUTURE);
 
@@ -160,6 +199,19 @@ public class IcalService {
                 .orElseThrow(() -> new BusinessException(GoogleCalendarErrorCode.ICAL_TOKEN_INVALID));
 
         Long userId = tokenEntity.getUserId();
+
+        // generateIcalFeed と同一のスコープ認可を課す（ETag 経由での越境な件数・更新時刻の推測を防ぐ）
+        if (scopeId != null) {
+            if (SCOPE_PARAM_TEAM.equals(scope)
+                    && !accessControlService.hasRoleOrAbove(userId, scopeId, SCOPE_TYPE_TEAM, MIN_FEED_ROLE)) {
+                throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+            if (SCOPE_PARAM_ORGANIZATION.equals(scope)
+                    && !accessControlService.hasRoleOrAbove(userId, scopeId, SCOPE_TYPE_ORGANIZATION, MIN_FEED_ROLE)) {
+                throw new BusinessException(CommonErrorCode.COMMON_002);
+            }
+        }
+
         LocalDateTime from = LocalDateTime.now().minusMonths(ICAL_MONTHS_PAST);
         LocalDateTime to = LocalDateTime.now().plusMonths(ICAL_MONTHS_FUTURE);
 
@@ -188,40 +240,57 @@ public class IcalService {
 
     /**
      * スコープに応じてスケジュールを取得する。
+     *
+     * <p>F00 認可基盤連携（CMP-017b 第五隊）: {@link ContentVisibilityChecker#filterAccessible}
+     * で閲覧者 {@code userId} が可視な予定だけに絞り込んでから {@link #ICAL_MAX_EVENTS} 件数上限を
+     * 適用する。**順序が肝**——上限を先に適用してから絞り込むと非公開予定に埋まって公開予定が
+     * 歯抜けになる（CMP-020 が問題視する構造の新規作り込みを避ける）。</p>
      */
     private List<ScheduleEntity> fetchSchedulesForFeed(Long userId, String scope, Long scopeId,
                                                        LocalDateTime from, LocalDateTime to) {
         if ("team".equals(scope) && scopeId != null) {
-            return scheduleRepository
-                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(scopeId, from, to)
-                    .stream().limit(ICAL_MAX_EVENTS).toList();
+            return limitAfterFilter(
+                    scheduleRepository.findByTeamIdAndStartAtBetweenOrderByStartAtAsc(scopeId, from, to),
+                    userId);
         } else if ("organization".equals(scope) && scopeId != null) {
-            return scheduleRepository
-                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(scopeId, from, to)
-                    .stream().limit(ICAL_MAX_EVENTS).toList();
+            return limitAfterFilter(
+                    scheduleRepository.findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(scopeId, from, to),
+                    userId);
         } else if ("personal".equals(scope)) {
-            return scheduleRepository
-                    .findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to)
-                    .stream().limit(ICAL_MAX_EVENTS).toList();
+            return limitAfterFilter(
+                    scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to),
+                    userId);
         }
 
         List<ScheduleEntity> allSchedules = new ArrayList<>(
                 scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(userId, from, to));
 
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        for (UserRoleEntity role : teamRoles) {
+        // CMP-027: user_roles ∪ memberships の在籍チーム（素メンバー/応援者を取りこぼさない）
+        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
             allSchedules.addAll(scheduleRepository
-                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to));
+                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to));
         }
 
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        for (UserRoleEntity role : orgRoles) {
+        // CMP-027: user_roles ∪ memberships の在籍組織
+        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
             allSchedules.addAll(scheduleRepository
-                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to));
+                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to));
         }
 
-        return allSchedules.stream()
+        List<ScheduleEntity> sorted = allSchedules.stream()
                 .sorted((a, b) -> a.getStartAt().compareTo(b.getStartAt()))
+                .toList();
+        return limitAfterFilter(sorted, userId);
+    }
+
+    /**
+     * 可視性フィルタを通してから件数上限を適用する（順序固定。危険箇所5参照）。
+     */
+    private List<ScheduleEntity> limitAfterFilter(List<ScheduleEntity> schedules, Long userId) {
+        List<Long> ids = schedules.stream().map(ScheduleEntity::getId).toList();
+        Set<Long> visibleIds = contentVisibilityChecker.filterAccessible(ReferenceType.SCHEDULE, ids, userId);
+        return schedules.stream()
+                .filter(s -> visibleIds.contains(s.getId()))
                 .limit(ICAL_MAX_EVENTS)
                 .toList();
     }
@@ -314,48 +383,76 @@ public class IcalService {
     }
 
     /**
+     * {@code https://} または {@code http://} で始まる URL を {@code webcal://} スキームに変換する。
+     *
+     * <p>本番（Cloudflare 同一オリジン構成）では base-url のホストがそのまま webcal ホストになるため、
+     * ホスト:ポート部分は base-url のものをそのまま使用する。</p>
+     *
+     * <p>例:</p>
+     * <ul>
+     *   <li>{@code https://app.example.com/ical/abc.ics} → {@code webcal://app.example.com/ical/abc.ics}</li>
+     *   <li>{@code http://localhost:3000/ical/abc.ics} → {@code webcal://localhost:3000/ical/abc.ics}</li>
+     * </ul>
+     *
+     * @param httpsUrl {@code https://} または {@code http://} で始まる URL
+     * @return {@code webcal://} スキームに変換した URL
+     */
+    public String buildWebcalUrl(String httpsUrl) {
+        if (httpsUrl == null) return null;
+        if (httpsUrl.startsWith("https://")) {
+            return "webcal://" + httpsUrl.substring("https://".length());
+        }
+        if (httpsUrl.startsWith("http://")) {
+            return "webcal://" + httpsUrl.substring("http://".length());
+        }
+        // 想定外のスキームはそのまま返す（フォールバック）
+        return httpsUrl;
+    }
+
+    /**
      * トークンエンティティからレスポンスDTOを構築する。
      */
     private IcalTokenResponse buildTokenResponse(UserIcalTokenEntity entity) {
         String token = entity.getToken();
-        String baseUrl = ICAL_BASE_URL + token + ".ics";
-        String webcalUrl = "webcal://localhost" + baseUrl;
+        // ical エンドポイントの完全 URL（https://app.example.com/ical/{token}.ics）
+        String icalUrl = appBaseUrl + ICAL_BASE_PATH + token + ".ics";
+        String webcalUrl = buildWebcalUrl(icalUrl);
 
         Long userId = entity.getUserId();
         List<ScopedUrlItem> scopedUrls = new ArrayList<>();
 
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        if (!teamRoles.isEmpty()) {
-            Set<Long> teamIds = teamRoles.stream().map(UserRoleEntity::getTeamId).collect(Collectors.toSet());
+        // CMP-027: user_roles ∪ memberships の在籍チーム（素メンバー/応援者を取りこぼさない）
+        Set<Long> teamIds = new java.util.HashSet<>(userRoleRepository.findTeamIdsByUserId(userId));
+        if (!teamIds.isEmpty()) {
             Map<Long, String> teamNames = nameResolverService.resolveTeamNames(teamIds);
             for (Long teamId : teamIds) {
-                String scopedUrl = baseUrl + "?scope=team&scopeId=" + teamId;
+                String scopedUrl = icalUrl + "?scope=team&scopeId=" + teamId;
                 scopedUrls.add(new ScopedUrlItem("TEAM", teamId,
                         teamNames.getOrDefault(teamId, "チーム " + teamId),
                         scopedUrl, scopedUrl + "&action=subscribe"));
             }
         }
 
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        if (!orgRoles.isEmpty()) {
-            Set<Long> orgIds = orgRoles.stream().map(UserRoleEntity::getOrganizationId).collect(Collectors.toSet());
+        // CMP-027: user_roles ∪ memberships の在籍組織
+        Set<Long> orgIds = new java.util.HashSet<>(userRoleRepository.findOrganizationIdsByUserId(userId));
+        if (!orgIds.isEmpty()) {
             Map<Long, String> orgNames = nameResolverService.resolveOrganizationNames(orgIds);
             for (Long orgId : orgIds) {
-                String scopedUrl = baseUrl + "?scope=organization&scopeId=" + orgId;
+                String scopedUrl = icalUrl + "?scope=organization&scopeId=" + orgId;
                 scopedUrls.add(new ScopedUrlItem("ORGANIZATION", orgId,
                         orgNames.getOrDefault(orgId, "組織 " + orgId),
                         scopedUrl, scopedUrl + "&action=subscribe"));
             }
         }
 
-        String personalUrl = baseUrl + "?scope=personal";
+        String personalUrl = icalUrl + "?scope=personal";
         scopedUrls.add(new ScopedUrlItem("PERSONAL", userId, "個人",
                 personalUrl, personalUrl + "&action=subscribe"));
 
         return new IcalTokenResponse(
                 token,
-                baseUrl,
-                baseUrl + "?action=subscribe",
+                icalUrl,
+                icalUrl + "?action=subscribe",
                 webcalUrl,
                 scopedUrls,
                 entity.getIsActive(),

@@ -16,6 +16,7 @@ import com.mannschaft.app.repairplan.repository.TeamMemberTermRepository;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,7 @@ import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -106,7 +108,6 @@ class BoardHandoverPackControllerTest extends AbstractRepairPlanPhase5Integratio
         MembershipTestHelper.insertUserRole(em, adminUserId, "ADMIN", null, ORG_ID);
         // memberUserId: メンバーシップ登録のみ（MEMBER 権限）
         MembershipTestHelper.insertMembership(em, memberUserId, ScopeType.ORGANIZATION, ORG_ID, RoleKind.MEMBER);
-        MembershipTestHelper.insertUserRole(em, memberUserId, "MEMBER", null, ORG_ID);
 
         insertOrganization(ORG_ID, "申し送りテスト組合");
 
@@ -341,7 +342,7 @@ class BoardHandoverPackControllerTest extends AbstractRepairPlanPhase5Integratio
 
     @Test
     @DisplayName("generatePack 後 PACK_GENERATED 監査ログが記録される")
-    void generatePack_logsAuditEvent() throws InterruptedException {
+    void generatePack_logsAuditEvent() {
         UUID termId = insertActiveTerm(adminUserId, "ORGANIZATION", ORG_ID, ORG_ID);
         em.flush();
 
@@ -349,15 +350,16 @@ class BoardHandoverPackControllerTest extends AbstractRepairPlanPhase5Integratio
                 new GenerateHandoverPackRequest(termId, null, "STANDARD"));
         em.flush();
 
-        // 監査ログは非同期（@Async）のため少し待つ
-        Thread.sleep(500);
-        TransactionTemplate newTx = new TransactionTemplate(txManager);
-        newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        Boolean auditRecorded = newTx.execute(status ->
-                auditLogRepository.findAll().stream()
-                        .anyMatch(log -> "PACK_GENERATED".equals(log.getEventType())
-                                && ORG_ID.equals(log.getOrganizationId())));
-        assertThat(auditRecorded).isTrue();
+        // 監査ログは非同期（@Async）のため記録されるまで待機する。
+        Awaitility.await().atMost(Duration.ofSeconds(5)).untilAsserted(() -> {
+            TransactionTemplate newTx = new TransactionTemplate(txManager);
+            newTx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            Boolean auditRecorded = newTx.execute(status ->
+                    auditLogRepository.findAll().stream()
+                            .anyMatch(log -> "PACK_GENERATED".equals(log.getEventType())
+                                    && ORG_ID.equals(log.getOrganizationId())));
+            assertThat(auditRecorded).isTrue();
+        });
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -392,8 +394,8 @@ class BoardHandoverPackControllerTest extends AbstractRepairPlanPhase5Integratio
     private void insertOrganization(Long id, String name) {
         em.createNativeQuery(
                 "INSERT INTO organizations (id, name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, created_at, updated_at) "
-                        + "VALUES (:id, :name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
+                        + "supporter_enabled, version, slug, created_at, updated_at) "
+                        + "VALUES (:id, :name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("id", id)
                 .setParameter("name", name)
                 .executeUpdate();

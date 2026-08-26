@@ -1,209 +1,242 @@
 {
   "village": {
-    "title": "村",
-    "subtitle": "コミュニティ広場",
+    "title": "마을",
+    "subtitle": "커뮤니티 광장",
+    "archivedNotice": "이 마을은 동결되었습니다. 열람만 가능합니다.",
     "action": {
-      "create": "村を作る",
-      "edit": "村を編集",
-      "delete": "村を削除",
-      "archive": "村を凍結",
-      "join": "参加する",
-      "leave": "退村する",
-      "pin": "お気に入りに追加",
-      "unpin": "お気に入りから外す",
-      "report": "通報する",
-      "search": "検索",
-      "save": "保存",
-      "cancel": "キャンセル",
-      "submit": "送信",
-      "approve": "承認",
-      "reject": "却下",
-      "withdraw": "取り下げ",
-      "resolve": "対応完了",
-      "dismiss": "却下",
+      "create": "마을 만들기",
+      "edit": "마을 편집",
+      "delete": "마을 삭제",
+      "archive": "마을 보관",
+      "join": "참가하기",
+      "leave": "마을 떠나기",
+      "pin": "즐겨찾기에 추가",
+      "unpin": "즐겨찾기에서 제거",
+      "report": "신고하기",
+      "search": "검색",
+      "save": "저장",
+      "cancel": "취소",
+      "submit": "제출",
+      "approve": "승인",
+      "reject": "거절",
+      "withdraw": "철회",
+      "resolve": "처리 완료",
+      "dismiss": "기각",
       "ban": "Ban",
       "unban": "Unban",
       "changeRole": "Change role",
       "viewAll": "View all villages"
     },
     "field": {
-      "name": "村名",
-      "slug": "スラッグ",
-      "category": "カテゴリ",
-      "description": "説明文",
-      "iconUrl": "アイコン",
-      "coverUrl": "カバー画像",
-      "type": "種別",
-      "joinPolicy": "参加方式",
-      "visibility": "公開範囲",
-      "guideline": "村ガイドライン",
-      "purpose": "活動目的",
-      "memberCount": "村人数",
-      "createdAt": "作成日",
-      "archivedAt": "凍結日"
+      "name": "마을 이름",
+      "slug": "슬러그",
+      "category": "카테고리",
+      "description": "설명",
+      "iconUrl": "아이콘",
+      "coverUrl": "커버 이미지",
+      "type": "유형",
+      "joinPolicy": "가입 방식",
+      "visibility": "공개 범위",
+      "bulletinVisibility": "게시판 공개 범위",
+      "guideline": "마을 가이드라인",
+      "purpose": "활동 목적",
+      "memberCount": "회원 수",
+      "createdAt": "생성일",
+      "archivedAt": "보관일"
     },
     "type": {
-      "OFFICIAL": "公式村",
-      "COMMUNITY": "コミュニティ村"
+      "OFFICIAL": "공식 마을",
+      "COMMUNITY": "커뮤니티 마을"
     },
     "joinPolicy": {
-      "FREE": "自由参加",
-      "APPROVAL": "承認制"
+      "FREE": "자유 가입",
+      "APPROVAL": "승인 필요"
     },
     "visibility": {
-      "PUBLIC": "公開",
-      "UNLISTED": "限定公開"
+      "PUBLIC": "공개",
+      "UNLISTED": "부분 공개"
+    },
+    "bulletinVisibility": {
+      "PUBLIC": "비회원에게도 공개",
+      "MEMBERS_ONLY": "회원 전용"
     },
     "role": {
-      "HEADMAN": "村長",
-      "ELDER": "長老",
-      "VILLAGER": "村人",
-      "VISITOR": "訪問者"
+      "HEADMAN": "촌장",
+      "ELDER": "원로",
+      "VILLAGER": "마을 주민",
+      "VISITOR": "방문자"
     },
     "subjectType": {
-      "USER": "個人",
-      "TEAM": "チーム",
-      "ORGANIZATION": "組織"
+      "USER": "개인",
+      "TEAM": "팀",
+      "ORGANIZATION": "조직"
     },
     "tab": {
-      "bulletin": "掲示板",
-      "timeline": "タイムライン",
-      "lobby": "ロビー",
-      "members": "村人一覧",
-      "settings": "設定",
-      "reports": "通報管理",
-      "calendar": "歳時記",
-      "festival": "お祭り",
-      "matchRecruit": "練習試合・募集",
-      "meetup": "寄合",
-      "chronicle": "村史"
+      "bulletin": "게시판",
+      "timeline": "타임라인",
+      "lobby": "로비",
+      "members": "회원 목록",
+      "calendar": "달력",
+      "festival": "축제",
+      "matchRecruit": "연습 경기 모집",
+      "meetup": "모임",
+      "chronicle": "마을 역사",
+      "charter": "마을 헌장"
+    },
+    "systemPost": {
+      "authorName": "마을 행사 안내",
+      "eventCreated": "행사가 생성되었습니다",
+      "eventUpcoming": "행사가 곧 시작됩니다",
+      "meetupConfirmed": "모임 일정이 확정되었습니다",
+      "festivalStarted": "축제가 시작되었습니다"
     },
     "lobby": {
-      "title": "ロビー",
-      "today": "本日",
-      "yesterday": "昨日",
-      "daily": "日次スレッド",
-      "realtime": "リアルタイム",
-      "placeholder": "メッセージを入力...",
-      "empty": "まだメッセージはありません",
-      "loadMore": "もっと見る",
+      "title": "로비",
+      "today": "오늘",
+      "yesterday": "어제",
+      "daily": "일간 스레드",
+      "realtime": "실시간",
+      "placeholder": "메시지를 입력하세요...",
+      "empty": "아직 메시지가 없습니다",
+      "loadMore": "더 보기",
       "presence": {
         "count": "{count}명이 여기 있습니다"
       }
     },
     "pin": {
-      "title": "お気に入りの村",
-      "empty": "ピン留めした村はまだありません",
-      "limit": "ピン留めは{max}件まで可能です",
-      "reorder": "並び替え",
-      "reorderSuccess": "並び順を保存しました"
+      "title": "즐겨찾기 마을",
+      "empty": "즐겨찾기한 마을이 없습니다",
+      "limit": "최대 {max}개의 마을을 즐겨찾기할 수 있습니다",
+      "reorder": "순서 변경",
+      "reorderSuccess": "순서가 저장되었습니다"
     },
     "nickname": {
-      "title": "村ニックネーム",
-      "placeholder": "村で使うニックネーム",
-      "bio": "自己紹介",
-      "avatar": "アバター",
-      "changeLimit": "ニックネーム変更は月{limit}回までです",
-      "remaining": "今月の残り変更回数: {count}回",
-      "saveSuccess": "ニックネームを保存しました"
+      "title": "마을 닉네임",
+      "placeholder": "이 마을에서 사용할 닉네임",
+      "bio": "자기소개",
+      "avatar": "아바타",
+      "changeLimit": "닉네임은 월 {limit}회까지 변경할 수 있습니다",
+      "remaining": "이번 달 남은 변경 횟수: {count}회",
+      "saveSuccess": "닉네임이 저장되었습니다"
     },
     "report": {
       "dialog": {
-        "title": "通報する",
-        "reason": "通報理由",
-        "detail": "詳細（任意）",
-        "submit": "通報を送信",
-        "submitted": "通報を受け付けました。運営が確認します。",
-        "anonymous": "通報は匿名で送信されます"
+        "title": "신고하기",
+        "reason": "신고 이유",
+        "detail": "상세 내용（선택 사항）",
+        "submit": "신고 제출",
+        "submitted": "신고가 접수되었습니다. 운영팀이 확인하겠습니다.",
+        "anonymous": "신고는 익명으로 제출됩니다"
       },
       "list": {
-        "title": "通報一覧",
-        "empty": "通報はありません",
-        "status": "状態",
-        "target": "対象",
-        "reportedAt": "通報日時"
+        "title": "신고 목록",
+        "empty": "신고 내역이 없습니다",
+        "status": "상태",
+        "target": "대상",
+        "reportedAt": "신고 일시"
       },
       "status": {
-        "PENDING": "未対応",
-        "REVIEWING": "確認中",
-        "RESOLVED": "対応済み",
-        "DISMISSED": "却下"
+        "PENDING": "미처리",
+        "REVIEWING": "검토 중",
+        "RESOLVED": "처리 완료",
+        "DISMISSED": "기각"
       },
       "targetType": {
-        "POST": "投稿",
-        "MESSAGE": "メッセージ",
-        "MEMBERSHIP": "村人",
-        "VILLAGE": "村"
+        "POST": "게시글",
+        "MESSAGE": "메시지",
+        "MEMBERSHIP": "회원",
+        "VILLAGE": "마을"
       },
       "reason": {
-        "spam": "スパム・宣伝",
-        "harassment": "嫌がらせ・誹謗中傷",
-        "offensive": "不快・不適切な内容",
-        "other": "その他"
+        "spam": "스팸・홍보",
+        "harassment": "괴롭힘・비방",
+        "offensive": "불쾌・부적절한 내용",
+        "other": "기타"
       }
     },
     "creationRequest": {
-      "title": "村作成申請",
-      "adminTitle": "村作成申請審査",
-      "guideline": "村ガイドラインに同意する",
-      "submitted": "申請を送信しました。運営の審査をお待ちください。",
-      "pending": "審査待ち",
-      "approved": "承認済み",
-      "rejected": "却下",
-      "withdrawn": "取り下げ済み",
-      "reviewComment": "審査コメント",
-      "reviewCommentPlaceholder": "審査コメントを入力してください",
-      "purpose": "活動目的・運営方針",
-      "empty": "申請はありません",
+      "title": "마을 생성 신청",
+      "adminTitle": "마을 생성 신청 심사",
+      "guideline": "마을 가이드라인에 동의",
+      "submitted": "신청이 제출되었습니다. 심사를 기다려주세요.",
+      "pending": "심사 대기 중",
+      "approved": "승인됨",
+      "rejected": "거절됨",
+      "withdrawn": "철회됨",
+      "reviewComment": "심사 의견",
+      "reviewCommentPlaceholder": "심사 의견을 입력하세요",
+      "purpose": "활동 목적・운영 방침",
+      "empty": "신청 내역이 없습니다",
       "filter": {
-        "all": "すべて",
-        "PENDING": "審査待ち",
-        "APPROVED": "承認済み",
-        "REJECTED": "却下",
-        "WITHDRAWN": "取り下げ済み"
+        "all": "전체",
+        "PENDING": "심사 대기 중",
+        "APPROVED": "승인됨",
+        "REJECTED": "거절됨",
+        "WITHDRAWN": "철회됨"
       },
       "column": {
-        "requester": "申請者",
-        "village": "村名",
-        "category": "カテゴリ",
-        "purpose": "目的",
-        "requestedAt": "申請日",
-        "actions": "操作"
+        "requester": "신청자",
+        "village": "마을 이름",
+        "category": "카테고리",
+        "purpose": "목적",
+        "requestedAt": "신청일",
+        "actions": "작업"
       },
       "confirm": {
-        "approve": "この村作成申請を承認します。よろしいですか?",
-        "reject": "この村作成申請を却下します。却下理由を入力してください。"
+        "approve": "이 마을 생성 신청을 승인하시겠습니까?",
+        "reject": "이 마을 생성 신청을 거절합니다. 거절 이유를 입력해주세요."
       },
-      "detailTitle": "村作成申請の詳細",
-      "rejectCommentRequired": "却下時は審査コメントが必須です",
-      "noPermission": "この画面を閲覧する権限がありません",
-      "loadFailed": "村作成申請一覧の取得に失敗しました",
-      "approveSuccess": "申請を承認しました",
-      "rejectSuccess": "申請を却下しました",
-      "reviewFailed": "審査の処理に失敗しました"
+      "detailTitle": "마을 생성 신청 상세",
+      "rejectCommentRequired": "거절 시 심사 의견은 필수입니다",
+      "noPermission": "이 페이지를 볼 권한이 없습니다",
+      "loadFailed": "마을 생성 신청 목록을 가져오는 데 실패했습니다",
+      "approveSuccess": "신청이 승인되었습니다",
+      "rejectSuccess": "신청이 거절되었습니다",
+      "reviewFailed": "심사 처리에 실패했습니다"
     },
     "joinRequest": {
-      "title": "参加申請",
-      "message": "申請メッセージ（任意）",
-      "submitted": "参加申請を送信しました",
-      "pending": "審査待ち",
-      "approved": "承認済み",
-      "rejected": "却下",
-      "withdrawn": "取り下げ済み",
-      "reviewComment": "審査コメント",
-      "empty": "参加申請はありません"
+      "title": "참가 신청",
+      "message": "신청 메시지（선택 사항）",
+      "submitted": "참가 신청이 제출되었습니다",
+      "pending": "심사 대기 중",
+      "approved": "승인됨",
+      "rejected": "거절됨",
+      "withdrawn": "철회됨",
+      "reviewComment": "심사 의견",
+      "empty": "참가 신청이 없습니다",
+      "description": "이 마을은 승인제입니다. 촌장 또는 원로의 승인을 받으면 마을 주민이 됩니다. 지원 동기를 적으면 승인받기 쉬워집니다.",
+      "formTitle": "가입 신청하기",
+      "messagePlaceholder": "마을에서 하고 싶은 일과 가입하려는 이유를 적어 주세요 (선택, 500자 이내)",
+      "submittedTitle": "제출한 신청",
+      "submittedBody": "촌장 또는 원로의 심사를 기다려 주세요. 심사 대기 중에는 이 화면에서 언제든지 철회할 수 있습니다.",
+      "withdrawSuccess": "가입 신청을 철회했습니다",
+      "approveSuccess": "가입 신청을 승인했습니다",
+      "rejectSuccess": "가입 신청을 거절했습니다",
+      "rejectCommentRequired": "거절할 때는 심사 의견이 필수입니다",
+      "reviewCommentPlaceholder": "신청자에게 전달할 의견을 입력하세요 (500자 이내)",
+      "reviewDescription": "이 마을의 가입 신청을 심사합니다. 승인하면 신청자가 마을 주민이 됩니다.",
+      "column": {
+        "requester": "신청자",
+        "message": "신청 메시지",
+        "status": "상태",
+        "actions": "작업"
+      },
+      "confirm": {
+        "approve": "이 가입 신청을 승인하시겠습니까. 승인하면 신청자가 마을 주민이 됩니다.",
+        "reject": "이 가입 신청을 거절하시겠습니까."
+      }
     },
     "feed": {
-      "title": "Village feed",
-      "dashboardTitle": "Your villages",
-      "pinned": "Pinned villages",
-      "empty": "No favorite villages yet",
-      "emptyHint": "Join a village you like and the latest posts will appear here.",
-      "loadingError": "Failed to load the village feed",
-      "retry": "Retry",
+      "title": "마을 피드",
+      "dashboardTitle": "나의 마을",
+      "pinned": "즐겨찾기 마을",
+      "empty": "즐겨찾기한 마을이 없습니다",
+      "emptyHint": "마음에 드는 마을에 참가하면 최신 게시글이 여기에 나타납니다.",
+      "loadingError": "마을 피드를 가져오는 데 실패했습니다",
+      "retry": "다시 시도",
       "type": {
-        "TIMELINE": "Timeline",
-        "LOBBY": "Lobby"
+        "TIMELINE": "타임라인",
+        "LOBBY": "로비"
       }
     },
     "widget": {
@@ -214,338 +247,551 @@
     },
     "search": {
       "title": "마을 찾기",
-      "placeholder": "村を検索...",
-      "internalPlaceholder": "この村の中を検索...",
-      "filterType": "種別で絞り込み",
-      "filterCategory": "カテゴリで絞り込み",
-      "filterJoinPolicy": "参加方式で絞り込み",
-      "empty": "条件に一致する村が見つかりません",
-      "internalEmpty": "この村内に該当する結果はありません",
+      "placeholder": "마을을 검색하세요...",
+      "internalPlaceholder": "이 마을 안에서 검색...",
+      "filterType": "유형으로 필터",
+      "filterCategory": "카테고리로 필터",
+      "filterJoinPolicy": "가입 방식으로 필터",
+      "empty": "조건에 맞는 마을을 찾을 수 없습니다",
+      "internalEmpty": "이 마을 내에 해당하는 결과가 없습니다",
       "result": {
-        "POST": "投稿",
-        "MESSAGE": "メッセージ",
-        "MEMBER": "村人"
+        "POST": "게시글",
+        "MESSAGE": "메시지",
+        "MEMBER": "회원"
       }
     },
     "members": {
-      "title": "村人一覧",
-      "empty": "村人がいません",
-      "banned": "BAN済み",
-      "you": "あなた",
-      "filterRole": "ロールで絞り込み"
+      "title": "회원 목록",
+      "empty": "회원이 없습니다",
+      "banned": "차단됨",
+      "you": "나",
+      "filterRole": "역할로 필터",
+      "soloHeadmanHint": "다른 회원이 이 마을에 참여하면 여기에서 장로로 임명할 수 있습니다."
+    },
+    "profile": {
+      "title": "마을 사람 프로필",
+      "villages": {
+        "title": "소속 마을 목록",
+        "empty": "표시할 수 있는 소속 마을이 없습니다",
+        "publicToggle": "이 마을을 내 소속 마을 목록에 표시",
+        "publicToggleHint": "켜면 당신과 같은 마을에 있는 사람이 당신의 소속 마을 목록에서 이 마을을 볼 수 있습니다."
+      }
     },
     "postingIdentity": {
-      "title": "投稿主体",
-      "asUser": "自分として投稿",
-      "asTeam": "チームとして投稿",
-      "asOrganization": "組織として投稿"
+      "title": "게시 주체",
+      "asUser": "개인으로 게시",
+      "asTeam": "팀으로 게시",
+      "asOrganization": "조직으로 게시"
     },
     "warn": {
-      "participationLimit": "30 村以上に参加しています。アクティブな村に絞ることをおすすめします。"
+      "participationLimit": "30개 이상의 마을에 참가 중입니다. 활성 마을로 줄이는 것을 권장합니다."
     },
     "success": {
-      "created": "村を作成しました",
-      "updated": "村情報を更新しました",
-      "deleted": "村を削除しました",
-      "archived": "村を凍結しました",
-      "joined": "村に参加しました",
-      "left": "村を退村しました",
-      "pinned": "お気に入りに追加しました",
-      "unpinned": "お気に入りから外しました",
-      "roleChanged": "ロールを変更しました",
-      "banned": "BANしました",
-      "reported": "通報を送信しました",
-      "reportResolved": "通報を対応済みにしました"
+      "created": "마을이 생성되었습니다",
+      "updated": "마을 정보가 업데이트되었습니다",
+      "deleted": "마을이 삭제되었습니다",
+      "archived": "마을이 보관되었습니다",
+      "joined": "마을에 참가했습니다",
+      "left": "마을을 떠났습니다",
+      "pinned": "즐겨찾기에 추가되었습니다",
+      "unpinned": "즐겨찾기에서 제거되었습니다",
+      "roleChanged": "역할이 변경되었습니다",
+      "banned": "차단되었습니다",
+      "reported": "신고가 제출되었습니다",
+      "reportResolved": "신고가 처리 완료로 표시되었습니다"
     },
     "error": {
-      "VILLAGE_001": "村が見つかりません",
-      "VILLAGE_002": "この村は非公開です",
-      "VILLAGE_003": "その村名はすでに使われています",
-      "VILLAGE_004": "スラッグの形式が不正です（3〜40文字の英小文字・数字・ハイフン）",
-      "VILLAGE_005": "そのスラッグはすでに使われています",
-      "VILLAGE_006": "すでに村人です",
-      "VILLAGE_007": "この村のメンバーではありません",
-      "VILLAGE_008": "そのニックネームはすでに使われています",
-      "VILLAGE_009": "通報の上限に達しました（1時間に10件）",
-      "VILLAGE_010": "村作成申請のレート上限に達しました（1日3件・保有10件まで）",
-      "VILLAGE_011": "ニックネーム変更は月3回までです",
-      "VILLAGE_012": "参加可能な村数の上限（100）を超えました",
-      "VILLAGE_013": "お気に入り村の上限（30件）を超えました",
-      "VILLAGE_014": "村ガイドラインへの同意が必要です（直近1時間以内）",
-      "VILLAGE_015": "この主体として参加する権限がありません",
-      "VILLAGE_016": "指定された主体は村人ではありません",
-      "VILLAGE_017": "村長は後継を指名するまで退村できません",
-      "VILLAGE_018": "他のユーザーが情報を更新しました。最新の内容を確認して再度お試しください",
-      "VILLAGE_019": "この村は承認が必要です。参加申請をご利用ください",
-      "VILLAGE_022": "新規アカウントはこの操作を行えません",
-      "VILLAGE_024": "この操作を行う権限がありません",
-      "VILLAGE_025": "短時間に参加と退出を繰り返しています。しばらく時間をおいてからお試しください",
-      "VILLAGE_026": "通報対象が不正です",
-      "VILLAGE_027": "この村は凍結されています",
-      "VILLAGE_028": "ニックネームが無効です（長さ・禁止語・使用文字を確認してください）",
-      "VILLAGE_029": "入力値が不正です",
-      "VILLAGE_031": "この村から BAN されています",
-      "VILLAGE_032": "村作成申請が見つかりません",
-      "VILLAGE_033": "この村作成申請は既に審査済みです",
-      "VILLAGE_034": "この村作成申請は拒否済みです",
-      "VILLAGE_035": "指定された slug は既に使用されています",
-      "VILLAGE_036": "一般ユーザーは公式村を申請できません",
-      "VILLAGE_037": "公式村の作成には運営権限が必要です",
-      "VILLAGE_038": "参加申請が見つかりません",
-      "VILLAGE_039": "既に審査待ちの参加申請があります",
-      "VILLAGE_040": "この参加申請は既に処理済みです",
-      "VILLAGE_041": "この村は自由参加です。参加申請ではなく直接参加してください",
-      "VILLAGE_042": "通報が見つかりません",
-      "VILLAGE_043": "この通報は既に処理済みです",
-      "VILLAGE_044": "お気に入り村のピンが見つかりません",
-      "generic": "村機能でエラーが発生しました",
-      "backToList": "村一覧へ戻る",
-      "headmanOnly": "이 설정은 촌장만 변경할 수 있습니다"
+      "VILLAGE_001": "마을을 찾을 수 없습니다",
+      "VILLAGE_002": "이 마을은 비공개입니다",
+      "VILLAGE_003": "이미 사용 중인 마을 이름입니다",
+      "VILLAGE_004": "슬러그 형식이 잘못되었습니다（3～40자의 소문자·숫자·하이픈）",
+      "VILLAGE_005": "이미 사용 중인 슬러그입니다",
+      "VILLAGE_006": "이미 회원입니다",
+      "VILLAGE_007": "이 마을의 회원이 아닙니다",
+      "VILLAGE_008": "이미 사용 중인 닉네임입니다",
+      "VILLAGE_009": "신고 횟수 제한에 도달했습니다（1시간에 10건）",
+      "VILLAGE_010": "마을 생성 횟수 제한에 도달했습니다. 잠시 후 다시 시도해 주세요.",
+      "VILLAGE_011": "닉네임은 월 3회까지만 변경할 수 있습니다",
+      "VILLAGE_012": "참가 가능한 마을 수 상한（100개）을 초과했습니다",
+      "VILLAGE_013": "즐겨찾기 마을 수 상한（30개）을 초과했습니다",
+      "VILLAGE_014": "마을 가이드라인 동의가 필요합니다（최근 1시간 이내）",
+      "VILLAGE_015": "이 주체로 참가할 권한이 없습니다",
+      "VILLAGE_016": "지정한 주체는 회원이 아닙니다",
+      "VILLAGE_017": "촌장은 후계자를 지정하기 전에 마을을 떠날 수 없습니다",
+      "VILLAGE_018": "다른 사용자가 정보를 업데이트했습니다. 최신 내용을 확인 후 다시 시도해주세요",
+      "VILLAGE_019": "이 마을은 승인이 필요합니다. 참가 신청을 이용해주세요",
+      "VILLAGE_022": "신규 계정은 이 작업을 수행할 수 없습니다",
+      "VILLAGE_024": "이 작업을 수행할 권한이 없습니다",
+      "VILLAGE_025": "짧은 시간에 참가와 탈퇴를 반복하고 있습니다. 잠시 후 다시 시도해주세요",
+      "VILLAGE_026": "신고 대상이 잘못되었습니다",
+      "VILLAGE_027": "이 마을은 보관되었습니다",
+      "VILLAGE_028": "닉네임이 유효하지 않습니다（길이·금지어·허용 문자를 확인하세요）",
+      "VILLAGE_029": "입력값이 잘못되었습니다",
+      "VILLAGE_031": "이 마을에서 차단되었습니다",
+      "VILLAGE_032": "마을 생성 신청을 찾을 수 없습니다",
+      "VILLAGE_033": "이 마을 생성 신청은 이미 심사되었습니다",
+      "VILLAGE_034": "이 마을 생성 신청은 이미 거절되었습니다",
+      "VILLAGE_035": "지정한 슬러그는 이미 사용 중입니다",
+      "VILLAGE_036": "일반 사용자는 공식 마을을 신청할 수 없습니다",
+      "VILLAGE_037": "공식 마을 생성에는 관리자 권한이 필요합니다",
+      "VILLAGE_038": "참가 신청을 찾을 수 없습니다",
+      "VILLAGE_039": "이미 심사 대기 중인 참가 신청이 있습니다",
+      "VILLAGE_040": "이 참가 신청은 이미 처리되었습니다",
+      "VILLAGE_041": "이 마을은 자유 가입입니다. 신청 대신 직접 참가해주세요",
+      "VILLAGE_042": "신고를 찾을 수 없습니다",
+      "VILLAGE_043": "이 신고는 이미 처리되었습니다",
+      "VILLAGE_044": "즐겨찾기 마을 핀을 찾을 수 없습니다",
+      "VILLAGE_052": "대표 위임을 찾을 수 없습니다",
+      "VILLAGE_053": "이 대상・사용자 조합은 이미 대표로 위임되어 있습니다",
+      "VILLAGE_054": "대상 멤버십이 팀/조직이 아닙니다",
+      "VILLAGE_055": "위임받을 사용자가 대상 팀/조직의 멤버가 아닙니다",
+      "generic": "마을 기능에서 오류가 발생했습니다",
+      "backToList": "마을 목록으로 돌아가기",
+      "moderatorOnly": "이 설정은 촌장과 장로만 변경할 수 있습니다"
     },
     "placeholder": {
-      "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",
-      "timelineComingSoon": "村のタイムラインは Phase 2 で実装予定です"
+      "bulletinComingSoon": "마을 게시판은 Phase 2에서 구현 예정입니다",
+      "timelineComingSoon": "마을 타임라인은 Phase 2에서 구현 예정입니다"
     },
     "editDialog": {
-      "title": "村を編集",
-      "save": "更新する",
-      "iconLabel": "アイコン画像（R2 キー）",
-      "coverLabel": "カバー画像（R2 キー）",
-      "guidelineLabel": "村ガイドライン (Markdown)",
-      "r2KeyPlaceholder": "villages/{villageId}/icon.png など",
-      "saveSuccess": "村情報を更新しました",
-      "errorNameRequired": "村名は必須です",
-      "errorNameTooLong": "村名は {max} 文字以内で入力してください",
-      "errorDescriptionTooLong": "説明文は {max} 文字以内で入力してください",
-      "errorCategoryTooLong": "カテゴリは {max} 文字以内で入力してください",
-      "errorGuidelineTooLong": "ガイドラインは {max} 文字以内で入力してください",
-      "errorR2KeyTooLong": "R2 キーは {max} 文字以内で入力してください"
+      "title": "마을 편집",
+      "save": "업데이트",
+      "iconLabel": "아이콘 이미지（R2 키）",
+      "coverLabel": "커버 이미지（R2 키）",
+      "guidelineLabel": "마을 가이드라인 (Markdown)",
+      "r2KeyPlaceholder": "예: villages/{villageId}/icon.png",
+      "saveSuccess": "마을 정보가 업데이트되었습니다",
+      "errorNameRequired": "마을 이름은 필수입니다",
+      "errorNameTooLong": "마을 이름은 {max}자 이하로 입력해주세요",
+      "errorDescriptionTooLong": "설명은 {max}자 이하로 입력해주세요",
+      "errorCategoryTooLong": "카테고리는 {max}자 이하로 입력해주세요",
+      "errorGuidelineTooLong": "가이드라인은 {max}자 이하로 입력해주세요",
+      "errorR2KeyTooLong": "R2 키는 {max}자 이하로 입력해주세요"
     },
     "monsho": {
-      "title": "村紋",
-      "upload": "村紋をアップロード",
-      "remove": "村紋を削除"
+      "title": "마을 문장",
+      "upload": "마을 문장 업로드",
+      "remove": "마을 문장 삭제",
+      "label": "마을 문장 (문양 / 로고)",
+      "change": "문장 변경",
+      "uploading": "업로드 중…",
+      "hint": "JPG / PNG / WebP · 최대 5MB",
+      "errorMime": "JPG, PNG, WebP 이미지만 지원합니다",
+      "errorSize": "파일 크기는 5MB 이하여야 합니다",
+      "uploadSuccess": "마을 문장을 업로드했습니다",
+      "removeSuccess": "마을 문장을 삭제했습니다"
     },
     "calendar": {
-      "title": "歳時記カレンダー",
-      "create": "行事を追加",
-      "createTitle": "行事を追加",
-      "editTitle": "行事を編集",
-      "eventTitle": "行事名",
-      "description": "説明",
-      "eventDate": "開催日",
-      "eventEndDate": "終了日（任意）",
-      "annualRecurring": "毎年繰り返す",
-      "icon": "アイコン絵文字",
-      "color": "テーマカラー",
-      "edit": "編集",
-      "delete": "削除",
-      "prev": "前月",
-      "next": "翌月",
-      "today": "今月",
-      "confirmDelete": "この行事を削除します。よろしいですか?",
-      "saveSuccess": "行事を保存しました",
-      "deleteSuccess": "行事を削除しました",
-      "empty": "登録された行事はありません",
-      "noEventsInMonth": "今月の行事はありません",
-      "loadFailed": "歳時記の取得に失敗しました"
+      "title": "마을 달력",
+      "create": "행사 추가",
+      "createTitle": "행사 추가",
+      "editTitle": "행사 편집",
+      "eventTitle": "행사 이름",
+      "description": "설명",
+      "eventDate": "개최일",
+      "eventEndDate": "종료일（선택 사항）",
+      "annualRecurring": "매년 반복",
+      "icon": "아이콘 이모지",
+      "color": "테마 색상",
+      "edit": "편집",
+      "delete": "삭제",
+      "prev": "이전 달",
+      "next": "다음 달",
+      "today": "이번 달",
+      "confirmDelete": "이 행사를 삭제하시겠습니까?",
+      "saveSuccess": "행사가 저장되었습니다",
+      "deleteSuccess": "행사가 삭제되었습니다",
+      "empty": "등록된 행사가 없습니다",
+      "noEventsInMonth": "이번 달 행사가 없습니다",
+      "loadFailed": "달력을 가져오는 데 실패했습니다",
+      "log": {
+        "title": "작년의 모습",
+        "lastYear": "{year}년의 모습",
+        "addLog": "모습 기록하기",
+        "year": "연도",
+        "note": "한마디",
+        "notePlaceholder": "그때의 모습을 한마디로",
+        "photoKey": "사진(R2 키・선택 사항)",
+        "photoKeyHint": "이미지 업로드 기능은 추후 추가될 예정입니다. 이미 R2에 등록된 키가 있다면 입력할 수 있습니다",
+        "submit": "기록하기",
+        "delete": "삭제",
+        "empty": "아직 기록이 없습니다",
+        "loadFailed": "기록을 가져오는 데 실패했습니다",
+        "addSuccess": "기록했습니다",
+        "addFailed": "기록 추가에 실패했습니다",
+        "deleteConfirm": "이 기록을 삭제하시겠습니까?",
+        "deleteSuccess": "기록이 삭제되었습니다",
+        "deleteFailed": "기록 삭제에 실패했습니다"
+      }
     },
     "festival": {
-      "title": "お祭り",
-      "festivalTitle": "お祭り名",
-      "description": "概要",
-      "starts": "開始",
-      "ends": "終了",
-      "period": "開催期間",
-      "bannerImage": "バナー画像（R2 キー）",
-      "themeColor": "テーマカラー",
-      "create": "お祭りを企画",
-      "createTitle": "お祭りを企画",
-      "editTitle": "お祭りを編集",
-      "edit": "編集",
-      "cancel": "お祭りを中止",
-      "confirmCancel": "このお祭りを中止します。よろしいですか?",
-      "empty": "開催中・予定のお祭りはありません",
-      "noBanner": "バナー画像なし",
-      "saveSuccess": "お祭りを保存しました",
-      "cancelSuccess": "お祭りを中止しました",
-      "loadFailed": "お祭り一覧の取得に失敗しました",
-      "filterAll": "すべて",
+      "title": "축제",
+      "festivalTitle": "축제 이름",
+      "description": "개요",
+      "starts": "시작",
+      "ends": "종료",
+      "period": "개최 기간",
+      "bannerImage": "배너 이미지（R2 키）",
+      "themeColor": "테마 색상",
+      "create": "축제 기획",
+      "createTitle": "축제 기획",
+      "editTitle": "축제 편집",
+      "edit": "편집",
+      "cancel": "축제 취소",
+      "confirmCancel": "이 축제를 취소하시겠습니까?",
+      "empty": "진행 중이거나 예정된 축제가 없습니다",
+      "noBanner": "배너 이미지 없음",
+      "saveSuccess": "축제가 저장되었습니다",
+      "cancelSuccess": "축제가 취소되었습니다",
+      "loadFailed": "축제 목록을 가져오는 데 실패했습니다",
+      "invalidDateTime": "시작/종료 일시 형식이 올바르지 않습니다. 다시 입력해 주세요.",
+      "filterAll": "전체",
       "status": {
-        "SCHEDULED": "開催予定",
-        "ACTIVE": "開催中",
-        "ENDED": "終了",
-        "CANCELLED": "中止"
+        "SCHEDULED": "개최 예정",
+        "ACTIVE": "진행 중",
+        "ENDED": "종료",
+        "CANCELLED": "취소"
+      },
+      "rsvp": {
+        "title": "참가 의사",
+        "going": "참가함",
+        "maybe": "아마 참가",
+        "roleLabel": "역할",
+        "roleLabelPlaceholder": "역할（선택, 예: 매대 담당）",
+        "submit": "보내기",
+        "cancel": "참가 의사 취소",
+        "empty": "아직 아무도 참가 의사를 밝히지 않았습니다",
+        "loadFailed": "참가자 목록을 가져오는 데 실패했습니다",
+        "saveSuccess": "참가 의사를 등록했습니다",
+        "saveFailed": "참가 의사 등록에 실패했습니다",
+        "cancelSuccess": "참가 의사를 취소했습니다",
+        "cancelFailed": "참가 의사 취소에 실패했습니다"
+      },
+      "live": {
+        "title": "실시간 소식",
+        "tagAsLive": "실시간 소식으로 게시할 내용을 작성하세요",
+        "submit": "실시간 소식으로 게시",
+        "empty": "아직 실시간 소식이 없습니다",
+        "viewPost": "게시물 보기",
+        "loadFailed": "실시간 소식 목록을 가져오는 데 실패했습니다",
+        "tagSuccess": "실시간 소식으로 게시했습니다",
+        "tagFailed": "실시간 소식 게시에 실패했습니다"
       }
     },
     "matchRecruit": {
-      "title": "練習試合・募集",
-      "recruitTitle": "募集タイトル",
-      "description": "詳細",
-      "venue": "場所",
-      "matchDate": "試合日",
-      "matchTime": "試合時間",
-      "matchTimeStart": "開始時刻",
-      "matchTimeEnd": "終了時刻",
-      "requiredCount": "必要人数 / チーム数",
-      "contactMethod": "連絡方法",
-      "deadline": "応募締切",
-      "empty": "募集中の案件はありません",
-      "create": "募集を作成",
-      "createTitle": "募集を作成",
-      "editTitle": "募集を編集",
-      "apply": "応募する",
-      "applyTitle": "応募する",
-      "applyMessage": "応募メッセージ（任意）",
-      "applyAsTeam": "チームとして応募する場合のチーム ID（任意）",
-      "applySuccess": "応募を送信しました",
-      "applications": "応募一覧",
-      "noApplications": "応募はまだありません",
-      "applicantUser": "応募者ユーザー",
-      "close": "募集を締切",
-      "fulfill": "成立にする",
-      "cancelRecruit": "募集を取消",
-      "confirmClose": "この募集を締切ります。よろしいですか?",
-      "confirmFulfill": "この募集を成立として確定します。よろしいですか?",
-      "confirmCancel": "この募集を取消します。よろしいですか?",
-      "filterAllCategory": "全カテゴリ",
-      "filterAllStatus": "全ステータス",
-      "loadFailed": "募集一覧の取得に失敗しました",
-      "saveSuccess": "募集を保存しました",
+      "title": "연습 경기 모집",
+      "recruitTitle": "모집 제목",
+      "description": "상세 내용",
+      "venue": "장소",
+      "matchDate": "경기 날짜",
+      "matchTime": "경기 시간",
+      "matchTimeStart": "시작 시간",
+      "matchTimeEnd": "종료 시간",
+      "requiredCount": "필요 인원 / 팀 수",
+      "contactMethod": "연락 방법",
+      "deadline": "모집 마감",
+      "empty": "모집 중인 항목이 없습니다",
+      "create": "모집 작성",
+      "createTitle": "모집 작성",
+      "editTitle": "모집 편집",
+      "apply": "지원하기",
+      "applyTitle": "지원하기",
+      "applyMessage": "지원 메시지（선택 사항）",
+      "applyAsTeam": "팀으로 지원할 경우 팀 ID（선택 사항）",
+      "applySuccess": "지원이 제출되었습니다",
+      "applications": "지원 목록",
+      "noApplications": "아직 지원자가 없습니다",
+      "applicantUser": "지원자",
+      "close": "모집 마감",
+      "fulfill": "성사로 표시",
+      "cancelRecruit": "모집 취소",
+      "confirmClose": "이 모집을 마감하시겠습니까?",
+      "confirmFulfill": "이 모집을 성사로 확정하시겠습니까?",
+      "confirmCancel": "이 모집을 취소하시겠습니까?",
+      "filterAllCategory": "전체 카테고리",
+      "filterAllStatus": "전체 상태",
+      "loadFailed": "모집 목록을 가져오는 데 실패했습니다",
+      "saveSuccess": "모집이 저장되었습니다",
       "category": {
-        "PRACTICE_MATCH": "練習試合",
-        "REFEREE": "審判",
-        "VENUE": "会場",
-        "OTHER": "その他"
+        "PRACTICE_MATCH": "연습 경기",
+        "REFEREE": "심판",
+        "VENUE": "경기장",
+        "OTHER": "기타"
       },
       "status": {
-        "OPEN": "募集中",
-        "CLOSED": "募集締切",
-        "FULFILLED": "成立",
-        "CANCELLED": "取消"
+        "OPEN": "모집 중",
+        "CLOSED": "마감",
+        "FULFILLED": "성사",
+        "CANCELLED": "취소"
       }
     },
     "matchApplication": {
-      "review": "応募を審査",
-      "accept": "受諾",
-      "reject": "辞退",
-      "withdraw": "応募を取下げ",
-      "confirmWithdraw": "この応募を取下げます。よろしいですか?",
-      "acceptSuccess": "応募を受諾しました",
-      "rejectSuccess": "応募を辞退しました",
-      "withdrawSuccess": "応募を取下げました",
-      "reviewComment": "審査コメント（任意）",
+      "review": "지원 심사",
+      "accept": "수락",
+      "reject": "거절",
+      "withdraw": "지원 철회",
+      "confirmWithdraw": "이 지원을 철회하시겠습니까?",
+      "acceptSuccess": "지원이 수락되었습니다",
+      "rejectSuccess": "지원이 거절되었습니다",
+      "withdrawSuccess": "지원이 철회되었습니다",
+      "reviewComment": "심사 의견（선택 사항）",
       "status": {
-        "PENDING": "審査中",
-        "ACCEPTED": "受諾",
-        "REJECTED": "辞退",
-        "WITHDRAWN": "取下げ"
+        "PENDING": "심사 중",
+        "ACCEPTED": "수락됨",
+        "REJECTED": "거절됨",
+        "WITHDRAWN": "철회됨"
       }
     },
     "representative": {
-      "title": "代表委任",
-      "grant": "代表に委任する",
-      "revoke": "委任を取消",
-      "empty": "委任された代表はいません",
-      "grantedBy": "委任元",
-      "note": "メモ"
+      "title": "대표 위임",
+      "subtitle": "이 마을에 팀/조직으로 가입한 멤버십에 대해, 개인 사용자에게 대표로 게시할 권한을 위임합니다.",
+      "grant": "대표로 위임",
+      "revoke": "위임 취소",
+      "empty": "위임된 대표가 없습니다",
+      "grantedBy": "위임자",
+      "grantedAt": "위임 일시",
+      "note": "메모",
+      "target": "대상（팀/조직）",
+      "targetPlaceholder": "위임할 팀/조직을 선택",
+      "noTargets": "위임 가능한 팀/조직 멤버십이 없습니다",
+      "unknownTarget": "대상 불명",
+      "representativeUser": "대표 사용자",
+      "loadFailed": "대표 위임 목록을 가져오지 못했습니다",
+      "confirmRevokeTitle": "위임을 취소하시겠습니까?",
+      "confirmRevokeBody": "{name}에 대한 대표 위임을 취소합니다. 계속하시겠습니까?",
+      "revokeSuccess": "위임을 취소했습니다"
     },
     "meetup": {
-      "title": "寄合",
-      "create": "寄合を企画",
-      "createTitle": "寄合を企画",
-      "editTitle": "寄合を編集",
-      "meetupTitle": "寄合名",
-      "description": "説明",
-      "venue": "場所",
-      "candidateDates": "候補日",
-      "addCandidateDate": "候補日を追加",
-      "removeCandidateDate": "候補日を削除",
-      "candidateDate": "候補日",
-      "candidateTimeStart": "開始時刻",
-      "candidateTimeEnd": "終了時刻",
-      "vote": "投票",
-      "voteComment": "コメント（任意）",
-      "voteSubmit": "投票する",
-      "confirm": "この日に決定",
-      "confirmedDate": "確定日",
-      "cancel": "寄合を中止",
-      "confirmCancel": "この寄合を中止します。よろしいですか?",
-      "empty": "予定されている寄合はありません",
-      "participantCount": "参加予定",
-      "saveSuccess": "寄合を保存しました",
-      "voteSuccess": "投票しました",
-      "confirmSuccess": "開催日を確定しました",
-      "cancelSuccess": "寄合を中止しました",
-      "loadFailed": "寄合の取得に失敗しました",
+      "title": "모임",
+      "create": "모임 기획",
+      "createTitle": "모임 기획",
+      "editTitle": "모임 편집",
+      "meetupTitle": "모임 이름",
+      "description": "설명",
+      "location": "장소",
+      "candidateDates": "후보 날짜",
+      "addCandidateDate": "후보 날짜 추가",
+      "removeCandidateDate": "후보 날짜 삭제",
+      "candidateDate": "후보 날짜",
+      "candidateTime": "시간",
+      "allDay": "종일",
+      "timeOptionalHint": "시간은 선택 사항입니다(비워 두면 종일)",
+      "vote": "투표",
+      "confirm": "이 날짜로 확정",
+      "confirmedDate": "확정 날짜",
+      "cancel": "모임 취소",
+      "confirmCancel": "이 모임을 취소하시겠습니까?",
+      "empty": "예정된 모임이 없습니다",
+      "saveSuccess": "모임이 저장되었습니다",
+      "voteSuccess": "투표가 제출되었습니다",
+      "confirmSuccess": "날짜가 확정되었습니다",
+      "cancelSuccess": "모임이 취소되었습니다",
+      "loadFailed": "모임 정보를 가져오는 데 실패했습니다",
       "voteType": {
-        "YES": "参加",
-        "NO": "不参加",
-        "MAYBE": "未定"
+        "AVAILABLE": "참가 가능",
+        "MAYBE": "아마 참가",
+        "UNAVAILABLE": "참가 불가"
       },
       "status": {
-        "DRAFT": "下書き",
-        "OPEN": "投票受付中",
-        "CONFIRMED": "開催確定",
-        "CANCELLED": "中止",
-        "CLOSED": "終了"
+        "PLANNING": "투표 접수 중",
+        "CONFIRMED": "개최 확정",
+        "CANCELLED": "취소"
+      },
+      "attendance": {
+        "title": "참석 여부",
+        "going": "참석",
+        "maybe": "아마 참석",
+        "absent": "불참",
+        "notConfirmedHint": "개최일이 확정되면 참석 여부를 등록할 수 있습니다",
+        "empty": "아직 응답이 없습니다",
+        "unknownMember": "마을 사람",
+        "saveSuccess": "참석 여부가 등록되었습니다",
+        "saveFailed": "참석 여부 등록에 실패했습니다"
+      },
+      "comment": {
+        "title": "댓글",
+        "placeholder": "댓글을 작성하세요",
+        "submit": "등록",
+        "empty": "아직 댓글이 없습니다",
+        "delete": "삭제",
+        "postFailed": "댓글 등록에 실패했습니다",
+        "deleteConfirm": "이 댓글을 삭제하시겠습니까?",
+        "deleteSuccess": "댓글이 삭제되었습니다",
+        "deleteFailed": "댓글 삭제에 실패했습니다"
+      },
+      "decisions": {
+        "title": "결정된 사항",
+        "placeholder": "결정된 사항이나 준비물을 적어 두세요",
+        "edit": "편집",
+        "empty": "아직 결정된 사항이 없습니다",
+        "saveSuccess": "결정된 사항을 저장했습니다",
+        "saveFailed": "결정된 사항 저장에 실패했습니다"
+      },
+      "todo": {
+        "title": "할 일",
+        "titlePlaceholder": "무엇을 할까요? (예: 간식 사기)",
+        "add": "추가",
+        "claim": "내가 할게요",
+        "complete": "완료 처리",
+        "release": "맡은 일 내려놓기",
+        "unassigned": "미배정",
+        "empty": "아직 할 일이 없습니다",
+        "alreadyClaimed": "이 할 일은 이미 담당자가 정해졌습니다",
+        "addSuccess": "할 일을 추가했습니다",
+        "addFailed": "할 일 추가에 실패했습니다",
+        "claimSuccess": "이 할 일을 맡았습니다",
+        "completeSuccess": "완료 처리했습니다",
+        "completeFailed": "완료 상태 갱신에 실패했습니다",
+        "releaseSuccess": "맡은 일을 내려놓았습니다",
+        "releaseFailed": "맡은 일 내려놓기에 실패했습니다"
       }
     },
     "chronicle": {
-      "title": "村史",
-      "subtitle": "村の月次まとめ",
-      "yearMonth": "対象月",
-      "generatedAt": "生成日時",
-      "postCount": "投稿数",
-      "newMemberCount": "新規村人",
-      "topicTags": "話題タグ",
-      "empty": "村史はまだ生成されていません",
-      "loadFailed": "村史の取得に失敗しました",
-      "viewDetail": "詳細を見る"
+      "title": "마을 역사",
+      "subtitle": "마을 월별 요약",
+      "yearMonth": "대상 월",
+      "generatedAt": "생성 일시",
+      "postCount": "게시글 수",
+      "newMemberCount": "신규 회원",
+      "topicTags": "화제 태그",
+      "empty": "마을 역사가 아직 생성되지 않았습니다",
+      "loadFailed": "마을 역사를 가져오는 데 실패했습니다",
+      "viewDetail": "상세 보기"
+    },
+    "archive": {
+      "title": "마을 역사",
+      "subtitle": "축제・절기 행사・모임 등 마을 행사의 기록",
+      "empty": "아직 마을 역사 기록이 없습니다",
+      "loadFailed": "마을 역사를 가져오는 데 실패했습니다",
+      "archivedAt": "기록일",
+      "filterAll": "전체",
+      "sourceType": {
+        "festival": "축제",
+        "calendarEvent": "절기 행사",
+        "meetup": "모임"
+      }
+    },
+    "charter": {
+      "title": "마을 헌장",
+      "subtitle": "마을의 약속",
+      "empty": "아직 마을 헌장이 제정되지 않았습니다",
+      "enactedAt": "제정일",
+      "lastRevisedAt": "개정일",
+      "article": {
+        "label": "제{n}조",
+        "add": "＋조항 추가",
+        "bodyPlaceholder": "조문을 입력하세요",
+        "bodyRequired": "조문을 입력해 주세요",
+        "delete": "조항 삭제",
+        "deleteConfirm": "이 조항을 삭제하시겠습니까?"
+      },
+      "supplement": {
+        "add": "＋부칙 추가",
+        "label": "부칙",
+        "placeholder": "부칙을 입력하세요（선택）"
+      },
+      "reorder": {
+        "hint": "위/아래 버튼으로 조항 순서를 변경할 수 있습니다",
+        "up": "위로",
+        "down": "아래로"
+      },
+      "drafters": {
+        "title": "제정자",
+        "add": "＋제정자 추가",
+        "empty": "아직 등록된 제정자가 없습니다",
+        "delete": "제정자 삭제",
+        "deleteConfirm": "\"{name}\"님을 제정자에서 삭제하시겠습니까?",
+        "selectPlaceholder": "마을 주민 선택",
+        "loadMembersFailed": "마을 주민 목록을 불러오지 못해 제정자를 추가할 수 없습니다.",
+        "reloadMembers": "다시 불러오기"
+      },
+      "revision": {
+        "confirm": "개정 확정",
+        "confirmHint": "이 시점을 개정으로 기록합니다（조문의 공개 상태는 변경되지 않습니다）.",
+        "confirmSuccess": "개정을 확정했습니다",
+        "notePlaceholder": "개정 메모（선택）",
+        "history": "개정 이력",
+        "historyEmpty": "아직 개정 이력이 없습니다"
+      },
+      "error": {
+        "loadFailed": "마을 헌장을 가져오지 못했습니다",
+        "mutationFailed": "작업에 실패했습니다",
+        "versionConflict": "다른 촌장이 동시에 수정했습니다. 최신 내용을 다시 불러와 주세요",
+        "drafterDuplicate": "해당 주민은 이미 제정자입니다"
+      }
     },
     "serendipity": {
-      "title": "ご縁スコア",
-      "subtitle": "あなたとの相性度",
-      "rank": "順位",
-      "score": "スコア",
-      "myScore": "あなたのスコア",
-      "ranking": "ランキング",
-      "lastComputedAt": "最終計算日時",
-      "empty": "まだご縁スコアは計算されていません",
-      "loadFailed": "ご縁スコアの取得に失敗しました"
+      "title": "인연 점수",
+      "subtitle": "이 마을에서 쌓인 만남",
+      "rank": "순위",
+      "score": "점수",
+      "myScore": "나의 점수",
+      "ranking": "랭킹",
+      "lastComputedAt": "최종 계산 일시",
+      "empty": "아직 인연 점수가 계산되지 않았습니다",
+      "loadFailed": "인연 점수를 가져오는 데 실패했습니다"
+    },
+    "affinity": {
+      "title": "궁합 힌트",
+      "subtitle": "참여 전에 이 마을이 나와 맞는지 살펴보세요",
+      "categoryMatch": "관심사·카테고리가 가까운 마을입니다",
+      "hidden": "지금은 궁합 힌트가 없습니다",
+      "sharedVillagers": {
+        "hidden": "아직 표시할 수 없습니다",
+        "few": "몇 명",
+        "many": "10명 이상"
+      },
+      "reason": {
+        "categoryMatch": "당신의 관심사와 가까운 마을입니다",
+        "sharedVillagers": "당신과 인연이 있는 마을 사람이 있습니다",
+        "pioneer": "지금 참여하면 개척 멤버가 될 수 있습니다"
+      },
+      "pioneer": {
+        "title": "마을의 개척자가 될 수 있어요!",
+        "body": "아직 인원이 적은 작은 마을입니다. 지금 참여하면 함께 마을을 만들어가는 개척 멤버가 됩니다."
+      }
     },
     "pilgrimage": {
-      "title": "村巡礼",
-      "subtitle": "本日のおすすめ村",
-      "todaysRecommendation": "本日のおすすめ",
-      "visit": "訪問する",
-      "recorded": "訪問済み",
-      "reason": "おすすめ理由",
-      "myVisits": "訪問履歴",
-      "empty": "本日のおすすめはありません",
-      "visitsEmpty": "訪問履歴はありません",
-      "visitSuccess": "訪問を記録しました",
-      "loadFailed": "巡礼情報の取得に失敗しました"
+      "title": "마을 순례",
+      "subtitle": "오늘의 추천 마을",
+      "todaysRecommendation": "오늘의 추천",
+      "visit": "방문하기",
+      "recorded": "방문 완료",
+      "reason": "추천 이유",
+      "myVisits": "방문 기록",
+      "empty": "오늘의 추천이 없습니다",
+      "visitsEmpty": "방문 기록이 없습니다",
+      "visitSuccess": "방문이 기록되었습니다",
+      "loadFailed": "순례 정보를 가져오는 데 실패했습니다"
     },
     "newsletter": {
-      "title": "ニュースレター",
-      "subtitle": "村の更新通知",
-      "settings": "ニュースレター設定",
-      "frequency": "配信頻度",
-      "lastSentAt": "最終配信日時",
-      "nextScheduledAt": "次回配信予定",
-      "optOut": "配信停止",
-      "optIn": "配信再開",
-      "optedOut": "配信を停止中です",
-      "saveSuccess": "ニュースレター設定を保存しました",
-      "optOutSuccess": "配信を停止しました",
-      "optInSuccess": "配信を再開しました",
-      "loadFailed": "ニュースレター設定の取得に失敗しました",
-      "frequencyOption": {
-        "DAILY": "毎日",
-        "WEEKLY": "毎週",
-        "MONTHLY": "毎月",
-        "NEVER": "停止"
+      "title": "뉴스레터",
+      "subtitle": "마을 업데이트 알림",
+      "settings": "뉴스레터 설정",
+      "lastSentAt": "마지막 발송",
+      "saveSuccess": "뉴스레터 설정을 저장했습니다",
+      "optOutSuccess": "수신을 중지했습니다",
+      "optInSuccess": "수신을 재개했습니다",
+      "loadFailed": "뉴스레터 설정을 불러오지 못했습니다",
+      "manageOnlyHint": "마을 발송 설정은 촌장과 장로만 변경할 수 있습니다.",
+      "comingSoonNote": "발송 기능은 준비 중입니다. 설정은 저장할 수 있지만 실제 발송은 아직 이루어지지 않습니다.",
+      "villageSection": {
+        "title": "마을 발송 설정",
+        "subtitle": "주간·월간 뉴스레터를 각각 켜고 끌 수 있습니다."
+      },
+      "weekly": {
+        "label": "주간 뉴스레터",
+        "timing": "매주 금요일 발송"
+      },
+      "monthly": {
+        "label": "월간 뉴스레터",
+        "timing": "매월 말 발송"
+      },
+      "personalSection": {
+        "title": "내 수신 설정",
+        "toggleLabel": "이 마을의 뉴스레터를 수신",
+        "receivingHint": "현재 이 뉴스레터를 수신하고 있습니다.",
+        "stoppedHint": "현재 이 뉴스레터 수신을 중지했습니다."
       }
     },
     "slug": {
@@ -574,6 +820,356 @@
       "levelRoot": "루트",
       "level2": "중분류",
       "level3": "소분류"
+    },
+    "listGuide": {
+      "page_title": "村一覧の使い方",
+      "description": "ここは「村」をさがして参加するための一覧ページです。気になる村を見つけて中に入ったり、自分で新しい村を作ったりできます。",
+      "search": {
+        "title": "村をさがす",
+        "body": "キーワードや種別・カテゴリで、公開されている村をしぼり込めます。",
+        "steps": {
+          "step1": "上の検索ボックスにキーワード（村名・話題など）を入力します。",
+          "step2": "「種別」で公式・コミュニティをしぼり込めます。",
+          "step3": "「カテゴリ」に言葉を入れると、そのカテゴリの村だけ表示されます。"
+        }
+      },
+      "cards": {
+        "title": "村カードの見方",
+        "body": "各カードに村のアイコン・名前・公式バッジ・カテゴリ・人数・紹介文が表示されます。",
+        "steps": {
+          "step1": "「公式」バッジは運営公認の村の印です。",
+          "step2": "人数が多い村ほど活発に動いています。",
+          "step3": "紹介文でその村の雰囲気を確認できます。"
+        }
+      },
+      "enter": {
+        "title": "村に入る",
+        "body": "気になる村のカードを押すと、その村の中（掲示板・チャットなど）に入れます。",
+        "steps": {
+          "step1": "村のカードをクリックします。",
+          "step2": "村の中で「参加する」を押すと正式なメンバーになれます。",
+          "step3": "村の中の各タブの使い方は、村ヘッダーの「？使い方」で確認できます。"
+        }
+      },
+      "create": {
+        "title": "新しい村をつくる",
+        "body": "自分で新しい村を立ち上げられます（運営の承認制）。",
+        "steps": {
+          "step1": "右上の「村を作る」ボタンを押します。",
+          "step2": "申請フォームに村名・種別などを入力します。",
+          "step3": "運営に承認されると村が作成されます。"
+        }
+      }
+    },
+    "guide": {
+      "page_title": "村の使い方",
+      "description": "村は、同じ目的や興味を持つ仲間が集まる小さなコミュニティです。参加すると掲示板・チャット・投稿などの機能が使えます。下のカードで、村でできることと操作の手順を順番に確認できます。",
+      "join": {
+        "title": "村に参加する／お気に入り登録",
+        "body": "村に参加すると、掲示板・タイムライン・チャットなど村のすべての機能が使えるようになります。よく見る村はお気に入り（ピン留め）にしておくと探しやすくなります。",
+        "steps": {
+          "step1": "ヘッダー右上の「参加する」ボタンを押します。",
+          "step2": "だれでも入れる村はその場で参加完了。承認制の村は参加申請の画面が開くので、申請を送って承認を待ちます。",
+          "step3": "参加後は★（お気に入りに追加）でピン留め、「退村する」で抜けられます。"
+        }
+      },
+      "bulletin": {
+        "title": "掲示板でお知らせを読む",
+        "body": "村長や長老からの大切なお知らせが、話題（スレッド）ごとに並びます。村人になると読めるようになります。",
+        "steps": {
+          "step1": "「掲示板」タブを開きます。",
+          "step2": "気になるスレッドを押すと、本文と返信が表示されます。",
+          "step3": "村長・長老は「スレッド作成」から新しいお知らせを投稿できます。"
+        }
+      },
+      "timeline": {
+        "title": "タイムラインに投稿する",
+        "body": "村の仲間みんなに見える、ひとことフィードです。村人ならだれでも気軽に投稿できます。",
+        "steps": {
+          "step1": "「タイムライン」タブを開きます。",
+          "step2": "上の入力欄に本文を書いて「送信」を押すと投稿されます。",
+          "step3": "村長・長老は投稿のピン留めや削除ができます。"
+        }
+      },
+      "lobby": {
+        "title": "井戸端（ロビー）でリアルタイムに話す",
+        "body": "その日の村人とリアルタイムで雑談できるチャットです。過去7日分のやりとりも日付ごとにさかのぼれます。",
+        "steps": {
+          "step1": "「ロビー」タブを開きます。",
+          "step2": "左の日付一覧から日を選びます（過去の日は読むだけ）。",
+          "step3": "「今日」を選ぶと入力欄が出るので、メッセージを書いてEnterまたは送信ボタンで投稿します。"
+        }
+      },
+      "members": {
+        "title": "メンバーを見る・管理する",
+        "body": "村に参加している人の一覧です。村長は役割（長老／村人）の変更や、迷惑な人の追放（BAN）ができます。",
+        "steps": {
+          "step1": "「メンバー」タブを開きます。",
+          "step2": "一覧から相手のメニューを開きます。",
+          "step3": "村長は「役割変更」「追放（BAN）」、村人はだれでも「通報」ができます。"
+        }
+      },
+      "calendar": {
+        "title": "歳時記カレンダーで行事を知る",
+        "body": "村の記念日やイベントを月ごとのカレンダーで確認できます。毎年くり返す行事も登録できます。",
+        "steps": {
+          "step1": "「カレンダー」タブを開きます。",
+          "step2": "「前月」「翌月」ボタンで月を切り替えます。",
+          "step3": "行事カードを押すと詳細が出ます。村長・長老は「行事を追加」から登録・編集・削除ができます。"
+        }
+      },
+      "events": {
+        "title": "お祭り・練習試合の募集",
+        "body": "村のイベント（お祭り）や、対外試合・審判・会場などの募集をまとめて告知できます。状態でしぼり込めます。",
+        "steps": {
+          "step1": "「お祭り」または「練習試合・募集」タブを開きます。",
+          "step2": "上のフィルタで「募集中」などにしぼり込めます。",
+          "step3": "村人は「企画」「募集を作成」から新規作成、カードを押すと詳細表示や応募ができます。"
+        }
+      },
+      "meetup": {
+        "title": "寄合で集まる日を決める",
+        "body": "村の集まりの開催日を、みんなの投票で決める機能です。複数の候補日から投票し、開催者が確定します。",
+        "steps": {
+          "step1": "「寄合」タブを開きます。",
+          "step2": "村人は「寄合を開く」から候補日をいくつか出して作成します。",
+          "step3": "詳細画面で候補日ごとに賛成／保留／反対を投票し、開催者が日を選んで「確定」します。"
+        }
+      },
+      "chronicle": {
+        "title": "村史で歩みをふり返る",
+        "body": "村の月ごとの記録です。投稿数・新しく参加した人の数・よく使われた話題が自動でまとまります（読むだけのページです）。",
+        "steps": {
+          "step1": "「村史」タブを開きます。",
+          "step2": "年でしぼり込むと、その年の月別カードが並びます。",
+          "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "마을 헌장으로 마을의 약속을 남기기",
+        "body": "촌장・원로가 마을의 규칙（조문）을 정하고 비회원에게도 공개할 수 있습니다（공개 마을은 미가입자에게도 보입니다）.",
+        "steps": {
+          "step1": "\"마을 헌장\" 탭을 엽니다.",
+          "step2": "촌장・원로는 \"＋조항 추가\"로 조문을 작성하고, 필요하면 부칙도 첨부할 수 있습니다.",
+          "step3": "순서 변경・삭제는 즉시 반영되며, \"개정 확정\"으로 개정 이력에 기록할 수 있습니다."
+        }
+      }
+    },
+    "joinRequestGuide": {
+      "page_title": "가입 신청 사용법",
+      "description": "승인제 마을에 가입 신청하는 방법과 촌장, 원로의 심사 흐름을 설명합니다.",
+      "apply": {
+        "title": "가입 신청하기",
+        "body": "승인제 마을에는 바로 가입할 수 없습니다. 신청을 보내고 촌장 또는 원로의 승인을 기다립니다. 신청 메시지는 선택이지만 적어 두면 승인받기 쉬워집니다.",
+        "steps": {
+          "step1": "신청 메시지에 마을에서 하고 싶은 일과 가입하려는 이유를 적습니다 (선택, 500자 이내).",
+          "step2": "전송 버튼을 누르면 신청이 촌장과 원로에게 전달됩니다.",
+          "step3": "전송 직후 화면에서는 철회 버튼으로 신청을 취소할 수 있습니다."
+        }
+      },
+      "status": {
+        "title": "심사 상태 확인하기",
+        "body": "신청은 심사 대기에서 시작해 촌장 또는 원로가 승인 또는 거절로 처리합니다. 승인되면 바로 마을 주민이 되어 모든 기능을 사용할 수 있습니다.",
+        "steps": {
+          "step1": "전송 직후에는 상태가 심사 대기로 표시됩니다.",
+          "step2": "승인되면 마을 주민이 되어 모든 탭이 열립니다.",
+          "step3": "거절된 경우 심사 의견으로 이유가 전달됩니다. 내용을 확인하고 필요하면 다시 신청하세요."
+        }
+      },
+      "review": {
+        "title": "신청 심사하기 (촌장, 원로)",
+        "body": "촌장과 원로에게는 이 화면에 도착한 가입 신청 목록이 표시됩니다. 신청 메시지를 읽고 승인 또는 거절을 결정합니다.",
+        "steps": {
+          "step1": "상단 탭에서 심사 대기, 승인됨, 거절됨, 철회됨을 전환하며 신청을 찾습니다.",
+          "step2": "승인을 누르면 신청자가 마을 주민이 됩니다. 심사 의견은 선택입니다.",
+          "step3": "거절을 누를 때는 이유를 전달하기 위해 심사 의견이 필수입니다."
+        }
+      }
+    },
+    "admin": {
+      "title": "마을 운영",
+      "subtitle": "촌장과 장로를 위한 운영 메뉴",
+      "cards": {
+        "recruitCategories": {
+          "title": "모집 카테고리",
+          "desc": "모집 카테고리를 추가·편집·순서 변경합니다."
+        },
+        "newsletter": {
+          "title": "뉴스레터 설정",
+          "desc": "발송 빈도와 수신 거부를 설정합니다."
+        },
+        "members": {
+          "title": "회원 및 직책",
+          "desc": "마을 주민 관리, 직책 변경, 추방(BAN)을 합니다."
+        },
+        "representatives": {
+          "title": "대표 위임",
+          "desc": "팀/조직 멤버십을 대표하여 게시할 수 있는 사용자를 위임・관리합니다."
+        },
+        "joinRequests": {
+          "title": "가입 신청 심사",
+          "desc": "가입 신청을 확인하고 승인 또는 거부합니다."
+        },
+        "reports": {
+          "title": "신고 관리",
+          "desc": "신고 내역을 확인하고 처리합니다(출시 예정)."
+        },
+        "settings": {
+          "title": "마을 기본 설정",
+          "desc": "마을 이름, 설명 등 기본 정보를 편집합니다."
+        }
+      },
+      "comingSoon": "출시 예정",
+      "accessDenied": "이 화면은 촌장과 장로만 이용할 수 있습니다."
+    },
+    "adminGuide": {
+      "page_title": "마을 운영 사용법",
+      "description": "촌장과 장로를 위한 운영 메뉴입니다. 각 카드에서 일상 운영에 필요한 화면으로 이동할 수 있습니다.",
+      "open": {
+        "title": "마을 운영 열기",
+        "body": "마을 헤더의 톱니바퀴 아이콘 「마을 운영」 버튼에서 엽니다. 이 버튼은 촌장과 장로에게만 표시됩니다.",
+        "steps": {
+          "step1": "마을 헤더 오른쪽 상단의 「마을 운영」 버튼을 누릅니다.",
+          "step2": "카드 목록이 표시됩니다. 카드를 누르면 해당 화면으로 이동합니다."
+        }
+      },
+      "cards": {
+        "title": "각 카드에서 할 수 있는 일",
+        "body": "모집 카테고리, 뉴스레터 설정, 회원 및 직책, 가입 신청 심사, 신고 관리, 마을 기본 설정에 접근할 수 있습니다.",
+        "steps": {
+          "step1": "「모집 카테고리」에서 축제·연습 경기 등의 모집 카테고리를 추가·편집·순서 변경할 수 있습니다.",
+          "step2": "「회원 및 직책」과 「가입 신청 심사」에서 마을 주민 관리와 신규 신청 심사를 할 수 있습니다.",
+          "step3": "「마을 기본 설정」은 촌장만 열 수 있습니다. 마을 이름, 설명 등을 편집합니다."
+        }
+      },
+      "permissions": {
+        "title": "촌장과 장로의 차이",
+        "body": "대부분의 카드는 촌장과 장로 모두 사용할 수 있지만, 마을 기본 설정(현재는 뉴스레터 설정도)은 촌장만 열 수 있습니다.",
+        "steps": {
+          "step1": "장로는 모집 카테고리, 회원, 가입 신청, 신고 관리 카드를 사용할 수 있습니다.",
+          "step2": "마을 기본 설정 편집은 촌장만 가능합니다."
+        }
+      }
+    },
+    "recruitCategory": {
+      "title": "모집 카테고리",
+      "subtitle": "마을의 실정에 맞게 모집 카테고리를 자유롭게 정의할 수 있습니다.",
+      "add": "카테고리 추가",
+      "edit": "카테고리 편집",
+      "name": "카테고리 이름",
+      "namePlaceholder": "예: 참가자 모집",
+      "description": "설명(선택)",
+      "descriptionPlaceholder": "어떤 모집에 쓰는 카테고리인지 보충할 수 있습니다",
+      "color": "색상(선택)",
+      "displayOrder": "표시 순서",
+      "preset": "기본 카테고리",
+      "usage": "사용 중인 모집",
+      "usageCount": "{count}건",
+      "empty": "카테고리가 아직 없습니다. 「카테고리 추가」에서 만들어 주세요.",
+      "reorder": "순서 변경",
+      "moveUp": "위로",
+      "moveDown": "아래로",
+      "reorderSaved": "순서를 저장했습니다",
+      "created": "카테고리를 추가했습니다",
+      "updated": "카테고리를 수정했습니다",
+      "deleted": "카테고리를 삭제했습니다",
+      "confirmDelete": "이 카테고리를 삭제할까요?",
+      "confirmDeleteBody": "「{name}」을(를) 삭제합니다. 사용 중인 모집이 있으면 삭제할 수 없습니다.",
+      "limitNote": "카테고리는 마을당 최대 {max}개까지 만들 수 있습니다(현재 {count}개).",
+      "error": {
+        "VILLAGE_083": "모집 카테고리를 찾을 수 없습니다",
+        "VILLAGE_084": "같은 이름의 모집 카테고리가 이미 있습니다",
+        "VILLAGE_085": "모집 카테고리는 최대 {max}개까지입니다",
+        "VILLAGE_086": "이 카테고리를 사용하는 모집이 있어 삭제할 수 없습니다",
+        "loadFailed": "모집 카테고리를 불러오지 못했습니다"
+      },
+      "validation": {
+        "nameRequired": "카테고리 이름은 필수입니다",
+        "nameMax": "카테고리 이름은 {max}자 이내로 입력해 주세요",
+        "descriptionMax": "설명은 {max}자 이내로 입력해 주세요"
+      },
+      "clearColor": "색상 지우기"
+    },
+    "recruitCategoryGuide": {
+      "page_title": "모집 카테고리 사용법",
+      "description": "모집을 분류하기 위한 카테고리를 마을마다 자유롭게 정의할 수 있습니다. 촌장과 장로가 편집할 수 있습니다.",
+      "manage": {
+        "title": "카테고리 추가·편집",
+        "body": "「카테고리 추가」에서 새 카테고리를 만들 수 있습니다. 이름은 자유롭게 정할 수 있고 설명과 색상도 넣을 수 있습니다.",
+        "steps": {
+          "step1": "「카테고리 추가」 버튼을 누릅니다.",
+          "step2": "카테고리 이름을 입력합니다(필수·40자 이내). 설명과 색상은 선택입니다.",
+          "step3": "「저장」을 누르면 목록에 추가됩니다. 연필 아이콘으로 언제든 편집할 수 있습니다."
+        }
+      },
+      "preset": {
+        "title": "기본 카테고리도 자유롭게 바꿀 수 있습니다",
+        "body": "마을을 만들 때 제공되는 기본 카테고리(참가자 모집·협력자 모집·기타)는 단순한 데이터입니다. 마을에 맞지 않으면 이름을 바꾸거나 삭제해도 됩니다.",
+        "steps": {
+          "step1": "「기본 카테고리」 배지가 붙어 있어도 편집·삭제 제한은 없습니다.",
+          "step2": "마을 활동에 맞지 않는 이름은 그대로 고쳐 주세요."
+        }
+      },
+      "order": {
+        "title": "순서와 삭제",
+        "body": "위아래 화살표로 순서를 바꾸면 모집 작성 화면과 필터에서도 이 순서로 표시됩니다. 사용 중인 카테고리는 모집을 지키기 위해 삭제할 수 없습니다.",
+        "steps": {
+          "step1": "위아래 화살표 버튼으로 순서를 바꾸면 바로 저장됩니다.",
+          "step2": "「사용 중인 모집」이 0건인 카테고리는 휴지통 아이콘으로 삭제할 수 있습니다.",
+          "step3": "사용 중인 카테고리를 지우려면 먼저 해당 모집의 카테고리를 바꿔 주세요."
+        }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "뉴스레터 사용법",
+      "description": "마을 뉴스레터는 마을의 업데이트를 하나의 알림으로 모아 전해 줍니다. 주간·월간을 독립적으로 켜고 끌 수 있으며, 수신 여부는 각자 선택합니다.",
+      "toggles": {
+        "title": "주간·월간을 독립적으로 켜기/끄기",
+        "body": "마을 발송 설정에서 주간과 월간을 각각 전환할 수 있습니다. 한쪽만 켤 수도 있습니다.",
+        "steps": {
+          "step1": "「주간 뉴스레터」 토글로 매주 발송을 켜거나 끕니다.",
+          "step2": "「월간 뉴스레터」 토글로 매월 발송을 켜거나 끕니다.",
+          "step3": "토글을 바꾸면 즉시 저장됩니다(저장 버튼 불필요)."
+        }
+      },
+      "timing": {
+        "title": "발송 시점",
+        "body": "주간은 매주 금요일, 월간은 매월 말에 발송됩니다."
+      },
+      "permission": {
+        "title": "변경할 수 있는 사람",
+        "body": "「마을 발송 설정」은 촌장과 장로만 변경할 수 있습니다. 그 외 주민에게는 현재 설정이 읽기 전용으로 표시됩니다."
+      },
+      "personal": {
+        "title": "내 수신 설정",
+        "body": "수신 여부는 주민 각자가 선택합니다. 기본값은 수신 켜짐입니다.",
+        "steps": {
+          "step1": "「내 수신 설정」 토글을 끄면 이 마을의 뉴스레터를 받지 않게 됩니다.",
+          "step2": "다시 켜면 수신을 재개할 수 있습니다."
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ 발송 기능은 준비 중입니다. 설정은 저장할 수 있지만 실제 뉴스레터 발송은 아직 이루어지지 않습니다."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "사용법",
+      "what": {
+        "title": "마을 사람 미니 프로필이란",
+        "body": "회원 목록에서 이름을 탭하면 열리는 그 마을 사람의 간단한 프로필입니다. 역할과 상대가 공개로 설정한 소속 마을 목록을 볼 수 있습니다."
+      },
+      "villages": {
+        "title": "소속 마을 목록 보는 법",
+        "body": "상대가 공개로 설정한 마을만 표시됩니다. 마을 이름·마을 문장·카테고리만 표시되며 닉네임은 표시되지 않습니다. 카드를 탭하면 해당 마을의 첫 화면으로 이동합니다."
+      },
+      "toggle": {
+        "title": "자신의 프로필을 열었을 때",
+        "body": "자기 자신의 미니 프로필에는 「이 마을을 내 소속 마을 목록에 표시」 토글이 나타납니다. 켜면 당신과 같은 마을에 있는 사람이 당신의 소속 마을 목록에서 이 마을을 볼 수 있습니다. 마을마다 개별로 설정할 수 있습니다."
+      },
+      "privacy": {
+        "title": "개인정보 보호에 대해",
+        "body": "소속 마을 목록은 당신과 상대가 같은 마을에 함께 있는 경우에만 표시됩니다. 표시할 내용이 없으면 같은 마을인지 여부를 드러내지 않고 「표시할 수 있는 소속 마을이 없습니다」라고 중립적으로 표시됩니다."
+      }
     }
   }
 }

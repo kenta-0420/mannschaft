@@ -3,12 +3,15 @@ package com.mannschaft.app.team;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.membership.query.MemberQueryDispatcher;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -54,10 +57,14 @@ class TeamServiceTest {
     @Mock private MembershipService membershipService;
     @Mock private MembershipRepository membershipRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private MediaUrlResolver mediaUrlResolver;
+    @Mock private MemberQueryDispatcher memberQueryDispatcher;
+    @Mock private ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
+    private static final String TEAM_SLUG = "test-team";
 
     @Nested
     @DisplayName("createTeam")
@@ -67,7 +74,7 @@ class TeamServiceTest {
         @DisplayName("正常系: チームが作成され作成者がADMINになる")
         void 作成_正常_保存() {
             // Given
-            CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null);
+            CreateTeamRequest req = new CreateTeamRequest("テストチーム", "sports", "東京都", "渋谷区", null, null, null, null);
             RoleEntity adminRole = RoleEntity.builder().name("ADMIN").build();
             try {
                 var field = adminRole.getClass().getSuperclass().getDeclaredField("id");
@@ -87,6 +94,15 @@ class TeamServiceTest {
             assertThat(result.getData().getBasicInfo().name()).isEqualTo("テストチーム");
             verify(teamRepository).save(any(TeamEntity.class));
             verify(userRoleRepository).save(any(UserRoleEntity.class));
+            // F00.5 認可基盤根治: memberships にも MEMBER として入会させる（join 経由）
+            org.mockito.ArgumentCaptor<MembershipCreateRequest> captor =
+                    org.mockito.ArgumentCaptor.forClass(MembershipCreateRequest.class);
+            verify(membershipService).join(captor.capture());
+            MembershipCreateRequest joinReq = captor.getValue();
+            assertThat(joinReq.getUserId()).isEqualTo(USER_ID);
+            assertThat(joinReq.getScopeType()).isEqualTo(ScopeType.TEAM);
+            assertThat(joinReq.getRoleKind()).isEqualTo(RoleKind.MEMBER);
+            assertThat(joinReq.getSource()).isEqualTo("TEAM_CREATE");
         }
     }
 
@@ -98,13 +114,36 @@ class TeamServiceTest {
         @DisplayName("異常系: チーム不在でTEAM_001例外")
         void 取得_不在_例外() {
             // Given
-            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.empty());
+            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getTeam(TEAM_ID))
+            assertThatThrownBy(() -> service.getTeam(TEAM_SLUG))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TEAM_001"));
+        }
+
+        @Test
+        @DisplayName("F09.19.10: numericIdに内部BIGINT IDが返される(Spotlight scopeId解決用)")
+        void numericIdに内部BIGINT_IDが返される() {
+            // Given: slug は名称由来の非数値文字列（数値化不能な現実のケースを模す）
+            TeamEntity team = TeamEntity.builder()
+                    .slug(TEAM_SLUG).name("テストチーム").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(team, "id", TEAM_ID);
+            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.of(team));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+            given(userRoleRepository.countByTeamId(any())).willReturn(0L);
+
+            // When
+            TeamResponse res = service.getTeam(TEAM_SLUG).getData();
+
+            // Then
+            assertThat(res.getNumericId()).isEqualTo(TEAM_ID);
+            // id/slug は URL識別子のまま（正準はslug。numericIdはURLに使わない内部連携専用）
+            assertThat(res.getId()).isEqualTo(res.getSlug());
         }
     }
 
@@ -182,12 +221,12 @@ class TeamServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: visibility=ORGANIZATION_ONLY → TEAM_001（IDOR 対策で 404）")
-        void 公開取得_organizationOnly_404() {
+        @DisplayName("異常系: visibility=GUESTS_AND_ABOVE → TEAM_001（IDOR 対策で 404）")
+        void 公開取得_guestsAndAbove_404() {
             TeamEntity team = TeamEntity.builder()
                     .name("組織内店舗")
                     .template("salon")
-                    .visibility(TeamEntity.Visibility.ORGANIZATION_ONLY)
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE)
                     .supporterEnabled(true)
                     .build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
@@ -199,12 +238,12 @@ class TeamServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: visibility=PRIVATE → TEAM_001（IDOR 対策で 404）")
-        void 公開取得_private_404() {
+        @DisplayName("異常系: visibility=MEMBERS_AND_ABOVE → TEAM_001（IDOR 対策で 404）")
+        void 公開取得_membersAndAbove_404() {
             TeamEntity team = TeamEntity.builder()
                     .name("非公開店舗")
                     .template("salon")
-                    .visibility(TeamEntity.Visibility.PRIVATE)
+                    .visibility(TeamEntity.Visibility.MEMBERS_AND_ABOVE)
                     .supporterEnabled(false)
                     .build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
@@ -225,7 +264,7 @@ class TeamServiceTest {
         void アーカイブ_既済_例外() {
             // Given
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
-                    .visibility(TeamEntity.Visibility.PRIVATE).build();
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             team.archive(); // archivedAtをセット
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
 
@@ -269,6 +308,42 @@ class TeamServiceTest {
         }
 
         @Test
+        @DisplayName("回帰防止: 既存エンティティをUPDATE_id不変かつ新規行を作らない(toBuilder id欠落INSERT化の根治)")
+        void 更新_既存エンティティをUPDATE_id不変かつ新規行を作らない() {
+            // Given: findById で取得した id 採番済みの managed entity を模す。
+            // BaseEntity#id は setter を持たないため ReflectionTestUtils で採番済み状態を再現する。
+            TeamEntity team = TeamEntity.builder()
+                    .slug(TEAM_SLUG)
+                    .name("旧名称").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .supporterEnabled(false)
+                    .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(team, "id", TEAM_ID);
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+            given(teamRepository.save(any(TeamEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+
+            UpdateTeamRequest req = new UpdateTeamRequest(
+                    "新名称", null, null, null, null, null, null, null, null,
+                    null, 1L);
+
+            // When
+            service.updateTeam(TEAM_ID, req);
+
+            // Then: save に渡るのは findById で取得した「まさにその」managed entity（別インスタンスではない）。
+            // id が保持されているので save は UPDATE になり、新規 INSERT（id=null・slug 一意制約違反500）は起きない。
+            org.mockito.ArgumentCaptor<TeamEntity> captor =
+                    org.mockito.ArgumentCaptor.forClass(TeamEntity.class);
+            verify(teamRepository).save(captor.capture());
+            TeamEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(team);
+            assertThat(saved.getId()).isEqualTo(TEAM_ID); // id 欠落（INSERT 化）が起きていない
+            assertThat(saved.getSlug()).isEqualTo(TEAM_SLUG); // slug 据置
+            assertThat(saved.getName()).isEqualTo("新名称"); // 部分更新が反映
+        }
+
+        @Test
         @DisplayName("正常系: mapEmbedUrl=null の場合は既存値が保持される")
         void 更新_mapEmbedUrl_null時既存維持() {
             // Given
@@ -304,7 +379,7 @@ class TeamServiceTest {
         void フォロー_ブロック_例外() {
             // Given
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
-                    .visibility(TeamEntity.Visibility.PRIVATE).build();
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(true);
 
@@ -320,7 +395,7 @@ class TeamServiceTest {
         void フォロー_既所属_例外() {
             // Given
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
-                    .visibility(TeamEntity.Visibility.PRIVATE).build();
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(false);
             // F00.5 Phase 5: memberships ベースの重複チェック
@@ -339,7 +414,7 @@ class TeamServiceTest {
         void フォロー_正常_入会() {
             // Given
             TeamEntity team = TeamEntity.builder().name("テスト").template("sports")
-                    .visibility(TeamEntity.Visibility.PRIVATE).build();
+                    .visibility(TeamEntity.Visibility.GUESTS_AND_ABOVE).build();
             given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
             given(teamBlockRepository.existsByTeamIdAndUserId(TEAM_ID, USER_ID)).willReturn(false);
             given(membershipRepository.existsActiveByUserAndScopeAndRoleKind(
@@ -350,6 +425,96 @@ class TeamServiceTest {
 
             // Then
             verify(membershipService).join(any(MembershipCreateRequest.class));
+        }
+    }
+
+    /**
+     * 画像 URL 根治 Phase 1: チーム詳細（toResponse）・公開詳細（getPublicTeam）の
+     * icon/banner が生 R2 キーではなく {@link MediaUrlResolver} の解決済み署名付き表示 URL に
+     * なることを検証する。{@code mapEmbedUrl} は R2 キーではないため素通し（resolver を通さない）。
+     */
+    @Nested
+    @DisplayName("画像URL解決（MediaUrlResolver 配線）")
+    class MediaUrlResolution {
+
+        private static final String ICON_KEY = "team/10/icon/x.png";
+        private static final String BANNER_KEY = "team/10/banner/y.png";
+        private static final String SIGNED_ICON = "https://signed/icon.png?sig=ic";
+        private static final String SIGNED_BANNER = "https://signed/banner.png?sig=bn";
+        private static final String MAP_EMBED = "https://www.google.com/maps/embed?pb=!1m18";
+
+        private void stubCommonCounts() {
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+            given(userRoleRepository.countByTeamId(any())).willReturn(0L);
+        }
+
+        @Test
+        @DisplayName("AC-6/AC-10: toResponse の metadata.iconUrl/bannerUrl は解決値・mapEmbedUrl は素通し")
+        void toResponse_解決値が乗る_mapEmbedは素通し() {
+            // Given
+            TeamEntity team = TeamEntity.builder()
+                    .slug(TEAM_SLUG).name("画像チーム").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .iconUrl(ICON_KEY).bannerUrl(BANNER_KEY).mapEmbedUrl(MAP_EMBED)
+                    .build();
+            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.of(team));
+            stubCommonCounts();
+            given(mediaUrlResolver.resolve(ICON_KEY)).willReturn(SIGNED_ICON);
+            given(mediaUrlResolver.resolve(BANNER_KEY)).willReturn(SIGNED_BANNER);
+
+            // When
+            TeamResponse res = service.getTeam(TEAM_SLUG).getData();
+
+            // Then: icon/banner は署名付き表示 URL へ解決される
+            assertThat(res.getMetadata().iconUrl()).isEqualTo(SIGNED_ICON);
+            assertThat(res.getMetadata().bannerUrl()).isEqualTo(SIGNED_BANNER);
+            // AC-10: mapEmbedUrl は R2 キーではないため resolver を通さず素通し
+            assertThat(res.getMetadata().mapEmbedUrl()).isEqualTo(MAP_EMBED);
+            verify(mediaUrlResolver, org.mockito.Mockito.never()).resolve(MAP_EMBED);
+        }
+
+        @Test
+        @DisplayName("AC-7: DB の icon/banner が null ならレスポンスも null（resolver(null)→null 経由）")
+        void toResponse_DBがnullならnull() {
+            // Given: icon/banner 未設定（null）
+            TeamEntity team = TeamEntity.builder()
+                    .slug(TEAM_SLUG).name("画像なしチーム").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .build();
+            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.of(team));
+            stubCommonCounts();
+            // resolver はモック既定で null を返す（resolve(null)→null の縮退を模す）
+
+            // When
+            TeamResponse res = service.getTeam(TEAM_SLUG).getData();
+
+            // Then
+            assertThat(res.getMetadata().iconUrl()).isNull();
+            assertThat(res.getMetadata().bannerUrl()).isNull();
+        }
+
+        @Test
+        @DisplayName("AC-6(公開詳細): getPublicTeam の icon/banner も解決値・mapEmbedUrl は素通し")
+        void getPublicTeam_解決値が乗る() {
+            // Given
+            TeamEntity team = TeamEntity.builder()
+                    .name("公開画像店舗").template("salon")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .iconUrl(ICON_KEY).bannerUrl(BANNER_KEY).mapEmbedUrl(MAP_EMBED)
+                    .build();
+            given(teamRepository.findById(TEAM_ID)).willReturn(Optional.of(team));
+            given(mediaUrlResolver.resolve(ICON_KEY)).willReturn(SIGNED_ICON);
+            given(mediaUrlResolver.resolve(BANNER_KEY)).willReturn(SIGNED_BANNER);
+
+            // When
+            var dto = service.getPublicTeam(TEAM_ID);
+
+            // Then
+            assertThat(dto.iconUrl()).isEqualTo(SIGNED_ICON);
+            assertThat(dto.bannerUrl()).isEqualTo(SIGNED_BANNER);
+            assertThat(dto.mapEmbedUrl()).isEqualTo(MAP_EMBED);
+            verify(mediaUrlResolver, org.mockito.Mockito.never()).resolve(MAP_EMBED);
         }
     }
 }

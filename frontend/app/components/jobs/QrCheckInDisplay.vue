@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import QRCode from 'qrcode'
 import type { JobCheckInType, QrTokenResponse } from '~/types/jobmatching'
 
 /**
@@ -33,8 +32,8 @@ const qrTokenApi = useQrTokenApi()
 
 /** 現在表示中のトークン。未発行なら null。 */
 const currentToken = ref<QrTokenResponse | null>(null)
-/** QR コード（SVG 文字列）。 */
-const qrSvg = ref<string>('')
+/** QR にエンコードするトークン文字列。未発行なら null。value 変更で QrCodeImage が再描画する。 */
+const qrValue = ref<string | null>(null)
 /** 初回ロード中フラグ。 */
 const loading = ref(true)
 /** ローテーション停止ハンドル。 */
@@ -47,28 +46,12 @@ const remainingSeconds = ref<number>(0)
 const ttlSeconds = ref<number>(0)
 
 // ============================================================
-// QR コード生成
+// QR コード描画（共有コンポーネント QrCodeImage に委譲）
 // ============================================================
 
-/**
- * トークン文字列から SVG QR を生成する。
- *
- * <p>{@code qrcode} ライブラリの {@code toString(..., { type: 'svg' })} は
- * Promise を返すため、await で待ってから reactive に反映する。</p>
- */
-async function renderQr(token: string) {
-  try {
-    qrSvg.value = await QRCode.toString(token, {
-      type: 'svg',
-      errorCorrectionLevel: 'M',
-      margin: 1,
-      width: 512,
-    })
-  }
-  catch (e) {
-    qrSvg.value = ''
-    error(t('jobmatching.qr.error.renderFailed'), String(e))
-  }
+/** QrCodeImage の描画失敗を受けて通知する（握りつぶさない）。 */
+function onQrError(message: string) {
+  error(t('jobmatching.qr.error.renderFailed'), message)
 }
 
 // ============================================================
@@ -97,12 +80,8 @@ function onNewToken(token: QrTokenResponse) {
   const ttl = Math.max(1, Math.round((expiresMs - issuedMs) / 1000))
   if (ttlSeconds.value === 0) ttlSeconds.value = ttl
   // JWT 文字列が null（/current 応答）の場合は QR を描けないため、その旨を示す。
-  if (token.token) {
-    void renderQr(token.token)
-  }
-  else {
-    qrSvg.value = ''
-  }
+  // qrValue の変更で QrCodeImage の watch が再描画する（自動ローテーション対応）。
+  qrValue.value = token.token ? token.token : null
 }
 
 function onRotationError(e: unknown) {
@@ -172,14 +151,14 @@ onBeforeUnmount(() => {
           {{ t('jobmatching.qr.display.loading') }}
         </p>
       </div>
-      <!-- qrcode ライブラリが生成する静的 SVG を描画する（外部入力を含まないため XSS リスクは無い）。 -->
-      <!-- eslint-disable vue/no-v-html -->
-      <div
-        v-else-if="qrSvg"
-        class="h-full w-full"
-        v-html="qrSvg"
+      <!-- QR 描画は共有コンポーネント QrCodeImage に委譲（value 変更で自動再描画）。 -->
+      <QrCodeImage
+        v-else-if="qrValue"
+        class="!w-full"
+        :value="qrValue"
+        :size="512"
+        @error="onQrError"
       />
-      <!-- eslint-enable vue/no-v-html -->
       <div
         v-else
         class="px-4 text-center text-sm text-surface-500"

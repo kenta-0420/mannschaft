@@ -52,6 +52,9 @@ class BulletinCategoryServiceTest {
     @Mock
     private BulletinAccessGuard accessGuard;
 
+    @Mock
+    private com.mannschaft.app.village.service.VillageBulletinAccessService villageBulletinAccessService;
+
     @InjectMocks
     private BulletinCategoryService bulletinCategoryService;
 
@@ -59,6 +62,8 @@ class BulletinCategoryServiceTest {
     private static final Long SCOPE_ID = 1L;
     private static final Long USER_ID = 10L;
     private static final ScopeType SCOPE_TYPE = ScopeType.TEAM;
+    private static final java.util.UUID VILLAGE_ID =
+            java.util.UUID.fromString("00000000-0000-0000-0000-0000000000aa");
 
     private BulletinCategoryEntity createDefaultCategory() {
         return BulletinCategoryEntity.builder()
@@ -317,6 +322,47 @@ class BulletinCategoryServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(BulletinErrorCode.CATEGORY_NOT_FOUND));
+        }
+    }
+
+    @Nested
+    @DisplayName("listVillageCategories（村カテゴリ一覧 / F17.1 グローバル方式）")
+    class ListVillageCategories {
+
+        @Test
+        @DisplayName("村カテゴリ一覧_可視性認可して村スコープのカテゴリ返却")
+        void 村カテゴリ一覧_正常() {
+            // Given
+            BulletinCategoryEntity entity = createDefaultCategory();
+            given(categoryRepository.findByScopeVillageIdOrderByDisplayOrderAsc(VILLAGE_ID))
+                    .willReturn(List.of(entity));
+            given(bulletinMapper.toCategoryResponseList(List.of(entity)))
+                    .willReturn(List.of(createCategoryResponse()));
+
+            // When
+            List<CategoryResponse> result = bulletinCategoryService.listVillageCategories(VILLAGE_ID, USER_ID);
+
+            // Then
+            assertThat(result).hasSize(1);
+            verify(villageBulletinAccessService).checkVillageBulletinViewAccess(VILLAGE_ID, USER_ID);
+            verify(categoryRepository).findByScopeVillageIdOrderByDisplayOrderAsc(VILLAGE_ID);
+        }
+
+        @Test
+        @DisplayName("村カテゴリ一覧_MEMBERS_ONLY非メンバー_403で弾かれクエリは走らない")
+        void 村カテゴリ一覧_認可失敗_403() {
+            // Given
+            doThrow(new BusinessException(
+                    com.mannschaft.app.village.VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN))
+                    .when(villageBulletinAccessService)
+                    .checkVillageBulletinViewAccess(VILLAGE_ID, USER_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> bulletinCategoryService.listVillageCategories(VILLAGE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(com.mannschaft.app.village.VillageErrorCode.VILLAGE_BULLETIN_VIEW_FORBIDDEN));
+            verify(categoryRepository, never()).findByScopeVillageIdOrderByDisplayOrderAsc(any());
         }
     }
 }

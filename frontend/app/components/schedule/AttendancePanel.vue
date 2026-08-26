@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { useAttendanceResponder } from '~/composables/schedule/useAttendanceResponder'
+
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   scheduleId: number
   myAttendance: string | null
   stats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
@@ -11,33 +13,28 @@ const emit = defineEmits<{
   responded: []
 }>()
 
-const scheduleApi = useScheduleApi()
-const notification = useNotification()
-
-const responding = ref(false)
+// 出欠回答の呼び出し/トーストは共通 composable に集約（モバイル行内 RSVP と共有）。
+const { responding, respond: respondAttendance } = useAttendanceResponder(
+  props.scopeType,
+  props.scopeId,
+)
 const comment = ref('')
 const showCommentInput = ref(false)
 
 async function respond(status: string) {
-  responding.value = true
-  try {
-    await scheduleApi.respondAttendance(props.scopeType, props.scopeId, props.scheduleId, {
-      status,
-      comment: comment.value.trim() || undefined,
-    })
-    notification.success('出欠を回答しました')
+  const ok = await respondAttendance(props.scheduleId, status, comment.value)
+  if (ok) {
     comment.value = ''
     showCommentInput.value = false
     emit('responded')
   }
-  catch { notification.error('出欠の回答に失敗しました') }
-  finally { responding.value = false }
 }
 
+// status は BE 正準（ATTENDING/ABSENT/UNDECIDED）と完全一致させる。ラベルは不変。
 const attendanceButtons = [
-  { status: 'YES', label: '出席', icon: 'pi pi-check', severity: 'success' as const },
-  { status: 'NO', label: '欠席', icon: 'pi pi-times', severity: 'danger' as const },
-  { status: 'MAYBE', label: '未定', icon: 'pi pi-question', severity: 'warn' as const },
+  { status: 'ATTENDING', label: '出席', icon: 'pi pi-check', severity: 'success' as const },
+  { status: 'ABSENT', label: '欠席', icon: 'pi pi-times', severity: 'danger' as const },
+  { status: 'UNDECIDED', label: '未定', icon: 'pi pi-question', severity: 'warn' as const },
 ]
 </script>
 

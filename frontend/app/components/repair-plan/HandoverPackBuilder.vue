@@ -3,8 +3,8 @@ import type { GenerateHandoverPackRequest, HandoverPack, MemberTerm, PiiLevel } 
 
 const props = defineProps<{
   scopeType: string
-  scopeId: number
-  teamId: number
+  scopeId: string
+  teamId: string
 }>()
 
 const emit = defineEmits<{

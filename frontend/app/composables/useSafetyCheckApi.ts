@@ -4,21 +4,35 @@ export function useSafetyCheckApi() {
   const BASE = '/api/v1/safety-checks'
 
   // === Safety Check CRUD ===
-  async function listSafetyChecks(params?: { status?: string; page?: number; size?: number }) {
+  // BE 契約: scopeType / scopeId は必須クエリパラメータ
+  async function listSafetyChecks(params: {
+    scopeType: string
+    scopeId: string
+    status?: string
+    page?: number
+    size?: number
+  }) {
     const query = new URLSearchParams()
-    if (params?.status) query.set('status', params.status)
-    query.set('page', String(params?.page ?? 0))
-    query.set('size', String(params?.size ?? 20))
+    query.set('scopeType', params.scopeType)
+    query.set('scopeId', String(params.scopeId))
+    if (params.status) query.set('status', params.status)
+    query.set('page', String(params.page ?? 0))
+    query.set('size', String(params.size ?? 20))
     return api<{
       data: unknown[]
       meta: { page: number; size: number; totalElements: number; totalPages: number }
     }>(`${BASE}?${query}`)
   }
 
+  // BE 契約: CreateSafetyCheckRequest（message / scopeType / scopeId）
   async function triggerSafetyCheck(body: {
     title: string
-    description?: string
+    message?: string
+    scopeType: string
+    scopeId: string
     isDrill?: boolean
+    reminderIntervalMinutes?: number
+    templateId?: number
   }) {
     return api<{ data: unknown }>(`${BASE}`, { method: 'POST', body })
   }
@@ -78,12 +92,19 @@ export function useSafetyCheckApi() {
   }
 
   // === History & Presets ===
-  async function getHistory(params?: { page?: number; size?: number }) {
+  // BE 契約: scopeType / scopeId は必須クエリパラメータ
+  async function getHistory(params: {
+    scopeType: string
+    scopeId: string
+    page?: number
+    size?: number
+  }) {
     const query = new URLSearchParams()
-    if (params?.page !== undefined) query.set('page', String(params.page))
-    if (params?.size !== undefined) query.set('size', String(params.size))
-    const qs = query.toString()
-    return api<{ data: unknown[] }>(`${BASE}/history${qs ? `?${qs}` : ''}`)
+    query.set('scopeType', params.scopeType)
+    query.set('scopeId', String(params.scopeId))
+    if (params.page !== undefined) query.set('page', String(params.page))
+    if (params.size !== undefined) query.set('size', String(params.size))
+    return api<{ data: unknown[] }>(`${BASE}/history?${query}`)
   }
 
   async function getPresets() {

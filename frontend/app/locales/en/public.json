@@ -33,6 +33,11 @@
       "siteName": "Mannschaft",
       "openMenu": "Open menu"
     },
+    "breadcrumb": {
+      "home": "Home",
+      "discoverTeams": "Find Teams",
+      "discoverOrganizations": "Find Organizations"
+    },
     "team": {
       "title": "{name} - Public Page",
       "memberCount": "{n} members",
@@ -40,14 +45,18 @@
       "philosophyTitle": "Philosophy",
       "mapTitle": "Location",
       "homepageLabel": "Website",
-      "establishedAt": "Established: {date}"
+      "establishedAt": "Established: {date}",
+      "geoDescription": "Public page of {name}, based in {city}, {prefecture}.",
+      "geoDescriptionNoLocation": "Public page of {name}."
     },
     "organization": {
       "title": "{name} - Public Page",
       "philosophyTitle": "Philosophy",
       "mapTitle": "Location",
       "homepageLabel": "Website",
-      "establishedAt": "Established: {date}"
+      "establishedAt": "Established: {date}",
+      "geoDescription": "Public page of {name}, based in {city}, {prefecture}.",
+      "geoDescriptionNoLocation": "Public page of {name}."
     },
     "posts": {
       "sectionTitle": "Public Posts",
@@ -149,6 +158,16 @@
     "events": {
       "title": "Events",
       "empty": "No events"
+    },
+    "tabs": {
+      "posts": "Posts",
+      "timeline": "Timeline",
+      "events": "Events",
+      "activities": "Activity Records"
+    },
+    "activities": {
+      "sectionTitle": "Activity Records",
+      "empty": "No public activity records yet"
     }
   }
 }

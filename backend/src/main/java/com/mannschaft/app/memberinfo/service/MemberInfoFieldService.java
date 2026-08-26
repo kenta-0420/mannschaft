@@ -57,12 +57,16 @@ public class MemberInfoFieldService {
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
         TeamMemberInfoFieldEntity entity = findFieldOrThrow(fieldId, teamId);
         validateIntervalMonths(request.getRefreshIntervalMonths());
-        if (request.getFieldName() != null) entity = entity.toBuilder().fieldName(request.getFieldName()).build();
-        if (request.getFieldType() != null) entity = entity.toBuilder().fieldType(request.getFieldType()).build();
-        if (request.getIsRequired() != null) entity = entity.toBuilder().isRequired(request.getIsRequired()).build();
-        if (request.getIsSensitive() != null) entity = entity.toBuilder().isSensitive(request.getIsSensitive()).build();
-        if (request.getRefreshIntervalMonths() != null) entity = entity.toBuilder().refreshIntervalMonths(request.getRefreshIntervalMonths()).build();
-        if (request.getSortOrder() != null) entity = entity.toBuilder().sortOrder(request.getSortOrder()).build();
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        entity.applyUpdate(
+                request.getFieldName(),
+                request.getFieldType(),
+                request.getIsRequired(),
+                request.getIsSensitive(),
+                request.getRefreshIntervalMonths(),
+                request.getSortOrder()
+        );
         return mapper.toFieldResponse(fieldRepository.save(entity));
     }
 
@@ -70,7 +74,9 @@ public class MemberInfoFieldService {
     public void deleteField(Long teamId, Long fieldId, Long userId) {
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
         TeamMemberInfoFieldEntity entity = findFieldOrThrow(fieldId, teamId);
-        fieldRepository.save(entity.toBuilder().isActive(false).build());
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        entity.deactivate();
+        fieldRepository.save(entity);
     }
 
     @Transactional
@@ -78,7 +84,9 @@ public class MemberInfoFieldService {
         accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
         for (ReorderMemberInfoFieldsRequest.FieldOrder order : request.getOrders()) {
             TeamMemberInfoFieldEntity entity = findFieldOrThrow(order.getFieldId(), teamId);
-            fieldRepository.save(entity.toBuilder().sortOrder(order.getSortOrder()).build());
+            // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+            entity.updateSortOrder(order.getSortOrder());
+            fieldRepository.save(entity);
         }
     }
 

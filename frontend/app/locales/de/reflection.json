@@ -1,0 +1,302 @@
+{
+  "reflection": {
+    "title": "Rückblicke",
+    "nav": {
+      "today": "Heutige Rückblicke",
+      "themes": "Themen",
+      "settings": "Benachrichtigungseinstellungen",
+      "dashboard": "Dashboard"
+    },
+    "widget": {
+      "pending_recall": "Abruf ausstehend",
+      "unwritten": "Nicht geschrieben",
+      "open_today": "Heutige Rückblicke öffnen",
+      "empty": "Keine Themen für heute"
+    },
+    "today": {
+      "heading": "Heutige Rückblicke",
+      "date_label": "Datum",
+      "empty": "Heute gibt es keine Stunden oder Themen. Erstelle ein Thema, um mit dem Rückblick zu beginnen.",
+      "free_themes": "Themen (außerhalb des Stundenplans)",
+      "timetable_slots": "Heutige Stunden",
+      "no_theme": "Kein Thema festgelegt",
+      "create_theme_for_slot": "Ein Thema für diese Stunde erstellen",
+      "create_entry": "Rückblick schreiben",
+      "edit_entry": "Rückblick bearbeiten",
+      "open_recall": "Abruftest",
+      "masked_badge": "Abruf ausstehend",
+      "has_entry": "Geschrieben",
+      "period_label": "{period}. Stunde",
+      "main_theme_label": "Hauptthema",
+      "created_at_label": "Erstellt am",
+      "last_reflected_label": "Zuletzt reflektiert",
+      "never_reflected": "Noch nicht"
+    },
+    "theme": {
+      "list_heading": "Themen",
+      "create": "Thema erstellen",
+      "edit": "Thema bearbeiten",
+      "delete": "Löschen",
+      "delete_confirm": "Dieses Thema und alle zugehörigen Rückblicke löschen?",
+      "empty": "Noch keine Themen. Erstelle dein erstes Thema.",
+      "title_label": "Themenname",
+      "title_placeholder": "z. B. Mathematik II / Projekt X / Tagebuch",
+      "description_label": "Beschreibung",
+      "description_placeholder": "Optionale Notiz",
+      "source_type_label": "Typ",
+      "exam_date_label": "Prüfungsdatum",
+      "exam_date_help": "Wenn gesetzt, werden 14/7/3/1 Tage vor der Prüfung Erinnerungen gesendet",
+      "exam_date_past_warning": "Für vergangene Daten werden keine Erinnerungen erstellt",
+      "exam_date_clear": "Prüfungsdatum löschen",
+      "recall_interval_label": "Abrufintervall",
+      "recall_interval_fixed": "Abruftest {days} Tage später (fest)",
+      "open": "Öffnen",
+      "view_entries": "Rückblicke ansehen",
+      "subject_link_label": "Fach verknüpfen",
+      "subject_link_none": "Keine Verknüpfung",
+      "subject_link_placeholder": "Fach aus dem Stundenplan auswählen",
+      "subject_link_help": "Dieses Thema wird für alle Stunden des gewählten Fachs in der Tagesansicht angezeigt",
+      "subject_link_empty": "Kein Stundenplan eingetragen",
+      "academic_year_label": "Schuljahr",
+      "term_label_label": "Halbjahr / Semester",
+      "academic_year_placeholder": "z. B. 2026",
+      "term_label_placeholder": "z. B. 1. Halbjahr, Wintersemester, Q1",
+      "suggest_from_timetable": "Automatisch aus dem Stundenplan vorgeschlagen (überschreibt keine vorhandenen Werte)",
+      "parent_theme_label": "Übergeordnetes Thema (Fach über einer Einheit festlegen)",
+      "parent_none": "Kein übergeordnetes Thema (oberste Ebene)"
+    },
+    "archive": {
+      "label": "Archiv",
+      "action": {
+        "archive": "Archivieren",
+        "restore": "Wiederherstellen"
+      },
+      "confirm": {
+        "archive": "Dieses Thema archivieren? Die Erinnerungen für verteiltes Lernen werden gestoppt.",
+        "restore": "Dieses Thema wiederherstellen?"
+      },
+      "bulk_archive_button": "Diesen Ordner archivieren",
+      "folder": {
+        "title": "Archivordner",
+        "theme_count": "{n} Themen",
+        "no_subject": "Kein Fach",
+        "no_year": "Kein Schuljahr",
+        "no_term": "Kein Semester"
+      },
+      "search": {
+        "placeholder": "Nach Titel oder Beschreibung suchen",
+        "empty": "Keine archivierten Themen gefunden"
+      }
+    },
+    "source_type": {
+      "SUBJECT": "Unterricht",
+      "PROJECT": "Arbeit / Projekt",
+      "DIARY": "Tagebuch",
+      "FREE": "Frei"
+    },
+    "template": {
+      "label": "Vorlage",
+      "help": "Wähle voreingestellte Überschriften für deine Eingabe",
+      "heading_selector_label": "Enthaltene Überschriften",
+      "heading_optional_badge": "optional",
+      "NORMAL": "Normal",
+      "DIARY": "Tagebuch",
+      "WORK": "Arbeitsrückblick",
+      "CLASS": "Unterrichtsrückblick",
+      "normal_desc": "Keine Überschriften, freies Schreiben",
+      "diary_desc": "Ereignisse / Gefühle / Für morgen",
+      "work_desc": "Ergebnisse / Probleme / Erkenntnisse / Nächste Schritte",
+      "class_desc": "Was ich gelernt habe / Stolpersteine / Wichtige Punkte zum Merken",
+      "preset": {
+        "diary": {
+          "event": "Ereignisse",
+          "feeling": "Gefühle",
+          "tomorrow": "Für morgen"
+        },
+        "work": {
+          "result": "Ergebnisse",
+          "issue": "Probleme",
+          "learning": "Erkenntnisse",
+          "next": "Nächste Schritte"
+        },
+        "class": {
+          "learned": "Was ich gelernt habe",
+          "stumble": "Stolpersteine",
+          "keypoint": "Wichtige Punkte zum Merken"
+        },
+        "vocab": {
+          "cards": "今日の単語"
+        }
+      },
+      "VOCAB": "単語帳",
+      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する"
+    },
+    "entry": {
+      "list_heading": "Rückblicke",
+      "create": "Rückblick erstellen",
+      "edit": "Rückblick bearbeiten",
+      "delete": "Löschen",
+      "delete_confirm": "Diesen Rückblick löschen?",
+      "empty": "Noch keine Rückblicke.",
+      "target_date_label": "Datum",
+      "main_theme_label": "Hauptthema",
+      "main_theme_placeholder": "z. B. Maxima und Minima quadratischer Funktionen",
+      "section_heading_label": "Überschrift",
+      "section_heading_placeholder": "z. B. Quadratische Ergänzung",
+      "add_section": "Überschrift hinzufügen",
+      "remove_section": "Überschrift entfernen",
+      "sub_heading_label": "Unterüberschrift",
+      "sub_heading_placeholder": "z. B. In die Standardform umformen",
+      "add_subsection": "Unterüberschrift hinzufügen",
+      "remove_subsection": "Unterüberschrift entfernen",
+      "detail_label": "Detail",
+      "detail_placeholder": "Schreibe auf, was du gelernt hast",
+      "supplement_label": "Ergänzung",
+      "supplement_placeholder": "Ergänzung / Notiz",
+      "free_note_label": "Freie Notiz (vom Abruf ausgeschlossen)",
+      "free_note_placeholder": "Eindrücke oder Fragenotizen",
+      "save": "Speichern",
+      "saved": "Gespeichert",
+      "save_failed": "Speichern fehlgeschlagen",
+      "conflict": "Anderswo aktualisiert. Bitte lade den neuesten Stand und versuche es erneut.",
+      "masked_notice": "Dies ist ein Abruftest-Ziel. Der Inhalt ist verborgen.",
+      "exported_badge": "Ins Blog exportiert",
+      "exported_edited_badge": "Nach Export bearbeitet"
+    },
+    "recall": {
+      "heading": "Abruftest",
+      "intro": "Erinnere dich, ohne den Inhalt anzusehen, und schreibe auf, was du weißt.",
+      "hint_theme": "Thema",
+      "hint_target_date": "Datum",
+      "hint_due_dates": "Geplante Abruftermine",
+      "input_label": "Was du erinnert hast",
+      "input_placeholder": "Schreibe so viel auf, wie du erinnerst",
+      "self_rating_label": "Selbsteinschätzung",
+      "rating": {
+        "REMEMBERED": "Erinnert",
+        "PARTIAL": "Teilweise",
+        "FORGOT": "Vergessen"
+      },
+      "submit": "Speichern und aufdecken",
+      "submitting": "Speichern...",
+      "saved": "Abruf erfasst",
+      "save_failed": "Speichern des Abrufs fehlgeschlagen",
+      "revealed_heading": "Antwort (Originalinhalt)",
+      "your_recall": "Dein Abruf",
+      "history_heading": "Abrufverlauf",
+      "history_empty": "Noch kein Abrufverlauf.",
+      "not_masked": "Dieser Eintrag ist nicht verborgen. Du kannst ihn normal bearbeiten.",
+      "back_to_entry": "Zurück zum Rückblick",
+      "card_answer_placeholder": "答えを入力...",
+      "outline_scaffold": {
+        "panel_heading": "Geruesthinweise",
+        "main_theme_label": "Thema",
+        "level_note_partial": "Es werden nur die ersten Zeichen jeder Ueberschrift angezeigt. Versuche, den Rest zu erinnern.",
+        "aria_panel": "OUTLINE Geruesthinweise-Panel"
+      }
+    },
+    "export": {
+      "button": "Ins Blog exportieren",
+      "dialog_title": "Ins Blog exportieren",
+      "title_label": "Beitragstitel",
+      "title_placeholder": "Wird weggelassen, werden Themenname und Datum verwendet",
+      "submit": "Exportieren",
+      "submitting": "Exportieren...",
+      "success": "Ins Blog exportiert (privat)",
+      "failed": "Export fehlgeschlagen",
+      "already_exported": "Dieser Rückblick wurde bereits exportiert",
+      "view_post": "Exportierten Beitrag ansehen"
+    },
+    "settings": {
+      "heading": "Abruf-Benachrichtigungseinstellungen",
+      "remind_hour_label": "Benachrichtigungszeit",
+      "remind_hour_help": "Die Uhrzeit zum Senden von Abruftest-Erinnerungen (deine Zeitzone)",
+      "save": "Speichern",
+      "saved": "Einstellungen gespeichert",
+      "save_failed": "Speichern der Einstellungen fehlgeschlagen",
+      "hour_format": "{hour}:00 Uhr"
+    },
+    "calendar": {
+      "entry_mark": "Rückblick",
+      "recall_mark": "Abruf fällig"
+    },
+    "common": {
+      "cancel": "Abbrechen",
+      "close": "Schließen",
+      "loading": "Lädt...",
+      "load_failed": "Laden fehlgeschlagen"
+    },
+    "guide": {
+      "page_title": "So verwendest du das aktive Abruflernen",
+      "what": {
+        "title": "Was ist aktives Abruflernen?",
+        "body": "Aktives Abrufen ist eine Lernmethode, die das Gedächtnis stärkt, indem du aktiv das Gelernte abrufst. Schreibe heute deinen Rückblick und versuche ab dem nächsten Tag, den Inhalt aus der Erinnerung wiederzugeben, bevor du die Antworten überprüfst."
+      },
+      "theme": {
+        "title": "Ein Thema erstellen",
+        "body": "Ein «Thema» ist die Grundeinheit deiner Rückblicke. Erstelle Themen für Unterrichtsfächer, Qualifikationen, Projekte, ein Tagebuch oder alles, was du regelmäßig wiederholen möchtest. Du kannst ein Thema mit einer Stunde im Stundenplan verknüpfen oder es als freies Thema verwenden."
+      },
+      "today": {
+        "title": "Den heutigen Rückblick schreiben",
+        "body": "In der Ansicht «Heutige Rückblicke» werden die Stunden und Themen des Tages aufgelistet. Öffne jede Karte, notiere, was du gelernt hast und welche Erkenntnisse du gewonnen hast, und speichere."
+      },
+      "recall": {
+        "title": "Abruftest (aktives Erinnern)",
+        "body": "Ab dem nächsten Tag wird der von dir geschriebene Inhalt automatisch verborgen. Versuche, ihn mit eigenen Worten abzurufen, und überprüfe dann deine Antworten. Die Anstrengung des Erinnerns stärkt dein Gedächtnis."
+      },
+      "reminder": {
+        "title": "Erinnerungen und Kalender",
+        "body": "Du erhältst Benachrichtigungen, wenn es Zeit ist, zu wiederholen. Tage, an denen du einen Rückblick geschrieben hast, werden in Mein Kalender markiert, sodass du deinen Fortschritt auf einen Blick siehst."
+      }
+    },
+    "section": {
+      "type": {
+        "outline": "アウトライン",
+        "term_card": "暗記カード"
+      },
+      "type_label": "中見出しの型",
+      "expand": "展開する",
+      "collapse": "折りたたむ",
+      "summary_subsections": "小見出し{n}件",
+      "summary_cards": "カード{n}枚"
+    },
+    "card": {
+      "term_label": "語句",
+      "meaning_label": "意味",
+      "add": "カードを追加",
+      "remove": "カードを削除"
+    },
+    "vocab": {
+      "title": "単語帳（期間横断）",
+      "period_from": "開始日",
+      "period_to": "終了日",
+      "filter_theme": "テーマで絞り込み",
+      "filter_subject": "科目で絞り込み",
+      "mode": {
+        "view": "一覧",
+        "quiz": "自己クイズ"
+      },
+      "direction": {
+        "meaning_to_term": "意味→語句",
+        "term_to_meaning": "語句→意味",
+        "shuffle": "シャッフル"
+      },
+      "flip": "めくる",
+      "empty": "この期間に暗記カードはありません",
+      "total_cards": "{n}枚のカード",
+      "source_label": "出典",
+      "subjects_all": "全教科",
+      "subjects_filter": "教科フィルター",
+      "shuffle": "シャッフル",
+      "shuffle_note": "取得のたびに順番が変わります",
+      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "inline": {
+        "title": "＋単語を追加",
+        "term_placeholder": "語句 (例: apple)",
+        "meaning_placeholder": "意味 (例: りんご)",
+        "add_button": "追加",
+        "added": "追加しました"
+      }
+    }
+  }
+}

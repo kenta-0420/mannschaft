@@ -1,64 +1,65 @@
 {
   "systemAdmin": {
     "batches": {
-      "title": "バッチ管理",
-      "description": "登録済みのバッチを起動・監視します",
+      "title": "배치 관리",
+      "description": "등록된 배치를 시작·모니터링합니다",
       "summary": {
-        "title": "バッチ実行サマリー（直近24時間）",
-        "success": "成功",
-        "failed": "失敗",
-        "viewAll": "詳細を見る"
+        "title": "배치 실행 요약（최근 24시간）",
+        "success": "성공",
+        "failed": "실패",
+        "viewAll": "자세히 보기"
       },
       "filter": {
-        "search": "バッチ名で検索",
-        "status": "ステータスで絞り込み",
-        "statusAll": "すべて"
+        "search": "배치 이름으로 검색",
+        "status": "상태로 필터링",
+        "statusAll": "전체"
       },
       "column": {
-        "name": "バッチ名",
-        "description": "説明",
-        "lastStatus": "直近ステータス",
-        "lastRun": "直近実行",
-        "actions": "操作"
+        "name": "배치 이름",
+        "description": "설명",
+        "lastStatus": "최근 상태",
+        "lastRun": "최근 실행",
+        "actions": "조작"
       },
       "button": {
-        "run": "実行",
-        "runSync": "同期実行",
-        "viewDetail": "詳細",
-        "close": "閉じる",
-        "refresh": "再読み込み"
+        "run": "실행",
+        "runSync": "동기 실행",
+        "viewDetail": "상세",
+        "close": "닫기",
+        "refresh": "새로 고침"
       },
       "status": {
-        "success": "成功",
-        "failed": "失敗",
-        "running": "実行中",
-        "skipped": "スキップ",
-        "locked": "ロック中",
-        "accepted": "受付済",
-        "completed": "完了",
-        "unknown": "未実行"
+        "success": "성공",
+        "failed": "실패",
+        "running": "실행 중",
+        "skipped": "스킵됨",
+        "resumed": "재개",
+        "locked": "잠금 중",
+        "accepted": "수리됨",
+        "completed": "완료",
+        "unknown": "미실행"
       },
       "toast": {
-        "runStarted": "バッチ起動を受け付けました: {name}",
-        "runStartedDetail": "非同期で実行中です。完了後にお知らせします。",
-        "runCompleted": "バッチ実行が完了しました: {name}",
-        "runFailed": "バッチ実行に失敗しました: {name}",
-        "locked": "他インスタンスがロック中です: {name}",
-        "loadFailed": "バッチ一覧の取得に失敗しました",
-        "statusFailed": "ステータスの取得に失敗しました"
+        "runStarted": "배치 시작을 수리했습니다: {name}",
+        "runStartedDetail": "비동기로 실행 중입니다. 완료 후 알림을 드립니다.",
+        "runCompleted": "배치 실행이 완료되었습니다: {name}",
+        "runFailed": "배치 실행에 실패했습니다: {name}",
+        "locked": "다른 인스턴스가 잠금 중입니다: {name}",
+        "loadFailed": "배치 목록 불러오기 실패",
+        "statusFailed": "상태 불러오기 실패"
       },
       "detail": {
-        "title": "バッチ詳細",
-        "noHistory": "実行履歴がありません",
-        "jobName": "ジョブ名",
-        "status": "ステータス",
-        "startedAt": "開始時刻",
-        "finishedAt": "終了時刻",
-        "processedCount": "処理件数",
-        "errorMessage": "エラーメッセージ"
+        "title": "배치 상세",
+        "noHistory": "실행 내역이 없습니다",
+        "jobName": "잡 이름",
+        "status": "상태",
+        "startedAt": "시작 시각",
+        "finishedAt": "종료 시각",
+        "processedCount": "처리 건수",
+        "errorMessage": "오류 메시지"
       },
-      "empty": "登録されているバッチがありません",
-      "noResults": "条件に一致するバッチがありません"
+      "empty": "등록된 배치가 없습니다",
+      "noResults": "조건에 맞는 배치가 없습니다"
     }
   }
 }

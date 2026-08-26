@@ -38,7 +38,7 @@ export function useFriendForwardApi() {
    * @returns 転送結果
    */
   async function forward(
-    teamId: number,
+    teamId: string,
     postId: number,
     req: ForwardRequest,
   ): Promise<ForwardResponse> {
@@ -56,7 +56,7 @@ export function useFriendForwardApi() {
    * @param teamId    自チーム ID
    * @param forwardId 転送履歴 ID
    */
-  async function revokeForward(teamId: number, forwardId: number): Promise<void> {
+  async function revokeForward(teamId: string, forwardId: number): Promise<void> {
     await api(`/api/v1/teams/${teamId}/friend-feed/forwards/${forwardId}`, {
       method: 'DELETE',
     })
@@ -71,7 +71,7 @@ export function useFriendForwardApi() {
    * @returns 逆転送履歴レスポンス
    */
   async function listForwardExports(
-    teamId: number,
+    teamId: string,
     params?: { page?: number; size?: number },
   ): Promise<FriendForwardExportListResponse> {
     return api<FriendForwardExportListResponse>(

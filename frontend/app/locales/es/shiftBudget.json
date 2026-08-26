@@ -6,14 +6,48 @@
       "create": "Nueva Asignación",
       "amount": "Importe Asignado",
       "period": "Periodo de Vigencia",
-      "category": "Concepto de Gasto"
+      "category": "Concepto de Gasto",
+      "edit": "Editar asignación",
+      "delete": "Eliminar asignación",
+      "deleteConfirm": "Eliminar suavemente la asignación (ID: {id}). ¿Está seguro?",
+      "team": "Equipo",
+      "project": "Proyecto",
+      "fiscalYear": "Año fiscal",
+      "currency": "Divisa",
+      "note": "Nota",
+      "consumed": "Monto consumido",
+      "rate": "Tasa de consumo",
+      "status": "Estado",
+      "actions": "Acciones",
+      "version": "Versión",
+      "id": "ID",
+      "form": {
+        "teamIdHint": "Dejar en blanco para ámbito de toda la organización",
+        "projectIdHint": "Especifique solo para asignaciones específicas de proyecto",
+        "amountHint": "Ingrese 0 o más",
+        "periodStart": "Fecha de inicio",
+        "periodEnd": "Fecha de fin",
+        "save": "Guardar",
+        "cancel": "Cancelar"
+      },
+      "empty": "No hay asignaciones registradas",
+      "loadError": "Error al cargar las asignaciones",
+      "createSuccess": "Asignación creada",
+      "createError": "Error al crear la asignación",
+      "updateSuccess": "Asignación actualizada",
+      "updateError": "Error al actualizar la asignación (posible conflicto de bloqueo optimista)",
+      "deleteSuccess": "Asignación eliminada",
+      "deleteError": "Error al eliminar la asignación"
     },
     "consumption": {
       "summary": "Resumen de Consumo",
       "consumed": "Consumido",
       "remaining": "Restante",
       "rate": "Tasa de Consumo",
-      "byUserHidden": "El desglose por usuario no está disponible por falta de permisos"
+      "byUserHidden": "El desglose por usuario no está disponible por falta de permisos",
+      "planned": "Monto planificado",
+      "confirmed": "Monto confirmado",
+      "byUser": "Desglose por miembro"
     },
     "threshold": {
       "warn80": "El presupuesto ha alcanzado el 80% del umbral",
@@ -22,7 +56,21 @@
     },
     "alert": {
       "acknowledge": "Confirmar",
-      "unacknowledged": "Alertas Sin Confirmar"
+      "unacknowledged": "Alertas Sin Confirmar",
+      "title": "Historial de alertas de presupuesto",
+      "thresholdPercent": "Umbral (%)",
+      "triggeredAt": "Activado a las",
+      "consumedAtTrigger": "Monto al activarse",
+      "acknowledgedAt": "Reconocido a las",
+      "acknowledgedBy": "Reconocido por",
+      "acknowledged": "Reconocido",
+      "comment": "Comentario",
+      "commentPlaceholder": "Opcional (máx. 500 caracteres)",
+      "acknowledgeConfirm": "Reconocer esta alerta (ID: {id}). ¿Está seguro?",
+      "acknowledgeSuccess": "Alerta reconocida",
+      "acknowledgeError": "Error al reconocer la alerta",
+      "loadError": "Error al cargar la lista de alertas",
+      "empty": "Sin alertas"
     },
     "link": {
       "project": "Vincular a Proyecto",
@@ -41,7 +89,19 @@
       }
     },
     "dashboard": {
-      "title": "Panel de Consumo de Presupuesto"
+      "title": "Panel de Consumo de Presupuesto",
+      "subtitle": "Resumen del estado de consumo de todas las asignaciones de presupuesto",
+      "kpi": {
+        "ok": "Normal",
+        "warn": "Advertencia (80%+)",
+        "exceeded": "Excedido (100%+)",
+        "severeExceeded": "Excedido gravemente (120%+)"
+      },
+      "viewAlerts": "Ver historial de alertas",
+      "viewFailedEvents": "Ver eventos fallidos",
+      "viewAllocations": "Ver asignaciones",
+      "loadError": "Error al cargar el panel",
+      "summaryError": "Error al cargar el resumen de consumo"
     },
     "feature": {
       "disabled": "Esta función ha sido desactivada por el administrador de la organización"
@@ -50,7 +110,59 @@
       "button": "Ejecutar Cierre Mensual",
       "confirm": "Se confirmará el presupuesto de turnos de {month}. ¿Desea continuar?",
       "success": "Cierre mensual completado: {month} ({count} registros de consumo confirmados)",
-      "alreadyClosed": "Este mes ya ha sido cerrado"
+      "alreadyClosed": "Este mes ya ha sido cerrado",
+      "title": "Cierre mensual",
+      "yearMonth": "Mes objetivo",
+      "yearMonthHint": "Formato YYYY-MM (ej.: 2026-04)",
+      "execute": "Ejecutar",
+      "error": "Error en el cierre mensual"
+    },
+    "nav": {
+      "menuLabel": "Presupuesto de turnos",
+      "allocations": "Asignaciones de presupuesto",
+      "dashboard": "Panel de presupuesto",
+      "alerts": "Historial de alertas",
+      "failedEvents": "Eventos fallidos"
+    },
+    "scope": {
+      "selectOrganization": "La gestión del presupuesto de turnos solo está disponible en el ámbito organizacional. Seleccione una organización en el selector de ámbito."
+    },
+    "status": {
+      "OK": "Normal",
+      "WARN": "Advertencia",
+      "EXCEEDED": "Excedido",
+      "SEVERE_EXCEEDED": "Excedido gravemente"
+    },
+    "failedEvent": {
+      "title": "Gestión de eventos fallidos",
+      "subtitle": "Revise los fallos de notificación/hook, reintente individualmente y marque como resueltos manualmente",
+      "id": "ID",
+      "eventType": "Tipo de evento",
+      "sourceId": "ID de origen",
+      "errorMessage": "Mensaje de error",
+      "retryCount": "Número de reintentos",
+      "lastRetriedAt": "Último reintento",
+      "status": "Estado",
+      "createdAt": "Ocurrido a las",
+      "actions": "Acciones",
+      "filterStatus": "Filtrar por estado",
+      "filterAll": "Todos",
+      "retry": "Reintentar",
+      "resolve": "Marcar como resuelto",
+      "retryConfirm": "Reintentar el evento fallido (ID: {id}). ¿Está seguro?",
+      "resolveConfirm": "Marcar el evento fallido (ID: {id}) como resuelto manualmente. Esta acción no se puede deshacer.",
+      "retrySuccess": "Evento fallido reintentado",
+      "retryError": "Error al reintentar el evento",
+      "resolveSuccess": "Evento fallido marcado como resuelto",
+      "resolveError": "Error al marcar el evento",
+      "loadError": "Error al cargar los eventos fallidos",
+      "empty": "No hay eventos fallidos",
+      "statusValue": {
+        "PENDING": "Pendiente",
+        "RETRYING": "Reintentando",
+        "EXHAUSTED": "Límite de reintentos alcanzado",
+        "MANUAL_RESOLVED": "Resuelto manualmente"
+      }
     }
   }
 }

@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import dayjs from 'dayjs'
 const props = defineProps<{
   visible: boolean
   initialDate?: string
   scopeType?: 'team' | 'organization'
-  scopeId?: number
+  scopeId?: string
   isPersonal?: boolean
 }>()
 
@@ -14,7 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const scheduleApi = useScheduleApi()
-const { userTimezone } = useDatetime()
+const { buildOffsetDateTimeStr } = useDatetime()
 const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
 
@@ -43,12 +42,6 @@ watch(
   },
 )
 
-function buildDateTimeStr(date: Date | null, time: string): string {
-  if (!date) return ''
-  const dateStr = dayjs(date).tz(userTimezone.value).format('YYYY-MM-DD')
-  return time ? `${dateStr}T${time}:00` : `${dateStr}T00:00:00`
-}
-
 async function submit() {
   if (!form.value.title.trim()) {
     fieldErrors.value = { title: 'タイトルは必須です' }
@@ -60,14 +53,14 @@ async function submit() {
   const body = {
     title: form.value.title.trim(),
     allDay: form.value.allDay,
-    startAt: buildDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime),
+    startAt: buildOffsetDateTimeStr(form.value.startDate, form.value.allDay ? '' : form.value.startTime) ?? '',
     endAt: (() => {
       if (form.value.allDay && form.value.endDate) {
         const d = new Date(form.value.endDate)
         d.setDate(d.getDate() + 1)
-        return buildDateTimeStr(d, '')
+        return buildOffsetDateTimeStr(d, '') ?? ''
       }
-      return buildDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime)
+      return buildOffsetDateTimeStr(form.value.endDate, form.value.allDay ? '' : form.value.endTime) ?? ''
     })(),
   }
 

@@ -1,5 +1,6 @@
 package com.mannschaft.app.circulation;
 
+import com.mannschaft.app.circulation.service.CirculationAccessGuard;
 import com.mannschaft.app.circulation.dto.AdminSkipRecipientRequest;
 import com.mannschaft.app.circulation.dto.RecipientResponse;
 import com.mannschaft.app.circulation.dto.StampCorrectionRequest;
@@ -14,7 +15,9 @@ import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.repository.CirculationStampCorrectionLogRepository;
 import com.mannschaft.app.circulation.repository.CirculationStampDelegationRepository;
 import com.mannschaft.app.circulation.service.CirculationStampService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,7 +36,12 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 /**
  * F05.2 Phase 11 第三陣 3-B の追加メソッド
@@ -50,6 +58,8 @@ class CirculationStampService3BTest {
     @Mock private ProxyInputRecordRepository proxyInputRecordRepository;
     @Mock private CirculationStampCorrectionLogRepository correctionLogRepository;
     @Mock private CirculationStampDelegationRepository delegationRepository;
+    @Mock private AccessControlService accessControlService;
+    @Mock private CirculationAccessGuard circulationAccessGuard;
 
     @InjectMocks
     private CirculationStampService service;
@@ -248,6 +258,71 @@ class CirculationStampService3BTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CirculationErrorCode.INVALID_RECIPIENT_STATUS));
+        }
+
+        @Test
+        @DisplayName("認可: 非管理者は COMMON_002 で遮断され受信者は変更されない")
+        void 認可_非管理者は遮断() {
+            CirculationDocumentEntity doc = activeDoc(); // scope=TEAM/1L
+            given(documentRepository.findById(DOC_ID)).willReturn(Optional.of(doc));
+            given(accessControlService.isSystemAdmin(ADMIN_ID)).willReturn(false);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(ADMIN_ID, 1L, "TEAM");
+
+            assertThatThrownBy(() -> service.adminSkipRecipient(DOC_ID, USER_ID, ADMIN_ID,
+                    new AdminSkipRecipientRequest("理由")))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+
+            // 認可で弾かれるため受信者状態の更新は行われない
+            verify(recipientRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("認可: SYSTEM_ADMIN は per-scope チェックを短絡して通過")
+        void 認可_SYSTEM_ADMIN短絡() {
+            CirculationDocumentEntity doc = activeDoc();
+            CirculationRecipientEntity rec = pending();
+            given(accessControlService.isSystemAdmin(ADMIN_ID)).willReturn(true);
+            given(documentRepository.findById(DOC_ID)).willReturn(Optional.of(doc));
+            given(recipientRepository.findByDocumentIdAndUserId(DOC_ID, USER_ID)).willReturn(Optional.of(rec));
+            given(recipientRepository.save(rec)).willReturn(rec);
+            given(recipientRepository.countByDocumentIdAndStatus(DOC_ID, RecipientStatus.PENDING)).willReturn(1L);
+            given(circulationMapper.toRecipientResponse(rec))
+                    .willReturn(new RecipientResponse(1L, DOC_ID, USER_ID, 0, "SKIPPED",
+                            null, null, null, (short) 0, false, null, null));
+
+            service.adminSkipRecipient(DOC_ID, USER_ID, ADMIN_ID,
+                    new AdminSkipRecipientRequest("理由"));
+
+            assertThat(rec.getStatus()).isEqualTo(RecipientStatus.SKIPPED);
+            // SYSTEM_ADMIN は per-scope チェックを呼ばない
+            verify(accessControlService, never()).checkAdminOrAbove(anyLong(), anyLong(), eq("TEAM"));
+        }
+
+        @Test
+        @DisplayName("認可: ORGANIZATION スコープでは org の管理者として per-scope チェックされる")
+        void 認可_組織スコープ() {
+            CirculationDocumentEntity doc = CirculationDocumentEntity.builder()
+                    .scopeType("ORGANIZATION").scopeId(77L).createdBy(1L)
+                    .title("t").body("b").build();
+            doc.activate();
+            doc.updateRecipientCount(3);
+            CirculationRecipientEntity rec = pending();
+            given(accessControlService.isSystemAdmin(ADMIN_ID)).willReturn(false);
+            given(documentRepository.findById(DOC_ID)).willReturn(Optional.of(doc));
+            given(recipientRepository.findByDocumentIdAndUserId(DOC_ID, USER_ID)).willReturn(Optional.of(rec));
+            given(recipientRepository.save(rec)).willReturn(rec);
+            given(recipientRepository.countByDocumentIdAndStatus(DOC_ID, RecipientStatus.PENDING)).willReturn(1L);
+            given(circulationMapper.toRecipientResponse(rec))
+                    .willReturn(new RecipientResponse(1L, DOC_ID, USER_ID, 0, "SKIPPED",
+                            null, null, null, (short) 0, false, null, null));
+
+            service.adminSkipRecipient(DOC_ID, USER_ID, ADMIN_ID,
+                    new AdminSkipRecipientRequest("理由"));
+
+            verify(accessControlService).checkAdminOrAbove(ADMIN_ID, 77L, "ORGANIZATION");
         }
     }
 }

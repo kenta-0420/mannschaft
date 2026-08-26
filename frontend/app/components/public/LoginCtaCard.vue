@@ -12,7 +12,7 @@ const props = withDefaults(
     /** 「このチームに参加する」「この組織に参加する」の切り替え */
     scopeKind?: 'TEAM' | 'ORGANIZATION'
     /** 招待用のスコープ ID（signup ページにクエリで渡す） */
-    scopeId?: number
+    scopeId?: string
   }>(),
   {
     scopeKind: 'TEAM',

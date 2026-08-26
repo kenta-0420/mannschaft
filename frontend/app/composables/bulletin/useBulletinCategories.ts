@@ -46,13 +46,13 @@ export function useBulletinCategories() {
   }
 
   // === Scoped Categories ===
-  async function getScopedCategories(scopeType: string, scopeId: number) {
+  async function getScopedCategories(scopeType: string, scopeId: string) {
     return api<{ data: BulletinCategory[] }>(`/api/v1/${scopeType}/${scopeId}/bulletin/categories`)
   }
 
   async function createScopedCategory(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: BulletinCategory }>(`/api/v1/${scopeType}/${scopeId}/bulletin/categories`, {
@@ -61,7 +61,7 @@ export function useBulletinCategories() {
     })
   }
 
-  async function getScopedCategory(scopeType: string, scopeId: number, categoryId: number) {
+  async function getScopedCategory(scopeType: string, scopeId: string, categoryId: number) {
     return api<{ data: BulletinCategory }>(
       `/api/v1/${scopeType}/${scopeId}/bulletin/categories/${categoryId}`,
     )
@@ -69,7 +69,7 @@ export function useBulletinCategories() {
 
   async function updateScopedCategory(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     categoryId: number,
     body: Record<string, unknown>,
   ) {
@@ -79,7 +79,7 @@ export function useBulletinCategories() {
     )
   }
 
-  async function deleteScopedCategory(scopeType: string, scopeId: number, categoryId: number) {
+  async function deleteScopedCategory(scopeType: string, scopeId: string, categoryId: number) {
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/categories/${categoryId}`, {
       method: 'DELETE',
     })

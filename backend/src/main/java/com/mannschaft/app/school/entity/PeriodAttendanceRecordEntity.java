@@ -9,7 +9,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,8 +22,7 @@ import java.time.LocalDateTime;
 @Table(name = "period_attendance_records")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class PeriodAttendanceRecordEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -75,6 +74,7 @@ public class PeriodAttendanceRecordEntity extends BaseEntity {
     @Column(nullable = false)
     private Long recordedBy;
 
+    @Column(nullable = false)
     private LocalDateTime recordedAt;
 
     /** 「前にいたのに今いない」検知通知送信日時 */
@@ -83,5 +83,60 @@ public class PeriodAttendanceRecordEntity extends BaseEntity {
     @PrePersist
     protected void onRecordCreate() {
         this.recordedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 個別修正リクエストを managed entity に直接適用する（直接ミューテート）。
+     *
+     * <p>{@code toBuilder().build()} で作り直すと {@link com.mannschaft.app.common.BaseEntity}
+     * の {@code id} が引き継がれず id=null の新インスタンスとなり、INSERT 化して行が重複する。
+     * managed entity を直接書き換えることで JPA dirty checking が UPDATE を発行し id を保持する。
+     * null フィールドは既存値を維持する（部分更新）。</p>
+     *
+     * @param status      新ステータス（null = 変更なし）
+     * @param lateMinutes 新遅刻分数（null = 変更なし）
+     * @param comment     新コメント（null = 変更なし）
+     * @param recordedBy  操作者ユーザーID
+     */
+    public void applyUpdate(
+            com.mannschaft.app.schedule.AttendanceStatus status,
+            Integer lateMinutes,
+            String comment,
+            Long recordedBy) {
+        if (status != null) this.status = status;
+        if (lateMinutes != null) this.lateMinutes = lateMinutes;
+        if (comment != null) this.comment = comment;
+        this.recordedBy = recordedBy;
+    }
+
+    /**
+     * 時限出欠 upsert 更新（既存レコードを直接ミューテートして UPDATE する）。
+     *
+     * <p>{@link #applyUpdate} と同じ理由で toBuilder を使わない。
+     * upsert は null 許容フィールドも上書きする（全フィールド置換）。</p>
+     *
+     * @param status      出欠ステータス
+     * @param lateMinutes 遅刻分数
+     * @param comment     コメント
+     * @param recordedBy  操作者ユーザーID
+     */
+    public void applyUpsertUpdate(
+            com.mannschaft.app.schedule.AttendanceStatus status,
+            Integer lateMinutes,
+            String comment,
+            Long recordedBy) {
+        this.status = status;
+        this.lateMinutes = lateMinutes;
+        this.comment = comment;
+        this.recordedBy = recordedBy;
+    }
+
+    /**
+     * 登校場所を更新する（直接ミューテート）。
+     *
+     * @param attendanceLocation 新しい登校場所
+     */
+    public void updateLocation(AttendanceLocation attendanceLocation) {
+        this.attendanceLocation = attendanceLocation;
     }
 }

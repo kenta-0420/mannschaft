@@ -7,14 +7,17 @@ import com.mannschaft.app.circulation.dto.DocumentStatusResponse;
 import com.mannschaft.app.circulation.dto.ForceCompleteBatchResponse;
 import com.mannschaft.app.circulation.dto.RemindResponse;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
+import com.mannschaft.app.circulation.event.CirculationReminderNotificationEvent;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
 import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
 import com.mannschaft.app.circulation.service.CirculationService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.R2StorageService;
-import com.mannschaft.app.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -22,8 +25,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -36,6 +43,9 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -76,10 +86,10 @@ class CirculationServicePhase11Test {
     private UserRepository userRepository;
 
     @Mock
-    private NotificationService notificationService;
+    private AuditLogService auditLogService;
 
     @Mock
-    private AuditLogService auditLogService;
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private CirculationService circulationService;
@@ -115,10 +125,12 @@ class CirculationServicePhase11Test {
     }
 
     private DocumentResponse mockResponse() {
-        return new DocumentResponse(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID, USER_ID,
-                "テスト回覧", "本文", "SIMULTANEOUS", 0, "ACTIVE", "NORMAL",
-                null, false, (short) 24, "STANDARD", 3, 0, null, 0, 0,
-                null, null);
+        return DocumentResponse.builder()
+                .id(DOCUMENT_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                .title("テスト回覧").body("本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                .status("ACTIVE").priority("NORMAL").stampDisplayStyle("STANDARD")
+                .totalRecipientCount(3).stampedCount(0).attachmentCount(0).commentCount(0)
+                .build();
     }
 
     // ─────────────────────────────────────────────
@@ -238,10 +250,15 @@ class CirculationServicePhase11Test {
 
             RemindResponse result = circulationService.remindDocument(DOCUMENT_ID, ACTOR_ID);
 
+            // Issue #2834 / CMP-056 ロットB: 通知は業務TX内で作らず、AFTER_COMMIT 配送用の
+            // イベントを publish するだけ。remindedCount の意味は「対象者数」になった。
             assertThat(result.getRemindedCount()).isEqualTo(2);
-            verify(notificationService, times(2)).createNotification(
-                    anyLong(), eq("CIRCULATION_REMINDER"), any(), anyString(), anyString(),
-                    eq("CIRCULATION_DOCUMENT"), eq(DOCUMENT_ID), any(), anyLong(), anyString(), eq(ACTOR_ID));
+            org.mockito.ArgumentCaptor<CirculationReminderNotificationEvent> captor =
+                    org.mockito.ArgumentCaptor.forClass(CirculationReminderNotificationEvent.class);
+            verify(applicationEventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().documentId()).isEqualTo(DOCUMENT_ID);
+            assertThat(captor.getValue().actorId()).isEqualTo(ACTOR_ID);
+            assertThat(captor.getValue().recipientUserIds()).containsExactly(30L, 31L);
         }
 
         @Test
@@ -254,6 +271,11 @@ class CirculationServicePhase11Test {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CirculationErrorCode.INVALID_DOCUMENT_STATUS));
+
+            // Issue #2834 / CMP-056 ロットB: 業務が失敗した場合は配送イベントも publish しない。
+            verify(applicationEventPublisher, org.mockito.Mockito.never())
+                    .publishEvent(org.mockito.ArgumentMatchers.any(
+                            CirculationReminderNotificationEvent.class));
         }
     }
 
@@ -323,7 +345,7 @@ class CirculationServicePhase11Test {
             given(userRepository.findMemberSummaryById(50L)).willReturn(Optional.empty());
             given(userRepository.findMemberSummaryById(51L)).willReturn(Optional.empty());
 
-            DocumentStatusResponse result = circulationService.getDocumentStatus(DOCUMENT_ID);
+            DocumentStatusResponse result = circulationService.getDocumentStatus(DOCUMENT_ID, ACTOR_ID);
 
             assertThat(result.getDocumentId()).isEqualTo(DOCUMENT_ID);
             assertThat(result.getDocumentStatus()).isEqualTo("ACTIVE");
@@ -337,10 +359,147 @@ class CirculationServicePhase11Test {
         void 押印状況一覧_文書なし() {
             given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> circulationService.getDocumentStatus(DOCUMENT_ID))
+            assertThatThrownBy(() -> circulationService.getDocumentStatus(DOCUMENT_ID, ACTOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CirculationErrorCode.DOCUMENT_NOT_FOUND));
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // per-scope 認可（2026-05-29 fixup）
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("per-scope 認可")
+    class ScopeAuthorization {
+
+        @Test
+        @DisplayName("非管理者は強制完了が COMMON_002 で遮断され COMPLETED に遷移しない")
+        void 非管理者_強制完了遮断() {
+            CirculationDocumentEntity entity = buildActive(); // scope=TEAM/1L
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(false);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(ACTOR_ID, SCOPE_ID, "TEAM");
+
+            assertThatThrownBy(() -> circulationService.forceCompleteDocument(DOCUMENT_ID, ACTOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            assertThat(entity.getStatus()).isEqualTo(CirculationStatus.ACTIVE);
+            verify(documentRepository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
+        @DisplayName("当該スコープの管理者は強制完了を通過")
+        void 管理者_強制完了通過() {
+            CirculationDocumentEntity entity = buildActive();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(false);
+            // checkAdminOrAbove は void mock = 通過
+            given(documentRepository.save(entity)).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(mockResponse());
+
+            circulationService.forceCompleteDocument(DOCUMENT_ID, ACTOR_ID);
+
+            assertThat(entity.getStatus()).isEqualTo(CirculationStatus.COMPLETED);
+            verify(accessControlService).checkAdminOrAbove(ACTOR_ID, SCOPE_ID, "TEAM");
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN は per-scope チェックを短絡して通過")
+        void SYSTEM_ADMIN短絡() {
+            CirculationDocumentEntity entity = buildActive();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(true);
+            given(documentRepository.save(entity)).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(mockResponse());
+
+            circulationService.forceCompleteDocument(DOCUMENT_ID, ACTOR_ID);
+
+            assertThat(entity.getStatus()).isEqualTo(CirculationStatus.COMPLETED);
+            verify(accessControlService, org.mockito.Mockito.never())
+                    .checkAdminOrAbove(anyLong(), anyLong(), anyString());
+        }
+
+        @Test
+        @DisplayName("getDocumentStatus も非管理者を COMMON_002 で遮断")
+        void getStatus_非管理者遮断() {
+            CirculationDocumentEntity entity = buildActive();
+            given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
+            given(accessControlService.isSystemAdmin(ACTOR_ID)).willReturn(false);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(ACTOR_ID, SCOPE_ID, "TEAM");
+
+            assertThatThrownBy(() -> circulationService.getDocumentStatus(DOCUMENT_ID, ACTOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+        }
+    }
+
+    // ─────────────────────────────────────────────
+    // 文書一覧の所属ゲート（F00 漏洩根治）
+    //
+    // GET /api/v1/teams/{teamId}/circulations（org 版含む）が認可ゲート皆無で、
+    // 認証済みなら非会員でも他チームの回覧タイトル/作成者/押印数を列挙できる
+    // F00 漏洩を根治する。listDocuments の冒頭で
+    // accessControlService.checkMembershipOrDescendant(..., includeSupporters=true)
+    // を通し、非所属（COMMON_002）を弾く。
+    // ─────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("listDocuments の所属ゲート")
+    class ListDocumentsAuthorization {
+
+        @Test
+        @DisplayName("AC-1: 非所属ユーザーは一覧取得が COMMON_002 で遮断される（文書は引かれない）")
+        void 一覧_非所属は弾かれる() {
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                // 非所属は所属ゲートで COMMON_002
+                doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                        .when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq("TEAM"), eq(true));
+
+                assertThatThrownBy(() -> circulationService.listDocuments(
+                        "TEAM", SCOPE_ID, null, PageRequest.of(0, 10)))
+                        .isInstanceOf(BusinessException.class)
+                        .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                                .isEqualTo(CommonErrorCode.COMMON_002));
+
+                // ゲートで弾かれるため文書取得には到達しない
+                verify(documentRepository, org.mockito.Mockito.never())
+                        .findByScopeTypeAndScopeIdOrderByCreatedAtDesc(anyString(), anyLong(), any());
+            }
+        }
+
+        @Test
+        @DisplayName("AC-2: 所属者は通過し、ゲートは includeSupporters=true で呼ばれる")
+        void 一覧_所属者は通過() {
+            try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
+                securityUtils.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                // 所属者は no-op（通過）
+                doNothing().when(accessControlService)
+                        .checkMembershipOrDescendant(anyLong(), eq(SCOPE_ID), eq("TEAM"), eq(true));
+
+                CirculationDocumentEntity entity = buildActive();
+                Page<CirculationDocumentEntity> page = new PageImpl<>(List.of(entity));
+                given(documentRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
+                        eq("TEAM"), eq(SCOPE_ID), any())).willReturn(page);
+                given(circulationMapper.toDocumentResponse(entity)).willReturn(mockResponse());
+                // userRepository は createdByName 充填で呼ばれる（解決不要なら empty）
+                given(userRepository.findMemberSummaryById(anyLong())).willReturn(Optional.empty());
+
+                Page<DocumentResponse> result = circulationService.listDocuments(
+                        "TEAM", SCOPE_ID, null, PageRequest.of(0, 10));
+
+                assertThat(result.getContent()).hasSize(1);
+                // 応援者も許可する includeSupporters=true で呼ばれること
+                verify(accessControlService)
+                        .checkMembershipOrDescendant(USER_ID, SCOPE_ID, "TEAM", true);
+            }
         }
     }
 }

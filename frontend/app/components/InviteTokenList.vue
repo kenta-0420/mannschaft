@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 interface InviteToken {
@@ -17,6 +17,7 @@ interface InviteToken {
 
 const { t } = useI18n()
 const api = useApi()
+const { downloadInviteTokenPdf } = useInviteTokenApi()
 const notification = useNotification()
 const { formatDate } = useDatetime()
 const tokens = ref<InviteToken[]>([])
@@ -103,11 +104,7 @@ function copyInviteUrl(token: string) {
 async function downloadQrPdf(tokenId: number) {
   pdfLoadingId.value = tokenId
   try {
-    const base = props.scopeType === 'team' ? 'teams' : 'organizations'
-    const response = await $fetch<Blob>(
-      `/api/v1/${base}/${props.scopeId}/invite-tokens/${tokenId}/pdf`,
-      { responseType: 'blob' }
-    )
+    const response = await downloadInviteTokenPdf(props.scopeType, props.scopeId, tokenId)
     const url = URL.createObjectURL(response)
     const a = document.createElement('a')
     a.href = url

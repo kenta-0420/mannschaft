@@ -1,0 +1,213 @@
+{
+  "payment": {
+    "paywall": {
+      "locked": "このコンテンツは会費のお支払いが必要です",
+      "unlock": "お支払いして閲覧する",
+      "requiredItem": "必要なお支払い: {name}",
+      "hiddenContent": "このコンテンツは閲覧できません",
+      "loading": "アクセス確認中..."
+    },
+    "membership": {
+      "subscribe": {
+        "cardLabel": "お支払いカード",
+        "submit": "この内容で加入する",
+        "processing": "処理中…",
+        "loadFailed": "決済フォームの読み込みに失敗しました。時間をおいて再度お試しください",
+        "keyMissing": "決済の設定が未完了です。管理者にお問い合わせください",
+        "genericError": "決済処理中にエラーが発生しました。時間をおいて再度お試しください",
+        "noPaymentMethod": "お支払い方法を確定できませんでした。カード情報をご確認のうえ再度お試しください",
+        "pageTitle": "継続のお支払いに加入",
+        "stepBeneficiary": "対象を選ぶ",
+        "stepCard": "カード情報",
+        "stepConfirm": "確認・実行",
+        "stepDone": "完了",
+        "beneficiaryHelp": "どなたの会費として加入するか選んでください。",
+        "beneficiarySelf": "自分",
+        "unnamedChild": "（名称未設定のお子さま）",
+        "beneficiaryRequired": "加入する対象を選択してください",
+        "next": "次へ",
+        "invalidItem": "会費項目が見つかりませんでした。お手数ですが入口からやり直してください",
+        "finalizing": "加入手続きを完了しています…",
+        "authFailed": "カード認証が完了しませんでした。もう一度カード情報を入力してください",
+        "errorNotRecurring": "この会費は継続のお支払いに対応していません",
+        "errorPmNotSaved": "お支払い方法が保存されていません。カード情報を再度ご入力ください",
+        "errorAlreadyExists": "この対象では、すでに継続のお支払いに加入済みです",
+        "beneficiaryUnverified": "受益者を確認できなかったため処理を中断しました。お支払い方法は保存済みです。受益者を選び直してください",
+        "doneTitle": "加入が完了しました",
+        "doneMessage": "継続のお支払いを開始しました。次回以降は自動でお支払いされます。",
+        "toSubscriptions": "継続のお支払いを管理する"
+      },
+      "subscription": {
+        "title": "継続のお支払い",
+        "empty": "継続中のお支払いはありません",
+        "unnamedItem": "（名称未設定の会費）",
+        "monthly": "月額",
+        "yearly": "年額",
+        "beneficiary": "対象会員",
+        "nextBilling": "次回お支払い日",
+        "validUntil": "ご利用期限",
+        "skip": "今月をスキップ",
+        "skipConfirm": "今月分のお支払いをお休みします。次回お支払い日は {date} です。この間は閲覧期限も延びません。",
+        "skipped": "今月はお休み中（次回 {date}）",
+        "skipSuccess": "今月分のお支払いをスキップしました",
+        "resume": "再開する",
+        "resumeConfirm": "スキップを解除して継続のお支払いを再開しますか？",
+        "resumeSuccess": "継続のお支払いを再開しました",
+        "cancel": "解約する",
+        "cancelAtPeriodEnd": "期間終了時に解約",
+        "cancelConfirm": "{date} まで利用できます。期間終了時に解約しますか？（日割り返金はありません）",
+        "cancelScheduled": "{date} まで利用できます（期間終了時に解約予定）",
+        "cancelSuccess": "期間終了時に解約するよう予約しました",
+        "pastDue": "お支払いが必要です",
+        "pastDueGuide": "カードのお支払いに失敗しました。お支払い方法を更新してください。",
+        "confirmAction": "実行する",
+        "loadError": "継続のお支払いの取得に失敗しました",
+        "actionError": "操作に失敗しました。時間をおいて再度お試しください",
+        "status": {
+          "PENDING": "保留中",
+          "ACTIVE": "有効",
+          "PAST_DUE": "お支払い待ち",
+          "CANCELLED": "解約済み",
+          "EXPIRED": "期限切れ"
+        }
+      }
+    },
+    "term": {
+      "periodLabel": "有効期間",
+      "from": "開始",
+      "until": "終了",
+      "typeLabel": {
+        "ANNUAL_FEE": "年額",
+        "MONTHLY_FEE": "月額",
+        "ITEM": "単品",
+        "DONATION": "寄付",
+        "TERM": "期別"
+      }
+    },
+    "admin": {
+      "pageTitle": "支払い管理",
+      "permissionDenied": "このページは管理者のみアクセスできます",
+      "itemsTitle": "支払い項目",
+      "selectItem": "支払い項目を選択してください",
+      "remindUnpaid": "未払いリマインド",
+      "loadItemsError": "支払い項目の取得に失敗しました",
+      "loadPaymentsError": "支払い状況の取得に失敗しました",
+      "remindSuccess": "リマインドを送信しました",
+      "remindError": "送信に失敗しました",
+      "exportError": "CSVダウンロードに失敗しました",
+      "status": {
+        "PAID": "支払い済み",
+        "UNPAID": "未払い",
+        "EXPIRED": "期限切れ",
+        "PENDING": "保留中",
+        "REFUNDED": "返金済み",
+        "CANCELLED": "キャンセル"
+      },
+      "method": {
+        "CASH": "現金",
+        "BANK_TRANSFER": "銀行振込",
+        "MANUAL": "手動記録"
+      },
+      "record": {
+        "recordButton": "入金を記録",
+        "title": "入金を記録",
+        "member": "対象会員",
+        "memberPlaceholder": "会員を選択",
+        "amount": "入金額",
+        "paidAt": "入金日",
+        "method": "決済手段",
+        "note": "メモ",
+        "notePlaceholder": "任意（最大500文字）",
+        "submit": "記録する",
+        "cancel": "キャンセル",
+        "success": "入金を記録しました",
+        "error": "入金の記録に失敗しました"
+      },
+      "bulk": {
+        "bulkButton": "一括記録",
+        "title": "一括記録",
+        "description": "未払いの会員を選択して一括で入金を記録します。",
+        "noUnpaid": "未払いの会員はいません",
+        "submit": "{count}件を記録",
+        "error": "一括記録に失敗しました",
+        "resultSummary": "記録 {created}件・スキップ {skipped}件"
+      },
+      "cancel": {
+        "button": "取消",
+        "success": "入金を取り消しました",
+        "error": "取消に失敗しました"
+      },
+      "beneficiarySetting": {
+        "label": "会員のみに限定",
+        "description": "ONにすると、応援者（サポーター）は受益者から除外されます。会費の対象を正会員のみに絞りたい場合に使用してください。",
+        "saveSuccess": "受益者制限設定を保存しました",
+        "saveError": "設定の保存に失敗しました"
+      }
+    },
+    "receipt": {
+      "title": "領収書",
+      "download": "ダウンロード",
+      "issuedBy": "発行者",
+      "amount": "金額",
+      "issuedDate": "発行日",
+      "pending": "発行準備中",
+      "noReceipts": "領収書はありません",
+      "loadError": "支払い情報の取得に失敗しました",
+      "loadReceiptError": "領収書の取得に失敗しました"
+    },
+    "summary": {
+      "expired": "期限切れ",
+      "payer": "支払い者",
+      "beneficiary": "対象会員"
+    },
+    "exportCsv": "CSVダウンロード",
+    "feeStatements": {
+      "title": "手数料明細",
+      "period": "対象月",
+      "totalFeeAmount": "手数料合計",
+      "issuerName": "発行者",
+      "noData": "対象月のデータがありません",
+      "loadError": "手数料明細の取得に失敗しました"
+    },
+    "guardianBulkPayment": {
+      "title": "後見まとめ払い",
+      "subtitle": "管理する子どもの未払い会費をまとめて決済できます",
+      "noItems": "未払いの会費はありません",
+      "beneficiary": "受益者",
+      "scope": "所属",
+      "itemName": "会費名",
+      "amount": "金額",
+      "dueDate": "期日",
+      "alreadyPaid": "支払い済み",
+      "paidBy": "{name}さんが支払済み",
+      "kind": {
+        "ONE_TIME": "一時払い",
+        "RECURRING": "継続払い",
+        "TERM": "期間払い"
+      },
+      "via": {
+        "SELF": "本人",
+        "GUARDIAN": "後見人",
+        "GUARDIAN_PROXY": "後見代理",
+        "PROXY_GRANT": "代理権"
+      },
+      "selectAll": "全て選択",
+      "deselectAll": "全て解除",
+      "paySelected": "{count}件を支払う",
+      "totalAmount": "合計: ¥{amount}",
+      "processing": "処理中...",
+      "result": {
+        "title": "支払い結果",
+        "checkedOut": "支払い完了",
+        "skipped": "スキップ",
+        "skipReasons": {
+          "ALREADY_PAID": "支払い済み",
+          "NOT_AUTHORIZED": "支払い権限なし",
+          "CONNECT_NOT_READY": "受領口座未設定",
+          "ITEM_NOT_FOUND": "会費項目なし",
+          "ERROR": "エラー"
+        }
+      }
+    }
+  }
+}

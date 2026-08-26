@@ -58,7 +58,7 @@ function initDefaults(current: AvailabilityDefaultResponse[]) {
 async function loadForTeam(id: number) {
   loading.value = true
   try {
-    const data = await getAvailabilityDefaults(id)
+    const data = await getAvailabilityDefaults(String(id))
     initDefaults(data)
   } catch {
     showError(t('shift.notification.errorLoad'))
@@ -87,7 +87,7 @@ async function save() {
         preference: pref,
       })
     }
-    await setAvailabilityDefaults(selectedTeamId.value, { availabilities })
+    await setAvailabilityDefaults(String(selectedTeamId.value), { availabilities })
     showSuccess(t('shift.notification.updateSuccess'))
   } catch {
     showError(t('shift.notification.errorUpdate'))
@@ -99,7 +99,7 @@ async function save() {
 async function resetAll() {
   if (!selectedTeamId.value) return
   try {
-    await deleteAvailabilityDefaults(selectedTeamId.value)
+    await deleteAvailabilityDefaults(String(selectedTeamId.value))
     initDefaults([])
     showSuccess(t('shift.notification.deleteSuccess'))
   } catch {
@@ -171,7 +171,7 @@ onMounted(async () => {
       <div v-if="teamStore.myTeams.length > 1" class="mb-4">
         <Button
           icon="pi pi-arrow-left"
-          :label="t('common.button.back')"
+          :label="t('button.back')"
           text
           severity="secondary"
           @click="selectedTeamId = null"
@@ -182,10 +182,9 @@ onMounted(async () => {
 
       <template v-else>
         <div class="flex flex-col gap-4">
-          <div
+          <SectionCard
             v-for="(label, idx) in DOW_LABELS"
             :key="idx"
-            class="rounded-xl border border-surface-200 bg-surface-0 p-4"
           >
             <!-- 曜日ラベル -->
             <div class="mb-3 flex items-center gap-2">
@@ -216,11 +215,11 @@ onMounted(async () => {
                 {{ t(preferenceToI18nKey(pref)) }}
               </button>
             </div>
-          </div>
+          </SectionCard>
         </div>
 
         <!-- 凡例 -->
-        <div class="mt-4 rounded-xl border border-surface-200 bg-surface-0 p-4">
+        <SectionCard class="mt-4">
           <h4 class="mb-2 text-xs font-semibold text-surface-500">{{ t('shift.legend') }}</h4>
           <div class="flex flex-wrap gap-2">
             <span
@@ -232,7 +231,7 @@ onMounted(async () => {
               {{ t(preferenceToI18nKey(pref)) }}
             </span>
           </div>
-        </div>
+        </SectionCard>
 
         <!-- アクションボタン -->
         <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
@@ -244,7 +243,7 @@ onMounted(async () => {
             @click="resetAll"
           />
           <Button
-            :label="t('common.button.save')"
+            :label="t('button.save')"
             icon="pi pi-check"
             :loading="saving"
             @click="save"

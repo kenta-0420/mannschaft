@@ -1,0 +1,40 @@
+{
+  "systemAdmin": {
+    "feePolicy": {
+      "title": "Fee Policy Management",
+      "description": "Manage unified payment fee policies (rate + flat fee) and their assignments",
+      "policyKey": "Policy Key",
+      "displayName": "Display Name",
+      "percentRate": "Rate (%)",
+      "flatFee": "Flat Fee (JPY)",
+      "enabled": "Enabled",
+      "assignmentCount": "Assignments",
+      "totalFeeHint": "Total fee = rate × face amount + flat fee (split between payer and payee)",
+      "create": "Add Policy",
+      "update": "Update",
+      "disable": "Disable",
+      "defaultImmutable": "The standard (DEFAULT) policy cannot be disabled",
+      "feeExceedsHint": "This flat fee may exceed the face amount for small payments",
+      "validation": {
+        "policyKeyFormat": "Policy key may only contain uppercase letters, digits, and underscores",
+        "displayNameRequired": "Please enter a display name",
+        "percentRateRange": "Rate must be between 0 and 1 (exclusive)",
+        "flatFeeNonNegative": "Flat fee must be 0 or greater",
+        "feeZeroNotAllowed": "Rate and flat fee cannot both be 0",
+        "alreadyExists": "A policy with the same key already exists (please update it)",
+        "notFound": "The fee policy was not found"
+      },
+      "assignment": {
+        "title": "Fee Assignments",
+        "sourceKind": "Source Kind",
+        "subKey": "Sub Key (optional, e.g. helper category)",
+        "policy": "Applied Policy",
+        "add": "Add Assignment",
+        "remove": "Remove Assignment",
+        "applyNote": "Assignment changes apply only to new charges (existing transactions are unaffected)",
+        "duplicate": "An assignment with the same conditions already exists",
+        "policyDisabled": "The assigned fee policy is disabled"
+      }
+    }
+  }
+}

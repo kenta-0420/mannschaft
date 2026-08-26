@@ -15,7 +15,7 @@ export function useDailyRollCallApi() {
   const api = useApi()
 
   async function getDailyAttendance(
-    teamId: number,
+    teamId: string,
     date: string,
   ): Promise<DailyAttendanceListResponse> {
     const res = await api<ApiResponse<DailyAttendanceListResponse>>(
@@ -25,7 +25,7 @@ export function useDailyRollCallApi() {
   }
 
   async function submitRollCall(
-    teamId: number,
+    teamId: string,
     body: DailyRollCallRequest,
   ): Promise<DailyRollCallSummary> {
     const res = await api<ApiResponse<DailyRollCallSummary>>(
@@ -36,7 +36,7 @@ export function useDailyRollCallApi() {
   }
 
   async function updateDailyRecord(
-    teamId: number,
+    teamId: string,
     recordId: number,
     body: DailyAttendanceUpdateRequest,
   ): Promise<DailyAttendanceResponse> {

@@ -25,9 +25,9 @@ import java.util.List;
  *
  * <p><strong>機能側 visibility との対応</strong>（§5.2）:</p>
  * <ul>
- *   <li>{@link AlbumVisibility#ALL_MEMBERS} → {@link StandardVisibility#MEMBERS_ONLY}</li>
+ *   <li>{@link AlbumVisibility#ALL_MEMBERS} → {@link StandardVisibility#SCOPE_AFFILIATED}</li>
  *   <li>{@link AlbumVisibility#SUPPORTERS_AND_ABOVE} → {@link StandardVisibility#SUPPORTERS_AND_ABOVE}</li>
- *   <li>{@link AlbumVisibility#ADMIN_ONLY} → {@link StandardVisibility#ADMINS_ONLY}</li>
+ *   <li>{@link AlbumVisibility#ADMIN_ONLY} → {@link StandardVisibility#ADMINS_AND_ABOVE}</li>
  * </ul>
  *
  * <p><strong>status × visibility 合成</strong>:

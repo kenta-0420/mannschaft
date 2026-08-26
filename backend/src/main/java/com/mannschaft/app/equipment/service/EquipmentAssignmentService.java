@@ -1,5 +1,6 @@
 package com.mannschaft.app.equipment.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.equipment.EquipmentErrorCode;
 import com.mannschaft.app.equipment.EquipmentMapper;
@@ -43,6 +44,7 @@ public class EquipmentAssignmentService {
     private final EquipmentAssignmentRepository assignmentRepository;
     private final EquipmentItemService itemService;
     private final EquipmentMapper equipmentMapper;
+    private final AccessControlService accessControlService;
 
     // ===================== 貸出 =====================
 
@@ -53,6 +55,7 @@ public class EquipmentAssignmentService {
     public AssignmentResponse assignForTeam(Long teamId, Long itemId, Long currentUserId,
                                             AssignEquipmentRequest request) {
         EquipmentItemEntity item = itemService.findTeamItemOrThrow(teamId, itemId);
+        accessControlService.checkAdminOrAbove(currentUserId, item.getTeamId(), "TEAM");
         return doAssign(item, currentUserId, request);
     }
 
@@ -63,6 +66,7 @@ public class EquipmentAssignmentService {
     public AssignmentResponse assignForOrganization(Long orgId, Long itemId, Long currentUserId,
                                                      AssignEquipmentRequest request) {
         EquipmentItemEntity item = itemService.findOrgItemOrThrow(orgId, itemId);
+        accessControlService.checkAdminOrAbove(currentUserId, item.getOrganizationId(), "ORGANIZATION");
         return doAssign(item, currentUserId, request);
     }
 
@@ -75,6 +79,7 @@ public class EquipmentAssignmentService {
     public ReturnResponse returnForTeam(Long teamId, Long itemId, Long currentUserId,
                                          ReturnEquipmentRequest request) {
         EquipmentItemEntity item = itemService.findTeamItemOrThrow(teamId, itemId);
+        accessControlService.checkAdminOrAbove(currentUserId, item.getTeamId(), "TEAM");
         return doReturn(item, currentUserId, request);
     }
 
@@ -85,6 +90,7 @@ public class EquipmentAssignmentService {
     public ReturnResponse returnForOrganization(Long orgId, Long itemId, Long currentUserId,
                                                  ReturnEquipmentRequest request) {
         EquipmentItemEntity item = itemService.findOrgItemOrThrow(orgId, itemId);
+        accessControlService.checkAdminOrAbove(currentUserId, item.getOrganizationId(), "ORGANIZATION");
         return doReturn(item, currentUserId, request);
     }
 
@@ -93,16 +99,18 @@ public class EquipmentAssignmentService {
     /**
      * チーム備品の貸出・返却履歴を取得する。
      */
-    public Page<AssignmentResponse> getHistoryForTeam(Long teamId, Long itemId, Pageable pageable) {
-        itemService.findTeamItemOrThrow(teamId, itemId);
+    public Page<AssignmentResponse> getHistoryForTeam(Long teamId, Long itemId, Long actorUserId, Pageable pageable) {
+        EquipmentItemEntity item = itemService.findTeamItemOrThrow(teamId, itemId);
+        accessControlService.checkMembership(actorUserId, item.getTeamId(), "TEAM");
         return getHistory(itemId, pageable);
     }
 
     /**
      * 組織備品の貸出・返却履歴を取得する。
      */
-    public Page<AssignmentResponse> getHistoryForOrganization(Long orgId, Long itemId, Pageable pageable) {
-        itemService.findOrgItemOrThrow(orgId, itemId);
+    public Page<AssignmentResponse> getHistoryForOrganization(Long orgId, Long itemId, Long actorUserId, Pageable pageable) {
+        EquipmentItemEntity item = itemService.findOrgItemOrThrow(orgId, itemId);
+        accessControlService.checkMembership(actorUserId, item.getOrganizationId(), "ORGANIZATION");
         return getHistory(itemId, pageable);
     }
 
@@ -111,7 +119,8 @@ public class EquipmentAssignmentService {
     /**
      * チーム備品の返却遅延一覧を取得する。
      */
-    public Page<AssignmentResponse> getOverdueForTeam(Long teamId, Pageable pageable) {
+    public Page<AssignmentResponse> getOverdueForTeam(Long teamId, Long actorUserId, Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, teamId, "TEAM");
         Page<EquipmentAssignmentEntity> page =
                 assignmentRepository.findOverdueByTeamId(teamId, LocalDate.now(), pageable);
         return page.map(equipmentMapper::toAssignmentResponse);
@@ -120,7 +129,8 @@ public class EquipmentAssignmentService {
     /**
      * 組織備品の返却遅延一覧を取得する。
      */
-    public Page<AssignmentResponse> getOverdueForOrganization(Long orgId, Pageable pageable) {
+    public Page<AssignmentResponse> getOverdueForOrganization(Long orgId, Long actorUserId, Pageable pageable) {
+        accessControlService.checkMembership(actorUserId, orgId, "ORGANIZATION");
         Page<EquipmentAssignmentEntity> page =
                 assignmentRepository.findOverdueByOrganizationId(orgId, LocalDate.now(), pageable);
         return page.map(equipmentMapper::toAssignmentResponse);
@@ -146,6 +156,7 @@ public class EquipmentAssignmentService {
     public ConsumeResponse consumeForTeam(Long teamId, Long itemId, Long currentUserId,
                                            ConsumeEquipmentRequest request) {
         EquipmentItemEntity item = itemService.findTeamItemOrThrow(teamId, itemId);
+        accessControlService.checkAdminOrAbove(currentUserId, item.getTeamId(), "TEAM");
         return doConsume(item, currentUserId, request);
     }
 
@@ -156,6 +167,7 @@ public class EquipmentAssignmentService {
     public ConsumeResponse consumeForOrganization(Long orgId, Long itemId, Long currentUserId,
                                                    ConsumeEquipmentRequest request) {
         EquipmentItemEntity item = itemService.findOrgItemOrThrow(orgId, itemId);
+        accessControlService.checkAdminOrAbove(currentUserId, item.getOrganizationId(), "ORGANIZATION");
         return doConsume(item, currentUserId, request);
     }
 
@@ -168,6 +180,7 @@ public class EquipmentAssignmentService {
     public BulkAssignResponse bulkAssignForTeam(Long teamId, Long itemId, Long currentUserId,
                                                  BulkAssignRequest request) {
         EquipmentItemEntity item = itemService.findTeamItemOrThrow(teamId, itemId);
+        accessControlService.checkAdminOrAbove(currentUserId, item.getTeamId(), "TEAM");
         return doBulkAssign(item, currentUserId, request);
     }
 
@@ -178,6 +191,7 @@ public class EquipmentAssignmentService {
     public BulkAssignResponse bulkAssignForOrganization(Long orgId, Long itemId, Long currentUserId,
                                                          BulkAssignRequest request) {
         EquipmentItemEntity item = itemService.findOrgItemOrThrow(orgId, itemId);
+        accessControlService.checkAdminOrAbove(currentUserId, item.getOrganizationId(), "ORGANIZATION");
         return doBulkAssign(item, currentUserId, request);
     }
 
@@ -190,6 +204,7 @@ public class EquipmentAssignmentService {
     public BulkReturnResponse bulkReturnForTeam(Long teamId, Long itemId, Long currentUserId,
                                                  BulkReturnRequest request) {
         EquipmentItemEntity item = itemService.findTeamItemOrThrow(teamId, itemId);
+        accessControlService.checkAdminOrAbove(currentUserId, item.getTeamId(), "TEAM");
         return doBulkReturn(item, currentUserId, request);
     }
 
@@ -200,6 +215,7 @@ public class EquipmentAssignmentService {
     public BulkReturnResponse bulkReturnForOrganization(Long orgId, Long itemId, Long currentUserId,
                                                          BulkReturnRequest request) {
         EquipmentItemEntity item = itemService.findOrgItemOrThrow(orgId, itemId);
+        accessControlService.checkAdminOrAbove(currentUserId, item.getOrganizationId(), "ORGANIZATION");
         return doBulkReturn(item, currentUserId, request);
     }
 

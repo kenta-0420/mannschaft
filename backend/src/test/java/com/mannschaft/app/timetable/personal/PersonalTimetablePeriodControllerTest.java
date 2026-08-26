@@ -35,6 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * F03.15 Phase 2 PersonalTimetablePeriodController の MockMvc 結合テスト。
@@ -56,6 +57,10 @@ class PersonalTimetablePeriodControllerTest {
     // F14.1: ProxyInputContextFilter の依存解決用（@WebMvcTest コンテキストで必要）
     @MockitoBean private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUpAuthentication() {

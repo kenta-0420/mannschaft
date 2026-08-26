@@ -1,5 +1,6 @@
 package com.mannschaft.app.forms.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.forms.dto.CreateFormPresetRequest;
 import com.mannschaft.app.forms.dto.FormPresetResponse;
@@ -26,6 +27,10 @@ import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * フォームプリセットコントローラー。SYSTEM_ADMIN向けプリセット管理APIを提供する。
+ *
+ * <p>認可根治戦役 Wave3-B4: {@code /api/v1/admin/form-presets/**} は
+ * {@code SecurityConfig} の SYSTEM_ADMIN requestMatcher に登録し、
+ * {@link AccessControlService#checkSystemAdmin} で認可を適用する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/admin/form-presets")
@@ -34,6 +39,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class FormPresetController {
 
     private final FormPresetService presetService;
+    private final AccessControlService accessControlService;
 
 
     /**
@@ -44,6 +50,7 @@ public class FormPresetController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<FormPresetResponse>>> listPresets(
             @RequestParam(required = false) String category) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         List<FormPresetResponse> presets = presetService.listPresets(category);
         return ResponseEntity.ok(ApiResponse.of(presets));
     }
@@ -56,6 +63,7 @@ public class FormPresetController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<FormPresetResponse>> getPreset(
             @PathVariable Long presetId) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         FormPresetResponse response = presetService.getPreset(presetId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -68,7 +76,9 @@ public class FormPresetController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<FormPresetResponse>> createPreset(
             @Valid @RequestBody CreateFormPresetRequest request) {
-        FormPresetResponse response = presetService.createPreset(SecurityUtils.getCurrentUserId(), request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkSystemAdmin(userId);
+        FormPresetResponse response = presetService.createPreset(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -81,6 +91,7 @@ public class FormPresetController {
     public ResponseEntity<ApiResponse<FormPresetResponse>> updatePreset(
             @PathVariable Long presetId,
             @Valid @RequestBody UpdateFormPresetRequest request) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         FormPresetResponse response = presetService.updatePreset(presetId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -92,6 +103,7 @@ public class FormPresetController {
     @Operation(summary = "プリセット削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePreset(@PathVariable Long presetId) {
+        accessControlService.checkSystemAdmin(SecurityUtils.getCurrentUserId());
         presetService.deletePreset(presetId);
         return ResponseEntity.noContent().build();
     }

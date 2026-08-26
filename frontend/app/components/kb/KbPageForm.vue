@@ -6,7 +6,7 @@ const visible = defineModel<boolean>('visible', { default: false })
 
 const props = defineProps<{
   scopeType: KbScopeType
-  scopeId: number
+  scopeId: string
   editPage?: KbPageResponse | null
   pages?: KbPageSummaryResponse[]
 }>()

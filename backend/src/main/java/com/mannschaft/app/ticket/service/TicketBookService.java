@@ -65,6 +65,7 @@ public class TicketBookService {
     private final TicketQrService ticketQrService;
     private final TicketMapper ticketMapper;
     private final NameResolverService nameResolverService;
+    private final TicketAccessGuard ticketAccessGuard;
 
     // ==================== チケット購入 ====================
 
@@ -208,22 +209,54 @@ public class TicketBookService {
         } else {
             books = bookRepository.findByUserIdAndTeamIdAndStatus(userId, teamId, TicketBookStatus.ACTIVE);
         }
+        String userName = nameResolverService.resolveUserFullName(userId);
         return books.stream().map(book -> {
             String productName = productRepository.findById(book.getProductId())
                     .map(TicketProductEntity::getName).orElse("不明な商品");
-            return toBookResponseWithProductName(book, productName);
+            return toBookResponseWithProductName(book, productName, userName);
         }).toList();
     }
 
     /**
-     * チケット詳細（消化履歴・決済情報付き）を取得する。
+     * チケット詳細（消化履歴・決済情報付き）を取得する（<b>スタッフ面</b>・全顧客対象）。
+     *
+     * <p>購入者名・決済額を含む機微情報を返すため、呼び出し元の public 入口で
+     * {@link TicketAccessGuard#requireTeamAdmin} を通していることが前提。
+     * 顧客本人が自分の 1 冊を引く場合は {@link #getMyTicketBookDetail} を使うこと。</p>
      *
      * @param teamId チームID
      * @param bookId チケットID
      * @return チケット詳細レスポンス
      */
     public TicketBookDetailResponse getTicketBookDetail(Long teamId, Long bookId) {
+        return buildBookDetail(findBookOrThrow(teamId, bookId));
+    }
+
+    /**
+     * 自分のチケット詳細を取得する（<b>顧客面</b>・所有者本人限定）。
+     *
+     * <p>チーム束縛（{@code findByIdAndTeamId}）に加えて所有者一致を必須とする。
+     * 他人の bookId は 404（{@code TICKET_002}）で存在秘匿する。</p>
+     *
+     * @param teamId チームID
+     * @param bookId チケットID
+     * @param userId 操作ユーザーID（所有者検証用）
+     * @return チケット詳細レスポンス
+     */
+    public TicketBookDetailResponse getMyTicketBookDetail(Long teamId, Long bookId, Long userId) {
         TicketBookEntity book = findBookOrThrow(teamId, bookId);
+        ticketAccessGuard.requireBookOwner(book.getUserId(), userId);
+        return buildBookDetail(book);
+    }
+
+    /**
+     * チケット詳細レスポンスを組み立てる（認可検証済みの entity を受け取る）。
+     *
+     * @param book 認可検証済みのチケット entity
+     * @return チケット詳細レスポンス
+     */
+    private TicketBookDetailResponse buildBookDetail(TicketBookEntity book) {
+        Long bookId = book.getId();
         String productName = productRepository.findById(book.getProductId())
                 .map(TicketProductEntity::getName).orElse("不明な商品");
         List<TicketConsumptionEntity> consumptions = consumptionRepository.findByBookIdOrderByConsumedAtAsc(bookId);
@@ -231,7 +264,6 @@ public class TicketBookService {
 
         TicketBookDetailResponse.PaymentSummary paymentSummary = null;
         if (book.getPaymentId() != null) {
-            paymentRepository.findById(book.getPaymentId()).ifPresent(payment -> {});
             TicketPaymentEntity payment = paymentRepository.findById(book.getPaymentId()).orElse(null);
             if (payment != null) {
                 paymentSummary = new TicketBookDetailResponse.PaymentSummary(
@@ -242,11 +274,18 @@ public class TicketBookService {
 
         Long daysUntilExpiry = ticketMapper.calculateDaysUntilExpiry(book.getExpiresAt());
 
-        return new TicketBookDetailResponse(
-                book.getId(), productName, book.getTotalTickets(), book.getUsedTickets(),
-                book.getRemainingTickets(), book.getStatus().name(), book.getPurchasedAt(),
-                book.getExpiresAt(), daysUntilExpiry, book.getNote(),
-                paymentSummary, consumptionResponses, book.getCreatedAt(), book.getUpdatedAt());
+        return TicketBookDetailResponse.builder()
+                .id(book.getId())
+                .productName(productName)
+                .quantity(new TicketBookDetailResponse.TicketQuantityDto(
+                        book.getTotalTickets(), book.getUsedTickets(), book.getRemainingTickets()))
+                .status(new TicketBookDetailResponse.TicketStatusDto(
+                        book.getStatus().name(), book.getPurchasedAt(), book.getExpiresAt(), daysUntilExpiry))
+                .payment(paymentSummary)
+                .consumptions(consumptionResponses)
+                .audit(new TicketBookDetailResponse.DetailAuditDto(
+                        book.getNote(), book.getCreatedAt(), book.getUpdatedAt()))
+                .build();
     }
 
     /**
@@ -266,10 +305,15 @@ public class TicketBookService {
         } else {
             bookPage = bookRepository.findByTeamIdOrderByCreatedAtDesc(teamId, PageRequest.of(page, size));
         }
+        java.util.Set<Long> userIds = bookPage.getContent().stream()
+                .map(TicketBookEntity::getUserId)
+                .collect(java.util.stream.Collectors.toSet());
+        java.util.Map<Long, String> userNames = nameResolverService.resolveUserFullNames(userIds);
         return bookPage.map(book -> {
             String productName = productRepository.findById(book.getProductId())
                     .map(TicketProductEntity::getName).orElse("不明な商品");
-            return toBookResponseWithProductName(book, productName);
+            return toBookResponseWithProductName(book, productName,
+                    userNames.getOrDefault(book.getUserId(), "不明なユーザー"));
         });
     }
 
@@ -532,8 +576,11 @@ public class TicketBookService {
      * @return QR コードレスポンス
      */
     public QrCodeResponse generateQrCode(Long teamId, Long bookId, Long userId) {
-        findBookOrThrow(teamId, bookId);
-        // 所有者チェックは Controller 層で実施
+        TicketBookEntity book = findBookOrThrow(teamId, bookId);
+        // 認可根治 Wave5: 従来ここには「所有者チェックは Controller 層で実施」というコメントがあったが、
+        // Controller は userId を渡すだけで照合しておらず、本メソッドも受け取った userId を使っていなかった。
+        // QR は消化に使える実効的な権利証のため、所有者一致を本メソッドで必ず検証する。
+        ticketAccessGuard.requireBookOwner(book.getUserId(), userId);
         TicketQrService.QrGenerateResult result = ticketQrService.generateToken(bookId);
         return new QrCodeResponse(result.qrPayload(), result.expiresAt());
     }
@@ -613,12 +660,17 @@ public class TicketBookService {
     /**
      * 領収書情報を取得する。Stripe 決済の場合は receipt_url、現地決済の場合は PDF 生成用データ。
      *
+     * <p>領収書は購入者名・決済額を含むため、チーム束縛に加えて<b>所有者本人</b>であることを必須とする
+     * （認可根治 Wave5）。他人の bookId は 404（{@code TICKET_002}）で存在秘匿する。</p>
+     *
      * @param teamId チームID
      * @param bookId チケットID
+     * @param userId 操作ユーザーID（所有者検証用）
      * @return 決済情報（呼び出し元で Stripe redirect / PDF 生成を判断）
      */
-    public TicketPaymentEntity getReceiptPayment(Long teamId, Long bookId) {
+    public TicketPaymentEntity getReceiptPayment(Long teamId, Long bookId, Long userId) {
         TicketBookEntity book = findBookOrThrow(teamId, bookId);
+        ticketAccessGuard.requireBookOwner(book.getUserId(), userId);
         if (book.getPaymentId() == null) {
             throw new BusinessException(TicketErrorCode.PAYMENT_NOT_FOUND);
         }
@@ -666,12 +718,26 @@ public class TicketBookService {
     }
 
     private TicketBookResponse toBookResponseWithProductName(TicketBookEntity book, String productName) {
+        return toBookResponseWithProductName(book, productName,
+                nameResolverService.resolveUserFullName(book.getUserId()));
+    }
+
+    private TicketBookResponse toBookResponseWithProductName(TicketBookEntity book, String productName,
+                                                             String userName) {
         Long daysUntilExpiry = ticketMapper.calculateDaysUntilExpiry(book.getExpiresAt());
-        return new TicketBookResponse(
-                book.getId(), productName, book.getTotalTickets(), book.getUsedTickets(),
-                book.getTotalTickets() - book.getUsedTickets(),
-                book.getStatus().name(), book.getPurchasedAt(), book.getExpiresAt(),
-                daysUntilExpiry, book.getNote(), book.getCreatedAt(), book.getUpdatedAt());
+        return TicketBookResponse.builder()
+                .id(book.getId())
+                .userId(book.getUserId())
+                .userName(userName)
+                .productName(productName)
+                .quantity(new TicketBookResponse.TicketQuantityDto(
+                        book.getTotalTickets(), book.getUsedTickets(),
+                        book.getTotalTickets() - book.getUsedTickets()))
+                .status(new TicketBookResponse.TicketStatusDto(
+                        book.getStatus().name(), book.getPurchasedAt(), book.getExpiresAt(), daysUntilExpiry))
+                .note(new TicketBookResponse.NoteDto(book.getNote()))
+                .audit(new TicketBookResponse.BookAuditDto(book.getCreatedAt(), book.getUpdatedAt()))
+                .build();
     }
 
     private String calculateUrgency(Long daysUntilExpiry) {

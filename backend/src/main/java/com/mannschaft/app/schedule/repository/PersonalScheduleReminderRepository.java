@@ -2,7 +2,9 @@ package com.mannschaft.app.schedule.repository;
 
 import com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -17,21 +19,35 @@ public interface PersonalScheduleReminderRepository extends JpaRepository<Person
     List<PersonalScheduleReminderEntity> findByScheduleIdOrderByRemindBeforeMinutesAsc(Long scheduleId);
 
     /**
-     * スケジュールIDでリマインダーを削除する。
+     * スケジュールIDでリマインダーを一括削除する。
+     * JPQL バルク DELETE で即時 SQL を発行し、後続の saveAll() との
+     * 競合（uq_psr_schedule_minutes 重複エラー）を防ぐ。
+     * derived delete（select-then-remove）と異なり Hibernate の insert-before-delete 順序に影響されない。
      */
-    void deleteByScheduleId(Long scheduleId);
+    @Modifying
+    @Query("DELETE FROM PersonalScheduleReminderEntity r WHERE r.scheduleId = :scheduleId")
+    void deleteByScheduleId(@Param("scheduleId") Long scheduleId);
 
     /**
-     * 通知対象のリマインダーを取得する。
-     * 未通知かつ個人スケジュール（userId IS NOT NULL）かつ未削除のスケジュールで、
-     * 開始日時までの残り分数がリマインド設定以下のものを返す。
+     * 通知対象のリマインダーを取得する（機能55 第二陣で相対/絶対両対応）。
+     *
+     * <p>未通知かつ個人スケジュール（userId IS NOT NULL）かつ未削除のスケジュールで、次のいずれか:</p>
+     * <ul>
+     *   <li>RELATIVE: 開始日時までの残り分数が {@code remindBeforeMinutes} 以下</li>
+     *   <li>ABSOLUTE: {@code remindAt} が現在時刻以前</li>
+     * </ul>
      */
     @Query("SELECT r FROM PersonalScheduleReminderEntity r " +
             "JOIN ScheduleEntity s ON r.scheduleId = s.id " +
             "WHERE r.notified = false " +
             "AND s.userId IS NOT NULL " +
             "AND s.deletedAt IS NULL " +
-            "AND FUNCTION('TIMESTAMPDIFF', MINUTE, CURRENT_TIMESTAMP, s.startAt) <= r.remindBeforeMinutes")
+            "AND ((r.reminderKind = com.mannschaft.app.schedule.ReminderKind.RELATIVE " +
+            "      AND r.remindBeforeMinutes IS NOT NULL " +
+            "      AND FUNCTION('TIMESTAMPDIFF', MINUTE, CURRENT_TIMESTAMP, s.startAt) <= r.remindBeforeMinutes) " +
+            "  OR (r.reminderKind = com.mannschaft.app.schedule.ReminderKind.ABSOLUTE " +
+            "      AND r.remindAt IS NOT NULL " +
+            "      AND r.remindAt <= CURRENT_TIMESTAMP))")
     List<PersonalScheduleReminderEntity> findDueReminders();
 
     /**

@@ -20,8 +20,33 @@ const {
   isOverdue,
 } = useTodoList()
 
-const viewMode = ref<'list' | 'kanban'>('list')
+const viewMode = ref<'list' | 'kanban' | 'gantt'>('list')
 const showCreateDialog = ref(false)
+
+// ガントビュー（ページ内表示・別ページ遷移なし）
+const {
+  currentYear: ganttYear,
+  currentMonth: ganttMonth,
+  scopeKey: ganttScopeKey,
+  scopeOptions: ganttScopeOptions,
+  ganttTodos,
+  ganttFromDate,
+  ganttToDate,
+  ganttLoading,
+  ganttKey,
+  loadGantt: loadGanttView,
+  onPrevMonth: ganttPrevMonth,
+  onNextMonth: ganttNextMonth,
+  ensureScopes: ensureGanttScopes,
+} = useTodoGanttView()
+
+// ガントモードへ切り替わったら初回ロード（キャッシュヒット時は即表示）
+watch(viewMode, async (m) => {
+  if (m === 'gantt') {
+    await ensureGanttScopes()
+    loadGanttView()
+  }
+})
 
 onMounted(load)
 </script>
@@ -36,6 +61,7 @@ onMounted(load)
       </div>
       <div class="flex items-center gap-2">
         <Button
+          v-if="viewMode !== 'gantt'"
           :icon="showCompleted ? 'pi pi-eye-slash' : 'pi pi-eye'"
           :label="showCompleted ? '完了を隠す' : '完了を表示'"
           text
@@ -43,11 +69,20 @@ onMounted(load)
           severity="secondary"
           @click="showCompleted = !showCompleted"
         />
+        <Select
+          v-if="viewMode === 'gantt' && ganttScopeOptions.length > 1"
+          v-model="ganttScopeKey"
+          :options="ganttScopeOptions"
+          option-label="label"
+          option-value="value"
+          size="small"
+        />
         <SelectButton
           v-model="viewMode"
           :options="[
             { value: 'list', icon: 'pi pi-list', tooltip: t('todo.list.viewModeList') },
             { value: 'kanban', icon: 'pi pi-th-large', tooltip: t('todo.list.viewModeKanban') },
+            { value: 'gantt', icon: 'pi pi-chart-bar', tooltip: t('todo.enhancement.gantt.title') },
           ]"
           option-value="value"
           option-label="value"
@@ -56,20 +91,12 @@ onMounted(load)
             <i v-tooltip.bottom="option.tooltip" :class="option.icon" />
           </template>
         </SelectButton>
-        <Button
-          :label="t('todo.enhancement.gantt.gantt_view_link')"
-          icon="pi pi-chart-bar"
-          text
-          size="small"
-          severity="secondary"
-          @click="router.push('/calendar?tab=gantt')"
-        />
         <Button label="作成" icon="pi pi-plus" @click="showCreateDialog = true" />
       </div>
     </div>
 
-    <!-- 進捗バー -->
-    <DashboardWidgetCard :scrollable="false" class="mb-5">
+    <!-- 進捗バー（一覧・カンバン用） -->
+    <DashboardWidgetCard v-if="viewMode !== 'gantt'" :scrollable="false" class="mb-5">
       <div class="flex flex-col gap-2">
         <div class="flex items-center justify-between text-sm">
           <span class="font-medium text-surface-600 dark:text-surface-300">
@@ -82,8 +109,8 @@ onMounted(load)
       </div>
     </DashboardWidgetCard>
 
-    <!-- スコープタブ -->
-    <div class="mb-5 flex flex-wrap gap-2">
+    <!-- スコープタブ（一覧・カンバン用） -->
+    <div v-if="viewMode !== 'gantt'" class="mb-5 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 w-fit dark:border-surface-600 dark:bg-surface-700">
       <button
         v-for="tab in [
           { key: 'all', label: 'すべて' },
@@ -92,11 +119,11 @@ onMounted(load)
           { key: 'organization', label: '組織' },
         ]"
         :key="tab.key"
-        class="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+        class="rounded-md px-4 py-1.5 text-sm font-medium transition-colors"
         :class="
           scopeTab === tab.key
-            ? 'bg-primary text-white'
-            : 'bg-surface-100 text-surface-600 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300'
+            ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+            : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'
         "
         @click="scopeTab = tab.key as typeof scopeTab"
       >
@@ -113,7 +140,27 @@ onMounted(load)
       </button>
     </div>
 
-    <PageLoading v-if="loading" />
+    <!-- ガントビュー（ページ内表示） -->
+    <DashboardWidgetCard v-if="viewMode === 'gantt'" :scrollable="false">
+      <div v-if="ganttLoading" class="space-y-3">
+        <Skeleton v-for="i in 5" :key="i" height="2rem" />
+      </div>
+      <Transition v-else name="fade">
+        <TodoGanttView
+          :key="ganttKey"
+          :todos="ganttTodos"
+          :from-date="ganttFromDate"
+          :to-date="ganttToDate"
+          :current-year="ganttYear"
+          :current-month="ganttMonth"
+          @todo-click="(id) => router.push(`/todos/${id}`)"
+          @prev-month="ganttPrevMonth"
+          @next-month="ganttNextMonth"
+        />
+      </Transition>
+    </DashboardWidgetCard>
+
+    <PageLoading v-else-if="loading" />
 
     <TodoListView
       v-else-if="viewMode === 'list'"
@@ -140,3 +187,14 @@ onMounted(load)
     <TodoCreateDialog v-model:visible="showCreateDialog" @created="load" />
   </div>
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.25s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

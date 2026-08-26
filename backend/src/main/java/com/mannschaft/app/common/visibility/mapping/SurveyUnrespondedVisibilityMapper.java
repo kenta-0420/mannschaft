@@ -28,7 +28,8 @@ public final class SurveyUnrespondedVisibilityMapper {
             // §5.1.4 CUSTOM 運用規約参照、Resolver 内で個別実装
             // (作成者または ADMIN の OR 条件、survey_result_viewers も含む)
             case CREATOR_AND_ADMIN -> StandardVisibility.CUSTOM;
-            case ALL_MEMBERS -> StandardVisibility.MEMBERS_ONLY;
+            // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+            case ALL_MEMBERS -> StandardVisibility.SCOPE_AFFILIATED;
         };
     }
 }

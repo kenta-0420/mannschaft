@@ -157,7 +157,7 @@ function navigateToRegister() {
               class="px-4 py-1.5 border border-gray-300 rounded text-sm"
               @click="showRejectConfirm = false"
             >
-              {{ $t('common.button.cancel') }}
+              {{ $t('button.cancel') }}
             </button>
           </div>
         </div>

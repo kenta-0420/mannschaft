@@ -13,7 +13,7 @@ export type UnconfirmedVisibility = 'HIDDEN' | 'CREATOR_AND_ADMIN' | 'ALL_MEMBER
 export interface ConfirmableNotificationSettings {
   id?: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   defaultFirstReminderMinutes: number | null
   defaultSecondReminderMinutes: number | null
   senderAlertThresholdPercent: number
@@ -27,7 +27,7 @@ export interface ConfirmableNotificationSummary {
   priority: ConfirmableNotificationPriority
   status: ConfirmableNotificationStatus
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   deadlineAt: string | null
   totalRecipientCount: number
   confirmedCount: number
@@ -62,7 +62,7 @@ export interface ConfirmableNotificationRecipientItem {
 export interface ConfirmableNotificationTemplate {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   name: string
   title: string
   body: string | null

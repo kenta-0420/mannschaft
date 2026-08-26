@@ -3,6 +3,11 @@ package com.mannschaft.app.organization;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.organization.dto.CreateOrganizationRequest;
 import com.mannschaft.app.organization.dto.OrganizationResponse;
 import com.mannschaft.app.organization.dto.OrganizationSummaryResponse;
@@ -23,6 +28,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -33,6 +39,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -54,6 +61,7 @@ class OrganizationServiceTest {
 
     private static final Long USER_ID = 1L;
     private static final Long ORG_ID = 10L;
+    private static final String ORG_SLUG = "test-org";
     private static final Long ADMIN_ROLE_ID = 100L;
 
     @Mock
@@ -77,6 +85,12 @@ class OrganizationServiceTest {
     @Mock
     private OrganizationHierarchyService organizationHierarchyService;
 
+    @Mock
+    private MembershipService membershipService;
+
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
+
     @InjectMocks
     private OrganizationService organizationService;
 
@@ -92,7 +106,7 @@ class OrganizationServiceTest {
         @DisplayName("正常作成_組織とADMINロールが保存される")
         void 正常作成_組織とADMINロールが保存される() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
-                    "テスト組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", null);
+                    "テスト組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", null, null);
 
             given(organizationRepository.existsByName("テスト組織")).willReturn(false);
 
@@ -111,13 +125,22 @@ class OrganizationServiceTest {
             assertThat(response.getData().getVisibility().visibility()).isEqualTo("PUBLIC");
             verify(organizationRepository).save(any(OrganizationEntity.class));
             verify(userRoleRepository).save(any(UserRoleEntity.class));
+            // F00.5 認可基盤根治: memberships にも MEMBER として入会させる（join 経由）
+            org.mockito.ArgumentCaptor<MembershipCreateRequest> captor =
+                    org.mockito.ArgumentCaptor.forClass(MembershipCreateRequest.class);
+            verify(membershipService).join(captor.capture());
+            MembershipCreateRequest joinReq = captor.getValue();
+            assertThat(joinReq.getUserId()).isEqualTo(USER_ID);
+            assertThat(joinReq.getScopeType()).isEqualTo(ScopeType.ORGANIZATION);
+            assertThat(joinReq.getRoleKind()).isEqualTo(RoleKind.MEMBER);
+            assertThat(joinReq.getSource()).isEqualTo("ORG_CREATE");
         }
 
         @Test
         @DisplayName("組織名重複_ORG_002例外")
         void 組織名重複_ORG_002例外() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
-                    "既存組織", "SCHOOL", null, null, null, null);
+                    "既存組織", "SCHOOL", null, null, null, null, null);
 
             given(organizationRepository.existsByName("既存組織")).willReturn(true);
 
@@ -131,7 +154,7 @@ class OrganizationServiceTest {
         @DisplayName("ADMINロール未定義_ORG_005例外")
         void ADMINロール未定義_ORG_005例外() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
-                    "新組織", "COMPANY", null, null, null, null);
+                    "新組織", "COMPANY", null, null, null, null, null);
 
             given(organizationRepository.existsByName("新組織")).willReturn(false);
             given(organizationRepository.save(any(OrganizationEntity.class)))
@@ -148,7 +171,7 @@ class OrganizationServiceTest {
         @DisplayName("visibility省略時_PRIVATEがデフォルト")
         void visibility省略時_PRIVATEがデフォルト() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
-                    "非公開組織", "NPO", null, null, null, null);
+                    "非公開組織", "NPO", null, null, null, null, null);
 
             given(organizationRepository.existsByName("非公開組織")).willReturn(false);
 
@@ -169,7 +192,7 @@ class OrganizationServiceTest {
         @DisplayName("正常系: parentOrganizationId付きで作成される")
         void parentOrganizationId付き_正常作成() {
             CreateOrganizationRequest req = new CreateOrganizationRequest(
-                    "子組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", 5L);
+                    "子組織", "SCHOOL", "東京都", "渋谷区", "PUBLIC", 5L, null);
 
             given(organizationRepository.existsByName("子組織")).willReturn(false);
 
@@ -203,22 +226,60 @@ class OrganizationServiceTest {
         @DisplayName("正常取得_組織情報が返される")
         void 正常取得_組織情報が返される() {
             OrganizationEntity org = createOrganization();
-            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(org));
             given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(5L);
 
             ApiResponse<OrganizationResponse> response =
-                    organizationService.getOrganization(ORG_ID);
+                    organizationService.getOrganization(ORG_SLUG);
 
             assertThat(response.getData().getBasicInfo().name()).isEqualTo("テスト組織");
             assertThat(response.getData().getMetadata().memberCount()).isEqualTo(5);
         }
 
         @Test
+        @DisplayName("F09.19.10: numericIdに内部BIGINT IDが返される(Spotlight scopeId解決用)")
+        void numericIdに内部BIGINT_IDが返される() {
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(org));
+            given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(0L);
+
+            ApiResponse<OrganizationResponse> response =
+                    organizationService.getOrganization(ORG_SLUG);
+
+            assertThat(response.getData().getNumericId()).isEqualTo(ORG_ID);
+            // id/slug は URL識別子のまま（正準はslug。numericIdはURLに使わない内部連携専用）
+            assertThat(response.getData().getId()).isEqualTo(response.getData().getSlug());
+        }
+
+        @Test
+        @DisplayName("画像URL根治Phase2_icon/bannerが署名付き表示URLへ解決される")
+        void icon_bannerが署名付き表示URLへ解決される() {
+            OrganizationEntity org = createOrganization();
+            ReflectionTestUtils.setField(org, "iconUrl", "org/10/icon/raw.png");
+            ReflectionTestUtils.setField(org, "bannerUrl", "org/10/banner/raw.png");
+            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(org));
+            given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(0L);
+            given(mediaUrlResolver.resolve("org/10/icon/raw.png"))
+                    .willReturn("https://cdn.example.com/signed/icon.png");
+            given(mediaUrlResolver.resolve("org/10/banner/raw.png"))
+                    .willReturn("https://cdn.example.com/signed/banner.png");
+
+            ApiResponse<OrganizationResponse> response =
+                    organizationService.getOrganization(ORG_SLUG);
+
+            assertThat(response.getData().getMetadata().iconUrl())
+                    .isEqualTo("https://cdn.example.com/signed/icon.png");
+            assertThat(response.getData().getMetadata().bannerUrl())
+                    .isEqualTo("https://cdn.example.com/signed/banner.png");
+        }
+
+        @Test
         @DisplayName("組織不在_ORG_001例外")
         void 組織不在_ORG_001例外() {
-            given(organizationRepository.findById(999L)).willReturn(Optional.empty());
+            String unknownSlug = "unknown-org-999";
+            given(organizationRepository.findBySlugAndDeletedAtIsNull(unknownSlug)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> organizationService.getOrganization(999L))
+            assertThatThrownBy(() -> organizationService.getOrganization(unknownSlug))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ORG_001"));
@@ -252,6 +313,34 @@ class OrganizationServiceTest {
             assertThat(response.getData().getLocation().prefecture()).isEqualTo("大阪府");
             // 未指定フィールドは元のまま
             assertThat(response.getData().getHierarchy().orgType()).isEqualTo("SCHOOL");
+        }
+
+        @Test
+        @DisplayName("回帰防止: 既存エンティティをUPDATE_id不変かつ新規行を作らない(toBuilder id欠落INSERT化の根治)")
+        void 更新_既存エンティティをUPDATE_id不変かつ新規行を作らない() {
+            // Given: createOrganization() は id=ORG_ID を採番済み（findById 取得の managed entity を模す）
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findById(ORG_ID)).willReturn(Optional.of(org));
+            given(organizationRepository.save(any(OrganizationEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(3L);
+
+            UpdateOrganizationRequest req = new UpdateOrganizationRequest(
+                    "更新後の名前", null, null, null, null, null, null, null, null, 0L);
+
+            // When
+            organizationService.updateOrganization(ORG_ID, req);
+
+            // Then: save に渡るのは findById で取得した「まさにその」managed entity（別インスタンスではない）。
+            // id が保持されているので save は UPDATE になり、新規 INSERT（id=null・slug 一意制約違反500）は起きない。
+            ArgumentCaptor<OrganizationEntity> captor =
+                    ArgumentCaptor.forClass(OrganizationEntity.class);
+            verify(organizationRepository).save(captor.capture());
+            OrganizationEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(org);
+            assertThat(saved.getId()).isEqualTo(ORG_ID); // id 欠落（INSERT 化）が起きていない
+            assertThat(saved.getName()).isEqualTo("更新後の名前"); // 部分更新が反映
+            assertThat(saved.getOrgType()).isEqualTo(OrganizationEntity.OrgType.SCHOOL); // 未指定は現値維持
         }
 
         @Test
@@ -487,7 +576,7 @@ class OrganizationServiceTest {
     // ========================================
 
     private OrganizationEntity createOrganization() {
-        return OrganizationEntity.builder()
+        OrganizationEntity org = OrganizationEntity.builder()
                 .name("テスト組織")
                 .orgType(OrganizationEntity.OrgType.SCHOOL)
                 .prefecture("東京都")
@@ -497,6 +586,9 @@ class OrganizationServiceTest {
                 .supporterEnabled(false)
                 .version(0L)
                 .build();
+        // テスト用にBIGINT IDを設定（JPA未永続エンティティはgetId()がnullになるため）
+        ReflectionTestUtils.setField(org, "id", ORG_ID);
+        return org;
     }
 
     private OrganizationEntity createArchivedOrganization() {

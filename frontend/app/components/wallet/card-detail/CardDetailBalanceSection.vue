@@ -36,7 +36,7 @@ const { t } = useI18n()
     <!-- F18 BALANCE 凍結バナー（2026-05-17 マスター御裁可）。資金決済法対応のため一時停止中。 -->
     <div
       v-if="!balanceEnabled"
-      class="card-detail__balance-frozen"
+      class="card-detail__balance-frozen bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200"
       role="status"
     >
       <p class="card-detail__balance-frozen-title">
@@ -84,12 +84,11 @@ const { t } = useI18n()
   text-align: center;
 }
 /* F18 BALANCE 凍結バナー（2026-05-17 マスター御裁可・資金決済法対応） */
+/* 背景・文字色は Tailwind dark: クラス（bg-amber-50 dark:bg-amber-900/30 text-amber-900 dark:text-amber-200）で追従 */
 .card-detail__balance-frozen {
   margin-top: 0.75rem;
   padding: 0.625rem 0.75rem;
   border: 1px solid #fcd34d; /* amber-300 */
-  background: #fffbeb;       /* amber-50 */
-  color: #78350f;            /* amber-900 */
   border-radius: 0.5rem;
   font-size: 0.8125rem;
   text-align: center;

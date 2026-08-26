@@ -1,7 +1,7 @@
 <script setup lang="ts">
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 const {
@@ -33,7 +33,7 @@ onMounted(init)
       <h3 class="mb-3 font-semibold">承認設定</h3>
       <div v-if="settingsLoading" class="flex items-center gap-2 text-gray-500">
         <i class="pi pi-spin pi-spinner" />
-        <span class="text-sm">読み込み中...</span>
+        <span class="text-sm">{{ $t('button.loading') }}</span>
       </div>
       <div v-else class="flex items-center justify-between">
         <div>

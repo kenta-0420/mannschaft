@@ -4,6 +4,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.queue.QueueScopeType;
 import com.mannschaft.app.queue.dto.QueueSettingsRequest;
 import com.mannschaft.app.queue.dto.SettingsResponse;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.queue.service.QueueAccessGuard;
 import com.mannschaft.app.queue.service.QueueSettingsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 順番待ち設定コントローラー。スコープ単位の設定取得・更新APIを提供する。
+ *
+ * <p>認可根治戦役 Wave5: 取得は membership、更新は ADMIN を {@link QueueAccessGuard} で要求する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/queue/settings")
@@ -27,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class QueueSettingsController {
 
     private final QueueSettingsService settingsService;
+    private final QueueAccessGuard accessGuard;
 
     /**
      * 順番待ち設定を取得する。
@@ -36,6 +41,7 @@ public class QueueSettingsController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SettingsResponse>> getSettings(
             @PathVariable Long teamId) {
+        accessGuard.requireScopeMember(QueueScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId());
         SettingsResponse settings = settingsService.getSettings(
                 QueueScopeType.TEAM, teamId);
         return ResponseEntity.ok(ApiResponse.of(settings));
@@ -50,6 +56,7 @@ public class QueueSettingsController {
     public ResponseEntity<ApiResponse<SettingsResponse>> updateSettings(
             @PathVariable Long teamId,
             @Valid @RequestBody QueueSettingsRequest request) {
+        accessGuard.requireScopeAdmin(QueueScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId());
         SettingsResponse settings = settingsService.updateSettings(
                 QueueScopeType.TEAM, teamId, request);
         return ResponseEntity.ok(ApiResponse.of(settings));

@@ -22,6 +22,7 @@ import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.times;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * F04.2 Phase 11 第一陣 A 分類: チャットブックマーク削除 API の WebMvc テスト。
@@ -43,6 +44,10 @@ class ChatBookmarkControllerTest {
     @MockitoBean private UserLocaleCache userLocaleCache;
     @MockitoBean private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUp() {

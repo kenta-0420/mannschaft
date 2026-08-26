@@ -2,7 +2,8 @@ import type { OAuthProviderResponse, UserLineStatusResponse } from '~/types/user
 
 export function useAccountLinkedAccounts() {
   const notification = useNotification()
-  const { getOAuthProviders, unlinkOAuthProvider, getLineStatus, unlinkLine } =
+  const { t } = useI18n()
+  const { getOAuthProviders, unlinkOAuthProvider, getLineStatus, unlinkLine, getOAuthLinkAuthUrl } =
     useUserSettingsApi()
 
   const oauthProviders = ref<OAuthProviderResponse[]>([])
@@ -22,9 +23,9 @@ export function useAccountLinkedAccounts() {
     try {
       await unlinkOAuthProvider(provider)
       oauthProviders.value = oauthProviders.value.filter((p) => p.provider !== provider)
-      notification.success(`${providerLabel(provider)}の連携を解除しました`)
+      notification.success(t('settings.linked_accounts.toast.unlink_success', { provider: providerLabel(provider) }))
     } catch {
-      notification.error('連携解除に失敗しました')
+      notification.error(t('settings.linked_accounts.toast.unlink_error'))
     }
   }
 
@@ -38,9 +39,9 @@ export function useAccountLinkedAccounts() {
         displayName: null,
         pictureUrl: null,
       }
-      notification.success('LINE連携を解除しました')
+      notification.success(t('settings.linked_accounts.toast.line_unlink_success'))
     } catch {
-      notification.error('LINE連携の解除に失敗しました')
+      notification.error(t('settings.linked_accounts.toast.line_unlink_error'))
     }
   }
 
@@ -56,6 +57,15 @@ export function useAccountLinkedAccounts() {
         } as Record<string, string>
       )[provider.toLowerCase()] || provider
     )
+  }
+
+  async function handleLinkOAuth(provider: string) {
+    try {
+      const res = await getOAuthLinkAuthUrl(provider)
+      window.location.href = res.data.authUrl
+    } catch {
+      notification.error(t('settings.linked_accounts.toast.link_error'))
+    }
   }
 
   function providerIcon(provider: string) {
@@ -77,6 +87,7 @@ export function useAccountLinkedAccounts() {
     loadLinkedAccounts,
     handleUnlinkOAuth,
     handleUnlinkLine,
+    handleLinkOAuth,
     providerLabel,
     providerIcon,
   }

@@ -2,7 +2,7 @@
 const props = defineProps<{
   visible: boolean
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 const emit = defineEmits<{

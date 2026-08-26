@@ -21,6 +21,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link InternalSsrLogController} のコントローラーテスト。
@@ -58,6 +59,10 @@ class InternalSsrLogControllerTest {
 
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     private static final String VALID_TOKEN = "test-secret-token";
     private static final String INVALID_TOKEN = "wrong-token";

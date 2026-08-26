@@ -19,14 +19,21 @@ import java.util.List;
 @Mapper(componentModel = "spring")
 public interface TicketMapper {
 
-    @Mapping(target = "priceExcludingTax", expression = "java(entity.getPriceExcludingTax())")
+    @Mapping(target = "meta", expression = "java(new com.mannschaft.app.ticket.dto.TicketProductResponse.ProductMetaDto(entity.getName(), entity.getDescription(), entity.getTotalTickets(), entity.getSortOrder()))")
+    @Mapping(target = "pricing", expression = "java(new com.mannschaft.app.ticket.dto.TicketProductResponse.ProductPricingDto(entity.getPrice(), entity.getPriceExcludingTax(), entity.getTaxRate(), entity.getValidityDays()))")
+    @Mapping(target = "stripe", expression = "java(new com.mannschaft.app.ticket.dto.TicketProductResponse.StripeIntegrationDto(entity.getStripeProductId(), entity.getStripePriceId()))")
+    @Mapping(target = "display", expression = "java(new com.mannschaft.app.ticket.dto.TicketProductResponse.ProductDisplayDto(entity.getImageUrl(), entity.getIsOnlinePurchasable(), entity.getIsActive()))")
+    @Mapping(target = "audit", expression = "java(new com.mannschaft.app.ticket.dto.TicketProductResponse.ProductAuditDto(entity.getCreatedAt(), entity.getUpdatedAt(), entity.getDeletedAt()))")
     TicketProductResponse toProductResponse(TicketProductEntity entity);
 
     List<TicketProductResponse> toProductResponseList(List<TicketProductEntity> entities);
 
     @Mapping(target = "productName", ignore = true)
-    @Mapping(target = "daysUntilExpiry", expression = "java(calculateDaysUntilExpiry(entity.getExpiresAt()))")
-    @Mapping(target = "status", expression = "java(entity.getStatus().name())")
+    @Mapping(target = "userName", ignore = true)
+    @Mapping(target = "quantity", expression = "java(new com.mannschaft.app.ticket.dto.TicketBookResponse.TicketQuantityDto(entity.getTotalTickets(), entity.getUsedTickets(), entity.getRemainingTickets()))")
+    @Mapping(target = "status", expression = "java(new com.mannschaft.app.ticket.dto.TicketBookResponse.TicketStatusDto(entity.getStatus() != null ? entity.getStatus().name() : null, entity.getPurchasedAt(), entity.getExpiresAt(), calculateDaysUntilExpiry(entity.getExpiresAt())))")
+    @Mapping(target = "note", expression = "java(new com.mannschaft.app.ticket.dto.TicketBookResponse.NoteDto(entity.getNote()))")
+    @Mapping(target = "audit", expression = "java(new com.mannschaft.app.ticket.dto.TicketBookResponse.BookAuditDto(entity.getCreatedAt(), entity.getUpdatedAt()))")
     TicketBookResponse toBookResponse(TicketBookEntity entity);
 
     List<TicketBookResponse> toBookResponseList(List<TicketBookEntity> entities);

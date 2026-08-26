@@ -3,7 +3,7 @@ export type ReceiptStatus = 'DRAFT' | 'ISSUED'
 export interface ReceiptIssuerSettings {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   issuerName: string
   registrationNumber: string | null
   address: string | null
@@ -45,7 +45,7 @@ export interface ReceiptLineItem {
 export interface ReceiptPreset {
   id: number
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   name: string
   descriptionTemplate: string
   lineItemsTemplate: string

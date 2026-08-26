@@ -9,12 +9,14 @@ import type {
   TimelinePostContent,
   BlogPostContent,
   TodoContent,
+  ScheduleContent,
+  SurveyContent,
 } from '~/types/announcement_broadcast'
 
 const props = defineProps<{
   visible: boolean
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
   isAdmin?: boolean
 }>()
 
@@ -25,13 +27,16 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const notification = useNotification()
-const { broadcast, broadcasting } = useAnnouncementBroadcast(props.scopeType, props.scopeId)
+const { broadcast, broadcasting, broadcastError } = useAnnouncementBroadcast(props.scopeType, props.scopeId)
 
 const currentStep = ref<WizardStep>(1)
 
+/** 使い方ガイドの展開状態（②インライン折りたたみ式） */
+const showHelp = ref(false)
+
 const initialFormState: WizardFormState = {
   step: 1,
-  targetRole: 'MEMBERS_ONLY',
+  targetRole: 'MEMBERS_AND_ABOVE',
   targetTeamIds: null,
   selectedChannel: null,
   templateId: null,
@@ -47,8 +52,7 @@ const isDirty = computed(() => {
   const c = formState.value.content as Record<string, unknown>
   const hasTitle = typeof c.title === 'string' && c.title.trim().length > 0
   const hasBody = typeof c.body === 'string' && c.body.trim().length > 0
-  const hasContent = typeof c.content === 'string' && (c.content as string).trim().length > 0
-  return hasTitle || hasBody || hasContent || formState.value.selectedChannel !== null
+  return hasTitle || hasBody || formState.value.selectedChannel !== null
 })
 
 const stepTitle = computed(() => {
@@ -114,37 +118,60 @@ async function handleSubmit() {
     resetWizard()
     emit('update:visible', false)
   } catch {
-    // エラーは useAnnouncementBroadcast 内で broadcastError に格納済み
+    // BE の真因は broadcastError に格納済み。握り潰さずユーザーへ提示する。
+    notification.error(broadcastError.value ?? t('announcement.broadcast_error_generic'))
   }
 }
 
 /**
  * チャネルに応じたコンテンツオブジェクトを構築する。
- * 型は各チャネルの Interface に準拠するが、content は Partial なためキャスト。
+ *
+ * <p>各チャネルが必要とするフィールドを **欠落なく** 引き継ぐ（pass-through）。
+ * SCHEDULE の startAt/allDay/location 等、SURVEY の closesAt 等を捨てると
+ * BE 側で必須フィールド欠落・締切未設定になるため、すべて転送する。
+ * キー名は BE（camelCase）が読むものに合わせる。</p>
  */
 function buildChannelContent(
   channel: NonNullable<WizardFormState['selectedChannel']>,
   content: WizardFormState['content'],
 ): BroadcastRequest['content'] {
   const c = content as Record<string, unknown>
+  const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+  const strOrNull = (v: unknown): string | null => (typeof v === 'string' && v.length > 0 ? v : null)
+
   if (channel === 'TIMELINE_POST') {
-    return { content: String(c.content ?? '') } as TimelinePostContent
+    // BE のタイムラインアダプターは body を読む。Step3 の入力（body）をそのまま送る。
+    return { body: str(c.body ?? c.content) } as TimelinePostContent
   }
   if (channel === 'BULLETIN_THREAD') {
     return {
-      title: String(c.title ?? ''),
-      body: String(c.body ?? ''),
+      title: str(c.title),
+      body: str(c.body),
       categoryId: typeof c.categoryId === 'number' ? c.categoryId : undefined,
     } as BulletinThreadContent
   }
   if (channel === 'BLOG_POST') {
-    return { title: String(c.title ?? ''), body: String(c.body ?? '') } as BlogPostContent
+    return { title: str(c.title), body: str(c.body) } as BlogPostContent
   }
   if (channel === 'TODO') {
-    return { title: String(c.title ?? '') } as TodoContent
+    return { title: str(c.title), body: str(c.body) } as TodoContent
   }
-  // SCHEDULE / SURVEY は最低限 title のみ
-  return { title: String(c.title ?? '') } as BulletinThreadContent
+  if (channel === 'SCHEDULE') {
+    return {
+      title: str(c.title),
+      startAt: strOrNull(c.startAt),
+      endAt: strOrNull(c.endAt),
+      allDay: c.allDay === true,
+      description: strOrNull(c.description),
+      location: strOrNull(c.location),
+    } as ScheduleContent
+  }
+  // SURVEY
+  return {
+    title: str(c.title),
+    description: strOrNull(c.description),
+    closesAt: strOrNull(c.closesAt),
+  } as SurveyContent
 }
 
 // preferred_channel がある場合ステップ2をスキップする
@@ -178,11 +205,38 @@ watch(
     @update:visible="handleClose"
   >
     <div class="py-2">
+      <!-- 使い方トグル（本文先頭・右寄せ・全ステップ共通） -->
+      <div class="mb-2 flex justify-end">
+        <Button
+          :label="$t('announcement.broadcast_guide.toggle')"
+          :icon="showHelp ? 'pi pi-chevron-up' : 'pi pi-question-circle'"
+          text
+          size="small"
+          :aria-expanded="showHelp"
+          data-testid="broadcast-guide-toggle"
+          @click="showHelp = !showHelp"
+        />
+      </div>
+
+      <!-- 使い方ガイド展開領域（フェード＋高さスムーズ伸縮・同一モーダル内・重ねない） -->
+      <div
+        class="grid transition-all duration-300 ease-in-out motion-reduce:transition-none"
+        :class="showHelp ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'"
+        data-testid="broadcast-guide-panel"
+      >
+        <div class="overflow-hidden">
+          <div class="mb-4 rounded-lg border border-surface-200 bg-surface-50 p-4 dark:border-surface-700 dark:bg-surface-800">
+            <BroadcastGuideContent />
+          </div>
+        </div>
+      </div>
+
       <BroadcastStep1Audience
         v-if="currentStep === 1"
         v-model="formState"
         :scope-type="scopeType"
         :scope-id="scopeId"
+        :is-admin="isAdmin"
         @next="goToNextStep"
       />
       <BroadcastStep2Channel

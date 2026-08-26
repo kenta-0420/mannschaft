@@ -9,8 +9,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -26,9 +26,16 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class OrganizationEntity extends BaseEntity {
+
+    /**
+     * URL 公開用カスタムスラッグ（人間可読な識別子）。
+     * <p>3〜30文字の英数字ハイフン。組織名から自動生成し、一意性は uq_organizations_slug で担保する。
+     * 内部 BIGINT PK は FK 関係のために保持し、URL には本フィールドを使用する。</p>
+     */
+    @Column(name = "slug", length = 30, nullable = false, unique = true)
+    private String slug;
 
     @Column(nullable = false, length = 100)
     private String name;
@@ -36,10 +43,10 @@ public class OrganizationEntity extends BaseEntity {
     @Column(length = 100)
     private String nameKana;
 
-    @Column(length = 50)
+    @Column(name = "nickname1", length = 50)
     private String nickname1;
 
-    @Column(length = 50)
+    @Column(name = "nickname2", length = 50)
     private String nickname2;
 
     @Enumerated(EnumType.STRING)
@@ -215,5 +222,119 @@ public class OrganizationEntity extends BaseEntity {
     /** F19.1 Phase 7: タイムライン公開設定を更新する。 */
     public void updateTimelinePostsPublic(boolean enabled) {
         this.timelinePostsPublic = enabled;
+    }
+
+    /**
+     * F01.2 §5.9.5 slug リネーム: slug を新しい値へ変更する。
+     *
+     * <p>クラスレベル {@code @Setter} を持たないため、ビジネスメソッド経由で更新する。
+     * 形式・予約語・一意性・履歴予約の検証は Service 層（{@code OrganizationService#renameSlug}）が
+     * 行う前提で、本メソッドは値の差し替えのみを担う。旧 slug の履歴記録も Service 層の責務。</p>
+     *
+     * @param newSlug 新しい slug（検証済み前提）
+     */
+    public void renameSlug(String newSlug) {
+        this.slug = newSlug;
+    }
+
+    /**
+     * 組織の基本情報を部分更新する（{@code OrganizationService#updateOrganization} 用）。
+     *
+     * <p>本メソッドは managed entity をその場でミューテートする更新メソッドである。
+     * {@code @Transactional} 内で managed な本エンティティに対して呼ぶことで JPA の
+     * dirty checking により UPDATE が発行される。</p>
+     *
+     * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
+     * {@link OrganizationEntity} は {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
+     * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
+     * {@code @SuperBuilder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * 作り直すと継承フィールド {@code id} が引き継がれず {@code id = null} の新インスタンスになる。
+     * これを {@code save} すると UPDATE ではなく INSERT が走り、slug 一意制約違反で 500 になる。
+     * よって更新は必ず managed entity の直接ミューテートで行う（PR #1643 と同型）。</p>
+     *
+     * <p>各引数は「リクエスト値が非 null なら採用、null なら現値を維持」の部分更新セマンティクス。
+     * visibility / hierarchyVisibility の enum 解決は呼び出し側（{@code OrganizationService}）の責務とし、
+     * 本メソッドは解決済みの値を受け取る。</p>
+     *
+     * @param name                 新組織名
+     * @param nameKana             新カナ
+     * @param nickname1            新ニックネーム1
+     * @param nickname2            新ニックネーム2
+     * @param prefecture           新都道府県
+     * @param city                 新市区町村
+     * @param visibility           新公開範囲（解決済み enum・null なら現値維持）
+     * @param hierarchyVisibility  新階層公開範囲（解決済み enum・null なら現値維持）
+     * @param supporterEnabled     新サポーター有効フラグ
+     */
+    public void applyUpdate(String name, String nameKana, String nickname1, String nickname2,
+                            String prefecture, String city, Visibility visibility,
+                            HierarchyVisibility hierarchyVisibility, Boolean supporterEnabled) {
+        if (name != null) {
+            this.name = name;
+        }
+        if (nameKana != null) {
+            this.nameKana = nameKana;
+        }
+        if (nickname1 != null) {
+            this.nickname1 = nickname1;
+        }
+        if (nickname2 != null) {
+            this.nickname2 = nickname2;
+        }
+        if (prefecture != null) {
+            this.prefecture = prefecture;
+        }
+        if (city != null) {
+            this.city = city;
+        }
+        if (visibility != null) {
+            this.visibility = visibility;
+        }
+        if (hierarchyVisibility != null) {
+            this.hierarchyVisibility = hierarchyVisibility;
+        }
+        if (supporterEnabled != null) {
+            this.supporterEnabled = supporterEnabled;
+        }
+    }
+
+    /**
+     * 組織の拡張プロフィールを更新する（{@code OrganizationExtendedProfileService#updateProfile} 用）。
+     *
+     * <p>{@link #applyUpdate} と同じく managed entity の直接ミューテートで UPDATE を発行する。
+     * builder 作り直しによる id 欠落 INSERT を避けるために設けた更新メソッドである。</p>
+     *
+     * <p>本メソッドは「指定された値で上書きする」セマンティクス（null も含めて上書き可）。
+     * 呼び出し側（{@code OrganizationExtendedProfileService}）が現値維持／null 化のロジックを
+     * 解決済みの値として渡す前提とする。</p>
+     *
+     * @param homepageUrl              新ホームページ URL（正規化済み・null 化可）
+     * @param establishedDate         新設立日（null 化可）
+     * @param establishedDatePrecision 新設立日精度（null 化可）
+     * @param philosophy              新理念（trim・null 化済み）
+     * @param profileVisibility       新プロフィール公開設定
+     */
+    public void applyProfileUpdate(String homepageUrl, LocalDate establishedDate,
+                                   com.mannschaft.app.organization.EstablishedDatePrecision establishedDatePrecision,
+                                   String philosophy,
+                                   com.mannschaft.app.organization.ProfileVisibility profileVisibility) {
+        this.homepageUrl = homepageUrl;
+        this.establishedDate = establishedDate;
+        this.establishedDatePrecision = establishedDatePrecision;
+        this.philosophy = philosophy;
+        this.profileVisibility = profileVisibility;
+    }
+
+    /**
+     * F19.1 Phase 2: サポーター向け氏名表示モードを更新する
+     * （{@code SupporterNameDisclosureService#patchOrganizationDisclosure} 用）。
+     *
+     * <p>managed entity の直接ミューテートで UPDATE を発行する。builder 作り直しによる
+     * id 欠落 INSERT を避けるために設けた更新メソッドである。</p>
+     *
+     * @param mode 新しい氏名表示モード
+     */
+    public void updateSupporterNameDisclosure(com.mannschaft.app.publicview.enums.NameDisclosureMode mode) {
+        this.supporterNameDisclosure = mode;
     }
 }

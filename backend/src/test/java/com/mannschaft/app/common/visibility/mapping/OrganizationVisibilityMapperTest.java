@@ -32,9 +32,10 @@ class OrganizationVisibilityMapperTest {
     }
 
     @Test
-    @DisplayName("PRIVATE → StandardVisibility.MEMBERS_ONLY（外部非公開・メンバー閲覧可）")
+    @DisplayName("PRIVATE → StandardVisibility.SCOPE_AFFILIATED（外部非公開・メンバー閲覧可 / 挙動不変・名称正準化 W3）")
     void private_maps_to_MEMBERS_ONLY() {
+        // 挙動不変: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
         assertThat(OrganizationVisibilityMapper.toStandard(OrganizationEntity.Visibility.PRIVATE))
-            .isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            .isEqualTo(StandardVisibility.SCOPE_AFFILIATED);
     }
 }

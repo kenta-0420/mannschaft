@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -150,6 +151,35 @@ class FeatureFlagServiceTest {
             // Then
             assertThat(result.getIsEnabled()).isTrue();
             verify(featureFlagRepository).save(any(FeatureFlagEntity.class));
+        }
+
+        @Test
+        @DisplayName("回帰: description分岐でも同一managed entityがUPDATEされる（toBuilderで新規行を作らない）")
+        void 更新_description指定_同一インスタンスUPDATE() {
+            // Given
+            UpdateFeatureFlagRequest req = new UpdateFeatureFlagRequest(true, "更新後説明");
+            FeatureFlagEntity entity = createFlagEntity(false);
+            FeatureFlagResponse response = createFlagResponse(true);
+
+            given(featureFlagRepository.findByFlagKey(FLAG_KEY)).willReturn(Optional.of(entity));
+            given(featureFlagRepository.save(any(FeatureFlagEntity.class))).willAnswer(inv -> inv.getArgument(0));
+            given(adminMapper.toFeatureFlagResponse(any(FeatureFlagEntity.class))).willReturn(response);
+
+            // When
+            service.updateFlag(FLAG_KEY, req, USER_ID);
+
+            // Then
+            // toBuilder().build() で作り直さず、findByFlagKey で取得した同一インスタンスを
+            // 直接ミューテートして save に渡している（=同一行 UPDATE）ことを検証。
+            // 別インスタンスを save していたら toBuilder で id=null の新規行 INSERT になり 500。
+            ArgumentCaptor<FeatureFlagEntity> captor = ArgumentCaptor.forClass(FeatureFlagEntity.class);
+            verify(featureFlagRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(entity);
+            // description が in-place で書き換わっている
+            assertThat(captor.getValue().getDescription()).isEqualTo("更新後説明");
+            // isEnabled / updatedBy も同一インスタンスに反映
+            assertThat(captor.getValue().getIsEnabled()).isTrue();
+            assertThat(captor.getValue().getUpdatedBy()).isEqualTo(USER_ID);
         }
 
         @Test

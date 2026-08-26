@@ -1,51 +1,51 @@
 {
   "memberInfo": {
-    "title": "メンバー情報",
+    "title": "成员信息",
     "settings": {
-      "title": "メンバー情報フィールド設定",
-      "fieldList": "フィールド一覧",
-      "addField": "フィールドを追加",
-      "editField": "フィールドを編集",
-      "deleteField": "フィールドを削除",
-      "deleteConfirm": "このフィールドを削除しますか？",
-      "statusTable": "回答状況",
-      "sendRemind": "リマインド送信",
-      "remindSent": "リマインドを送信しました",
-      "remindTooSoon": "24時間以内に送信済みです"
+      "title": "成员信息字段设置",
+      "fieldList": "字段列表",
+      "addField": "添加字段",
+      "editField": "编辑字段",
+      "deleteField": "删除字段",
+      "deleteConfirm": "删除此字段吗？",
+      "statusTable": "回答状况",
+      "sendRemind": "发送提醒",
+      "remindSent": "已发送提醒",
+      "remindTooSoon": "24小时内已发送"
     },
     "field": {
-      "name": "フィールド名",
-      "type": "入力タイプ",
-      "required": "必須",
-      "sensitive": "機密情報",
-      "sensitiveHint": "暗号化して保存されます",
+      "name": "字段名称",
+      "type": "输入类型",
+      "required": "必填",
+      "sensitive": "机密信息",
+      "sensitiveHint": "加密保存",
       "refreshInterval": "更新期限",
-      "intervalNone": "なし",
-      "interval12": "1年（12ヶ月）",
-      "interval36": "3年（36ヶ月）",
-      "interval60": "5年（60ヶ月）",
-      "typeText": "テキスト",
-      "typePhone": "電話番号",
-      "typeEmail": "メールアドレス",
-      "typeDate": "日付"
+      "intervalNone": "无",
+      "interval12": "1年（12个月）",
+      "interval36": "3年（36个月）",
+      "interval60": "5年（60个月）",
+      "typeText": "文本",
+      "typePhone": "电话号码",
+      "typeEmail": "邮箱地址",
+      "typeDate": "日期"
     },
     "response": {
-      "title": "情報の入力",
-      "myInfo": "自分の情報",
-      "saveAll": "すべて保存",
-      "saved": "保存しました",
-      "overdue": "更新期限切れ",
+      "title": "填写信息",
+      "myInfo": "我的信息",
+      "saveAll": "全部保存",
+      "saved": "已保存",
+      "overdue": "超过更新期限",
       "notAnswered": "未回答",
-      "nextDue": "次回更新期限",
-      "confirmedAt": "最終確認日"
+      "nextDue": "下次更新期限",
+      "confirmedAt": "最后确认日"
     },
     "status": {
-      "completed": "完了",
-      "incomplete": "未完了",
-      "overdue": "期限切れ",
-      "totalMembers": "総メンバー数",
-      "completedCount": "完了",
-      "overdueCount": "期限切れ"
+      "completed": "完成",
+      "incomplete": "未完成",
+      "overdue": "已过期",
+      "totalMembers": "总成员数",
+      "completedCount": "完成",
+      "overdueCount": "已过期"
     }
   }
 }

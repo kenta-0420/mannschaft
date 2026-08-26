@@ -1,11 +1,11 @@
-export type BulletinScopeType = 'TEAM' | 'ORGANIZATION' | 'VILLAGE'
+export type BulletinScopeType = 'TEAM' | 'ORGANIZATION' | 'VILLAGE' | 'TOURNAMENT'
 export type BulletinPriority = 'CRITICAL' | 'IMPORTANT' | 'WARNING' | 'INFO' | 'LOW'
 export type ReadTrackingMode = 'NONE' | 'COUNT_ONLY' | 'SHOW_READERS'
 
 export interface BulletinCategory {
   id: number
   scopeType: BulletinScopeType
-  scopeId: number
+  scopeId: string
   name: string
   description: string | null
   displayOrder: number
@@ -19,7 +19,7 @@ export interface BulletinThreadResponse {
   categoryName: string | null
   categoryColor: string | null
   scopeType: BulletinScopeType
-  scopeId: number
+  scopeId: string
   author: { id: number; displayName: string; avatarUrl: string | null }
   title: string
   body: string
@@ -198,4 +198,70 @@ export interface DeleteArchiveFolderResponse {
   /** 親へ繰り上げた子フォルダ件数。 */
   promotedFolderCount: number
   message: string
+}
+
+// =====================================================================
+// 添付ファイル（F05.1 §6 / presigned URL 方式 A）
+// =====================================================================
+
+/** 添付対象の種別（BE の TargetType enum に対応）。 */
+export type BulletinAttachmentTargetType = 'THREAD' | 'REPLY'
+
+/**
+ * 掲示板添付ファイル情報（BE AttachmentResponse に対応）。
+ * download-url API 経由でファイルを取得する（生 fileKey は返却されない）。
+ */
+export interface BulletinAttachment {
+  id: number
+  targetType: BulletinAttachmentTargetType
+  targetId: number
+  fileKey: string
+  originalFilename: string
+  fileSize: number
+  contentType: string
+  createdBy: number
+  createdAt: string
+}
+
+/**
+ * presign-upload リクエスト（POST /api/v1/bulletin/attachments/upload-url）。
+ * サーバー側でスコープ認可・サイズ・MIMEホワイトリスト検証を行う。
+ */
+export interface BulletinAttachmentPresignRequest {
+  targetType: BulletinAttachmentTargetType
+  targetId: number
+  fileName: string
+  contentType: string
+  fileSize: number
+}
+
+/**
+ * presign-upload レスポンス（BE AttachmentPresignResponse に対応）。
+ * uploadUrl へブラウザから直接 PUT し、完了後に fileKey を確定 API に渡す。
+ */
+export interface BulletinAttachmentPresignResponse {
+  uploadUrl: string
+  fileKey: string
+  expiresInSeconds: number
+}
+
+/**
+ * 添付ファイル確定リクエスト（POST /api/v1/bulletin/attachments）。
+ */
+export interface BulletinAttachmentConfirmRequest {
+  targetType: BulletinAttachmentTargetType
+  targetId: number
+  fileKey: string
+  originalFilename: string
+  fileSize: number
+  contentType: string
+}
+
+/**
+ * ダウンロード URL レスポンス（GET /api/v1/bulletin/attachments/{id}/download-url）。
+ * 生 fileKey は返却されず、短命 TTL の presigned GET URL のみを返す。
+ */
+export interface BulletinAttachmentDownloadUrlResponse {
+  downloadUrl: string
+  expiresInSeconds: number
 }

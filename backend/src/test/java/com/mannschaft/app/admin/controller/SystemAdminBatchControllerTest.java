@@ -8,6 +8,7 @@ import com.mannschaft.app.admin.batch.ShedLockProbe;
 import com.mannschaft.app.admin.dto.BatchJobLogResponse;
 import com.mannschaft.app.admin.entity.BatchJobLogEntity;
 import com.mannschaft.app.admin.service.BatchJobLogService;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicyEvaluator;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -38,6 +39,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * F10.X 第二陣 — {@link SystemAdminBatchController} の MockMvc テスト。
@@ -68,6 +70,13 @@ class SystemAdminBatchControllerTest {
     private ShedLockProbe shedLockProbe;
 
     /**
+     * Gate 基盤工事④-A で Controller のコンストラクタに追加された依存。
+     * 本テストは既存挙動のみを見るため、既定の mock（拒否理由なし＝実行許可）のまま使う。
+     */
+    @MockitoBean
+    private BackgroundFeaturePolicyEvaluator backgroundFeaturePolicyEvaluator;
+
+    /**
      * Controller が {@code @Qualifier("job-pool")} で要求する Executor。
      * mock のスタブで「投入された Runnable をその場で実行する」挙動を {@link BeforeEach} で仕込む。
      */
@@ -83,6 +92,10 @@ class SystemAdminBatchControllerTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUp() {

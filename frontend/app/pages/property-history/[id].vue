@@ -29,10 +29,9 @@ const scope = computed<ScopeName>(() => {
   const raw = (route.query.scope as string | undefined) ?? 'teams'
   return raw === 'organizations' ? 'organizations' : 'teams'
 })
-const scopeId = computed<number>(() => {
+const scopeId = computed<string>(() => {
   const raw = route.query.scopeId
-  const n = Number(Array.isArray(raw) ? raw[0] : raw)
-  return Number.isFinite(n) && n > 0 ? n : 0
+  return String(Array.isArray(raw) ? raw[0] : raw ?? '')
 })
 const packageId = computed<number>(() => Number(route.params.id))
 
@@ -42,7 +41,7 @@ const detail = ref<PropertyWorkPackageResponse | null>(null)
 const loading = ref(false)
 
 async function load() {
-  if (scopeId.value === 0 || !Number.isFinite(packageId.value)) return
+  if (!scopeId.value || !Number.isFinite(packageId.value)) return
   loading.value = true
   try {
     detail.value = await api.value.get(packageId.value)

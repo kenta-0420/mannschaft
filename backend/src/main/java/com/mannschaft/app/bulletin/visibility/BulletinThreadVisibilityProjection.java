@@ -12,7 +12,7 @@ import com.mannschaft.app.common.visibility.VisibilityProjection;
  *
  * <p>掲示板スレッドは現状 {@code visibility} カラムを持たない「所属固定」機能のため、
  * 本 Projection の {@link #visibility()} は機能側 enum ではなく
- * {@link StandardVisibility#MEMBERS_ONLY} を直接保持する固定値とする。
+ * {@link StandardVisibility#SCOPE_AFFILIATED} を直接保持する固定値とする。
  * 後続の {@link BulletinThreadVisibilityResolver#toStandard} で同値が
  * 返されることで、所属メンバーのみ可視のセマンティクスが実現される。</p>
  *
@@ -45,8 +45,9 @@ public record BulletinThreadVisibilityProjection(
 
     @Override
     public Object visibility() {
-        // §12.3.1: 機能側 visibility 概念を持たないため固定で MEMBERS_ONLY を返す。
+        // §12.3.1: 機能側 visibility 概念を持たないため固定で所属者可視を返す。
+        // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
         // Resolver#toStandard も同値を固定返却する設計。
-        return StandardVisibility.MEMBERS_ONLY;
+        return StandardVisibility.SCOPE_AFFILIATED;
     }
 }

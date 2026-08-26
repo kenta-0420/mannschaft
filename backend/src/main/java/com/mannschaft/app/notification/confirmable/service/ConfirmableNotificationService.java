@@ -146,6 +146,58 @@ public class ConfirmableNotificationService {
             UnconfirmedVisibility unconfirmedVisibility,
             Long createdByUserId,
             List<Long> recipientUserIds) {
+        return send(scopeType, scopeId, title, body, priority, deadlineAt,
+                firstReminderMinutes, secondReminderMinutes, actionUrl, templateId,
+                unconfirmedVisibility, null, null, createdByUserId, recipientUserIds);
+    }
+
+    /**
+     * F22.1 市: 発生元（{@code source_type}/{@code source_id}）を明示して確認通知を送信する
+     * オーバーロード（01_data_model §5 / 02_api_design §6.1）。
+     *
+     * <p>市の最終認証では {@code sourceType="MARKET_FINALIZE"}, {@code sourceId=recruitment_listings.id}
+     * を渡す。確認応答後のリスナ（{@code MarketFinalizeConfirmedListener}）が source で札を引いて
+     * {@code FULL→COMPLETED} 遷移を行う。</p>
+     *
+     * @param sourceType 発生元種別（例: {@code MARKET_FINALIZE}）
+     * @param sourceId   発生元レコードID（例: 札ID）
+     * @return 作成された確認通知エンティティ
+     */
+    @Transactional
+    public ConfirmableNotificationEntity sendFromSource(
+            String sourceType,
+            Long sourceId,
+            ScopeType scopeType,
+            Long scopeId,
+            String title,
+            String body,
+            ConfirmableNotificationPriority priority,
+            LocalDateTime deadlineAt,
+            String actionUrl,
+            Long createdByUserId,
+            List<Long> recipientUserIds) {
+        return send(scopeType, scopeId, title, body, priority, deadlineAt,
+                null, null, actionUrl, null, null, sourceType, sourceId,
+                createdByUserId, recipientUserIds);
+    }
+
+    @Transactional
+    public ConfirmableNotificationEntity send(
+            ScopeType scopeType,
+            Long scopeId,
+            String title,
+            String body,
+            ConfirmableNotificationPriority priority,
+            LocalDateTime deadlineAt,
+            Integer firstReminderMinutes,
+            Integer secondReminderMinutes,
+            String actionUrl,
+            Long templateId,
+            UnconfirmedVisibility unconfirmedVisibility,
+            String sourceType,
+            Long sourceId,
+            Long createdByUserId,
+            List<Long> recipientUserIds) {
 
         // 受信者数の上限チェック
         if (recipientUserIds == null || recipientUserIds.isEmpty()) {
@@ -190,7 +242,8 @@ public class ConfirmableNotificationService {
         UserEntity createdByUser = userRepository.findById(createdByUserId).orElse(null);
 
         // 確認通知エンティティ作成
-        ConfirmableNotificationEntity notification = ConfirmableNotificationEntity.builder()
+        ConfirmableNotificationEntity.ConfirmableNotificationEntityBuilder builder =
+                ConfirmableNotificationEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
                 .title(title)
@@ -203,9 +256,18 @@ public class ConfirmableNotificationService {
                 .templateId(templateId)
                 .unconfirmedVisibility(resolvedVisibility)
                 .createdBy(createdByUser)
-                .totalRecipientCount(recipientUserIds.size())
-                .build();
+                .totalRecipientCount(recipientUserIds.size());
 
+        // F22.1 市: 発生元（source_type/source_id）が指定された場合のみ上書きする。
+        // 未指定時は @Builder.Default の 'EMERGENCY_CLOSURE' / null を維持（既存呼び出し互換）。
+        if (sourceType != null) {
+            builder.sourceType(sourceType);
+        }
+        if (sourceId != null) {
+            builder.sourceId(sourceId);
+        }
+
+        ConfirmableNotificationEntity notification = builder.build();
         ConfirmableNotificationEntity savedNotification = notificationRepository.save(notification);
 
         // 受信者エンティティをバッチ作成（saveAll = batch INSERT）

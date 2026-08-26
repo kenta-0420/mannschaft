@@ -1,0 +1,82 @@
+{
+  "incident_banner": {
+    "title": "Incident Banner Management",
+    "quick_link_label": "Incident Banners",
+    "create_btn": "Create Banner",
+    "edit_dialog_title": "Edit Banner",
+    "create_dialog_title": "Create Banner",
+    "save_btn": "Save",
+    "cancel_btn": "Cancel",
+    "delete_confirm": "Are you sure you want to delete this banner? This action cannot be undone.",
+    "delete_btn": "Delete",
+    "publish_btn": "Publish",
+    "unpublish_btn": "Unpublish",
+    "load_failed": "Failed to load data",
+    "create_success": "Banner created",
+    "update_success": "Banner updated",
+    "delete_success": "Banner deleted",
+    "publish_success": "Banner published",
+    "unpublish_success": "Banner unpublished",
+    "save_failed": "Failed to save",
+    "delete_failed": "Failed to delete",
+    "publish_failed": "Failed to publish",
+    "unpublish_failed": "Failed to unpublish",
+    "suggestions_load_failed": "Failed to load suggestions",
+    "no_data": "No banners registered yet",
+    "translation_pending": "Translations are being auto-generated (please wait a moment after saving)",
+    "form": {
+      "message_label": "Message (original Japanese)",
+      "message_placeholder": "Enter the incident description (max 500 characters)",
+      "message_required": "Message is required",
+      "message_too_long": "Message must be 500 characters or less",
+      "level_label": "Level",
+      "page_pattern_label": "Target Page Pattern",
+      "page_pattern_placeholder": "e.g. /teams/* (leave empty for all pages)",
+      "starts_at_label": "Start Date/Time",
+      "starts_at_placeholder": "Leave empty: immediate",
+      "ends_at_label": "End Date/Time",
+      "ends_at_placeholder": "Leave empty: until manually unpublished",
+      "publish_toggle_label": "Publish immediately after creation",
+      "preview_label": "Preview"
+    },
+    "level": {
+      "INFO": "INFO",
+      "WARNING": "WARNING",
+      "CRITICAL": "CRITICAL"
+    },
+    "table": {
+      "level": "Level",
+      "message": "Message",
+      "page_pattern": "Target Page",
+      "status": "Status",
+      "period": "Display Period",
+      "updated_at": "Updated At",
+      "actions": "Actions"
+    },
+    "status": {
+      "published": "Published",
+      "draft": "Draft"
+    },
+    "period_from": "from",
+    "period_to": "to",
+    "period_immediate": "Immediate",
+    "period_manual": "Until manually stopped",
+    "suggestions": {
+      "title": "Detection Suggestions (Auto-detected)",
+      "page_pattern": "Page Pattern",
+      "severity": "Severity",
+      "occurrence_count": "Occurrences",
+      "affected_users": "Affected Users",
+      "since": "Detected Since",
+      "create_banner_btn": "Create Banner",
+      "no_data": "No suggestions detected at this time",
+      "severity_critical": "CRITICAL",
+      "severity_high": "HIGH"
+    },
+    "translations": {
+      "title": "Translations",
+      "language": "Language",
+      "message": "Translated Message"
+    }
+  }
+}

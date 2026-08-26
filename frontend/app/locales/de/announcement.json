@@ -25,50 +25,110 @@
     "empty": "Keine neuen Ankündigungen.",
     "pin_limit_reached": "Sie können maximal 5 Ankündigungen anheften.",
     "already_registered": "Dieser Inhalt ist bereits als Ankündigung registriert.",
-    "broadcast_button_team": "チーム内告知",
-    "broadcast_button_org": "組織内告知",
-    "wizard_title": "告知を送る",
-    "step1_title": "対象範囲",
-    "step2_title": "チャネルを選ぶ",
-    "step3_title": "内容を入力",
+    "no_longer_available": "Diese Ankündigung ist nicht mehr verfügbar und wurde aus der Liste entfernt.",
+    "mark_all_read_partial": "{count} Ankündigungen als gelesen markiert. Es sind noch ungelesene übrig – erneut drücken, um fortzufahren.",
+    "broadcast_button_team": "Team-Ankündigung",
+    "broadcast_button_org": "Organisations-Ankündigung",
+    "wizard_title": "Ankündigung senden",
+    "step1_title": "Zielbereich",
+    "step2_title": "Kanal auswählen",
+    "step3_title": "Inhalt eingeben",
     "step_of": "{current} / {total}",
-    "target_role_label": "誰に届けますか？",
-    "target_role_members_only": "メンバーのみ",
-    "target_role_supporters_and_above": "サポーター以上",
-    "target_role_public": "全員（公開）",
-    "target_teams_label": "対象チームを選択",
-    "target_teams_all": "すべてのチーム",
-    "target_teams_specific": "特定のチームを選ぶ",
-    "template_select_placeholder": "テンプレートから読み込む",
-    "template_quick_broadcast": "このテンプレートで告知する",
-    "channel_bulletin": "掲示板",
-    "channel_timeline": "タイムライン",
-    "channel_blog": "ブログ",
-    "channel_todo": "TODO（タスク配布）",
-    "channel_schedule": "スケジュール",
-    "channel_survey": "アンケート",
-    "channel_disabled_tooltip": "このスコープでは {channel} が無効です",
-    "todo_assignee_hint": "担当者はTODOページでADMINが割り当てるか、各メンバーが名乗り出てください",
-    "priority_label": "優先度",
-    "expires_at_label": "表示期限（任意）",
-    "preview_title": "プレビュー",
-    "submit_button": "告知を送る",
-    "unsaved_changes_warning": "入力内容が失われますがよいですか？",
-    "broadcast_success": "告知を送信しました",
-    "broadcast_success_cta": "お知らせウィジェットを確認する",
-    "form_title": "Title",
-    "form_body": "Body",
-    "form_start_at": "Start Date/Time",
-    "form_end_at": "End Date/Time",
-    "form_all_day": "All Day",
-    "form_location": "Location (optional)",
-    "form_description": "Description (optional)",
-    "form_closes_at": "Closing Date/Time (optional)",
-    "survey_questions_hint": "Questions can be added from the survey edit page after sending.",
-    "template_name_label": "テンプレート名",
-    "template_set_default": "デフォルトとして設定",
-    "template_create": "テンプレートとして保存",
-    "template_save_success": "テンプレートを保存しました",
-    "template_delete_confirm": "このテンプレートを削除しますか？"
+    "target_role_label": "Wen möchten Sie erreichen?",
+    "target_role_members_only": "Nur Mitglieder",
+    "target_role_supporters_and_above": "Unterstützer und höher",
+    "target_role_public": "Alle (Öffentlich)",
+    "target_teams_label": "Ziel-Teams auswählen",
+    "target_teams_all": "Alle Teams",
+    "target_teams_specific": "Bestimmte Teams auswählen",
+    "template_select_placeholder": "Aus Vorlage laden",
+    "template_quick_broadcast": "Mit dieser Vorlage ankündigen",
+    "channel_bulletin": "Pinnwand",
+    "channel_timeline": "Zeitleiste",
+    "channel_blog": "Blog",
+    "channel_todo": "TODO (Aufgabenverteilung)",
+    "channel_schedule": "Kalender",
+    "channel_survey": "Umfrage",
+    "channel_disabled_tooltip": "{channel} ist in diesem Bereich nicht verfügbar",
+    "todo_assignee_hint": "Verantwortliche können von ADMIN auf der TODO-Seite zugewiesen werden oder sich Mitglieder freiwillig melden.",
+    "priority_label": "Priorität",
+    "expires_at_label": "Anzeigeablauf (optional)",
+    "preview_title": "Vorschau",
+    "submit_button": "Ankündigung senden",
+    "unsaved_changes_warning": "Der eingegebene Inhalt geht verloren. Sind Sie sicher?",
+    "broadcast_success": "Ankündigung gesendet",
+    "broadcast_error_generic": "Senden der Ankündigung fehlgeschlagen",
+    "broadcast_success_cta": "Ankündigungs-Widget prüfen",
+    "form_title": "Titel",
+    "form_body": "Inhalt",
+    "form_start_at": "Startdatum/-zeit",
+    "form_end_at": "Enddatum/-zeit",
+    "form_all_day": "Ganztägig",
+    "form_location": "Ort (optional)",
+    "form_description": "Beschreibung (optional)",
+    "form_closes_at": "Schlussdatum/-zeit (optional)",
+    "survey_questions_hint": "Fragen können nach dem Senden auf der Umfrage-Bearbeitungsseite hinzugefügt werden.",
+    "template_name_label": "Vorlagenname",
+    "template_set_default": "Als Standard festlegen",
+    "template_create": "Als Vorlage speichern",
+    "template_name_placeholder": "Vorlagennamen eingeben",
+    "template_save_success": "Vorlage gespeichert",
+    "template_save_failed": "Vorlage konnte nicht gespeichert werden",
+    "template_delete_confirm": "Sind Sie sicher, dass Sie diese Vorlage löschen möchten?",
+    "incident": {
+      "dismiss": "Schließen"
+    },
+    "broadcast_guide": {
+      "toggle": "使い方",
+      "description": "告知ウィザードの使い方を、ステップ順にまとめました。上から順に進めれば告知を送れます。",
+      "audience": {
+        "title": "誰に届けるか（対象範囲）",
+        "body": "告知を見せる相手の範囲を決めます（最初のステップ）。",
+        "steps": {
+          "step1": "届け先をメンバーのみ／サポーター以上／全員（公開）から選ぶ",
+          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ"
+        }
+      },
+      "template": {
+        "title": "テンプレートで時短",
+        "body": "よく使う宛先設定を呼び出し・保存できます。",
+        "steps": {
+          "step1": "『テンプレートから読み込む』で宛先を自動入力",
+          "step2": "（管理者のみ）『テンプレートとして保存』で現在の範囲を登録（1範囲あたり20件まで）"
+        }
+      },
+      "channel": {
+        "title": "届け方を選ぶ（チャネル）",
+        "body": "掲示板・タイムライン・ブログ・TODO・スケジュール・アンケートから配信先を1つ選びます。",
+        "steps": {
+          "step1": "6つのカードから1つ選ぶ",
+          "step2": "『次へ』。※テンプレに既定チャネルがあるとこの画面は省略されます"
+        }
+      },
+      "content": {
+        "title": "内容を書く",
+        "body": "選んだチャネルに合わせて入力欄が変わります。＊印は必須です。",
+        "steps": {
+          "step1": "タイトル・本文など必須欄を入力",
+          "step2": "例: スケジュールは開始日時、タイムラインは本文が必須"
+        }
+      },
+      "priority": {
+        "title": "優先度と表示期限",
+        "body": "目立たせ方と掲載の終了日時を設定できます。",
+        "steps": {
+          "step1": "（管理者以上）優先度を通常／重要／緊急から選ぶ。一般メンバーは『通常』固定",
+          "step2": "表示期限を任意で設定"
+        }
+      },
+      "submit": {
+        "title": "送信して確認",
+        "body": "入力が揃うと送信できます。送信後はお知らせに表示されます。",
+        "steps": {
+          "step1": "『告知を送る』を押す",
+          "step2": "送信完了を確認。※アンケートの設問・TODOの担当者は送信後に各画面で追加します"
+        }
+      }
+    }
   }
 }

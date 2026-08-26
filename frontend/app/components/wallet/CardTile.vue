@@ -80,7 +80,7 @@ const ariaLabel = computed(() => {
 <template>
   <NuxtLink
     :to="`/wallet/cards/${card.id}`"
-    class="card-tile"
+    class="card-tile hover:bg-surface-50 dark:hover:bg-surface-800 focus-visible:bg-surface-50 dark:focus-visible:bg-surface-800"
     :aria-label="ariaLabel"
   >
     <div class="card-tile__visual" :style="{ backgroundColor }">
@@ -131,16 +131,17 @@ const ariaLabel = computed(() => {
   gap: 0.75rem;
   padding: 0.75rem;
   border-radius: 0.75rem;
-  background: var(--p-surface-0, #fff);
+  background: var(--p-content-background, #fff);
   border: 1px solid var(--p-surface-200, #e5e7eb);
   text-decoration: none;
   color: inherit;
   transition: background 0.15s ease;
   min-height: 72px;
 }
+/* ホバー/フォーカス背景は Tailwind の dark: バリアントで dark 追従させる（template class 参照）。
+   GroupTile と同方式。scoped CSS からは background を持たず、box-shadow のみ担当。 */
 .card-tile:hover,
 .card-tile:focus-visible {
-  background: var(--p-surface-50, #f9fafb);
   outline: none;
 }
 .card-tile:focus-visible {

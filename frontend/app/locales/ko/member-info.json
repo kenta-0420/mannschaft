@@ -1,51 +1,51 @@
 {
   "memberInfo": {
-    "title": "メンバー情報",
+    "title": "멤버 정보",
     "settings": {
-      "title": "メンバー情報フィールド設定",
-      "fieldList": "フィールド一覧",
-      "addField": "フィールドを追加",
-      "editField": "フィールドを編集",
-      "deleteField": "フィールドを削除",
-      "deleteConfirm": "このフィールドを削除しますか？",
-      "statusTable": "回答状況",
-      "sendRemind": "リマインド送信",
-      "remindSent": "リマインドを送信しました",
-      "remindTooSoon": "24時間以内に送信済みです"
+      "title": "멤버 정보 필드 설정",
+      "fieldList": "필드 목록",
+      "addField": "필드 추가",
+      "editField": "필드 편집",
+      "deleteField": "필드 삭제",
+      "deleteConfirm": "이 필드를 삭제하시겠습니까?",
+      "statusTable": "응답 현황",
+      "sendRemind": "리마인드 발송",
+      "remindSent": "리마인드를 발송했습니다",
+      "remindTooSoon": "24시간 이내에 이미 발송했습니다"
     },
     "field": {
-      "name": "フィールド名",
-      "type": "入力タイプ",
-      "required": "必須",
-      "sensitive": "機密情報",
-      "sensitiveHint": "暗号化して保存されます",
-      "refreshInterval": "更新期限",
-      "intervalNone": "なし",
-      "interval12": "1年（12ヶ月）",
-      "interval36": "3年（36ヶ月）",
-      "interval60": "5年（60ヶ月）",
-      "typeText": "テキスト",
-      "typePhone": "電話番号",
-      "typeEmail": "メールアドレス",
-      "typeDate": "日付"
+      "name": "필드 이름",
+      "type": "입력 유형",
+      "required": "필수",
+      "sensitive": "기밀 정보",
+      "sensitiveHint": "암호화하여 저장됩니다",
+      "refreshInterval": "갱신 기한",
+      "intervalNone": "없음",
+      "interval12": "1년（12개월）",
+      "interval36": "3년（36개월）",
+      "interval60": "5년（60개월）",
+      "typeText": "텍스트",
+      "typePhone": "전화번호",
+      "typeEmail": "이메일 주소",
+      "typeDate": "날짜"
     },
     "response": {
-      "title": "情報の入力",
-      "myInfo": "自分の情報",
-      "saveAll": "すべて保存",
-      "saved": "保存しました",
-      "overdue": "更新期限切れ",
-      "notAnswered": "未回答",
-      "nextDue": "次回更新期限",
-      "confirmedAt": "最終確認日"
+      "title": "정보 입력",
+      "myInfo": "내 정보",
+      "saveAll": "모두 저장",
+      "saved": "저장했습니다",
+      "overdue": "갱신 기한 초과",
+      "notAnswered": "미응답",
+      "nextDue": "다음 갱신 기한",
+      "confirmedAt": "최종 확인일"
     },
     "status": {
-      "completed": "完了",
-      "incomplete": "未完了",
-      "overdue": "期限切れ",
-      "totalMembers": "総メンバー数",
-      "completedCount": "完了",
-      "overdueCount": "期限切れ"
+      "completed": "완료",
+      "incomplete": "미완료",
+      "overdue": "기한 초과",
+      "totalMembers": "총 멤버 수",
+      "completedCount": "완료",
+      "overdueCount": "기한 초과"
     }
   }
 }

@@ -1,10 +1,11 @@
 import type {
   BulletinThreadResponse,
-  BulletinReplyResponse,
   BulletinReader,
   BulletinReadStatus,
   BulletinThreadSearchParams,
+  BulletinAttachment,
 } from '~/types/bulletin'
+import { useBulletinAttachments } from './useBulletinAttachments'
 
 interface ThreadListParams {
   scopeType: string
@@ -27,6 +28,7 @@ interface ThreadListParams {
  */
 export function useBulletinThreads() {
   const api = useApi()
+  const { uploadFile: uploadAttachment } = useBulletinAttachments()
 
   function buildQuery(params: Record<string, unknown>): string {
     const query = new URLSearchParams()
@@ -60,35 +62,68 @@ export function useBulletinThreads() {
   }
 
   async function getThread(threadId: number) {
-    return api<{ data: BulletinThreadResponse & { replies: BulletinReplyResponse[] } }>(
+    return api<{ data: BulletinThreadResponse }>(
       `/api/v1/bulletin/threads/${threadId}`,
     )
   }
 
+  /**
+   * スレッドを作成し、ファイルが指定された場合は presign→R2直PUT→確定 の順でアップロードする。
+   *
+   * フロー変更（F05.1 §6 presigned URL 方式 A）:
+   *   (1) スレッド本文を POST して threadId を取得
+   *   (2) 各ファイルを presign → R2 直 PUT → 確定（1件失敗しても他を継続）
+   *   (3) アップロード結果（成功/失敗一覧）を返す
+   *
+   * @returns { thread, attachments, uploadErrors }
+   *   - thread: 作成されたスレッド
+   *   - attachments: 確定に成功した添付ファイル
+   *   - uploadErrors: アップロードに失敗したファイル名一覧（空なら全成功）
+   */
   async function createThread(
     scopeType: string,
     /** TEAM/ORGANIZATION は数値ID、VILLAGE は UUID 文字列 */
     scopeId: string | number,
     body: Record<string, unknown>,
     files?: File[],
-  ) {
+  ): Promise<{
+    thread: BulletinThreadResponse
+    attachments: BulletinAttachment[]
+    uploadErrors: string[]
+  }> {
     // VILLAGE スコープ: scope_id=0 + scopeVillageId=UUID（設計書 §3.12.1）
     const isVillage = scopeType === 'VILLAGE'
     const resolvedScopeId = isVillage ? 0 : scopeId
     const extraFields = isVillage ? { scopeVillageId: scopeId } : {}
-    if (files && files.length > 0) {
-      const formData = new FormData()
-      formData.append('data', JSON.stringify({ ...body, scopeType, scopeId: resolvedScopeId, ...extraFields }))
-      files.forEach((file) => formData.append('files[]', file))
-      return api<{ data: BulletinThreadResponse }>('/api/v1/bulletin/threads', {
-        method: 'POST',
-        body: formData,
-      })
-    }
-    return api<{ data: BulletinThreadResponse }>('/api/v1/bulletin/threads', {
+
+    // (1) スレッド本文を作成して threadId を取得
+    const threadRes = await api<{ data: BulletinThreadResponse }>('/api/v1/bulletin/threads', {
       method: 'POST',
       body: { ...body, scopeType, scopeId: resolvedScopeId, ...extraFields },
     })
+    const thread = threadRes.data
+    const threadId = thread.id
+
+    if (!files || files.length === 0) {
+      return { thread, attachments: [], uploadErrors: [] }
+    }
+
+    // (2) 各ファイルを presign → R2 直 PUT → 確定（1件失敗しても他を継続）
+    const attachments: BulletinAttachment[] = []
+    const uploadErrors: string[] = []
+
+    await Promise.all(
+      files.map(async (file) => {
+        try {
+          const attachment = await uploadAttachment('THREAD', threadId, file)
+          attachments.push(attachment)
+        } catch {
+          uploadErrors.push(file.name)
+        }
+      }),
+    )
+
+    return { thread, attachments, uploadErrors }
   }
 
   async function updateThread(threadId: number, body: Record<string, unknown>) {
@@ -149,7 +184,7 @@ export function useBulletinThreads() {
   // === Scoped Threads ===
   async function getScopedThreads(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     params?: { categoryId?: number; page?: number; size?: number },
   ) {
     const query = new URLSearchParams()
@@ -164,7 +199,7 @@ export function useBulletinThreads() {
 
   async function searchScopedThreads(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     params: BulletinThreadSearchParams,
   ) {
     const query = new URLSearchParams()
@@ -179,7 +214,7 @@ export function useBulletinThreads() {
 
   async function createScopedThread(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: BulletinThreadResponse }>(
@@ -188,15 +223,15 @@ export function useBulletinThreads() {
     )
   }
 
-  async function getScopedThread(scopeType: string, scopeId: number, threadId: number) {
-    return api<{ data: BulletinThreadResponse & { replies: BulletinReplyResponse[] } }>(
+  async function getScopedThread(scopeType: string, scopeId: string, threadId: number) {
+    return api<{ data: BulletinThreadResponse }>(
       `/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}`,
     )
   }
 
   async function updateScopedThread(
     scopeType: string,
-    scopeId: number,
+    scopeId: string,
     threadId: number,
     body: Record<string, unknown>,
   ) {
@@ -206,7 +241,7 @@ export function useBulletinThreads() {
     )
   }
 
-  async function deleteScopedThread(scopeType: string, scopeId: number, threadId: number) {
+  async function deleteScopedThread(scopeType: string, scopeId: string, threadId: number) {
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}`, { method: 'DELETE' })
   }
 
@@ -231,26 +266,26 @@ export function useBulletinThreads() {
     })
   }
 
-  async function lockScopedThread(scopeType: string, scopeId: number, threadId: number) {
+  async function lockScopedThread(scopeType: string, scopeId: string, threadId: number) {
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}/lock`, {
       method: 'POST',
     })
   }
 
-  async function pinScopedThread(scopeType: string, scopeId: number, threadId: number) {
+  async function pinScopedThread(scopeType: string, scopeId: string, threadId: number) {
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}/pin`, {
       method: 'POST',
     })
   }
 
   // === Scoped Read Status ===
-  async function getReadStatus(scopeType: string, scopeId: number, threadId: number) {
+  async function getReadStatus(scopeType: string, scopeId: string, threadId: number) {
     return api<{ data: BulletinReadStatus }>(
       `/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}/read-status`,
     )
   }
 
-  async function markReadStatus(scopeType: string, scopeId: number, threadId: number) {
+  async function markReadStatus(scopeType: string, scopeId: string, threadId: number) {
     return api(`/api/v1/${scopeType}/${scopeId}/bulletin/threads/${threadId}/read-status`, {
       method: 'POST',
     })

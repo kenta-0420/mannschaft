@@ -1,8 +1,10 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.StorageService;
+import com.mannschaft.app.proxyvote.AttachmentTargetType;
 import com.mannschaft.app.proxyvote.ProxyVoteErrorCode;
 import com.mannschaft.app.proxyvote.ProxyVoteMapper;
 import com.mannschaft.app.proxyvote.SessionStatus;
@@ -40,6 +42,7 @@ class ProxyVoteAttachmentServiceTest {
     @Mock private ProxyVoteMapper mapper;
     @Mock private StorageService storageService;
     @Mock private DomainEventPublisher eventPublisher;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ProxyVoteAttachmentService service;
@@ -111,23 +114,47 @@ class ProxyVoteAttachmentServiceTest {
         void 添付不存在() {
             given(attachmentRepository.findById(99L)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.deleteAttachment(99L))
+            assertThatThrownBy(() -> service.deleteAttachment(99L, 100L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ProxyVoteErrorCode.ATTACHMENT_NOT_FOUND);
         }
 
         @Test
-        @DisplayName("正常系: 添付ファイル削除でS3削除イベント発火")
+        @DisplayName("正常系: 添付ファイル削除でS3削除イベント発火（SESSION添付・作成者本人）")
         void 削除成功() {
             ProxyVoteAttachmentEntity attachment = ProxyVoteAttachmentEntity.builder()
+                    .targetType(AttachmentTargetType.SESSION)
+                    .targetId(1L)
                     .fileKey("proxy-votes/session/1/abc").build();
+            ProxyVoteSessionEntity session = ProxyVoteSessionEntity.builder()
+                    .createdBy(100L).status(SessionStatus.OPEN).build();
             given(attachmentRepository.findById(1L)).willReturn(Optional.of(attachment));
+            given(sessionService.findSessionOrThrow(1L)).willReturn(session);
 
-            service.deleteAttachment(1L);
+            service.deleteAttachment(1L, 100L);
 
             verify(attachmentRepository).delete(attachment);
             verify(eventPublisher).publish(any(DomainEvent.class));
+        }
+
+        @Test
+        @DisplayName("認可: MOTION添付は motionId→session を辿って認可判定する")
+        void MOTION添付の認可解決() {
+            ProxyVoteAttachmentEntity attachment = ProxyVoteAttachmentEntity.builder()
+                    .targetType(AttachmentTargetType.MOTION)
+                    .targetId(5L)
+                    .fileKey("proxy-votes/motion/5/abc").build();
+            ProxyVoteMotionEntity motion = ProxyVoteMotionEntity.builder().sessionId(10L).build();
+            ProxyVoteSessionEntity session = ProxyVoteSessionEntity.builder()
+                    .createdBy(100L).status(SessionStatus.OPEN).build();
+            given(attachmentRepository.findById(2L)).willReturn(Optional.of(attachment));
+            given(sessionService.findMotionOrThrow(5L)).willReturn(motion);
+            given(sessionService.findSessionOrThrow(10L)).willReturn(session);
+
+            service.deleteAttachment(2L, 100L);
+
+            verify(attachmentRepository).delete(attachment);
         }
     }
 }

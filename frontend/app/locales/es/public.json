@@ -2,123 +2,132 @@
   "public": {
     "admin": {
       "publicVisible": {
-        "label": "Visibilidad pública",
+        "label": "Mostrar público",
         "enabledLabel": "Público",
-        "disabledLabel": "Oculto",
+        "disabledLabel": "No público",
         "toggleAriaLabel": "Cambiar visibilidad de la publicación",
-        "enableConfirm": "¿Hacer esta publicación pública?",
-        "disableConfirm": "¿Ocultar esta publicación al público?",
-        "saveFailed": "Error al actualizar. Inténtalo de nuevo."
+        "enableConfirm": "¿Publicar esta entrada?",
+        "disableConfirm": "¿Hacer privada esta entrada?",
+        "saveFailed": "Error al cambiar. Por favor intente nuevamente"
       },
       "nameDisclosure": {
-        "title": "投稿者識別モード",
-        "displayName": "表示名で表示",
-        "realName": "本名で表示",
-        "warningTitle": "本名表示への切替について",
-        "warningBody": "この設定を有効にすると、以降の投稿に投稿者の本名が表示されます。一度公開された本名は外部に拡散する可能性があり、完全な取り消しはできません。",
-        "warningCheckbox": "上記の内容を理解した上で切り替える",
-        "confirmButton": "確認して切り替える",
-        "cancelButton": "キャンセル",
-        "historyTitle": "切替履歴",
-        "changedAt": "変更日時",
-        "changedBy": "変更者",
-        "fromMode": "変更前",
-        "toMode": "変更後"
+        "title": "Modo de identificación del autor",
+        "displayName": "Mostrar nombre para mostrar",
+        "realName": "Mostrar nombre real",
+        "warningTitle": "Acerca del cambio a nombre real",
+        "warningBody": "Al activar esta configuración, el nombre real del autor se mostrará en publicaciones futuras. Una vez que el nombre real se ha publicado, puede difundirse externamente y no puede revertirse completamente.",
+        "warningCheckbox": "Cambiar confirmando que entiendo lo anterior",
+        "confirmButton": "Confirmar y cambiar",
+        "cancelButton": "Cancelar",
+        "historyTitle": "Historial de cambios",
+        "changedAt": "Fecha de cambio",
+        "changedBy": "Cambiado por",
+        "fromMode": "Antes del cambio",
+        "toMode": "Después del cambio"
       }
     },
     "layout": {
-      "skipToContent": "本文へスキップ",
-      "login": "ログイン",
-      "register": "新規登録",
+      "skipToContent": "Saltar al contenido",
+      "login": "Iniciar sesión",
+      "register": "Registrarse",
       "siteName": "Mannschaft",
-      "openMenu": "メニューを開く"
+      "openMenu": "Abrir menú"
+    },
+    "breadcrumb": {
+      "home": "Inicio",
+      "discoverTeams": "Buscar equipos",
+      "discoverOrganizations": "Buscar organizaciones"
     },
     "team": {
-      "title": "{name} - 公開ページ",
-      "memberCount": "{n}人のメンバー",
-      "memberCountLabel": "メンバー数",
-      "philosophyTitle": "理念",
-      "mapTitle": "地図",
-      "homepageLabel": "公式サイト",
-      "establishedAt": "設立: {date}"
+      "title": "{name} - Página pública",
+      "memberCount": "{n} miembros",
+      "memberCountLabel": "Número de miembros",
+      "philosophyTitle": "Filosofía",
+      "mapTitle": "Mapa",
+      "homepageLabel": "Sitio oficial",
+      "establishedAt": "Establecido: {date}",
+      "geoDescription": "Esta es la página pública de {name}, con sede en {prefecture}{city}.",
+      "geoDescriptionNoLocation": "Esta es la página pública de {name}."
     },
     "organization": {
-      "title": "{name} - 公開ページ",
-      "philosophyTitle": "理念",
-      "mapTitle": "地図",
-      "homepageLabel": "公式サイト",
-      "establishedAt": "設立: {date}"
+      "title": "{name} - Página pública",
+      "philosophyTitle": "Filosofía",
+      "mapTitle": "Mapa",
+      "homepageLabel": "Sitio oficial",
+      "establishedAt": "Establecido: {date}",
+      "geoDescription": "Esta es la página pública de {name}, con sede en {prefecture}{city}.",
+      "geoDescriptionNoLocation": "Esta es la página pública de {name}."
     },
     "posts": {
-      "sectionTitle": "公開投稿",
-      "empty": "公開された投稿はまだありません",
-      "loading": "読み込み中...",
-      "readMore": "続きを読む",
-      "publishedAt": "公開: {date}",
-      "backToList": "一覧に戻る",
-      "totalCount": "全 {n} 件",
+      "sectionTitle": "Publicaciones públicas",
+      "empty": "Aún no hay publicaciones públicas",
+      "loading": "Cargando...",
+      "readMore": "Leer más",
+      "publishedAt": "Publicado: {date}",
+      "backToList": "Volver a la lista",
+      "totalCount": "Total: {n}",
       "page": "{page} / {total}",
-      "next": "次へ",
-      "prev": "前へ"
+      "next": "Siguiente",
+      "prev": "Anterior"
     },
     "author": {
-      "anonymous": "投稿者",
-      "member": "メンバー",
-      "organizer": "主催者",
-      "anonymousAvatarAlt": "投稿者（匿名表示）"
+      "anonymous": "Autor",
+      "member": "Miembro",
+      "organizer": "Organizador",
+      "anonymousAvatarAlt": "Autor (mostrado anónimamente)"
     },
     "cta": {
-      "join": "このチームに参加する",
-      "joinOrganization": "この組織に参加する",
-      "login": "ログインしてもっと見る",
-      "register": "新規登録",
-      "ctaHeading": "Mannschaft に参加しませんか？",
-      "ctaDescription": "メンバーになると、チームメンバーや活動内容をすべて閲覧できます。"
+      "join": "Unirse a este equipo",
+      "joinOrganization": "Unirse a esta organización",
+      "login": "Iniciar sesión para ver más",
+      "register": "Registrarse",
+      "ctaHeading": "¿Quieres unirte a Mannschaft?",
+      "ctaDescription": "Al convertirte en miembro, puedes ver todos los miembros del equipo y sus actividades."
     },
     "error": {
-      "notFound": "指定されたページは存在しないか、公開されていません",
-      "notFoundTitle": "ページが見つかりません",
-      "loadFailed": "情報の取得に失敗しました",
-      "rateLimit": "アクセスが集中しています。しばらく経ってから再度お試しください",
-      "backToHome": "トップへ戻る"
+      "notFound": "La página especificada no existe o no está publicada",
+      "notFoundTitle": "Página no encontrada",
+      "loadFailed": "Error al obtener información",
+      "rateLimit": "Demasiadas solicitudes. Por favor intente nuevamente más tarde",
+      "backToHome": "Volver al inicio"
     },
     "discover": {
       "teams": {
         "title": "Buscar equipos públicos",
         "searchPlaceholder": "Buscar por nombre de equipo",
-        "noResults": "No se encontraron equipos que coincidan con los criterios"
+        "noResults": "No se encontraron equipos"
       },
       "organizations": {
         "title": "Buscar organizaciones públicas",
         "searchPlaceholder": "Buscar por nombre de organización",
-        "noResults": "No se encontraron organizaciones que coincidan con los criterios"
+        "noResults": "No se encontraron organizaciones"
       },
       "filter": {
         "keyword": "Palabra clave",
         "prefecture": "Prefectura",
-        "all": "Todas",
+        "all": "Todos",
         "search": "Buscar"
       },
       "card": {
-        "memberCount": "{count} miembros",
+        "memberCount": "{count} personas",
         "lastPost": "Última publicación: {date}",
         "noPost": "Sin publicaciones",
         "viewDetail": "Ver detalles"
       }
     },
     "meta": {
-      "ogDescriptionDefault": "Mannschaft の公開ページ",
+      "ogDescriptionDefault": "Página pública de Mannschaft",
       "ogSiteName": "Mannschaft"
     },
     "userProfile": {
       "title": "Perfil de {name}",
       "memberSince": "Miembro desde {date}",
       "posts": "Publicaciones públicas",
-      "noPosts": "No hay publicaciones públicas aún"
+      "noPosts": "No hay publicaciones públicas"
     },
     "profileVisibility": {
       "title": "Configuración de visibilidad del perfil",
-      "description": "Cuando el perfil público está activado, los usuarios no registrados también pueden ver tu perfil",
+      "description": "Al activar el perfil público, los usuarios no conectados también pueden ver su perfil",
       "enable": "Activar perfil público",
       "saved": "Configuración de visibilidad del perfil guardada",
       "saveError": "Error al guardar la configuración de visibilidad del perfil"
@@ -126,29 +135,39 @@
     "comments": {
       "title": "Comentarios",
       "empty": "Aún no hay comentarios",
-      "placeholder": "Escribe un comentario (máx. 1000 caracteres)",
+      "placeholder": "Ingrese un comentario (máx. 1000 caracteres)",
       "submit": "Publicar",
       "delete": "Eliminar",
       "loginToComment": "Inicia sesión para comentar",
       "loginLink": "Iniciar sesión",
-      "deleteConfirm": "¿Estás seguro de que quieres eliminar este comentario?"
+      "deleteConfirm": "¿Eliminar este comentario?"
     },
     "publicSettings": {
       "title": "Configuración pública",
-      "timelinePostsPublic": "Hacer públicas las publicaciones del timeline",
-      "timelinePostsPublicDescription": "Cuando está activado, los usuarios no registrados también pueden ver las publicaciones del timeline",
-      "publicEventsEnabled": "Hacer públicos los eventos",
-      "publicEventsEnabledDescription": "Cuando está activado, los usuarios no registrados también pueden ver la información de eventos",
+      "timelinePostsPublic": "Publicar entradas de la línea de tiempo",
+      "timelinePostsPublicDescription": "Al activar, los usuarios no conectados también pueden ver las entradas de la línea de tiempo",
+      "publicEventsEnabled": "Publicar eventos",
+      "publicEventsEnabledDescription": "Al activar, los usuarios no conectados también pueden ver la información de eventos",
       "saved": "Guardado",
       "saveError": "Error al guardar"
     },
     "timeline": {
-      "title": "Publicaciones del timeline",
-      "empty": "No hay publicaciones en el timeline"
+      "title": "Publicaciones de la línea de tiempo",
+      "empty": "No hay publicaciones en la línea de tiempo"
     },
     "events": {
       "title": "Eventos",
       "empty": "No hay eventos"
+    },
+    "tabs": {
+      "posts": "Publicaciones",
+      "timeline": "Línea de tiempo",
+      "events": "Eventos",
+      "activities": "Registros de actividad"
+    },
+    "activities": {
+      "sectionTitle": "Registros de actividad",
+      "empty": "Aún no hay registros de actividad públicos"
     }
   }
 }

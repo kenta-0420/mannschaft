@@ -5,6 +5,7 @@ import com.mannschaft.app.filesharing.dto.AccessLinkRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileLinkEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileLinkRepository;
+import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileLinkService;
 import com.mannschaft.app.filesharing.service.SharedFileService;
 import org.junit.jupiter.api.DisplayName;
@@ -43,6 +44,13 @@ class SharedFileLinkServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private FolderScopeAccessGuard folderScopeAccessGuard;
+
+    // PR-D: createLink/listLinks/deleteLink の発行認可（ADMIN/DEPUTY 限定）と C: download_disabled 貫通防御を担う新依存。
+    @Mock
+    private com.mannschaft.app.filesharing.service.SharedFolderQueryService folderQueryService;
+
     @InjectMocks
     private SharedFileLinkService sharedFileLinkService;
 
@@ -61,10 +69,10 @@ class SharedFileLinkServiceTest {
                     .fileId(FILE_ID).token("valid-token")
                     .expiresAt(LocalDateTime.now().plusDays(1)).createdBy(USER_ID).build();
             FileResponse fileResponse = new FileResponse(FILE_ID, 1L, "test.pdf", "key",
-                    1024L, "application/pdf", null, USER_ID, 1, null, null);
+                    1024L, "application/pdf", null, USER_ID, 1, null, null, null, null);
 
             given(linkRepository.findByToken("valid-token")).willReturn(Optional.of(link));
-            given(fileService.getFile(FILE_ID)).willReturn(fileResponse);
+            given(fileService.getFileForSharedLink(FILE_ID)).willReturn(fileResponse);
 
             // When
             FileResponse result = sharedFileLinkService.accessLink("valid-token", null);

@@ -7,9 +7,9 @@ const orgStore = useOrganizationStore()
     <template v-if="orgStore.myOrganizations.length > 0">
       <div class="flex flex-wrap gap-2">
         <NuxtLink
-          v-for="org in orgStore.myOrganizations.slice(0, 8)"
+          v-for="org in orgStore.myOrganizations.slice(0, 20)"
           :key="org.id"
-          :to="`/organizations/${org.id}`"
+          :to="org.slug ? `/organizations/${org.slug}` : undefined"
           class="flex items-center gap-2 rounded-lg border border-surface-400 bg-surface-50 px-3 py-2 text-sm transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-700"
         >
           <i class="pi pi-building text-xs text-primary" />

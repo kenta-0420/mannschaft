@@ -8,10 +8,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -22,8 +22,7 @@ import java.time.LocalDateTime;
 @Table(name = "service_record_attachments")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ServiceRecordAttachmentEntity {
 
     @Id
@@ -49,6 +48,7 @@ public class ServiceRecordAttachmentEntity {
     @Builder.Default
     private Integer sortOrder = 0;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

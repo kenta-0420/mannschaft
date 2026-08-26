@@ -42,7 +42,7 @@
       "archive": "아카이브",
       "leave": "위원회 탈퇴",
       "remove_member": "멤버 해임",
-      "remove_member_confirm": "{name} を解任しますか？"
+      "remove_member_confirm": "{name}을(를) 해임하시겠습니까？"
     },
     "distributions": {
       "title": "전달 이력",

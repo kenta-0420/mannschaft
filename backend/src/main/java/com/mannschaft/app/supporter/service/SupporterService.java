@@ -5,6 +5,7 @@ import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.LeaveReason;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -53,6 +54,7 @@ public class SupporterService {
     private final MembershipService membershipService;
     private final MembershipRepository membershipRepository;
     private final UserRepository userRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     // ========================================
     // フォロー申請
@@ -188,7 +190,7 @@ public class SupporterService {
                 .map(m -> {
                     UserEntity user = userRepository.findById(m.getUserId()).orElse(null);
                     String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "不明";
-                    String avatarUrl = user != null ? user.getAvatarUrl() : null;
+                    String avatarUrl = user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null;
                     String followedAt = m.getJoinedAt() != null
                             ? m.getJoinedAt().format(ISO_FORMATTER)
                             : null;
@@ -223,7 +225,7 @@ public class SupporterService {
                 .map(app -> {
                     UserEntity user = userRepository.findById(app.getUserId()).orElse(null);
                     String fullName = user != null ? user.getLastName() + " " + user.getFirstName() : "不明";
-                    String avatarUrl = user != null ? user.getAvatarUrl() : null;
+                    String avatarUrl = user != null ? mediaUrlResolver.resolve(user.getAvatarUrl()) : null;
                     return new SupporterApplicationResponse(
                             app.getId(),
                             app.getUserId(),

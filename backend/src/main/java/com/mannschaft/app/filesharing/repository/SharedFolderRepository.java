@@ -33,6 +33,18 @@ public interface SharedFolderRepository extends JpaRepository<SharedFolderEntity
     List<SharedFolderEntity> findByParentIdOrderByNameAsc(Long parentId);
 
     /**
+     * F08.7.1: スコープ種別と scope_ref_id（大会 ID / ディビジョン ID）でルートフォルダ一覧を取得する。
+     */
+    List<SharedFolderEntity> findByScopeTypeAndScopeRefIdAndParentIdIsNullOrderByNameAsc(
+            FileScopeType scopeType, Long scopeRefId);
+
+    /**
+     * F08.7.1: スコープ種別・scope_ref_id・名前でフォルダを取得する（自動付帯の冪等チェック用）。
+     */
+    Optional<SharedFolderEntity> findByScopeTypeAndScopeRefIdAndParentIdIsNullAndName(
+            FileScopeType scopeType, Long scopeRefId, String name);
+
+    /**
      * 同一親配下の同名フォルダが存在するか確認する。
      */
     boolean existsByParentIdAndName(Long parentId, String name);

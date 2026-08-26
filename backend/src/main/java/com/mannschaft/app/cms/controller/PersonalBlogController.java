@@ -33,6 +33,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 個人ブログコントローラー。個人ブログ記事CRUD・共有・セルフレビュー設定APIを提供する。
@@ -82,11 +84,29 @@ public class PersonalBlogController {
     }
 
     /**
+     * 認証ユーザー自身のブログ記事詳細をID指定で取得する。
+     *
+     * <p>ステータス不問（下書き・公開・却下・アーカイブなど自分の記事はすべて取得可能）。
+     * 投稿者本人以外が ID を指定しても 404 を返す（IDOR 対策）。</p>
+     */
+    @GetMapping("/me/blog/posts/{id}")
+    @Operation(summary = "自分のブログ記事詳細（ID指定）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @AuthorizedInService // BlogPostService#getMyPostById が findByIdAndAuthorIdAndDeletedAtIsNull で著者本人と id の複合一致を検証する（本メソッド上部の javadoc 参照）
+    public ResponseEntity<ApiResponse<BlogPostResponse>> getMyPost(
+            @PathVariable Long id) {
+        BlogPostResponse response = postService.getMyPostById(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
      * 認証ユーザー自身のブログ記事一覧を取得する。
      */
     @GetMapping("/me/blog/posts")
     @Operation(summary = "自分のブログ記事一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @SelfScopedEndpoint("BlogPostService#listByUser の検索条件が "
+            + "postRepository.findByUserIdOrderByCreatedAtDesc(SecurityUtils.getCurrentUserId()) のみに束縛される")
     public ResponseEntity<PagedResponse<BlogPostResponse>> listMyPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -129,7 +149,7 @@ public class PersonalBlogController {
     @Operation(summary = "個人ブログ記事削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deletePost(@PathVariable Long id) {
-        postService.deletePost(id);
+        postService.deletePost(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -142,7 +162,7 @@ public class PersonalBlogController {
     public ResponseEntity<ApiResponse<BlogPostResponse>> changeStatus(
             @PathVariable Long id,
             @Valid @RequestBody PublishRequest request) {
-        BlogPostResponse response = postService.changeStatus(id, request);
+        BlogPostResponse response = postService.changeStatus(id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -152,6 +172,7 @@ public class PersonalBlogController {
     @PostMapping("/me/blog/posts/{id}/share")
     @Operation(summary = "個人ブログ記事共有")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "共有成功")
+    @AuthorizedInService // BlogPostShareService#sharePost の checkWriteAccess が投稿者本人/スコープADMIN以上を検証する
     public ResponseEntity<ApiResponse<SharePostResponse>> sharePost(
             @PathVariable Long id,
             @Valid @RequestBody SharePostRequest request) {
@@ -165,10 +186,11 @@ public class PersonalBlogController {
     @DeleteMapping("/me/blog/posts/{id}/shares/{shareId}")
     @Operation(summary = "共有取消")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
+    @AuthorizedInService // BlogPostShareService#revokeShare の checkWriteAccess が投稿者本人/スコープADMIN以上を検証する
     public ResponseEntity<Void> revokeShare(
             @PathVariable Long id,
             @PathVariable Long shareId) {
-        postService.revokeShare(id, shareId);
+        postService.revokeShare(id, shareId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -191,6 +213,8 @@ public class PersonalBlogController {
     @GetMapping("/me/blog/settings")
     @Operation(summary = "セルフレビュー設定取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @SelfScopedEndpoint("UserBlogSettingsService#getOrCreateSettings の検索条件が "
+            + "settingsRepository.findByUserId(SecurityUtils.getCurrentUserId()) のみに束縛される")
     public ResponseEntity<ApiResponse<BlogSettingsResponse>> getSettings() {
         return ResponseEntity.ok(ApiResponse.of(settingsService.getOrCreateSettings(SecurityUtils.getCurrentUserId())));
     }
@@ -201,6 +225,8 @@ public class PersonalBlogController {
     @PutMapping("/me/blog/settings")
     @Operation(summary = "セルフレビュー設定更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @SelfScopedEndpoint("UserBlogSettingsService#updateSettings の検索・更新条件が "
+            + "settingsRepository.findByUserId(SecurityUtils.getCurrentUserId()) のみに束縛される")
     public ResponseEntity<ApiResponse<BlogSettingsResponse>> updateSettings(
             @Valid @RequestBody UpdateBlogSettingsRequest request) {
         return ResponseEntity.ok(ApiResponse.of(settingsService.updateSettings(SecurityUtils.getCurrentUserId(), request)));

@@ -1,0 +1,302 @@
+{
+  "reflection": {
+    "title": "Reflections",
+    "nav": {
+      "today": "Today's reflections",
+      "themes": "Themes",
+      "settings": "Notification settings",
+      "dashboard": "Dashboard"
+    },
+    "widget": {
+      "pending_recall": "Pending recall",
+      "unwritten": "Not written",
+      "open_today": "Open today's reflections",
+      "empty": "No themes for today"
+    },
+    "today": {
+      "heading": "Today's reflections",
+      "date_label": "Date",
+      "empty": "No classes or themes for today. Create a theme to start reflecting.",
+      "free_themes": "Themes (outside timetable)",
+      "timetable_slots": "Today's classes",
+      "no_theme": "No theme set",
+      "create_theme_for_slot": "Create a theme for this slot",
+      "create_entry": "Write a reflection",
+      "edit_entry": "Edit reflection",
+      "open_recall": "Recall test",
+      "masked_badge": "Awaiting recall",
+      "has_entry": "Written",
+      "period_label": "Period {period}",
+      "main_theme_label": "Main theme",
+      "created_at_label": "First created",
+      "last_reflected_label": "Last reflected",
+      "never_reflected": "Not yet"
+    },
+    "theme": {
+      "list_heading": "Themes",
+      "create": "Create theme",
+      "edit": "Edit theme",
+      "delete": "Delete",
+      "delete_confirm": "Delete this theme and all its reflections?",
+      "empty": "No themes yet. Create your first theme.",
+      "title_label": "Theme name",
+      "title_placeholder": "e.g. Math II / Project X / Diary",
+      "description_label": "Description",
+      "description_placeholder": "Optional note",
+      "source_type_label": "Type",
+      "exam_date_label": "Exam date",
+      "exam_date_help": "If set, reminders are sent 14/7/3/1 days before the exam",
+      "exam_date_past_warning": "No reminders are generated for past dates",
+      "exam_date_clear": "Clear exam date",
+      "recall_interval_label": "Recall interval",
+      "recall_interval_fixed": "Recall test {days} days later (fixed)",
+      "open": "Open",
+      "view_entries": "View reflections",
+      "subject_link_label": "Link to subject",
+      "subject_link_none": "No link",
+      "subject_link_placeholder": "Select from timetable subjects",
+      "subject_link_help": "This theme will appear on every class of the selected subject in today's view",
+      "subject_link_empty": "No timetable registered",
+      "academic_year_label": "Academic year",
+      "term_label_label": "Term",
+      "academic_year_placeholder": "e.g. 2026",
+      "term_label_placeholder": "e.g. Semester 1, Q1",
+      "suggest_from_timetable": "Automatically suggested from your timetable (won't overwrite existing values)",
+      "parent_theme_label": "Parent theme (set a subject above a unit)",
+      "parent_none": "No parent (top-level)"
+    },
+    "archive": {
+      "label": "Archive",
+      "action": {
+        "archive": "Archive",
+        "restore": "Restore"
+      },
+      "confirm": {
+        "archive": "Archive this theme? Spaced-recall reminders will be stopped.",
+        "restore": "Restore this theme?"
+      },
+      "bulk_archive_button": "Archive this folder",
+      "folder": {
+        "title": "Archive folders",
+        "theme_count": "{n} themes",
+        "no_subject": "No subject",
+        "no_year": "No year",
+        "no_term": "No term"
+      },
+      "search": {
+        "placeholder": "Search by title or description",
+        "empty": "No archived themes found"
+      }
+    },
+    "source_type": {
+      "SUBJECT": "Class",
+      "PROJECT": "Work / Project",
+      "DIARY": "Diary",
+      "FREE": "Free"
+    },
+    "template": {
+      "label": "Template",
+      "help": "Choose preset headings for your input",
+      "heading_selector_label": "Headings to include",
+      "heading_optional_badge": "optional",
+      "NORMAL": "Normal",
+      "DIARY": "Diary",
+      "WORK": "Work reflection",
+      "CLASS": "Class reflection",
+      "normal_desc": "No headings, free writing",
+      "diary_desc": "Events / Feelings / For tomorrow",
+      "work_desc": "Results / Issues / Learnings / Next actions",
+      "class_desc": "What I learned / Stumbling points / Key points to remember",
+      "preset": {
+        "diary": {
+          "event": "Events",
+          "feeling": "Feelings",
+          "tomorrow": "For tomorrow"
+        },
+        "work": {
+          "result": "Results",
+          "issue": "Issues",
+          "learning": "Learnings",
+          "next": "Next actions"
+        },
+        "class": {
+          "learned": "What I learned",
+          "stumble": "Stumbling points",
+          "keypoint": "Key points to remember"
+        },
+        "vocab": {
+          "cards": "今日の単語"
+        }
+      },
+      "VOCAB": "単語帳",
+      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する"
+    },
+    "entry": {
+      "list_heading": "Reflections",
+      "create": "Create reflection",
+      "edit": "Edit reflection",
+      "delete": "Delete",
+      "delete_confirm": "Delete this reflection?",
+      "empty": "No reflections yet.",
+      "target_date_label": "Date",
+      "main_theme_label": "Main theme",
+      "main_theme_placeholder": "e.g. Maxima and minima of quadratic functions",
+      "section_heading_label": "Heading",
+      "section_heading_placeholder": "e.g. Completing the square",
+      "add_section": "Add heading",
+      "remove_section": "Remove heading",
+      "sub_heading_label": "Sub-heading",
+      "sub_heading_placeholder": "e.g. Transform to standard form",
+      "add_subsection": "Add sub-heading",
+      "remove_subsection": "Remove sub-heading",
+      "detail_label": "Detail",
+      "detail_placeholder": "Write what you learned",
+      "supplement_label": "Supplement",
+      "supplement_placeholder": "Supplement / note",
+      "free_note_label": "Free note (excluded from recall)",
+      "free_note_placeholder": "Impressions or question notes",
+      "save": "Save",
+      "saved": "Saved",
+      "save_failed": "Failed to save",
+      "conflict": "Updated elsewhere. Please reload the latest and try again.",
+      "masked_notice": "This is a recall-test target. The content is hidden.",
+      "exported_badge": "Exported to blog",
+      "exported_edited_badge": "Edited after export"
+    },
+    "recall": {
+      "heading": "Recall test",
+      "intro": "Without looking at the content, recall and write what you remember.",
+      "hint_theme": "Theme",
+      "hint_target_date": "Date",
+      "hint_due_dates": "Scheduled recall dates",
+      "input_label": "What you recalled",
+      "input_placeholder": "Write as much as you remember",
+      "self_rating_label": "Self-assessment",
+      "rating": {
+        "REMEMBERED": "Remembered",
+        "PARTIAL": "Partial",
+        "FORGOT": "Forgot"
+      },
+      "submit": "Save and reveal",
+      "submitting": "Saving...",
+      "saved": "Recall recorded",
+      "save_failed": "Failed to save recall",
+      "revealed_heading": "Answer (original content)",
+      "your_recall": "Your recall",
+      "history_heading": "Recall history",
+      "history_empty": "No recall history yet.",
+      "not_masked": "This entry is not masked. You can edit it normally.",
+      "back_to_entry": "Back to reflection",
+      "card_answer_placeholder": "答えを入力...",
+      "outline_scaffold": {
+        "panel_heading": "Scaffold Hints",
+        "main_theme_label": "Theme",
+        "level_note_partial": "Only the first few characters of each heading are shown. Try to recall the rest.",
+        "aria_panel": "OUTLINE scaffold hints panel"
+      }
+    },
+    "export": {
+      "button": "Export to blog",
+      "dialog_title": "Export to blog",
+      "title_label": "Post title",
+      "title_placeholder": "If omitted, the theme name and date are used",
+      "submit": "Export",
+      "submitting": "Exporting...",
+      "success": "Exported to blog (private)",
+      "failed": "Export failed",
+      "already_exported": "This reflection has already been exported",
+      "view_post": "View exported post"
+    },
+    "settings": {
+      "heading": "Recall notification settings",
+      "remind_hour_label": "Notification time",
+      "remind_hour_help": "The time to send recall-test reminders (your timezone)",
+      "save": "Save",
+      "saved": "Settings saved",
+      "save_failed": "Failed to save settings",
+      "hour_format": "{hour}:00"
+    },
+    "calendar": {
+      "entry_mark": "Reflection",
+      "recall_mark": "Recall due"
+    },
+    "common": {
+      "cancel": "Cancel",
+      "close": "Close",
+      "loading": "Loading...",
+      "load_failed": "Failed to load"
+    },
+    "guide": {
+      "page_title": "How to use Active Recall Learning",
+      "what": {
+        "title": "What is Active Recall Learning?",
+        "body": "Active recall is a learning method that strengthens memory by actively retrieving what you have learned. Write today's reflection, then on subsequent days try to recall the content from memory before checking your answers."
+      },
+      "theme": {
+        "title": "Create a Theme",
+        "body": "A \"theme\" is the unit of your reflections. Create themes for subjects, qualifications, projects, a diary, or anything you want to keep reviewing. You can link a theme to a timetable slot or use it as a free-standing theme."
+      },
+      "today": {
+        "title": "Write Today's Reflection",
+        "body": "The \"Today's reflections\" view lists the day's slots and themes. Open each card, write what you learned and any insights, then save."
+      },
+      "recall": {
+        "title": "Recall Test (Retrieval Practice)",
+        "body": "From the next day onwards, your written content is automatically hidden. Try to recall it in your own words, then reveal the original to check yourself. The effort of recalling strengthens your memory."
+      },
+      "reminder": {
+        "title": "Reminders and Calendar",
+        "body": "You will receive notifications when it is time to review. Days on which you wrote a reflection are marked in My Calendar, so you can see your progress at a glance."
+      }
+    },
+    "section": {
+      "type": {
+        "outline": "アウトライン",
+        "term_card": "暗記カード"
+      },
+      "type_label": "中見出しの型",
+      "expand": "展開する",
+      "collapse": "折りたたむ",
+      "summary_subsections": "小見出し{n}件",
+      "summary_cards": "カード{n}枚"
+    },
+    "card": {
+      "term_label": "語句",
+      "meaning_label": "意味",
+      "add": "カードを追加",
+      "remove": "カードを削除"
+    },
+    "vocab": {
+      "title": "単語帳（期間横断）",
+      "period_from": "開始日",
+      "period_to": "終了日",
+      "filter_theme": "テーマで絞り込み",
+      "filter_subject": "科目で絞り込み",
+      "mode": {
+        "view": "一覧",
+        "quiz": "自己クイズ"
+      },
+      "direction": {
+        "meaning_to_term": "意味→語句",
+        "term_to_meaning": "語句→意味",
+        "shuffle": "シャッフル"
+      },
+      "flip": "めくる",
+      "empty": "この期間に暗記カードはありません",
+      "total_cards": "{n}枚のカード",
+      "source_label": "出典",
+      "subjects_all": "全教科",
+      "subjects_filter": "教科フィルター",
+      "shuffle": "シャッフル",
+      "shuffle_note": "取得のたびに順番が変わります",
+      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "inline": {
+        "title": "＋単語を追加",
+        "term_placeholder": "語句 (例: apple)",
+        "meaning_placeholder": "意味 (例: りんご)",
+        "add_button": "追加",
+        "added": "追加しました"
+      }
+    }
+  }
+}

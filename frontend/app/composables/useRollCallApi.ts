@@ -26,12 +26,12 @@ interface ApiResponse<T> {
 export function useRollCallApi() {
   const api = useApi()
 
-  function buildBase(teamId: number, eventId: number): string {
+  function buildBase(teamId: string, eventId: number): string {
     return `/api/v1/teams/${teamId}/events/${eventId}/roll-call`
   }
 
   /** 点呼候補者（RSVP=ATTENDING/MAYBE）一覧を取得する。 */
-  async function getCandidates(teamId: number, eventId: number): Promise<RollCallCandidate[]> {
+  async function getCandidates(teamId: string, eventId: number): Promise<RollCallCandidate[]> {
     const res = await api<ApiResponse<RollCallCandidate[]>>(
       `${buildBase(teamId, eventId)}/candidates`,
     )
@@ -44,7 +44,7 @@ export function useRollCallApi() {
    * @param body 冪等キー {@code rollCallSessionId} 付きのセッションリクエスト
    */
   async function submitRollCall(
-    teamId: number,
+    teamId: string,
     eventId: number,
     body: RollCallSessionRequest,
   ): Promise<RollCallSessionResponse> {
@@ -56,7 +56,7 @@ export function useRollCallApi() {
   }
 
   /** 過去の点呼セッションIDリストを取得する（履歴）。 */
-  async function getSessions(teamId: number, eventId: number): Promise<string[]> {
+  async function getSessions(teamId: string, eventId: number): Promise<string[]> {
     const res = await api<ApiResponse<string[]>>(`${buildBase(teamId, eventId)}/sessions`)
     return res.data
   }
@@ -68,7 +68,7 @@ export function useRollCallApi() {
    * @param body   修正内容（status / lateArrivalMinutes / absenceReason）
    */
   async function patchEntry(
-    teamId: number,
+    teamId: string,
     eventId: number,
     userId: number,
     body: RollCallEntryPatchRequest,

@@ -10,10 +10,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -32,8 +32,7 @@ import java.util.UUID;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class BulletinThreadEntity extends BaseEntity {
 
     /**
@@ -153,10 +152,28 @@ public class BulletinThreadEntity extends BaseEntity {
     }
 
     /**
+     * ピン留め状態を明示値で設定する（F17.1 村掲示板グローバル方式 set 方式）。
+     *
+     * @param pinned 設定するピン留め状態
+     */
+    public void setPinned(boolean pinned) {
+        this.isPinned = pinned;
+    }
+
+    /**
      * ロック状態を切り替える。
      */
     public void toggleLock() {
         this.isLocked = !this.isLocked;
+    }
+
+    /**
+     * ロック状態を明示値で設定する（F17.1 村掲示板グローバル方式 set 方式）。
+     *
+     * @param locked 設定するロック状態
+     */
+    public void setLocked(boolean locked) {
+        this.isLocked = locked;
     }
 
     /**

@@ -30,15 +30,63 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
             ScopeType scopeType, Long scopeId, Pageable pageable);
 
     /**
-     * カテゴリ指定でスレッドをページング取得する。
+     * スコープ + カテゴリ指定でスレッドをページング取得する（ピン留め優先→更新日時降順）。
+     *
+     * <p><b>必ずスコープ条件を伴うこと。</b> 以前は {@code findByCategoryIdOrderByIsPinnedDescUpdatedAtDesc}
+     * という categoryId 単独の finder だったため、自スコープの URL に他スコープの categoryId を
+     * 差し込むだけで他テナントのスレッド本文が読めた（越境 BOLA・read）。呼び出し側の
+     * 帰属検証（{@code BulletinCategoryService#findCategoryOrThrow}）と併せて塞ぐ。</p>
+     *
+     * <p><b>分離できるスコープの範囲</b>: {@code scope_type + scope_id} による分離であるため、
+     * {@code TEAM} / {@code ORGANIZATION} / {@code PERSONAL} を相互に分離する。
+     * 村スコープは {@code scope_id} が一律 {@code 0} で村ごとの区別が付かないため本メソッドでは分離できない。
+     * 村は {@link #findByScopeVillageIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc} を使うこと。</p>
      */
-    Page<BulletinThreadEntity> findByCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
-            Long categoryId, Pageable pageable);
+    Page<BulletinThreadEntity> findByScopeTypeAndScopeIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+            ScopeType scopeType, Long scopeId, Long categoryId, Pageable pageable);
 
     /**
      * IDとスコープでスレッドを取得する。
      */
     Optional<BulletinThreadEntity> findByIdAndScopeTypeAndScopeId(Long id, ScopeType scopeType, Long scopeId);
+
+    /**
+     * スコープ内の全スレッド ID を取得する（一括既読の対象抽出用）。
+     *
+     * <p>F17.1 村掲示板グローバル方式の一括既読（{@code POST /threads/read-all}）で
+     * ORG/TEAM/PERSONAL スコープの未読スレッドを抽出する起点として使う。
+     * 論理削除済みは Entity の {@code @SQLRestriction} により自動除外される。</p>
+     */
+    @Query("SELECT t.id FROM BulletinThreadEntity t WHERE t.scopeType = :scopeType AND t.scopeId = :scopeId")
+    List<Long> findIdsByScopeTypeAndScopeId(@Param("scopeType") ScopeType scopeType, @Param("scopeId") Long scopeId);
+
+    /**
+     * 同一スコープ種別の複数スコープ ID に属するスレッド ID を 1 クエリで一括取得する（N+1 解消用）。
+     *
+     * <p>個人ダッシュボードの掲示板未読集計は、所属チーム数 N に対して
+     * {@code findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc} を N 回呼び、
+     * さらに各スレッドごとに既読判定を発行していた（最悪 N(M+1) クエリ）。本メソッドで
+     * 対象スレッド ID を 1 クエリにまとめ、{@code BulletinReadStatusRepository#findReadThreadIds}
+     * と組み合わせて 2 クエリに圧縮する。論理削除済みは Entity の {@code @SQLRestriction} で自動除外される。</p>
+     *
+     * <p>呼び出し側は {@code scopeIds} が空の場合に本メソッドを呼ばないこと（{@code IN ()} 非発行）。</p>
+     *
+     * @param scopeType スコープ種別（例: {@link ScopeType#TEAM}）
+     * @param scopeIds  対象スコープ ID 集合（空集合で呼ばないこと）
+     * @return 対象スレッド ID のリスト（順序保証なし）
+     */
+    @Query("SELECT t.id FROM BulletinThreadEntity t "
+            + "WHERE t.scopeType = :scopeType AND t.scopeId IN :scopeIds")
+    List<Long> findIdsByScopeTypeAndScopeIdIn(
+            @Param("scopeType") ScopeType scopeType, @Param("scopeIds") Collection<Long> scopeIds);
+
+    /**
+     * 村スコープ内の全スレッド ID を取得する（一括既読の対象抽出用）。
+     *
+     * <p>{@link #findIdsByScopeTypeAndScopeId} の村スコープ対称メソッド。</p>
+     */
+    @Query("SELECT t.id FROM BulletinThreadEntity t WHERE t.scopeVillageId = :villageId")
+    List<Long> findIdsByScopeVillageId(@Param("villageId") UUID villageId);
 
     /**
      * 全文検索でスレッドを取得する。
@@ -181,6 +229,28 @@ public interface BulletinThreadRepository extends JpaRepository<BulletinThreadEn
     // ====================================================================
     // F17.1 Phase 1 — 村スコープ検索 / フィード（B10 担当範囲：読み取り専用）
     // ====================================================================
+
+    /**
+     * 村スコープのスレッドをページング取得する（ピン留め優先→更新日時降順）。
+     *
+     * <p>{@code findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc}（組織/チーム/個人版）の
+     * 村スコープ対称メソッド。論理削除は Entity の {@code @SQLRestriction} により自動除外される。</p>
+     */
+    Page<BulletinThreadEntity> findByScopeVillageIdOrderByIsPinnedDescUpdatedAtDesc(
+            UUID scopeVillageId, Pageable pageable);
+
+    /**
+     * 村スコープのスレッドをカテゴリ指定でページング取得する（ピン留め優先→更新日時降順）。
+     */
+    Page<BulletinThreadEntity> findByScopeVillageIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+            UUID scopeVillageId, Long categoryId, Pageable pageable);
+
+    /**
+     * ID と村スコープでスレッドを取得する（詳細／更新／削除の所有確認用）。
+     *
+     * <p>{@code findByIdAndScopeTypeAndScopeId} の村スコープ対称メソッド。</p>
+     */
+    Optional<BulletinThreadEntity> findByIdAndScopeVillageId(Long id, UUID scopeVillageId);
 
     /**
      * 村スコープのスレッドを LIKE で部分一致検索する（F17.1 §4.12）。

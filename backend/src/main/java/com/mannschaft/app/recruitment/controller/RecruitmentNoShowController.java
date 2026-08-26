@@ -3,6 +3,8 @@ package com.mannschaft.app.recruitment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.recruitment.RecruitmentScopeType;
 import com.mannschaft.app.recruitment.dto.DisputeNoShowRequest;
 import com.mannschaft.app.recruitment.dto.RecruitmentNoShowRecordResponse;
@@ -83,6 +85,8 @@ public class RecruitmentNoShowController {
     /**
      * 自分の NO_SHOW 履歴取得（ユーザー本人）。
      */
+    @SelfScopedEndpoint("RecruitmentNoShowService#getMyHistory が "
+            + "SecurityUtils.getCurrentUserId() のみを検索条件に束縛する")
     @GetMapping("/recruitment/no-shows/me")
     @Operation(summary = "自分のNO_SHOW履歴 (本人, §9.5)")
     public ResponseEntity<ApiResponse<List<RecruitmentNoShowRecordResponse>>> getMyNoShows() {
@@ -96,6 +100,9 @@ public class RecruitmentNoShowController {
     /**
      * 異議申立（本人）。
      */
+    // 認可根治済み: RecruitmentNoShowService#dispute が record.getUserId().equals(userId) で
+    // 本人所有を検証する（VISIBILITY_DENIED）。
+    @AuthorizedInService
     @PostMapping("/recruitment/no-shows/{noShowId}/dispute")
     @Operation(summary = "NO_SHOW 異議申立 (本人, §9.5)")
     public ResponseEntity<ApiResponse<RecruitmentNoShowRecordResponse>> dispute(

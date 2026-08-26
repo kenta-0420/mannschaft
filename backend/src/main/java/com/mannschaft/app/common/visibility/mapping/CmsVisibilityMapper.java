@@ -26,11 +26,21 @@ public final class CmsVisibilityMapper {
     public static StandardVisibility toStandard(Visibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // W2: cms.MEMBERS_ONLY は「MEMBER 以上」＝応援者除外の内輪（設計書 F06.1 §一覧 L799-801）。
+            // cms enum は SUPPORTERS_AND_ABOVE を別値で持つため内輪(i)の意図が確定。
+            // 出力先を正準ラダー MEMBERS_AND_ABOVE（hasRoleOrAbove(MEMBER)）へ変更。機能 enum 名・DB 値は据え置き（④A）。
+            case MEMBERS_ONLY -> StandardVisibility.MEMBERS_AND_ABOVE;
             case SUPPORTERS_AND_ABOVE -> StandardVisibility.SUPPORTERS_AND_ABOVE;
+            // 可視性ラダー統一（#1341）: FE が送る新ラダー値名。同名写像（旧 MEMBERS_ONLY と同一の可視範囲）。
+            case MEMBERS_AND_ABOVE -> StandardVisibility.MEMBERS_AND_ABOVE;
+            case ADMINS_AND_ABOVE -> StandardVisibility.ADMINS_AND_ABOVE;
+            // SCOPE_AFFILIATED = 直接所属者全員（応援者・ゲスト含む。旧 MEMBERS_ONLY 相当の正準値）。
+            case SCOPE_AFFILIATED -> StandardVisibility.SCOPE_AFFILIATED;
             case FOLLOWERS_ONLY -> StandardVisibility.FOLLOWERS_ONLY;
             case PRIVATE -> StandardVisibility.PRIVATE;
             case CUSTOM_TEMPLATE -> StandardVisibility.CUSTOM_TEMPLATE;
+            // F08.9 P4b: ペイウォール連結。evaluateCustom で PaymentGateService を呼ぶ。
+            case CUSTOM -> StandardVisibility.CUSTOM;
         };
     }
 }

@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.schedule.dto.IcalTokenResponse;
 import com.mannschaft.app.schedule.service.IcalService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import org.springframework.beans.factory.annotation.Value;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
@@ -31,12 +33,23 @@ public class IcalController {
 
     private static final MediaType TEXT_CALENDAR = MediaType.parseMediaType("text/calendar; charset=UTF-8");
 
+    /**
+     * フロントエンド / iCal URL の基底 URL。webcal:// リダイレクト先の組み立てに使用する。
+     * 正準プロパティ {@code app.base-url}（環境変数 {@code APP_BASE_URL}）から注入。
+     */
+    @Value("${app.base-url}")
+    private String appBaseUrl;
+
     private final IcalService icalService;
 
 
     /**
      * iCalトークンを取得する。未発行の場合は自動生成する。
      */
+    @SelfScopedEndpoint("トークン行が認証主体の userId に束縛される"
+            + "（IcalService#getOrCreateToken が IcalTokenRepository#findByUserId で引き、"
+            + "未発行時も insert(userId, ...) で自分の行を作る。"
+            + "リクエストはトークン値も対象ユーザーも受け取らないため、他人のトークンには到達しない）")
     @GetMapping("/api/v1/me/ical/token")
     @Operation(summary = "iCalトークン取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -48,6 +61,10 @@ public class IcalController {
     /**
      * iCalトークンを再生成する。
      */
+    @SelfScopedEndpoint("再発行対象のトークン行が認証主体の userId に束縛される"
+            + "（IcalService#regenerateToken が findByUserId で存在確認し "
+            + "updateToken(userId, ...) で自分の行のみを置換する。"
+            + "リクエストはトークン値を受け取らないため、他人のトークンは再発行できない）")
     @PostMapping("/api/v1/me/ical/token/regenerate")
     @Operation(summary = "iCalトークン再生成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再生成成功")
@@ -59,6 +76,10 @@ public class IcalController {
     /**
      * iCalトークンを削除する。
      */
+    @SelfScopedEndpoint("削除対象のトークン行が認証主体の userId に束縛される"
+            + "（IcalService#deleteToken が findByUserId で存在確認し "
+            + "deleteByUserId(userId) で自分の行のみを消す。"
+            + "リクエストはトークン値を受け取らないため、他人のトークンは失効させられない）")
     @DeleteMapping("/api/v1/me/ical/token")
     @Operation(summary = "iCalトークン削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
@@ -82,8 +103,10 @@ public class IcalController {
             @RequestParam(required = false) Long id) {
 
         // webcal:// リダイレクト
+        // app.base-url（https:// or http://）のスキームを webcal:// に変換して本番ホストを使用する
         if ("subscribe".equals(action)) {
-            String webcalUrl = "webcal://localhost/ical/" + token + ".ics";
+            String icalHttpUrl = appBaseUrl + "/ical/" + token + ".ics";
+            String webcalUrl = icalService.buildWebcalUrl(icalHttpUrl);
             if (scope != null) {
                 webcalUrl += "?scope=" + scope;
                 if (id != null) {

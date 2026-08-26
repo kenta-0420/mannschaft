@@ -2,21 +2,17 @@ package com.mannschaft.app.recruitment.visibility;
 
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.recruitment.entity.RecruitmentFriendTargetEntity;
+import com.mannschaft.app.recruitment.repository.RecruitmentFriendTargetRepository;
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -39,34 +35,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>recruitment_categories は Flyway 初期データで {@code id=1} (futsal_open) が
  * 既に投入されているのでそれを利用する。
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("RecruitmentListingVisibilityResolver 結合テスト")
-class RecruitmentListingVisibilityResolverIntegrationTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    // OOM 対策（既存 Repository テストパターン踏襲）
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+class RecruitmentListingVisibilityResolverIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private ContentVisibilityChecker checker;
+
+    @Autowired
+    private RecruitmentFriendTargetRepository friendTargetRepository;
 
     @PersistenceContext
     private EntityManager em;
@@ -80,17 +58,16 @@ class RecruitmentListingVisibilityResolverIntegrationTest {
     private Long orgId;
     private Long categoryId;
 
+    // F22.1 市 FRIEND_TEAMS_ONLY 用の追加 seed。
+    private Long friendTeamId;
+    private Long friendMemberUserId;
+
     @BeforeEach
     void setUp() {
         // 1. ロールを直接投入
-        em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW())")
-                .executeUpdate();
-        em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
-                .executeUpdate();
+        // 冪等化: insertRoleIfAbsent 参照（存在確認してから INSERT。INSERT IGNORE は使用禁止）
+        insertRoleIfAbsent("SYSTEM_ADMIN", "システム管理者", 1, true);
+        insertRoleIfAbsent("MEMBER", "メンバー", 4, false);
         em.flush();
 
         memberRoleId = ((Number) em.createNativeQuery(
@@ -108,6 +85,13 @@ class RecruitmentListingVisibilityResolverIntegrationTest {
 
         insertUserRole(memberUserId, memberRoleId, teamId, null);
         insertUserRole(sysAdminUserId, systemAdminRoleId, null, null);
+
+        // F22.1 市: フレンドチームとそのメンバーを seed（FRIEND_TEAMS_ONLY 検証用）。
+        friendTeamId = insertTeam("RL結合 フレンドチーム");
+        friendMemberUserId = insertUser("rl.friend@example.com", "友達", "一郎");
+        insertUserRole(friendMemberUserId, memberRoleId, friendTeamId, null);
+        // 札主チーム ↔ フレンドチームの成立フレンド関係（team_a_id < team_b_id で正規化）。
+        insertTeamFriend(teamId, friendTeamId);
 
         // ddl-auto=create-drop の test 環境では Flyway シードが走らないため
         // テストヘルパーで futsal_open カテゴリを直接 INSERT する。
@@ -155,8 +139,8 @@ class RecruitmentListingVisibilityResolverIntegrationTest {
     private Long insertOrganization(String name) {
         em.createNativeQuery(
                 "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, "
-                        + "supporter_enabled, version, created_at, updated_at) "
-                        + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
+                        + "supporter_enabled, version, slug, created_at, updated_at) "
+                        + "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
@@ -167,8 +151,8 @@ class RecruitmentListingVisibilityResolverIntegrationTest {
 
     private Long insertTeam(String name) {
         em.createNativeQuery(
-                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, created_at, updated_at) "
-                        + "VALUES (:name, 'PUBLIC', 1, 0, 0, NOW(), NOW())")
+                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, created_at, updated_at) "
+                        + "VALUES (:name, 'PUBLIC', 1, 0, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
@@ -249,6 +233,26 @@ class RecruitmentListingVisibilityResolverIntegrationTest {
                 "SELECT id FROM recruitment_listings WHERE title = :title")
                 .setParameter("title", title)
                 .getSingleResult()).longValue();
+    }
+
+    /** 札主チーム ↔ 宛先チームの成立フレンド関係を直接 INSERT する（team_a_id < team_b_id 正規化）。 */
+    private void insertTeamFriend(Long teamX, Long teamY) {
+        Long a = Math.min(teamX, teamY);
+        Long b = Math.max(teamX, teamY);
+        em.createNativeQuery(
+                "INSERT INTO team_friends ("
+                        + "team_a_id, team_b_id, established_at, a_follow_id, b_follow_id, "
+                        + "is_public, created_at, updated_at) "
+                        + "VALUES (:a, :b, NOW(), 0, 0, 0, NOW(), NOW())")
+                .setParameter("a", a)
+                .setParameter("b", b)
+                .executeUpdate();
+    }
+
+    /** 札に TEAM 粒度のフレンド宛先を 1 件追加する（recruitment_friend_targets）。 */
+    private void insertFriendTargetTeam(Long listingId, Long targetTeamId) {
+        friendTargetRepository.save(
+                RecruitmentFriendTargetEntity.ofTeam(listingId, targetTeamId));
     }
 
     // =========================================================================
@@ -345,4 +349,94 @@ class RecruitmentListingVisibilityResolverIntegrationTest {
                 ReferenceType.RECRUITMENT_LISTING, List.of(id1, id2, id3), sysAdminUserId);
         assertThat(sysAdmin).containsExactlyInAnyOrder(id1, id2, id3);
     }
+
+    // =========================================================================
+    // F22.1 市: FRIEND_TEAMS_ONLY（CUSTOM 正規化 → evaluateCustom）
+    //   🔴-2 根治の回帰テスト（02_api_design §7 / 04_security §1.1）
+    // =========================================================================
+
+    @Test
+    @DisplayName("FRIEND_TEAMS_ONLY: 宛先フレンドチームのメンバーは閲覧可")
+    void friendTeamsOnly_friendMember_visible() {
+        Long id = insertRecruitment("rl-friend-1", memberUserId, "OPEN", "FRIEND_TEAMS_ONLY");
+        insertFriendTargetTeam(id, friendTeamId);
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, friendMemberUserId))
+                .as("宛先フレンドチームのメンバーは閲覧可")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("FRIEND_TEAMS_ONLY: 札主チーム自身のメンバーは閲覧可")
+    void friendTeamsOnly_ownerMember_visible() {
+        Long id = insertRecruitment("rl-friend-2", memberUserId, "OPEN", "FRIEND_TEAMS_ONLY");
+        insertFriendTargetTeam(id, friendTeamId);
+        em.flush();
+        em.clear();
+
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, memberUserId))
+                .as("札主チーム自身のメンバーは閲覧可")
+                .isTrue();
+    }
+
+    @Test
+    @DisplayName("FRIEND_TEAMS_ONLY: 第三者（非宛先・非札主）は閲覧不可（404 存在秘匿）")
+    void friendTeamsOnly_thirdParty_invisible() {
+        Long id = insertRecruitment("rl-friend-3", memberUserId, "OPEN", "FRIEND_TEAMS_ONLY");
+        insertFriendTargetTeam(id, friendTeamId);
+        em.flush();
+        em.clear();
+
+        // nonMemberUserId はどのチームにも所属しない第三者。
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, nonMemberUserId))
+                .as("第三者は閲覧不可")
+                .isFalse();
+        // 未ログインも不可。
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, null))
+                .as("未ログインは閲覧不可")
+                .isFalse();
+    }
+
+    @Test
+    @DisplayName("FRIEND_TEAMS_ONLY: 宛先指定が無ければ札主以外は閲覧不可（fail-closed）")
+    void friendTeamsOnly_noTarget_onlyOwnerVisible() {
+        Long id = insertRecruitment("rl-friend-4", memberUserId, "OPEN", "FRIEND_TEAMS_ONLY");
+        // 宛先を一切登録しない。
+        em.flush();
+        em.clear();
+
+        // 宛先未登録でもフレンドチームメンバーは対象外。
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, friendMemberUserId))
+                .as("宛先未登録ならフレンドメンバーも不可")
+                .isFalse();
+        // 札主チームメンバーは常に可。
+        assertThat(checker.canView(ReferenceType.RECRUITMENT_LISTING, id, memberUserId))
+                .as("札主チームメンバーは可")
+                .isTrue();
+    }
+
+    private void insertRoleIfAbsent(String name, String displayName, int priority, boolean isSystem) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。INSERT IGNORE は
+        // 重複キー以外にもデータ切り詰め・NOT NULL違反等の異常を警告に格下げして黙って
+        // 通してしまうため使用禁止。CI shard 再編成で同居テストが変わり得るため
+        // 事前に SELECT で存在確認する）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
+        em.createNativeQuery(
+                        "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                                + "VALUES (:name, :dn, :priority, :sys, NOW(), NOW())")
+                .setParameter("name", name)
+                .setParameter("dn", displayName)
+                .setParameter("priority", priority)
+                .setParameter("sys", isSystem ? 1 : 0)
+                .executeUpdate();
+    }
+
 }

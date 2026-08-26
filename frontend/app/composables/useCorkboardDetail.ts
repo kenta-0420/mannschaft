@@ -44,12 +44,11 @@ export function useCorkboardDetail(tFn?: (key: string) => string) {
     return null
   })
 
-  /** `?scopeId=` クエリを数値に変換する。未設定または不正値は `null`。 */
-  const scopeIdParam = computed<number | null>(() => {
+  /** `?scopeId=` クエリを文字列として返す。未設定の場合は `null`。 */
+  const scopeIdParam = computed<string | null>(() => {
     const raw = route.query.scopeId
     if (raw == null) return null
-    const v = Number(Array.isArray(raw) ? raw[0] : raw)
-    return Number.isFinite(v) ? v : null
+    return String(Array.isArray(raw) ? raw[0] : raw)
   })
 
   // ----- 状態 -----

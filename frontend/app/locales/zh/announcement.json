@@ -25,50 +25,110 @@
     "empty": "暂无新公告。",
     "pin_limit_reached": "最多可置顶5条公告。",
     "already_registered": "该内容已注册为公告。",
-    "broadcast_button_team": "チーム内告知",
-    "broadcast_button_org": "組織内告知",
-    "wizard_title": "告知を送る",
-    "step1_title": "対象範囲",
-    "step2_title": "チャネルを選ぶ",
-    "step3_title": "内容を入力",
+    "no_longer_available": "该公告已结束公开，已从列表中移除。",
+    "mark_all_read_partial": "已将 {count} 条公告标为已读。仍有未读公告，再次点击可继续处理。",
+    "broadcast_button_team": "团队内通知",
+    "broadcast_button_org": "组织内通知",
+    "wizard_title": "发送通知",
+    "step1_title": "目标范围",
+    "step2_title": "选择渠道",
+    "step3_title": "输入内容",
     "step_of": "{current} / {total}",
-    "target_role_label": "誰に届けますか？",
-    "target_role_members_only": "メンバーのみ",
-    "target_role_supporters_and_above": "サポーター以上",
-    "target_role_public": "全員（公開）",
-    "target_teams_label": "対象チームを選択",
-    "target_teams_all": "すべてのチーム",
-    "target_teams_specific": "特定のチームを選ぶ",
-    "template_select_placeholder": "テンプレートから読み込む",
-    "template_quick_broadcast": "このテンプレートで告知する",
-    "channel_bulletin": "掲示板",
-    "channel_timeline": "タイムライン",
-    "channel_blog": "ブログ",
-    "channel_todo": "TODO（タスク配布）",
-    "channel_schedule": "スケジュール",
-    "channel_survey": "アンケート",
-    "channel_disabled_tooltip": "このスコープでは {channel} が無効です",
-    "todo_assignee_hint": "担当者はTODOページでADMINが割り当てるか、各メンバーが名乗り出てください",
-    "priority_label": "優先度",
-    "expires_at_label": "表示期限（任意）",
-    "preview_title": "プレビュー",
-    "submit_button": "告知を送る",
-    "unsaved_changes_warning": "入力内容が失われますがよいですか？",
-    "broadcast_success": "告知を送信しました",
-    "broadcast_success_cta": "お知らせウィジェットを確認する",
-    "form_title": "Title",
-    "form_body": "Body",
-    "form_start_at": "Start Date/Time",
-    "form_end_at": "End Date/Time",
-    "form_all_day": "All Day",
-    "form_location": "Location (optional)",
-    "form_description": "Description (optional)",
-    "form_closes_at": "Closing Date/Time (optional)",
-    "survey_questions_hint": "Questions can be added from the survey edit page after sending.",
-    "template_name_label": "テンプレート名",
-    "template_set_default": "デフォルトとして設定",
-    "template_create": "テンプレートとして保存",
-    "template_save_success": "テンプレートを保存しました",
-    "template_delete_confirm": "このテンプレートを削除しますか？"
+    "target_role_label": "您想通知谁？",
+    "target_role_members_only": "仅成员",
+    "target_role_supporters_and_above": "支持者及以上",
+    "target_role_public": "所有人（公开）",
+    "target_teams_label": "选择目标团队",
+    "target_teams_all": "所有团队",
+    "target_teams_specific": "选择特定团队",
+    "template_select_placeholder": "从模板加载",
+    "template_quick_broadcast": "使用此模板通知",
+    "channel_bulletin": "公告板",
+    "channel_timeline": "时间线",
+    "channel_blog": "博客",
+    "channel_todo": "待办（任务分配）",
+    "channel_schedule": "日程",
+    "channel_survey": "问卷",
+    "channel_disabled_tooltip": "{channel} 在此范围内不可用",
+    "todo_assignee_hint": "负责人可由ADMIN在待办页面分配，或由成员自愿认领。",
+    "priority_label": "优先级",
+    "expires_at_label": "显示截止日期（可选）",
+    "preview_title": "预览",
+    "submit_button": "发送通知",
+    "unsaved_changes_warning": "输入内容将丢失，确定吗？",
+    "broadcast_success": "通知已发送",
+    "broadcast_error_generic": "通知发送失败",
+    "broadcast_success_cta": "查看公告小部件",
+    "form_title": "标题",
+    "form_body": "正文",
+    "form_start_at": "开始时间",
+    "form_end_at": "结束时间",
+    "form_all_day": "全天",
+    "form_location": "地点（可选）",
+    "form_description": "描述（可选）",
+    "form_closes_at": "截止时间（可选）",
+    "survey_questions_hint": "问题可在发送后在问卷编辑页面添加。",
+    "template_name_label": "模板名称",
+    "template_set_default": "设为默认",
+    "template_create": "保存为模板",
+    "template_name_placeholder": "输入模板名称",
+    "template_save_success": "模板已保存",
+    "template_save_failed": "保存模板失败",
+    "template_delete_confirm": "确定要删除此模板吗？",
+    "incident": {
+      "dismiss": "关闭"
+    },
+    "broadcast_guide": {
+      "toggle": "使い方",
+      "description": "告知ウィザードの使い方を、ステップ順にまとめました。上から順に進めれば告知を送れます。",
+      "audience": {
+        "title": "誰に届けるか（対象範囲）",
+        "body": "告知を見せる相手の範囲を決めます（最初のステップ）。",
+        "steps": {
+          "step1": "届け先をメンバーのみ／サポーター以上／全員（公開）から選ぶ",
+          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ"
+        }
+      },
+      "template": {
+        "title": "テンプレートで時短",
+        "body": "よく使う宛先設定を呼び出し・保存できます。",
+        "steps": {
+          "step1": "『テンプレートから読み込む』で宛先を自動入力",
+          "step2": "（管理者のみ）『テンプレートとして保存』で現在の範囲を登録（1範囲あたり20件まで）"
+        }
+      },
+      "channel": {
+        "title": "届け方を選ぶ（チャネル）",
+        "body": "掲示板・タイムライン・ブログ・TODO・スケジュール・アンケートから配信先を1つ選びます。",
+        "steps": {
+          "step1": "6つのカードから1つ選ぶ",
+          "step2": "『次へ』。※テンプレに既定チャネルがあるとこの画面は省略されます"
+        }
+      },
+      "content": {
+        "title": "内容を書く",
+        "body": "選んだチャネルに合わせて入力欄が変わります。＊印は必須です。",
+        "steps": {
+          "step1": "タイトル・本文など必須欄を入力",
+          "step2": "例: スケジュールは開始日時、タイムラインは本文が必須"
+        }
+      },
+      "priority": {
+        "title": "優先度と表示期限",
+        "body": "目立たせ方と掲載の終了日時を設定できます。",
+        "steps": {
+          "step1": "（管理者以上）優先度を通常／重要／緊急から選ぶ。一般メンバーは『通常』固定",
+          "step2": "表示期限を任意で設定"
+        }
+      },
+      "submit": {
+        "title": "送信して確認",
+        "body": "入力が揃うと送信できます。送信後はお知らせに表示されます。",
+        "steps": {
+          "step1": "『告知を送る』を押す",
+          "step2": "送信完了を確認。※アンケートの設問・TODOの担当者は送信後に各画面で追加します"
+        }
+      }
+    }
   }
 }

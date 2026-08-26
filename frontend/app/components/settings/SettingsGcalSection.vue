@@ -1,122 +1,60 @@
 <script setup lang="ts">
-const gcalSyncSettings = defineModel<{
-  personalSync: boolean
-  teamSyncIds: number[]
-  orgSyncIds: number[]
-} | null>('gcalSyncSettings', { required: true })
-
+/**
+ * アカウント設定ページの Google Calendar 連携カード。
+ *
+ * チーム/組織別の同期ON/OFFトグルは詳細設定ページ（/settings/calendar-sync）に一本化したため、
+ * ここでは接続状態の簡易表示と詳細設定への導線のみを持つ（AC-14）。
+ */
 defineProps<{
-  gcalStatus: { isConnected: boolean; email: string | null; lastSyncedAt: string | null } | null
-  gcalSyncing: boolean
-  teams: { id: number; name: string; nickname1?: string | null }[]
-  organizations: { id: number; name: string; nickname1?: string | null }[]
+  gcalStatus: {
+    connected: boolean
+    googleAccountEmail: string | null
+  } | null
 }>()
 
-defineEmits<{
-  connect: []
-  disconnect: []
-  saveSettings: []
-  manualSync: []
-  toggleTeamSync: [teamId: number]
-  toggleOrgSync: [orgId: number]
-}>()
-
-const { formatDateTime } = useDatetime()
-
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '-'
-  return formatDateTime(dateStr)
+function goToDetail() {
+  navigateTo('/settings/calendar-sync')
 }
 </script>
 
 <template>
-  <SectionCard title="Google Calendar 連携">
-    <div v-if="gcalStatus?.isConnected" class="space-y-4">
+  <SectionCard :title="$t('settings.gcal.section_title')">
+    <div v-if="gcalStatus?.connected" class="flex items-center justify-between gap-3">
       <div class="flex items-center gap-3">
         <div
-          class="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30"
         >
           <i class="pi pi-check text-green-600" />
         </div>
         <div>
-          <p class="font-medium text-green-700 dark:text-green-400">接続中</p>
-          <p class="text-sm text-surface-500">{{ gcalStatus.email }}</p>
+          <p class="font-medium text-green-700 dark:text-green-400">
+            {{ $t('settings.gcal.connected_label') }}
+          </p>
+          <p class="text-sm text-surface-500">{{ gcalStatus.googleAccountEmail }}</p>
         </div>
       </div>
-      <p class="text-xs text-surface-400">
-        最終同期: {{ formatDate(gcalStatus.lastSyncedAt) }}
-      </p>
-      <div class="flex gap-2">
-        <Button
-          label="手動同期"
-          icon="pi pi-refresh"
-          size="small"
-          outlined
-          :loading="gcalSyncing"
-          @click="$emit('manualSync')"
-        />
-        <Button
-          label="連携解除"
-          icon="pi pi-times"
-          size="small"
-          severity="danger"
-          outlined
-          @click="$emit('disconnect')"
-        />
-      </div>
-      <div v-if="gcalSyncSettings">
-        <Divider />
-        <h3 class="mb-3 text-sm font-semibold">同期設定</h3>
-        <div class="mb-3 flex items-center justify-between">
-          <div>
-            <p class="text-sm font-medium">個人カレンダー</p>
-            <p class="text-xs text-surface-500">個人の予定をGoogleカレンダーに同期</p>
-          </div>
-          <ToggleSwitch v-model="gcalSyncSettings.personalSync" />
-        </div>
-        <div v-if="teams.length > 0" class="mb-3">
-          <p class="mb-2 text-xs font-medium text-surface-500">チームカレンダー</p>
-          <div class="space-y-2">
-            <div
-              v-for="team in teams"
-              :key="team.id"
-              class="flex items-center justify-between rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-700/50"
-            >
-              <span class="text-sm">{{ team.nickname1 || team.name }}</span>
-              <ToggleSwitch
-                :model-value="gcalSyncSettings.teamSyncIds.includes(team.id)"
-                @update:model-value="$emit('toggleTeamSync', team.id)"
-              />
-            </div>
-          </div>
-        </div>
-        <div v-if="organizations.length > 0" class="mb-3">
-          <p class="mb-2 text-xs font-medium text-surface-500">組織カレンダー</p>
-          <div class="space-y-2">
-            <div
-              v-for="org in organizations"
-              :key="org.id"
-              class="flex items-center justify-between rounded-lg bg-surface-50 px-3 py-2 dark:bg-surface-700/50"
-            >
-              <span class="text-sm">{{ org.nickname1 || org.name }}</span>
-              <ToggleSwitch
-                :model-value="gcalSyncSettings.orgSyncIds.includes(org.id)"
-                @update:model-value="$emit('toggleOrgSync', org.id)"
-              />
-            </div>
-          </div>
-        </div>
-        <Button label="設定を保存" icon="pi pi-check" size="small" @click="$emit('saveSettings')" />
-      </div>
+      <Button
+        :label="$t('settings.gcal.detail_link_button')"
+        icon="pi pi-arrow-right"
+        icon-pos="right"
+        text
+        size="small"
+        data-testid="gcal-detail-link"
+        @click="goToDetail"
+      />
     </div>
-    <div v-else>
-      <p class="mb-3 text-sm text-surface-500">
-        Googleアカウントと連携して、カレンダーを同期できます
+    <div v-else class="flex items-center justify-between gap-3">
+      <p class="text-sm text-surface-500">
+        {{ $t('settings.gcal.not_connected_description') }}
       </p>
       <Button
-        label="Googleアカウントに接続"
-        icon="pi pi-external-link"
-        @click="$emit('connect')"
+        :label="$t('settings.gcal.detail_link_button')"
+        icon="pi pi-arrow-right"
+        icon-pos="right"
+        text
+        size="small"
+        data-testid="gcal-detail-link"
+        @click="goToDetail"
       />
     </div>
   </SectionCard>

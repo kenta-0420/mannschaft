@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.visibility;
 
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.hibernate.SessionFactory;
@@ -7,16 +8,9 @@ import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.Collections;
 import java.util.Set;
@@ -36,34 +30,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * 直接 INSERT する。</p>
  *
  * <p>SQL 数の上限値は設計書 D-14 / 任務書「SQL 数 ≦ 3」を踏まえつつ、本実装では
- * §11.6 の連鎖判定（非アクティブ親 ORG 抽出）と role_name 解決を加えた最大 5 SQL
- * になる場合がある。各シナリオで具体的な発行回数を assertThat で検証する。</p>
+ * §11.6 の連鎖判定（非アクティブ親 ORG 抽出）・role_name 解決・F00.5 §8.3 の
+ * memberships role_kind バッチを加えた最大 7 SQL になる場合がある。
+ * memberships role_kind は direct スコープ ＋ 親 ORG を 1 バッチに統合しており、
+ * direct のみのシナリオでは従来 3 SQL に +1 して ≦4 となる（N+1 ではない）。
+ * 各シナリオで具体的な発行回数を assertThat で検証する。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("MembershipBatchQueryService 結合テスト")
-class MembershipBatchQueryServiceIntegrationTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    // OOM 対策（既存 Repository テストパターン踏襲）
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+class MembershipBatchQueryServiceIntegrationTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private MembershipBatchQueryService service;
@@ -83,14 +59,9 @@ class MembershipBatchQueryServiceIntegrationTest {
     @BeforeEach
     void setUp() {
         // 1. ロールを直接投入（A-3a 同様、Flyway 無効環境前提）。
-        em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('SYSTEM_ADMIN', 'システム管理者', 1, 1, NOW(), NOW())")
-                .executeUpdate();
-        em.createNativeQuery(
-                "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
-                        + "VALUES ('MEMBER', 'メンバー', 4, 0, NOW(), NOW())")
-                .executeUpdate();
+        // 冪等化: insertRoleIfAbsent 参照（存在確認してから INSERT。INSERT IGNORE は使用禁止）
+        insertRoleIfAbsent("SYSTEM_ADMIN", "システム管理者", 1, true);
+        insertRoleIfAbsent("MEMBER", "メンバー", 4, false);
         em.flush();
 
         memberRoleId = ((Number) em.createNativeQuery(
@@ -148,15 +119,15 @@ class MembershipBatchQueryServiceIntegrationTest {
         if (deleted) {
             em.createNativeQuery(
                     "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, " +
-                            "supporter_enabled, version, deleted_at, created_at, updated_at) " +
-                            "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW(), NOW())")
+                            "supporter_enabled, version, deleted_at, slug, created_at, updated_at) " +
+                            "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                     .setParameter("name", name)
                     .executeUpdate();
         } else {
             em.createNativeQuery(
                     "INSERT INTO organizations (name, org_type, visibility, hierarchy_visibility, " +
-                            "supporter_enabled, version, created_at, updated_at) " +
-                            "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, NOW(), NOW())")
+                    "supporter_enabled, version, slug, created_at, updated_at) " +
+                    "VALUES (:name, 'OTHER', 'PUBLIC', 'NONE', 1, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                     .setParameter("name", name)
                     .executeUpdate();
         }
@@ -169,8 +140,8 @@ class MembershipBatchQueryServiceIntegrationTest {
 
     private Long insertTeam(String name) {
         em.createNativeQuery(
-                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, created_at, updated_at) " +
-                        "VALUES (:name, 'PUBLIC', 1, 0, 0, NOW(), NOW())")
+                "INSERT INTO teams (name, visibility, supporter_enabled, version, member_count, slug, created_at, updated_at) " +
+                        "VALUES (:name, 'PUBLIC', 1, 0, 0, CONCAT('s-', LEFT(REPLACE(UUID(),'-',''),8)), NOW(), NOW())")
                 .setParameter("name", name)
                 .executeUpdate();
         return ((Number) em.createNativeQuery(
@@ -213,7 +184,7 @@ class MembershipBatchQueryServiceIntegrationTest {
     // =========================================================================
 
     @Test
-    @DisplayName("一般ユーザー × directScopes 単一 TEAM → 該当所属を返し SQL 数 ≦ 3")
+    @DisplayName("一般ユーザー × directScopes 単一 TEAM → 該当所属を返し SQL 数 ≦ 4")
     void 一般ユーザー_directScopes単一TEAM() {
         // 配置: ユーザーは TEAM1 に MEMBER として所属
         insertUserRole(userId, memberRoleId, teamId1, null);
@@ -227,10 +198,14 @@ class MembershipBatchQueryServiceIntegrationTest {
                 Set.of(new ScopeKey("TEAM", teamId1)),
                 Collections.emptySet());
 
-        // SQL 数: existsSystemAdmin (1) + findByUserIdAndScopes (1) + role_name 解決 (1) = 3
+        // SQL 数: existsSystemAdmin (1) + findByUserIdAndScopes (1) + role_name 解決 (1)
+        //        + memberships role_kind バッチ (1) = 4
+        // F00.5 §8.3 で memberships 由来 MEMBER/SUPPORTER を roleByScope へマージするため、
+        // memberships 専属ロール解決用の単一バッチクエリが 1 本増えた（N+1 ではなく O(1)）。
+        // SQL 数の番人として、緩めすぎない正しい新下限 ≦4 で締め直す。
         assertThat(stats.getPrepareStatementCount())
-                .as("directScopes 単一 TEAM の SQL 数は 3 以下であるべし")
-                .isLessThanOrEqualTo(3L);
+                .as("directScopes 単一 TEAM の SQL 数は 4 以下であるべし（memberships role_kind バッチ +1）")
+                .isLessThanOrEqualTo(4L);
 
         assertThat(snapshot.isSystemAdmin()).isFalse();
         assertThat(snapshot.roleByScope())
@@ -240,7 +215,7 @@ class MembershipBatchQueryServiceIntegrationTest {
     }
 
     @Test
-    @DisplayName("一般ユーザー × directScopes 複数 TEAM/ORG 混在 → 該当多件、SQL 数 ≦ 3")
+    @DisplayName("一般ユーザー × directScopes 複数 TEAM/ORG 混在 → 該当多件、SQL 数 ≦ 4")
     void 一般ユーザー_directScopes複数混在() {
         insertUserRole(userId, memberRoleId, teamId1, null);
         insertUserRole(userId, memberRoleId, null, orgId1);
@@ -256,9 +231,12 @@ class MembershipBatchQueryServiceIntegrationTest {
                         new ScopeKey("ORGANIZATION", orgId1)),
                 Collections.emptySet());
 
+        // SQL 数: existsSystemAdmin (1) + findByUserIdAndScopes (1) + role_name 解決 (1)
+        //        + memberships role_kind バッチ (1) = 4
+        // direct teams / orgs を 1 つの membership バッチに統合しているため、混在でも +1 のみ。
         assertThat(stats.getPrepareStatementCount())
-                .as("directScopes 複数混在の SQL 数は 3 以下であるべし")
-                .isLessThanOrEqualTo(3L);
+                .as("directScopes 複数混在の SQL 数は 4 以下であるべし（memberships role_kind バッチ +1）")
+                .isLessThanOrEqualTo(4L);
 
         assertThat(snapshot.roleByScope())
                 .hasSize(2)
@@ -355,4 +333,27 @@ class MembershipBatchQueryServiceIntegrationTest {
         assertThat(snapshot.isSystemAdmin()).isFalse();
         assertThat(snapshot.roleByScope()).isEmpty();
     }
+
+    private void insertRoleIfAbsent(String name, String displayName, int priority, boolean isSystem) {
+        // 冪等化: roles はグローバル参照テーブルのため、既存なら再利用し二重INSERTしない
+        // （同一 name の重複INSERTは roles の UNIQUE 制約違反になる。INSERT IGNORE は
+        // 重複キー以外にもデータ切り詰め・NOT NULL違反等の異常を警告に格下げして黙って
+        // 通してしまうため使用禁止。CI shard 再編成で同居テストが変わり得るため
+        // 事前に SELECT で存在確認する）。
+        Number existingRoleCount = (Number) em.createNativeQuery("SELECT COUNT(*) FROM roles WHERE name = :name")
+                .setParameter("name", name)
+                .getSingleResult();
+        if (existingRoleCount.longValue() > 0) {
+            return;
+        }
+        em.createNativeQuery(
+                        "INSERT INTO roles (name, display_name, priority, is_system, created_at, updated_at) "
+                                + "VALUES (:name, :dn, :priority, :sys, NOW(), NOW())")
+                .setParameter("name", name)
+                .setParameter("dn", displayName)
+                .setParameter("priority", priority)
+                .setParameter("sys", isSystem ? 1 : 0)
+                .executeUpdate();
+    }
+
 }

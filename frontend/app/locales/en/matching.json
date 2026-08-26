@@ -1,0 +1,65 @@
+{
+  "matching": {
+    "pageTitle": "Matching",
+    "teamPageTitle": "Matching",
+    "listHeading": "Match & Exchange Listings",
+    "empty": "No listings found",
+    "filter": {
+      "prefecture": "Prefecture",
+      "allPrefectures": "All prefectures",
+      "city": "City",
+      "allCities": "All cities",
+      "category": "Category",
+      "allCategories": "All categories",
+      "keyword": "Search by keyword",
+      "search": "Search",
+      "clear": "Clear",
+      "mobileToggle": "Filters"
+    },
+    "category": {
+      "ANY": "Any",
+      "ELEMENTARY": "Elementary school",
+      "JUNIOR_HIGH": "Junior high school",
+      "HIGH_SCHOOL": "High school",
+      "UNIVERSITY": "University",
+      "ADULT": "Adult",
+      "SENIOR": "Senior"
+    },
+    "history": {
+      "title": "Recent searches"
+    },
+    "create": {
+      "button": "Create listing"
+    },
+    "guide": {
+      "title": "Find Matches — How to Use",
+      "browse": {
+        "title": "Browse Listings",
+        "body": "All match and exchange listings across the platform are displayed here. Each card shows the team name, type, level, and number of applications. Look for listings with the \"Open\" status."
+      },
+      "status": {
+        "title": "Understanding Status",
+        "body": "Check the colored badge in the top-left of each listing card to see its status.",
+        "open": "Open (green) — Currently accepting applications",
+        "matched": "Matched (blue) — An opponent has been confirmed",
+        "cancelled": "Cancelled (red) — The listing has been withdrawn"
+      },
+      "types": {
+        "title": "Types, Categories & Levels",
+        "body": "Listing cards show the type, category, and level. Find listings that match your team's conditions.",
+        "competition": "Match — Listings for official or practice matches",
+        "practice": "Practice — Listings for joint practice or guest participation",
+        "exchange": "Exchange — Friendly matches or event-style exchanges",
+        "recruit": "Recruit — Listings for substitute or one-time players"
+      },
+      "create": {
+        "title": "Post a Listing from Your Team",
+        "body": "To find opponents or exchange partners, create a listing from the Matching tab on your team page.",
+        "step1": "Open your team page",
+        "step2": "Tap the \"Matching\" tab",
+        "step3": "Tap the \"Create Listing\" button",
+        "step4": "Enter the title, type, and category, then tap \"Create\""
+      }
+    }
+  }
+}

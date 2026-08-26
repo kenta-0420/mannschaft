@@ -61,7 +61,8 @@ public class ReceiptQueueController {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
         ReceiptQueueStatus queueStatus = status != null
                 ? ReceiptQueueStatus.valueOf(status.toUpperCase()) : null;
-        PagedResponse<QueueItemResponse> response = queueService.listQueue(type, scopeId, queueStatus, page, size);
+        PagedResponse<QueueItemResponse> response = queueService.listQueue(
+                type, scopeId, queueStatus, page, size, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(response);
     }
 
@@ -107,7 +108,7 @@ public class ReceiptQueueController {
             @RequestParam Long scopeId,
             @PathVariable Long id) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        queueService.skipQueueItem(type, scopeId, id);
+        queueService.skipQueueItem(type, scopeId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

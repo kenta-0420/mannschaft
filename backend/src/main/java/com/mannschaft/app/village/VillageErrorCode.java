@@ -26,22 +26,65 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_001: 村が存在しない / 削除 / 凍結済み（404、IDOR 対策で統一） */
     VILLAGE_NOT_FOUND("VILLAGE_001", "村が見つかりません", Severity.WARN),
 
-    /** VILLAGE_002: UNLISTED 村に非村人がアクセス（403） */
+    /**
+     * VILLAGE_002: UNLISTED 村に非村人がアクセス。
+     *
+     * <p><b>新規使用禁止。過去互換（既存クライアントとステータス写像表）のためだけに残す。</b>
+     * 非可視の村は例外なく {@link #VILLAGE_NOT_FOUND}（{@code VILLAGE_001}）を投げること。</p>
+     *
+     * <p>理由: 本コードは 404 に写像されており<b>ステータスは不在と一致していた</b>が、
+     * 応答<b>本文</b>の {@code error.code} が {@code VILLAGE_002} と {@code VILLAGE_001} で割れるため、
+     * 本文だけで「その村 ID は実在するが非公開」と判別できた（存在オラクル）。
+     * ステータスを揃えるだけでは秘匿は完成しない。この約束は番人
+     * {@code VillageUnlistedErrorCodeRetirementGuardTest} が本番ソースの静的走査で強制する。</p>
+     *
+     * <p><b>非公開村の存在秘匿のため 404 固定</b>。UNLISTED 村は検索結果から意図的に除外され
+     * 「存在を隠す」設計であり、403 を返すと不在（{@link #VILLAGE_NOT_FOUND} = 404）との差で
+     * 村 ID の実在が漏れる（存在オラクル）。</p>
+     *
+     * <p>なお PUBLIC 村は検索で誰でも見つけられ存在自体が公開情報のため、非村人アクセス時の
+     * {@code VILLAGE_024}（MODERATION_FORBIDDEN）は 403 のままが正しい。ここへ巻き込まないこと。</p>
+     */
     VILLAGE_UNLISTED("VILLAGE_002", "この村は非公開です", Severity.WARN),
 
-    /** VILLAGE_003: 村名重複（400） */
+    /**
+     * VILLAGE_003: 村名重複（409）。
+     *
+     * <p>既存リソースとの状態競合なので 409 とする。村ドメインの「重複」系は
+     * VILLAGE_008（NICKNAME_TAKEN）・VILLAGE_035（CREATION_REQUEST_SLUG_TAKEN）・
+     * VILLAGE_084・VILLAGE_092 など大半が既に 409 であり、本コードだけが 400 に取り残されて
+     * いた。設計書 {@code docs/features/F17.1_village_community.md} §10 の表も 409 へ是正済み。</p>
+     */
     VILLAGE_NAME_TAKEN("VILLAGE_003", "その村名はすでに使われています", Severity.WARN),
 
-    /** VILLAGE_004: スラッグ形式不正（400） */
+    /**
+     * VILLAGE_004: スラッグ形式不正（400）。
+     *
+     * <p>重複ではなく入力値そのものの形式バリデーション（文字種・長さ）なので 400 のまま。
+     * 隣の VILLAGE_005（スラッグ重複・409）と混同しないこと。</p>
+     */
     VILLAGE_SLUG_INVALID("VILLAGE_004", "スラッグの形式が不正です（3〜40文字の英小文字・数字・ハイフン）", Severity.WARN),
 
-    /** VILLAGE_005: スラッグ重複（400） */
+    /**
+     * VILLAGE_005: スラッグ重複（409）。
+     *
+     * <p>VILLAGE_035（CREATION_REQUEST_SLUG_TAKEN）と<b>まったく同じ「スラッグが既に使われて
+     * いる」という意味</b>でありながら、村を直接作る経路では 400、村作成申請の経路では 409 と
+     * 分かれていた。経路によってステータスが変わるのは誤りなので 409 に統一した。</p>
+     */
     VILLAGE_SLUG_TAKEN("VILLAGE_005", "そのスラッグはすでに使われています", Severity.WARN),
 
     /** VILLAGE_006: すでに村人（409） */
     ALREADY_MEMBER("VILLAGE_006", "すでに村人です", Severity.WARN),
 
-    /** VILLAGE_007: 村人ではない（409） */
+    /**
+     * VILLAGE_007: 村人ではない（404）。
+     *
+     * <p>設計書 F17.1 は §10 の採番表で 409、§4.10.5 の本文で 404 と自己矛盾していた
+     * （{@code F17.1_village_headman_console_and_recruit_categories.md} §9.1 で指摘済み）。
+     * 非村人に対して村の内部リソースの有無を示さない §4.10.5 の 404 を正とし、
+     * {@code GlobalExceptionHandler} も 404 で登録済みなのでこちらへ統一する。</p>
+     */
     NOT_MEMBER("VILLAGE_007", "この村のメンバーではありません", Severity.WARN),
 
     /** VILLAGE_008: ニックネーム重複（プラットフォーム全体で先着優先・409） */
@@ -50,8 +93,21 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_009: 通報レートリミット超過（429、設計書 §6.4 で 10 件/時/ユーザー） */
     VILLAGE_REPORT_RATE_LIMITED("VILLAGE_009", "通報の上限に達しました（1時間に10件）", Severity.WARN),
 
-    /** VILLAGE_010: 村作成申請レート超過（429） */
-    CREATION_REQUEST_THROTTLED("VILLAGE_010", "村作成申請のレート上限に達しました（1日3件・保有10件まで）", Severity.WARN),
+    /**
+     * VILLAGE_010: 村作成のレート超過（429）。
+     *
+     * <p>本コードは 2 箇所から投げられ、条件が異なる:
+     * <ul>
+     *   <li>{@code VillageCreationRequestService} — 直近 24 時間（ローリング）の村作成申請が上限に達した</li>
+     *   <li>{@code VillageService} — 同一暦日（0:00 起点）の直接村作成が上限に達した</li>
+     * </ul>
+     * どちらも「短期間に村作成が集中した」という同一の利用者体験なので、
+     * 特定の窓（「1日◯件」等の日次リセットを誤解させる表現）や保有数に依存しない
+     * 汎用メッセージとする。数値・リセット挙動を本文に書かないのは、
+     * 実装（24h ローリング / 暦日）ごとに文言が乖離して誤読を招くのを防ぐため。</p>
+     */
+    CREATION_REQUEST_THROTTLED("VILLAGE_010",
+            "村作成の回数制限に達しました。しばらく時間をおいてから再度お試しください", Severity.WARN),
 
     /** VILLAGE_011: ニックネーム変更レート超過（429） */
     NICKNAME_CHANGE_THROTTLED("VILLAGE_011", "ニックネーム変更は月3回までです", Severity.WARN),
@@ -59,7 +115,13 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_012: 参加村数ハード上限（429） */
     PARTICIPATION_LIMIT_EXCEEDED("VILLAGE_012", "参加可能な村数の上限（100）を超えました", Severity.WARN),
 
-    /** VILLAGE_014: ガイドライン未同意 / 同意期限切れ（400） */
+    /**
+     * VILLAGE_014: ガイドライン未同意 / 同意期限切れ（422）。
+     *
+     * <p>設計書 F17.1 §10 の表記は 400 だったが、実装・契約テストとも 422 で確定しており、
+     * 村ドメインは「入力自体は妥当だが前提条件を満たさない」系をすべて 422 に揃えている
+     * （VILLAGE_028 / VILLAGE_041 / VILLAGE_085 等）。兄弟と流儀を合わせて 422 を正とする。</p>
+     */
     GUIDELINE_NOT_AGREED("VILLAGE_014", "村ガイドラインへの同意が必要です（直近1時間以内）", Severity.WARN),
 
     /** VILLAGE_015: チーム/組織代表権限なし（403） */
@@ -298,8 +360,14 @@ public enum VillageErrorCode implements ErrorCode {
     /** VILLAGE_073: 同一候補日への重複追加（409、UNIQUE 制約に先立つアプリ層チェック）。 */
     VOTE_DUPLICATE("VILLAGE_073", "この候補日は既に登録されています", Severity.WARN),
 
-    /** VILLAGE_074: 寄合の操作には村人であることが必要（403）。 */
-    MEETUP_NOT_MEMBER("VILLAGE_074", "寄合の操作には村人である必要があります", Severity.WARN),
+    /**
+     * VILLAGE_074: この操作には村人であることが必要（403）。
+     *
+     * <p>元は寄合専用（MEETUP_NOT_MEMBER）だったが、祭の参加レイヤー（RSVP・実況）でも同じ
+     * 「村メンバー限定」ガードに再利用するため、メッセージをドメイン中立に変更した（検分🟡5）。
+     * コードとenum定数名は後方互換のため据え置く。</p>
+     */
+    MEETUP_NOT_MEMBER("VILLAGE_074", "この操作には村人である必要があります", Severity.WARN),
 
     // ==================================================================
     // F17 Phase 3-β — 村史（VILLAGE_075）
@@ -336,7 +404,249 @@ public enum VillageErrorCode implements ErrorCode {
 
     /** VILLAGE_080: opt-out していないのに opt-in しようとした（409、対称性）。 */
     NEWSLETTER_NOT_OPTED_OUT("VILLAGE_080",
-            "このニュースレターは配信停止されていません", Severity.WARN);
+            "このニュースレターは配信停止されていません", Severity.WARN),
+
+    // ==================================================================
+    // F17.1 村掲示板グローバル方式 — 掲示板閲覧認可（VILLAGE_081）
+    // ==================================================================
+
+    /**
+     * VILLAGE_081: MEMBERS_ONLY の村掲示板を非メンバーが閲覧しようとした（403）。
+     *
+     * <p>村本体の {@code bulletin_visibility = MEMBERS_ONLY} の場合、村メンバーまたは
+     * SYSTEM_ADMIN のみが掲示板（スレッド／カテゴリ）を閲覧できる。非メンバーのログイン済
+     * ユーザーが閲覧を試みた場合に投げる。{@code bulletin_visibility = PUBLIC} の村では
+     * ログイン済ユーザーなら誰でも閲覧可能なため本コードは発生しない。</p>
+     */
+    VILLAGE_BULLETIN_VIEW_FORBIDDEN("VILLAGE_081",
+            "この村の掲示板は村人のみが閲覧できます", Severity.WARN),
+
+    /**
+     * VILLAGE_082: 村掲示板のモデレーション操作（ピン留め・ロック・優先度変更・他者投稿の削除等）を
+     * 非モデレーター（村長 HEADMAN / 長老 ELDER でも SYSTEM_ADMIN でもないユーザー）が試みた（403）。
+     *
+     * <p>村掲示板グローバル方式（F17.1）の書込・モデレーション系 API で、村ロールが
+     * HEADMAN / ELDER いずれにも該当しないユーザーがモデレーター専用操作を実行しようとした場合に投げる。
+     * 投稿者本人による自分の投稿の更新・削除はモデレーター権限を要しないため本コードは発生しない。</p>
+     */
+    VILLAGE_BULLETIN_MODERATE_FORBIDDEN("VILLAGE_082",
+            "この操作は村の村長または長老のみが行えます", Severity.WARN),
+
+    // ==================================================================
+    // F17.1 村長コンソール + 募集カテゴリマスタ（VILLAGE_083〜086）
+    // ==================================================================
+    // 設計書 docs/features/F17.1_village_headman_console_and_recruit_categories.md §8
+
+    /** VILLAGE_083: 募集カテゴリが存在しない（404、IDOR 対策で村不一致も 404 に統一）。 */
+    RECRUIT_CATEGORY_NOT_FOUND("VILLAGE_083", "募集カテゴリが見つかりません", Severity.WARN),
+
+    /** VILLAGE_084: 同一村内でカテゴリ名が重複（409）。 */
+    RECRUIT_CATEGORY_NAME_DUPLICATED("VILLAGE_084", "同じ名前の募集カテゴリが既にあります", Severity.WARN),
+
+    /** VILLAGE_085: 1村あたりのカテゴリ数上限（20件）超過（422）。 */
+    RECRUIT_CATEGORY_LIMIT_EXCEEDED("VILLAGE_085", "募集カテゴリは20件までです", Severity.WARN),
+
+    /** VILLAGE_086: 使用中の募集カテゴリを削除しようとした（409）。 */
+    RECRUIT_CATEGORY_IN_USE("VILLAGE_086", "このカテゴリを使っている募集があるため削除できません", Severity.WARN),
+
+    // ==================================================================
+    // F17.1 ②-2 村ニュースレター集計・凍結（VILLAGE_087）
+    // 設計書 docs/features/F17.1_village_newsletter_content_model.md §4.2 / §11.1 AC-02
+    // ==================================================================
+
+    /**
+     * VILLAGE_087: 凍結済みニュースレター号の集計値（digest_*）を更新しようとした（409）。
+     *
+     * <p>号の凍結ダイジェストは snapshot として確定後は不変（改ざん不可・要件①）。
+     * {@code status != AGGREGATED} の号に対して再集計・再凍結を試みた場合に投げる
+     * （設計書 §4.2「凍結後に集計値を更新しようとする操作は BusinessException で拒否する」）。</p>
+     */
+    NEWSLETTER_ISSUE_ALREADY_FROZEN("VILLAGE_087",
+            "この号は既に凍結されているため集計値を変更できません", Severity.WARN),
+
+    // ==================================================================
+    // F17.1 ②-4 村ニュースレター コメント/タグ/公開一覧 API（VILLAGE_088〜092）
+    // 設計書 docs/features/F17.1_village_newsletter_content_model.md §8 / §11.2 / §11.4
+    // ==================================================================
+
+    /**
+     * VILLAGE_088: ニュースレター号が存在しない（404、IDOR 対策で村不一致・非公開直アクセスも 404 に統一）。
+     *
+     * <p>号 ID が存在しない／指定村に属さない／公開一覧で PUBLIC×PUBLISHED でない号への直アクセス時に投げる
+     * （設計書 §8.2「PUBLIC 以外への直アクセスは 404 で存在秘匿」）。</p>
+     */
+    NEWSLETTER_ISSUE_NOT_FOUND("VILLAGE_088",
+            "ニュースレターの号が見つかりません", Severity.WARN),
+
+    /**
+     * VILLAGE_089: 号の楽観ロック競合（409）。
+     *
+     * <p>コメント保存・タグ付け・公開範囲切替で、クライアントが送った {@code version} が号の現在値と
+     * 一致しない場合に投げる（設計書 §4.4・村長と長老の同時編集を検出）。FE はリロードを促す。</p>
+     */
+    NEWSLETTER_ISSUE_VERSION_CONFLICT("VILLAGE_089",
+            "他の管理者がこの号を更新しました。最新の内容を確認して再度お試しください", Severity.WARN),
+
+    /** VILLAGE_090: ニュースレタータグが存在しない（404、IDOR 対策で村不一致も 404 に統一）。 */
+    NEWSLETTER_TAG_NOT_FOUND("VILLAGE_090",
+            "ニュースレターのタグが見つかりません", Severity.WARN),
+
+    /** VILLAGE_091: 使用中のタグを削除しようとした（409、募集カテゴリの使用中ガードに倣う）。 */
+    NEWSLETTER_TAG_IN_USE("VILLAGE_091",
+            "このタグを使っている号があるため削除できません", Severity.WARN),
+
+    /** VILLAGE_092: 同一村内でタグ名が重複（409、uk_vnt_village_name に先立つアプリ層チェック）。 */
+    NEWSLETTER_TAG_DUPLICATE("VILLAGE_092",
+            "同じ名前のタグが既にあります", Severity.WARN),
+
+    /**
+     * VILLAGE_093: ニュースレター<b>タグ</b>の楽観ロック競合（409・②-4 堅牢性 AC-13）。
+     *
+     * <p>タグ更新（{@code updateTag}）で、クライアントが送った {@code version} がタグの現在値と
+     * 一致しない場合に投げる。号の版競合（{@link #NEWSLETTER_ISSUE_VERSION_CONFLICT}・VILLAGE_089）とは
+     * 対象エンティティが異なる（号 vs タグ）ため、原因究明を容易にする目的で専用コードを分ける。</p>
+     */
+    NEWSLETTER_TAG_VERSION_CONFLICT("VILLAGE_093",
+            "他の管理者がこのタグを更新しました。最新の内容を確認して再度お試しください", Severity.WARN),
+
+    // ==================================================================
+    // F17.2 Wave1 ②寄合後半戦・④年輪（VILLAGE_094〜096 / VILLAGE_101）
+    // ※ VILLAGE_097〜098 は F17.2 の祭 RSVP・実況で予約済み（設計書 §16.1）。
+    // ==================================================================
+
+    /** VILLAGE_094: PLANNING 中の寄合に出欠 API を叩いた（409・出欠は CONFIRMED 限定・設計書 §4.5/AC-08）。 */
+    MEETUP_NOT_CONFIRMED("VILLAGE_094",
+            "この寄合はまだ日程が確定していないため、出欠を受け付けられません", Severity.WARN),
+
+    /** VILLAGE_095: 既に割当済みの宿題 TODO への claim（409・設計書 §4.3/AC-10）。 */
+    MEETUP_TODO_ALREADY_CLAIMED("VILLAGE_095",
+            "この宿題は既に他の村人が引き受けています", Severity.WARN),
+
+    /**
+     * VILLAGE_096: 手挙げ者以外による宿題の complete/release（403・設計書 §4.3/AC-11・AC-12）。
+     *
+     * <p>complete は「手挙げ者本人＋幹事」、release は「本人のみ」に限る。権限の非対称
+     * （幹事でも他人の割当は手放せない）はサービス層で分岐して判定する。</p>
+     */
+    MEETUP_TODO_NOT_ASSIGNEE("VILLAGE_096",
+            "この宿題を操作する権限がありません", Severity.WARN),
+
+    // ==================================================================
+    // F17.2 Wave3 ⑤相性表示・⑥所属村一覧（VILLAGE_099〜100）
+    // 設計書 docs/features/F17.2_village_events_activation.md §16.1
+    // ==================================================================
+
+    /**
+     * VILLAGE_099: 加入前相性表示で対象村が PUBLIC でない（§8.7）。
+     *
+     * <p><strong>内部予約コード</strong>。UNLISTED 村への非メンバー相性アクセスは
+     * 「架空の村IDへのアクセス」と区別がつかない <strong>404（{@link #VILLAGE_NOT_FOUND}）で存在秘匿</strong>するため、
+     * 本コードの本文は通常返さない（存在秘匿を優先）。将来、存在を隠す必要のない内部用途が生じた場合の予約枠。</p>
+     */
+    AFFINITY_NOT_PUBLIC_VILLAGE("VILLAGE_099",
+            "この村は相性表示の対象ではありません", Severity.WARN),
+
+    /**
+     * VILLAGE_100: 所属村一覧で返せる村が0件（403・§9.4）。
+     *
+     * <p>閲覧者と対象者に共通村があるか否かに関わらず、二重フィルタ（同居 ∩ 公開ON ∩ 村PUBLIC）の結果が
+     * 0件になる場合は一律 403 を返す。200 空配列を返すと「この2人は同じ村に居る」という同居関係の存在を
+     * 漏らす（サイドチャネル）ため、同居関係の有無ごと秘匿する。</p>
+     */
+    PROFILE_VILLAGES_FORBIDDEN("VILLAGE_100",
+            "所属村一覧を表示する権限がありません", Severity.WARN),
+
+    /** VILLAGE_101: 年輪（歳時記の年ごとの記録）の他人削除（403・投稿者本人＋村長/長老のみ・設計書 §6.4/AC-18b）。 */
+    CALENDAR_LOG_FORBIDDEN("VILLAGE_101",
+            "この記録を削除する権限がありません", Severity.WARN),
+
+    // ==================================================================
+    // F17.2 Wave2 ③祭の参加レイヤー（VILLAGE_097・098・102）
+    // 設計書 docs/features/F17.2_village_events_activation.md §5・§16.1
+    // ※ VILLAGE_097〜098 は §16.1 で予約済み枠を確定使用。VILLAGE_102 は現最大(101)の次。
+    // ==================================================================
+
+    /**
+     * VILLAGE_097: 参加表明（RSVP）を受け付けられない状態の祭に対する操作（409・設計書 §5.6/§12.2）。
+     *
+     * <p>RSVP の登録・取消は SCHEDULED / ACTIVE の祭のみ受け付ける。ENDED / CANCELLED の祭に
+     * 対する RSVP 書き込み・取消は本コードで拒否する（ENDED 後は村史スナップショットとの
+     * 一貫性のため読み取り専用）。</p>
+     */
+    FESTIVAL_RSVP_NOT_OPEN("VILLAGE_097",
+            "このお祭りは現在、参加表明を受け付けられない状態です", Severity.WARN),
+
+    /**
+     * VILLAGE_098: 実況タグ付けを ACTIVE 以外の祭に対して行おうとした（409・設計書 §5.4/AC-16）。
+     *
+     * <p>実況投稿の紐付けは開催中（ACTIVE）の祭のみ受け付ける。SCHEDULED / ENDED / CANCELLED の
+     * 祭への実況タグは本コードで拒否する。</p>
+     */
+    FESTIVAL_LIVE_NOT_ACTIVE("VILLAGE_098",
+            "実況の投稿は開催中のお祭りにのみ紐付けられます", Severity.WARN),
+
+    /**
+     * VILLAGE_102: 同一投稿を同じ祭へ二重に実況タグ付けした（409・設計書 §5.6/AC-16）。
+     *
+     * <p>複合自然キー {@code (festival_id, timeline_post_id)} の重複。冪等に握り潰さず
+     * 明示エラーにする（対処療法禁止）。</p>
+     */
+    FESTIVAL_LIVE_POST_DUPLICATE("VILLAGE_102",
+            "この投稿は既にこのお祭りの実況として登録されています", Severity.WARN),
+
+    // ==================================================================
+    // F17.2 追補 — 寄合定員（VILLAGE_103）
+    // 設計確定仕様: capacity（GOING 出欠の定員）が満席のときの新規 GOING を拒否する。
+    // ==================================================================
+
+    /**
+     * VILLAGE_103: 寄合の定員（capacity）が満席で、新規に GOING（行く）を登録できない（409）。
+     *
+     * <p>capacity は GOING 出欠のみを制約する（MAYBE/ABSENT は無制約）。既に GOING の本人が
+     * 再度 GOING を送る冪等操作は満席でも通す（本人は塞がない）。GOING→MAYBE/ABSENT で枠が空く。
+     * Severity は既定 WARN のままだと 400 に落ちるため、{@code GlobalExceptionHandler} の
+     * {@code ERROR_CODE_STATUS_MAP} で VILLAGE_103 → 409 を個別登録する。</p>
+     */
+    MEETUP_CAPACITY_FULL("VILLAGE_103",
+            "この寄合は定員に達しているため、これ以上「行く」を受け付けられません", Severity.WARN),
+
+    // ==================================================================
+    // F17.3 村憲章（VILLAGE_104〜108）
+    // 設計書 docs/features/F17.3_village_charter.md §16.1
+    // ※ 設計書は VILLAGE_102 始まりだが、102(FESTIVAL_LIVE_POST_DUPLICATE)・103(MEETUP_CAPACITY_FULL)
+    //   が先取り済みのため 104 から採る。404/409 を返すコードは GlobalExceptionHandler の
+    //   ERROR_CODE_STATUS_MAP に個別登録が必要（既定 WARN は 400 に落ちるため）。
+    // ==================================================================
+
+    /**
+     * VILLAGE_104: 当該 charter に属さない条 id を指定（404）。
+     * 他村の articleId 食い違いも 404 に統一する（IDOR 対策・{@code village_id} 冗長列で照合・§AC-08）。
+     */
+    CHARTER_ARTICLE_NOT_FOUND("VILLAGE_104", "その条は見つかりません", Severity.WARN),
+
+    /**
+     * VILLAGE_105: 条の本文/付則更新（{@code PUT}）で条単位 {@code @Version} 競合（層1・§7）。
+     */
+    CHARTER_ARTICLE_VERSION_CONFLICT("VILLAGE_105",
+            "他の村長が同時に編集しました。最新を読み込み直してください", Severity.WARN),
+
+    /**
+     * VILLAGE_106: 並び替え（{@code PATCH order}）のみで親 charter {@code @Version} 競合（層2・§7）。
+     * {@code POST}/{@code DELETE} は悲観ロック直列化で 409 を返さない（§6.3）。
+     */
+    CHARTER_ORDER_VERSION_CONFLICT("VILLAGE_106",
+            "並び替え中に他の村長が構成を変更しました。最新を読み込み直してください", Severity.WARN),
+
+    /**
+     * VILLAGE_107: 存在しない策定者 id を削除（404）。他 charter の drafter 食い違いも 404（§AC-16）。
+     */
+    CHARTER_DRAFTER_NOT_FOUND("VILLAGE_107", "その策定者は見つかりません", Severity.WARN),
+
+    /**
+     * VILLAGE_108: 同一ユーザーの二重策定者登録（409・§5.4）。
+     * UNIQUE {@code uk_vcd_charter_user} に先立つアプリ層チェック（冪等に握り潰さず明示エラー）。
+     */
+    CHARTER_DRAFTER_DUPLICATE("VILLAGE_108", "その村人はすでに策定者です", Severity.WARN);
 
     private final String code;
     private final String message;

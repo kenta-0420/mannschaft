@@ -10,7 +10,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class TeamOrgSummaryResponse {
 
-    private final Long id;
+    /** URL 識別子（カスタムスラッグ）。 */
+    private final String id;
+    /** 組織スラッグ（URL ルーティング用）。{@code /organizations/{slug}} に使用する。 */
+    private final String slug;
     private final String name;
     private final String iconUrl;
     private final String visibility;

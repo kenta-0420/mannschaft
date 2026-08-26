@@ -1,19 +1,42 @@
 <script setup lang="ts">
 import type { PrefectureResponse } from '~/types/matching'
 
-defineProps<{
+const props = defineProps<{
   placeholder?: string
   showTemplateFilter?: boolean
   showOrgTypeFilter?: boolean
+  /** F22.1: URL クエリ等から渡す初期キーワード（検索ページ遷移時の初期値復元用）。 */
+  initialKeyword?: string
 }>()
 
 const emit = defineEmits<{
-  search: [params: { keyword: string; prefecture: string; template: string; orgType: string }]
+  /**
+   * F22.1 Phase2 足場C 第三陣: 地域はコード送信を優先する。
+   * `prefectureCode`（JIS X 0401・2 桁）を併せて emit し、親はコード優先で BE に送る。
+   * `prefecture`（名称）は表示・後方互換用に残す。
+   */
+  search: [
+    params: {
+      keyword: string
+      prefecture: string
+      prefectureCode: string
+      template: string
+      orgType: string
+    },
+  ]
 }>()
 
 const { getPrefectures } = useMatchingApi()
 
-const keyword = ref('')
+const keyword = ref(props.initialKeyword ?? '')
+
+// 親が initialKeyword を後から確定する場合（onMounted での route.query 読み取り）にも追従する。
+watch(
+  () => props.initialKeyword,
+  (kw) => {
+    if (kw !== undefined) keyword.value = kw
+  },
+)
 const selectedPref = ref<PrefectureResponse | null>(null)
 const template = ref('')
 const orgType = ref('')
@@ -30,6 +53,7 @@ onMounted(async () => {
 })
 
 const prefecture = computed(() => selectedPref.value?.name ?? '')
+const prefectureCode = computed(() => selectedPref.value?.code ?? '')
 
 const templateOptions = [
   { label: '全て', value: '' },
@@ -65,6 +89,7 @@ function onSearch() {
   emit('search', {
     keyword: keyword.value,
     prefecture: prefecture.value,
+    prefectureCode: prefectureCode.value,
     template: template.value,
     orgType: orgType.value,
   })

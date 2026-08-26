@@ -1,5 +1,5 @@
 import { test, expect, type Route } from '@playwright/test'
-import type { CreateSurveyRequest, SurveyResponse } from '../../../app/types/survey'
+import type { CreateSurveyRequest, SurveyResponseWire } from '../../../app/types/survey'
 import {
   type BuildSurveyOptions,
   buildQuestion,
@@ -41,13 +41,13 @@ const PUBLISHED_SURVEY_ID = 2001
 // ---------------------------------------------------------------------------
 
 /** 「テストアンケート」作成リクエストを受けたときに返す survey */
-function buildCreatedSurvey(): SurveyResponse {
+function buildCreatedSurvey(): SurveyResponseWire {
   return buildSurvey({
     id: NEW_SURVEY_ID,
     title: 'テストアンケート',
     status: 'DRAFT',
     scopeType: 'TEAM',
-    scopeId: TEAM_ID,
+    scopeId: String(TEAM_ID),
     isAnonymous: false,
     allowMultipleSubmissions: false,
     resultsVisibility: 'RESPONDENTS',
@@ -75,7 +75,7 @@ const PUBLISHED_OPTION_BLUE_ID = 9002
  * ALL_MEMBERS にすると displayMode が常に 'results' となり、回答送信フロー
  * （未回答→response→送信→results）の検証ができなくなる。</p>
  */
-function buildPublishedSurvey(overrides: BuildSurveyOptions = {}): SurveyResponse {
+function buildPublishedSurvey(overrides: BuildSurveyOptions = {}): SurveyResponseWire {
   return buildSurvey({
     id: PUBLISHED_SURVEY_ID,
     title: '春の好みアンケート',
@@ -181,7 +181,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
 
     // 動的に切り替わる一覧データ。作成完了後に refresh() で再取得されたとき
     // 1件返したいので、配列を let で持つ。
-    let currentSurveys: SurveyResponse[] = []
+    let currentSurveys: SurveyResponseWire[] = []
     const created = buildCreatedSurvey()
 
     // _helpers.mockSurveyApi の onCreate を使うと作成 POST に 201 を返してくれる。
@@ -190,7 +190,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
       surveys: [], // ※ 後で page.route を上書きするので初期値のみ意味あり
       detailById: {},
       resultsById: {},
-      onCreate: (body): SurveyResponse => {
+      onCreate: (body): SurveyResponseWire => {
         // body には CreateSurveyRequest 相当が入る
         const req = body as CreateSurveyRequest
         const merged = buildCreatedSurvey()
@@ -303,6 +303,7 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
     let currentDetail = buildSurveyDetail(
       buildPublishedSurvey({ hasResponded: false }),
       [question],
+      true,
     )
     const results = buildPublishedResults()
 
@@ -345,6 +346,36 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
     }
     await page.route('**/api/v1/teams/*/surveys/*', detailOverride)
 
+    // getSurvey は hasResponded を responses/me（実 BE wire 形の行配列）の
+    // 行有無から導出する。回答前は空配列、回答後は非空配列を返すよう
+    // ミュータブルなフラグで切り替える（currentDetail の差し替えと同期）。
+    let responded = false
+    await page.route('**/api/v1/surveys/*/responses/me', async (route: Route) => {
+      if (route.request().method() !== 'GET') {
+        await route.continue()
+        return
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: responded
+            ? [
+                {
+                  id: 8001,
+                  surveyId: PUBLISHED_SURVEY_ID,
+                  questionId: PUBLISHED_QUESTION_ID,
+                  userId: MEMBER_USER_ID,
+                  optionId: PUBLISHED_OPTION_RED_ID,
+                  textResponse: null,
+                  createdAt: '2026-04-27T00:00:00Z',
+                },
+              ]
+            : [],
+        }),
+      })
+    })
+
     // 回答送信 API（POST /api/v1/surveys/{id}/responses）モック
     // 成功したら currentDetail を hasResponded=true 版に差し替える
     await page.route('**/api/v1/surveys/*/responses', async (route: Route) => {
@@ -352,14 +383,16 @@ test.describe('SURVEY-001 / 002: アンケート CRUD', () => {
         await route.continue()
         return
       }
-      // 成功 → 詳細を hasResponded=true に差し替える
+      // 成功 → 詳細を hasResponded=true 版に差し替え、responses/me も回答済みへ。
       currentDetail = buildSurveyDetail(
         buildPublishedSurvey({
           hasResponded: true,
           responseCount: 1,
         }),
         [question],
+        true,
       )
+      responded = true
       await route.fulfill({
         status: 201,
         contentType: 'application/json',

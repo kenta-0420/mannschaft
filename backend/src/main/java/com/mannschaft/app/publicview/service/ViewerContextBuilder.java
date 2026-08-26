@@ -69,7 +69,22 @@ public class ViewerContextBuilder {
      * @return 構築済みの {@link ViewerContext}
      */
     public ViewerContext buildForTeam(Authentication authentication, Long teamId) {
-        Long userId = extractUserId(authentication);
+        return buildForTeamByUserId(extractUserId(authentication), teamId);
+    }
+
+    /**
+     * チームスコープ用の {@link ViewerContext} を、解決済みの userId から直接構築する。
+     *
+     * <p>{@link Authentication} を持たないサービス層（例: F08.7 ランキング名前解決）から
+     * 既に {@code SecurityUtils.getCurrentUserIdOrNull()} で取得した userId を渡して再利用するための
+     * メソッド。{@code userId == null} は未ログイン扱い。
+     * （{@code Authentication} 版とのオーバーロード曖昧化を避けるため別名にしている。）</p>
+     *
+     * @param userId 閲覧者のユーザー ID（未ログインなら {@code null}）
+     * @param teamId 閲覧対象のチーム ID
+     * @return 構築済みの {@link ViewerContext}
+     */
+    public ViewerContext buildForTeamByUserId(Long userId, Long teamId) {
         if (userId == null) {
             return ViewerContext.anonymous();
         }
@@ -109,7 +124,22 @@ public class ViewerContextBuilder {
      * @return 構築済みの {@link ViewerContext}
      */
     public ViewerContext buildForOrganization(Authentication authentication, Long organizationId) {
-        Long userId = extractUserId(authentication);
+        return buildForOrganizationByUserId(extractUserId(authentication), organizationId);
+    }
+
+    /**
+     * 組織スコープ用の {@link ViewerContext} を、解決済みの userId から直接構築する。
+     *
+     * <p>{@link Authentication} を持たないサービス層（例: F08.7 ランキング名前解決）から
+     * 既に {@code SecurityUtils.getCurrentUserIdOrNull()} で取得した userId を渡して再利用するための
+     * メソッド。{@code userId == null} は未ログイン扱い。
+     * （{@code Authentication} 版とのオーバーロード曖昧化を避けるため別名にしている。）</p>
+     *
+     * @param userId         閲覧者のユーザー ID（未ログインなら {@code null}）
+     * @param organizationId 閲覧対象の組織 ID
+     * @return 構築済みの {@link ViewerContext}
+     */
+    public ViewerContext buildForOrganizationByUserId(Long userId, Long organizationId) {
         if (userId == null) {
             return ViewerContext.anonymous();
         }

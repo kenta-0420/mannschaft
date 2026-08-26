@@ -9,8 +9,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -29,8 +29,7 @@ import java.time.LocalDateTime;
 @Table(name = "job_contracts")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class JobContractEntity extends BaseEntity {
 
     @Column(name = "job_posting_id", nullable = false)
@@ -131,6 +130,23 @@ public class JobContractEntity extends BaseEntity {
      */
     public void rejectCompletion(String reason) {
         this.status = JobContractStatus.IN_PROGRESS;
+        this.lastRejectionReason = reason;
+        this.rejectionCount = this.rejectionCount + 1;
+    }
+
+    /**
+     * Requester が差し戻しし、MVP の状態遷移表に従い MATCHED に書き戻す。
+     *
+     * <p>差し戻し回数のカウントアップ・理由記録を行いつつ、最終ステータスを MATCHED とする。
+     * managed entity を直接ミューテートするため主キー（id）を保持し、{@code save()} が UPDATE になる。
+     * 旧実装は {@code rejectCompletion()} で IN_PROGRESS にしてから {@code toBuilder().status(MATCHED).build()}
+     * で別インスタンスに作り直していたが、{@code @SuperBuilder(toBuilder = true)} は {@link BaseEntity} 継承の
+     * id を引き継がず id=null となり save が INSERT 化する不具合があったため、本メソッドへ集約した。</p>
+     *
+     * @param reason 差し戻し理由
+     */
+    public void rejectCompletionToMatched(String reason) {
+        this.status = JobContractStatus.MATCHED;
         this.lastRejectionReason = reason;
         this.rejectionCount = this.rejectionCount + 1;
     }

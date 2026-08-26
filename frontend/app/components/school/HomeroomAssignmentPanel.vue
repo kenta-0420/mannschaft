@@ -4,7 +4,7 @@ import { computed, ref, onMounted } from 'vue'
 import type { ClassHomeroomCreateRequest, ClassHomeroomUpdateRequest } from '~/types/school'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   academicYear: number
 }>()
 

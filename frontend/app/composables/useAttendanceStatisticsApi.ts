@@ -8,7 +8,7 @@ export function useAttendanceStatisticsApi() {
   const api = useApi()
 
   async function getMonthlyStatistics(
-    teamId: number,
+    teamId: string,
     year: number,
     month: number,
   ): Promise<MonthlyStatisticsResponse> {
@@ -19,7 +19,7 @@ export function useAttendanceStatisticsApi() {
   }
 
   async function getTermStatistics(
-    teamId: number,
+    teamId: string,
     from: string,
     to: string,
   ): Promise<StudentTermStatisticsResponse> {
@@ -29,7 +29,7 @@ export function useAttendanceStatisticsApi() {
     return res.data
   }
 
-  function exportCsv(teamId: number, from: string, to: string): void {
+  function exportCsv(teamId: string, from: string, to: string): void {
     const link = document.createElement('a')
     link.href = `/api/v1/teams/${teamId}/attendance/export?from=${from}&to=${to}`
     link.download = `attendance_${from}_${to}.csv`

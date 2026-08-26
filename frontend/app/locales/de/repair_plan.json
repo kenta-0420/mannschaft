@@ -7,18 +7,18 @@
       }
     },
     "timeline": {
-      "title": "修繕履歴・計画タイムライン",
+      "title": "Reparaturverlauf und Planungs-Timeline",
       "layer": {
-        "amount": "修繕費",
-        "chairperson": "理事長",
-        "cpi": "物価指数（CPI）",
-        "minutes": "議事録メモ"
+        "amount": "Reparaturkosten",
+        "chairperson": "Vorsitzender",
+        "cpi": "Preisindex (CPI)",
+        "minutes": "Sitzungsprotokoll"
       },
-      "year_from": "開始年度",
-      "year_to": "終了年度",
-      "no_data": "修繕計画データがありません",
-      "total": "合計",
-      "cpi_note": "CPI: 2024年=100、国交省R5ガイドライン 1.5%/年"
+      "year_from": "Startjahr",
+      "year_to": "Endjahr",
+      "no_data": "Keine Reparaturplandaten",
+      "total": "Gesamt",
+      "cpi_note": "CPI: 2024=100, Ministeriumsrichtlinie R5 1,5%/Jahr"
     },
     "category": {
       "EXTERIOR": "Außenfassade / Anstrich",

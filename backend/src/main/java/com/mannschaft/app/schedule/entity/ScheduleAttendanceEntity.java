@@ -8,8 +8,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -22,8 +22,7 @@ import java.time.LocalDateTime;
 @Table(name = "schedule_attendances")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ScheduleAttendanceEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -42,6 +41,7 @@ public class ScheduleAttendanceEntity extends BaseEntity {
     private LocalDateTime respondedAt;
 
     @Column(name = "is_proxy_input", nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    @Builder.Default
     private Boolean isProxyInput = false;
 
     @Column(name = "proxy_input_record_id")

@@ -7,6 +7,8 @@ import com.mannschaft.app.dashboard.dto.WidgetSettingResponse;
 import com.mannschaft.app.dashboard.entity.DashboardWidgetSettingEntity;
 import com.mannschaft.app.dashboard.repository.DashboardWidgetSettingRepository;
 import com.mannschaft.app.dashboard.service.DashboardWidgetService;
+import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.template.service.ModuleService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -23,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -44,6 +47,12 @@ class DashboardWidgetServiceTest {
 
     @Mock
     private ModuleService moduleService;
+
+    @Mock
+    private TeamService teamService;
+
+    @Mock
+    private OrganizationService organizationService;
 
     @InjectMocks
     private DashboardWidgetService dashboardWidgetService;
@@ -225,7 +234,6 @@ class DashboardWidgetServiceTest {
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
                     USER_ID, ScopeType.PERSONAL, 0L, "NOTICES"))
                     .willReturn(Optional.of(existingEntity));
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
 
             // getWidgetSettings用のスタブ
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
@@ -256,7 +264,6 @@ class DashboardWidgetServiceTest {
                     .willReturn(Optional.empty());
             given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
-            given(accessControlService.isAdminOrAbove(USER_ID, 0L, "PERSONAL")).willReturn(false);
 
             given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
                     .willReturn(List.of());
@@ -268,6 +275,171 @@ class DashboardWidgetServiceTest {
 
             // Then
             verify(widgetSettingRepository).save(any(DashboardWidgetSettingEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系(対象2): 新規追加した TEAM_GALLERY が PUT で受理されINSERTされる")
+        void updateWidgetSettings_新規TEAMキー_受理されINSERT() {
+            // Given: 対象2 で追加した TEAM_GALLERY（旧 enum には無く DASHBOARD_001 で弾かれていたキー）
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("TEAM_GALLERY", true, 7);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("TEAM", String.valueOf(TEAM_ID), List.of(item));
+
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                    USER_ID, ScopeType.TEAM, TEAM_ID, "TEAM_GALLERY"))
+                    .willReturn(Optional.empty());
+            given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+            given(moduleService.isModuleEnabledForTeam(anyString(), eq(TEAM_ID))).willReturn(true);
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.TEAM, TEAM_ID))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willReturn(new WidgetSettingResponse("OTHER", "他", true, 0, true, null));
+
+            // When
+            dashboardWidgetService.updateWidgetSettings(USER_ID, request);
+
+            // Then: DASHBOARD_001 で弾かれず INSERT される（並び順 DB 永続化が成立）
+            verify(widgetSettingRepository).save(any(DashboardWidgetSettingEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系(対象2): 新規追加した ORG_MEMBERS が PUT で受理されINSERTされる")
+        void updateWidgetSettings_新規ORGキー_受理されINSERT() {
+            // Given: 対象2 で追加した ORG_MEMBERS（組織スコープは従来マッピングが無く永続化不能だった）
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("ORG_MEMBERS", true, 5);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("ORGANIZATION", String.valueOf(ORG_ID), List.of(item));
+
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                    USER_ID, ScopeType.ORGANIZATION, ORG_ID, "ORG_MEMBERS"))
+                    .willReturn(Optional.empty());
+            given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(accessControlService.isAdminOrAbove(USER_ID, ORG_ID, "ORGANIZATION")).willReturn(false);
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.ORGANIZATION, ORG_ID))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willReturn(new WidgetSettingResponse("OTHER", "他", true, 0, true, null));
+
+            // When
+            dashboardWidgetService.updateWidgetSettings(USER_ID, request);
+
+            // Then
+            verify(widgetSettingRepository).save(any(DashboardWidgetSettingEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系(対象3-A): 新規追加した PERSONAL_FAVORITES が PUT で受理されINSERTされる")
+        void updateWidgetSettings_新規PERSONALキー_FAVORITES_受理されINSERT() {
+            // Given: 対象3-A で追加した PERSONAL_FAVORITES（実パネル WidgetFavorites・旧 enum には無く DASHBOARD_001 で弾かれていた）
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_FAVORITES", true, 24);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("PERSONAL", null, List.of(item));
+
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                    USER_ID, ScopeType.PERSONAL, 0L, "PERSONAL_FAVORITES"))
+                    .willReturn(Optional.empty());
+            given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willReturn(new WidgetSettingResponse("OTHER", "他", true, 0, true, null));
+
+            // When
+            dashboardWidgetService.updateWidgetSettings(USER_ID, request);
+
+            // Then: DASHBOARD_001 で弾かれず INSERT される（並び順 DB 永続化が成立）
+            verify(widgetSettingRepository).save(any(DashboardWidgetSettingEntity.class));
+        }
+
+        @Test
+        @DisplayName("正常系(対象3-A): 新規追加した PERSONAL_MY_TEAMS が PUT で受理されINSERTされる")
+        void updateWidgetSettings_新規PERSONALキー_MY_TEAMS_受理されINSERT() {
+            // Given: 対象3-A で追加した PERSONAL_MY_TEAMS（実パネル WidgetMyTeams）
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_MY_TEAMS", true, 22);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("PERSONAL", null, List.of(item));
+
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                    USER_ID, ScopeType.PERSONAL, 0L, "PERSONAL_MY_TEAMS"))
+                    .willReturn(Optional.empty());
+            given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willReturn(new WidgetSettingResponse("OTHER", "他", true, 0, true, null));
+
+            // When
+            dashboardWidgetService.updateWidgetSettings(USER_ID, request);
+
+            // Then
+            verify(widgetSettingRepository).save(any(DashboardWidgetSettingEntity.class));
+        }
+
+        @Test
+        @DisplayName("回帰: updateWidgetSettings の個人スコープでは accessControlService.isAdminOrAbove を呼ばない（PERSONAL は membership.ScopeType を持たないため500を防ぐ）")
+        void updateWidgetSettings_個人スコープ_isAdminOrAboveを呼ばない() {
+            // Given
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("NOTICES", true, 0);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("PERSONAL", null, List.of(item));
+
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdAndWidgetKey(
+                    USER_ID, ScopeType.PERSONAL, 0L, "NOTICES"))
+                    .willReturn(Optional.empty());
+            given(widgetSettingRepository.save(any(DashboardWidgetSettingEntity.class)))
+                    .willAnswer(inv -> inv.getArgument(0));
+            given(widgetSettingRepository.findByUserIdAndScopeTypeAndScopeIdOrderBySortOrder(USER_ID, ScopeType.PERSONAL, 0L))
+                    .willReturn(List.of());
+            given(dashboardMapper.toDefaultWidgetSettingResponse(any(WidgetKey.class), anyString(), anyBoolean(), any()))
+                    .willReturn(new WidgetSettingResponse("OTHER", "他", true, 0, true, null));
+
+            // When
+            dashboardWidgetService.updateWidgetSettings(USER_ID, request);
+
+            // Then: 個人スコープでは isAdmin=false に短絡し、accessControlService.isAdminOrAbove を一切呼ばないこと
+            verify(accessControlService, never()).isAdminOrAbove(any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("異常系(対象3-A): PERSONAL_FAVORITES を TEAM スコープに送るとDASHBOARD_002")
+        void updateWidgetSettings_PERSONAL_キー_TEAMスコープ_DASHBOARD002() {
+            // Given: PERSONAL 専用キーを TEAM スコープに送る
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("PERSONAL_FAVORITES", true, 0);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("TEAM", String.valueOf(TEAM_ID), List.of(item));
+
+            // When / Then
+            assertThatThrownBy(() -> dashboardWidgetService.updateWidgetSettings(USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("DASHBOARD_002"));
+        }
+
+        @Test
+        @DisplayName("異常系(対象2): schedule 用の TEAM_SCHEDULE_CALENDAR を ORGANIZATION スコープに送るとDASHBOARD_002")
+        void updateWidgetSettings_スコープ不一致_新規キー_DASHBOARD002() {
+            // Given: TEAM 専用キーを ORGANIZATION スコープに送る（衝突解消した専用キーのスコープ検証）
+            UpdateWidgetSettingsRequest.WidgetSettingItem item =
+                    new UpdateWidgetSettingsRequest.WidgetSettingItem("TEAM_SCHEDULE_CALENDAR", true, 0);
+            UpdateWidgetSettingsRequest request =
+                    new UpdateWidgetSettingsRequest("ORGANIZATION", String.valueOf(ORG_ID), List.of(item));
+
+            // When / Then
+            assertThatThrownBy(() -> dashboardWidgetService.updateWidgetSettings(USER_ID, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("DASHBOARD_002"));
         }
 
         @Test
@@ -399,17 +571,38 @@ class DashboardWidgetServiceTest {
     class ResolveScopeId {
 
         @Test
-        @DisplayName("正常系: PERSONALの場合は0を返す")
+        @DisplayName("正常系: PERSONALの場合は0を返す（slug解決サービスは呼ばない）")
         void resolveScopeId_PERSONAL_0を返す() {
             assertThat(dashboardWidgetService.resolveScopeId(ScopeType.PERSONAL, null)).isEqualTo(0L);
-            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.PERSONAL, 999L)).isEqualTo(0L);
+            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.PERSONAL, "999")).isEqualTo(0L);
         }
 
         @Test
-        @DisplayName("正常系: TEAM/ORGANIZATIONの場合はscopeIdをそのまま返す")
-        void resolveScopeId_非PERSONAL_そのまま返す() {
-            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.TEAM, TEAM_ID)).isEqualTo(TEAM_ID);
-            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.ORGANIZATION, ORG_ID)).isEqualTo(ORG_ID);
+        @DisplayName("正常系(退行防止): TEAM/ORGANIZATIONで数値文字列はそのままLongへ解決する（slug解決サービスは呼ばない）")
+        void resolveScopeId_非PERSONAL_数値文字列_そのまま返す() {
+            // 数値文字列は Long.parseLong で解釈され、slug 解決 Service には委譲しない（数値ID呼び出しの後方互換）
+            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.TEAM, "123")).isEqualTo(123L);
+            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.ORGANIZATION, "456")).isEqualTo(456L);
+            verify(teamService, never()).resolveTeamId(anyString());
+            verify(organizationService, never()).resolveOrgId(anyString());
+        }
+
+        @Test
+        @DisplayName("正常系: TEAMでslug文字列はteamService.resolveTeamId経由で数値へ解決する")
+        void resolveScopeId_TEAM_slug_resolveTeamId経由() {
+            given(teamService.resolveTeamId("team-000017")).willReturn(17L);
+
+            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.TEAM, "team-000017")).isEqualTo(17L);
+            verify(teamService).resolveTeamId("team-000017");
+        }
+
+        @Test
+        @DisplayName("正常系: ORGANIZATIONでslug文字列はorganizationService.resolveOrgId経由で数値へ解決する")
+        void resolveScopeId_ORG_slug_resolveOrgId経由() {
+            given(organizationService.resolveOrgId("org-000001")).willReturn(1L);
+
+            assertThat(dashboardWidgetService.resolveScopeId(ScopeType.ORGANIZATION, "org-000001")).isEqualTo(1L);
+            verify(organizationService).resolveOrgId("org-000001");
         }
 
         @Test

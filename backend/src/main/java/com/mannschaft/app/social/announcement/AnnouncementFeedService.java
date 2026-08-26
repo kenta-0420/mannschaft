@@ -29,11 +29,13 @@ import java.util.Set;
  * <p>
  * <b>権限モデル</b>:
  * <ul>
- *   <li>一覧取得: メンバー以上（SUPPORTER は MEMBERS_ONLY を除外）</li>
+ *   <li>一覧取得: 閲覧者ロールに応じた可視性集合で絞り込み（SUPPORTER は MEMBERS_AND_ABOVE を除外、MEMBER 以上は全種）</li>
  *   <li>お知らせ化: 著者本人または ADMIN/DEPUTY_ADMIN</li>
  *   <li>お知らせ解除: 著者本人または ADMIN/DEPUTY_ADMIN</li>
  *   <li>ピン留め: ADMIN/DEPUTY_ADMIN のみ</li>
- *   <li>既読マーク: メンバー以上（冪等）</li>
+ *   <li>既読マーク: <b>その閲覧者に一覧で見えているお知らせ</b>（＝可視性ベース。冪等）。
+ *       一覧は非メンバーにも PUBLIC を返すため、既読も同じ集合に揃える
+ *       （{@link AnnouncementReadService} のクラス Javadoc 参照）</li>
  * </ul>
  * </p>
  *
@@ -149,7 +151,7 @@ public class AnnouncementFeedService {
                 .titleCache(safeTitle)
                 .excerptCache(safeExcerpt)
                 .priority("NORMAL")
-                .visibility("MEMBERS_ONLY")
+                .visibility("MEMBERS_AND_ABOVE")
                 .isAdvertisement(true)
                 .build();
 
@@ -198,21 +200,41 @@ public class AnnouncementFeedService {
     /**
      * お知らせを既読にする（冪等）。
      *
+     * <p>スコープ（URL のパス変数由来）を下流へ通し、スコープ帰属検証と可視性検証を
+     * {@link AnnouncementReadService} に行わせる（規則は「見える＝既読にできる」）。</p>
+     *
      * @see AnnouncementReadService#markAsRead
      */
     @Transactional
-    public void markAsRead(Long announcementId, Long userId) {
-        readService.markAsRead(announcementId, userId);
+    public void markAsRead(AnnouncementScopeType scopeType, Long scopeId, Long announcementId, Long userId) {
+        readService.markAsRead(scopeType, scopeId, announcementId, userId);
     }
 
     /**
      * スコープ内の全お知らせを既読にする。
      *
+     * <p>下流は「可視かつ未読」を DB 側で絞り、{@link AnnouncementReadService#MARK_ALL_BATCH_SIZE}
+     * 件ずつのチャンクで処理する（#2494）。実行コストは<b>未読件数</b>にのみ比例し、
+     * カーソル（{@code lastSeenId}）により総インデックスプローブ数も線形である（#2530 ②）。</p>
+     *
+     * <p><b>応答契約（#2530 ① で決着）</b>: 下流の結果をそのまま返し、Controller は
+     * {@code markedCount}（実際に既読化した件数）と {@code hasMoreUnread}
+     * （防御上限で打ち切り、未読が残っているか）を応答する。キー名は
+     * <b>camelCase</b> を正とし（他 EP の応答および {@code @RequestBody} と揃える）、
+     * 設計書 F02.6 §4 の {@code marked_count} 表記を実装側に合わせて改めた。
+     * 応答型を {@code Map<String, Object>} から DTO に変えたので、以後キー名の食い違いは
+     * OpenAPI スキーマ（{@code docs/openapi.json}）と生成型に現れる。</p>
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープ ID
+     * @param userId    ユーザー ID
+     * @return 既読化件数と残余の有無
      * @see AnnouncementReadService#markAllAsRead
      */
     @Transactional
-    public void markAllAsRead(AnnouncementScopeType scopeType, Long scopeId, Long userId) {
-        readService.markAllAsRead(scopeType, scopeId, userId);
+    public AnnouncementReadService.MarkAllReadOutcome markAllAsRead(
+            AnnouncementScopeType scopeType, Long scopeId, Long userId) {
+        return readService.markAllAsRead(scopeType, scopeId, userId);
     }
 
     // ═════════════════════════════════════════════════════════════
@@ -223,14 +245,17 @@ public class AnnouncementFeedService {
      * お知らせフィード一覧をカーソルページングで取得する。
      *
      * <p>
-     * visibility に応じて SUPPORTER への MEMBERS_ONLY コンテンツ除外フィルタを
+     * 閲覧者ロールに応じた「閲覧できる visibility 集合」での絞り込みを
      * {@link AnnouncementFeedQueryRepository#findByScope} の WHERE 句で実施する（Service 層の if 文に依存しない）。
+     * 集合は {@link AnnouncementVisibility#allowedFor(String)} が正準算出する:
+     * SUPPORTER は {@code {PUBLIC, SUPPORTERS_AND_ABOVE}}（MEMBERS_AND_ABOVE を露出させない）、
+     * MEMBER 以上は 3 種全部（PUBLIC/SUPPORTERS_AND_ABOVE を取りこぼさない）。
      * </p>
      *
      * @param scopeType      スコープ種別（TEAM / ORGANIZATION）
      * @param scopeId        スコープ ID
      * @param requestUserId  リクエストユーザー ID
-     * @param userVisibility ロールに応じた visibility 指定値（"MEMBER" or "SUPPORTER"）
+     * @param viewerRoleName 閲覧者の実ロール名（SYSTEM_ADMIN/ADMIN/DEPUTY_ADMIN/MEMBER/SUPPORTER/PUBLIC）
      * @param cursor         カーソル（null の場合は先頭から）
      * @param limit          取得件数（0以下は DEFAULT_LIMIT、MAX_LIMIT 超は補正）
      * @return フィード取得結果（data / nextCursor / hasNext / unreadCount）
@@ -239,20 +264,18 @@ public class AnnouncementFeedService {
             AnnouncementScopeType scopeType,
             Long scopeId,
             Long requestUserId,
-            String userVisibility,
+            String viewerRoleName,
             Long cursor,
             int limit) {
 
         int effectiveLimit = Math.max(1, Math.min(limit <= 0 ? DEFAULT_LIMIT : limit, MAX_LIMIT));
 
-        // visibility 変換: "MEMBER" → "MEMBERS_ONLY", "SUPPORTER" → "SUPPORTERS_AND_ABOVE"
-        String visibilityParam = "SUPPORTER".equalsIgnoreCase(userVisibility)
-                ? "SUPPORTERS_AND_ABOVE"
-                : "MEMBERS_ONLY";
+        // 閲覧者ロール → 閲覧できる visibility 集合（正準）。
+        Set<String> allowedVisibilities = AnnouncementVisibility.allowedFor(viewerRoleName);
 
         // limit + 1 件取得して hasNext を判定
         List<AnnouncementFeedEntity> rows = feedQueryRepository.findByScope(
-                scopeType, scopeId, visibilityParam, cursor, effectiveLimit + 1);
+                scopeType, scopeId, allowedVisibilities, cursor, effectiveLimit + 1);
 
         boolean hasNext = rows.size() > effectiveLimit;
         List<AnnouncementFeedEntity> dataRows = hasNext ? rows.subList(0, effectiveLimit) : rows;

@@ -41,6 +41,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link TeamFriendsController} の MockMvc 結合テスト（F01.5 Phase 1）。
@@ -88,6 +89,10 @@ class TeamFriendsControllerTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUpSecurityContext() {
@@ -450,8 +455,8 @@ class TeamFriendsControllerTest {
         }
 
         @Test
-        @DisplayName("DEPUTY_ADMIN: 403 Forbidden (ADMIN のみ実行可能)")
-        void setVisibility_DEPUTY_ADMIN_403() throws Exception {
+        @DisplayName("DEPUTY_ADMIN: 404 Not Found (ADMIN のみ実行可能。越境と畳んで存在秘匿するため 404)")
+        void setVisibility_DEPUTY_ADMIN_404() throws Exception {
             willThrow(new BusinessException(SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY))
                     .given(teamFriendsService)
                     .setVisibility(eq(TEAM_ID), eq(500L), anyBoolean(), eq(USER_ID));
@@ -463,7 +468,7 @@ class TeamFriendsControllerTest {
             mockMvc.perform(patch("/api/v1/teams/{id}/friends/{teamFriendId}/visibility", TEAM_ID, 500L)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(body))
-                    .andExpect(status().isForbidden())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("SOCIAL_107"));
         }
 

@@ -18,6 +18,8 @@ public interface PersonalScheduleMapper {
     @Mapping(target = "content.eventType", expression = "java(scheduleEntity.getEventType().name())")
     @Mapping(target = "content.color", source = "color")
     @Mapping(target = "content.location", source = "location")
+    // 色解決（F03.19 §3.4.1）はサービス層の責務。マッパーは生値のみ写す。
+    @Mapping(target = "content.colorSource", ignore = true)
     @Mapping(target = "time.startAt", source = "startAt")
     @Mapping(target = "time.endAt", source = "endAt")
     @Mapping(target = "time.allDay", source = "allDay")
@@ -27,6 +29,7 @@ public interface PersonalScheduleMapper {
     @Mapping(target = "status.recurrenceRule", ignore = true)
     @Mapping(target = "status.googleSynced", expression = "java(scheduleEntity.getGoogleCalendarEventId() != null)")
     @Mapping(target = "reminders", ignore = true)
+    @Mapping(target = "detailedReminders", ignore = true)
     @Mapping(target = "audit.createdAt", source = "createdAt")
     @Mapping(target = "audit.updatedAt", source = "updatedAt")
     @Mapping(target = "audit.createdByDisplayName", ignore = true)

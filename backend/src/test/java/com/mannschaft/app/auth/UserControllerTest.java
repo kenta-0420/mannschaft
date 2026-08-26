@@ -9,6 +9,7 @@ import com.mannschaft.app.auth.dto.LoginHistoryResponse;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.RequestEmailChangeRequest;
 import com.mannschaft.app.auth.dto.RequestWithdrawalRequest;
+import com.mannschaft.app.auth.dto.OAuthProviderResponse;
 import com.mannschaft.app.auth.dto.UpdateProfileRequest;
 import com.mannschaft.app.auth.dto.UpdatePublicProfileRequest;
 import com.mannschaft.app.auth.dto.UserProfileResponse;
@@ -36,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -45,12 +47,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link UserController} の結合テスト。
  * {@code @WebMvcTest} でコントローラー層のみをロードし、Service は MockitoBean で差し替える。
  */
 @WebMvcTest(UserController.class)
+@org.springframework.context.annotation.Import(
+        com.mannschaft.app.auth.guardianship.AuthenticationCriticalOperationGuard.class)
 @AutoConfigureMockMvc(addFilters = false)
 class UserControllerTest {
 
@@ -79,6 +84,10 @@ class UserControllerTest {
     @MockitoBean
     private ProxyInputContext proxyInputContext;
 
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
+
     @BeforeEach
     void setUpSecurityContext() {
         // SecurityUtils.getCurrentUserId() が userId=1 を返すよう認証情報をセット
@@ -92,12 +101,12 @@ class UserControllerTest {
     // ──────────────────────────────────────────────
 
     @Test
-    @DisplayName("GET /me — 正常系: 200 でプロフィールを返却する")
+    @DisplayName("GET /me — 正常系: 200 でプロフィールを返却する（UserController#getMyProfile）")
     void getMe_success_returns200() throws Exception {
         var profile = new UserProfileResponse(
                 1L, "test@example.com", "田中", "太郎",
                 "タナカ", "タロウ", "taro", null,
-                true, null, "090-1234-5678",
+                true, null, "090-1234-5678", "150-0001",
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of("GOOGLE"),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
@@ -118,12 +127,12 @@ class UserControllerTest {
     // ──────────────────────────────────────────────
 
     @Test
-    @DisplayName("PUT /me — 正常系: 200 で更新後プロフィールを返却する")
+    @DisplayName("PUT /me — 正常系: 200 で更新後プロフィールを返却する（UserController#updateMyProfile）")
     void updateMe_success_returns200() throws Exception {
         var updatedProfile = new UserProfileResponse(
                 1L, "test@example.com", "佐藤", "花子",
                 "サトウ", "ハナコ", "hanako", null,
-                true, null, "090-9876-5432",
+                true, null, "090-9876-5432", "150-0001",
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of(),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
@@ -235,7 +244,7 @@ class UserControllerTest {
         var meta = new CursorPagedResponse.CursorMeta(null, false, 20);
         CursorPagedResponse<LoginHistoryResponse> pagedResp =
                 CursorPagedResponse.of(List.of(history), meta);
-        given(authService.getLoginHistory(anyLong(), any(), anyInt()))
+        given(authService.getLoginHistory(anyLong(), any(), anyInt(), any(), any()))
                 .willReturn(pagedResp);
 
         mockMvc.perform(get("/api/v1/users/me/login-history")
@@ -252,7 +261,8 @@ class UserControllerTest {
     // ──────────────────────────────────────────────
 
     @Test
-    @DisplayName("VIS-001: PATCH /me/public-profile — enabled=true で 204 を返す")
+    @DisplayName("VIS-001: PATCH /me/public-profile — enabled=true で 204 を返す"
+            + "（UserController#updatePublicProfile）")
     void updatePublicProfile_enableTrue_returns204() throws Exception {
         doNothing().when(userService).updatePublicProfileEnabled(anyLong(), any(Boolean.class));
 
@@ -300,7 +310,7 @@ class UserControllerTest {
         var profile = new UserProfileResponse(
                 1L, "test@example.com", "田中", "太郎",
                 "タナカ", "タロウ", "taro", null,
-                true, null, "090-1234-5678",
+                true, null, "090-1234-5678", "150-0001",
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of("GOOGLE"),
                 LocalDateTime.of(2026, 3, 1, 10, 0),
@@ -323,7 +333,7 @@ class UserControllerTest {
         var profile = new UserProfileResponse(
                 1L, "test@example.com", "田中", "太郎",
                 null, null, "taro", null,
-                null, null, null,
+                null, null, null, null,
                 "ja", null, "Asia/Tokyo", "ACTIVE",
                 true, false, 0, List.of(),
                 null, LocalDateTime.of(2026, 1, 1, 0, 0), null, false);
@@ -336,5 +346,188 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data.id").value(1));
+    }
+
+    // ──────────────────────────────────────────────
+    // F08.9 P3b: 後見切替セッション中（acting-as）の認証クリティカル操作ガード（03_security §3.2）
+    //   ProxyInputContext.isProxy()==true で対象 EP は 403。
+    // ──────────────────────────────────────────────
+
+    @org.junit.jupiter.api.Nested
+    @DisplayName("F08.9 P3b — 後見切替中の認証クリティカル操作ガード")
+    class GuardianshipActingAsGuard {
+
+        @org.junit.jupiter.api.BeforeEach
+        void actingAs() {
+            // 後見切替セッション中（X-Proxy-For-User-Id 検証済み）を模擬
+            given(proxyInputContext.isProxy()).willReturn(true);
+        }
+
+        @Test
+        @DisplayName("PATCH /me/password — 切替中は 403（パスワード変更を代理不可）")
+        void changePassword_actingAs_returns403() throws Exception {
+            String body = """
+                    {
+                      "currentPassword": "OldPassw0rd!",
+                      "newPassword": "NewPassw0rd!"
+                    }
+                    """;
+
+            mockMvc.perform(patch("/api/v1/users/me/password")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isForbidden());
+
+            org.mockito.Mockito.verifyNoInteractions(userService);
+        }
+
+        @Test
+        @DisplayName("PATCH /me/email — 切替中は 403（メール変更を代理不可）")
+        void requestEmailChange_actingAs_returns403() throws Exception {
+            String body = """
+                    {
+                      "newEmail": "new@example.com",
+                      "currentPassword": "Passw0rd!"
+                    }
+                    """;
+
+            mockMvc.perform(patch("/api/v1/users/me/email")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isForbidden());
+
+            org.mockito.Mockito.verifyNoInteractions(userService);
+        }
+
+        @Test
+        @DisplayName("DELETE /me — 切替中は 403（退会を代理不可）")
+        void requestWithdrawal_actingAs_returns403() throws Exception {
+            String body = """
+                    {
+                      "currentPassword": "Passw0rd!"
+                    }
+                    """;
+
+            mockMvc.perform(delete("/api/v1/users/me")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isForbidden());
+
+            org.mockito.Mockito.verifyNoInteractions(userService);
+        }
+
+        @Test
+        @DisplayName("POST /me/withdrawal/cancel — 切替中は 403（退会取消を代理不可）")
+        void cancelWithdrawal_actingAs_returns403() throws Exception {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/api/v1/users/me/withdrawal/cancel"))
+                    .andExpect(status().isForbidden());
+
+            org.mockito.Mockito.verifyNoInteractions(userService);
+        }
+
+        @Test
+        @DisplayName("POST /me/email/confirm — 切替中は 403（メール変更確認を代理不可・トークン迂回経路を塞ぐ）")
+        void confirmEmailChange_actingAs_returns403() throws Exception {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .post("/api/v1/users/me/email/confirm")
+                            .param("token", "test-token-value"))
+                    .andExpect(status().isForbidden());
+
+            org.mockito.Mockito.verifyNoInteractions(userService);
+        }
+    }
+
+    // ──────────────────────────────────────────────
+    // POST /api/v1/users/me/withdrawal/cancel
+    // ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("POST /me/withdrawal/cancel — 正常系: 200 で退会取消メッセージを返却する")
+    void cancelWithdrawal_success_returns200() throws Exception {
+        var msgResp = MessageResponse.of("退会リクエストを取り消しました");
+        given(userService.cancelWithdrawal(anyLong()))
+                .willReturn(ApiResponse.of(msgResp));
+        // 通常入力（本人操作）: isProxy()==false
+        given(proxyInputContext.isProxy()).willReturn(false);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/users/me/withdrawal/cancel"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.data.message").value("退会リクエストを取り消しました"));
+    }
+
+    @Test
+    @DisplayName("POST /me/withdrawal/cancel — 退会申請が存在しない場合は409（ErrorCodeステータス写像是正ロットA: AUTH_032）")
+    void cancelWithdrawal_notRequested_returns409() throws Exception {
+        given(userService.cancelWithdrawal(anyLong()))
+                .willThrow(new com.mannschaft.app.common.BusinessException(
+                        com.mannschaft.app.auth.AuthErrorCode.AUTH_032));
+        given(proxyInputContext.isProxy()).willReturn(false);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/users/me/withdrawal/cancel"))
+                .andExpect(status().isConflict());
+    }
+
+    // ──────────────────────────────────────────────
+    // 認可根治戦役 Wave5 ロットB — 自己スコープ契約テスト
+    // UserController#setupPassword / UserController#getConnectedProviders /
+    // UserController#disconnectProvider
+    //
+    // SecurityContextHolder に userId=1 を設定済み（クラス @BeforeEach）。
+    // Service への引数を厳密一致（eq）でスタブし、他ユーザーの識別子が紛れ込む余地が
+    // 無いこと（＝リクエストからではなく認証主体からのみ userId が決まること）を固定する。
+    // ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("POST /me/password/setup — 対象は認証主体の userId のみ（UserController#setupPassword）")
+    void setupPassword_targetsOnlyAuthenticatedUser() throws Exception {
+        var msgResp = MessageResponse.of("パスワードを設定しました");
+        given(userService.setupPassword(eq(1L), anyString()))
+                .willReturn(ApiResponse.of(msgResp));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/users/me/password/setup")
+                        .param("password", "NewPassw0rd!"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.message").value("パスワードを設定しました"));
+    }
+
+    @Test
+    @DisplayName("GET /me/oauth — 返るのは認証主体自身の連携一覧のみ（UserController#getConnectedProviders）")
+    void getConnectedProviders_returnsOnlyAuthenticatedUsersProviders() throws Exception {
+        var provider = new OAuthProviderResponse("GOOGLE", "self@example.com",
+                LocalDateTime.of(2026, 1, 1, 0, 0));
+        given(authOAuthService.getConnectedProviders(eq(1L)))
+                .willReturn(ApiResponse.of(List.of(provider)));
+
+        mockMvc.perform(get("/api/v1/users/me/oauth"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].provider").value("GOOGLE"))
+                .andExpect(jsonPath("$.data[0].providerEmail").value("self@example.com"));
+    }
+
+    @Test
+    @DisplayName("DELETE /me/oauth/{provider} — 解除対象は認証主体の userId のみ"
+            + "（UserController#disconnectProvider — provider はプロバイダ種別に過ぎない）")
+    void disconnectProvider_targetsOnlyAuthenticatedUser() throws Exception {
+        doNothing().when(authOAuthService).disconnectProvider(eq(1L), eq("GOOGLE"));
+
+        mockMvc.perform(delete("/api/v1/users/me/oauth/GOOGLE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.message").value("OAuth連携を解除しました"));
+    }
+
+    @Test
+    @DisplayName("DELETE /me/oauth/{provider} — 未連携プロバイダの解除は404（ErrorCodeステータス写像是正ロットA: AUTH_029）")
+    void disconnectProvider_notLinked_returns404() throws Exception {
+        org.mockito.Mockito.doThrow(new com.mannschaft.app.common.BusinessException(
+                        com.mannschaft.app.auth.AuthErrorCode.AUTH_029))
+                .when(authOAuthService).disconnectProvider(eq(1L), eq("GOOGLE"));
+
+        mockMvc.perform(delete("/api/v1/users/me/oauth/GOOGLE"))
+                .andExpect(status().isNotFound());
     }
 }

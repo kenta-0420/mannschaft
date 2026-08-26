@@ -6,11 +6,13 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.todo.TodoErrorCode;
+import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.SharedMemoEntryRequest;
 import com.mannschaft.app.todo.dto.SharedMemoEntryResponse;
 import com.mannschaft.app.todo.entity.TodoSharedMemoEntryEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import com.mannschaft.app.todo.repository.TodoSharedMemoEntryRepository;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -42,21 +44,27 @@ public class TodoSharedMemoService {
     private final TodoRepository todoRepository;
     private final AccessControlService accessControlService;
     private final NameResolverService nameResolverService;
+    private final TodoAccessGuard todoAccessGuard;
 
     /**
      * 共有メモ一覧を取得する（時系列昇順、ページネーション）。
      *
      * @param todoId        対象TODO ID
-     * @param page          ページ番号（1始まり）
+     * @param scopeType     path スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId       path 内部スコープ ID（内部 teamId / orgId）
+     * @param page          ページ番号（0始まり）
      * @param perPage       ページサイズ
      * @param currentUserId 現在のユーザーID
      * @return 共有メモ一覧
      */
-    public PagedResponse<SharedMemoEntryResponse> getSharedMemos(Long todoId, int page, int perPage,
+    public PagedResponse<SharedMemoEntryResponse> getSharedMemos(Long todoId,
+                                                                   TodoScopeType scopeType, Long scopeId,
+                                                                   int page, int perPage,
                                                                    Long currentUserId) {
-        verifyTodoExists(todoId);
+        // 認可根治（Wave5 todo硬化B）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(todoId, scopeType, scopeId, currentUserId);
         Page<TodoSharedMemoEntryEntity> pageResult = sharedMemoRepository
-                .findByTodoIdOrderByCreatedAtAsc(todoId, PageRequest.of(page - 1, perPage));
+                .findByTodoIdOrderByCreatedAtAsc(todoId, PageRequest.of(page, perPage));
 
         // 全投稿者IDを一括収集して名前解決（N+1防止）
         Set<Long> userIds = pageResult.getContent().stream()
@@ -79,7 +87,7 @@ public class TodoSharedMemoService {
                 .toList();
 
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
-                pageResult.getTotalElements(), page, perPage, pageResult.getTotalPages());
+                pageResult.getTotalElements(), pageResult.getNumber(), pageResult.getSize(), pageResult.getTotalPages());
         return PagedResponse.of(responses, meta);
     }
 
@@ -87,16 +95,21 @@ public class TodoSharedMemoService {
      * 共有メモを追加する。
      *
      * @param todoId        対象TODO ID
+     * @param scopeType     path スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId       path 内部スコープ ID（内部 teamId / orgId）
      * @param userId        投稿者ユーザーID
      * @param request       作成リクエスト
      * @param currentUserId 現在のユーザーID（isOwnMemo判定に使用）
      * @return 作成されたメモ
      */
     @Transactional
-    public ApiResponse<SharedMemoEntryResponse> addSharedMemo(Long todoId, Long userId,
+    public ApiResponse<SharedMemoEntryResponse> addSharedMemo(Long todoId,
+                                                               TodoScopeType scopeType, Long scopeId,
+                                                               Long userId,
                                                                SharedMemoEntryRequest request,
                                                                Long currentUserId) {
-        verifyTodoExists(todoId);
+        // 認可根治（Wave5 todo硬化B）: scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        todoAccessGuard.verifyScopeAndMembership(todoId, scopeType, scopeId, currentUserId);
 
         // 500件上限チェック
         long memoCount = sharedMemoRepository.countByTodoId(todoId);
@@ -141,15 +154,22 @@ public class TodoSharedMemoService {
      * 共有メモを編集する。投稿者本人のみ編集可能。
      *
      * @param todoId    対象TODO ID
+     * @param scopeType path スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   path 内部スコープ ID（内部 teamId / orgId）
      * @param memoId    メモID
      * @param userId    操作ユーザーID
      * @param request   更新リクエスト
      * @return 更新されたメモ
      */
     @Transactional
-    public ApiResponse<SharedMemoEntryResponse> updateSharedMemo(Long todoId, Long memoId,
+    public ApiResponse<SharedMemoEntryResponse> updateSharedMemo(Long todoId,
+                                                                   TodoScopeType scopeType, Long scopeId,
+                                                                   Long memoId,
                                                                    Long userId,
                                                                    SharedMemoEntryRequest request) {
+        // 認可根治（Wave5 todo硬化B）: 前段で scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        // 既存の投稿者本人チェック（TODO_051）は維持し、その手前に scope＋membership を敷く。
+        todoAccessGuard.verifyScopeAndMembership(todoId, scopeType, scopeId, userId);
         TodoSharedMemoEntryEntity entry = findMemoOrThrow(memoId, todoId);
 
         if (!entry.getUserId().equals(userId)) {
@@ -178,11 +198,17 @@ public class TodoSharedMemoService {
      * 共有メモを論理削除する。投稿者本人またはADMIN/DEPUTY_ADMINが削除可能。
      *
      * @param todoId    対象TODO ID
+     * @param scopeType path スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   path 内部スコープ ID（内部 teamId / orgId）
      * @param memoId    メモID
      * @param userId    操作ユーザーID
      */
     @Transactional
-    public void deleteSharedMemo(Long todoId, Long memoId, Long userId) {
+    public void deleteSharedMemo(Long todoId, TodoScopeType scopeType, Long scopeId,
+                                 Long memoId, Long userId) {
+        // 認可根治（Wave5 todo硬化B）: 前段で scope 束縛（404 秘匿）＋ membership 検証（非メンバー 403）。
+        // 既存の投稿者本人 or ADMIN/DEPUTY_ADMIN チェック（TODO_051）は維持し、その手前に敷く。
+        todoAccessGuard.verifyScopeAndMembership(todoId, scopeType, scopeId, userId);
         TodoSharedMemoEntryEntity entry = findMemoOrThrow(memoId, todoId);
 
         // 本人またはADMIN/DEPUTY_ADMINが削除可能
@@ -199,14 +225,6 @@ public class TodoSharedMemoService {
     }
 
     // --- プライベートメソッド ---
-
-    /**
-     * TODOの存在を確認する。
-     */
-    private void verifyTodoExists(Long todoId) {
-        todoRepository.findByIdAndDeletedAtIsNull(todoId)
-                .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
-    }
 
     /**
      * 共有メモを取得する。存在しない場合は例外をスローする。

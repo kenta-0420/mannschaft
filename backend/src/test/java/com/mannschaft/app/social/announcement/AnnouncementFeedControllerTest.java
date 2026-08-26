@@ -3,6 +3,8 @@ package com.mannschaft.app.social.announcement;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.dashboard.ViewerRole;
+import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.ProxyInputContext;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService.AnnouncementFeedItem;
@@ -38,6 +40,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link AnnouncementFeedController} の MockMvc 結合テスト（F02.6）。
@@ -64,6 +67,10 @@ class AnnouncementFeedControllerTest {
     @MockitoBean
     private AnnouncementFeedService announcementFeedService;
 
+    // GET 一覧取得で閲覧者ロールを解決するために必要（固定 "MEMBER" 撤廃）
+    @MockitoBean
+    private RoleResolver roleResolver;
+
     // JwtAuthenticationFilter の依存解決用
     @MockitoBean
     private AuthTokenService authTokenService;
@@ -77,6 +84,10 @@ class AnnouncementFeedControllerTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUpSecurityContext() {
@@ -100,7 +111,7 @@ class AnnouncementFeedControllerTest {
                 .titleCache("テストお知らせタイトル")
                 .excerptCache("テスト抜粋テキスト")
                 .priority("NORMAL")
-                .visibility("MEMBERS_ONLY")
+                .visibility("MEMBERS_AND_ABOVE")
                 .build();
         try {
             java.lang.reflect.Field f = com.mannschaft.app.common.BaseEntity.class.getDeclaredField("id");
@@ -132,6 +143,8 @@ class AnnouncementFeedControllerTest {
                     false,  // hasNext = false
                     1L      // unreadCount
             );
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID))
+                    .willReturn(ViewerRole.MEMBER);
             given(announcementFeedService.getAnnouncementFeed(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID),
                     anyString(), isNull(), anyInt()))
@@ -154,6 +167,8 @@ class AnnouncementFeedControllerTest {
             // Given
             AnnouncementFeedResult result = new AnnouncementFeedResult(
                     List.of(), null, false, 0L);
+            given(roleResolver.resolveViewerRole(USER_ID, "TEAM", TEAM_ID))
+                    .willReturn(ViewerRole.MEMBER);
             given(announcementFeedService.getAnnouncementFeed(
                     eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID),
                     anyString(), isNull(), anyInt()))
@@ -203,8 +218,8 @@ class AnnouncementFeedControllerTest {
         }
 
         @Test
-        @DisplayName("異常系: 権限不足（Service が ANNOUNCE_002 を投げる）→ 400 Bad Request")
-        void createAnnouncement_権限不足_400() throws Exception {
+        @DisplayName("異常系: 権限不足（Service が ANNOUNCE_002 を投げる）→ 403 Forbidden")
+        void createAnnouncement_権限不足_403() throws Exception {
             // Given: Service が権限不足例外を投げる
             willThrow(new BusinessException(AnnouncementErrorCode.ANNOUNCE_002))
                     .given(announcementFeedService)
@@ -217,11 +232,13 @@ class AnnouncementFeedControllerTest {
                     }
                     """.formatted(SOURCE_ID);
 
-            // When / Then: Severity.WARN → 400 BAD_REQUEST（GlobalExceptionHandler デフォルト）
+            // When / Then: ANNOUNCE_002 は「操作権限なし」として 403 を返す契約
+            //（#2468。定義側 Javadoc と F02.6 §エラー表の宣言どおり
+            //  ERROR_CODE_STATUS_MAP に登録済み。従来は未登録で Severity.WARN 既定の 400 だった）
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements", TEAM_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(requestBody))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_002"));
         }
     }
@@ -285,7 +302,8 @@ class AnnouncementFeedControllerTest {
         void markAsRead_正常系_200() throws Exception {
             // Given
             willDoNothing().given(announcementFeedService)
-                    .markAsRead(eq(ANNOUNCEMENT_ID), eq(USER_ID));
+                    .markAsRead(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID),
+                            eq(ANNOUNCEMENT_ID), eq(USER_ID));
 
             // When / Then
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", TEAM_ID, ANNOUNCEMENT_ID))
@@ -304,16 +322,35 @@ class AnnouncementFeedControllerTest {
     class MarkAllAsRead {
 
         @Test
-        @DisplayName("正常系: 200 OK + markedCount が返ること")
+        @DisplayName("正常系: 200 OK + 実際に既読化した件数が markedCount に載ること（#2530 ①）")
         void markAllAsRead_正常系_200() throws Exception {
-            // Given
-            willDoNothing().given(announcementFeedService)
-                    .markAllAsRead(eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID));
+            // Given: 下流が 8 件を既読化し、未読は残っていない
+            given(announcementFeedService.markAllAsRead(
+                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID)))
+                    .willReturn(new AnnouncementReadService.MarkAllReadOutcome(8, false));
+
+            // When / Then: ハードコードの 0 ではなく実件数が返る
+            mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", TEAM_ID))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.markedCount").value(8))
+                    .andExpect(jsonPath("$.data.hasMoreUnread").value(false));
+        }
+
+        @Test
+        @DisplayName("打ち切り時: hasMoreUnread=true と実件数が返り、嘘の 0 件にならない（#2530 ①）")
+        void markAllAsRead_打ち切り時は残余を伝える() throws Exception {
+            // Given: 防御上限（500 × 20）に到達して未読が残っている
+            int limit = AnnouncementReadService.MARK_ALL_BATCH_SIZE
+                    * AnnouncementReadService.MARK_ALL_MAX_BATCHES;
+            given(announcementFeedService.markAllAsRead(
+                    eq(AnnouncementScopeType.TEAM), eq(TEAM_ID), eq(USER_ID)))
+                    .willReturn(new AnnouncementReadService.MarkAllReadOutcome(limit, true));
 
             // When / Then
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/read-all", TEAM_ID))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.data.markedCount").value(0));
+                    .andExpect(jsonPath("$.data.markedCount").value(limit))
+                    .andExpect(jsonPath("$.data.hasMoreUnread").value(true));
         }
     }
 

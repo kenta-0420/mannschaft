@@ -7,8 +7,10 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -25,8 +27,7 @@ import java.time.LocalDateTime;
 @Table(name = "tournament_entry_templates")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TournamentEntryTemplateEntity extends UuidV7Entity {
 
     /** チームID（クロスドメインFK禁止のためインデックスのみ） */
@@ -49,7 +50,9 @@ public class TournamentEntryTemplateEntity extends UuidV7Entity {
     /** 論理削除日時（nullの場合は有効） */
     private LocalDateTime deletedAt;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

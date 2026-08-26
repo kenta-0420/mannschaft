@@ -1,209 +1,242 @@
 {
   "village": {
-    "title": "村",
-    "subtitle": "コミュニティ広場",
+    "title": "Aldea",
+    "subtitle": "Plaza comunitaria",
+    "archivedNotice": "Esta aldea está congelada. Es de solo lectura.",
     "action": {
-      "create": "村を作る",
-      "edit": "村を編集",
-      "delete": "村を削除",
-      "archive": "村を凍結",
-      "join": "参加する",
-      "leave": "退村する",
-      "pin": "お気に入りに追加",
-      "unpin": "お気に入りから外す",
-      "report": "通報する",
-      "search": "検索",
-      "save": "保存",
-      "cancel": "キャンセル",
-      "submit": "送信",
-      "approve": "承認",
-      "reject": "却下",
-      "withdraw": "取り下げ",
-      "resolve": "対応完了",
-      "dismiss": "却下",
+      "create": "Crear aldea",
+      "edit": "Editar aldea",
+      "delete": "Eliminar aldea",
+      "archive": "Archivar aldea",
+      "join": "Unirse",
+      "leave": "Abandonar aldea",
+      "pin": "Agregar a favoritos",
+      "unpin": "Eliminar de favoritos",
+      "report": "Denunciar",
+      "search": "Buscar",
+      "save": "Guardar",
+      "cancel": "Cancelar",
+      "submit": "Enviar",
+      "approve": "Aprobar",
+      "reject": "Rechazar",
+      "withdraw": "Retirar",
+      "resolve": "Marcar como resuelto",
+      "dismiss": "Desestimar",
       "ban": "Ban",
       "unban": "Unban",
       "changeRole": "Change role",
       "viewAll": "View all villages"
     },
     "field": {
-      "name": "村名",
-      "slug": "スラッグ",
-      "category": "カテゴリ",
-      "description": "説明文",
-      "iconUrl": "アイコン",
-      "coverUrl": "カバー画像",
-      "type": "種別",
-      "joinPolicy": "参加方式",
-      "visibility": "公開範囲",
-      "guideline": "村ガイドライン",
-      "purpose": "活動目的",
-      "memberCount": "村人数",
-      "createdAt": "作成日",
-      "archivedAt": "凍結日"
+      "name": "Nombre de la aldea",
+      "slug": "Slug",
+      "category": "Categoría",
+      "description": "Descripción",
+      "iconUrl": "Icono",
+      "coverUrl": "Imagen de portada",
+      "type": "Tipo",
+      "joinPolicy": "Política de ingreso",
+      "visibility": "Visibilidad",
+      "bulletinVisibility": "Visibilidad del tablón de anuncios",
+      "guideline": "Guía de la aldea",
+      "purpose": "Propósito",
+      "memberCount": "Número de miembros",
+      "createdAt": "Fecha de creación",
+      "archivedAt": "Fecha de archivo"
     },
     "type": {
-      "OFFICIAL": "公式村",
-      "COMMUNITY": "コミュニティ村"
+      "OFFICIAL": "Aldea oficial",
+      "COMMUNITY": "Aldea comunitaria"
     },
     "joinPolicy": {
-      "FREE": "自由参加",
-      "APPROVAL": "承認制"
+      "FREE": "Libre acceso",
+      "APPROVAL": "Requiere aprobación"
     },
     "visibility": {
-      "PUBLIC": "公開",
-      "UNLISTED": "限定公開"
+      "PUBLIC": "Público",
+      "UNLISTED": "No listado"
+    },
+    "bulletinVisibility": {
+      "PUBLIC": "Visible también para no miembros",
+      "MEMBERS_ONLY": "Solo miembros"
     },
     "role": {
-      "HEADMAN": "村長",
-      "ELDER": "長老",
-      "VILLAGER": "村人",
-      "VISITOR": "訪問者"
+      "HEADMAN": "Jefe de aldea",
+      "ELDER": "Anciano",
+      "VILLAGER": "Aldeano",
+      "VISITOR": "Visitante"
     },
     "subjectType": {
-      "USER": "個人",
-      "TEAM": "チーム",
-      "ORGANIZATION": "組織"
+      "USER": "Individual",
+      "TEAM": "Equipo",
+      "ORGANIZATION": "Organización"
     },
     "tab": {
-      "bulletin": "掲示板",
-      "timeline": "タイムライン",
-      "lobby": "ロビー",
-      "members": "村人一覧",
-      "settings": "設定",
-      "reports": "通報管理",
-      "calendar": "歳時記",
-      "festival": "お祭り",
-      "matchRecruit": "練習試合・募集",
-      "meetup": "寄合",
-      "chronicle": "村史"
+      "bulletin": "Tablón de anuncios",
+      "timeline": "Cronología",
+      "lobby": "Vestíbulo",
+      "members": "Lista de miembros",
+      "calendar": "Calendario",
+      "festival": "Festival",
+      "matchRecruit": "Reclutamiento de partidos",
+      "meetup": "Reunión",
+      "chronicle": "Crónica de la aldea",
+      "charter": "Carta de la aldea"
+    },
+    "systemPost": {
+      "authorName": "Aviso de eventos de la aldea",
+      "eventCreated": "Se creó un evento",
+      "eventUpcoming": "Un evento se acerca",
+      "meetupConfirmed": "Se confirmó la fecha de la reunión",
+      "festivalStarted": "El festival ha comenzado"
     },
     "lobby": {
-      "title": "ロビー",
-      "today": "本日",
-      "yesterday": "昨日",
-      "daily": "日次スレッド",
-      "realtime": "リアルタイム",
-      "placeholder": "メッセージを入力...",
-      "empty": "まだメッセージはありません",
-      "loadMore": "もっと見る",
+      "title": "Vestíbulo",
+      "today": "Hoy",
+      "yesterday": "Ayer",
+      "daily": "Hilo diario",
+      "realtime": "Tiempo real",
+      "placeholder": "Escribe un mensaje...",
+      "empty": "Aún no hay mensajes",
+      "loadMore": "Cargar más",
       "presence": {
         "count": "{count} personas están aquí"
       }
     },
     "pin": {
-      "title": "お気に入りの村",
-      "empty": "ピン留めした村はまだありません",
-      "limit": "ピン留めは{max}件まで可能です",
-      "reorder": "並び替え",
-      "reorderSuccess": "並び順を保存しました"
+      "title": "Aldeas favoritas",
+      "empty": "Aún no hay aldeas fijadas",
+      "limit": "Puedes fijar hasta {max} aldeas",
+      "reorder": "Reordenar",
+      "reorderSuccess": "Orden guardado"
     },
     "nickname": {
-      "title": "村ニックネーム",
-      "placeholder": "村で使うニックネーム",
-      "bio": "自己紹介",
-      "avatar": "アバター",
-      "changeLimit": "ニックネーム変更は月{limit}回までです",
-      "remaining": "今月の残り変更回数: {count}回",
-      "saveSuccess": "ニックネームを保存しました"
+      "title": "Apodo de la aldea",
+      "placeholder": "Apodo para usar en esta aldea",
+      "bio": "Biografía",
+      "avatar": "Avatar",
+      "changeLimit": "El apodo puede cambiarse hasta {limit} veces por mes",
+      "remaining": "Cambios restantes este mes: {count}",
+      "saveSuccess": "Apodo guardado"
     },
     "report": {
       "dialog": {
-        "title": "通報する",
-        "reason": "通報理由",
-        "detail": "詳細（任意）",
-        "submit": "通報を送信",
-        "submitted": "通報を受け付けました。運営が確認します。",
-        "anonymous": "通報は匿名で送信されます"
+        "title": "Denunciar",
+        "reason": "Motivo de la denuncia",
+        "detail": "Detalles (opcional)",
+        "submit": "Enviar denuncia",
+        "submitted": "Tu denuncia ha sido recibida. Nuestro equipo la revisará.",
+        "anonymous": "Las denuncias se envían de forma anónima"
       },
       "list": {
-        "title": "通報一覧",
-        "empty": "通報はありません",
-        "status": "状態",
-        "target": "対象",
-        "reportedAt": "通報日時"
+        "title": "Denuncias",
+        "empty": "No hay denuncias",
+        "status": "Estado",
+        "target": "Objetivo",
+        "reportedAt": "Denunciado el"
       },
       "status": {
-        "PENDING": "未対応",
-        "REVIEWING": "確認中",
-        "RESOLVED": "対応済み",
-        "DISMISSED": "却下"
+        "PENDING": "Pendiente",
+        "REVIEWING": "En revisión",
+        "RESOLVED": "Resuelto",
+        "DISMISSED": "Desestimado"
       },
       "targetType": {
-        "POST": "投稿",
-        "MESSAGE": "メッセージ",
-        "MEMBERSHIP": "村人",
-        "VILLAGE": "村"
+        "POST": "Publicación",
+        "MESSAGE": "Mensaje",
+        "MEMBERSHIP": "Miembro",
+        "VILLAGE": "Aldea"
       },
       "reason": {
-        "spam": "スパム・宣伝",
-        "harassment": "嫌がらせ・誹謗中傷",
-        "offensive": "不快・不適切な内容",
-        "other": "その他"
+        "spam": "Spam / Promoción",
+        "harassment": "Acoso / Difamación",
+        "offensive": "Contenido ofensivo / inapropiado",
+        "other": "Otro"
       }
     },
     "creationRequest": {
-      "title": "村作成申請",
-      "adminTitle": "村作成申請審査",
-      "guideline": "村ガイドラインに同意する",
-      "submitted": "申請を送信しました。運営の審査をお待ちください。",
-      "pending": "審査待ち",
-      "approved": "承認済み",
-      "rejected": "却下",
-      "withdrawn": "取り下げ済み",
-      "reviewComment": "審査コメント",
-      "reviewCommentPlaceholder": "審査コメントを入力してください",
-      "purpose": "活動目的・運営方針",
-      "empty": "申請はありません",
+      "title": "Solicitud de creación de aldea",
+      "adminTitle": "Revisión de solicitudes de creación de aldea",
+      "guideline": "Aceptar las guías de la aldea",
+      "submitted": "Tu solicitud ha sido enviada. Por favor espera la revisión.",
+      "pending": "Pendiente de revisión",
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "withdrawn": "Retirado",
+      "reviewComment": "Comentario de revisión",
+      "reviewCommentPlaceholder": "Ingresa un comentario de revisión",
+      "purpose": "Propósito / Política de gestión",
+      "empty": "No hay solicitudes",
       "filter": {
-        "all": "すべて",
-        "PENDING": "審査待ち",
-        "APPROVED": "承認済み",
-        "REJECTED": "却下",
-        "WITHDRAWN": "取り下げ済み"
+        "all": "Todas",
+        "PENDING": "Pendiente de revisión",
+        "APPROVED": "Aprobado",
+        "REJECTED": "Rechazado",
+        "WITHDRAWN": "Retirado"
       },
       "column": {
-        "requester": "申請者",
-        "village": "村名",
-        "category": "カテゴリ",
-        "purpose": "目的",
-        "requestedAt": "申請日",
-        "actions": "操作"
+        "requester": "Solicitante",
+        "village": "Nombre de la aldea",
+        "category": "Categoría",
+        "purpose": "Propósito",
+        "requestedAt": "Fecha de solicitud",
+        "actions": "Acciones"
       },
       "confirm": {
-        "approve": "この村作成申請を承認します。よろしいですか?",
-        "reject": "この村作成申請を却下します。却下理由を入力してください。"
+        "approve": "¿Aprobar esta solicitud de creación de aldea?",
+        "reject": "Rechazar esta solicitud. Por favor ingresa el motivo del rechazo."
       },
-      "detailTitle": "村作成申請の詳細",
-      "rejectCommentRequired": "却下時は審査コメントが必須です",
-      "noPermission": "この画面を閲覧する権限がありません",
-      "loadFailed": "村作成申請一覧の取得に失敗しました",
-      "approveSuccess": "申請を承認しました",
-      "rejectSuccess": "申請を却下しました",
-      "reviewFailed": "審査の処理に失敗しました"
+      "detailTitle": "Detalle de solicitud de creación de aldea",
+      "rejectCommentRequired": "Se requiere un comentario al rechazar",
+      "noPermission": "No tienes permiso para ver esta página",
+      "loadFailed": "Error al cargar las solicitudes de creación de aldea",
+      "approveSuccess": "Solicitud aprobada",
+      "rejectSuccess": "Solicitud rechazada",
+      "reviewFailed": "Error al procesar la revisión"
     },
     "joinRequest": {
-      "title": "参加申請",
-      "message": "申請メッセージ（任意）",
-      "submitted": "参加申請を送信しました",
-      "pending": "審査待ち",
-      "approved": "承認済み",
-      "rejected": "却下",
-      "withdrawn": "取り下げ済み",
-      "reviewComment": "審査コメント",
-      "empty": "参加申請はありません"
+      "title": "Solicitud de ingreso",
+      "message": "Mensaje de solicitud (opcional)",
+      "submitted": "Solicitud de ingreso enviada",
+      "pending": "Pendiente de revisión",
+      "approved": "Aprobado",
+      "rejected": "Rechazado",
+      "withdrawn": "Retirado",
+      "reviewComment": "Comentario de revisión",
+      "empty": "No hay solicitudes de ingreso",
+      "description": "Esta aldea requiere aprobación. Te conviertes en aldeano cuando el jefe o un anciano aprueba tu solicitud. Añadir un mensaje aumenta tus posibilidades.",
+      "formTitle": "Solicitar unirse",
+      "messagePlaceholder": "Cuenta qué quieres hacer en esta aldea y por qué quieres unirte (opcional, máximo 500 caracteres)",
+      "submittedTitle": "Tu solicitud enviada",
+      "submittedBody": "Espera a que el jefe o un anciano la revise. Mientras esté pendiente, puedes retirarla desde esta pantalla en cualquier momento.",
+      "withdrawSuccess": "Solicitud de ingreso retirada",
+      "approveSuccess": "Solicitud de ingreso aprobada",
+      "rejectSuccess": "Solicitud de ingreso rechazada",
+      "rejectCommentRequired": "Se requiere un comentario de revisión para rechazar",
+      "reviewCommentPlaceholder": "Escribe un comentario para el solicitante (máximo 500 caracteres)",
+      "reviewDescription": "Revisa las solicitudes de ingreso a esta aldea. Al aprobar una, el solicitante se convierte en aldeano.",
+      "column": {
+        "requester": "Solicitante",
+        "message": "Mensaje",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "confirm": {
+        "approve": "¿Aprobar esta solicitud de ingreso? El solicitante se convertirá en aldeano.",
+        "reject": "¿Rechazar esta solicitud de ingreso?"
+      }
     },
     "feed": {
-      "title": "Village feed",
-      "dashboardTitle": "Your villages",
-      "pinned": "Pinned villages",
-      "empty": "No favorite villages yet",
-      "emptyHint": "Join a village you like and the latest posts will appear here.",
-      "loadingError": "Failed to load the village feed",
-      "retry": "Retry",
+      "title": "Feed de la aldea",
+      "dashboardTitle": "Tus aldeas",
+      "pinned": "Aldeas fijadas",
+      "empty": "Aún no hay aldeas favoritas",
+      "emptyHint": "Únete a una aldea que te guste y las últimas publicaciones aparecerán aquí.",
+      "loadingError": "Error al cargar el feed de la aldea",
+      "retry": "Reintentar",
       "type": {
-        "TIMELINE": "Timeline",
-        "LOBBY": "Lobby"
+        "TIMELINE": "Cronología",
+        "LOBBY": "Vestíbulo"
       }
     },
     "widget": {
@@ -214,338 +247,551 @@
     },
     "search": {
       "title": "Buscar pueblos",
-      "placeholder": "村を検索...",
-      "internalPlaceholder": "この村の中を検索...",
-      "filterType": "種別で絞り込み",
-      "filterCategory": "カテゴリで絞り込み",
-      "filterJoinPolicy": "参加方式で絞り込み",
-      "empty": "条件に一致する村が見つかりません",
-      "internalEmpty": "この村内に該当する結果はありません",
+      "placeholder": "Buscar aldeas...",
+      "internalPlaceholder": "Buscar dentro de esta aldea...",
+      "filterType": "Filtrar por tipo",
+      "filterCategory": "Filtrar por categoría",
+      "filterJoinPolicy": "Filtrar por política de ingreso",
+      "empty": "No se encontraron aldeas que coincidan con tu búsqueda",
+      "internalEmpty": "No hay resultados en esta aldea",
       "result": {
-        "POST": "投稿",
-        "MESSAGE": "メッセージ",
-        "MEMBER": "村人"
+        "POST": "Publicación",
+        "MESSAGE": "Mensaje",
+        "MEMBER": "Miembro"
       }
     },
     "members": {
-      "title": "村人一覧",
-      "empty": "村人がいません",
-      "banned": "BAN済み",
-      "you": "あなた",
-      "filterRole": "ロールで絞り込み"
+      "title": "Lista de miembros",
+      "empty": "No hay miembros",
+      "banned": "Expulsado",
+      "you": "Tú",
+      "filterRole": "Filtrar por rol",
+      "soloHeadmanHint": "Cuando otros miembros se unan a esta aldea, podrás nombrarlos ancianos aquí."
+    },
+    "profile": {
+      "title": "Perfil del aldeano",
+      "villages": {
+        "title": "Aldeas a las que pertenece",
+        "empty": "No hay aldeas para mostrar",
+        "publicToggle": "Mostrar esta aldea en mi lista de aldeas",
+        "publicToggleHint": "Al activarlo, las personas que comparten una aldea contigo podrán ver esta aldea en tu lista de aldeas."
+      }
     },
     "postingIdentity": {
-      "title": "投稿主体",
-      "asUser": "自分として投稿",
-      "asTeam": "チームとして投稿",
-      "asOrganization": "組織として投稿"
+      "title": "Publicar como",
+      "asUser": "Publicar como individuo",
+      "asTeam": "Publicar como equipo",
+      "asOrganization": "Publicar como organización"
     },
     "warn": {
-      "participationLimit": "30 村以上に参加しています。アクティブな村に絞ることをおすすめします。"
+      "participationLimit": "Eres miembro de 30 o más aldeas. Te recomendamos reducirlo a las activas."
     },
     "success": {
-      "created": "村を作成しました",
-      "updated": "村情報を更新しました",
-      "deleted": "村を削除しました",
-      "archived": "村を凍結しました",
-      "joined": "村に参加しました",
-      "left": "村を退村しました",
-      "pinned": "お気に入りに追加しました",
-      "unpinned": "お気に入りから外しました",
-      "roleChanged": "ロールを変更しました",
-      "banned": "BANしました",
-      "reported": "通報を送信しました",
-      "reportResolved": "通報を対応済みにしました"
+      "created": "Aldea creada",
+      "updated": "Información de la aldea actualizada",
+      "deleted": "Aldea eliminada",
+      "archived": "Aldea archivada",
+      "joined": "Te has unido a la aldea",
+      "left": "Has abandonado la aldea",
+      "pinned": "Agregado a favoritos",
+      "unpinned": "Eliminado de favoritos",
+      "roleChanged": "Rol cambiado",
+      "banned": "Usuario expulsado",
+      "reported": "Denuncia enviada",
+      "reportResolved": "Denuncia marcada como resuelta"
     },
     "error": {
-      "VILLAGE_001": "村が見つかりません",
-      "VILLAGE_002": "この村は非公開です",
-      "VILLAGE_003": "その村名はすでに使われています",
-      "VILLAGE_004": "スラッグの形式が不正です（3〜40文字の英小文字・数字・ハイフン）",
-      "VILLAGE_005": "そのスラッグはすでに使われています",
-      "VILLAGE_006": "すでに村人です",
-      "VILLAGE_007": "この村のメンバーではありません",
-      "VILLAGE_008": "そのニックネームはすでに使われています",
-      "VILLAGE_009": "通報の上限に達しました（1時間に10件）",
-      "VILLAGE_010": "村作成申請のレート上限に達しました（1日3件・保有10件まで）",
-      "VILLAGE_011": "ニックネーム変更は月3回までです",
-      "VILLAGE_012": "参加可能な村数の上限（100）を超えました",
-      "VILLAGE_013": "お気に入り村の上限（30件）を超えました",
-      "VILLAGE_014": "村ガイドラインへの同意が必要です（直近1時間以内）",
-      "VILLAGE_015": "この主体として参加する権限がありません",
-      "VILLAGE_016": "指定された主体は村人ではありません",
-      "VILLAGE_017": "村長は後継を指名するまで退村できません",
-      "VILLAGE_018": "他のユーザーが情報を更新しました。最新の内容を確認して再度お試しください",
-      "VILLAGE_019": "この村は承認が必要です。参加申請をご利用ください",
-      "VILLAGE_022": "新規アカウントはこの操作を行えません",
-      "VILLAGE_024": "この操作を行う権限がありません",
-      "VILLAGE_025": "短時間に参加と退出を繰り返しています。しばらく時間をおいてからお試しください",
-      "VILLAGE_026": "通報対象が不正です",
-      "VILLAGE_027": "この村は凍結されています",
-      "VILLAGE_028": "ニックネームが無効です（長さ・禁止語・使用文字を確認してください）",
-      "VILLAGE_029": "入力値が不正です",
-      "VILLAGE_031": "この村から BAN されています",
-      "VILLAGE_032": "村作成申請が見つかりません",
-      "VILLAGE_033": "この村作成申請は既に審査済みです",
-      "VILLAGE_034": "この村作成申請は拒否済みです",
-      "VILLAGE_035": "指定された slug は既に使用されています",
-      "VILLAGE_036": "一般ユーザーは公式村を申請できません",
-      "VILLAGE_037": "公式村の作成には運営権限が必要です",
-      "VILLAGE_038": "参加申請が見つかりません",
-      "VILLAGE_039": "既に審査待ちの参加申請があります",
-      "VILLAGE_040": "この参加申請は既に処理済みです",
-      "VILLAGE_041": "この村は自由参加です。参加申請ではなく直接参加してください",
-      "VILLAGE_042": "通報が見つかりません",
-      "VILLAGE_043": "この通報は既に処理済みです",
-      "VILLAGE_044": "お気に入り村のピンが見つかりません",
-      "generic": "村機能でエラーが発生しました",
-      "backToList": "村一覧へ戻る",
-      "headmanOnly": "Solo el jefe del pueblo puede modificar esta configuración"
+      "VILLAGE_001": "Aldea no encontrada",
+      "VILLAGE_002": "Esta aldea es privada",
+      "VILLAGE_003": "Ese nombre de aldea ya está en uso",
+      "VILLAGE_004": "Formato de slug inválido (3–40 letras minúsculas, números o guiones)",
+      "VILLAGE_005": "Ese slug ya está en uso",
+      "VILLAGE_006": "Ya eres miembro",
+      "VILLAGE_007": "No eres miembro de esta aldea",
+      "VILLAGE_008": "Ese apodo ya está en uso",
+      "VILLAGE_009": "Límite de denuncias alcanzado (10 por hora)",
+      "VILLAGE_010": "Se alcanzó el límite de creación de aldeas. Espere un momento e inténtelo de nuevo.",
+      "VILLAGE_011": "El apodo solo puede cambiarse 3 veces por mes",
+      "VILLAGE_012": "Has alcanzado el número máximo de aldeas en las que puedes unirte (100)",
+      "VILLAGE_013": "Has alcanzado el número máximo de aldeas favoritas (30)",
+      "VILLAGE_014": "Debes aceptar las guías de la aldea (en la última hora)",
+      "VILLAGE_015": "No tienes permiso para unirte como este sujeto",
+      "VILLAGE_016": "El sujeto especificado no es miembro",
+      "VILLAGE_017": "El jefe de aldea debe designar un sucesor antes de abandonar",
+      "VILLAGE_018": "Otro usuario ha actualizado la información. Por favor revisa el contenido más reciente e inténtalo de nuevo",
+      "VILLAGE_019": "Esta aldea requiere aprobación. Por favor envía una solicitud de ingreso",
+      "VILLAGE_022": "Las cuentas nuevas no pueden realizar esta acción",
+      "VILLAGE_024": "No tienes permiso para realizar esta acción",
+      "VILLAGE_025": "Te estás uniendo y abandonando con demasiada frecuencia. Por favor espera un momento",
+      "VILLAGE_026": "Objetivo de denuncia inválido",
+      "VILLAGE_027": "Esta aldea está archivada",
+      "VILLAGE_028": "Apodo inválido (verifica la longitud, palabras prohibidas y caracteres permitidos)",
+      "VILLAGE_029": "Entrada inválida",
+      "VILLAGE_031": "Estás expulsado de esta aldea",
+      "VILLAGE_032": "Solicitud de creación de aldea no encontrada",
+      "VILLAGE_033": "Esta solicitud de creación de aldea ya ha sido revisada",
+      "VILLAGE_034": "Esta solicitud de creación de aldea ya ha sido rechazada",
+      "VILLAGE_035": "El slug especificado ya está en uso",
+      "VILLAGE_036": "Los usuarios regulares no pueden solicitar una aldea oficial",
+      "VILLAGE_037": "Se requieren privilegios de administrador para crear una aldea oficial",
+      "VILLAGE_038": "Solicitud de ingreso no encontrada",
+      "VILLAGE_039": "Ya hay una solicitud de ingreso pendiente de revisión",
+      "VILLAGE_040": "Esta solicitud de ingreso ya ha sido procesada",
+      "VILLAGE_041": "Esta aldea es de libre acceso. Por favor únete directamente en lugar de enviar una solicitud",
+      "VILLAGE_042": "Denuncia no encontrada",
+      "VILLAGE_043": "Esta denuncia ya ha sido procesada",
+      "VILLAGE_044": "Aldea favorita fijada no encontrada",
+      "VILLAGE_052": "Delegación de representante no encontrada",
+      "VILLAGE_053": "Esta combinación de membresía/usuario ya ha sido delegada como representante",
+      "VILLAGE_054": "La membresía objetivo no es un equipo ni una organización",
+      "VILLAGE_055": "El usuario delegado no es miembro del equipo/organización objetivo",
+      "generic": "Se produjo un error en la función de la aldea",
+      "backToList": "Volver a la lista de aldeas",
+      "moderatorOnly": "Solo el jefe del pueblo y los ancianos pueden modificar esta configuración"
     },
     "placeholder": {
-      "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",
-      "timelineComingSoon": "村のタイムラインは Phase 2 で実装予定です"
+      "bulletinComingSoon": "El tablón de anuncios de la aldea está previsto para la Fase 2",
+      "timelineComingSoon": "La cronología de la aldea está prevista para la Fase 2"
     },
     "editDialog": {
-      "title": "村を編集",
-      "save": "更新する",
-      "iconLabel": "アイコン画像（R2 キー）",
-      "coverLabel": "カバー画像（R2 キー）",
-      "guidelineLabel": "村ガイドライン (Markdown)",
-      "r2KeyPlaceholder": "villages/{villageId}/icon.png など",
-      "saveSuccess": "村情報を更新しました",
-      "errorNameRequired": "村名は必須です",
-      "errorNameTooLong": "村名は {max} 文字以内で入力してください",
-      "errorDescriptionTooLong": "説明文は {max} 文字以内で入力してください",
-      "errorCategoryTooLong": "カテゴリは {max} 文字以内で入力してください",
-      "errorGuidelineTooLong": "ガイドラインは {max} 文字以内で入力してください",
-      "errorR2KeyTooLong": "R2 キーは {max} 文字以内で入力してください"
+      "title": "Editar Aldea",
+      "save": "Actualizar",
+      "iconLabel": "Imagen de icono (clave R2)",
+      "coverLabel": "Imagen de portada (clave R2)",
+      "guidelineLabel": "Guía de la aldea (Markdown)",
+      "r2KeyPlaceholder": "ej: villages/{villageId}/icon.png",
+      "saveSuccess": "Información de la aldea actualizada",
+      "errorNameRequired": "El nombre de la aldea es obligatorio",
+      "errorNameTooLong": "El nombre de la aldea debe tener {max} caracteres o menos",
+      "errorDescriptionTooLong": "La descripción debe tener {max} caracteres o menos",
+      "errorCategoryTooLong": "La categoría debe tener {max} caracteres o menos",
+      "errorGuidelineTooLong": "La guía debe tener {max} caracteres o menos",
+      "errorR2KeyTooLong": "La clave R2 debe tener {max} caracteres o menos"
     },
     "monsho": {
-      "title": "村紋",
-      "upload": "村紋をアップロード",
-      "remove": "村紋を削除"
+      "title": "Escudo de la aldea",
+      "upload": "Subir escudo de la aldea",
+      "remove": "Eliminar escudo de la aldea",
+      "label": "Escudo de la aldea (emblema / logo)",
+      "change": "Cambiar escudo",
+      "uploading": "Subiendo…",
+      "hint": "JPG / PNG / WebP, hasta 5MB",
+      "errorMime": "Solo se admiten imágenes JPG, PNG y WebP",
+      "errorSize": "El tamaño del archivo debe ser de 5MB o menos",
+      "uploadSuccess": "Escudo de la aldea subido",
+      "removeSuccess": "Escudo de la aldea eliminado"
     },
     "calendar": {
-      "title": "歳時記カレンダー",
-      "create": "行事を追加",
-      "createTitle": "行事を追加",
-      "editTitle": "行事を編集",
-      "eventTitle": "行事名",
-      "description": "説明",
-      "eventDate": "開催日",
-      "eventEndDate": "終了日（任意）",
-      "annualRecurring": "毎年繰り返す",
-      "icon": "アイコン絵文字",
-      "color": "テーマカラー",
-      "edit": "編集",
-      "delete": "削除",
-      "prev": "前月",
-      "next": "翌月",
-      "today": "今月",
-      "confirmDelete": "この行事を削除します。よろしいですか?",
-      "saveSuccess": "行事を保存しました",
-      "deleteSuccess": "行事を削除しました",
-      "empty": "登録された行事はありません",
-      "noEventsInMonth": "今月の行事はありません",
-      "loadFailed": "歳時記の取得に失敗しました"
+      "title": "Calendario de la aldea",
+      "create": "Agregar evento",
+      "createTitle": "Agregar evento",
+      "editTitle": "Editar evento",
+      "eventTitle": "Nombre del evento",
+      "description": "Descripción",
+      "eventDate": "Fecha del evento",
+      "eventEndDate": "Fecha de fin (opcional)",
+      "annualRecurring": "Repetir anualmente",
+      "icon": "Emoji de icono",
+      "color": "Color del tema",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "prev": "Mes anterior",
+      "next": "Mes siguiente",
+      "today": "Este mes",
+      "confirmDelete": "¿Eliminar este evento?",
+      "saveSuccess": "Evento guardado",
+      "deleteSuccess": "Evento eliminado",
+      "empty": "No hay eventos registrados",
+      "noEventsInMonth": "No hay eventos este mes",
+      "loadFailed": "Error al cargar el calendario",
+      "log": {
+        "title": "Cómo fue el año pasado",
+        "lastYear": "Cómo fue en {year}",
+        "addLog": "Registrar el momento",
+        "year": "Año",
+        "note": "Nota breve",
+        "notePlaceholder": "Cuéntanos brevemente cómo fue",
+        "photoKey": "Foto (clave R2, opcional)",
+        "photoKeyHint": "La subida de imágenes llegará próximamente. Si ya tienes una clave registrada en R2, puedes indicarla",
+        "submit": "Guardar",
+        "delete": "Eliminar",
+        "empty": "Todavía no hay registros",
+        "loadFailed": "Error al cargar los registros",
+        "addSuccess": "Registro guardado",
+        "addFailed": "Error al agregar el registro",
+        "deleteConfirm": "¿Eliminar este registro?",
+        "deleteSuccess": "Registro eliminado",
+        "deleteFailed": "Error al eliminar el registro"
+      }
     },
     "festival": {
-      "title": "お祭り",
-      "festivalTitle": "お祭り名",
-      "description": "概要",
-      "starts": "開始",
-      "ends": "終了",
-      "period": "開催期間",
-      "bannerImage": "バナー画像（R2 キー）",
-      "themeColor": "テーマカラー",
-      "create": "お祭りを企画",
-      "createTitle": "お祭りを企画",
-      "editTitle": "お祭りを編集",
-      "edit": "編集",
-      "cancel": "お祭りを中止",
-      "confirmCancel": "このお祭りを中止します。よろしいですか?",
-      "empty": "開催中・予定のお祭りはありません",
-      "noBanner": "バナー画像なし",
-      "saveSuccess": "お祭りを保存しました",
-      "cancelSuccess": "お祭りを中止しました",
-      "loadFailed": "お祭り一覧の取得に失敗しました",
-      "filterAll": "すべて",
+      "title": "Festival",
+      "festivalTitle": "Nombre del festival",
+      "description": "Descripción general",
+      "starts": "Inicio",
+      "ends": "Fin",
+      "period": "Período",
+      "bannerImage": "Imagen de banner (clave R2)",
+      "themeColor": "Color del tema",
+      "create": "Planificar festival",
+      "createTitle": "Planificar festival",
+      "editTitle": "Editar festival",
+      "edit": "Editar",
+      "cancel": "Cancelar festival",
+      "confirmCancel": "¿Cancelar este festival?",
+      "empty": "No hay festivales en curso ni planificados",
+      "noBanner": "Sin imagen de banner",
+      "saveSuccess": "Festival guardado",
+      "cancelSuccess": "Festival cancelado",
+      "loadFailed": "Error al cargar la lista de festivales",
+      "invalidDateTime": "La fecha/hora de inicio o fin no es válida. Vuelva a introducirla.",
+      "filterAll": "Todos",
       "status": {
-        "SCHEDULED": "開催予定",
-        "ACTIVE": "開催中",
-        "ENDED": "終了",
-        "CANCELLED": "中止"
+        "SCHEDULED": "Programado",
+        "ACTIVE": "En curso",
+        "ENDED": "Finalizado",
+        "CANCELLED": "Cancelado"
+      },
+      "rsvp": {
+        "title": "Confirmación de asistencia",
+        "going": "Voy a ir",
+        "maybe": "Tal vez vaya",
+        "roleLabel": "Rol",
+        "roleLabelPlaceholder": "Rol (opcional, p. ej. puesto de venta)",
+        "submit": "Enviar",
+        "cancel": "Retirar confirmación",
+        "empty": "Nadie ha confirmado asistencia todavía",
+        "loadFailed": "Error al cargar la lista de asistentes",
+        "saveSuccess": "Confirmación de asistencia guardada",
+        "saveFailed": "Error al guardar la confirmación de asistencia",
+        "cancelSuccess": "Confirmación de asistencia retirada",
+        "cancelFailed": "Error al retirar la confirmación de asistencia"
+      },
+      "live": {
+        "title": "Actualizaciones en vivo",
+        "tagAsLive": "Escribe algo para publicar como actualización en vivo",
+        "submit": "Publicar como actualización en vivo",
+        "empty": "Aún no hay actualizaciones en vivo",
+        "viewPost": "Ver publicación",
+        "loadFailed": "Error al cargar las actualizaciones en vivo",
+        "tagSuccess": "Publicado como actualización en vivo",
+        "tagFailed": "Error al publicar la actualización en vivo"
       }
     },
     "matchRecruit": {
-      "title": "練習試合・募集",
-      "recruitTitle": "募集タイトル",
-      "description": "詳細",
-      "venue": "場所",
-      "matchDate": "試合日",
-      "matchTime": "試合時間",
-      "matchTimeStart": "開始時刻",
-      "matchTimeEnd": "終了時刻",
-      "requiredCount": "必要人数 / チーム数",
-      "contactMethod": "連絡方法",
-      "deadline": "応募締切",
-      "empty": "募集中の案件はありません",
-      "create": "募集を作成",
-      "createTitle": "募集を作成",
-      "editTitle": "募集を編集",
-      "apply": "応募する",
-      "applyTitle": "応募する",
-      "applyMessage": "応募メッセージ（任意）",
-      "applyAsTeam": "チームとして応募する場合のチーム ID（任意）",
-      "applySuccess": "応募を送信しました",
-      "applications": "応募一覧",
-      "noApplications": "応募はまだありません",
-      "applicantUser": "応募者ユーザー",
-      "close": "募集を締切",
-      "fulfill": "成立にする",
-      "cancelRecruit": "募集を取消",
-      "confirmClose": "この募集を締切ります。よろしいですか?",
-      "confirmFulfill": "この募集を成立として確定します。よろしいですか?",
-      "confirmCancel": "この募集を取消します。よろしいですか?",
-      "filterAllCategory": "全カテゴリ",
-      "filterAllStatus": "全ステータス",
-      "loadFailed": "募集一覧の取得に失敗しました",
-      "saveSuccess": "募集を保存しました",
+      "title": "Reclutamiento de partidos",
+      "recruitTitle": "Título del reclutamiento",
+      "description": "Detalles",
+      "venue": "Lugar",
+      "matchDate": "Fecha del partido",
+      "matchTime": "Hora del partido",
+      "matchTimeStart": "Hora de inicio",
+      "matchTimeEnd": "Hora de fin",
+      "requiredCount": "Número requerido / equipos",
+      "contactMethod": "Método de contacto",
+      "deadline": "Fecha límite de inscripción",
+      "empty": "No hay convocatorias abiertas",
+      "create": "Crear convocatoria",
+      "createTitle": "Crear convocatoria",
+      "editTitle": "Editar convocatoria",
+      "apply": "Inscribirse",
+      "applyTitle": "Inscribirse",
+      "applyMessage": "Mensaje de inscripción (opcional)",
+      "applyAsTeam": "ID de equipo al inscribirse como equipo (opcional)",
+      "applySuccess": "Inscripción enviada",
+      "applications": "Inscripciones",
+      "noApplications": "Aún no hay inscripciones",
+      "applicantUser": "Solicitante",
+      "close": "Cerrar convocatoria",
+      "fulfill": "Marcar como completado",
+      "cancelRecruit": "Cancelar convocatoria",
+      "confirmClose": "¿Cerrar esta convocatoria?",
+      "confirmFulfill": "¿Confirmar esta convocatoria como completada?",
+      "confirmCancel": "¿Cancelar esta convocatoria?",
+      "filterAllCategory": "Todas las categorías",
+      "filterAllStatus": "Todos los estados",
+      "loadFailed": "Error al cargar las convocatorias",
+      "saveSuccess": "Convocatoria guardada",
       "category": {
-        "PRACTICE_MATCH": "練習試合",
-        "REFEREE": "審判",
-        "VENUE": "会場",
-        "OTHER": "その他"
+        "PRACTICE_MATCH": "Partido de práctica",
+        "REFEREE": "Árbitro",
+        "VENUE": "Lugar",
+        "OTHER": "Otro"
       },
       "status": {
-        "OPEN": "募集中",
-        "CLOSED": "募集締切",
-        "FULFILLED": "成立",
-        "CANCELLED": "取消"
+        "OPEN": "Abierto",
+        "CLOSED": "Cerrado",
+        "FULFILLED": "Completado",
+        "CANCELLED": "Cancelado"
       }
     },
     "matchApplication": {
-      "review": "応募を審査",
-      "accept": "受諾",
-      "reject": "辞退",
-      "withdraw": "応募を取下げ",
-      "confirmWithdraw": "この応募を取下げます。よろしいですか?",
-      "acceptSuccess": "応募を受諾しました",
-      "rejectSuccess": "応募を辞退しました",
-      "withdrawSuccess": "応募を取下げました",
-      "reviewComment": "審査コメント（任意）",
+      "review": "Revisar inscripción",
+      "accept": "Aceptar",
+      "reject": "Rechazar",
+      "withdraw": "Retirar inscripción",
+      "confirmWithdraw": "¿Retirar esta inscripción?",
+      "acceptSuccess": "Inscripción aceptada",
+      "rejectSuccess": "Inscripción rechazada",
+      "withdrawSuccess": "Inscripción retirada",
+      "reviewComment": "Comentario de revisión (opcional)",
       "status": {
-        "PENDING": "審査中",
-        "ACCEPTED": "受諾",
-        "REJECTED": "辞退",
-        "WITHDRAWN": "取下げ"
+        "PENDING": "Pendiente",
+        "ACCEPTED": "Aceptado",
+        "REJECTED": "Rechazado",
+        "WITHDRAWN": "Retirado"
       }
     },
     "representative": {
-      "title": "代表委任",
-      "grant": "代表に委任する",
-      "revoke": "委任を取消",
-      "empty": "委任された代表はいません",
-      "grantedBy": "委任元",
-      "note": "メモ"
+      "title": "Delegación de representante",
+      "subtitle": "Delega el derecho a publicar como representante a un usuario individual, en nombre de una membresía de equipo/organización de esta aldea.",
+      "grant": "Delegar como representante",
+      "revoke": "Revocar delegación",
+      "empty": "No hay representantes delegados",
+      "grantedBy": "Delegado por",
+      "grantedAt": "Delegado el",
+      "note": "Nota",
+      "target": "Objetivo (equipo/organización)",
+      "targetPlaceholder": "Selecciona un equipo/organización para delegar",
+      "noTargets": "No hay membresías de equipo/organización disponibles para delegar",
+      "unknownTarget": "Objetivo desconocido",
+      "representativeUser": "Usuario representante",
+      "loadFailed": "No se pudieron cargar las delegaciones de representante",
+      "confirmRevokeTitle": "¿Revocar esta delegación?",
+      "confirmRevokeBody": "Se revocará la delegación de representante de {name}. ¿Estás seguro?",
+      "revokeSuccess": "Delegación revocada"
     },
     "meetup": {
-      "title": "寄合",
-      "create": "寄合を企画",
-      "createTitle": "寄合を企画",
-      "editTitle": "寄合を編集",
-      "meetupTitle": "寄合名",
-      "description": "説明",
-      "venue": "場所",
-      "candidateDates": "候補日",
-      "addCandidateDate": "候補日を追加",
-      "removeCandidateDate": "候補日を削除",
-      "candidateDate": "候補日",
-      "candidateTimeStart": "開始時刻",
-      "candidateTimeEnd": "終了時刻",
-      "vote": "投票",
-      "voteComment": "コメント（任意）",
-      "voteSubmit": "投票する",
-      "confirm": "この日に決定",
-      "confirmedDate": "確定日",
-      "cancel": "寄合を中止",
-      "confirmCancel": "この寄合を中止します。よろしいですか?",
-      "empty": "予定されている寄合はありません",
-      "participantCount": "参加予定",
-      "saveSuccess": "寄合を保存しました",
-      "voteSuccess": "投票しました",
-      "confirmSuccess": "開催日を確定しました",
-      "cancelSuccess": "寄合を中止しました",
-      "loadFailed": "寄合の取得に失敗しました",
+      "title": "Reunión",
+      "create": "Planificar reunión",
+      "createTitle": "Planificar reunión",
+      "editTitle": "Editar reunión",
+      "meetupTitle": "Nombre de la reunión",
+      "description": "Descripción",
+      "location": "Lugar",
+      "candidateDates": "Fechas candidatas",
+      "addCandidateDate": "Agregar fecha candidata",
+      "removeCandidateDate": "Eliminar fecha candidata",
+      "candidateDate": "Fecha candidata",
+      "candidateTime": "Hora",
+      "allDay": "Todo el día",
+      "timeOptionalHint": "La hora es opcional (déjala vacía para todo el día)",
+      "vote": "Votar",
+      "confirm": "Confirmar esta fecha",
+      "confirmedDate": "Fecha confirmada",
+      "cancel": "Cancelar reunión",
+      "confirmCancel": "¿Cancelar esta reunión?",
+      "empty": "No hay reuniones planificadas",
+      "saveSuccess": "Reunión guardada",
+      "voteSuccess": "Voto enviado",
+      "confirmSuccess": "Fecha confirmada",
+      "cancelSuccess": "Reunión cancelada",
+      "loadFailed": "Error al cargar las reuniones",
       "voteType": {
-        "YES": "参加",
-        "NO": "不参加",
-        "MAYBE": "未定"
+        "AVAILABLE": "Puedo asistir",
+        "MAYBE": "Quizás",
+        "UNAVAILABLE": "No puedo asistir"
       },
       "status": {
-        "DRAFT": "下書き",
-        "OPEN": "投票受付中",
-        "CONFIRMED": "開催確定",
-        "CANCELLED": "中止",
-        "CLOSED": "終了"
+        "PLANNING": "Votación abierta",
+        "CONFIRMED": "Confirmado",
+        "CANCELLED": "Cancelado"
+      },
+      "attendance": {
+        "title": "Asistencia",
+        "going": "Voy",
+        "maybe": "Quizás voy",
+        "absent": "No voy",
+        "notConfirmedHint": "Podrás registrar tu asistencia cuando se confirme la fecha",
+        "empty": "Todavía nadie ha respondido",
+        "unknownMember": "Aldeano",
+        "saveSuccess": "Asistencia registrada",
+        "saveFailed": "Error al registrar la asistencia"
+      },
+      "comment": {
+        "title": "Comentarios",
+        "placeholder": "Escribe un comentario",
+        "submit": "Publicar",
+        "empty": "Todavía no hay comentarios",
+        "delete": "Eliminar",
+        "postFailed": "Error al publicar el comentario",
+        "deleteConfirm": "¿Eliminar este comentario?",
+        "deleteSuccess": "Comentario eliminado",
+        "deleteFailed": "Error al eliminar el comentario"
+      },
+      "decisions": {
+        "title": "Decisiones",
+        "placeholder": "Anota lo que se decidió, qué llevar, etc.",
+        "edit": "Editar",
+        "empty": "Todavía no se ha decidido nada",
+        "saveSuccess": "Decisiones guardadas",
+        "saveFailed": "Error al guardar las decisiones"
+      },
+      "todo": {
+        "title": "Tareas pendientes",
+        "titlePlaceholder": "¿Qué hay que hacer? (p. ej., comprar snacks)",
+        "add": "Agregar",
+        "claim": "Yo me encargo",
+        "complete": "Marcar como hecho",
+        "release": "Dejar la tarea",
+        "unassigned": "Sin asignar",
+        "empty": "Todavía no hay tareas pendientes",
+        "alreadyClaimed": "Esta tarea ya tiene una persona responsable",
+        "addSuccess": "Tarea agregada",
+        "addFailed": "Error al agregar la tarea",
+        "claimSuccess": "Te has hecho cargo de esta tarea",
+        "completeSuccess": "Marcada como hecha",
+        "completeFailed": "Error al actualizar el estado",
+        "releaseSuccess": "Tarea liberada",
+        "releaseFailed": "Error al dejar la tarea"
       }
     },
     "chronicle": {
-      "title": "村史",
-      "subtitle": "村の月次まとめ",
-      "yearMonth": "対象月",
-      "generatedAt": "生成日時",
-      "postCount": "投稿数",
-      "newMemberCount": "新規村人",
-      "topicTags": "話題タグ",
-      "empty": "村史はまだ生成されていません",
-      "loadFailed": "村史の取得に失敗しました",
-      "viewDetail": "詳細を見る"
+      "title": "Crónica",
+      "subtitle": "Resumen mensual de la aldea",
+      "yearMonth": "Mes objetivo",
+      "generatedAt": "Generado el",
+      "postCount": "Número de publicaciones",
+      "newMemberCount": "Nuevos miembros",
+      "topicTags": "Etiquetas de tema",
+      "empty": "Aún no se han generado crónicas",
+      "loadFailed": "Error al cargar las crónicas",
+      "viewDetail": "Ver detalle"
+    },
+    "archive": {
+      "title": "Crónica",
+      "subtitle": "Registro de los festivales, eventos del calendario y reuniones de la aldea",
+      "empty": "Aún no hay entradas en la crónica",
+      "loadFailed": "Error al cargar la crónica",
+      "archivedAt": "Registrado el",
+      "filterAll": "Todos",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Evento del calendario",
+        "meetup": "Reunión"
+      }
+    },
+    "charter": {
+      "title": "Carta de la aldea",
+      "subtitle": "Las promesas compartidas de la aldea",
+      "empty": "Todavía no se ha establecido la carta de esta aldea",
+      "enactedAt": "Fecha de promulgación",
+      "lastRevisedAt": "Última revisión",
+      "article": {
+        "label": "Artículo {n}",
+        "add": "+ Añadir artículo",
+        "bodyPlaceholder": "Escribe el texto del artículo",
+        "bodyRequired": "Escribe el texto del artículo",
+        "delete": "Eliminar artículo",
+        "deleteConfirm": "¿Eliminar este artículo?"
+      },
+      "supplement": {
+        "add": "+ Añadir anexo",
+        "label": "Anexo",
+        "placeholder": "Escribe un anexo (opcional)"
+      },
+      "reorder": {
+        "hint": "Usa los botones de subir/bajar para reordenar los artículos",
+        "up": "Subir",
+        "down": "Bajar"
+      },
+      "drafters": {
+        "title": "Redactores",
+        "add": "+ Añadir redactor",
+        "empty": "Todavía no hay redactores registrados",
+        "delete": "Quitar redactor",
+        "deleteConfirm": "¿Quitar a \"{name}\" de los redactores?",
+        "selectPlaceholder": "Selecciona un aldeano",
+        "loadMembersFailed": "No se pudo cargar la lista de habitantes, por lo que no se pueden añadir redactores.",
+        "reloadMembers": "Recargar"
+      },
+      "revision": {
+        "confirm": "Confirmar revisión",
+        "confirmHint": "Esto registra el momento actual como una revisión (no cambia la visibilidad de ningún artículo).",
+        "confirmSuccess": "Revisión confirmada",
+        "notePlaceholder": "Nota de la revisión (opcional)",
+        "history": "Historial de revisiones",
+        "historyEmpty": "Todavía no hay revisiones"
+      },
+      "error": {
+        "loadFailed": "No se pudo cargar la carta de la aldea",
+        "mutationFailed": "La operación falló",
+        "versionConflict": "Otro jefe de aldea editó esto al mismo tiempo. Vuelve a cargar la versión más reciente.",
+        "drafterDuplicate": "Este aldeano ya es redactor"
+      }
     },
     "serendipity": {
-      "title": "ご縁スコア",
-      "subtitle": "あなたとの相性度",
-      "rank": "順位",
-      "score": "スコア",
-      "myScore": "あなたのスコア",
-      "ranking": "ランキング",
-      "lastComputedAt": "最終計算日時",
-      "empty": "まだご縁スコアは計算されていません",
-      "loadFailed": "ご縁スコアの取得に失敗しました"
+      "title": "Puntuación de afinidad",
+      "subtitle": "Encuentros acumulados en esta aldea",
+      "rank": "Posición",
+      "score": "Puntuación",
+      "myScore": "Tu puntuación",
+      "ranking": "Clasificación",
+      "lastComputedAt": "Última actualización",
+      "empty": "La puntuación de afinidad aún no se ha calculado",
+      "loadFailed": "Error al cargar la puntuación de afinidad"
+    },
+    "affinity": {
+      "title": "Pista de compatibilidad",
+      "subtitle": "Mira si esta aldea puede encajar contigo antes de unirte",
+      "categoryMatch": "Cercana a tus intereses y categorías",
+      "hidden": "Ahora mismo no hay ninguna pista de compatibilidad",
+      "sharedVillagers": {
+        "hidden": "Aún no se puede mostrar",
+        "few": "Unas pocas personas",
+        "many": "10 o más personas"
+      },
+      "reason": {
+        "categoryMatch": "Esta aldea está cerca de tus intereses",
+        "sharedVillagers": "Hay aldeanos con los que ya tienes conexión",
+        "pioneer": "Puedes unirte ahora como miembro fundador"
+      },
+      "pioneer": {
+        "title": "¡Puedes convertirte en miembro fundador!",
+        "body": "Esta todavía es una aldea pequeña. Si te unes ahora, serás uno de los miembros fundadores que ayudan a construirla juntos."
+      }
     },
     "pilgrimage": {
-      "title": "村巡礼",
-      "subtitle": "本日のおすすめ村",
-      "todaysRecommendation": "本日のおすすめ",
-      "visit": "訪問する",
-      "recorded": "訪問済み",
-      "reason": "おすすめ理由",
-      "myVisits": "訪問履歴",
-      "empty": "本日のおすすめはありません",
-      "visitsEmpty": "訪問履歴はありません",
-      "visitSuccess": "訪問を記録しました",
-      "loadFailed": "巡礼情報の取得に失敗しました"
+      "title": "Peregrinación de la aldea",
+      "subtitle": "Aldea recomendada de hoy",
+      "todaysRecommendation": "Recomendación de hoy",
+      "visit": "Visitar",
+      "recorded": "Visitado",
+      "reason": "Motivo de la recomendación",
+      "myVisits": "Historial de visitas",
+      "empty": "No hay recomendaciones para hoy",
+      "visitsEmpty": "No hay historial de visitas",
+      "visitSuccess": "Visita registrada",
+      "loadFailed": "Error al cargar la información de peregrinación"
     },
     "newsletter": {
-      "title": "ニュースレター",
-      "subtitle": "村の更新通知",
-      "settings": "ニュースレター設定",
-      "frequency": "配信頻度",
-      "lastSentAt": "最終配信日時",
-      "nextScheduledAt": "次回配信予定",
-      "optOut": "配信停止",
-      "optIn": "配信再開",
-      "optedOut": "配信を停止中です",
-      "saveSuccess": "ニュースレター設定を保存しました",
-      "optOutSuccess": "配信を停止しました",
-      "optInSuccess": "配信を再開しました",
-      "loadFailed": "ニュースレター設定の取得に失敗しました",
-      "frequencyOption": {
-        "DAILY": "毎日",
-        "WEEKLY": "毎週",
-        "MONTHLY": "毎月",
-        "NEVER": "停止"
+      "title": "Boletín",
+      "subtitle": "Novedades del pueblo",
+      "settings": "Ajustes del boletín",
+      "lastSentAt": "Último envío",
+      "saveSuccess": "Ajustes del boletín guardados",
+      "optOutSuccess": "Suscripción cancelada",
+      "optInSuccess": "Suscripción reanudada",
+      "loadFailed": "No se pudieron cargar los ajustes del boletín",
+      "manageOnlyHint": "Solo el jefe y los ancianos pueden cambiar los ajustes de envío del pueblo.",
+      "comingSoonNote": "El envío del boletín estará disponible pronto. Puedes guardar los ajustes, pero los boletines aún no se envían.",
+      "villageSection": {
+        "title": "Ajustes de envío del pueblo",
+        "subtitle": "Activa o desactiva de forma independiente el boletín semanal y el mensual."
+      },
+      "weekly": {
+        "label": "Boletín semanal",
+        "timing": "Se envía cada viernes"
+      },
+      "monthly": {
+        "label": "Boletín mensual",
+        "timing": "Se envía a fin de mes"
+      },
+      "personalSection": {
+        "title": "Tu suscripción",
+        "toggleLabel": "Recibir el boletín de este pueblo",
+        "receivingHint": "Actualmente recibes este boletín.",
+        "stoppedHint": "Has dejado de recibir este boletín."
       }
     },
     "slug": {
@@ -574,6 +820,356 @@
       "levelRoot": "Raíz",
       "level2": "Subcategoría",
       "level3": "Categoría menor"
+    },
+    "listGuide": {
+      "page_title": "村一覧の使い方",
+      "description": "ここは「村」をさがして参加するための一覧ページです。気になる村を見つけて中に入ったり、自分で新しい村を作ったりできます。",
+      "search": {
+        "title": "村をさがす",
+        "body": "キーワードや種別・カテゴリで、公開されている村をしぼり込めます。",
+        "steps": {
+          "step1": "上の検索ボックスにキーワード（村名・話題など）を入力します。",
+          "step2": "「種別」で公式・コミュニティをしぼり込めます。",
+          "step3": "「カテゴリ」に言葉を入れると、そのカテゴリの村だけ表示されます。"
+        }
+      },
+      "cards": {
+        "title": "村カードの見方",
+        "body": "各カードに村のアイコン・名前・公式バッジ・カテゴリ・人数・紹介文が表示されます。",
+        "steps": {
+          "step1": "「公式」バッジは運営公認の村の印です。",
+          "step2": "人数が多い村ほど活発に動いています。",
+          "step3": "紹介文でその村の雰囲気を確認できます。"
+        }
+      },
+      "enter": {
+        "title": "村に入る",
+        "body": "気になる村のカードを押すと、その村の中（掲示板・チャットなど）に入れます。",
+        "steps": {
+          "step1": "村のカードをクリックします。",
+          "step2": "村の中で「参加する」を押すと正式なメンバーになれます。",
+          "step3": "村の中の各タブの使い方は、村ヘッダーの「？使い方」で確認できます。"
+        }
+      },
+      "create": {
+        "title": "新しい村をつくる",
+        "body": "自分で新しい村を立ち上げられます（運営の承認制）。",
+        "steps": {
+          "step1": "右上の「村を作る」ボタンを押します。",
+          "step2": "申請フォームに村名・種別などを入力します。",
+          "step3": "運営に承認されると村が作成されます。"
+        }
+      }
+    },
+    "guide": {
+      "page_title": "村の使い方",
+      "description": "村は、同じ目的や興味を持つ仲間が集まる小さなコミュニティです。参加すると掲示板・チャット・投稿などの機能が使えます。下のカードで、村でできることと操作の手順を順番に確認できます。",
+      "join": {
+        "title": "村に参加する／お気に入り登録",
+        "body": "村に参加すると、掲示板・タイムライン・チャットなど村のすべての機能が使えるようになります。よく見る村はお気に入り（ピン留め）にしておくと探しやすくなります。",
+        "steps": {
+          "step1": "ヘッダー右上の「参加する」ボタンを押します。",
+          "step2": "だれでも入れる村はその場で参加完了。承認制の村は参加申請の画面が開くので、申請を送って承認を待ちます。",
+          "step3": "参加後は★（お気に入りに追加）でピン留め、「退村する」で抜けられます。"
+        }
+      },
+      "bulletin": {
+        "title": "掲示板でお知らせを読む",
+        "body": "村長や長老からの大切なお知らせが、話題（スレッド）ごとに並びます。村人になると読めるようになります。",
+        "steps": {
+          "step1": "「掲示板」タブを開きます。",
+          "step2": "気になるスレッドを押すと、本文と返信が表示されます。",
+          "step3": "村長・長老は「スレッド作成」から新しいお知らせを投稿できます。"
+        }
+      },
+      "timeline": {
+        "title": "タイムラインに投稿する",
+        "body": "村の仲間みんなに見える、ひとことフィードです。村人ならだれでも気軽に投稿できます。",
+        "steps": {
+          "step1": "「タイムライン」タブを開きます。",
+          "step2": "上の入力欄に本文を書いて「送信」を押すと投稿されます。",
+          "step3": "村長・長老は投稿のピン留めや削除ができます。"
+        }
+      },
+      "lobby": {
+        "title": "井戸端（ロビー）でリアルタイムに話す",
+        "body": "その日の村人とリアルタイムで雑談できるチャットです。過去7日分のやりとりも日付ごとにさかのぼれます。",
+        "steps": {
+          "step1": "「ロビー」タブを開きます。",
+          "step2": "左の日付一覧から日を選びます（過去の日は読むだけ）。",
+          "step3": "「今日」を選ぶと入力欄が出るので、メッセージを書いてEnterまたは送信ボタンで投稿します。"
+        }
+      },
+      "members": {
+        "title": "メンバーを見る・管理する",
+        "body": "村に参加している人の一覧です。村長は役割（長老／村人）の変更や、迷惑な人の追放（BAN）ができます。",
+        "steps": {
+          "step1": "「メンバー」タブを開きます。",
+          "step2": "一覧から相手のメニューを開きます。",
+          "step3": "村長は「役割変更」「追放（BAN）」、村人はだれでも「通報」ができます。"
+        }
+      },
+      "calendar": {
+        "title": "歳時記カレンダーで行事を知る",
+        "body": "村の記念日やイベントを月ごとのカレンダーで確認できます。毎年くり返す行事も登録できます。",
+        "steps": {
+          "step1": "「カレンダー」タブを開きます。",
+          "step2": "「前月」「翌月」ボタンで月を切り替えます。",
+          "step3": "行事カードを押すと詳細が出ます。村長・長老は「行事を追加」から登録・編集・削除ができます。"
+        }
+      },
+      "events": {
+        "title": "お祭り・練習試合の募集",
+        "body": "村のイベント（お祭り）や、対外試合・審判・会場などの募集をまとめて告知できます。状態でしぼり込めます。",
+        "steps": {
+          "step1": "「お祭り」または「練習試合・募集」タブを開きます。",
+          "step2": "上のフィルタで「募集中」などにしぼり込めます。",
+          "step3": "村人は「企画」「募集を作成」から新規作成、カードを押すと詳細表示や応募ができます。"
+        }
+      },
+      "meetup": {
+        "title": "寄合で集まる日を決める",
+        "body": "村の集まりの開催日を、みんなの投票で決める機能です。複数の候補日から投票し、開催者が確定します。",
+        "steps": {
+          "step1": "「寄合」タブを開きます。",
+          "step2": "村人は「寄合を開く」から候補日をいくつか出して作成します。",
+          "step3": "詳細画面で候補日ごとに賛成／保留／反対を投票し、開催者が日を選んで「確定」します。"
+        }
+      },
+      "chronicle": {
+        "title": "村史で歩みをふり返る",
+        "body": "村の月ごとの記録です。投稿数・新しく参加した人の数・よく使われた話題が自動でまとまります（読むだけのページです）。",
+        "steps": {
+          "step1": "「村史」タブを開きます。",
+          "step2": "年でしぼり込むと、その年の月別カードが並びます。",
+          "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "Deja constancia de las promesas de la aldea en la carta",
+        "body": "El jefe de la aldea o los ancianos pueden definir las reglas de la aldea (artículos) y publicarlas incluso a quienes no son miembros (las aldeas públicas las muestran también a los futuros miembros).",
+        "steps": {
+          "step1": "Abre la pestaña \"Carta de la aldea\".",
+          "step2": "El jefe de la aldea o los ancianos pueden escribir artículos con \"+ Añadir artículo\" y adjuntar un anexo opcional.",
+          "step3": "Reordenar y eliminar se aplican de inmediato. Usa \"Confirmar revisión\" para registrarlo en el historial."
+        }
+      }
+    },
+    "joinRequestGuide": {
+      "page_title": "Cómo usar las solicitudes de ingreso",
+      "description": "Explica cómo solicitar el ingreso a una aldea con aprobación y cómo el jefe y los ancianos revisan las solicitudes.",
+      "apply": {
+        "title": "Solicitar unirse",
+        "body": "No puedes unirte directamente a una aldea con aprobación. Envía una solicitud y espera a que el jefe o un anciano la apruebe. El mensaje es opcional, pero aumenta tus posibilidades.",
+        "steps": {
+          "step1": "Escribe en el mensaje qué quieres hacer en la aldea y por qué quieres unirte (opcional, máximo 500 caracteres).",
+          "step2": "Pulsa Enviar para que la solicitud llegue al jefe y a los ancianos.",
+          "step3": "Justo después de enviarla puedes cancelarla con el botón Retirar."
+        }
+      },
+      "status": {
+        "title": "Consultar el estado de la revisión",
+        "body": "La solicitud empieza como Pendiente de revisión y el jefe o un anciano la marca como Aprobada o Rechazada. Al aprobarse te conviertes en aldeano y se desbloquean todas las funciones.",
+        "steps": {
+          "step1": "Justo después de enviarla, el estado aparece como Pendiente de revisión.",
+          "step2": "Al aprobarse te conviertes en aldeano y se abren todas las pestañas de la aldea.",
+          "step3": "Si la rechazan, el comentario de revisión explica el motivo. Léelo y vuelve a solicitarlo si procede."
+        }
+      },
+      "review": {
+        "title": "Revisar solicitudes (jefe y ancianos)",
+        "body": "El jefe y los ancianos ven en esta pantalla la lista de solicitudes de ingreso. Lee cada mensaje y decide si aprobarla o rechazarla.",
+        "steps": {
+          "step1": "Usa las pestañas para cambiar entre Pendiente de revisión, Aprobada, Rechazada y Retirada.",
+          "step2": "Pulsa Aprobar para que la persona solicitante se convierta en aldeano. El comentario es opcional.",
+          "step3": "Al pulsar Rechazar es obligatorio un comentario de revisión para explicar el motivo."
+        }
+      }
+    },
+    "admin": {
+      "title": "Gestión de la aldea",
+      "subtitle": "Menú de gestión para el jefe de aldea y los ancianos",
+      "cards": {
+        "recruitCategories": {
+          "title": "Categorías de convocatoria",
+          "desc": "Añade, edita y reordena las categorías de convocatoria."
+        },
+        "newsletter": {
+          "title": "Configuración del boletín",
+          "desc": "Configura la frecuencia de envío y la exclusión."
+        },
+        "members": {
+          "title": "Miembros y roles",
+          "desc": "Gestiona a los aldeanos, cambia roles y expulsa (BAN)."
+        },
+        "representatives": {
+          "title": "Delegación de representante",
+          "desc": "Delega y gestiona los usuarios que pueden publicar como representante de una membresía de equipo/organización."
+        },
+        "joinRequests": {
+          "title": "Revisar solicitudes de ingreso",
+          "desc": "Revisa y aprueba o rechaza las solicitudes de ingreso."
+        },
+        "reports": {
+          "title": "Gestión de denuncias",
+          "desc": "Revisa y gestiona las denuncias (próximamente)."
+        },
+        "settings": {
+          "title": "Configuración básica de la aldea",
+          "desc": "Edita el nombre, la descripción y otra información básica de la aldea."
+        }
+      },
+      "comingSoon": "Próximamente",
+      "accessDenied": "Solo el jefe de aldea y los ancianos pueden acceder a esta pantalla."
+    },
+    "adminGuide": {
+      "page_title": "Cómo usar la gestión de la aldea",
+      "description": "Un menú de gestión para el jefe de aldea y los ancianos. Cada tarjeta te lleva a la pantalla que necesitas para la operación diaria.",
+      "open": {
+        "title": "Abrir la gestión de la aldea",
+        "body": "Ábrela desde el botón con el icono de engranaje \"Gestión de la aldea\" en el encabezado de la aldea. Este botón solo se muestra al jefe de aldea y a los ancianos.",
+        "steps": {
+          "step1": "Pulsa el botón \"Gestión de la aldea\" en la parte superior derecha del encabezado de la aldea.",
+          "step2": "Aparece una lista de tarjetas. Pulsa una tarjeta para ir a esa pantalla."
+        }
+      },
+      "cards": {
+        "title": "Qué puedes hacer con cada tarjeta",
+        "body": "Puedes acceder a las categorías de convocatoria, la configuración del boletín, miembros y roles, la revisión de solicitudes de ingreso, las denuncias y la configuración básica de la aldea.",
+        "steps": {
+          "step1": "\"Categorías de convocatoria\" te permite añadir, editar y reordenar categorías como festivales o partidos de práctica.",
+          "step2": "\"Miembros y roles\" y \"Revisar solicitudes de ingreso\" te permiten gestionar a los aldeanos y revisar a los nuevos solicitantes.",
+          "step3": "\"Configuración básica de la aldea\" solo puede abrirla el jefe de aldea. Edita el nombre, la descripción y más."
+        }
+      },
+      "permissions": {
+        "title": "Diferencia entre el jefe de aldea y los ancianos",
+        "body": "La mayoría de las tarjetas pueden usarlas tanto el jefe de aldea como los ancianos, pero la configuración básica de la aldea (y actualmente la del boletín) solo puede abrirla el jefe de aldea.",
+        "steps": {
+          "step1": "Los ancianos pueden usar las tarjetas de categorías de convocatoria, miembros, solicitudes de ingreso y denuncias.",
+          "step2": "Solo el jefe de aldea puede editar la configuración básica de la aldea."
+        }
+      }
+    },
+    "recruitCategory": {
+      "title": "Categorías de convocatoria",
+      "subtitle": "Define libremente las categorías de convocatoria según cómo funcione realmente tu aldea.",
+      "add": "Añadir categoría",
+      "edit": "Editar categoría",
+      "name": "Nombre de la categoría",
+      "namePlaceholder": "p. ej. Buscamos participantes",
+      "description": "Descripción (opcional)",
+      "descriptionPlaceholder": "Explica para qué se usa esta categoría",
+      "color": "Color (opcional)",
+      "displayOrder": "Orden de visualización",
+      "preset": "Predeterminada",
+      "usage": "Convocatorias en uso",
+      "usageCount": "{count}",
+      "empty": "Aún no hay categorías. Usa \"Añadir categoría\" para crear una.",
+      "reorder": "Reordenar",
+      "moveUp": "Subir",
+      "moveDown": "Bajar",
+      "reorderSaved": "Orden guardado",
+      "created": "Categoría añadida",
+      "updated": "Categoría actualizada",
+      "deleted": "Categoría eliminada",
+      "confirmDelete": "¿Eliminar esta categoría?",
+      "confirmDeleteBody": "Se eliminará \"{name}\". Las categorías usadas por una convocatoria no se pueden eliminar.",
+      "limitNote": "Hasta {max} categorías por aldea (actualmente {count}).",
+      "error": {
+        "VILLAGE_083": "Categoría de convocatoria no encontrada",
+        "VILLAGE_084": "Ya existe una categoría de convocatoria con el mismo nombre",
+        "VILLAGE_085": "Puedes tener como máximo {max} categorías de convocatoria",
+        "VILLAGE_086": "Esta categoría la usa una convocatoria y no se puede eliminar",
+        "loadFailed": "No se pudieron cargar las categorías de convocatoria"
+      },
+      "validation": {
+        "nameRequired": "El nombre de la categoría es obligatorio",
+        "nameMax": "El nombre debe tener como máximo {max} caracteres",
+        "descriptionMax": "La descripción debe tener como máximo {max} caracteres"
+      },
+      "clearColor": "Quitar color"
+    },
+    "recruitCategoryGuide": {
+      "page_title": "Cómo usar las categorías de convocatoria",
+      "description": "Define por aldea las categorías con las que se clasifican las convocatorias. El jefe de aldea y los ancianos pueden editarlas.",
+      "manage": {
+        "title": "Añadir y editar categorías",
+        "body": "Usa \"Añadir categoría\" para crear una nueva. Puedes ponerle el nombre que quieras y añadir descripción y color.",
+        "steps": {
+          "step1": "Pulsa el botón \"Añadir categoría\".",
+          "step2": "Introduce un nombre (obligatorio, máximo 40 caracteres). La descripción y el color son opcionales.",
+          "step3": "Pulsa Guardar para añadirla a la lista. Puedes editarla en cualquier momento con el icono del lápiz."
+        }
+      },
+      "preset": {
+        "title": "Las categorías predeterminadas también se pueden cambiar",
+        "body": "Las categorías creadas junto con tu aldea (participantes, colaboradores, otros) son solo datos. Si no encajan con tu aldea, renómbralas o elimínalas.",
+        "steps": {
+          "step1": "Aunque tengan la etiqueta \"Predeterminada\", no hay ninguna restricción para editarlas o eliminarlas.",
+          "step2": "Si un nombre no encaja con tu aldea, simplemente reescríbelo."
+        }
+      },
+      "order": {
+        "title": "Orden y eliminación",
+        "body": "Reordenar con las flechas también cambia el orden que se muestra al crear y filtrar convocatorias. Las categorías en uso no se pueden eliminar, para proteger las convocatorias existentes.",
+        "steps": {
+          "step1": "Reordenar con las flechas arriba/abajo se guarda inmediatamente.",
+          "step2": "Las categorías con cero \"Convocatorias en uso\" se pueden eliminar con el icono de papelera.",
+          "step3": "Para eliminar una categoría en uso, cambia primero la categoría de esas convocatorias."
+        }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "Cómo usar el boletín",
+      "description": "El boletín del pueblo agrupa las novedades del pueblo en una sola notificación. El semanal y el mensual se activan de forma independiente, y cada miembro elige si desea recibirlo.",
+      "toggles": {
+        "title": "Activa el semanal y el mensual por separado",
+        "body": "En los ajustes de envío del pueblo puedes cambiar el semanal y el mensual por separado. Puedes activar solo uno.",
+        "steps": {
+          "step1": "Usa el interruptor «Boletín semanal» para activar o desactivar el envío semanal.",
+          "step2": "Usa el interruptor «Boletín mensual» para activar o desactivar el envío mensual.",
+          "step3": "Los cambios se guardan al instante al cambiar un interruptor (sin botón de guardar)."
+        }
+      },
+      "timing": {
+        "title": "Momento de envío",
+        "body": "El semanal se envía cada viernes; el mensual, a fin de cada mes."
+      },
+      "permission": {
+        "title": "Quién puede cambiarlo",
+        "body": "Solo el jefe y los ancianos pueden cambiar los «ajustes de envío del pueblo». Los demás miembros ven los ajustes actuales como solo lectura."
+      },
+      "personal": {
+        "title": "Tu suscripción",
+        "body": "Cada miembro elige si desea recibir el boletín. La recepción está activada de forma predeterminada.",
+        "steps": {
+          "step1": "Desactiva el interruptor «Tu suscripción» para dejar de recibir el boletín de este pueblo.",
+          "step2": "Vuelve a activarlo para reanudar la recepción."
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ El envío del boletín estará disponible pronto. Puedes guardar los ajustes, pero los boletines aún no se envían realmente."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "Cómo usarlo",
+      "what": {
+        "title": "Qué es el mini perfil del aldeano",
+        "body": "Toca un nombre en la lista de miembros para abrir el perfil sencillo de ese aldeano. Puedes ver su rol y las aldeas que ha elegido mostrar."
+      },
+      "villages": {
+        "title": "Cómo leer la lista de aldeas",
+        "body": "Solo aparecen las aldeas que el aldeano ha hecho visibles. Se muestra el nombre de la aldea, el emblema y la categoría, nunca un apodo. Toca una tarjeta para ir a la página principal de esa aldea."
+      },
+      "toggle": {
+        "title": "Cuando abres tu propio perfil",
+        "body": "Tu propio mini perfil muestra un interruptor «Mostrar esta aldea en mi lista de aldeas». Al activarlo, las personas que comparten una aldea contigo podrán ver esta aldea en tu lista. Se puede configurar por cada aldea."
+      },
+      "privacy": {
+        "title": "Sobre la privacidad",
+        "body": "La lista de aldeas solo se muestra cuando tú y la otra persona compartís al menos una aldea. Si no hay nada que mostrar, aparece de forma neutral «No hay aldeas para mostrar», sin revelar si compartís una aldea."
+      }
     }
   }
 }

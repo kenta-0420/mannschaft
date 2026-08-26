@@ -14,6 +14,8 @@ import com.mannschaft.app.common.visibility.StandardVisibility;
 import com.mannschaft.app.common.visibility.UserScopeRoleSnapshot;
 import com.mannschaft.app.common.visibility.VisibilityDecision;
 import com.mannschaft.app.common.visibility.VisibilityMetrics;
+import com.mannschaft.app.payment.dto.GateCheckResponse;
+import com.mannschaft.app.payment.service.PaymentGateService;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +34,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
@@ -64,6 +67,8 @@ class BlogPostVisibilityResolverTest {
     private FollowBatchService followBatchService;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private PaymentGateService paymentGateService;
 
     private VisibilityMetrics visibilityMetrics;
     private BlogPostVisibilityResolver resolver;
@@ -80,6 +85,7 @@ class BlogPostVisibilityResolverTest {
         visibilityMetrics = new VisibilityMetrics(new SimpleMeterRegistry());
         resolver = new BlogPostVisibilityResolver(
                 blogPostRepository,
+                paymentGateService,
                 membershipBatchQueryService,
                 templateEvaluator,
                 visibilityMetrics,
@@ -355,6 +361,89 @@ class BlogPostVisibilityResolverTest {
     }
 
     // ========================================================================
+    // F08.9 P4b — CUSTOM visibility（ペイウォール）判定
+    // ========================================================================
+
+    @Nested
+    @DisplayName("F08.9 P4b — CUSTOM visibility（ペイウォール）判定")
+    class PaywallEvaluateCustom {
+
+        private static final Long GATE_POST_ID = 99L;
+
+        private BlogPostVisibilityProjection customProjection() {
+            return BlogPostVisibilityProjection.of(
+                    GATE_POST_ID, TEAM_ID, null, AUTHOR_ID, null,
+                    Visibility.CUSTOM, PostStatus.PUBLISHED);
+        }
+
+        @Test
+        @DisplayName("ペイウォールあり + 支払い済み → 閲覧可")
+        void paywall_paid_accessible() {
+            when(blogPostRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(customProjection()));
+            when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+            // ゲートあり・支払い済み → accessible=true
+            when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
+                    .thenReturn(new GateCheckResponse(true, false, List.of()));
+
+            assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isTrue();
+        }
+
+        @Test
+        @DisplayName("ペイウォールあり + 未払い → 閲覧不可")
+        void paywall_unpaid_denied() {
+            when(blogPostRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(customProjection()));
+            when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+            // ゲートあり・未払い → accessible=false
+            when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
+                    .thenReturn(new GateCheckResponse(false, false, List.of()));
+
+            assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isFalse();
+        }
+
+        @Test
+        @DisplayName("ペイウォールなし（ゲートなし）→ accessible=true → 閲覧可")
+        void paywall_noGate_accessible() {
+            when(blogPostRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(customProjection()));
+            when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+            // ゲートなし → accessible=true（PaymentGateService 設計: ゲートなし = 誰でも閲覧可）
+            when(paymentGateService.checkAccess(eq("POST"), eq(GATE_POST_ID), eq(VIEWER_ID)))
+                    .thenReturn(new GateCheckResponse(true, false, List.of()));
+
+            assertThat(resolver.canView(GATE_POST_ID, VIEWER_ID)).isTrue();
+        }
+
+        @Test
+        @DisplayName("viewerUserId == null（未認証）→ fail-closed → 閲覧不可")
+        void paywall_anonymousViewer_denied() {
+            when(blogPostRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(customProjection()));
+            when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
+                    .thenReturn(UserScopeRoleSnapshot.empty());
+            // 未認証 → evaluateCustom が false を返すため PaymentGateService は呼ばれない
+
+            assertThat(resolver.canView(GATE_POST_ID, null)).isFalse();
+        }
+
+        @Test
+        @DisplayName("SystemAdmin 高速パス: CUSTOM であっても SystemAdmin は visibility ガードをスキップして閲覧可")
+        void paywall_systemAdmin_alwaysAllowed() {
+            when(blogPostRepository.findVisibilityProjectionsByIdIn(any()))
+                    .thenReturn(List.of(customProjection()));
+            when(membershipBatchQueryService.snapshotForUser(any(), any(), any()))
+                    .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
+            // SystemAdmin は evaluateCustom に到達しないため PaymentGateService は呼ばれない
+
+            assertThat(resolver.canView(GATE_POST_ID, ADMIN_ID)).isTrue();
+        }
+    }
+
+    // ========================================================================
     // decide — DenyReason の分類
     // ========================================================================
 
@@ -402,7 +491,8 @@ class BlogPostVisibilityResolverTest {
             VisibilityDecision decision = resolver.decide(POST_ID, VIEWER_ID);
             assertThat(decision.allowed()).isFalse();
             assertThat(decision.denyReason()).isEqualTo(DenyReason.NOT_A_MEMBER);
-            assertThat(decision.resolvedLevel()).isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            // W2: cms.MEMBERS_ONLY は正準ラダー MEMBERS_AND_ABOVE（内輪=応援者除外）へ写像
+            assertThat(decision.resolvedLevel()).isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
         }
 
         @Test
@@ -420,7 +510,8 @@ class BlogPostVisibilityResolverTest {
 
             VisibilityDecision decision = resolver.decide(POST_ID, VIEWER_ID);
             assertThat(decision.allowed()).isTrue();
-            assertThat(decision.resolvedLevel()).isEqualTo(StandardVisibility.MEMBERS_ONLY);
+            // W2: cms.MEMBERS_ONLY は正準ラダー MEMBERS_AND_ABOVE（内輪=応援者除外）へ写像
+            assertThat(decision.resolvedLevel()).isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
         }
     }
 }

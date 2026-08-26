@@ -26,7 +26,16 @@ public final class ResolverAuditPolicy {
      *
      * <p>マスター裁可 C-1: {@link StandardVisibility#PRIVATE} /
      * {@link StandardVisibility#CUSTOM_TEMPLATE} /
-     * {@link StandardVisibility#ADMINS_ONLY} のみが対象。
+     * {@link StandardVisibility#ADMINS_AND_ABOVE}（最高機微）のみが対象。
+     *
+     * <p>CMP-017b で追加した {@link StandardVisibility#DEPUTY_ADMINS_AND_ABOVE} も
+     * 同じ「運営専用」機微度の段（F03.1 の {@code min_view_role=ADMIN_ONLY} の写像先）であるため
+     * 対象に含める。含めないと、既存の {@code ADMIN_ONLY} 相当コンテンツを新段へ写像した瞬間に
+     * 監査カバレッジが黙って縮退するため。
+     *
+     * <p>{@link StandardVisibility#MEMBERS_AND_ABOVE} /
+     * {@link StandardVisibility#SCOPE_AFFILIATED}（所属者全員可視 = 旧 MEMBERS_ONLY 相当）は
+     * 非センシティブのため対象外（false）。
      *
      * @param level 解決された可視性レベル ({@code null} 可)
      * @return 永続化すべき場合 true
@@ -37,7 +46,8 @@ public final class ResolverAuditPolicy {
         }
         return level == StandardVisibility.PRIVATE
                 || level == StandardVisibility.CUSTOM_TEMPLATE
-                || level == StandardVisibility.ADMINS_ONLY;
+                || level == StandardVisibility.DEPUTY_ADMINS_AND_ABOVE
+                || level == StandardVisibility.ADMINS_AND_ABOVE;
     }
 
     /**

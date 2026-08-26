@@ -4,7 +4,7 @@ import type { AnnouncementTemplate } from '~/types/announcement_broadcast'
 
 const props = defineProps<{
   scopeType: AnnouncementScopeType
-  scopeId: number
+  scopeId: string
   modelValue: number | null
 }>()
 
@@ -39,6 +39,9 @@ const templateOptions = computed(() =>
     value: tpl.id,
   })),
 )
+
+// 親（Step1）がテンプレート保存後に一覧を再取得できるよう公開する
+defineExpose({ refresh: fetchTemplates })
 </script>
 
 <template>

@@ -14,7 +14,7 @@ export function useAttendanceLocationApi() {
 
   // POST /api/v1/teams/{teamId}/attendance/locations/changes
   async function recordLocationChange(
-    teamId: number,
+    teamId: string,
     request: LocationChangeRequest,
   ): Promise<LocationChangeResponse> {
     const res = await api<ApiResponse<LocationChangeResponse>>(
@@ -26,7 +26,7 @@ export function useAttendanceLocationApi() {
 
   // GET /api/v1/teams/{teamId}/attendance/locations?date=YYYY-MM-DD
   async function getTeamLocations(
-    teamId: number,
+    teamId: string,
     date: string,
   ): Promise<LocationListResponse> {
     const res = await api<ApiResponse<LocationListResponse>>(

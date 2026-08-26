@@ -1,5 +1,7 @@
 import type {
   MemberCard,
+  MemberCardListItem,
+  MemberCardStatus,
   MemberCardQr,
   CheckinRecord,
   CheckinStats,
@@ -69,17 +71,36 @@ export function useMemberCardApi() {
     await api(`/api/v1/member-cards/${id}/reactivate`, { method: 'PATCH' })
   }
 
-  async function listByTeam(teamId: number) {
+  async function listByTeam(teamId: string) {
     const res = await api<{ data: MemberCard[] }>(`/api/v1/teams/${teamId}/member-cards`)
     return res.data
   }
 
-  async function listByOrg(orgId: number) {
+  async function listByOrg(orgId: string) {
     const res = await api<{ data: MemberCard[] }>(`/api/v1/organizations/${orgId}/member-cards`)
     return res.data
   }
 
-  async function getTeamCheckins(teamId: number, params?: { from?: string; to?: string }) {
+  /**
+   * 組織の会員証一覧を氏名検索付きで取得する（メンバー選択 UI 向け）。
+   * BE: GET /api/v1/organizations/{orgId}/member-cards?status=&q=（MemberCardListResponse[]・displayName 同梱）。
+   * status 既定は ACTIVE。q は会員名/カード番号の部分一致検索。
+   */
+  async function searchOrgMembers(
+    orgId: string,
+    params?: { q?: string; status?: MemberCardStatus },
+  ) {
+    const query = new URLSearchParams()
+    if (params?.status) query.set('status', params.status)
+    if (params?.q != null && params.q.trim() !== '') query.set('q', params.q.trim())
+    const qs = query.toString()
+    const res = await api<{ data: MemberCardListItem[] }>(
+      `/api/v1/organizations/${orgId}/member-cards${qs ? `?${qs}` : ''}`,
+    )
+    return res.data
+  }
+
+  async function getTeamCheckins(teamId: string, params?: { from?: string; to?: string }) {
     const query = new URLSearchParams()
     if (params?.from) query.set('from', params.from)
     if (params?.to) query.set('to', params.to)
@@ -90,17 +111,17 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function getTeamCheckinStats(teamId: number) {
+  async function getTeamCheckinStats(teamId: string) {
     const res = await api<{ data: CheckinStats }>(`/api/v1/teams/${teamId}/checkins/stats`)
     return res.data
   }
 
-  async function listLocations(teamId: number) {
+  async function listLocations(teamId: string) {
     const res = await api<{ data: CheckinLocation[] }>(`/api/v1/teams/${teamId}/checkin-locations`)
     return res.data
   }
 
-  async function createLocation(teamId: number, body: CreateCheckinLocationRequest) {
+  async function createLocation(teamId: string, body: CreateCheckinLocationRequest) {
     const res = await api<{ data: CheckinLocation }>(`/api/v1/teams/${teamId}/checkin-locations`, {
       method: 'POST',
       body,
@@ -108,7 +129,7 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function updateLocation(teamId: number, id: number, body: CreateCheckinLocationRequest) {
+  async function updateLocation(teamId: string, id: number, body: CreateCheckinLocationRequest) {
     const res = await api<{ data: CheckinLocation }>(
       `/api/v1/teams/${teamId}/checkin-locations/${id}`,
       { method: 'PUT', body },
@@ -116,11 +137,11 @@ export function useMemberCardApi() {
     return res.data
   }
 
-  async function deleteLocation(teamId: number, id: number) {
+  async function deleteLocation(teamId: string, id: number) {
     await api(`/api/v1/teams/${teamId}/checkin-locations/${id}`, { method: 'DELETE' })
   }
 
-  async function getLocationQr(teamId: number, id: number) {
+  async function getLocationQr(teamId: string, id: number) {
     const res = await api<{ data: { qrToken: string } }>(
       `/api/v1/teams/${teamId}/checkin-locations/${id}/qr`,
     )
@@ -139,6 +160,7 @@ export function useMemberCardApi() {
     reactivate,
     listByTeam,
     listByOrg,
+    searchOrgMembers,
     getTeamCheckins,
     getTeamCheckinStats,
     listLocations,

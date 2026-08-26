@@ -44,9 +44,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link OfflineSyncController} のコントローラーテスト。
+ *
+ * <p>認可根治戦役 Wave6 ロットD: OfflineSyncController#sync / #getMyConflicts の自己スコープ性
+ * （SelfScopedEndpoint）、および #getConflictDetail / #resolveConflict / #discardConflict の
+ * 所有者検証委譲（AuthorizedInService）を固定する契約テストとして本ファイルを紐付ける。
+ * 下記「権限チェック」ネストクラスが他人のコンフリクトに対する 404 応答を実測している。</p>
  */
 @WebMvcTest(OfflineSyncController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -78,6 +84,10 @@ class OfflineSyncControllerTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     private static final Long USER_ID = 1L;
 
@@ -136,7 +146,7 @@ class OfflineSyncControllerTest {
     // ========================================
 
     @Nested
-    @DisplayName("GET /api/v1/sync/conflicts/me")
+    @DisplayName("GET /api/v1/sync/conflicts/me（getMyConflicts）")
     class GetConflictsMe {
 
         @Test
@@ -221,11 +231,11 @@ class OfflineSyncControllerTest {
     // ========================================
 
     @Nested
-    @DisplayName("権限チェック")
+    @DisplayName("権限チェック（getConflictDetail / resolveConflict / discardConflict の所有者検証）")
     class AuthorizationCheck {
 
         @Test
-        @DisplayName("他人のコンフリクト詳細取得 → 404")
+        @DisplayName("他人のコンフリクト詳細取得（getConflictDetail） → 404")
         void getConflictDetail_他人_404() throws Exception {
             // given
             given(conflictResolverService.getConflictDetail(eq(999L), eq(USER_ID)))
@@ -237,7 +247,7 @@ class OfflineSyncControllerTest {
         }
 
         @Test
-        @DisplayName("他人のコンフリクト解決 → 404")
+        @DisplayName("他人のコンフリクト解決（resolveConflict） → 404")
         void resolveConflict_他人_404() throws Exception {
             // given
             given(conflictResolverService.resolveConflict(eq(999L), eq(USER_ID), any()))
@@ -257,7 +267,7 @@ class OfflineSyncControllerTest {
         }
 
         @Test
-        @DisplayName("他人のコンフリクト破棄 → 404")
+        @DisplayName("他人のコンフリクト破棄（discardConflict） → 404")
         void discardConflict_他人_404() throws Exception {
             // given
             willThrow(new BusinessException(SyncErrorCode.CONFLICT_NOT_FOUND))

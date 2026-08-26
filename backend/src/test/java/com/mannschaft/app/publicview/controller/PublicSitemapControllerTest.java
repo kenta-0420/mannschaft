@@ -28,6 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link PublicSitemapController} MockMvc 結合テスト（F19.1 Phase 3）。
@@ -65,6 +66,10 @@ class PublicSitemapControllerTest {
     @MockitoBean
     private ProxyInputContext proxyInputContext;
 
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
+
     @BeforeEach
     void setUp() {
         SecurityContextHolder.clearContext();
@@ -78,6 +83,9 @@ class PublicSitemapControllerTest {
                 .willReturn(List.of(new SitemapPostEntry(1L, 100L, NOW)));
         given(sitemapQueryService.findPublicOrganizationPostEntries())
                 .willReturn(List.of(new SitemapPostEntry(10L, 200L, NOW)));
+        // F06.4: 公開活動記録も sitemap に収録される
+        given(sitemapQueryService.findPublicActivityEntries())
+                .willReturn(List.of(new SitemapEntry(42L, NOW)));
     }
 
     // ────────────────────────────────────────────────────────────
@@ -114,7 +122,9 @@ class PublicSitemapControllerTest {
                 .contains("https://mannschaft.example/public/teams/1")
                 .contains("https://mannschaft.example/public/organizations/10")
                 .contains("https://mannschaft.example/public/teams/1/posts/100")
-                .contains("https://mannschaft.example/public/organizations/10/posts/200");
+                .contains("https://mannschaft.example/public/organizations/10/posts/200")
+                // F06.4: 公開活動記録は /activity/{id}（スコープを含まない ID 直引き URL）
+                .contains("https://mannschaft.example/activity/42");
     }
 
     @Test

@@ -3,8 +3,11 @@
     "category": {
       "home": "首页",
       "schedule": "日程",
+      "match": "比赛",
       "member": "成员",
       "ops": "业务运营",
+      "ops_work": "任务与进度",
+      "ops_admin": "运营与预算",
       "facility": "设施管理",
       "data": "数据",
       "settings": "设置"
@@ -19,6 +22,8 @@
       "shifts": "排班",
       "duties": "值班",
       "annual_plan": "年度计划",
+      "matches": "比赛记录",
+      "matchAnalytics": "比赛分析",
       "members": "成员",
       "circulation": "传阅",
       "safety_check": "安全确认",
@@ -32,9 +37,13 @@
       "equipment": "设备管理",
       "parking": "停车场",
       "files": "文件",
-      "analytics": "分析",
+      "analytics": "访问分析",
       "audit_logs": "审计日志",
-      "settings": "设置"
+      "settings": "设置",
+      "faqSettings": "FAQ设置",
+      "billing": "账单与套餐管理",
+      "leagueTransfers": "联赛升降级",
+      "adminConsole": "管理控制台"
     }
   }
 }

@@ -1,0 +1,63 @@
+{
+  "feedback": {
+    "nav_button": "Feedback",
+    "nav_tooltip": "Feedback oder Vorschläge senden",
+    "submit": {
+      "title": "Feedback / Vorschlagskasten",
+      "success": "Erfolgreich gesendet. Danke!",
+      "error": "Senden fehlgeschlagen"
+    },
+    "category": {
+      "label": "Kategorie",
+      "placeholder": "Bitte auswählen",
+      "bug": "Fehlerbericht",
+      "feature": "Funktionsanfrage",
+      "improvement": "Verbesserungsvorschlag",
+      "other": "Sonstiges"
+    },
+    "title": {
+      "label": "Titel",
+      "placeholder": "Betreff eingeben"
+    },
+    "body": {
+      "label": "Details",
+      "placeholder": "Details hier eingeben"
+    },
+    "anonymous": {
+      "label": "Anonym senden"
+    },
+    "submitter": "Einreicher",
+    "votes": "Stimmen",
+    "status": {
+      "NEW": "Neu",
+      "OPEN": "Offen",
+      "IN_PROGRESS": "In Bearbeitung",
+      "RESPONDED": "Beantwortet",
+      "CLOSED": "Geschlossen"
+    },
+    "inbox": {
+      "title": "Feedback-Posteingang (Global)",
+      "description": "Alle Feedbacks im GENERAL-Bereich anzeigen und beantworten",
+      "noData": "Kein Feedback vorhanden",
+      "filter": {
+        "all": "Alle",
+        "label": "Nach Status filtern"
+      },
+      "respond": {
+        "title": "Antworten",
+        "adminResponse": "Antwort",
+        "adminResponsePlaceholder": "Antwort an den Benutzer eingeben",
+        "publicResponse": "Als öffentliche Antwort anzeigen",
+        "submit": "Antwort senden",
+        "success": "Antwort gesendet",
+        "error": "Antwort senden fehlgeschlagen"
+      },
+      "statusChange": {
+        "success": "Status aktualisiert",
+        "error": "Status aktualisieren fehlgeschlagen"
+      },
+      "viewAsUser": "Als Benutzer anzeigen",
+      "anonymous": "Anonym"
+    }
+  }
+}

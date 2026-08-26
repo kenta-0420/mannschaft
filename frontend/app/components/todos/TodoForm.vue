@@ -2,7 +2,7 @@
 import dayjs from 'dayjs'
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   todoId?: number // 編集時
   visible: boolean
 }>()
@@ -167,6 +167,7 @@ function close() {
         :label="isEdit ? '更新' : '作成'"
         icon="pi pi-check"
         :loading="submitting"
+        data-testid="team-todo-form-submit"
         @click="submit"
       />
     </template>

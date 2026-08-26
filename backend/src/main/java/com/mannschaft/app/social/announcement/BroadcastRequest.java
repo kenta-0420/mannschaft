@@ -23,7 +23,7 @@ public class BroadcastRequest {
     /** 告知チャネル種別。 */
     private AnnouncementChannel channel;
 
-    /** 告知対象ロール（MEMBERS_ONLY / SUPPORTERS_AND_ABOVE / PUBLIC）。 */
+    /** 告知対象ロール（MEMBERS_AND_ABOVE / SUPPORTERS_AND_ABOVE / PUBLIC）。 */
     private String targetRole;
 
     /** 組織告知でのチーム絞り込み。null = 全チーム対象。 */

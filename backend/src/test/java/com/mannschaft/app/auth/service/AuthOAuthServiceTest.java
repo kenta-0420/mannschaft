@@ -69,6 +69,13 @@ class AuthOAuthServiceTest {
     @Mock
     private OAuthProperties oAuthProperties;
 
+    // 認可基盤完全根治 Phase 1: トークン発行時に roles を解決するヘルパ。
+    @Mock
+    private RoleClaimResolver roleClaimResolver;
+
+    @Mock
+    private StatusClaimResolver statusClaimResolver;
+
     @InjectMocks
     private AuthOAuthService authOAuthService;
 
@@ -180,7 +187,7 @@ class AuthOAuthServiceTest {
             given(oauthAccountRepository.save(any(OAuthAccountEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
             given(refreshTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));

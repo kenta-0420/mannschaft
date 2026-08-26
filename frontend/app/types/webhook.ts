@@ -69,7 +69,7 @@ export interface ApiKeyIssueResult {
 
 export interface CreateEndpointBody {
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   url: string
   description?: string
@@ -88,7 +88,7 @@ export interface UpdateEndpointBody {
 
 export interface CreateIncomingWebhookBody {
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   description?: string
   allowedIps?: string[]
@@ -96,7 +96,7 @@ export interface CreateIncomingWebhookBody {
 
 export interface IssueApiKeyBody {
   scopeType: string
-  scopeId: number
+  scopeId: string
   name: string
   description?: string
   permissions: string[]

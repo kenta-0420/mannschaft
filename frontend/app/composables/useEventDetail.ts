@@ -10,7 +10,7 @@ import type {
 
 interface UseEventDetailOptions {
   scopeType: Ref<'team' | 'organization'>
-  scopeId: Ref<number>
+  scopeId: Ref<string>
   eventId: Ref<number>
 }
 

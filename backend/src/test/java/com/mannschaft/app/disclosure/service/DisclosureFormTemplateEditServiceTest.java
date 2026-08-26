@@ -2,6 +2,7 @@ package com.mannschaft.app.disclosure.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.autofill.AutoFillContext;
@@ -47,6 +48,9 @@ class DisclosureFormTemplateEditServiceTest {
     @Mock
     private DisclosureFormTemplateRepository repository;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private DisclosureFormTemplateEditService service;
@@ -66,7 +70,7 @@ class DisclosureFormTemplateEditServiceTest {
                 List.of(new StubSource("organization.name")));
         autoFillService.init();
         validator = new DisclosureFormTemplateValidator(objectMapper, autoFillService);
-        service = new DisclosureFormTemplateEditService(repository, validator, objectMapper);
+        service = new DisclosureFormTemplateEditService(repository, validator, objectMapper, accessControlService);
     }
 
     /** 妥当な最小 schema を返す。 */
@@ -240,7 +244,7 @@ class DisclosureFormTemplateEditServiceTest {
                     .thenAnswer(inv -> inv.getArgument(0));
 
             DisclosureFormTemplateResponse res = service.updateCustomTemplate(
-                    ORG_ID, 10L, updateRequest("ORG_CUSTOM_A", "2.0", 3L));
+                    ORG_ID, 10L, 1L, updateRequest("ORG_CUSTOM_A", "2.0", 3L));
 
             assertThat(res.version()).isEqualTo("2.0");
             assertThat(res.name()).isEqualTo("更新後の名前");
@@ -253,7 +257,7 @@ class DisclosureFormTemplateEditServiceTest {
                     .thenReturn(Optional.of(buildSystem(1L, "MLIT_STANDARD_2024", "2024.1")));
 
             assertThatThrownBy(() ->
-                    service.updateCustomTemplate(ORG_ID, 1L,
+                    service.updateCustomTemplate(ORG_ID, 1L, 1L,
                             updateRequest("MLIT_STANDARD_2024", "2024.2", 0L)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -267,7 +271,7 @@ class DisclosureFormTemplateEditServiceTest {
                     .thenReturn(Optional.of(buildCustom(20L, OTHER_ORG_ID, "ORG_CUSTOM_X", "1.0", 0L)));
 
             assertThatThrownBy(() ->
-                    service.updateCustomTemplate(ORG_ID, 20L,
+                    service.updateCustomTemplate(ORG_ID, 20L, 1L,
                             updateRequest("ORG_CUSTOM_X", "2.0", 0L)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -281,7 +285,7 @@ class DisclosureFormTemplateEditServiceTest {
                     .thenReturn(Optional.of(buildCustom(10L, ORG_ID, "ORG_CUSTOM_A", "1.0", 5L)));
 
             assertThatThrownBy(() ->
-                    service.updateCustomTemplate(ORG_ID, 10L,
+                    service.updateCustomTemplate(ORG_ID, 10L, 1L,
                             updateRequest("ORG_CUSTOM_A", "2.0", 1L)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -295,7 +299,7 @@ class DisclosureFormTemplateEditServiceTest {
                     .thenReturn(Optional.of(buildCustom(10L, ORG_ID, "ORG_CUSTOM_A", "1.0", 0L)));
 
             assertThatThrownBy(() ->
-                    service.updateCustomTemplate(ORG_ID, 10L,
+                    service.updateCustomTemplate(ORG_ID, 10L, 1L,
                             updateRequest("ORG_CUSTOM_A", "2.0", null)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -309,7 +313,7 @@ class DisclosureFormTemplateEditServiceTest {
                     .thenReturn(Optional.of(buildCustom(10L, ORG_ID, "ORG_CUSTOM_A", "1.0", 0L)));
 
             assertThatThrownBy(() ->
-                    service.updateCustomTemplate(ORG_ID, 10L,
+                    service.updateCustomTemplate(ORG_ID, 10L, 1L,
                             updateRequest("ORG_CUSTOM_RENAMED", "2.0", 0L)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -322,7 +326,7 @@ class DisclosureFormTemplateEditServiceTest {
             when(repository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() ->
-                    service.updateCustomTemplate(ORG_ID, 99L,
+                    service.updateCustomTemplate(ORG_ID, 99L, 1L,
                             updateRequest("X", "1.0", 0L)))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
@@ -346,7 +350,7 @@ class DisclosureFormTemplateEditServiceTest {
             when(repository.save(any(DisclosureFormTemplateEntity.class)))
                     .thenAnswer(inv -> inv.getArgument(0));
 
-            service.deleteCustomTemplate(ORG_ID, 10L);
+            service.deleteCustomTemplate(ORG_ID, 1L, 10L);
 
             assertThat(entity.getDeletedAt()).isNotNull();
             verify(repository).save(entity);
@@ -358,7 +362,7 @@ class DisclosureFormTemplateEditServiceTest {
             when(repository.findByIdAndDeletedAtIsNull(1L))
                     .thenReturn(Optional.of(buildSystem(1L, "MLIT_STANDARD_2024", "2024.1")));
 
-            assertThatThrownBy(() -> service.deleteCustomTemplate(ORG_ID, 1L))
+            assertThatThrownBy(() -> service.deleteCustomTemplate(ORG_ID, 1L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(DisclosureErrorCode.DISCLOSURE_014);
@@ -370,7 +374,7 @@ class DisclosureFormTemplateEditServiceTest {
             when(repository.findByIdAndDeletedAtIsNull(20L))
                     .thenReturn(Optional.of(buildCustom(20L, OTHER_ORG_ID, "X", "1.0", 0L)));
 
-            assertThatThrownBy(() -> service.deleteCustomTemplate(ORG_ID, 20L))
+            assertThatThrownBy(() -> service.deleteCustomTemplate(ORG_ID, 1L, 20L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(DisclosureErrorCode.DISCLOSURE_002);
@@ -381,7 +385,7 @@ class DisclosureFormTemplateEditServiceTest {
         void delete_notFound() {
             when(repository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.deleteCustomTemplate(ORG_ID, 99L))
+            assertThatThrownBy(() -> service.deleteCustomTemplate(ORG_ID, 1L, 99L))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(DisclosureErrorCode.DISCLOSURE_001);

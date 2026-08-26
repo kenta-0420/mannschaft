@@ -3,7 +3,25 @@ import type {
   ActivityTemplate,
   ActivityComment,
   ActivityStats,
+  CreateActivityRequestBody,
+  PublicActivityResponse,
+  PublicActivitySummaryResponse,
 } from '~/types/activity'
+
+/**
+ * DRAFT 作成リクエストボディ（最小: タイトル + 活動日のみ必須）。
+ * BE {@code CreateDraftActivityRequest} に対応。テンプレ・カスタムフィールドは後付け可。
+ */
+export interface CreateDraftActivityRequestBody {
+  title: string
+  activityDate: string
+  templateId?: number
+  description?: string
+  activityTimeStart?: string
+  activityTimeEnd?: string
+  visibility?: string
+  fieldValues?: Record<string, Record<string, never>>
+}
 
 export function useActivityApi() {
   const api = useApi()
@@ -16,11 +34,19 @@ export function useActivityApi() {
     return query.toString()
   }
 
+  /**
+   * 活動記録一覧を取得する。
+   *
+   * BE {@code GET /api/v1/activities} はオフセットページング（{@code page}（0始まり・既定 0）/
+   * {@code limit}）。以前の型は {@code meta: { nextCursor, hasNext } } を宣言していたが、
+   * BE はそのようなフィールドを返しておらず（{@code ApiResponse} は {@code data} のみ）、
+   * 実体の無い「幻の型」だった（本コードベースを検索した結果、この meta を読んでいる箇所は
+   * 存在しなかった）。実態に合わせて {@code data} のみへ是正した。
+   */
   async function getActivities(params: Record<string, unknown>) {
     const qs = buildQuery(params)
     return api<{
       data: ActivityRecordResponse[]
-      meta: { nextCursor: number | null; hasNext: boolean }
     }>(`/api/v1/activities?${qs}`)
   }
 
@@ -28,8 +54,23 @@ export function useActivityApi() {
     return api<{ data: ActivityRecordResponse }>(`/api/v1/activities/${id}`)
   }
 
-  async function createActivity(body: Record<string, unknown>) {
-    return api<{ data: ActivityRecordResponse }>('/api/v1/activities', { method: 'POST', body })
+  /**
+   * 活動記録を作成する。
+   *
+   * scope_type / scope_id は **クエリパラメータ**で送る（BE {@code ActivityController.createActivity} の
+   * {@code @RequestParam("scope_type")} / {@code @RequestParam("scope_id")} に一致）。scope_id は数値 DB id。
+   * body は {@code CreateActivityRequest}（templateId / title / activityDate 等）。
+   */
+  async function createActivity(
+    scopeType: 'TEAM' | 'ORGANIZATION',
+    scopeId: number,
+    body: CreateActivityRequestBody,
+  ) {
+    const qs = buildQuery({ scope_type: scopeType, scope_id: scopeId })
+    return api<{ data: ActivityRecordResponse }>(`/api/v1/activities?${qs}`, {
+      method: 'POST',
+      body,
+    })
   }
 
   async function updateActivity(id: number, body: Record<string, unknown>) {
@@ -39,12 +80,42 @@ export function useActivityApi() {
     })
   }
 
+  /**
+   * 活動記録を DRAFT として作成する（タイトル + 活動日のみで最小保存）。
+   *
+   * BE {@code POST /api/v1/activities/draft?scope_type=...&scope_id=...} に対応。
+   * scope_type / scope_id はクエリパラメータ、body は {@code CreateDraftActivityRequest}。
+   * テンプレ・カスタムフィールドは後付けで更新できる。
+   */
+  async function createDraftActivity(
+    scopeType: 'TEAM' | 'ORGANIZATION',
+    scopeId: number,
+    body: CreateDraftActivityRequestBody,
+  ) {
+    const qs = buildQuery({ scope_type: scopeType, scope_id: scopeId })
+    return api<{ data: ActivityRecordResponse }>(`/api/v1/activities/draft?${qs}`, {
+      method: 'POST',
+      body,
+    })
+  }
+
+  /**
+   * DRAFT 状態の活動記録を公開する。
+   *
+   * BE {@code POST /api/v1/activities/{id}/publish} に対応。リクエストボディは不要。
+   */
+  async function publishActivity(id: number) {
+    return api<{ data: ActivityRecordResponse }>(`/api/v1/activities/${id}/publish`, {
+      method: 'POST',
+    })
+  }
+
   async function deleteActivity(id: number) {
     return api(`/api/v1/activities/${id}`, { method: 'DELETE' })
   }
 
   // === Activity Templates ===
-  async function getTemplates(scopeType: string, scopeId: number) {
+  async function getTemplates(scopeType: string, scopeId: string) {
     return api<{ data: ActivityTemplate[] }>(
       `/api/v1/activity-templates?scope_type=${scopeType}&scope_id=${scopeId}`,
     )
@@ -107,27 +178,34 @@ export function useActivityApi() {
   }
 
   // === Public Activities ===
-  async function listOrgPublicActivities(orgId: number) {
-    return api<{ data: ActivityRecordResponse[] }>(
+  //
+  // 公開（認証不要）経路は認証済み API とは **別の DTO** を返す。
+  // BE: PublicActivitySummary（一覧）/ PublicActivityDetail（詳細）＝御裁可済み 8 項目のみ。
+  // `location` / `fieldValues` / `attachments` / `createdBy` / `visibility` 等は
+  // 禁則フィールドとして返らないため、ActivityRecordResponse を当ててはならない。
+  async function listOrgPublicActivities(orgId: string) {
+    return api<{ data: PublicActivitySummaryResponse[] }>(
       `/api/v1/public/organizations/${orgId}/activities`,
     )
   }
 
-  async function getOrgPublicActivity(orgId: number, id: number) {
-    return api<{ data: ActivityRecordResponse }>(
+  async function getOrgPublicActivity(orgId: string, id: number) {
+    return api<{ data: PublicActivityResponse }>(
       `/api/v1/public/organizations/${orgId}/activities/${id}`,
     )
   }
 
-  async function listTeamPublicActivities(teamId: number) {
-    return api<{ data: ActivityRecordResponse[] }>(`/api/v1/public/teams/${teamId}/activities`)
+  async function listTeamPublicActivities(teamId: string) {
+    return api<{ data: PublicActivitySummaryResponse[] }>(
+      `/api/v1/public/teams/${teamId}/activities`,
+    )
   }
 
-  async function getTeamPublicActivity(teamId: number, id: number) {
-    return api<{ data: ActivityRecordResponse }>(`/api/v1/public/teams/${teamId}/activities/${id}`)
+  async function getTeamPublicActivity(teamId: string, id: number) {
+    return api<{ data: PublicActivityResponse }>(`/api/v1/public/teams/${teamId}/activities/${id}`)
   }
 
-  async function getStats(scopeType: string, scopeId: number) {
+  async function getStats(scopeType: string, scopeId: string) {
     return api<{ data: ActivityStats }>(
       `/api/v1/activities/stats?scope_type=${scopeType}&scope_id=${scopeId}`,
     )
@@ -166,6 +244,8 @@ export function useActivityApi() {
     getActivities,
     getActivity,
     createActivity,
+    createDraftActivity,
+    publishActivity,
     updateActivity,
     deleteActivity,
     getTemplates,

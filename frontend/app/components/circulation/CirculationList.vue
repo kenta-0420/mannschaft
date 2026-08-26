@@ -1,44 +1,49 @@
 <script setup lang="ts">
-import type { CirculationResponse } from '~/types/circulation'
+import type { CirculationDocumentListItem } from '~/types/circulation'
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   canManage?: boolean
 }>()
 
 const emit = defineEmits<{
-  select: [circulation: CirculationResponse]
+  select: [circulation: CirculationDocumentListItem]
   create: []
 }>()
 
-const { getCirculations } = useCirculationApi()
-const { showError } = useNotification()
+const { t } = useI18n()
+const { listScopedCirculations } = useCirculationApi()
 const { relativeTime } = useRelativeTime()
 
-const items = ref<CirculationResponse[]>([])
+const items = ref<CirculationDocumentListItem[]>([])
 const loading = ref(false)
+// 取得失敗フラグ。失敗時にスピナーを放置したり空状態（回覧がありません）で誤魔化さず、
+// エラー面＋再試行を出して可視化する（症状を隠さない）。
+const error = ref(false)
 const statusFilter = ref<string | undefined>(undefined)
 
 const statusOptions = [
   { label: 'すべて', value: undefined },
   { label: '下書き', value: 'DRAFT' },
-  { label: '回覧中', value: 'IN_PROGRESS' },
+  { label: '回覧中', value: 'ACTIVE' },
   { label: '完了', value: 'COMPLETED' },
   { label: 'キャンセル', value: 'CANCELLED' },
 ]
 
 async function loadItems() {
   loading.value = true
+  error.value = false
   try {
-    const res = await getCirculations({
-      scopeType: props.scopeType,
-      scopeId: props.scopeId,
-      status: statusFilter.value,
-    })
+    const res = await listScopedCirculations(
+      props.scopeType === 'TEAM' ? 'team' : 'organization',
+      props.scopeId,
+      { status: statusFilter.value },
+    )
     items.value = res.data
   } catch {
-    showError('回覧一覧の取得に失敗しました')
+    // 失敗はインラインのエラー面（＋再試行）で可視化する。トーストは重複通知になるため出さない。
+    error.value = true
   } finally {
     loading.value = false
   }
@@ -47,7 +52,7 @@ async function loadItems() {
 function getStatusClass(status: string): string {
   switch (status) {
     case 'DRAFT': return 'bg-surface-100 text-surface-600'
-    case 'IN_PROGRESS': return 'bg-blue-100 text-blue-700'
+    case 'ACTIVE': return 'bg-blue-100 text-blue-700'
     case 'COMPLETED': return 'bg-green-100 text-green-700'
     case 'CANCELLED': return 'bg-red-100 text-red-600'
     default: return 'bg-surface-100 text-surface-600'
@@ -55,7 +60,7 @@ function getStatusClass(status: string): string {
 }
 
 function getStatusLabel(status: string): string {
-  const labels: Record<string, string> = { DRAFT: '下書き', IN_PROGRESS: '回覧中', COMPLETED: '完了', CANCELLED: 'キャンセル' }
+  const labels: Record<string, string> = { DRAFT: '下書き', ACTIVE: '回覧中', COMPLETED: '完了', CANCELLED: 'キャンセル' }
   return labels[status] || status
 }
 
@@ -76,6 +81,20 @@ defineExpose({ refresh: loadItems })
       <LoadingBounce />
     </div>
 
+    <!-- 取得失敗のエラー面（空状態で誤魔化さず再試行を出す） -->
+    <div v-else-if="error" class="py-12 text-center">
+      <i class="pi pi-exclamation-triangle mb-3 text-4xl text-surface-400" aria-hidden="true" />
+      <p class="text-surface-500 dark:text-surface-300">{{ t('common.scopeShell.load_error_title') }}</p>
+      <Button
+        class="mt-4"
+        :label="t('common.scopeShell.retry')"
+        icon="pi pi-refresh"
+        size="small"
+        outlined
+        @click="loadItems"
+      />
+    </div>
+
     <div v-else class="flex flex-col gap-2">
       <button
         v-for="item in items"
@@ -91,13 +110,13 @@ defineExpose({ refresh: loadItems })
             <h3 class="truncate text-sm font-semibold">{{ item.title }}</h3>
           </div>
           <div class="flex items-center gap-3 text-xs text-surface-400">
-            <span>{{ item.createdBy.displayName }}</span>
+            <span v-if="item.createdByName">{{ item.createdByName }}</span>
             <span>{{ relativeTime(item.createdAt) }}</span>
-            <span v-if="item.deadline"><i class="pi pi-clock" /> {{ item.deadline }}</span>
+            <span v-if="item.dueDate"><i class="pi pi-clock" /> {{ item.dueDate }}</span>
           </div>
         </div>
         <div class="text-right text-sm">
-          <div class="font-medium">{{ item.stampedCount }}/{{ item.recipientCount }}</div>
+          <div class="font-medium">{{ item.stampedCount }}/{{ item.totalRecipientCount }}</div>
           <div class="text-xs text-surface-400">押印済み</div>
         </div>
       </button>

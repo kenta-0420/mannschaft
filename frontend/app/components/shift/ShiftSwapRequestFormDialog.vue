@@ -24,7 +24,7 @@ const props = defineProps<{
   slotId: number
   slotDate: string
   scheduleId: number
-  teamId: number
+  teamId: string
 }>()
 
 const emit = defineEmits<{
@@ -339,7 +339,7 @@ const modeOptions: { value: RecipientMode; labelKey: string }[] = [
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button
-          :label="t('common.button.cancel')"
+          :label="t('button.cancel')"
           text
           severity="secondary"
           @click="close"

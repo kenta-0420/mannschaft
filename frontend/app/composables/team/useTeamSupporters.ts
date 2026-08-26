@@ -38,63 +38,63 @@ export function useTeamSupporters() {
   const api = useApi()
 
   // === フォロー（SUPPORTER） ===
-  async function followTeam(teamId: number) {
-    return api(`/api/v1/teams/${teamId}/follow`, { method: 'POST' })
+  async function followTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}/follow`, { method: 'POST' })
   }
 
-  async function unfollowTeam(teamId: number) {
-    return api(`/api/v1/teams/${teamId}/follow`, { method: 'DELETE' })
+  async function unfollowTeam(teamSlug: string) {
+    return api(`/api/v1/teams/${teamSlug}/follow`, { method: 'DELETE' })
   }
 
-  async function getFollowStatus(teamId: number) {
-    return api<{ data: FollowStatusResponse }>(`/api/v1/teams/${teamId}/follow/status`)
+  async function getFollowStatus(teamSlug: string) {
+    return api<{ data: FollowStatusResponse }>(`/api/v1/teams/${teamSlug}/follow/status`)
   }
 
   // === サポーター管理（管理者） ===
-  async function getSupporters(teamId: number, params?: { page?: number; size?: number }) {
+  async function getSupporters(teamSlug: string, params?: { page?: number; size?: number }) {
     const query = new URLSearchParams()
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 50))
-    return api<PagedData<SupporterResponse>>(`/api/v1/teams/${teamId}/supporters?${query}`)
+    return api<PagedData<SupporterResponse>>(`/api/v1/teams/${teamSlug}/supporters?${query}`)
   }
 
   async function getSupporterApplications(
-    teamId: number,
+    teamSlug: string,
     params?: { page?: number; size?: number },
   ) {
     const query = new URLSearchParams()
     query.set('page', String(params?.page ?? 0))
     query.set('size', String(params?.size ?? 50))
     return api<PagedData<SupporterApplicationResponse>>(
-      `/api/v1/teams/${teamId}/supporter-applications?${query}`,
+      `/api/v1/teams/${teamSlug}/supporter-applications?${query}`,
     )
   }
 
-  async function approveSupporterApplication(teamId: number, applicationId: number) {
-    return api(`/api/v1/teams/${teamId}/supporter-applications/${applicationId}/approve`, {
+  async function approveSupporterApplication(teamSlug: string, applicationId: number) {
+    return api(`/api/v1/teams/${teamSlug}/supporter-applications/${applicationId}/approve`, {
       method: 'POST',
     })
   }
 
-  async function rejectSupporterApplication(teamId: number, applicationId: number) {
-    return api(`/api/v1/teams/${teamId}/supporter-applications/${applicationId}/reject`, {
+  async function rejectSupporterApplication(teamSlug: string, applicationId: number) {
+    return api(`/api/v1/teams/${teamSlug}/supporter-applications/${applicationId}/reject`, {
       method: 'POST',
     })
   }
 
-  async function bulkApproveSupporterApplications(teamId: number, applicationIds: number[]) {
-    return api(`/api/v1/teams/${teamId}/supporter-applications/bulk-approve`, {
+  async function bulkApproveSupporterApplications(teamSlug: string, applicationIds: number[]) {
+    return api(`/api/v1/teams/${teamSlug}/supporter-applications/bulk-approve`, {
       method: 'POST',
       body: { applicationIds },
     })
   }
 
-  async function getSupporterSettings(teamId: number) {
-    return api<{ data: SupporterSettings }>(`/api/v1/teams/${teamId}/supporter-settings`)
+  async function getSupporterSettings(teamSlug: string) {
+    return api<{ data: SupporterSettings }>(`/api/v1/teams/${teamSlug}/supporter-settings`)
   }
 
-  async function updateSupporterSettings(teamId: number, body: Partial<SupporterSettings>) {
-    return api<{ data: SupporterSettings }>(`/api/v1/teams/${teamId}/supporter-settings`, {
+  async function updateSupporterSettings(teamSlug: string, body: Partial<SupporterSettings>) {
+    return api<{ data: SupporterSettings }>(`/api/v1/teams/${teamSlug}/supporter-settings`, {
       method: 'PUT',
       body,
     })

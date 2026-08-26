@@ -10,16 +10,16 @@ const teamStore = useTeamStore()
 const { handleApiError } = useErrorHandler()
 const notification = useNotification()
 
-const followedTeamIds = ref<number[]>([])
-const followingTeamIds = ref<number[]>([])
+const followedTeamIds = ref<string[]>([])
+const followingTeamIds = ref<string[]>([])
 
-const myTeamIds = computed(() => new Set(teamStore.myTeams.map((team) => team.id)))
+const myTeamSlugs = computed(() => new Set(teamStore.myTeams.map((team) => team.slug)))
 
-async function followTeam(teamId: number, event: Event) {
+async function followTeam(teamId: string, event: Event) {
   event.stopPropagation()
   followingTeamIds.value.push(teamId)
   try {
-    await teamApi.followTeam(teamId)
+    await teamApi.followTeam(String(teamId))
     followedTeamIds.value.push(teamId)
     notification.success(t('teamHub.supporterSuccess'))
   } catch {
@@ -29,19 +29,27 @@ async function followTeam(teamId: number, event: Event) {
   }
 }
 
-interface TeamSummary {
-  id: number
+/** チーム検索 API レスポンス内の1件分（URLルーティングに必要な slug を含む）。 */
+interface TeamSearchSummary {
+  id: string
+  /** チームスラッグ（URLルーティング用）。{@code /teams/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
   prefecture: string | null
   city: string | null
+  /** 都道府県コード（BE `prefectureCode` camelCase と 1:1、null 許容）。 */
+  prefectureCode: string | null
+  /** 市区町村コード（BE `cityCode` camelCase と 1:1、null 許容）。 */
+  cityCode: string | null
   template: string
   memberCount: number
   supporterEnabled: boolean
+  teamFriendCount: number
+  supporterCount: number
 }
-
-const teams = ref<TeamSummary[]>([])
+const teams = ref<TeamSearchSummary[]>([])
 const loading = ref(false)
 const totalRecords = ref(0)
 const currentPage = ref(0)
@@ -49,10 +57,15 @@ const pageSize = 20
 const showCreateDialog = ref(false)
 
 const { templateLabel } = useScopeLabels()
+const route = useRoute()
+
+/** F22.1: スコープ検索フォームからの遷移時に URL クエリ keyword を初期値として復元する。 */
+const initialKeyword = ref('')
 
 const searchParams = ref({
   keyword: '',
   prefecture: '',
+  prefectureCode: '',
   template: '',
 })
 
@@ -61,6 +74,9 @@ async function fetchTeams() {
   try {
     const result = await teamApi.searchTeams({
       keyword: searchParams.value.keyword || undefined,
+      // F22.1 Phase2 足場C 第三陣: 地域はコード送信を優先（BE dual-support）。
+      // 公開チーム検索 BE（PublicDiscoverController）は prefectureCode（camelCase）を受ける。
+      prefectureCode: searchParams.value.prefectureCode || undefined,
       prefecture: searchParams.value.prefecture || undefined,
       template: searchParams.value.template || undefined,
       page: currentPage.value,
@@ -75,10 +91,16 @@ async function fetchTeams() {
   }
 }
 
-function onSearch(params: { keyword: string; prefecture: string; template: string }) {
+function onSearch(params: {
+  keyword: string
+  prefecture: string
+  prefectureCode: string
+  template: string
+}) {
   searchParams.value = {
     keyword: params.keyword,
     prefecture: params.prefecture,
+    prefectureCode: params.prefectureCode,
     template: params.template,
   }
   currentPage.value = 0
@@ -90,8 +112,8 @@ function onPageChange(event: { page: number }) {
   fetchTeams()
 }
 
-function onTeamCreated(entity: { id: number; name: string }) {
-  navigateTo(`/teams/${entity.id}`)
+function onTeamCreated(entity: { id: string; name: string; slug: string }) {
+  navigateTo(`/teams/${entity.slug}`)
 }
 
 function formatLocation(prefecture: string | null, city: string | null): string {
@@ -99,6 +121,12 @@ function formatLocation(prefecture: string | null, city: string | null): string 
 }
 
 onMounted(() => {
+  // F22.1 §2.9: URL クエリ keyword があれば検索フォーム初期値にセットして初期検索を実行。
+  const kw = route.query.keyword
+  if (typeof kw === 'string' && kw.length > 0) {
+    initialKeyword.value = kw
+    searchParams.value.keyword = kw
+  }
   fetchTeams()
 })
 </script>
@@ -106,8 +134,7 @@ onMounted(() => {
 <template>
   <div class="mx-auto max-w-6xl p-6">
     <div class="mb-6 flex items-center gap-4">
-      <BackButton to="/teams" />
-      <PageHeader :title="$t('teamHub.searchPageTitle')" class="flex-1" />
+      <PageHeader :title="$t('teamHub.searchPageTitle')" class="flex-1" back-to="/teams" />
       <Button
         :label="$t('teamHub.createTeam')"
         icon="pi pi-plus"
@@ -119,6 +146,7 @@ onMounted(() => {
       <SearchBar
         :placeholder="$t('teamHub.searchPageTitle')"
         :show-template-filter="true"
+        :initial-keyword="initialKeyword"
         @search="onSearch"
       />
     </div>
@@ -137,7 +165,7 @@ onMounted(() => {
           v-for="team in teams"
           :key="team.id"
           class="cursor-pointer rounded-lg border-2 border-surface-400 bg-surface-0 p-4 transition-shadow hover:shadow-md"
-          @click="navigateTo(`/teams/${team.id}`)"
+          @click="team.slug ? navigateTo(`/teams/${team.slug}`) : undefined"
         >
           <div class="mb-3 flex items-center gap-3">
             <Avatar
@@ -162,11 +190,11 @@ onMounted(() => {
             <span><i class="pi pi-users mr-1" />{{ $t('teamHub.memberCount', { count: team.memberCount }) }}</span>
           </div>
           <div
-            v-if="team.supporterEnabled && !myTeamIds.has(team.id)"
+            v-if="team.supporterEnabled && !myTeamSlugs.has(team.slug)"
             class="mt-3 border-t border-surface-100 pt-3"
           >
             <span
-              v-if="followedTeamIds.includes(team.id)"
+              v-if="followedTeamIds.includes(team.slug)"
               class="flex items-center gap-1 text-sm text-primary"
             >
               <i class="pi pi-heart-fill" />{{ $t('teamHub.supporterRegistered') }}
@@ -179,8 +207,8 @@ onMounted(() => {
               severity="secondary"
               outlined
               class="w-full"
-              :loading="followingTeamIds.includes(team.id)"
-              @click="followTeam(team.id, $event)"
+              :loading="followingTeamIds.includes(team.slug)"
+              @click="followTeam(team.slug, $event)"
             />
           </div>
         </div>

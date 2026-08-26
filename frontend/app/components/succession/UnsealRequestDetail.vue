@@ -2,7 +2,7 @@
 import type { UnsealRequestResponse, UnsealRequestStatus } from '~/types/succession'
 
 defineProps<{
-  orgId: number
+  orgId: string
   request: UnsealRequestResponse
 }>()
 

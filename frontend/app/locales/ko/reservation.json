@@ -1,4 +1,4 @@
-{
+﻿{
   "emergency_closure": {
     "section": {
       "period": "휴업 기간",
@@ -63,6 +63,13 @@
       "reminder_sent": "전송 완료",
       "reminder_not_sent": "미전송"
     },
+    "connection": {
+      "live": "실시간 업데이트 중",
+      "connecting": "연결 중…",
+      "reconnecting": "재연결 중…",
+      "offline": "오프라인",
+      "denied": "열람 권한이 없습니다"
+    },
     "dialog": {
       "title": "전송 확인",
       "confirm_message": "다음 내용으로 일괄 전송하시겠습니까?",
@@ -78,7 +85,8 @@
       "subject_required": "제목을 입력해 주세요",
       "body_required": "본문을 입력해 주세요",
       "send_failed": "전송에 실패했습니다",
-      "confirmations_failed": "확인 현황 불러오기 실패"
+      "confirmations_failed": "확인 현황 불러오기 실패",
+      "info_missing": "알림 정보가 누락되었습니다"
     },
     "template": {
       "staff_sick": "직원 건강 이상",
@@ -102,6 +110,751 @@
       "CANCELLED": "취소",
       "NO_SHOW": "무단 불참",
       "REJECTED": "거부"
+    },
+    "confirm_button": "휴업 확인",
+    "already_confirmed": "확인 완료",
+    "confirm_success": "긴급 휴업을 확인했습니다",
+    "confirm_failed": "확인 처리에 실패했습니다",
+    "badge": "긴급 휴업"
+  },
+  "reservation": {
+    "guide": {
+      "title": "내 예약 사용법",
+      "description": "이 페이지에서는 내가 예약한 슬롯 목록과 각 예약의 상태를 확인할 수 있습니다.",
+      "overview": {
+        "title": "내 예약이란",
+        "body": "내가 예약한 슬롯을 목록으로 확인할 수 있는 페이지입니다. 승인 여부와 언제 예약했는지 한눈에 알 수 있습니다.",
+        "steps": {
+          "step1": "페이지를 열면 내 예약이 자동으로 불러와집니다.",
+          "step2": "각 카드에 「예약 대상 이름·날짜·시작~종료 시간」이 표시됩니다."
+        }
+      },
+      "status": {
+        "title": "상태 보는 법",
+        "body": "각 예약 카드의 색상 배지가 해당 예약의 현재 상태를 나타냅니다.",
+        "items": {
+          "item1": "노랑 「보류 중」… 승인 대기 중입니다.",
+          "item2": "초록 「승인됨」… 예약이 확정되었습니다.",
+          "item3": "파랑 「완료」… 이용이 종료되었습니다.",
+          "item4": "빨강 「취소」… 취소된 예약입니다.",
+          "item5": "회색 「노쇼」… 예약일에 이용하지 않았습니다."
+        }
+      },
+      "empty": {
+        "title": "예약이 표시되지 않을 때",
+        "body": "예약이 하나도 없거나 불러오기에 실패했을 때의 대처 방법입니다.",
+        "steps": {
+          "step1": "「예약이 없습니다」라고 표시되면 아직 예약이 없는 상태입니다.",
+          "step2": "「예약 정보를 불러오지 못했습니다」라고 표시되면 통신 오류입니다. 페이지를 새로고침해 주세요."
+        }
+      }
+    },
+    "status": {
+      "PENDING": "보류 중",
+      "CONFIRMED": "승인됨",
+      "CANCELLED": "취소",
+      "COMPLETED": "완료",
+      "NO_SHOW": "무단 불참"
+    },
+    "filter": {
+      "all": "전체"
+    },
+    "page": {
+      "my_title": "내 예약",
+      "team_title": "예약 관리",
+      "settings_title": "예약 관리 설정",
+      "settings_subtitle": "예약 대상(직원 / 창구)을 관리합니다"
+    },
+    "tab": {
+      "book": "예약하기",
+      "list": "예약 목록",
+      "my_reservations": "내 예약",
+      "line_manage": "{resourceName} 관리",
+      "emergency_closure": "緊急休業",
+      "team_page": "예약"
+    },
+    "management": {
+      "section_count": "{label} ({n})",
+      "card_help": "{label} 사용법",
+      "cards": {
+        "business_hours": { "title": "영업시간", "description": "예약 시간을 설정합니다" },
+        "lines": { "title": "예약 대상", "description": "{n}개 대상을 관리합니다" },
+        "menus": { "title": "메뉴", "description": "{n}개 메뉴를 관리합니다" },
+        "weekly_schedule": { "title": "주간 일정", "description": "{n}개 시간 및 반복 설정" },
+        "exception_day": { "title": "예외일", "description": "특정 날짜를 조정합니다" },
+        "advanced": { "title": "고급 설정", "description": "공개 범위와 알림 설정" }
+      }
+    },
+    "column": {
+      "datetime": "일시",
+      "line": "예약 대상",
+      "reserver": "예약자",
+      "status": "상태",
+      "action": "작업",
+      "line_name": "예약 대상 이름",
+      "description": "설명",
+      "display_order": "표시 순서",
+      "state": "상태"
+    },
+    "field": {
+      "date": "날짜",
+      "line": "{resourceName}",
+      "name": "이름",
+      "description": "설명",
+      "display_order": "표시 순서",
+      "active": "활성",
+      "line_name_required": "예약 대상 이름",
+      "note": "비고(선택)",
+      "time": "시간"
+    },
+    "placeholder": {
+      "select": "선택해 주세요",
+      "note": "메뉴, 증상 등",
+      "line_name": "예: 담당자A",
+      "line_description": "예: 접수 창구"
+    },
+    "state": {
+      "active": "활성",
+      "inactive": "비활성"
+    },
+    "slot": {
+      "available": "예약 가능",
+      "full": "만석"
+    },
+    "button": {
+      "add_line": "{resourceName} 추가",
+      "add_line_long": "{resourceName} 추가",
+      "save": "저장",
+      "cancel": "취소",
+      "reserve": "예약하기",
+      "cancel_reservation": "취소하기",
+      "back": "돌아가기",
+      "go_to_line_manage": "예약 대상 관리로 이동",
+      "manage_slots": "시간대 관리",
+      "delete_line": "삭제"
+    },
+    "dialog": {
+      "title": "확인",
+      "line_create": "예약 대상 생성",
+      "line_edit": "예약 대상 편집",
+      "line_create_long": "{resourceName} 추가",
+      "line_edit_long": "{resourceName} 편집",
+      "reserve_confirm": "예약 확인",
+      "cancel_confirm": "이 예약을 취소하시겠습니까?",
+      "line_delete_confirm": "이 예약 대상을 삭제하시겠습니까?",
+      "line_delete_named_confirm": "「{name}」을(를) 삭제하시겠습니까?"
+    },
+    "message": {
+      "confirm_success": "예약을 승인했습니다",
+      "reject_success": "예약을 거부했습니다",
+      "cancel_success": "예약을 취소했습니다",
+      "reserve_success": "예약이 완료되었습니다",
+      "reserve_failed": "예약에 실패했습니다",
+      "line_create_success": "예약 대상을 생성했습니다",
+      "line_update_success": "예약 대상을 수정했습니다",
+      "line_delete_success": "예약 대상을 삭제했습니다",
+      "line_save_failed": "저장에 실패했습니다",
+      "line_create_success_long": "예약 대상을 생성했습니다",
+      "line_update_success_long": "예약 대상을 수정했습니다",
+      "line_delete_success_long": "예약 대상을 삭제했습니다",
+      "line_load_failed": "예약 대상 조회에 실패했습니다",
+      "save_failed": "저장에 실패했습니다",
+      "delete_failed": "삭제에 실패했습니다",
+      "my_load_failed": "예약 정보 조회에 실패했습니다",
+      "reject_reason": "관리자에 의해 거부되었습니다",
+      "menu_create_success": "메뉴를 생성했습니다",
+      "menu_update_success": "메뉴를 수정했습니다",
+      "menu_delete_success": "메뉴를 삭제했습니다",
+      "menu_save_failed": "저장에 실패했습니다",
+      "menu_load_failed": "메뉴를 가져오는데 실패했습니다",
+      "template_create_partial": "템플릿 {succeeded}/{total}건 생성됨・나머지는 실패했습니다",
+      "template_delete_success": "템플릿을 삭제했습니다",
+      "template_save_failed": "저장에 실패했습니다",
+      "template_load_failed": "템플릿을 가져오는데 실패했습니다",
+      "cancel_deadline_passed": "취소 기한이 지나 이 예약을 취소할 수 없습니다. 변경이 필요하면 팀 관리자에게 문의해 주세요",
+      "rate_limited": "예약 생성 간격이 너무 짧습니다. 잠시 후 다시 시도해 주세요"
+    },
+    "empty": {
+      "no_reservations": "예약이 없습니다",
+      "no_my_reservations": "예약이 없습니다",
+      "no_lines": "예약 대상이 없습니다",
+      "no_lines_yet": "아직 예약 대상이 없습니다",
+      "no_available_slots": "이 날에 예약 가능한 시간대가 없습니다",
+      "book": {
+        "admin_no_lines": "예약 대상이 아직 없습니다",
+        "admin_no_lines_hint": "「예약 대상 관리」에서 예약 대상과 시간대를 만들면 여기에 예약 시간대가 표시됩니다",
+        "admin_no_slots": "이번 주에는 예약 가능한 시간대가 없습니다",
+        "admin_no_slots_hint": "「주간 일정」에서 시간대를 만들면 여기에 표시됩니다",
+        "member_no_lines": "예약 준비 중입니다",
+        "member_no_lines_hint": "관리자가 예약 시간대를 준비할 때까지 기다려 주세요",
+        "member_no_slots": "이번 주에는 예약 가능한 시간대가 없습니다",
+        "member_no_slots_hint": "다른 주를 선택해 다시 시도해 주세요"
+      }
+    },
+    "line_manage_title": "{resourceName} 관리",
+    "line": {
+      "delete_guide": "삭제하면 이 라인의 슬롯 템플릿이 중지되고, 예약이 없는 미래 슬롯은 자동으로 삭제됩니다. 유효한 예약이 있는 경우 먼저 변경/취소해 주세요."
+    },
+    "resource_name": {
+      "DEFAULT": "예약 대상",
+      "STAFF": "담당 직원",
+      "SEAT": "좌석",
+      "COURT": "코트",
+      "BED": "침대",
+      "LANE": "레인",
+      "setting_title": "예약 대상의 명칭",
+      "custom_label": "사용자 지정 명칭",
+      "custom_required": "사용자 지정 명칭을 입력해 주세요",
+      "deputy_hint": "부관리자는 예약 대상의 명칭만 변경할 수 있습니다. 라인・메뉴 등의 관리는 관리자가 수행합니다."
+    },
+    "settings": {
+      "advanced": {
+        "title": "고급 설정"
+      },
+      "allow_public": {
+        "section_label": "공개 예약",
+        "label": "비회원 예약 허용",
+        "hint_off": "현재 회원(MEMBER 이상)만 예약할 수 있습니다",
+        "hint_on": "비회원도 예약할 수 있습니다",
+        "save_success": "설정이 저장되었습니다",
+        "confirm_title": "설정 변경",
+        "confirm_enable": "비회원도 예약할 수 있게 됩니다. 계속하시겠습니까?",
+        "confirm_disable": "비회원은 예약할 수 없게 됩니다. 계속하시겠습니까?",
+        "confirm_ok": "변경"
+      },
+      "policy": {
+        "section_label": "예약 정책",
+        "save_success": "정책이 저장되었습니다",
+        "approval_mode": {
+          "label": "승인 모드",
+          "hint": "AUTO=예약 즉시 확정 / MANUAL=관리자가 수동으로 승인",
+          "option_auto": "자동 확정（AUTO）",
+          "option_manual": "수동 승인（MANUAL）"
+        },
+        "cancel_deadline": {
+          "label": "취소 마감 기한",
+          "hint": "예약 시작 몇 시간 전까지 취소를 받을지 지정（0=당일까지, 8760=항상 허용）",
+          "unit": " 시간 전까지"
+        },
+        "remind": {
+          "label": "알림 전송 시간（CSV）",
+          "hint": "예약 시작 몇 시간 전에 알림을 보낼지 쉼표로 구분하여 입력（예: 24,1）",
+          "placeholder": "예: 24,1",
+          "error_empty": "최소 하나의 값을 입력해주세요",
+          "error_invalid": "0~8760 사이의 정수를 쉼표로 구분하여 입력해주세요"
+        },
+        "pending_expire": {
+          "label": "임시 확보(PENDING) 자동 실효",
+          "hint": "승인 대기 중인 임시 확보 예약을 지정한 시간이 지나면 자동으로 취소합니다（1~168시간・최대 7일）",
+          "unit": " 시간 후 자동 취소",
+          "no_expire_toggle": "자동 취소하지 않음",
+          "no_expire_warning": "현재 \"자동 취소하지 않음\"으로 설정되어 있습니다. 수동 승인（MANUAL） 팀에서는 임시 확보 예약이 자동으로 취소되지 않습니다. 관리자가 개별적으로 처리해 주세요",
+          "error_range": "1~168 사이의 값을 입력해주세요"
+        }
+      }
+    },
+    "book": {
+      "not_affiliated_notice": "이 팀의 예약은 회원 전용입니다",
+      "not_affiliated_hint": "팀에 가입하거나 관리자에게 문의하세요",
+      "error_public_forbidden": "예약은 팀 회원만 이용할 수 있습니다"
+    },
+    "slot_form": {
+      "dialog": {
+        "create_title": "예약 슬롯 생성",
+        "edit_title": "예약 슬롯 편집"
+      },
+      "field": {
+        "date": "날짜",
+        "start_time": "시작 시간",
+        "end_time": "종료 시간",
+        "title": "제목（선택 사항）",
+        "capacity": "정원",
+        "capacity_hint": "이 시간대에 동시에 예약할 수 있는 인원 상한 (기본 1＝1:1 지명)",
+        "note": "메모（선택 사항）"
+      },
+      "placeholder": {
+        "date": "예: 2026-01-01",
+        "title": "예: 초기 상담",
+        "note": "예: 비고 사항"
+      },
+      "approval_mode": {
+        "label": "승인 모드",
+        "hint": "팀 설정 따르기=기본 정책 상속 / 자동 확정=즉시 확정 / 수동 승인=관리자 수동 승인",
+        "option_inherit": "팀 설정에 따름（기본）",
+        "option_auto": "자동 확정（AUTO）",
+        "option_manual": "수동 승인（MANUAL）"
+      },
+      "message": {
+        "create_success": "예약 슬롯이 생성되었습니다",
+        "update_success": "예약 슬롯이 업데이트되었습니다",
+        "save_failed": "저장에 실패했습니다"
+      }
+    },
+    "slot_manager": {
+      "title": "슬롯 관리",
+      "button": {
+        "add_slot": "슬롯 추가",
+        "edit": "편집",
+        "close": "닫기",
+        "reopen": "재개"
+      },
+      "status": {
+        "available": "예약 가능",
+        "full": "만석",
+        "closed": "닫힘"
+      },
+      "booked_count": "예약 {count}건",
+      "booked_capacity": "예약 {count}/{capacity}건",
+      "empty": {
+        "no_slots": "이 날의 슬롯이 없습니다"
+      },
+      "message": {
+        "load_failed": "예약 슬롯을 불러오지 못했습니다",
+        "closed": "슬롯이 닫혔습니다",
+        "reopened": "슬롯이 재개되었습니다",
+        "status_change_failed": "상태 변경에 실패했습니다"
+      }
+    },
+    "unavailability": {
+      "section_label": "예약 불가 시간대",
+      "help": "임시 휴업이나 담당자 휴무 등 예약을 받지 않는 시간대를 등록합니다. 템플릿을 선택하면 영업시간을 기준으로 시간대가 자동 입력됩니다(이후 수정 가능). 등록 전에 해당 시간대에 기존 예약이 있으면 경고합니다.",
+      "scope": {
+        "label": "대상",
+        "team": "팀 전체",
+        "staff": "담당자"
+      },
+      "staff": {
+        "label": "예약 대상(담당자)",
+        "placeholder": "예약 대상 선택",
+        "hint": "담당자가 미설정된 예약 대상은 선택할 수 없습니다."
+      },
+      "field": {
+        "date": "날짜",
+        "time_range": "시간대",
+        "time_range_hint": "비워 두면 종일 예약 불가가 됩니다.",
+        "start_time": "시작",
+        "end_time": "종료",
+        "reason": "사유(선택)",
+        "reason_placeholder": "예: 임시 휴업, 직원 교육"
+      },
+      "template": {
+        "label": "템플릿",
+        "full_day": "종일 휴무",
+        "late": "늦은 출근(오전 불가)",
+        "early_leave": "조기 퇴근(저녁 불가)",
+        "midday": "점심 휴식",
+        "custom": "직접 입력",
+        "no_business_hours": "영업시간이 설정되지 않아 자동 입력할 수 없습니다. 시간대를 직접 입력해 주세요."
+      },
+      "impact": {
+        "warning": "이 시간대에 예약이 {count}건 있습니다. 변경·취소 후 등록할 수 있습니다.",
+        "hint": "예약이 남아 있는 동안에는 등록할 수 없습니다.",
+        "checking": "예약 영향 확인 중…"
+      },
+      "button": {
+        "register": "예약 불가로 설정",
+        "delete": "삭제"
+      },
+      "message": {
+        "create_success": "예약 불가 시간대를 등록했습니다",
+        "delete_success": "예약 불가 시간대를 삭제했습니다"
+      },
+      "error": {
+        "has_active_reservations": "이 시간대에 예약이 남아 있어 등록할 수 없습니다. 변경·취소 후 다시 시도해 주세요."
+      },
+      "dialog": {
+        "delete_confirm": "이 예약 불가 시간대를 삭제하시겠습니까?"
+      },
+      "list": {
+        "title": "등록된 예약 불가 시간대",
+        "empty": "등록된 예약 불가 시간대가 없습니다",
+        "all_day": "종일"
+      }
+    },
+    "recurring": {
+      "toggle_label": "이 예약을 매주 반복",
+      "weeks_option": "{n}주",
+      "weeks_more": "더 보기（5〜12주）",
+      "weeks_label": "주 수",
+      "horizon_hint": "예약 시간대는 28일 후까지만 자동으로 생성되므로, 그 이후 주는 시간대가 생성된 후 직접 예약해야 할 수 있습니다",
+      "close_button": "닫기",
+      "badge": "정기",
+      "result": {
+        "summary": "{created}건 예약했습니다（{skipped}건은 건너뜀）",
+        "skipped_list_title": "건너뛴 회차",
+        "all_skipped_notice": "선택한 주의 시간대를 모두 확보하지 못해 예약이 생성되지 않았습니다. 아래 이유를 확인하고 필요한 주는 개별적으로 예약해 주세요"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "해당 주의 시간대가 아직 생성되지 않았습니다",
+        "FULL": "만석이었습니다",
+        "CLOSED": "접수가 마감되었습니다",
+        "BLOCKED": "예약할 수 없는 시간대였습니다",
+        "ALREADY_RESERVED": "이미 해당 시간대를 예약하셨습니다",
+        "UNAVAILABLE": "예약할 수 없는 상태였습니다",
+        "NOT_CANCELLABLE": "취소할 수 없는 상태였습니다",
+        "CANCEL_DEADLINE_PASSED": "취소 기한이 지났습니다",
+        "NOT_PENDING": "승인 대기 상태가 아니었습니다"
+      },
+      "cancel_scope": {
+        "dialog_title": "취소 범위 선택",
+        "this_only": "이 회차만",
+        "this_and_following": "이 회차 이후 전체",
+        "result_summary": "{cancelled}건을 취소했습니다（{skipped}건은 대상이 아니었습니다）",
+        "all_skipped_notice": "대상 회차를 모두 취소할 수 없었습니다. 아래 이유를 확인해 주세요"
+      },
+      "confirm_series": {
+        "button": "일괄 승인（정기 예약）",
+        "confirm_message": "이 정기 예약 시리즈의 대기 중인 예약을 모두 승인하시겠습니까?",
+        "success": "{confirmed}건을 승인했습니다（{skipped}건은 건너뜀）"
+      }
+    },
+    "notify_recipients": {
+      "section_label": "예약 알림 메일 수신처",
+      "help": "예약이 성립될 때마다 메일로 알릴 수신처를 등록합니다. 매장 대표 주소 등 앱 사용자가 아닌 메일도 등록할 수 있습니다. 무료 플랜은 3건까지이며, 4건째부터는 유료 플랜이 필요합니다(최대 10건).",
+      "pii_notice": "등록한 주소로 예약자의 이름, 방문 일시, 메뉴가 전송됩니다. 외부에 공유되는 주소를 등록할 때는 주의하세요.",
+      "field": {
+        "email": "메일 주소",
+        "email_placeholder": "예: shop{'@'}example.com",
+        "label": "라벨(선택)",
+        "label_placeholder": "예: 매장 대표, 예약 담당"
+      },
+      "paid_lock": {
+        "title": "무료 플랜은 {free}건까지입니다",
+        "detail": "4건째부터 등록하려면 유료 플랜으로 업그레이드해야 합니다(최대 {max}건)."
+      },
+      "limit_reached": "등록할 수 있는 수신처는 최대 {max}건입니다. 더 이상 추가할 수 없습니다.",
+      "count_status": "등록 {total} / {max}건",
+      "button": {
+        "add": "수신처 추가",
+        "delete": "삭제"
+      },
+      "list": {
+        "title": "등록된 알림 메일 수신처",
+        "empty": "등록된 수신처가 없습니다",
+        "disabled": "비활성"
+      },
+      "toggle": {
+        "aria": "{email} 알림 활성화"
+      },
+      "message": {
+        "create_success": "알림 수신처를 추가했습니다",
+        "delete_success": "알림 수신처를 삭제했습니다"
+      },
+      "dialog": {
+        "delete_confirm": "이 알림 수신처를 삭제하시겠습니까?"
+      },
+      "error": {
+        "paid_required_title": "유료 플랜이 필요합니다",
+        "paid_required_detail": "무료 플랜으로 등록할 수 있는 수신처는 3건까지입니다. 4건째부터 등록하려면 유료 플랜으로 업그레이드해야 합니다.",
+        "limit_exceeded": "등록할 수 있는 수신처는 최대 {limit}건입니다.",
+        "duplicate": "이 메일 주소는 이미 등록되어 있습니다.",
+        "invalid_email": "메일 주소 형식이 올바르지 않습니다."
+      }
+    },
+    "menu": {
+      "title": "메뉴 관리",
+      "name": "이름",
+      "duration": "소요 시간",
+      "price": "요금",
+      "price_display_only": "요금은 표시용이며 실제로 결제되지 않습니다",
+      "description": "설명",
+      "display_order": "표시 순서",
+      "is_active": "사용",
+      "lines_all": "모든 예약 대상에서 제공",
+      "lines_selected": "선택한 예약 대상에서만 제공",
+      "line_scope_note": "나중에 추가한 예약 대상은 제공 범위를 제한한 메뉴에 자동으로 추가되지 않습니다",
+      "required_slots": "필요 슬롯 수(30분×{n})",
+      "add": "메뉴 추가",
+      "edit": "메뉴 편집",
+      "delete": "삭제",
+      "delete_confirm": "이 메뉴를 삭제하시겠습니까?",
+      "limit_reached": "메뉴는 최대 20개까지 등록할 수 있습니다",
+      "duration_invalid": "소요 시간은 30분 단위, 30분~8시간 범위로 설정해 주세요",
+      "empty_state": "등록된 메뉴가 아직 없습니다",
+      "empty_state_hint": "\"메뉴 추가\"에서 소요 시간이 있는 메뉴를 만들 수 있습니다",
+      "line_ids_invalid": "선택한 예약 대상이 유효하지 않습니다. 삭제된 예약 대상이 포함되어 있는지 확인해 주세요",
+      "line_not_available": "이 메뉴는 선택한 예약 대상에서 제공되지 않습니다",
+      "duration_minutes_label": "{m}분"
+    },
+    "weekly_schedule": {
+      "section_title": "주간 스케줄"
+    },
+    "template": {
+      "title": "주간 템플릿",
+      "add": "템플릿 추가",
+      "edit": "템플릿 편집",
+      "delete": "삭제",
+      "delete_confirm": "이 템플릿을 삭제하시겠습니까? (생성된 슬롯은 그대로 남습니다)",
+      "day_of_week": "요일",
+      "time_range": "시간대",
+      "line": "예약 대상",
+      "line_common": "공통 슬롯",
+      "capacity": "정원",
+      "is_active": "사용",
+      "cell_count": "1일 {n}슬롯(30분 단위)",
+      "ends_next_day": "다음 날 종료",
+      "next_day_time": "다음 날 {time}",
+      "price": "요금(선택)",
+      "slot_title": "제목(선택)",
+      "generate": "지금 슬롯 생성",
+      "generate_result": "{generated}개 슬롯 생성・{skipped}개는 이미 존재",
+      "generate_rate_limited": "잠시 후 다시 시도해 주세요(생성 실행 간격이 너무 짧습니다)",
+      "generate_no_active_templates": "이 요일의 템플릿이 없습니다",
+      "regenerate_guide": "변경 사항은 저장 시 자동으로 반영됩니다(추가분만). 이미 존재하는 미예약 슬롯을 새 설정에 맞추려면 슬롯을 삭제한 뒤 다시 저장해 주세요",
+      "limit_reached": "템플릿은 최대 500개까지 등록할 수 있습니다",
+      "empty_state": "등록된 주간 템플릿이 아직 없습니다",
+      "empty_state_hint": "\"템플릿 추가\"에서 요일과 시간대를 설정하면 저장과 동시에 슬롯이 자동으로 생성됩니다",
+      "error": {
+        "day_required": "요일을 선택해 주세요",
+        "time_range_invalid": "시작 시각은 종료 시각보다 빠르게, 30분 단위로 설정해 주세요"
+      },
+      "generate_skipped_closed": "{n}개 슬롯은 정기 휴무일이라 생성되지 않았습니다",
+      "auto_generated": "저장했습니다. {days}일 뒤까지의 슬롯 {generated}개를 생성했습니다",
+      "auto_generated_partial": "{total}개 요일 중 {failed}개 요일에서 슬롯 생성에 실패했습니다(저장된 요일은 그대로 유효합니다)",
+      "need_business_hours_hint": "먼저 영업시간을 설정해 주세요",
+      "generated_zero_hint": "슬롯이 생성되지 않았습니다(영업시간 외 또는 정기 휴무일). 영업시간을 확인해 주세요",
+      "grid": {
+        "title": "ドラッグで枠を作成",
+        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
+        "legend_existing": "登録済み",
+        "legend_selected": "選択中",
+        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
+        "confirm_title": "枠を作成",
+        "create": "作成"
+      }
+    },
+    "recurring_block": {
+      "title": "매주 예약 불가",
+      "add": "예약 불가 추가",
+      "edit": "예약 불가 편집",
+      "delete_confirm": "이 정기 예약 불가 규칙을 삭제하시겠습니까?",
+      "reason": "사유",
+      "reason_no_pii": "사유에 개인 이름이나 고객 정보를 포함하지 마세요(전체 회원에게 공개됩니다)",
+      "reason_placeholder": "예: 교육, 강습, 청소, 유지보수",
+      "is_public": "회원에게 사유 표시",
+      "is_public_note": "ON으로 설정하면 예약 현황에 이 라벨이 표시됩니다",
+      "line_all": "팀 전체",
+      "limit_reached": "정기 예약 불가 규칙은 최대 50개까지 등록할 수 있습니다",
+      "full_day_hint": "하루 종일 휴무로 설정하려면 영업시간에서 정기 휴무일로 설정해 주세요",
+      "impact_warning": "향후 90일 이내에 중복되는 예약이 {n}건 있습니다",
+      "day_empty": "이 요일에는 예약 불가 규칙이 없습니다",
+      "message": {
+        "load_failed": "정기 예약 불가 규칙을 불러오지 못했습니다",
+        "create_success": "정기 예약 불가 규칙을 등록했습니다",
+        "update_success": "정기 예약 불가 규칙을 수정했습니다",
+        "delete_success": "정기 예약 불가 규칙을 삭제했습니다"
+      },
+      "error": {
+        "toggle_conflict": "일시 중지/재개에 실패했습니다. 이 시간대에 중복되는 예약이 있어 조작할 수 없습니다"
+      },
+      "force_cancel": {
+        "button": "충돌하는 예약을 취소하고 등록",
+        "confirm_title": "강제 등록 확인",
+        "confirm_message": "{n}건의 예약이 취소되고 신청자에게 알림이 전송됩니다. 계속하시겠습니까?",
+        "confirm_ok": "취소하고 등록",
+        "result_notice": "{n}건의 예약을 취소하고 등록했습니다"
+      }
+    },
+    "business_hours": {
+      "title": "영업시간",
+      "day_open": "영업함",
+      "ends_next_day": "다음 날 종료",
+      "save_success": "저장했습니다. 슬롯 {generated}개를 갱신했습니다",
+      "generating": "슬롯을 갱신하는 중입니다…",
+      "generation_failed": "영업시간은 저장되었지만 슬롯 자동 갱신에 실패했습니다. 다음 날 아침에 자동으로 보완됩니다",
+      "shrink_note": "이 요일에 이미 생성된 미래 슬롯은 그대로 유지됩니다(소급하여 닫히지 않습니다). 특정 날짜를 영구히 휴무로 하려면 예외일 캘린더의 \"이 날을 휴무로 설정\"을 사용해 주세요"
+    },
+    "exception_day": {
+      "title": "예외일 캘린더",
+      "help": "달력에서 날짜를 선택하면 해당 날짜를 휴무로 설정하거나, 평소 휴무인 날에 임시 영업을 설정할 수 있습니다.",
+      "close_day": "이 날을 휴무로 설정",
+      "open_special": "임시 영업 설정",
+      "close_day_impact_warning": "이 날에 유효한 예약이 {n}건 있습니다",
+      "goto_reservations": "예약 목록에서 처리",
+      "notify_hint": "예약자에게 알림이 필요한 경우 긴급 휴무를 이용해 주세요",
+      "special_source_day": "적용할 요일 다이어",
+      "special_done": "{date}에 슬롯 {generated}개를 생성했습니다",
+      "blocked_conflict": "이 날은 휴무로 설정되어 있습니다. 휴무를 해제한 후 실행해 주세요",
+      "date_range_hint": "임시 영업은 내일부터 90일 이내의 날짜로 설정할 수 있습니다",
+      "goto_book": "예약하기 탭에서 확인"
+    },
+    "slot_manage": {
+      "advanced_label": "개별 슬롯 수동 관리(예외 조작)"
+    },
+    "grid": {
+      "view": {
+        "week": "주"
+      },
+      "column": {
+        "common": "공통"
+      },
+      "state": {
+        "available": "빈자리",
+        "booked": "만석",
+        "reserved": "내 예약",
+        "closed": "접수 마감",
+        "unavailable": "예약 불가"
+      },
+      "load_error": "그리드를 불러오지 못했습니다"
+    },
+    "matrix": {
+      "title": "예약 현황 매트릭스",
+      "legend_available": "예약 가능",
+      "legend_booked": "예약됨",
+      "legend_unavailable": "예약 불가",
+      "legend_closed": "접수 마감",
+      "legend_none": "시간대 없음",
+      "menu_filter": "메뉴로 좁혀보기",
+      "menu_filter_all": "필터 없음",
+      "cannot_start_here": "이 시간부터는 {menu}에 필요한 연속 시간대를 확보할 수 없습니다",
+      "cannot_extend": "더 이상 연장할 수 없습니다（다음 시간대가 비어 있지 않거나 최대 8시간에 도달했습니다）",
+      "select_menu_title": "메뉴 선택",
+      "no_menu_single": "메뉴 없이 30분만 예약",
+      "preview_title": "다음 내용으로 예약합니다",
+      "extend_30": "+30분 연장",
+      "open_all": "모두 보기",
+      "close_all": "모두 닫기",
+      "open_day_hint": "날짜를 선택하면 예약 시간을 볼 수 있습니다",
+      "date_line_header": "날짜・{resourceName}",
+      "help_toggle": "사용법 보기",
+      "help_body": "비어 있는（초록색）시간대를 탭한 후 메뉴를 선택하면 필요한 시간대 수가 자동으로 선택됩니다. 「+30분 연장」으로 더 추가할 수 있습니다. 공통 시간대를 선택한 경우 {resourceName} 항목을 선택해 주세요.",
+      "slot_unavailable_conflict": "선택한 시간대는 현재 예약을 받지 않습니다. 다른 시간을 선택해 주세요"
+    },
+    "group": {
+      "title": "한번에 예약",
+      "slot_count": "30분×{n}슬롯",
+      "time_range": "예약 시간대",
+      "auto_selected": "{menu}에 필요한 {n}개 시간대를 자동으로 선택했습니다",
+      "extend": "시간대 연장",
+      "extend_hint": "다음 시간대가 비어 있으면 연장할 수 있습니다",
+      "confirm": "이 내용으로 예약",
+      "cancel": "예약 취소",
+      "cancel_confirm": "{n}개 시간대가 모두 취소됩니다",
+      "conflict_retry": "다른 분이 먼저 예약했습니다. 예약 현황을 새로고침했으니 다시 선택해 주세요",
+      "not_consecutive": "선택한 시간대가 연속되지 않거나 예약 대상과 일치하지 않습니다",
+      "size_exceeded": "예약 그룹은 최대 16개 시간대까지 가능합니다",
+      "row_locked": "그룹 예약이므로 그룹 단위로 조작해 주세요",
+      "deadline_passed": "취소 기한이 지나 취소할 수 없습니다",
+      "own_overlap": "선택한 시간대에 회원님의 다른 예약이 있습니다. 시간대를 확인해 주세요"
+    },
+    "waitlist": {
+      "register_button": "대기 등록",
+      "cancel_button": "대기 취소",
+      "registered_badge": "대기 중",
+      "dialog_title": "취소 대기",
+      "notice": "빈자리가 생기면 알림으로 안내해 드립니다. 순서는 보장되지 않으며 선착순으로 예약됩니다",
+      "register_success": "대기 등록을 완료했습니다",
+      "cancel_success": "대기 등록을 취소했습니다",
+      "admin_count": "대기 {n}명",
+      "already_registered": "이미 이 시간대의 대기에 등록되어 있습니다",
+      "not_found": "대기 정보를 찾을 수 없습니다（이미 취소되었거나 예약으로 전환되었을 수 있습니다）",
+      "limit_exceeded": "대기 등록 상한에 도달했습니다",
+      "rate_limited": "조작이 너무 빠릅니다. 약 1분 후 다시 시도해 주세요",
+      "slot_not_full": "빈자리가 생겼습니다. 바로 예약할 수 있습니다",
+      "my_list_title": "나의 대기 목록",
+      "no_entries": "대기 중인 예약이 없습니다",
+      "aria_hint_register": "누르면 대기 등록됩니다",
+      "aria_hint_cancel": "누르면 대기가 취소됩니다"
+    },
+    "pending_expire_notice": {
+      "form_note": "{n}시간 이내에 승인되지 않으면 자동으로 취소됩니다"
+    },
+    "team_guide": {
+      "title": "예약 사용법",
+      "help_button": "사용법",
+      "book": {
+        "matrix_title": "매트릭스 보는 법",
+        "matrix_steps": {
+          "0": "세로는 「날짜×{resourceName}」, 가로는 「시간」입니다.",
+          "1": "색상의 의미: 초록 「예약 가능」＝예약할 수 있는 칸／「예약됨」＝이미 예약된 칸／사선＝「예약 불가」／연한 회색＝「접수 마감」입니다."
+        },
+        "filter_title": "메뉴로 좁혀 찾기",
+        "filter_steps": {
+          "0": "상단의 메뉴 필터로 좁히면, 해당 메뉴에 필요한 시간대 수가 자동으로 묶여 표시됩니다.",
+          "1": "메뉴를 선택하지 않으면 30분 단위로 하나씩 예약할 수 있습니다."
+        },
+        "flow_title": "예약 절차",
+        "flow_steps": {
+          "0": "「예약 가능」(초록) 칸을 누릅니다.",
+          "1": "메뉴를 선택하면 필요한 시간대 수가 자동으로 묶입니다（메뉴로 이미 좁혀둔 경우 이 단계는 자동으로 건너뜁니다）.",
+          "2": "시간을 늘리고 싶다면 「+30분 연장」을 누릅니다.",
+          "3": "날짜・내용을 확인하고 「비고(선택)」를 입력한 뒤 「이 내용으로 예약」을 누르면 예약이 완료됩니다."
+        },
+        "conflict_title": "만석・충돌 시",
+        "conflict_steps": {
+          "0": "회색 칸（예약됨・접수 마감・예약 불가）은 선택할 수 없습니다. 다른 시간이나 {resourceName} 항목을 선택해 주세요.",
+          "1": "확정 직전에 다른 사람이 같은 시간대를 먼저 예약한 경우 오류가 표시되며, 화면이 최신 예약 현황으로 자동 갱신됩니다. 다시 비어 있는 시간대를 선택해 주세요."
+        }
+      },
+      "list": {
+        "admin_overview_title": "팀 전체 예약 확인하기",
+        "admin_overview_steps": {
+          "0": "상태（보류 중・승인됨・취소됨・완료・무단 불참）로 필터링할 수 있습니다.",
+          "1": "여러 시간대를 묶어 예약한 「그룹 예약」은 한 행으로 표시되며 시간대 수를 알 수 있습니다."
+        },
+        "admin_manage_title": "승인・반려・취소",
+        "admin_manage_steps": {
+          "0": "승인 모드가 「수동」인 팀에서는 보류 중인 예약을 「승인」 또는 「반려」합니다.",
+          "1": "확정된 예약도 취소할 수 있습니다. 그룹 예약은 그룹 단위로 처리됩니다.",
+          "2": "조작하면 「예약하기」탭의 예약 현황에 즉시 반영됩니다."
+        },
+        "member_mine_title": "내 예약 확인하기",
+        "member_mine_steps": {
+          "0": "여기에는 내 예약만 표시됩니다（다른 멤버의 예약은 표시되지 않습니다）.",
+          "1": "상태로 필터링해서 확인할 수 있습니다."
+        },
+        "member_cancel_title": "취소하기",
+        "member_cancel_steps": {
+          "0": "취소하려는 예약 행의 「취소하기」를 누르고, 확인 화면에서 다시 「취소하기」를 누르면 취소됩니다.",
+          "1": "취소 기한이 지난 경우 오류가 표시되어 스스로 취소할 수 없습니다. 변경이 필요하면 팀 관리자에게 문의해 주세요."
+        }
+      },
+      "line_manage": {
+        "setup0_title": "① 영업시간 설정하기",
+        "setup0_steps": {
+          "0": "「영업시간」에서 요일별로 영업하는 시간대를 설정합니다. 이것이 예약 시간대 생성의 바탕이 됩니다.",
+          "1": "저장하면 그 자리에서 28일 뒤까지의 시간대가 자동으로 생성됩니다."
+        },
+        "setup1_title": "② {resourceName} 만들기",
+        "setup1_steps": {
+          "0": "이 탭 상단의 「{resourceName} 추가」에서 좌석・담당자・창구 등 예약을 받을 대상을 등록합니다.",
+          "1": "{resourceName} 항목이 없으면 이용자의 「예약하기」탭에 아무것도 표시되지 않습니다."
+        },
+        "setup2_title": "③ 메뉴 만들기",
+        "setup2_steps": {
+          "0": "아래의 「메뉴 관리」에서 소요 시간（30분 단위）을 가진 메뉴를 등록합니다.",
+          "1": "특정 {resourceName}에만 한정하고 싶다면 「{resourceName}」에서 「선택한 {resourceName}에서만 제공」을 선택합니다（기본은 모든 {resourceName}에 제공됩니다）."
+        },
+        "setup3_title": "④ 주간 스케줄 만들기",
+        "setup3_steps": {
+          "0": "아래의 「주간 스케줄」에서 요일・시간대・정원을 설정하면, 영업시간 내라면 그 자리에서 시간대가 자동으로 생성됩니다.",
+          "1": "저장하면 28일 뒤까지의 시간대가 자동으로 생성됩니다.",
+          "2": "이후에는 매일 자동으로 시간대가 연장됩니다（아무것도 하지 않아도 됩니다）."
+        },
+        "daily_title": "일상 운영",
+        "daily_steps": {
+          "0": "주간 스케줄을 한 번 만들면 시간대가 매일 자동으로 연장되므로 기본적으로 아무것도 할 필요가 없습니다.",
+          "1": "요일이나 시간대를 바꾸고 싶을 때만 주간 스케줄을 수정하세요."
+        },
+        "exception_title": "예외적인 대응",
+        "exception_steps": {
+          "0": "특정 날짜를 휴무 또는 임시 영업으로 설정하려면 예외일 캘린더의 「이 날을 휴무로 설정」「임시 영업 설정」을 사용하세요. 개별 시간대를 세밀하게 조정하려면 상세 설정의 「개별 슬롯 수동 관리」에서 생성・수정・닫기(접수 종료)할 수 있습니다.",
+          "1": "특정 시간대만 예약을 받고 싶지 않다면 고급 설정의 「예약 불가 시간대」를 사용합니다.",
+          "2": "{resourceName} 항목을 삭제하면 해당 템플릿은 중지되고, 예약이 없는 미래 시간대는 자동 삭제됩니다. 유효한 예약이 남아 있다면 먼저 변경・취소해 주세요."
+        }
+      },
+      "emergency_closure": {
+        "send_title": "전송하면 일어나는 일",
+        "send_steps": {
+          "0": "대상 기간・대상 시간대에 예약이 있는 모든 사람에게 이메일과 앱 내 알림으로 휴업 안내가 전달됩니다.",
+          "1": "「대상 예약 취소」에 체크하면 대상 기간의 예약도 자동으로 취소됩니다."
+        },
+        "status_title": "확인 현황 보는 법",
+        "status_steps": {
+          "0": "전송 이력을 펼치면 누가 안내를 확인했는지（읽음）를 실시간으로 확인할 수 있습니다.",
+          "1": "「n/m건 확인됨」 표시는 대상자 m명 중 n명이 확인했다는 의미입니다."
+        }
+      }
     }
   }
 }

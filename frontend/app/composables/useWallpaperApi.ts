@@ -12,7 +12,7 @@ export interface WallpaperResponse {
 export function useWallpaperApi() {
   const api = useApi()
 
-  async function listWallpapers(teamId: number) {
+  async function listWallpapers(teamId: string) {
     return api<{ data: WallpaperResponse[] }>(`/api/v1/teams/${teamId}/wallpapers`)
   }
 

@@ -11,15 +11,22 @@ import com.mannschaft.app.team.repository.TeamRepository;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -48,6 +55,15 @@ public class TeamSearchService {
     private final TeamSearchMetrics teamSearchMetrics;
 
     /**
+     * 自己プロキシ参照（issue #2544）。{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用するため、
+     * {@link #search} から {@link #searchTeamIdPage} を {@code this.} で呼ぶとキャッシュが発火しない。
+     * 循環参照を避けるため {@code @Lazy} を付けたフィールド注入とする。
+     */
+    @Autowired
+    @Lazy
+    private TeamSearchService self;
+
+    /**
      * 組織配下のチームを検索する。
      *
      * <p>呼び出しフロー（設計書 §4.3）:
@@ -65,14 +81,30 @@ public class TeamSearchService {
      * @param currentUserId ログインユーザー ID（未ログインの場合 {@code null}）
      * @param pageable      ページング・ソート指定
      * @return 検索結果（権限スコープに合った可視性のチームのみ）
-     * @throws OrganizationNotFoundException 組織が存在しない／論理削除済み／PRIVATE で未ログイン
+     * @throws OrganizationNotFoundException 組織が存在しない／論理削除済み／非 PUBLIC 組織で未ログイン・非メンバー
      * @throws IllegalArgumentException      sort カラムがホワイトリスト外
      *
-     * <p><b>Phase 3 — Valkey キャッシュ（設計書 §6.5）:</b><br>
-     * 同一引数（orgId + criteria + currentUserId スコープ + pageable）の検索結果を
-     * {@code team-search} キャッシュ（TTL 60 秒）に格納する。
-     * 権限スコープ（未ログイン / ログイン済み）はキーに含めるため、
-     * 未ログイン者と組織メンバーで別キャッシュとなる。
+     * <p><b>Phase 3 — Valkey キャッシュ（設計書 §6.5 / issue #2544 A 群で是正）:</b><br>
+     * キャッシュに載せるのは {@link Page}{@code <TeamEntity>} ではなく
+     * <b>チーム ID の並びと総件数だけ</b>（{@link TeamSearchIdPage}）である。
+     * 旧実装は {@code Page<TeamEntity>} をそのまま {@code @Cacheable} していたが、
+     * {@code PageImpl} は可視コンストラクタが複数あり {@code @JsonCreator} も既定コンストラクタも持たず、
+     * {@code pageable} プロパティの静的型がインタフェースなので
+     * {@code GenericJackson2JsonRedisSerializer} で<b>復元できない</b>。
+     * さらに {@link TeamEntity} は setter を持たないため（素の {@code ObjectMapper} は
+     * フィールド可視性 {@code PUBLIC_ONLY}）復元しても全フィールドが null の抜け殻になる。
+     * 復元失敗は {@code LoggingCacheErrorHandler} の fail-open で WARN に握り潰されるため、
+     * <b>put だけが毎回成功して get が毎回失敗する＝一度も効かないキャッシュ</b>のまま
+     * Valkey に 60 秒ごとゴミを積み続けていた。
+     * ID だけをキャッシュし、実体は主キー参照（{@code findAllById}）で引き直すことで
+     * 高コストな動的検索クエリ（複数 JOIN・LIKE・件数カウント）を確実に節約する。
+     * </p>
+     *
+     * <p><b>キャッシュキーと認可の位置:</b><br>
+     * 認可（組織の存在確認・PRIVATE 組織の閲覧可否）は<b>キャッシュの外側</b>＝本メソッド側で行い、
+     * キャッシュ対象メソッドには「解決済みの可視性スコープ」だけを渡す（issue #2496 の教訓）。
+     * これによりキーは {@code currentUserId} ではなく {@code isMember}（可視性スコープ）で足り、
+     * 未ログイン者と組織メンバーの 2 スコープで正しく共有される。
      * </p>
      *
      * <p><b>無効化方針:</b><br>
@@ -83,21 +115,15 @@ public class TeamSearchService {
      * </p>
      *
      * <p><b>キャッシュヒット時のメトリクス:</b><br>
-     * キャッシュヒット時は本メソッド本体が呼ばれず、
-     * {@link TeamSearchMetrics#recordSearch} は記録されない。
-     * これは仕様として受容する（DB 負荷削減が主目的のため）。
-     * メトリクスを正確に取りたい場合は将来 Controller 層に移動を検討。
+     * キャッシュ層が内側（{@link #searchTeamIdPage}）へ移ったことで、
+     * {@link TeamSearchMetrics#recordSearch} はキャッシュヒット時も記録されるようになった
+     * （検索リクエスト数の計測としてはむしろ正しい）。
      * </p>
      *
      * <p><b>0 件結果はキャッシュしない</b>（{@code unless} 条件）— 検索ボットによる
      * 無意味なキャッシュ占有を防ぐ。
      * </p>
      */
-    @Cacheable(
-            value = "team-search",
-            key = "T(java.util.Objects).hash(#orgId, #criteria, #currentUserId == null ? 'anon' : 'user-' + #currentUserId, #pageable)",
-            unless = "#result == null || #result.totalElements == 0"
-    )
     public Page<TeamEntity> search(
             Long orgId,
             TeamSearchCriteria criteria,
@@ -119,37 +145,173 @@ public class TeamSearchService {
             throw new OrganizationNotFoundException();
         }
 
-        // 3. 許可 visibility 集合の決定
+        // 3. ID ページをキャッシュ経由で取得（issue #2544: self 経由でないと @Cacheable が発火しない）
+        //    Specification の合成はキャッシュ対象メソッドの *内側* で行う。
+        //    合成済み Specification をキーに混ぜてはならない（理由は searchTeamIdPage の Javadoc 参照）。
+        TeamSearchIdPage idPage = self.searchTeamIdPage(orgId, criteria, isMember, pageable);
+
+        // 4. 主キー参照で実体を引き直し、キャッシュされた ID の順序を復元する。
+        List<TeamEntity> content = hydrate(idPage.teamIds());
+
+        Page<TeamEntity> page = new PageImpl<>(content, pageable, idPage.totalElements());
+
+        // 5. Phase 3 メトリクス記録（成功時のみ）
+        String scope = isMember ? TeamSearchMetrics.SCOPE_MEMBER : TeamSearchMetrics.SCOPE_PUBLIC_ONLY;
+        teamSearchMetrics.recordSearch(scope, currentUserId != null, sample, page.getNumberOfElements());
+
+        return page;
+    }
+
+    /**
+     * 検索結果の「チーム ID の並び」と「総件数」だけをキャッシュする（issue #2544 A 群）。
+     *
+     * <p><b>本メソッドは認可を一切行わない。</b> 認可は呼び出し元 {@link #search} が
+     * キャッシュの外側で済ませ、その結果である可視性スコープ（{@code isMember}）を
+     * 引数として受け取るだけである（キャッシュヒット時に認可がスキップされる
+     * issue #2496 の「第三の型」を構造的に持ち込まないための配置）。</p>
+     *
+     * <p>戻り値の {@link TeamSearchIdPage} は record ＋ 可変 {@code ArrayList} であり、
+     * 実シリアライザでの往復を {@code CacheValueSerializationRoundTripTest} が検証する。</p>
+     *
+     * <p><b>0 件結果はキャッシュしない</b>（{@code unless} 条件）— 検索ボットによる
+     * 無意味なキャッシュ占有を防ぐ。</p>
+     *
+     * <h3>キー式に「値等価が保証される引数」しか使わない理由（issue #2544 検分指摘）</h3>
+     * <p>
+     * 本メソッドは当初 <b>合成済みの {@code Specification} を引数に取り、それをキーに混ぜていた</b>。
+     * これは致命的に誤りである。{@code Specification.where(...).and(...)} が返すのは
+     * {@code SpecificationComposition} が生成する<b>ラムダ</b>であり、
+     * {@code TeamSearchSpecifications} の各メソッドも合成器も {@code hashCode} を override していない。
+     * よってキーには <b>identity hash</b> が入り、次の 3 つが同時に起きる。
+     * </p>
+     * <ol>
+     *   <li>リクエストごとにキーが変わるので<b>キャッシュは 100% ミスする</b>。
+     *       {@code unless} は 0 件のみを除外するため put だけが毎回成功し、
+     *       TTL 60 秒のゴミを Valkey に積み続ける（＝是正前と実害が同じ）</li>
+     *   <li>identity hash が偶然衝突した場合、キーに {@code orgId} も検索条件も
+     *       可視性スコープも現れないため、<b>別組織・別条件の ID 列を掴む理論的経路</b>が残る。
+     *       認可をキャッシュの外へ出した効果を打ち消す種類の欠陥である</li>
+     *   <li>identity hash は JVM 再起動で変わるため、Valkey 上のエントリは永久に孤児になる</li>
+     * </ol>
+     * <p>
+     * そこで {@code Specification} の合成を<b>本メソッドの内側</b>へ移し、
+     * 引数は値等価が保証される型だけにした。
+     * </p>
+     * <ul>
+     *   <li>{@code orgId} — {@code Long}。値等価</li>
+     *   <li>{@code criteria} — {@code TeamSearchCriteria} は <b>record</b> であり、
+     *       全成分が {@code String} などの値等価な型。record の
+     *       {@code equals}/{@code hashCode}/{@code toString} は全成分から自動生成される</li>
+     *   <li>{@code isMember} — {@code boolean}。可視性スコープはこの 1 値から決まる</li>
+     *   <li>{@code pageable} — 実体は {@code PageRequest}（{@code AbstractPageRequest}）で
+     *       {@code page}/{@code size}/{@code sort} から {@code equals}/{@code hashCode}/{@code toString}
+     *       を値ベースで実装している</li>
+     * </ul>
+     * <p>
+     * キーは {@code Objects.hash} ではなく<b>文字列連結</b>にしてある。
+     * {@code int} ハッシュだと衝突時に「どの組織のどの条件か」が復元できないが、
+     * 文字列なら {@code orgId} と {@code isMember} がキーに<b>literal で現れる</b>ため、
+     * 万一残りの部分が衝突しても組織境界・可視性境界を越えることは構造的にありえない。
+     * </p>
+     * <p><b>キー式に {@code Specification} / ラムダ / 関数型インタフェースなど
+     * 値等価が保証されない型を混ぜないこと。</b>
+     * 静的番人 {@code common.architecture.CacheableKeyValueEqualityGuardTest} がこれを機械的に拒否し、
+     * キー式が実際に評価される経路は {@code TeamSearchCacheSemanticsTest} が固定する。</p>
+     *
+     * @param orgId    組織 ID
+     * @param criteria 検索条件（record・値等価）
+     * @param isMember 組織メンバーとして閲覧しているか（可視性スコープ。解決済み）
+     * @param pageable ページング・ソート指定
+     * @return チーム ID の並びと総件数
+     */
+    @Cacheable(
+            value = "team-search",
+            key = "#orgId + ':' + #isMember + ':' + #criteria + ':' + #pageable",
+            unless = "#result == null || #result.totalElements() == 0"
+    )
+    public TeamSearchIdPage searchTeamIdPage(Long orgId,
+                                             TeamSearchCriteria criteria,
+                                             boolean isMember,
+                                             Pageable pageable) {
+        // 許可 visibility 集合の決定（isMember から一意に決まる）。
+        // 組織メンバーは PUBLIC および GUESTS_AND_ABOVE / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE を閲覧可能。
+        // 未ログイン・非メンバーは PUBLIC のみ。
         Set<TeamEntity.Visibility> allowedVisibilities = isMember
-                ? EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.ORGANIZATION_ONLY)
+                ? EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.GUESTS_AND_ABOVE,
+                        TeamEntity.Visibility.SUPPORTERS_AND_ABOVE, TeamEntity.Visibility.MEMBERS_AND_ABOVE)
                 : EnumSet.of(TeamEntity.Visibility.PUBLIC);
 
-        // 4. prefecture 未指定 & city 指定のときは city を無視（警告ログのみ、400 にしない）
+        // 地域フィルタ（F22.1 dual-support）: code 指定があれば code を優先、無ければ名称にフォールバック。
+        // code/名称いずれの軸でも「都道府県が未指定なのに市区町村だけ指定」は city を無視する
+        // （prefecture コードまたは名称が無い限り、city 軸の絞り込みは無効化する）。
+        boolean hasPrefecture = isPresent(criteria.prefectureCode()) || isPresent(criteria.prefecture());
         String effectiveCity = criteria.city();
-        if ((criteria.prefecture() == null || criteria.prefecture().isBlank())
-                && effectiveCity != null && !effectiveCity.isBlank()) {
+        String effectiveCityCode = criteria.cityCode();
+        if (!hasPrefecture && (isPresent(effectiveCity) || isPresent(effectiveCityCode))) {
             log.warn("F15.4 team search: prefecture が未指定のため city パラメータを無視します（orgId={}）", orgId);
             effectiveCity = null;
+            effectiveCityCode = null;
         }
 
-        // 5. Specification 合成
+        // Specification 合成（地域は dual-support フィルタで code 優先・名称フォールバック）。
+        // 合成結果はラムダであり値等価を持たないため、*キーには決して混ぜない*（上の Javadoc 参照）。
         Specification<TeamEntity> spec = Specification
                 .where(TeamSearchSpecifications.notDeleted())
                 .and(TeamSearchSpecifications.notArchived())
                 .and(TeamSearchSpecifications.belongsToOrganization(orgId))
                 .and(TeamSearchSpecifications.visibilityIn(allowedVisibilities))
                 .and(TeamSearchSpecifications.nameOrKanaContains(criteria.keyword()))
-                .and(TeamSearchSpecifications.prefectureEquals(criteria.prefecture()))
-                .and(TeamSearchSpecifications.cityEquals(effectiveCity))
+                .and(TeamSearchSpecifications.prefectureFilter(criteria.prefectureCode(), criteria.prefecture()))
+                .and(TeamSearchSpecifications.cityFilter(effectiveCityCode, effectiveCity))
                 .and(TeamSearchSpecifications.templateEquals(criteria.template()));
 
         Page<TeamEntity> page = teamRepository.findAll(spec, pageable);
+        // issue #2544 B 群: Stream#toList() が返す ImmutableCollections$ListN は
+        // 既定コンストラクタを持たず Valkey から復元できないため、可変の ArrayList に集める。
+        List<Long> ids = page.getContent().stream()
+                .map(TeamEntity::getId)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        return new TeamSearchIdPage(ids, page.getTotalElements());
+    }
 
-        // 6. Phase 3 メトリクス記録（成功時のみ）
-        String scope = isMember ? TeamSearchMetrics.SCOPE_MEMBER : TeamSearchMetrics.SCOPE_PUBLIC_ONLY;
-        teamSearchMetrics.recordSearch(scope, currentUserId != null, sample, page.getNumberOfElements());
+    /**
+     * キャッシュされたチーム ID の並びを保ったまま実体を引き直す。
+     *
+     * <p>{@code findAllById} は引数の順序を保証しないため、ID → Entity のマップを経由して
+     * 元の並び（ソート結果）を復元する。論理削除済みチームは {@code @SQLRestriction} により
+     * 取得できないため、キャッシュ滞留中（最大 60 秒）に削除された ID は結果から自然に落ちる。</p>
+     */
+    private List<TeamEntity> hydrate(List<Long> ids) {
+        if (ids.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Map<Long, TeamEntity> byId = new LinkedHashMap<>();
+        for (TeamEntity team : teamRepository.findAllById(ids)) {
+            byId.put(team.getId(), team);
+        }
+        List<TeamEntity> ordered = new ArrayList<>(ids.size());
+        for (Long id : ids) {
+            TeamEntity team = byId.get(id);
+            if (team != null) {
+                ordered.add(team);
+            }
+        }
+        return ordered;
+    }
 
-        return page;
+    /**
+     * {@code team-search} キャッシュに載せる値（issue #2544 A 群）。
+     *
+     * <p>{@code Page}/{@code PageImpl} は Jackson で復元できないため、
+     * キャッシュに載せるのは「ID の並び」と「総件数」だけにする。
+     * record なので canonical constructor 経由で確実に往復でき、
+     * {@code teamIds} は可変の {@code ArrayList} を渡すこと
+     * （{@code List.of()} / {@code Stream#toList()} の不変実装は復元できない）。</p>
+     *
+     * @param teamIds       ページ内のチーム ID（ソート順）
+     * @param totalElements 総件数
+     */
+    public record TeamSearchIdPage(List<Long> teamIds, long totalElements) {
     }
 
     /**
@@ -166,6 +328,11 @@ public class TeamSearchService {
             return false;
         }
         return accessControlService.isMember(currentUserId, orgId, SCOPE_ORGANIZATION);
+    }
+
+    /** 非 null かつ非空白文字列なら {@code true}。 */
+    private static boolean isPresent(String s) {
+        return s != null && !s.isBlank();
     }
 
     /**

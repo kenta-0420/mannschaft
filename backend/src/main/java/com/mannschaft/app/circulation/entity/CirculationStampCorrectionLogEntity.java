@@ -6,10 +6,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 import java.time.LocalDateTime;
 
@@ -27,8 +27,7 @@ import java.time.LocalDateTime;
 @Table(name = "circulation_stamp_correction_logs")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder
+@SuperBuilder(toBuilder = true)
 public class CirculationStampCorrectionLogEntity extends UuidV7Entity {
 
     @Column(nullable = false)
@@ -54,6 +53,7 @@ public class CirculationStampCorrectionLogEntity extends UuidV7Entity {
     @Column(length = 255)
     private String reason;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

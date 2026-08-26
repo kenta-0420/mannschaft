@@ -30,14 +30,14 @@ interface EventListParams {
 export function useEventApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Events (scoped) ===
   async function listEvents(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: EventListParams,
   ) {
     const query = new URLSearchParams()
@@ -51,7 +51,7 @@ export function useEventApi() {
 
   async function createEvent(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: CreateEventRequest,
   ) {
     return api<{ data: EventDetailResponse }>(`${buildBase(scopeType, scopeId)}/events`, {
@@ -60,13 +60,13 @@ export function useEventApi() {
     })
   }
 
-  async function getEvent(scopeType: 'team' | 'organization', scopeId: number, eventId: number) {
+  async function getEvent(scopeType: 'team' | 'organization', scopeId: string, eventId: number) {
     return api<{ data: EventDetailResponse }>(`${buildBase(scopeType, scopeId)}/events/${eventId}`)
   }
 
   async function updateEvent(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     eventId: number,
     body: UpdateEventRequest,
   ) {
@@ -76,11 +76,11 @@ export function useEventApi() {
     )
   }
 
-  async function deleteEvent(scopeType: 'team' | 'organization', scopeId: number, eventId: number) {
+  async function deleteEvent(scopeType: 'team' | 'organization', scopeId: string, eventId: number) {
     return api(`${buildBase(scopeType, scopeId)}/events/${eventId}`, { method: 'DELETE' })
   }
 
-  async function cancelEvent(scopeType: 'team' | 'organization', scopeId: number, eventId: number) {
+  async function cancelEvent(scopeType: 'team' | 'organization', scopeId: string, eventId: number) {
     return api<{ data: EventDetailResponse }>(
       `${buildBase(scopeType, scopeId)}/events/${eventId}/cancel`,
       { method: 'POST' },
@@ -89,7 +89,7 @@ export function useEventApi() {
 
   async function publishEvent(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     eventId: number,
   ) {
     return api<{ data: EventDetailResponse }>(
@@ -100,7 +100,7 @@ export function useEventApi() {
 
   async function closeRegistration(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     eventId: number,
   ) {
     return api<{ data: EventDetailResponse }>(
@@ -111,7 +111,7 @@ export function useEventApi() {
 
   async function openRegistration(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     eventId: number,
   ) {
     return api<{ data: EventDetailResponse }>(

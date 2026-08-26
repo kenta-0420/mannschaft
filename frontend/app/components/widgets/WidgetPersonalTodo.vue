@@ -15,7 +15,7 @@ interface TodoItem {
   dueDate: string | null
   priority: string
   scopeType: string
-  scopeId: number | null
+  scopeId: string | null
 }
 
 const todos = ref<TodoItem[]>([])
@@ -63,7 +63,7 @@ async function load() {
         scopeType: t.scopeType,
         scopeId: t.scopeId,
       }))
-      .slice(0, 15)
+      .slice(0, 20)
     overdueCount.value = todos.value.filter(
       (t) => t.dueDate !== null && dayjs.tz(t.dueDate, userTimezone.value).isBefore(todayStart),
     ).length
@@ -143,7 +143,7 @@ onMounted(load)
           <div
             v-for="todo in todosWithDue"
             :key="todo.id"
-            class="flex cursor-pointer flex-col gap-1 rounded-lg border border-surface-200 p-2 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700/50"
+            class="flex cursor-pointer flex-col gap-1 rounded-lg border-2 border-surface-300 p-2 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50"
             @click="navigateTo('/todos/' + todo.id)"
           >
             <div class="flex items-center justify-between gap-1">
@@ -191,7 +191,7 @@ onMounted(load)
           <div
             v-for="todo in todosNoDue"
             :key="todo.id"
-            class="flex cursor-pointer flex-col gap-1 rounded-lg border border-surface-200 p-2 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-700/50"
+            class="flex cursor-pointer flex-col gap-1 rounded-lg border-2 border-surface-300 p-2 transition-colors hover:bg-surface-50 dark:border-surface-600 dark:hover:bg-surface-700/50"
             @click="navigateTo('/todos/' + todo.id)"
           >
             <div class="flex items-center justify-between gap-1">
@@ -222,6 +222,12 @@ onMounted(load)
             </span>
           </div>
         </div>
+      </div>
+
+      <div class="flex justify-end pt-1">
+        <NuxtLink to="/todos" class="text-sm text-primary hover:underline">
+          {{ $t('button.view_all') }}
+        </NuxtLink>
       </div>
     </div>
     <DashboardEmptyState v-else icon="pi pi-check-circle" message="TODOはすべて完了しています" />

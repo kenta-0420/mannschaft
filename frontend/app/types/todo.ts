@@ -11,6 +11,8 @@ export interface TodoScopeDto {
   scopeId?: number
   projectId?: number | null
   milestoneId?: number | null
+  /** TEAM / ORGANIZATION の slug（URLルーティング用）。PERSONAL は null。 */
+  scopeSlug?: string | null
 }
 
 export interface TodoContentDto {
@@ -137,6 +139,26 @@ export interface GanttTodo {
   parentId: number | null
   depth: number
   childIds: number[]
+}
+
+/** 自分に割り当てられたTODOをカレンダーへ載せるための軽量DTO。 */
+export interface MyCalendarTodo {
+  id: number
+  title: string
+  startDate: string | null
+  dueDate: string
+  dueTime: string | null
+  status: TodoStatus
+  priority: TodoPriority
+  linkedScheduleId: number | null
+  scopeType: TodoScopeType
+  scopeId: number | null
+  scopeSlug: string | null
+  scopeName: string | null
+}
+
+export interface MyCalendarTodoResponse {
+  data: MyCalendarTodo[]
 }
 
 // 共有メモエントリ

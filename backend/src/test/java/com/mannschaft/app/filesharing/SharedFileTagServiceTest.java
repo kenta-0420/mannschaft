@@ -5,6 +5,7 @@ import com.mannschaft.app.filesharing.dto.CreateTagRequest;
 import com.mannschaft.app.filesharing.dto.TagResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileTagEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileTagRepository;
+import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileTagService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,6 +38,9 @@ class SharedFileTagServiceTest {
 
     @Mock
     private FileSharingMapper fileSharingMapper;
+
+    @Mock
+    private FolderScopeAccessGuard folderScopeAccessGuard;
 
     @InjectMocks
     private SharedFileTagService sharedFileTagService;

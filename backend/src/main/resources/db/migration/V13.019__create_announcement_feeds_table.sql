@@ -13,7 +13,7 @@ CREATE TABLE announcement_feeds (
     is_pinned         BOOLEAN         NOT NULL DEFAULT FALSE COMMENT 'ピン留めフラグ（ADMIN のみ変更可、スコープごと最大5件）',
     pinned_at         DATETIME        NULL      COMMENT 'ピン留め操作日時',
     pinned_by         BIGINT UNSIGNED NULL      COMMENT 'ピン留めした ADMIN のユーザーID（退会時 NULL）',
-    visibility        VARCHAR(30)     NOT NULL DEFAULT 'MEMBERS_ONLY' COMMENT '閲覧可能範囲（元コンテンツから継承・同期）',
+    visibility        VARCHAR(30)     NOT NULL DEFAULT 'MEMBERS_AND_ABOVE' COMMENT '閲覧可能範囲（元コンテンツから継承・同期）。値: PUBLIC / SUPPORTERS_AND_ABOVE / MEMBERS_AND_ABOVE（内輪・応援者除外）',
     starts_at         DATETIME        NULL      COMMENT '表示開始日時（NULL = 即時）',
     expires_at        DATETIME        NULL      COMMENT '表示終了日時（NULL = 期限なし）',
     source_deleted_at DATETIME        NULL      COMMENT '元コンテンツ削除検出日時（ApplicationEvent 経由でセット。90日後バッチで物理削除）',

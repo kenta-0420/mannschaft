@@ -1,0 +1,302 @@
+{
+  "reflection": {
+    "title": "회고",
+    "nav": {
+      "today": "오늘의 회고",
+      "themes": "테마 목록",
+      "settings": "알림 설정",
+      "dashboard": "대시보드"
+    },
+    "widget": {
+      "pending_recall": "회상 대기",
+      "unwritten": "미작성",
+      "open_today": "오늘의 회고 열기",
+      "empty": "오늘 테마가 없습니다"
+    },
+    "today": {
+      "heading": "오늘의 회고",
+      "date_label": "날짜",
+      "empty": "오늘의 수업이나 테마가 없습니다. 테마를 만들어 회고를 시작하세요.",
+      "free_themes": "테마 (시간표 외)",
+      "timetable_slots": "오늘의 수업",
+      "no_theme": "테마 미설정",
+      "create_theme_for_slot": "이 교시의 테마 만들기",
+      "create_entry": "회고 작성",
+      "edit_entry": "회고 편집",
+      "open_recall": "상기 테스트",
+      "masked_badge": "상기 대기",
+      "has_entry": "작성됨",
+      "period_label": "{period}교시",
+      "main_theme_label": "메인 테마",
+      "created_at_label": "최초 생성",
+      "last_reflected_label": "마지막 회고",
+      "never_reflected": "아직 없음"
+    },
+    "theme": {
+      "list_heading": "테마 목록",
+      "create": "테마 만들기",
+      "edit": "테마 편집",
+      "delete": "삭제",
+      "delete_confirm": "이 테마와 하위 회고를 모두 삭제하시겠습니까?",
+      "empty": "아직 테마가 없습니다. 첫 번째 테마를 만드세요.",
+      "title_label": "테마 이름",
+      "title_placeholder": "예: 수학II / 프로젝트X / 일기",
+      "description_label": "설명",
+      "description_placeholder": "선택 메모",
+      "source_type_label": "유형",
+      "exam_date_label": "시험 날짜",
+      "exam_date_help": "설정하면 시험 14/7/3/1일 전에 알림이 전송됩니다",
+      "exam_date_past_warning": "과거 날짜에는 알림이 생성되지 않습니다",
+      "exam_date_clear": "시험 날짜 지우기",
+      "recall_interval_label": "상기 간격",
+      "recall_interval_fixed": "{days}일 후 상기 테스트 (고정)",
+      "open": "열기",
+      "view_entries": "회고 보기",
+      "subject_link_label": "과목에 연결",
+      "subject_link_none": "연결 안 함",
+      "subject_link_placeholder": "시간표 과목에서 선택",
+      "subject_link_help": "선택한 과목의 모든 수업 시간에 이 테마가 오늘 뷰에 표시됩니다",
+      "subject_link_empty": "시간표가 등록되지 않았습니다",
+      "academic_year_label": "학년도",
+      "term_label_label": "학기",
+      "academic_year_placeholder": "예: 2026",
+      "term_label_placeholder": "예: 1학기, 전기, Q1",
+      "suggest_from_timetable": "시간표에서 자동 제안합니다（이미 입력된 경우 덮어쓰지 않습니다）",
+      "parent_theme_label": "부모 테마（단원 위에 교과목 설정）",
+      "parent_none": "부모 없음（최상위）"
+    },
+    "archive": {
+      "label": "보관",
+      "action": {
+        "archive": "보관하기",
+        "restore": "복원하기"
+      },
+      "confirm": {
+        "archive": "이 테마를 보관하시겠습니까？간격 반복 알림이 중지됩니다。",
+        "restore": "이 테마를 복원하시겠습니까？"
+      },
+      "bulk_archive_button": "이 폴더 일괄 보관",
+      "folder": {
+        "title": "보관 폴더",
+        "theme_count": "{n}개 테마",
+        "no_subject": "과목 미설정",
+        "no_year": "학년 미설정",
+        "no_term": "학기 미설정"
+      },
+      "search": {
+        "placeholder": "제목·설명으로 검색",
+        "empty": "해당하는 보관 항목이 없습니다"
+      }
+    },
+    "source_type": {
+      "SUBJECT": "수업",
+      "PROJECT": "업무 / 프로젝트",
+      "DIARY": "일기",
+      "FREE": "자유"
+    },
+    "template": {
+      "label": "템플릿",
+      "help": "입력 제목을 프리셋에서 선택할 수 있습니다",
+      "heading_selector_label": "포함할 제목",
+      "heading_optional_badge": "선택",
+      "NORMAL": "보통",
+      "DIARY": "일기",
+      "WORK": "업무 회고",
+      "CLASS": "수업 회고",
+      "normal_desc": "제목 없이 자유 작성",
+      "diary_desc": "사건／느낀 점／내일을 위해",
+      "work_desc": "성과／과제／배움／다음 행동",
+      "class_desc": "배운 것／막힌 부분／기억할 요점",
+      "preset": {
+        "diary": {
+          "event": "사건",
+          "feeling": "느낀 점",
+          "tomorrow": "내일을 위해"
+        },
+        "work": {
+          "result": "성과",
+          "issue": "과제",
+          "learning": "배움",
+          "next": "다음 행동"
+        },
+        "class": {
+          "learned": "배운 것",
+          "stumble": "막힌 부분",
+          "keypoint": "기억할 요점"
+        },
+        "vocab": {
+          "cards": "今日の単語"
+        }
+      },
+      "VOCAB": "単語帳",
+      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する"
+    },
+    "entry": {
+      "list_heading": "회고 목록",
+      "create": "회고 만들기",
+      "edit": "회고 편집",
+      "delete": "삭제",
+      "delete_confirm": "이 회고를 삭제하시겠습니까?",
+      "empty": "아직 회고가 없습니다.",
+      "target_date_label": "날짜",
+      "main_theme_label": "메인 테마",
+      "main_theme_placeholder": "예: 이차함수의 최대 최소",
+      "section_heading_label": "제목",
+      "section_heading_placeholder": "예: 완전제곱식",
+      "add_section": "제목 추가",
+      "remove_section": "제목 삭제",
+      "sub_heading_label": "소제목",
+      "sub_heading_placeholder": "예: 기본형으로 변형",
+      "add_subsection": "소제목 추가",
+      "remove_subsection": "소제목 삭제",
+      "detail_label": "상세",
+      "detail_placeholder": "배운 내용을 작성하세요",
+      "supplement_label": "보충",
+      "supplement_placeholder": "보충／메모",
+      "free_note_label": "자유 메모 (상기 대상 외)",
+      "free_note_placeholder": "소감이나 질문 메모",
+      "save": "저장",
+      "saved": "저장했습니다",
+      "save_failed": "저장에 실패했습니다",
+      "conflict": "다른 곳에서 업데이트되었습니다. 최신 내용을 다시 불러온 후 다시 시도하세요.",
+      "masked_notice": "상기 테스트 대상입니다. 본문이 숨겨져 있습니다.",
+      "exported_badge": "블로그 내보냄",
+      "exported_edited_badge": "내보낸 후 편집됨"
+    },
+    "recall": {
+      "heading": "상기 테스트",
+      "intro": "본문을 보지 않고 기억나는 내용을 떠올려 작성해 보세요.",
+      "hint_theme": "테마",
+      "hint_target_date": "날짜",
+      "hint_due_dates": "상기 예정일",
+      "input_label": "떠올린 내용",
+      "input_placeholder": "기억나는 만큼 작성하세요",
+      "self_rating_label": "자기 평가",
+      "rating": {
+        "REMEMBERED": "기억함",
+        "PARTIAL": "부분적",
+        "FORGOT": "잊음"
+      },
+      "submit": "저장하고 공개",
+      "submitting": "저장 중…",
+      "saved": "상기를 기록했습니다",
+      "save_failed": "상기 저장에 실패했습니다",
+      "revealed_heading": "정답 (원본 본문)",
+      "your_recall": "당신의 상기",
+      "history_heading": "상기 기록",
+      "history_empty": "아직 상기 기록이 없습니다.",
+      "not_masked": "이 항목은 마스크되지 않았습니다. 정상적으로 편집할 수 있습니다.",
+      "back_to_entry": "회고로 돌아가기",
+      "card_answer_placeholder": "答えを入力...",
+      "outline_scaffold": {
+        "panel_heading": "발판 힌트",
+        "main_theme_label": "테마",
+        "level_note_partial": "각 제목의 첫 글자만 표시됩니다. 나머지를 떠올려 보세요.",
+        "aria_panel": "OUTLINE 발판 힌트 패널"
+      }
+    },
+    "export": {
+      "button": "블로그로 내보내기",
+      "dialog_title": "블로그로 내보내기",
+      "title_label": "게시물 제목",
+      "title_placeholder": "생략하면 테마 이름과 날짜가 사용됩니다",
+      "submit": "내보내기",
+      "submitting": "내보내는 중…",
+      "success": "블로그로 내보냈습니다 (비공개)",
+      "failed": "내보내기에 실패했습니다",
+      "already_exported": "이 회고는 이미 내보냈습니다",
+      "view_post": "내보낸 게시물 보기"
+    },
+    "settings": {
+      "heading": "상기 알림 설정",
+      "remind_hour_label": "알림 시간",
+      "remind_hour_help": "상기 테스트 알림을 보낼 시간 (당신의 시간대)",
+      "save": "저장",
+      "saved": "설정을 저장했습니다",
+      "save_failed": "설정 저장에 실패했습니다",
+      "hour_format": "{hour}시"
+    },
+    "calendar": {
+      "entry_mark": "회고",
+      "recall_mark": "상기 예정"
+    },
+    "common": {
+      "cancel": "취소",
+      "close": "닫기",
+      "loading": "불러오는 중…",
+      "load_failed": "불러오기에 실패했습니다"
+    },
+    "guide": {
+      "page_title": "능동적 회상 학습 사용법",
+      "what": {
+        "title": "능동적 회상 학습이란?",
+        "body": "배운 내용을 「떠올리는」 행위로 기억을 강화하는 학습법입니다. 오늘의 회고를 작성하고, 다음 날 이후에 내용이 숨겨진 상태에서 떠올린 다음 정답과 대조합니다."
+      },
+      "theme": {
+        "title": "테마 만들기",
+        "body": "「테마」는 회고의 기본 단위입니다. 계속 복습하고 싶은 교과목, 자격증, 프로젝트, 일기 등의 테마를 만드세요. 시간표의 교시와 연결하거나, 독립적인 자유 테마로 사용할 수도 있습니다."
+      },
+      "today": {
+        "title": "오늘의 회고 작성하기",
+        "body": "「오늘의 회고」뷰에 당일의 교시와 테마가 나열됩니다. 각 카드를 열어 배운 내용과 깨달음을 입력한 후 저장하세요."
+      },
+      "recall": {
+        "title": "상기 테스트 (능동적 인출)",
+        "body": "다음 날부터 입력한 내용이 자동으로 숨겨집니다. 자신의 말로 떠올린 다음 정답과 대조하세요. 떠올리는 노력이 기억을 강화합니다."
+      },
+      "reminder": {
+        "title": "알림과 캘린더",
+        "body": "복습할 시간이 되면 알림으로 알려드립니다. 회고를 작성한 날은 내 캘린더에 표시되므로 지속 현황을 한눈에 확인할 수 있습니다."
+      }
+    },
+    "section": {
+      "type": {
+        "outline": "アウトライン",
+        "term_card": "暗記カード"
+      },
+      "type_label": "中見出しの型",
+      "expand": "展開する",
+      "collapse": "折りたたむ",
+      "summary_subsections": "小見出し{n}件",
+      "summary_cards": "カード{n}枚"
+    },
+    "card": {
+      "term_label": "語句",
+      "meaning_label": "意味",
+      "add": "カードを追加",
+      "remove": "カードを削除"
+    },
+    "vocab": {
+      "title": "単語帳（期間横断）",
+      "period_from": "開始日",
+      "period_to": "終了日",
+      "filter_theme": "テーマで絞り込み",
+      "filter_subject": "科目で絞り込み",
+      "mode": {
+        "view": "一覧",
+        "quiz": "自己クイズ"
+      },
+      "direction": {
+        "meaning_to_term": "意味→語句",
+        "term_to_meaning": "語句→意味",
+        "shuffle": "シャッフル"
+      },
+      "flip": "めくる",
+      "empty": "この期間に暗記カードはありません",
+      "total_cards": "{n}枚のカード",
+      "source_label": "出典",
+      "subjects_all": "全教科",
+      "subjects_filter": "教科フィルター",
+      "shuffle": "シャッフル",
+      "shuffle_note": "取得のたびに順番が変わります",
+      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "inline": {
+        "title": "＋単語を追加",
+        "term_placeholder": "語句 (例: apple)",
+        "meaning_placeholder": "意味 (例: りんご)",
+        "add_button": "追加",
+        "added": "追加しました"
+      }
+    }
+  }
+}

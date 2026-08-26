@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   canEdit: boolean
   canDelete: boolean
 }>()
@@ -16,6 +16,8 @@ const emit = defineEmits<{
 
 const todoApi = useTodoApi()
 const notification = useNotification()
+const { showUndoToast } = useUndoToast()
+const { t } = useI18n()
 const { userTimezone } = useDatetime()
 
 /** Wave 1 DTO刷新: ネスト構造 */
@@ -54,6 +56,9 @@ const page = ref(0)
 const rows = ref(20)
 const selectedTodos = ref<Todo[]>([])
 
+// ソート種別（RECENT=新着順 / PRIORITY=優先度順）
+const sortType = ref<'RECENT' | 'PRIORITY'>('RECENT')
+
 // フィルター
 const statusFilter = ref('')
 const priorityFilter = ref('')
@@ -81,6 +86,7 @@ async function loadTodos() {
       priority: priorityFilter.value || undefined,
       page: page.value,
       size: rows.value,
+      sort: sortType.value,
     })
     todos.value = res.data
     totalRecords.value = res.meta.totalElements
@@ -114,15 +120,29 @@ async function onBulkStatusChange(status: string) {
   catch { notification.error('一括変更に失敗しました') }
 }
 
+// ADHD 配慮 AC-16: 確認ダイアログを廃止し、即時削除 + Undo Toast に置換する。
+// TODO は論理削除（soft delete）なので、Undo で restore EP を叩けば一覧に復活する。
 async function onDelete(todoId: number) {
-  if (!confirm('このTODOを削除しますか？')) return
   try {
     await todoApi.deleteTodo(props.scopeType, props.scopeId, todoId)
-    notification.success('TODOを削除しました')
     await loadTodos()
     emit('refresh')
+    showUndoToast({
+      summary: t('todo.list.deletedToast'),
+      undoLabel: t('button.undo'),
+      severity: 'info',
+      onUndo: async () => {
+        try {
+          await todoApi.restoreTodo(props.scopeType, props.scopeId, todoId)
+          notification.success(t('todo.list.restoredToast'))
+          await loadTodos()
+          emit('refresh')
+        }
+        catch { notification.error(t('todo.list.restoreFailed')) }
+      },
+    })
   }
-  catch { notification.error('削除に失敗しました') }
+  catch { notification.error(t('todo.list.deleteFailed')) }
 }
 
 function onPage(event: { page: number; rows: number }) {
@@ -144,7 +164,7 @@ function formatDate(dateStr: string | null | undefined): string {
   return dayjs.tz(dateStr, userTimezone.value).format('YYYY/MM/DD')
 }
 
-watch([statusFilter, priorityFilter], () => {
+watch([statusFilter, priorityFilter, sortType], () => {
   page.value = 0
   loadTodos()
 })
@@ -159,12 +179,26 @@ defineExpose({ refresh: loadTodos, changeStatus: onStatusChange })
     <!-- フィルター -->
     <div class="mb-4 flex flex-wrap items-end gap-3">
       <div class="w-36">
-        <label class="mb-1 block text-xs font-medium">ステータス</label>
+        <label class="mb-1 block text-xs font-medium">{{ $t('todo.field.status') }}</label>
         <Select v-model="statusFilter" :options="statusOptions" option-label="label" option-value="value" class="w-full" />
       </div>
       <div class="w-36">
-        <label class="mb-1 block text-xs font-medium">優先度</label>
+        <label class="mb-1 block text-xs font-medium">{{ $t('todo.field.priority') }}</label>
         <Select v-model="priorityFilter" :options="priorityOptions" option-label="label" option-value="value" class="w-full" />
+      </div>
+      <!-- 並び順トグル -->
+      <div>
+        <label class="mb-1 block text-xs font-medium">{{ $t('todo.list.sortLabel') }}</label>
+        <SelectButton
+          v-model="sortType"
+          :options="[
+            { label: $t('todo.list.sortRecent'), value: 'RECENT' },
+            { label: $t('todo.list.sortPriority'), value: 'PRIORITY' },
+          ]"
+          option-label="label"
+          option-value="value"
+          data-testid="todo-sort-toggle"
+        />
       </div>
       <!-- 一括操作（バケット単位の一括変更のみ。ラベル変更は詳細ページで行う） -->
       <div v-if="selectedTodos.length > 0" class="flex items-center gap-2">
@@ -190,10 +224,11 @@ defineExpose({ refresh: loadTodos, changeStatus: onStatusChange })
       <Column selection-mode="multiple" header-style="width: 3rem" />
       <Column header="タイトル" field="content.title" style="min-width: 200px">
         <template #body="{ data }">
-          <div>
+          <div :data-testid="`team-todo-row-${data.id}`">
             <NuxtLink
               :to="`/${props.scopeType === 'team' ? 'teams' : 'organizations'}/${props.scopeId}/todos/${data.id}`"
               class="font-medium hover:text-primary"
+              :data-testid="`team-todo-title-${data.id}`"
             >
               {{ data.content?.title }}
             </NuxtLink>
@@ -234,8 +269,8 @@ defineExpose({ refresh: loadTodos, changeStatus: onStatusChange })
       <Column v-if="canEdit || canDelete" header="操作" style="width: 100px">
         <template #body="{ data }">
           <div class="flex gap-1">
-            <Button v-if="canEdit" icon="pi pi-pencil" text rounded size="small" @click="emit('edit', data.id)" />
-            <Button v-if="canDelete" icon="pi pi-trash" text rounded size="small" severity="danger" @click="onDelete(data.id)" />
+            <Button v-if="canEdit" icon="pi pi-pencil" text rounded size="small" :data-testid="`team-todo-edit-${data.id}`" @click="emit('edit', data.id)" />
+            <Button v-if="canDelete" icon="pi pi-trash" text rounded size="small" severity="danger" :data-testid="`team-todo-delete-${data.id}`" @click="onDelete(data.id)" />
           </div>
         </template>
       </Column>

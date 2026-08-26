@@ -62,6 +62,22 @@
         "INFO": "情報",
         "LOW": "低"
       }
+    },
+    "attachment": {
+      "label": "添付ファイル（最大5件・各10MB以下）",
+      "addFile": "ファイルを追加",
+      "uploading": "アップロード中...",
+      "uploadFailed": "ファイル「{name}」のアップロードに失敗しました",
+      "uploadAllFailed": "添付ファイルのアップロードに失敗しました",
+      "download": "ダウンロード",
+      "downloadFailed": "ダウンロード URL の取得に失敗しました",
+      "delete": "削除",
+      "deleteConfirm": "このファイルを削除しますか？",
+      "deleteSuccess": "添付ファイルを削除しました",
+      "deleteFailed": "添付ファイルの削除に失敗しました",
+      "loadFailed": "添付ファイルの取得に失敗しました",
+      "limitExceeded": "添付ファイルは最大5件までです",
+      "sizeLimitExceeded": "ファイル「{name}」は10MBを超えています"
     }
   }
 }

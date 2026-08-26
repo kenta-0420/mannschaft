@@ -1,20 +1,14 @@
 package com.mannschaft.app.weather.repository;
 
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import com.mannschaft.app.weather.entity.UserWeatherLocationEntity;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -30,29 +24,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p>UUIDv7 主キー（BINARY(16)）・(user_id, label) ユニーク制約・
  * findByUserIdAndLabel / findByUserId / deleteByUserId の動作を確認する。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("UserWeatherLocationRepository 結合テスト")
-class UserWeatherLocationRepositoryTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+class UserWeatherLocationRepositoryTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private UserWeatherLocationRepository repository;

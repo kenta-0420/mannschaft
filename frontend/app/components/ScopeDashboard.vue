@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import type { ViewerRole, WidgetVisibilitySetting } from '~/types/dashboard'
+import type { SpotlightItem, SpotlightScopeType } from '~/composables/useSpotlightApi'
 
 const props = withDefaults(
   defineProps<{
     scopeType: 'personal' | 'team' | 'organization'
-    scopeId?: number
+    scopeId?: string
+    /**
+     * F09.19.4 Spotlight 掲載面用のスコープ数値 ID（BE は scopeId に Long を要求する）。
+     * team/organization とも URL 識別子（scopeId プロパティ）は slug 文字列であり数値化できないため、
+     * TeamResponse.numericId / OrgDetail.numericId（F09.19.10・BE 内部 BIGINT ID）を
+     * 親ページが文字列化して渡す。未解決（null/undefined）の場合は掲載面を取得しない
+     * （誤った ID を送らない・後述コメント参照）。
+     */
+    scopeNumericId?: string
     scopeName?: string
     scopeTemplate?: string
     viewerRole?: ViewerRole
@@ -13,6 +22,7 @@ const props = withDefaults(
   }>(),
   {
     scopeId: undefined,
+    scopeNumericId: undefined,
     scopeName: undefined,
     scopeTemplate: undefined,
     viewerRole: undefined,
@@ -21,7 +31,7 @@ const props = withDefaults(
   },
 )
 
-const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder } = useDashboardWidgets(
+const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder, ready } = useDashboardWidgets(
   props.scopeType,
   props.scopeId,
   props.viewerRole,
@@ -53,16 +63,57 @@ onMounted(() => {
   }
 })
 
+// ── F09.19.4 Spotlight 掲載面（DASHBOARD_TILE・末尾固定 2 枠） ──────────────
+// 親が 1 回だけ count=2 で取得し items[0]→Primary・items[1]→Secondary に配る。
+// spotlightPrimary/Secondary は v-for 外の固定 order-last 描画であり KEYS/linkTo には登録しない
+// （結線パリティ規約 project_dashboard_personal_panel_widget_wiring_parity は本 2 枠に非適用）。
+// scopeId には数値 ID が必須（BE Long）。team/organization とも URL 識別子（scopeId プロパティ）は
+// slug 文字列で数値化できないため、親ページが numericId（F09.19.10）由来の scopeNumericId を渡す。
+// 未解決の場合は掲載面を取得しない（誤った ID を送らない）。
+const spotlightApi = useSpotlightApi()
+const spotlightItems = ref<SpotlightItem[]>([])
+// 候補なしは枠ごと非表示: primary=items[0] / secondary=items[1]（存在時のみ描画）
+const spotlightPrimary = computed(() => spotlightItems.value[0])
+const spotlightSecondary = computed(() => spotlightItems.value[1])
+
+const spotlightScopeType = computed<SpotlightScopeType>(() => {
+  if (props.scopeType === 'team') return 'TEAM'
+  if (props.scopeType === 'organization') return 'ORGANIZATION'
+  return 'PERSONAL'
+})
+
+const spotlightScopeId = computed<number | undefined>(() => {
+  if (props.scopeNumericId == null || props.scopeNumericId === '') return undefined
+  const n = Number(props.scopeNumericId)
+  return Number.isFinite(n) ? n : undefined
+})
+
+async function loadSpotlight() {
+  // TEAM / ORGANIZATION は数値 scopeId が無いと BE が 400 を返すため取得を見送る。
+  if (spotlightScopeId.value == null) {
+    spotlightItems.value = []
+    return
+  }
+  spotlightItems.value = await spotlightApi.fetchContent('DASHBOARD_TILE', 2, {
+    scopeType: spotlightScopeType.value,
+    scopeId: spotlightScopeId.value,
+    template: props.scopeTemplate,
+  })
+}
+
+onMounted(() => {
+  void loadSpotlight()
+})
+
 const showConfig = ref(false)
 const dragIndex = ref<number | null>(null)
 const dropTargetIndex = ref<number | null>(null)
 const collapsedKeys = ref<Set<string>>(new Set())
-// 初期表示時に localStorage の保存順が適用される際にアニメーションしないよう、
-// mount + nextTick 後にのみ move-class を有効にする
-const isReady = ref(false)
+// 対象2: team/organization は SSR（useAsyncData）で保存順を確定させるため、初回描画時点で
+// 既に保存順になっており、マウント後の再ソートが発生しない＝TransitionGroup の move アニメも
+// 初回は発火しない。よって旧 isReady による move-class 抑制は不要になったため撤廃した。
 onMounted(() => {
   nextTick(() => {
-    isReady.value = true
     // モバイルでは全ウィジェットをデフォルト折り畳み状態にする
     if (window.innerWidth < 768) {
       collapsedKeys.value = new Set(visibleWidgets.value.map((w) => w.key))
@@ -92,6 +143,12 @@ const DATA_WIDGET_KEYS = new Set([
   'member-info',
   // F17.1 §3.12.5: 井戸端ダイジェストはデータ表示型ウィジェット
   'village-lobby-digest',
+  // F08.7.1: 成績ウィジェット 3 種はデータ表示型（横長 col-span=2）
+  'team-standings-record',
+  'team-division-standings',
+  'org-tournament-summary',
+  // F08.10: チーム試合サマリはデータ表示型
+  'team-match-summary',
 ])
 
 function isDataWidget(key: string): boolean {
@@ -137,6 +194,14 @@ function linkTo(widgetKey: string): string | undefined {
     'attendance-results': `${base}/schedule`,
     // F14.2: チームメンバー定期更新フォーム
     'member-info': `${base}/member-info`,
+    // F08.7.1: 成績ウィジェットの遷移先
+    'team-standings-record': `${base}/tournaments`,
+    'team-division-standings': `${base}/tournaments`,
+    'org-tournament-summary': `${base}/tournaments`,
+    // F08.10: チーム試合サマリ → チーム分析ページ
+    'team-match-summary': `${base}/match-analytics`,
+    // F02.3: プロジェクト
+    projects: `${base}/projects`,
   }
   return scopeLinks[widgetKey]
 }
@@ -199,11 +264,27 @@ function onDragEnd() {
       />
     </div>
 
+    <!-- 並び順確定前: スケルトン（位置ジャンプ防止のためウィジェット本体は描画しない） -->
+    <div
+      v-if="!ready"
+      class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+      aria-hidden="true"
+      data-testid="dashboard-widgets-skeleton"
+    >
+      <div
+        v-for="n in 6"
+        :key="`widget-skeleton-${n}`"
+        class="h-40 animate-pulse rounded-xl bg-surface-100 dark:bg-surface-800"
+      />
+    </div>
+
+    <!-- 並び順確定後: 保存順で初描画（ここで初めてマウントするためジャンプしない） -->
     <!-- ウィジェットグリッド -->
     <TransitionGroup
+      v-else
       tag="div"
       class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
-      :move-class="isReady ? 'transition-all duration-[350ms] ease-in-out' : ''"
+      move-class="transition-all duration-[350ms] ease-in-out"
     >
       <!-- 空状態 -->
       <div
@@ -226,6 +307,7 @@ function onDragEnd() {
       <DashboardWidgetCard
         v-for="(w, index) in visibleWidgets"
         :key="w.key"
+        :data-widget-key="w.key"
         title=""
         class="group cursor-default transition-all"
         :col-span="isDataWidget(w.key) ? 2 : 1"
@@ -260,14 +342,14 @@ function onDragEnd() {
             <h3
               class="text-[20px] font-semibold text-surface-700 transition-colors group-hover/title:text-primary dark:text-surface-200"
             >
-              {{ w.label }}
+              {{ $t(w.labelKey) }}
             </h3>
           </NuxtLink>
           <h3
             v-else
             class="flex-1 text-[20px] font-semibold text-surface-700 dark:text-surface-200"
           >
-            {{ w.label }}
+            {{ $t(w.labelKey) }}
           </h3>
           <!-- 折り畳みボタン (モバイルのみ) -->
           <button
@@ -301,7 +383,7 @@ function onDragEnd() {
           class="text-xs text-surface-500"
           :class="collapsedKeys.has(w.key) ? 'hidden md:block' : ''"
         >
-          {{ w.description }}
+          {{ $t(w.descriptionKey) }}
         </p>
 
         <!-- データウィジェット: 実コンテンツ -->
@@ -344,23 +426,44 @@ function onDragEnd() {
             <WidgetVillageLobbyDigest
               v-else-if="w.key === 'village-lobby-digest' && scopeType === 'personal'"
             />
+            <!-- F08.7.1: 自チーム成績（team スコープのみ） -->
+            <WidgetTeamTournamentRecord
+              v-else-if="w.key === 'team-standings-record' && scopeId && scopeType === 'team'"
+              :team-id="scopeId"
+            />
+            <!-- F08.7.1: 順位表（team スコープのみ） -->
+            <WidgetTeamDivisionStandings
+              v-else-if="w.key === 'team-division-standings' && scopeId && scopeType === 'team'"
+              :team-id="scopeId"
+            />
+            <!-- F08.7.1: 主催大会サマリ（organization スコープのみ） -->
+            <WidgetOrgTournamentSummary
+              v-else-if="w.key === 'org-tournament-summary' && scopeId && scopeType === 'organization'"
+              :org-id="scopeId"
+            />
+            <!-- F08.10: チーム試合サマリ（team スコープのみ） -->
+            <WidgetTeamMatchSummary
+              v-else-if="w.key === 'team-match-summary' && scopeId && scopeType === 'team'"
+              :team-id="scopeId"
+            />
           </div>
         </template>
       </DashboardWidgetCard>
 
-      <!-- Amazon広告タイル (非表示不可・常に最後) -->
-      <WidgetAmazonAd
-        key="amazon-ad"
+      <!-- 広告タイル（Spotlight 掲載面・非表示不可・常に最後・並び替え対象外） -->
+      <!-- 候補なしは枠ごと非表示（items.length=1→Secondary 非描画・0→両方非描画）。スケルトンも確保しない（末尾のため CLS 許容）。 -->
+      <!-- key は placement 値ベース。KEYS/linkTo には登録しない固定描画。 -->
+      <WidgetSpotlightPrimary
+        v-if="spotlightPrimary"
+        key="spotlight-primary"
         class="order-last"
-        :scope-type="scopeType"
-        :scope-template="scopeTemplate"
+        :item="spotlightPrimary"
       />
-      <!-- 楽天広告タイル (非表示不可・常に最後) -->
-      <WidgetRakutenAd
-        key="rakuten-ad"
+      <WidgetSpotlightSecondary
+        v-if="spotlightSecondary"
+        key="spotlight-secondary"
         class="order-last"
-        :scope-type="scopeType"
-        :scope-template="scopeTemplate"
+        :item="spotlightSecondary"
       />
     </TransitionGroup>
 

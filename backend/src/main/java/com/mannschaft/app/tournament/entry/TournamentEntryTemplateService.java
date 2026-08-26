@@ -1,7 +1,9 @@
 package com.mannschaft.app.tournament.entry;
 
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MemberDto;
 import com.mannschaft.app.membership.query.MemberQueryDispatcher;
@@ -58,9 +60,10 @@ public class TournamentEntryTemplateService {
     private final MemberQueryDispatcher memberQueryDispatcher;
     private final TeamOrgMembershipRepository teamOrgMembershipRepository;
     private final UserRepository userRepository;
+    private final AccessControlService accessControlService;
 
     // =========================================================
-    // IDOR検証ヘルパー
+    // IDOR検証ヘルパー（存在束縛）
     // =========================================================
 
     /**
@@ -74,19 +77,74 @@ public class TournamentEntryTemplateService {
     }
 
     /**
-     * IDOR検証チェーン（テンプレート適用用）: orgId → tId → divId → pId の帰属確認。
+     * 大会をパスの組織 ID に束縛して取得する。不存在・他組織の大会は 404 で存在秘匿する。
      */
-    private TournamentParticipantEntity resolveParticipant(Long orgId, Long tId, Long divId, Long pId) {
-        TournamentEntity tournament = tournamentRepository.findById(tId)
+    private TournamentEntity resolveTournamentInOrg(Long orgId, Long tId) {
+        return tournamentRepository.findById(tId)
                 .filter(t -> orgId.equals(t.getOrganizationId()))
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
+    }
 
+    /**
+     * IDOR検証チェーン（テンプレート適用用）: tId → divId → pId の帰属確認。
+     *
+     * @param tId {@link #resolveTournamentInOrg} で org 束縛済みの大会 ID
+     */
+    private TournamentParticipantEntity resolveParticipant(Long tId, Long divId, Long pId) {
         divisionRepository.findByIdAndTournamentId(divId, tId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
 
         return participantRepository.findById(pId)
                 .filter(p -> divId.equals(p.getDivisionId()))
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
+    }
+
+    // =========================================================
+    // scope 認可（BOLA 回避: 認可 scope は必ずエンティティ由来／org 束縛済みの値で判定する）
+    // =========================================================
+
+    /**
+     * テンプレートの閲覧権限を検証する。
+     *
+     * <p>根拠: 設計書 {@code docs/features/F08.7_tournament_league.md} §Phase9-B
+     * 「エントリーテンプレート管理（チームコンテキスト）」。テンプレートは登録選手の
+     * {@code userId} と実名を保持するため、当該チームの MEMBER 以上、または当該チームが属する
+     * 主催組織の ADMIN/DEPUTY_ADMIN のみ閲覧できる。</p>
+     *
+     * @param teamId {@link #validateTeamBelongsToOrg} で org 束縛済み、
+     *               もしくはテンプレートエンティティ由来のチーム ID
+     */
+    private void checkTemplateViewable(Long currentUserId, Long orgId, Long teamId) {
+        if (accessControlService.isSystemAdmin(currentUserId)) {
+            return;
+        }
+        if (accessControlService.isMember(currentUserId, teamId, "TEAM")) {
+            return;
+        }
+        if (accessControlService.isAdminOrAbove(currentUserId, orgId, "ORGANIZATION")) {
+            return;
+        }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
+    }
+
+    /**
+     * テンプレートの編集権限を検証する。
+     *
+     * <p>根拠: 設計書 §Phase9-B「チーム設定 → エントリーテンプレート」（チーム管理画面の機能）
+     * および §Phase9 API 一覧のエントリー編集権限「チームADMIN」。当該チームの
+     * ADMIN/DEPUTY_ADMIN、または当該チームが属する主催組織の ADMIN/DEPUTY_ADMIN のみ許可する。</p>
+     */
+    private void checkTemplateManageable(Long currentUserId, Long orgId, Long teamId) {
+        if (accessControlService.isSystemAdmin(currentUserId)) {
+            return;
+        }
+        if (accessControlService.isAdminOrAbove(currentUserId, teamId, "TEAM")) {
+            return;
+        }
+        if (accessControlService.isAdminOrAbove(currentUserId, orgId, "ORGANIZATION")) {
+            return;
+        }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
     }
 
     /**
@@ -160,6 +218,7 @@ public class TournamentEntryTemplateService {
      */
     public List<EntryTemplateResponse> getTemplates(Long orgId, Long teamId, Long currentUserId) {
         validateTeamBelongsToOrg(orgId, teamId);
+        checkTemplateViewable(currentUserId, orgId, teamId);
         List<TournamentEntryTemplateEntity> templates =
                 templateRepository.findByTeamIdAndDeletedAtIsNullOrderBySortOrderAsc(teamId);
 
@@ -189,6 +248,8 @@ public class TournamentEntryTemplateService {
         TournamentEntryTemplateEntity template =
                 templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(templateId, teamId)
                         .orElseThrow(() -> new BusinessException(TournamentErrorCode.ENTRY_TEMPLATE_NOT_FOUND));
+        // 認可 scope はエンティティ由来の teamId で判定する（パス変数の鵜呑みを避ける）
+        checkTemplateViewable(currentUserId, orgId, template.getTeamId());
 
         List<TournamentEntryTemplateMemberEntity> members =
                 templateMemberRepository.findByTemplateIdOrderBySortOrderAsc(templateId);
@@ -211,6 +272,7 @@ public class TournamentEntryTemplateService {
     public EntryTemplateDetailResponse createTemplate(Long orgId, Long teamId,
                                                        CreateEntryTemplateRequest req, Long currentUserId) {
         validateTeamBelongsToOrg(orgId, teamId);
+        checkTemplateManageable(currentUserId, orgId, teamId);
 
         // 5件上限チェック
         long count = templateRepository.countByTeamIdAndDeletedAtIsNull(teamId);
@@ -227,7 +289,7 @@ public class TournamentEntryTemplateService {
         TournamentEntryTemplateEntity saved = templateRepository.save(template);
 
         List<TournamentEntryTemplateMemberEntity> members = req.getMembers().stream()
-                .map(item -> TournamentEntryTemplateMemberEntity.builder()
+                .map(item -> (TournamentEntryTemplateMemberEntity) TournamentEntryTemplateMemberEntity.builder()
                         .templateId(saved.getId())
                         .userId(item.getUserId())
                         .jerseyNumber(item.getJerseyNumber())
@@ -265,6 +327,8 @@ public class TournamentEntryTemplateService {
         TournamentEntryTemplateEntity template =
                 templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(templateId, teamId)
                         .orElseThrow(() -> new BusinessException(TournamentErrorCode.ENTRY_TEMPLATE_NOT_FOUND));
+        // 認可 scope はエンティティ由来の teamId で判定する（パス変数の鵜呑みを避ける）
+        checkTemplateManageable(currentUserId, orgId, template.getTeamId());
 
         // テンプレート情報を更新
         template.update(req.getName(), req.getDescription(),
@@ -274,7 +338,7 @@ public class TournamentEntryTemplateService {
         // メンバーを全置換（差分更新推奨だが全置換で実装）
         templateMemberRepository.deleteByTemplateId(templateId);
         List<TournamentEntryTemplateMemberEntity> newMembers = req.getMembers().stream()
-                .map(item -> TournamentEntryTemplateMemberEntity.builder()
+                .map(item -> (TournamentEntryTemplateMemberEntity) TournamentEntryTemplateMemberEntity.builder()
                         .templateId(templateId)
                         .userId(item.getUserId())
                         .jerseyNumber(item.getJerseyNumber())
@@ -306,6 +370,8 @@ public class TournamentEntryTemplateService {
         TournamentEntryTemplateEntity template =
                 templateRepository.findByIdAndTeamIdAndDeletedAtIsNull(templateId, teamId)
                         .orElseThrow(() -> new BusinessException(TournamentErrorCode.ENTRY_TEMPLATE_NOT_FOUND));
+        // 認可 scope はエンティティ由来の teamId で判定する（パス変数の鵜呑みを避ける）
+        checkTemplateManageable(currentUserId, orgId, template.getTeamId());
 
         template.softDelete();
         templateRepository.save(template);
@@ -329,10 +395,14 @@ public class TournamentEntryTemplateService {
     @Transactional
     public ApplyTemplateResponse applyTemplate(Long orgId, Long tId, Long divId, Long pId,
                                                 ApplyTemplateRequest req, Long currentUserId) {
-        // 1. IDOR検証チェーン
-        TournamentParticipantEntity participant = resolveParticipant(orgId, tId, divId, pId);
-        TournamentEntity tournament = tournamentRepository.findById(tId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        // 1. IDOR検証チェーン（orgId 束縛 → div 束縛 → participant 束縛）
+        TournamentEntity tournament = resolveTournamentInOrg(orgId, tId);
+        TournamentParticipantEntity participant = resolveParticipant(tId, divId, pId);
+
+        // 1-b. scope 認可: エントリー表への書込のため、参加チーム（エンティティ由来）の
+        //      ADMIN/DEPUTY_ADMIN、または主催組織（エンティティ由来）の ADMIN/DEPUTY_ADMIN 限定。
+        //      設計書 §Phase9 API 一覧の書込権限（ADMIN, DEPUTY_ADMIN, チームADMIN）に揃える。
+        checkTemplateManageable(currentUserId, tournament.getOrganizationId(), participant.getTeamId());
 
         // 2. 編集ロック確認
         checkEntryLock(tournament);

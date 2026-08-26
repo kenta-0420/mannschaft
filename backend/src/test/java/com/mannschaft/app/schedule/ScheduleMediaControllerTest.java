@@ -42,6 +42,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link ScheduleMediaController} の結合テスト。
@@ -283,6 +284,10 @@ class ScheduleMediaControllerTest {
         private ProxyInputConsentRepository proxyInputConsentRepository;
         @MockitoBean
         private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
         private static final Long SCHEDULE_ID = 100L;
         private static final Long MEDIA_ID = 200L;

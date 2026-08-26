@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
@@ -41,6 +40,7 @@ public class ScheduleRecurrenceService {
     private static final String UPDATE_SCOPE_ALL = "ALL";
 
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleTargetService scheduleTargetService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -66,6 +66,7 @@ public class ScheduleRecurrenceService {
             LocalDateTime endAt = durationMinutes > 0 ? startAt.plusMinutes(durationMinutes) : null;
 
             ScheduleEntity child = parent.toBuilder()
+                    .id(null)  // 新規 INSERT にするため id をリセット（toBuilder() は BaseEntity の id をコピーするため）
                     .parentScheduleId(parent.getId())
                     .startAt(startAt)
                     .endAt(endAt)
@@ -74,7 +75,8 @@ public class ScheduleRecurrenceService {
                     .googleCalendarEventId(null)
                     .build();
 
-            scheduleRepository.save(child);
+            ScheduleEntity savedChild = scheduleRepository.save(child);
+            scheduleTargetService.copyTargets(parent.getId(), savedChild.getId());
         }
 
         log.info("繰り返し展開: parentId={}, 生成数={}", parent.getId(), occurrences.size());
@@ -170,8 +172,26 @@ public class ScheduleRecurrenceService {
         int maxCount = resolveMaxCount(rule);
         LocalDate endDate = resolveEndDate(rule, baseStart.toLocalDate());
         int interval = rule.interval();
+        LocalDate base = baseStart.toLocalDate();
 
-        LocalDate current = baseStart.toLocalDate();
+        // 月次・年次は元の開始日をアンカーに base + interval*n で算出する。
+        // 反復で前回出現日（末日クランプ後）から進めると 3/31 が 3/28 にズレ続けるため、
+        // 常に base からの加算で末日アンカーを保持する。
+        if ("MONTHLY".equals(rule.type()) || "YEARLY".equals(rule.type())) {
+            boolean monthly = "MONTHLY".equals(rule.type());
+            int n = 1;
+            while (occurrences.size() < maxCount) {
+                LocalDate occ = addAnchored(base, (long) interval * n, monthly);
+                if (occ.isAfter(endDate)) {
+                    break;
+                }
+                occurrences.add(occ.atTime(baseStart.toLocalTime()));
+                n++;
+            }
+            return occurrences;
+        }
+
+        LocalDate current = base;
         int count = 0;
 
         while (count < maxCount) {
@@ -204,19 +224,24 @@ public class ScheduleRecurrenceService {
         if ("DATE".equals(rule.endType()) && rule.endDate() != null) {
             return rule.endDate();
         }
-        // NEVER または COUNT の場合は1年先を上限とする
+        if ("COUNT".equals(rule.endType())) {
+            // COUNT は回数(maxCount)のみで制御する。日付上限を設けると
+            // 年次×複数回や月次×13回以上が1年で打ち切られてしまうため上限を撤廃する。
+            return LocalDate.MAX;
+        }
+        // NEVER の場合は1年先を上限とする
         return baseDate.plusYears(1);
     }
 
     /**
-     * 繰り返し種別に応じて次の日付を算出する。
+     * 繰り返し種別に応じて次の日付を算出する（DAILY/WEEKLY 専用）。
+     * MONTHLY/YEARLY は {@link #addAnchored} による開始日アンカー方式で
+     * {@link #calculateOccurrences} 内で直接算出するため、ここでは扱わない。
      */
     private LocalDate advanceDate(LocalDate current, String type, int interval, List<String> daysOfWeek) {
         return switch (type) {
             case "DAILY" -> current.plusDays(interval);
             case "WEEKLY" -> advanceWeekly(current, interval, daysOfWeek);
-            case "MONTHLY" -> advanceMonthly(current, interval);
-            case "YEARLY" -> current.plusYears(interval);
             default -> null;
         };
     }
@@ -242,13 +267,20 @@ public class ScheduleRecurrenceService {
     }
 
     /**
-     * 月単位の繰り返し: 同日（存在しなければ末日）を算出する。
+     * 元の開始日（base）の日(day-of-month)をアンカーに、months もしくは years を加算する。
+     * 加算先の月に該当日が存在しなければ末日にクランプする（例: 1/31 + 1ヶ月 → 2/28）。
+     * 前回出現日からではなく常に base から算出するため、クランプによる日付ズレが起きない。
+     *
+     * @param base    元の開始日（アンカー）
+     * @param amount  加算する月数または年数
+     * @param monthly true なら月加算、false なら年加算
      */
-    private LocalDate advanceMonthly(LocalDate current, int interval) {
-        LocalDate nextMonth = current.plusMonths(interval);
-        int targetDay = current.getDayOfMonth();
-        int lastDay = nextMonth.with(TemporalAdjusters.lastDayOfMonth()).getDayOfMonth();
-        return nextMonth.withDayOfMonth(Math.min(targetDay, lastDay));
+    private LocalDate addAnchored(LocalDate base, long amount, boolean monthly) {
+        LocalDate target = monthly
+                ? base.withDayOfMonth(1).plusMonths(amount)
+                : base.withDayOfMonth(1).plusYears(amount);
+        int lastDay = target.lengthOfMonth();
+        return target.withDayOfMonth(Math.min(base.getDayOfMonth(), lastDay));
     }
 
     /**

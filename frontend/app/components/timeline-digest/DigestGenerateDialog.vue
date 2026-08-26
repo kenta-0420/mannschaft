@@ -4,7 +4,7 @@ import type { AiQuotaResponse } from '~/types/timeline-digest'
 const props = defineProps<{
   visible: boolean
   scopeType: 'ORGANIZATION' | 'TEAM'
-  scopeId: number
+  scopeId: string
 }>()
 
 const emit = defineEmits<{
@@ -15,6 +15,7 @@ const emit = defineEmits<{
 const { generateDigest } = useTimelineDigestApi()
 const notification = useNotification()
 const { t } = useI18n()
+const { buildOffsetDateTimeStr, buildDayStartStr, buildDayEndStr } = useDatetime()
 
 const submitting = ref(false)
 const errors = ref<Record<string, string>>({})
@@ -44,10 +45,6 @@ const isAiStyle = computed(() =>
   ['SUMMARY', 'NARRATIVE', 'HIGHLIGHTS'].includes(form.value.digestStyle),
 )
 
-function formatDateToIso(date: Date): string {
-  return date.toISOString().slice(0, 10)
-}
-
 function validate(): boolean {
   errors.value = {}
   if (!form.value.periodStart) {
@@ -76,8 +73,12 @@ async function submit() {
     const res = await generateDigest({
       scopeId: props.scopeId,
       scopeType: props.scopeType,
-      periodStart: formatDateToIso(form.value.periodStart!),
-      periodEnd: formatDateToIso(form.value.periodEnd!),
+      // 期間の組み立ては buildDigestPeriod に集約（BE は LocalDateTime・両端 inclusive）。
+      ...buildDigestPeriod(form.value.periodStart!, form.value.periodEnd!, {
+        buildOffsetDateTimeStr,
+        buildDayStartStr,
+        buildDayEndStr,
+      }),
       digestStyle: form.value.digestStyle,
       customPromptSuffix: isAiStyle.value ? form.value.customPromptSuffix || undefined : undefined,
     })

@@ -4,6 +4,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * サイドバー化 Phase3: AppShell/AppHeader のヘッダー高さトークン。
+ * team.vue/organization.vue の sticky位置・calc(100vh - ...) 計算もこの値を参照する
+ * （Tailwind の任意値記法 `h-[var(--app-header-h)]` 経由）。値そのものは旧固定値 4rem(64px)
+ * のまま据え置き、見た目は1pxも変えない。
+ */
+:root {
+  --app-header-h: 4rem;
+
+  /*
+   * サイドバー化 Phase4: 意匠統一 — カード共通の柔らかい二重影トークン。
+   * デザイン正本（サイドバー移行プロトタイプ）の --shadow / --shadow-pop を
+   * ブランドの surface トークンに合わせて色相中立（黒基調の輝度差）に移植。
+   * SectionCard / DashboardWidgetCard など共通コンポーネントから
+   * shadow-[var(--shadow-card)] のように参照する。値そのものをここで変えるだけで
+   * 全画面のカードに波及する（個別ページのスタイル直書きは禁止）。
+   */
+  --shadow-card: 0 1px 2px rgb(30 41 36 / 0.05), 0 8px 20px -10px rgb(30 41 36 / 0.14);
+  --shadow-card-hover: 0 2px 6px rgb(30 41 36 / 0.07), 0 14px 28px -10px rgb(30 41 36 / 0.18);
+}
+
+.dark {
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35), 0 10px 24px -10px rgb(0 0 0 / 0.55);
+  --shadow-card-hover: 0 2px 6px rgb(0 0 0 / 0.4), 0 16px 32px -10px rgb(0 0 0 / 0.6);
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -42,6 +68,27 @@ body {
   }
 }
 
+@layer components {
+  /*
+   * アプリ共通の枠線スタイル「field-bordered」。
+   * - 既定で 2px の外枠（色は surface-400 = 旧ホバー時の色に統一。薄さを解消）
+   * - ホバー時に影を付けて浮き上がらせる
+   * フォーム入力・タブ・カードなどの既定の外枠として再利用する。
+   * クラス名を二重指定して PrimeVue コンポーネント（.p-inputtext 等）の
+   * 単一クラスセレクタより詳細度を高め、確実に上書きする。
+   */
+  .field-bordered.field-bordered {
+    border-width: 2px;
+    border-color: var(--p-surface-400, #9ca3af);
+    transition:
+      box-shadow 0.15s ease,
+      border-color 0.15s ease;
+  }
+  .field-bordered.field-bordered:hover {
+    box-shadow: 0 4px 12px rgb(0 0 0 / 0.12);
+  }
+}
+
 @layer utilities {
   .scrollbar-hide {
     -ms-overflow-style: none;
@@ -64,5 +111,39 @@ body {
   .scrollbar-thin-nav::-webkit-scrollbar-thumb {
     background-color: var(--p-surface-300, #d1d5db);
     border-radius: 2px;
+  }
+
+  /*
+   * サイドバー化 Phase4: グローバルサイドバー縦スクロール用の極細スクロールバー（幅4px）。
+   * つまみは surface トーン（ライト: surface-300 / ダーク: surface-600）・角丸、track は透明。
+   * hover でわずかに濃くする（ライト: surface-400 / ダーク: surface-500）。
+   * Firefox は 4px 指定ができないため scrollbar-width: thin + scrollbar-color で近似する。
+   * 適用先は GlobalSidebar のナビ項目リストのみ（scrollbar-thin-nav は横用・変更しない）。
+   */
+  .scrollbar-thin-sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--p-surface-300, #d1d5db) transparent;
+  }
+  .scrollbar-thin-sidebar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin-sidebar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin-sidebar::-webkit-scrollbar-thumb {
+    background-color: var(--p-surface-300, #d1d5db);
+    border-radius: 9999px;
+  }
+  .scrollbar-thin-sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--p-surface-400, #9ca3af);
+  }
+  .dark .scrollbar-thin-sidebar {
+    scrollbar-color: var(--p-surface-600, #52525b) transparent;
+  }
+  .dark .scrollbar-thin-sidebar::-webkit-scrollbar-thumb {
+    background-color: var(--p-surface-600, #52525b);
+  }
+  .dark .scrollbar-thin-sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--p-surface-500, #71717a);
   }
 }

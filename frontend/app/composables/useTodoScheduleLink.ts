@@ -3,7 +3,7 @@ import type { LinkScheduleRequest } from '~/types/todo'
 export function useTodoScheduleLink() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team'
       ? `/api/v1/teams/${scopeId}`
       : `/api/v1/organizations/${scopeId}`
@@ -15,7 +15,7 @@ export function useTodoScheduleLink() {
    */
   async function linkSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: LinkScheduleRequest,
   ) {
@@ -31,7 +31,7 @@ export function useTodoScheduleLink() {
    */
   async function unlinkSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/link-schedule`, {

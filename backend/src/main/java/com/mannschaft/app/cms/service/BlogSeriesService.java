@@ -7,7 +7,9 @@ import com.mannschaft.app.cms.dto.UpdateSeriesRequest;
 import com.mannschaft.app.cms.entity.BlogPostSeriesEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogPostSeriesRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,16 +29,25 @@ public class BlogSeriesService {
 
     private final BlogPostSeriesRepository seriesRepository;
     private final BlogPostRepository postRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * シリーズ一覧を取得する。
+     *
+     * <p>認可根治戦役 Wave7: 兄弟の {@link #createSeries} と同じ
+     * {@link AccessControlService#checkMembership} をスコープに敷き、非メンバーが
+     * 他チーム/組織のシリーズ構成を閲覧できないようにする。</p>
      */
-    public List<BlogSeriesResponse> listSeries(Long teamId, Long organizationId) {
+    public List<BlogSeriesResponse> listSeries(Long userId, Long teamId, Long organizationId) {
         List<BlogPostSeriesEntity> entities;
         if (teamId != null) {
+            accessControlService.checkMembership(userId, teamId, "TEAM");
             entities = seriesRepository.findByTeamIdOrderByCreatedAtDesc(teamId);
-        } else {
+        } else if (organizationId != null) {
+            accessControlService.checkMembership(userId, organizationId, "ORGANIZATION");
             entities = seriesRepository.findByOrganizationIdOrderByCreatedAtDesc(organizationId);
+        } else {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
         }
         return entities.stream()
                 .map(e -> new BlogSeriesResponse(
@@ -49,9 +60,21 @@ public class BlogSeriesService {
 
     /**
      * シリーズを作成する。
+     *
+     * <p>認可根治戦役 Wave3-B7: 従来は認可判定が皆無だったため、非メンバーでも任意のチーム/組織に
+     * シリーズを作成できた。{@code teamId}/{@code organizationId} に対する
+     * {@link AccessControlService#checkMembership}（メンバーであれば可、ADMIN限定ではない）を要求する。</p>
      */
     @Transactional
     public BlogSeriesResponse createSeries(Long userId, CreateSeriesRequest request) {
+        if (request.getTeamId() != null) {
+            accessControlService.checkMembership(userId, request.getTeamId(), "TEAM");
+        } else if (request.getOrganizationId() != null) {
+            accessControlService.checkMembership(userId, request.getOrganizationId(), "ORGANIZATION");
+        } else {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+
         BlogPostSeriesEntity entity = BlogPostSeriesEntity.builder()
                 .teamId(request.getTeamId())
                 .organizationId(request.getOrganizationId())
@@ -69,11 +92,16 @@ public class BlogSeriesService {
 
     /**
      * シリーズを更新する。
+     *
+     * <p>認可根治戦役 Wave3-B7: 従来は認可判定が皆無だったため、非メンバーでも任意のシリーズを
+     * 改題できた（BOLA）。シリーズが所属するスコープ（teamId優先→organizationId）の
+     * ADMIN/DEPUTY_ADMIN のみ許可する。</p>
      */
     @Transactional
-    public BlogSeriesResponse updateSeries(Long id, UpdateSeriesRequest request) {
+    public BlogSeriesResponse updateSeries(Long id, Long userId, UpdateSeriesRequest request) {
         BlogPostSeriesEntity entity = seriesRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.SERIES_NOT_FOUND));
+        checkScopeAdmin(userId, entity.getTeamId(), entity.getOrganizationId());
         entity.update(request.getName(), request.getDescription());
         BlogPostSeriesEntity saved = seriesRepository.save(entity);
         log.info("シリーズ更新: seriesId={}", id);
@@ -85,12 +113,29 @@ public class BlogSeriesService {
 
     /**
      * シリーズを削除する。
+     *
+     * <p>認可根治戦役 Wave3-B7: {@link #updateSeries} と同一の認可方式（スコープADMIN限定）。</p>
      */
     @Transactional
-    public void deleteSeries(Long id) {
+    public void deleteSeries(Long id, Long userId) {
         BlogPostSeriesEntity entity = seriesRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(CmsErrorCode.SERIES_NOT_FOUND));
+        checkScopeAdmin(userId, entity.getTeamId(), entity.getOrganizationId());
         seriesRepository.delete(entity);
         log.info("シリーズ削除: seriesId={}", id);
+    }
+
+    /**
+     * スコープ（teamId優先→organizationId）の ADMIN/DEPUTY_ADMIN であることを検証する。
+     * いずれも null の異常系は fail-closed で 403（COMMON_002）とする。
+     */
+    private void checkScopeAdmin(Long userId, Long teamId, Long organizationId) {
+        if (teamId != null) {
+            accessControlService.checkAdminOrAbove(userId, teamId, "TEAM");
+        } else if (organizationId != null) {
+            accessControlService.checkAdminOrAbove(userId, organizationId, "ORGANIZATION");
+        } else {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 }

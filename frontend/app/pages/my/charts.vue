@@ -28,7 +28,7 @@ async function loadData(page = 0) {
 
 async function handleSelect(chart: Chart) {
   try {
-    selectedChart.value = (await chartApi.get(chart.teamId, chart.id)).data
+    selectedChart.value = (await chartApi.get(String(chart.teamId), chart.id)).data
     showDetail.value = true
   } catch {
     notification.error('カルテの詳細取得に失敗しました')
@@ -40,8 +40,7 @@ onMounted(() => loadData())
 
 <template>
   <div class="mx-auto max-w-3xl">
-    <BackButton to="/my" />
-    <PageHeader title="マイカルテ" />
+    <PageHeader title="マイカルテ" back-to="/my" />
 
     <PageLoading v-if="loading" />
 

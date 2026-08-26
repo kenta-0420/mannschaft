@@ -7,6 +7,10 @@ import { useTournamentParticipants } from './tournament/useTournamentParticipant
 export { useTournamentBase }
 export { useTournamentBracket }
 export { useTournamentParticipants }
+export { useTournamentFee } from './tournament/useTournamentFee'
+// F08.7 順位UI Wave B-3: スコアキーパー指名管理。composables/tournament は auto-import
+// 対象 dir に含まれないため、top-level の本ファイルから re-export して自動インポート可能にする。
+export { useTournamentScorekeepers } from './tournament/useTournamentScorekeepers'
 
 export function useTournamentApi() {
   return {

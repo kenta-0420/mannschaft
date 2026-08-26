@@ -53,11 +53,12 @@ public class ShiftScheduleController {
             @RequestParam Long teamId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         List<ShiftScheduleResponse> responses;
         if (from != null && to != null) {
-            responses = scheduleService.listSchedulesByPeriod(teamId, from, to);
+            responses = scheduleService.listSchedulesByPeriod(teamId, from, to, currentUserId);
         } else {
-            responses = scheduleService.listSchedules(teamId);
+            responses = scheduleService.listSchedules(teamId, currentUserId);
         }
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
@@ -70,7 +71,7 @@ public class ShiftScheduleController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> getSchedule(
             @PathVariable Long scheduleId) {
-        ShiftScheduleResponse response = scheduleService.getSchedule(scheduleId);
+        ShiftScheduleResponse response = scheduleService.getSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -96,7 +97,8 @@ public class ShiftScheduleController {
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> updateSchedule(
             @PathVariable Long scheduleId,
             @Valid @RequestBody UpdateShiftScheduleRequest request) {
-        ShiftScheduleResponse response = scheduleService.updateSchedule(scheduleId, request);
+        ShiftScheduleResponse response = scheduleService.updateSchedule(
+                scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -108,7 +110,7 @@ public class ShiftScheduleController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSchedule(
             @PathVariable Long scheduleId) {
-        scheduleService.deleteSchedule(scheduleId);
+        scheduleService.deleteSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -130,14 +132,21 @@ public class ShiftScheduleController {
      *
      * <p>管理者・副管理者のシフト調整画面で「未充足の枠を一望する」用途で使用する。
      * F03.5 設計書 §4.x 参照。</p>
+     *
+     * <p><b>認可（認可根治 Phase 3-b / 2026-05-30）:</b> 旧 {@code @PreAuthorize("hasRole('ADMIN')")} は
+     * {@code @EnableMethodSecurity} 点火時に JWT へ ROLE_ADMIN が乗らず一斉 403 となるため是正した。
+     * scope は <b>パス変数でなくスケジュールエンティティ由来</b>（{@code scheduleId} から解決した teamId）で
+     * SpEL でパス変数参照できないため、宣言は {@code isAuthenticated()} とし、真の per-scope 認可は
+     * {@code ShiftScheduleService.getScheduleSummary} 内の {@code checkScheduleAdminAccess} で強制する。</p>
      */
     @GetMapping("/{scheduleId}/summary")
     @Operation(summary = "シフト充足状況サマリ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ShiftScheduleSummaryResponse>> getScheduleSummary(
             @PathVariable Long scheduleId) {
-        ShiftScheduleSummaryResponse response = scheduleService.getScheduleSummary(scheduleId);
+        ShiftScheduleSummaryResponse response =
+                scheduleService.getScheduleSummary(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -146,11 +155,18 @@ public class ShiftScheduleController {
      *
      * <p>自動リマインド（48h / 24h 前）とは独立して、管理者の任意のタイミングで
      * 一斉送信できる。F03.5 設計書 §4.x 参照。</p>
+     *
+     * <p><b>認可（認可根治 Phase 3-b / 2026-05-30）:</b> 旧 {@code @PreAuthorize("hasRole('ADMIN')")} は
+     * {@code @EnableMethodSecurity} 点火時に JWT へ ROLE_ADMIN が乗らず一斉 403 となるため是正した。
+     * scope は <b>パス変数でなくスケジュールエンティティ由来</b>（{@code scheduleId} から解決した teamId）で
+     * SpEL でパス変数参照できないため、宣言は {@code isAuthenticated()} とし、真の per-scope 認可は
+     * {@code ShiftPreferenceReminderBatchService.triggerManualReminder} 内で
+     * {@code AccessControlService} により強制する。</p>
      */
     @PostMapping("/{scheduleId}/remind")
     @Operation(summary = "シフト希望未提出者への手動リマインド送信")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信成功")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ManualRemindResponse>> remindUnsubmitted(
             @PathVariable Long scheduleId) {
         ManualRemindResponse response = preferenceReminderBatchService

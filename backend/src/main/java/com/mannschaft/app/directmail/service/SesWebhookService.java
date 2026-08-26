@@ -11,13 +11,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
- * SES Webhook サービス。バウンス・苦情・開封通知を処理する。
+ * SES 通知処理サービス。バウンス・苦情・開封通知を処理する。
+ *
+ * <p>F09.6 Phase 8a: 入口は HTTP webhook から SQS リスナー
+ * （{@code directmail/listener/SesNotificationSqsListener}）へ移行した。
+ * 本サービスの業務ロジックは入口非依存で、リスナーが SNS エンベロープを
+ * パースして組み立てた {@link SesNotificationRequest} を受け取る。</p>
  *
  * <p>F09.17 Phase 11-b ε-C: SYSTEM_AD 送信メールへの bounce/complaint 通知を
  * {@code ad_email_deliveries.bounced_at / bounce_type} にも反映する。
@@ -38,12 +42,9 @@ public class SesWebhookService {
      */
     @Transactional
     public void handleNotification(SesNotificationRequest request) {
-        if ("SubscriptionConfirmation".equals(request.getType())) {
-            log.info("SES SubscriptionConfirmation 受信: topicArn={}", request.getTopicArn());
-            confirmSubscription(request.getSubscribeURL());
-            return;
-        }
-
+        // F09.6 Phase 8a: SQS 経由では SNS SubscriptionConfirmation は発生しない
+        // （HTTPS サブスクリプション特有の確認フロー）。SQS 購読の確立は terraform で行うため、
+        // 旧 HTTP webhook 時代の confirmSubscription（SubscribeURL への GET ＝ SSRF 経路）は撤去した。
         String messageId = request.getMessageId();
         if (messageId == null) {
             log.warn("SES通知にmessageIdが含まれていません");
@@ -154,21 +155,5 @@ public class SesWebhookService {
             case "Transient" -> AdBounceType.SOFT;
             default -> AdBounceType.HARD;
         };
-    }
-
-    /**
-     * SNS SubscriptionConfirmation の subscribeURL にGETアクセスしてサブスクリプションを確認する。
-     */
-    private void confirmSubscription(String subscribeUrl) {
-        if (subscribeUrl == null || subscribeUrl.isBlank()) {
-            log.warn("subscribeURL が空のため確認をスキップ");
-            return;
-        }
-        try {
-            RestClient.create().get().uri(subscribeUrl).retrieve().toBodilessEntity();
-            log.info("SNS SubscriptionConfirmation 確認完了: url={}", subscribeUrl);
-        } catch (Exception e) {
-            log.error("SNS SubscriptionConfirmation 確認失敗: url={}", subscribeUrl, e);
-        }
     }
 }

@@ -12,8 +12,10 @@ import com.mannschaft.app.todo.dto.ProjectResponse;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.UpdateMilestoneRequest;
 import com.mannschaft.app.todo.dto.UpdateProjectRequest;
+import com.mannschaft.app.todo.security.ProjectAccessGuard;
 import com.mannschaft.app.todo.service.ProjectService;
 import com.mannschaft.app.todo.service.TodoService;
+import com.mannschaft.app.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -45,6 +47,9 @@ public class TeamProjectController {
 
     private final ProjectService projectService;
     private final TodoService todoService;
+    private final TeamService teamService;
+    // 各 EP 入口の認可ゲート（チームメンバーシップ + プロジェクトのスコープ束縛）。
+    private final ProjectAccessGuard projectAccessGuard;
 
 
     /**
@@ -54,12 +59,14 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<ProjectResponse>> listProjects(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @RequestParam(defaultValue = "ACTIVE") String status,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int perPage) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamMembership(SecurityUtils.getCurrentUserId(), internalTeamId);
         return ResponseEntity.ok(projectService.listProjects(
-                TodoScopeType.TEAM, teamId, ProjectStatus.valueOf(status), page, perPage));
+                TodoScopeType.TEAM, internalTeamId, ProjectStatus.valueOf(status), page, size));
     }
 
     /**
@@ -69,10 +76,12 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> createProject(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @Valid @RequestBody CreateProjectRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamMembership(SecurityUtils.getCurrentUserId(), internalTeamId);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(projectService.createProject(TodoScopeType.TEAM, teamId, request, SecurityUtils.getCurrentUserId()));
+                .body(projectService.createProject(TodoScopeType.TEAM, internalTeamId, request, SecurityUtils.getCurrentUserId()));
     }
 
     /**
@@ -82,8 +91,10 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ProjectDetailResponse>> getProject(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.getProject(id));
     }
 
@@ -94,9 +105,11 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProject(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateProjectRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.updateProject(id, request));
     }
 
@@ -107,8 +120,10 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteProject(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         projectService.deleteProject(id);
         return ResponseEntity.noContent().build();
     }
@@ -120,8 +135,10 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト手動完了")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "完了成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> completeProject(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.completeProject(id));
     }
 
@@ -132,8 +149,10 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト再開")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再開成功")
     public ResponseEntity<ApiResponse<ProjectResponse>> reopenProject(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.reopenProject(id));
     }
 
@@ -146,8 +165,10 @@ public class TeamProjectController {
     @Operation(summary = "マイルストーン一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<MilestoneResponse>>> listMilestones(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.listMilestones(id));
     }
 
@@ -158,9 +179,11 @@ public class TeamProjectController {
     @Operation(summary = "マイルストーン作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<MilestoneResponse>> createMilestone(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @Valid @RequestBody CreateMilestoneRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(projectService.createMilestone(id, request));
     }
@@ -172,10 +195,12 @@ public class TeamProjectController {
     @Operation(summary = "マイルストーン更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<MilestoneResponse>> updateMilestone(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @PathVariable Long mid,
             @Valid @RequestBody UpdateMilestoneRequest request) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.updateMilestone(id, mid, request));
     }
 
@@ -186,9 +211,11 @@ public class TeamProjectController {
     @Operation(summary = "マイルストーン削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteMilestone(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @PathVariable Long mid) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         projectService.deleteMilestone(id, mid);
         return ResponseEntity.noContent().build();
     }
@@ -200,9 +227,11 @@ public class TeamProjectController {
     @Operation(summary = "マイルストーン完了")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "完了成功")
     public ResponseEntity<ApiResponse<MilestoneResponse>> completeMilestone(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id,
             @PathVariable Long mid) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(projectService.completeMilestone(id, mid));
     }
 
@@ -213,8 +242,10 @@ public class TeamProjectController {
     @Operation(summary = "プロジェクト内TODO一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TodoResponse>>> listProjectTodos(
-            @PathVariable Long teamId,
+            @PathVariable String teamId,
             @PathVariable Long id) {
+        Long internalTeamId = teamService.resolveTeamId(teamId);
+        projectAccessGuard.validateTeamProjectAccess(SecurityUtils.getCurrentUserId(), internalTeamId, id);
         return ResponseEntity.ok(todoService.listProjectTodos(id));
     }
 }

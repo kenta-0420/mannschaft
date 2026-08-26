@@ -8,12 +8,14 @@ import com.mannschaft.app.cms.entity.BlogPostShareEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.cms.repository.BlogPostShareRepository;
 import com.mannschaft.app.cms.service.BlogPostShareService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -41,6 +43,12 @@ class BlogPostShareServiceTest {
     private BlogPostShareRepository shareRepository;
     @Mock
     private CmsMapper cmsMapper;
+    @Mock
+    private AccessControlService accessControlService;
+
+    /** 本番の {@code ClockConfig#utcClock} と同じ UTC 固定 Clock を実インスタンスで注入する。 */
+    @Spy
+    private java.time.Clock clock = java.time.Clock.systemUTC();
 
     @InjectMocks
     private BlogPostShareService service;
@@ -132,6 +140,26 @@ class BlogPostShareServiceTest {
         }
 
         @Test
+        @DisplayName("異常系(認可根治Wave3-B7): 個人記事の非所有者による共有は403(COMMON_002・IDOR対策)")
+        void 共有_非所有者_例外() {
+            // entity.userId/authorId=USER_ID（個人ブログ・team/org無し）。actor=999L は非所有者。
+            BlogPostEntity entity = BlogPostEntity.builder()
+                    .userId(USER_ID).authorId(USER_ID)
+                    .title("個人記事").slug("s").body("b")
+                    .postType(PostType.BLOG).visibility(Visibility.MEMBERS_ONLY)
+                    .priority(PostPriority.NORMAL).status(PostStatus.PUBLISHED)
+                    .readingTimeMinutes((short) 1).build();
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            SharePostRequest request = new SharePostRequest(2L, null);
+
+            assertThatThrownBy(() -> service.sharePost(POST_ID, 999L, request))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            verify(shareRepository, org.mockito.Mockito.never()).save(any());
+        }
+
+        @Test
         @DisplayName("異常系: 組織スコープで重複共有でCMS_013例外")
         void 共有_組織重複_例外() {
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
@@ -155,23 +183,27 @@ class BlogPostShareServiceTest {
         @Test
         @DisplayName("異常系: 共有不在でCMS_019例外")
         void 共有取消_不在_例外() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
             given(shareRepository.findById(99L)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.revokeShare(POST_ID, 99L))
+            assertThatThrownBy(() -> service.revokeShare(POST_ID, 99L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CMS_019"));
         }
 
         @Test
-        @DisplayName("異常系: 共有の記事IDが不一致でCMS_019例外")
+        @DisplayName("異常系: 共有の記事IDが不一致でCMS_019例外（BOLA存在秘匿）")
         void 共有取消_記事ID不一致_例外() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
             // share.blogPostId = 99 ≠ POST_ID = 10
             BlogPostShareEntity share = BlogPostShareEntity.builder()
                     .blogPostId(99L).teamId(1L).sharedBy(USER_ID).build();
             given(shareRepository.findById(5L)).willReturn(Optional.of(share));
 
-            assertThatThrownBy(() -> service.revokeShare(POST_ID, 5L))
+            assertThatThrownBy(() -> service.revokeShare(POST_ID, 5L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CMS_019"));
@@ -180,13 +212,33 @@ class BlogPostShareServiceTest {
         @Test
         @DisplayName("正常系: 共有が取り消される")
         void 共有取消_正常_削除実行() {
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
             BlogPostShareEntity share = BlogPostShareEntity.builder()
                     .blogPostId(POST_ID).teamId(1L).sharedBy(USER_ID).build();
             given(shareRepository.findById(5L)).willReturn(Optional.of(share));
 
-            service.revokeShare(POST_ID, 5L);
+            service.revokeShare(POST_ID, 5L, USER_ID);
 
             verify(shareRepository).delete(share);
+        }
+
+        @Test
+        @DisplayName("異常系(認可根治Wave3-B7): 非所有者かつ非ADMINの共有取消は403(COMMON_002)")
+        void 共有取消_非所有者非ADMIN_例外() {
+            // entity.authorId=USER_ID, teamId=TEAM_ID。非所有者・非ADMINなので拒否。
+            BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            Long otherUserId = 999L;
+            org.mockito.BDDMockito.willThrow(new BusinessException(
+                            com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(otherUserId, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> service.revokeShare(POST_ID, 5L, otherUserId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
+            verify(shareRepository, org.mockito.Mockito.never()).findById(any());
         }
     }
 
@@ -200,7 +252,7 @@ class BlogPostShareServiceTest {
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.issuePreviewToken(POST_ID))
+            assertThatThrownBy(() -> service.issuePreviewToken(POST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CMS_010"));
@@ -214,10 +266,26 @@ class BlogPostShareServiceTest {
             given(postRepository.save(entity)).willReturn(entity);
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
-            BlogPostResponse result = service.issuePreviewToken(POST_ID);
+            BlogPostResponse result = service.issuePreviewToken(POST_ID, USER_ID);
 
             assertThat(result).isNotNull();
             assertThat(entity.getPreviewToken()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("異常系(認可根治Wave3-B7): 非所有者かつ非ADMINのプレビュートークン発行は403(COMMON_002)")
+        void プレビュートークン発行_非所有者非ADMIN_例外() {
+            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            Long otherUserId = 999L;
+            org.mockito.BDDMockito.willThrow(new BusinessException(
+                            com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(otherUserId, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> service.issuePreviewToken(POST_ID, otherUserId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("COMMON_002"));
         }
     }
 
@@ -231,7 +299,7 @@ class BlogPostShareServiceTest {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
 
-            service.revokePreviewToken(POST_ID);
+            service.revokePreviewToken(POST_ID, USER_ID);
 
             verify(postRepository).save(entity);
         }

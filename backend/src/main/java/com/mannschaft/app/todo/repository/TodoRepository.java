@@ -24,6 +24,14 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
     Optional<TodoEntity> findByIdAndDeletedAtIsNull(Long id);
 
     /**
+     * IDで論理削除済み（deleted_at IS NOT NULL）のTODOを取得する。
+     *
+     * <p>復元（restore）処理専用。通常の finder は deleted_at IS NULL のみを返すため、
+     * 論理削除済み行を掘り起こすには本メソッドを使う。</p>
+     */
+    Optional<TodoEntity> findByIdAndDeletedAtIsNotNull(Long id);
+
+    /**
      * スコープ別のTODO一覧を取得する（論理削除除外）。
      */
     Page<TodoEntity> findByScopeTypeAndScopeIdAndDeletedAtIsNull(
@@ -75,6 +83,60 @@ public interface TodoRepository extends JpaRepository<TodoEntity, Long> {
             ORDER BY t.dueDate ASC NULLS LAST, t.priority DESC
             """)
     List<TodoEntity> findMyTodos(@Param("userId") Long userId);
+
+    /**
+     * マイカレンダー用: 本人担当・未完了・期限ありで指定期間と交差する TODO を全スコープから取得する。
+     *
+     * <p>{@code todo_assignees.user_id} の索引で担当者を絞り、TODO 本体は主キーで参照する。
+     * EXISTS を用いるため、共同担当の同一 TODO を重複して返さない。</p>
+     */
+    @Query("""
+            SELECT t FROM TodoEntity t
+            WHERE t.deletedAt IS NULL
+              AND t.dueDate IS NOT NULL
+              AND t.dueDate >= :fromDate
+              AND COALESCE(t.startDate, t.dueDate) <= :toDate
+              AND t.status IN (com.mannschaft.app.todo.TodoStatus.OPEN,
+                               com.mannschaft.app.todo.TodoStatus.IN_PROGRESS)
+              AND EXISTS (
+                  SELECT 1 FROM TodoAssigneeEntity ta
+                  WHERE ta.todoId = t.id AND ta.userId = :userId
+              )
+            ORDER BY COALESCE(t.startDate, t.dueDate) ASC, t.dueDate ASC, t.id ASC
+            """)
+    List<TodoEntity> findMyCalendarTodos(
+            @Param("userId") Long userId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("toDate") LocalDate toDate);
+
+    /**
+     * F04.11 統合インボックス（TODO_DUE）境界付きウィンドウ取得。
+     *
+     * <p>本人担当・未完了（{@code OPEN}/{@code IN_PROGRESS}）・{@code due_date <= cutoff}（期限切れ含む近接）の
+     * TODO を {@code due_date} 昇順（＝期限切れ→当日→近接の順＝統合インボックスの priority 降順と整合）で
+     * {@link Pageable} の件数だけ取得する。Phase3 ③ の無制限 fetch 根絶用（設計書 03_business_logic.md §4）。</p>
+     *
+     * <p>DB 側で「未完了 ∧ 近接/超過」に絞ってから上限を掛けるため、{@code findMyTodos} の全件取得＋Java
+     * フィルタのような「全 TODO をメモリに載せる」負荷が発生しない。暦日境界（ユーザー TZ）で算出した
+     * {@code cutoff} を渡すことで、{@code TodoDueInboxAdapter} の従来判定（NEAR_DAYS 以内/超過）と一致させる。</p>
+     *
+     * @param userId   対象ユーザーID
+     * @param cutoff   近接上限日（この日以前の期限を対象。{@code today + NEAR_DAYS}）
+     * @param pageable 取得上限（{@code PageRequest.of(0, window)}）
+     * @return 期限近接/超過の未完了 TODO（due_date 昇順・最大 window 件）
+     */
+    @Query("""
+            SELECT t FROM TodoEntity t
+            WHERE t.deletedAt IS NULL
+              AND t.dueDate IS NOT NULL
+              AND t.dueDate <= :cutoff
+              AND t.status IN (com.mannschaft.app.todo.TodoStatus.OPEN,
+                               com.mannschaft.app.todo.TodoStatus.IN_PROGRESS)
+              AND t.id IN (SELECT ta.todoId FROM TodoAssigneeEntity ta WHERE ta.userId = :userId)
+            ORDER BY t.dueDate ASC, t.id ASC
+            """)
+    List<TodoEntity> findMyDueTodos(
+            @Param("userId") Long userId, @Param("cutoff") LocalDate cutoff, Pageable pageable);
 
     /**
      * 子TODO一覧を取得する（sortOrder昇順、論理削除除外）。

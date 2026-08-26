@@ -9,8 +9,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -26,8 +26,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class BudgetFiscalYearEntity extends BaseEntity {
 
     @Column(nullable = false, length = 20)
@@ -70,6 +69,18 @@ public class BudgetFiscalYearEntity extends BaseEntity {
      */
     public void reopen() {
         this.status = BudgetFiscalYearStatus.OPEN;
+    }
+
+    /**
+     * 会計年度の基本情報を更新する。
+     * 管理対象（managed）エンティティを直接ミューテートすることで、
+     * 主キー id を保持したまま UPDATE 文が発行されることを保証する。
+     * （toBuilder().build() による再構築は継承フィールド id を引き継がず INSERT 化するため使用しない）
+     */
+    public void applyUpdate(String name, LocalDate startDate, LocalDate endDate) {
+        this.name = name;
+        this.startDate = startDate;
+        this.endDate = endDate;
     }
 
     /**

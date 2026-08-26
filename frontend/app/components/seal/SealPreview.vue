@@ -19,7 +19,7 @@ const variantLabel = (variant: string) => {
       class="flex flex-col items-center rounded-lg border border-surface-300 p-4 dark:border-surface-600"
     >
       <!-- eslint-disable-next-line vue/no-v-html -->
-      <div class="mb-2 h-24 w-24" v-html="sanitizeHtml(seal.svgData, { allowSvg: true })" />
+      <div class="mb-2 flex h-24 w-24 items-center justify-center" v-html="sanitizeHtml(seal.svgData, { allowSvg: true })" />
       <p class="text-sm font-medium">{{ seal.displayText }}</p>
       <Badge :value="variantLabel(seal.variant)" severity="secondary" class="mt-1" />
     </div>

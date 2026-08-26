@@ -121,10 +121,20 @@ public class BudgetReportService {
 
     /**
      * 報告書のダウンロードURL（S3 pre-signed）を取得する。
+     *
+     * <p>認可根治戦役 Wave3-B9: 旧実装は認可ゼロ（任意の認証ユーザーが任意 reportId の
+     * ダウンロードURLを取得できた）。本 EP は scope を宣言する query パラメータを持たない
+     * 「ID 直指定」EP のため、entity 由来 scope に非所属の場合は越境 reportId の存在を秘匿する
+     * ため通常の {@code checkMembership}（403）ではなく報告書の NOT_FOUND コード（404）を投げる
+     * （incident ドメイン {@code requireMemberOrConceal} と同じ設計判断）。</p>
      */
     public DownloadUrlResponse getDownloadUrl(Long reportId) {
         BudgetReportEntity report = reportRepository.findById(reportId)
                 .orElseThrow(() -> new BusinessException(BudgetErrorCode.BUDGET_010));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (!accessControlService.isMember(currentUserId, report.getScopeId(), report.getScopeType())) {
+            throw new BusinessException(BudgetErrorCode.BUDGET_010);
+        }
 
         if (report.getStatus() != BudgetReportStatus.COMPLETED || report.getFileKey() == null) {
             throw new BusinessException(BudgetErrorCode.BUDGET_011);

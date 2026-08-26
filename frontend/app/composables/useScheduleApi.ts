@@ -29,10 +29,13 @@ export function useScheduleApi() {
     updateSchedule: crud.updateSchedule,
     deleteSchedule: crud.deleteSchedule,
     cancelSchedule: crud.cancelSchedule,
+    cancelScheduledTask: crud.cancelScheduledTask,
     // === Attendance ===
     getAttendances: attendance.getAttendances,
     respondAttendance: attendance.respondAttendance,
     exportAttendances: attendance.exportAttendances,
+    getAttendanceTeamBreakdown: attendance.getAttendanceTeamBreakdown,
+    exportAttendanceTeamBreakdownCsv: attendance.exportAttendanceTeamBreakdownCsv,
     bulkUpdateAttendances: attendance.bulkUpdateAttendances,
     // === Personal Schedule ===
     listPersonalSchedules: personal.listPersonalSchedules,
@@ -41,6 +44,8 @@ export function useScheduleApi() {
     deletePersonalSchedule: personal.deletePersonalSchedule,
     // === Calendar / Categories / Duplicate ===
     getCalendarMonth: crud.getCalendarMonth,
+    getCalendarRange: crud.getCalendarRange,
+    getMyCalendarLayers: crud.getMyCalendarLayers,
     getCategories: crud.getCategories,
     createCategory: crud.createCategory,
     duplicateSchedule: crud.duplicateSchedule,
@@ -57,7 +62,6 @@ export function useScheduleApi() {
     bulkCreatePerformanceRecords: analytics.bulkCreatePerformanceRecords,
     // === Global Schedule Actions ===
     remindSchedule: crud.remindSchedule,
-    respondToSchedule: crud.respondToSchedule,
     getScheduleStats: attendance.getScheduleStats,
     // === Schedule Invitations ===
     getScheduleInvitations: crud.getScheduleInvitations,

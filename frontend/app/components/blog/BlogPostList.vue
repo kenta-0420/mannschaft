@@ -1,10 +1,18 @@
 <script setup lang="ts">
 import type { BlogPostResponse } from '~/types/cms'
 
-const props = defineProps<{
-  scopeType?: string
-  scopeId?: number
-}>()
+const props = withDefaults(
+  defineProps<{
+    scopeType?: string
+    scopeId?: string
+    canCreate?: boolean
+    showCreate?: boolean
+  }>(),
+  {
+    canCreate: false,
+    showCreate: undefined,
+  },
+)
 
 const emit = defineEmits<{
   select: [post: BlogPostResponse]
@@ -13,6 +21,13 @@ const emit = defineEmits<{
 const { getPosts, createPost } = useBlogApi()
 const { error: showError } = useNotification()
 const { relativeTime } = useRelativeTime()
+
+// scopeType が未指定（個人ブログ）の場合は常に作成可能。showCreate=false で明示的に非表示化
+const showCreateButton = computed(
+  () =>
+    props.showCreate !== false &&
+    (props.canCreate || !props.scopeType || props.scopeType === 'PERSONAL'),
+)
 
 const posts = ref<BlogPostResponse[]>([])
 const loading = ref(false)
@@ -103,7 +118,7 @@ defineExpose({ refresh: loadPosts })
   <div>
     <div class="mb-4 flex items-center justify-between">
       <h2 class="text-lg font-semibold">記事</h2>
-      <Button label="新規作成" icon="pi pi-plus" @click="openCreateDialog" />
+      <Button v-if="showCreateButton" label="新規作成" icon="pi pi-plus" @click="openCreateDialog" />
     </div>
 
     <div v-if="loading" class="flex justify-center py-8">
@@ -114,7 +129,7 @@ defineExpose({ refresh: loadPosts })
       <button
         v-for="post in posts"
         :key="post.id"
-        class="overflow-hidden rounded-xl border border-surface-300 bg-surface-0 text-left transition-shadow hover:shadow-md"
+        class="overflow-hidden rounded-xl border border-surface-300 bg-surface-0 text-left transition-shadow hover:shadow-md dark:border-surface-600 dark:bg-surface-800"
         @click="emit('select', post); navigateTo(`/blog/posts/${post.id}/edit`)"
       >
         <img v-if="post.content?.coverImageUrl" :src="post.content.coverImageUrl" class="h-40 w-full object-cover" >

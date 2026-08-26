@@ -1,134 +1,134 @@
 {
   "friends": {
-    "title": "フレンドチーム",
-    "subtitle": "他チームとのフレンド関係管理",
+    "title": "프렌드 팀",
+    "subtitle": "다른 팀과의 프렌드 관계 관리",
     "list": {
-      "empty": "フレンドチームがありません",
-      "established_at": "成立日",
-      "visibility_public": "公開",
-      "visibility_private": "非公開",
-      "supporter_notice": "公開されているフレンドチームのみ表示されています",
-      "target_team_id": "対象チーム ID",
-      "comment_label": "挨拶コメント（任意）"
+      "empty": "프렌드 팀이 없습니다",
+      "established_at": "성립일",
+      "visibility_public": "공개",
+      "visibility_private": "비공개",
+      "supporter_notice": "공개된 프렌드 팀만 표시됩니다",
+      "target_team_id": "대상 팀 ID",
+      "comment_label": "인사 댓글（선택 사항）"
     },
     "actions": {
-      "follow": "フォロー",
-      "unfollow": "フォロー解除",
-      "toggle_visibility": "公開設定を切替"
+      "follow": "팔로우",
+      "unfollow": "팔로우 해제",
+      "toggle_visibility": "공개 설정 전환"
     },
     "messages": {
-      "follow_success": "フォローしました",
-      "follow_mutual_success": "相互フォロー成立 — フレンドチームになりました",
-      "follow_retry": "フォロー処理中です。{seconds}秒後に再度お試しください",
-      "unfollow_success": "フォローを解除しました",
-      "unfollow_confirm": "このチームへのフォローを解除しますか？",
-      "visibility_changed": "公開設定を変更しました"
+      "follow_success": "팔로우했습니다",
+      "follow_mutual_success": "상호 팔로우 성립 — 프렌드 팀이 되었습니다",
+      "follow_retry": "팔로우 처리 중입니다. {seconds}초 후에 다시 시도해 주세요",
+      "unfollow_success": "팔로우를 해제했습니다",
+      "unfollow_confirm": "이 팀에 대한 팔로우를 해제하시겠습니까?",
+      "visibility_changed": "공개 설정을 변경했습니다"
     },
     "errors": {
-      "self_follow": "自チームはフォローできません",
-      "already_following": "既にフォロー済みです",
-      "target_not_found": "対象チームが見つかりません",
-      "permission_denied": "権限がありません"
+      "self_follow": "자신의 팀은 팔로우할 수 없습니다",
+      "already_following": "이미 팔로우 중입니다",
+      "target_not_found": "대상 팀을 찾을 수 없습니다",
+      "permission_denied": "권한이 없습니다"
     }
   },
   "folders": {
-    "title": "フレンドフォルダ",
-    "create": "フォルダ作成",
+    "title": "프렌드 폴더",
+    "create": "폴더 만들기",
     "list": {
-      "empty": "フォルダがありません",
-      "member_count": "{count}チーム",
-      "remaining": "残り{remaining}個作成可能（最大20個）"
+      "empty": "폴더가 없습니다",
+      "member_count": "{count}팀",
+      "remaining": "앞으로 {remaining}개 더 만들 수 있습니다（최대 20개）"
     },
     "fields": {
-      "name": "フォルダ名",
-      "description": "説明（任意）",
-      "color": "色"
+      "name": "폴더 이름",
+      "description": "설명（선택 사항）",
+      "color": "색상"
     },
     "actions": {
-      "edit": "編集",
-      "delete": "削除",
-      "manage_members": "メンバー管理",
-      "add_member": "フレンドを追加",
-      "remove_member": "削除"
+      "edit": "편집",
+      "delete": "삭제",
+      "manage_members": "멤버 관리",
+      "add_member": "프렌드 추가",
+      "remove_member": "삭제"
     },
     "placeholders": {
-      "name": "例: 系列校",
-      "description": "このフォルダの用途・メモ（任意）"
+      "name": "예: 계열 학교",
+      "description": "이 폴더의 용도·메모（선택 사항）"
     },
     "members": {
-      "title": "メンバー管理",
-      "current": "登録中のフレンド",
-      "available": "追加可能なフレンド",
-      "empty": "フォルダに登録されているフレンドはいません",
-      "no_friends": "追加可能なフレンドがいません"
+      "title": "멤버 관리",
+      "current": "등록된 프렌드",
+      "available": "추가 가능한 프렌드",
+      "empty": "폴더에 등록된 프렌드가 없습니다",
+      "no_friends": "추가 가능한 프렌드가 없습니다"
     },
     "messages": {
-      "created": "フォルダを作成しました",
-      "updated": "フォルダを更新しました",
-      "deleted": "フォルダを削除しました",
-      "delete_confirm": "このフォルダを削除しますか？",
-      "max_exceeded": "フォルダは最大20個まで作成できます",
-      "name_required": "フォルダ名を入力してください",
-      "name_too_long": "フォルダ名は50文字以内で入力してください",
-      "description_too_long": "説明は300文字以内で入力してください",
-      "name_conflict": "同じ名前のフォルダが既に存在します",
-      "member_added": "フォルダにフレンドを追加しました",
-      "member_removed": "フォルダからフレンドを削除しました",
-      "duplicate_member": "このフレンドは既にフォルダに登録されています"
+      "created": "폴더를 만들었습니다",
+      "updated": "폴더를 업데이트했습니다",
+      "deleted": "폴더를 삭제했습니다",
+      "delete_confirm": "이 폴더를 삭제하시겠습니까?",
+      "max_exceeded": "폴더는 최대 20개까지 만들 수 있습니다",
+      "name_required": "폴더 이름을 입력해 주세요",
+      "name_too_long": "폴더 이름은 50자 이내로 입력해 주세요",
+      "description_too_long": "설명은 300자 이내로 입력해 주세요",
+      "name_conflict": "같은 이름의 폴더가 이미 존재합니다",
+      "member_added": "폴더에 프렌드를 추가했습니다",
+      "member_removed": "폴더에서 프렌드를 삭제했습니다",
+      "duplicate_member": "이 프렌드는 이미 폴더에 등록되어 있습니다"
     }
   },
   "friend_feed": {
-    "title": "管理者フィード",
-    "subtitle": "フレンドチームの投稿を確認・転送",
-    "badge": "フレンドから",
-    "forwarded_badge": "転送済み",
-    "permission_denied": "この画面を表示する権限がありません",
+    "title": "관리자 피드",
+    "subtitle": "프렌드 팀의 게시물 확인·전달",
+    "badge": "프렌드로부터",
+    "forwarded_badge": "전달됨",
+    "permission_denied": "이 화면을 표시할 권한이 없습니다",
     "list": {
-      "empty": "フレンドからの投稿はありません"
+      "empty": "프렌드로부터의 게시물이 없습니다"
     },
     "forward": {
-      "button": "自チームに転送",
-      "modal_title": "投稿を転送する",
-      "target_label": "配信範囲",
-      "target_member": "メンバーのみ",
-      "target_supporter": "メンバー + サポーター（Phase 3以降）",
-      "target_supporter_tooltip": "Phase 3以降で利用可能になります",
-      "comment_label": "管理者コメント（任意）",
-      "comment_placeholder": "転送時に添えるコメントを入力（任意）",
-      "submit": "転送する",
-      "cancel": "キャンセル",
-      "success": "投稿を転送しました",
-      "revoke": "転送を取消",
-      "revoke_success": "転送を取消しました",
-      "revoke_confirm": "この転送を取り消しますか？",
-      "error": "転送に失敗しました"
+      "button": "자신의 팀에 전달",
+      "modal_title": "게시물 전달",
+      "target_label": "배포 범위",
+      "target_member": "멤버만",
+      "target_supporter": "멤버+서포터（Phase 3 이후）",
+      "target_supporter_tooltip": "Phase 3 이후에 이용 가능합니다",
+      "comment_label": "관리자 댓글（선택 사항）",
+      "comment_placeholder": "전달 시 첨부할 댓글 입력（선택 사항）",
+      "submit": "전달",
+      "cancel": "취소",
+      "success": "게시물을 전달했습니다",
+      "revoke": "전달 취소",
+      "revoke_success": "전달을 취소했습니다",
+      "revoke_confirm": "이 전달을 취소하시겠습니까?",
+      "error": "전달에 실패했습니다"
     }
   },
   "forward_exports": {
-    "title": "逆転送履歴",
-    "subtitle": "自チーム投稿がどのフレンドに転送されたか",
-    "permission_denied": "この画面を表示する権限がありません",
+    "title": "역전달 내역",
+    "subtitle": "자신의 팀 게시물이 어떤 프렌드에게 전달되었는지",
+    "permission_denied": "이 화면을 표시할 권한이 없습니다",
     "list": {
-      "empty": "転送履歴はまだありません",
-      "anonymous_team": "匿名チーム",
-      "revoked": "取消済",
-      "target_member": "メンバー",
-      "target_supporter": "メンバー+サポーター"
+      "empty": "전달 내역이 아직 없습니다",
+      "anonymous_team": "익명 팀",
+      "revoked": "취소됨",
+      "target_member": "멤버",
+      "target_supporter": "멤버+서포터"
     },
     "columns": {
-      "source_post": "元投稿",
-      "forwarding_team": "転送先チーム",
-      "forwarded_at": "転送日時",
-      "target": "配信範囲",
-      "status": "状態"
+      "source_post": "원 게시물",
+      "forwarding_team": "전달 대상 팀",
+      "forwarded_at": "전달 일시",
+      "target": "배포 범위",
+      "status": "상태"
     },
     "pagination": {
-      "showing": "{total}件中 {from}〜{to}件を表示",
-      "prev": "前へ",
-      "next": "次へ"
+      "showing": "{total}건 중 {from}~{to}건 표시",
+      "prev": "이전",
+      "next": "다음"
     }
   },
   "nav": {
-    "tab": "친구 팀"
+    "tab": "프렌드 팀"
   }
 }

@@ -37,6 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 @WebMvcTest(GdprController.class)
 @AutoConfigureMockMvc(addFilters = false)
@@ -75,6 +76,10 @@ class GdprControllerTest {
 
     @MockitoBean
     private UserRepository userRepository;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUpSecurityContext() {
@@ -143,14 +148,36 @@ class GdprControllerTest {
         }
 
         @Test
-        @DisplayName("異常系: GDPR_003 未存在時に400が返る")
-        void 異常_GDPR003_未存在_400() throws Exception {
+        @DisplayName("異常系: GDPR_003 未存在時に404が返る")
+        void 異常_GDPR003_未存在_404() throws Exception {
             given(dataExportService.getExportStatus(anyLong()))
                     .willThrow(new BusinessException(GdprErrorCode.GDPR_003));
 
             mockMvc.perform(get("/api/v1/account/data-export/status"))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("GDPR_003"));
+        }
+
+        @Test
+        @DisplayName("異常系: GDPR_009 未完了時に409が返る（不在ではなく状態競合）")
+        void 異常_GDPR009_未完了_409() throws Exception {
+            given(dataExportService.getExportStatus(anyLong()))
+                    .willThrow(new BusinessException(GdprErrorCode.GDPR_009));
+
+            mockMvc.perform(get("/api/v1/account/data-export/status"))
+                    .andExpect(status().isConflict())
+                    .andExpect(jsonPath("$.error.code").value("GDPR_009"));
+        }
+
+        @Test
+        @DisplayName("異常系: GDPR_010 期限切れ時に410が返る（かつて存在したが失効）")
+        void 異常_GDPR010_期限切れ_410() throws Exception {
+            given(dataExportService.getExportStatus(anyLong()))
+                    .willThrow(new BusinessException(GdprErrorCode.GDPR_010));
+
+            mockMvc.perform(get("/api/v1/account/data-export/status"))
+                    .andExpect(status().isGone())
+                    .andExpect(jsonPath("$.error.code").value("GDPR_010"));
         }
     }
 }

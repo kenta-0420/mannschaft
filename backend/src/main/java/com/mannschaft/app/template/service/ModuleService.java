@@ -1,5 +1,8 @@
 package com.mannschaft.app.template.service;
 
+import com.mannschaft.app.billing.EntitlementQueryService;
+import com.mannschaft.app.billing.EntitlementScopeKind;
+import com.mannschaft.app.billing.FeatureKeys;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.service.TeamPlanService;
@@ -7,7 +10,11 @@ import com.mannschaft.app.template.TemplateErrorCode;
 import com.mannschaft.app.template.dto.LevelAvailabilityResponse;
 import com.mannschaft.app.template.dto.ModuleResponse;
 import com.mannschaft.app.template.dto.ModuleSummaryResponse;
+import com.mannschaft.app.template.dto.OrgModuleCatalogItem;
+import com.mannschaft.app.template.dto.OrgModuleCatalogResponse;
 import com.mannschaft.app.template.dto.OrgModuleResponse;
+import com.mannschaft.app.template.dto.TeamModuleCatalogItem;
+import com.mannschaft.app.template.dto.TeamModuleCatalogResponse;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
 import com.mannschaft.app.template.entity.ModuleDefinitionEntity;
@@ -30,7 +37,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * モジュール管理サービス。モジュールカタログ参照・チームモジュール有効化を提供する。
@@ -51,6 +63,7 @@ public class ModuleService {
     private final TemplateModuleRepository templateModuleRepository;
     private final TeamTemplateRepository teamTemplateRepository;
     private final TeamPlanService teamPlanService;
+    private final EntitlementQueryService entitlementQueryService;
 
     /**
      * 選択式モジュールカタログを取得する（OPTIONAL + is_active のみ）。
@@ -63,7 +76,154 @@ public class ModuleService {
                 .stream()
                 .filter(ModuleDefinitionEntity::getIsActive)
                 .map(this::toModuleResponse)
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    /**
+     * SYSTEM_ADMIN 管理画面向けに全モジュールを取得する。
+     *
+     * <p>tenant 向けの {@link #getModuleCatalog()} が「OPTIONAL かつ is_active」に絞り込むのに対し、
+     * こちらは <b>DEFAULT/OPTIONAL・is_active の true/false を問わず全件</b>を moduleNumber 昇順で返す。
+     * これにより管理画面に DEFAULT モジュールも表示され、is_active=false へトグルした行も
+     * 一覧に残り続けて再有効化できる（無効化しても画面から消えない）。</p>
+     *
+     * <p>キャッシュは付けない。管理画面は低トラフィックで、有料要否/有効状態トグル直後の
+     * 反映を常に保証すべきため、常に最新を DB から読む。論理削除は
+     * {@code @SQLRestriction("deleted_at IS NULL")} により自動除外される。</p>
+     *
+     * @return 全モジュール詳細リスト（moduleNumber 昇順）
+     */
+    public List<ModuleResponse> getAllModulesForAdmin() {
+        return moduleDefinitionRepository.findAllByOrderByModuleNumberAsc()
+                .stream()
+                .map(this::toModuleResponse)
                 .toList();
+    }
+
+    /**
+     * チームの機能設定タブ向けカタログ＋有効状態を取得する。
+     *
+     * <p>利用可能な OPTIONAL かつ active なモジュール全件に対し、当該チームでの有効化状態・
+     * トライアル期限・チームレベル利用可否を結合して返す。enabledCount は有効化済み件数、
+     * planLimit は無料プラン上限、hasPaidPlan は有料プラン加入状況を含める。</p>
+     *
+     * @param teamId チームID
+     * @return チームカタログ＋有効状態レスポンス（modules は moduleNumber 昇順）
+     */
+    public TeamModuleCatalogResponse getTeamModuleCatalog(Long teamId) {
+        // 有効化行を一括取得し moduleId で引けるよう Map 化（N+1 回避）
+        Map<Long, TeamEnabledModuleEntity> enabledByModuleId = teamEnabledModuleRepository.findByTeamId(teamId)
+                .stream()
+                .collect(Collectors.toMap(TeamEnabledModuleEntity::getModuleId, Function.identity(), (a, b) -> a));
+
+        List<TeamModuleCatalogItem> items = activeOptionalModules().stream()
+                .map(module -> {
+                    TeamEnabledModuleEntity row = enabledByModuleId.get(module.getId());
+                    boolean enabled = row != null && Boolean.TRUE.equals(row.getIsEnabled());
+                    LocalDateTime trialExpiresAt = row != null ? row.getTrialExpiresAt() : null;
+                    return TeamModuleCatalogItem.builder()
+                            .moduleId(module.getId())
+                            .name(module.getName())
+                            .slug(module.getSlug())
+                            .description(module.getDescription())
+                            .moduleNumber(module.getModuleNumber())
+                            .isEnabled(enabled)
+                            .requiresPaidPlan(module.getRequiresPaidPlan())
+                            .levelAvailable(isLevelAvailable(module.getId(),
+                                    ModuleLevelAvailabilityEntity.Level.TEAM))
+                            .trialExpiresAt(trialExpiresAt)
+                            .build();
+                })
+                .toList();
+
+        // 表示用「X/10 使用中」の使用数。上限強制カウントと同一定義に揃え、grandfather 行は数えない
+        // （表示層でも grandfather を除外しないと FE の追加ボタンが閉じ AC-3 が表示層で崩れるため）。
+        long enabledCount = enabledByModuleId.values().stream()
+                .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
+                .count();
+
+        return TeamModuleCatalogResponse.builder()
+                .planLimit(FREE_PLAN_MODULE_LIMIT)
+                .enabledCount(enabledCount)
+                .hasPaidPlan(teamPlanService.hasPaidPlan(teamId))
+                .modules(items)
+                .build();
+    }
+
+    /**
+     * 組織の機能設定タブ向けカタログ＋有効状態を取得する。
+     *
+     * <p>チーム版と対称。組織側には有料プラン判定が存在しないため hasPaidPlan は常に false、
+     * トライアル期限も持たない。利用可否判定は ORGANIZATION レベルで行う。</p>
+     *
+     * @param orgId 組織ID
+     * @return 組織カタログ＋有効状態レスポンス（modules は moduleNumber 昇順）
+     */
+    public OrgModuleCatalogResponse getOrganizationModuleCatalog(Long orgId) {
+        Map<Long, OrganizationEnabledModuleEntity> enabledByModuleId =
+                organizationEnabledModuleRepository.findByOrganizationId(orgId)
+                        .stream()
+                        .collect(Collectors.toMap(OrganizationEnabledModuleEntity::getModuleId,
+                                Function.identity(), (a, b) -> a));
+
+        List<OrgModuleCatalogItem> items = activeOptionalModules().stream()
+                .map(module -> {
+                    OrganizationEnabledModuleEntity row = enabledByModuleId.get(module.getId());
+                    boolean enabled = row != null && Boolean.TRUE.equals(row.getIsEnabled());
+                    return OrgModuleCatalogItem.builder()
+                            .moduleId(module.getId())
+                            .name(module.getName())
+                            .slug(module.getSlug())
+                            .description(module.getDescription())
+                            .moduleNumber(module.getModuleNumber())
+                            .isEnabled(enabled)
+                            .requiresPaidPlan(module.getRequiresPaidPlan())
+                            .levelAvailable(isLevelAvailable(module.getId(),
+                                    ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                            .build();
+                })
+                .toList();
+
+        // 表示用「X/10 使用中」の使用数。上限強制カウント（countBy...IsGrandfatheredFalse）と同一定義に
+        // 揃え、grandfather 行は数えない（表示層でも除外しないと AC-3 が表示層で崩れるため）。
+        long enabledCount = enabledByModuleId.values().stream()
+                .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
+                .count();
+
+        return OrgModuleCatalogResponse.builder()
+                .planLimit(FREE_PLAN_MODULE_LIMIT)
+                .enabledCount(enabledCount)
+                // 組織側に有料プラン判定が存在しないため false 固定
+                .hasPaidPlan(false)
+                .modules(items)
+                .build();
+    }
+
+    /**
+     * OPTIONAL かつ active なモジュールを moduleNumber 昇順で返す（カタログ母集合）。
+     */
+    private List<ModuleDefinitionEntity> activeOptionalModules() {
+        return moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
+                .stream()
+                .filter(ModuleDefinitionEntity::getIsActive)
+                .sorted(Comparator.comparing(ModuleDefinitionEntity::getModuleNumber))
+                .toList();
+    }
+
+    /**
+     * 指定レベルでモジュールが利用可能か判定する。
+     * module_level_availability にレコードが無い場合は「制約なし＝利用可」とみなす。
+     */
+    private boolean isLevelAvailable(Long moduleId, ModuleLevelAvailabilityEntity.Level level) {
+        return moduleLevelAvailabilityRepository.findByModuleIdAndLevel(moduleId, level)
+                .map(ModuleLevelAvailabilityEntity::getIsAvailable)
+                .orElse(true);
     }
 
     /**
@@ -102,7 +262,11 @@ public class ModuleService {
                             tem.getTrialExpiresAt());
                 })
                 .filter(r -> r != null)
-                .toList();
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -128,14 +292,20 @@ public class ModuleService {
                 });
 
         if (request.isEnabled()) {
-            // 有料プランチェック
-            if (module.getRequiresPaidPlan() && !teamPlanService.hasPaidPlan(teamId)) {
+            // 有料プランチェック（F20.1: 有料判定を isEntitled に置換・TMPL_004 は不変で維持し FE 後方互換を保つ）。
+            // 既存有料チームは後方互換ブリッジ（team_subscriptions ACTIVE → FULL 契約 → plan_features 全キー）で
+            // premium entitlement を保持するため機能は失われない。
+            if (module.getRequiresPaidPlan() && !entitlementQueryService.isEntitled(
+                    EntitlementScopeKind.TEAM, teamId, FeatureKeys.TEMPLATE_PREMIUM_MODULES)) {
                 throw new BusinessException(TemplateErrorCode.TMPL_004);
             }
 
-            // 無料上限チェック
+            // 無料上限チェック。
+            // グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する
+            // （既存テナントが既得機能で無料枠を消費し新規有効化できなくなる事故の根治）。
             long enabledCount = teamEnabledModuleRepository.findByTeamId(teamId).stream()
-                    .filter(TeamEnabledModuleEntity::getIsEnabled)
+                    .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                    .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                     .count();
             if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
                 throw new BusinessException(TemplateErrorCode.TMPL_003);
@@ -148,13 +318,12 @@ public class ModuleService {
 
         if (existing != null) {
             LocalDateTime now = LocalDateTime.now();
-            TeamEnabledModuleEntity updated = existing.toBuilder()
-                    .isEnabled(request.isEnabled())
-                    .enabledAt(request.isEnabled() ? now : existing.getEnabledAt())
-                    .disabledAt(!request.isEnabled() ? now : null)
-                    .enabledBy(userId)
-                    .build();
-            teamEnabledModuleRepository.save(updated);
+            existing.applyToggle(
+                    request.isEnabled(),
+                    request.isEnabled() ? now : existing.getEnabledAt(),
+                    !request.isEnabled() ? now : null,
+                    userId);
+            teamEnabledModuleRepository.save(existing);
         } else {
             LocalDateTime now = LocalDateTime.now();
             TeamEnabledModuleEntity newEntity = TeamEnabledModuleEntity.builder()
@@ -286,7 +455,11 @@ public class ModuleService {
                             oem.getEnabledAt());
                 })
                 .filter(r -> r != null)
-                .toList();
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -319,9 +492,19 @@ public class ModuleService {
                 });
 
         if (request.isEnabled()) {
-            // 無料上限チェック
+            // 有料プランチェック（チーム側 toggleTeamModule と対称・穴の根治）。
+            // 有料モジュールは premium entitlement（scope=ORG）を保持していなければ有効化不可。
+            // scope は組織なので EntitlementScopeKind.ORG + orgId を渡す（チーム側は TEAM + teamId）。
+            if (module.getRequiresPaidPlan() && !entitlementQueryService.isEntitled(
+                    EntitlementScopeKind.ORG, orgId, FeatureKeys.TEMPLATE_PREMIUM_MODULES)) {
+                throw new BusinessException(TemplateErrorCode.TMPL_004);
+            }
+
+            // 無料上限チェック。
+            // グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する
+            // （既存テナントが既得機能で無料枠を消費し新規有効化できなくなる事故の根治）。
             long enabledCount = organizationEnabledModuleRepository
-                    .countByOrganizationIdAndIsEnabledTrue(orgId);
+                    .countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(orgId);
             if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
                 throw new BusinessException(TemplateErrorCode.TMPL_003);
             }
@@ -333,13 +516,12 @@ public class ModuleService {
 
         LocalDateTime now = LocalDateTime.now();
         if (existing != null) {
-            OrganizationEnabledModuleEntity updated = existing.toBuilder()
-                    .isEnabled(request.isEnabled())
-                    .enabledAt(request.isEnabled() ? now : existing.getEnabledAt())
-                    .disabledAt(!request.isEnabled() ? now : null)
-                    .enabledBy(userId)
-                    .build();
-            organizationEnabledModuleRepository.save(updated);
+            existing.applyToggle(
+                    request.isEnabled(),
+                    request.isEnabled() ? now : existing.getEnabledAt(),
+                    !request.isEnabled() ? now : null,
+                    userId);
+            organizationEnabledModuleRepository.save(existing);
         } else {
             OrganizationEnabledModuleEntity newEntity = OrganizationEnabledModuleEntity.builder()
                     .organizationId(orgId)
@@ -392,7 +574,9 @@ public class ModuleService {
                 .findByModuleId(module.getId()).stream()
                 .map(la -> new LevelAvailabilityResponse(
                         la.getLevel().name(), la.getIsAvailable(), la.getNote()))
-                .toList();
+                // issue #2544 B 群: 本ヘルパーの戻り値は moduleCatalog / moduleDetail キャッシュの
+                // 内側に入る。ImmutableCollections$ListN は復元できないため可変 ArrayList にする。
+                .collect(Collectors.toCollection(ArrayList::new));
 
         List<ModuleSummaryResponse> recs = moduleRecommendationRepository
                 .findByModuleId(module.getId()).stream()
@@ -400,7 +584,8 @@ public class ModuleService {
                 .filter(m -> m != null)
                 .map(m -> new ModuleSummaryResponse(
                         m.getId(), m.getName(), m.getSlug(), m.getModuleType().name()))
-                .toList();
+                // issue #2544 B 群: 同上（moduleCatalog は外側と要素内で二重に壊れていた）。
+                .collect(Collectors.toCollection(ArrayList::new));
 
         return new ModuleResponse(
                 module.getId(),

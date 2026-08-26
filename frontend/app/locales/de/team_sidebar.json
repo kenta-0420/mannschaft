@@ -3,8 +3,11 @@
     "category": {
       "home": "Startseite",
       "schedule": "Zeitplan",
+      "match": "Spiele",
       "member": "Mitglieder",
       "ops": "Betrieb",
+      "ops_work": "Aufgaben und Fortschritt",
+      "ops_admin": "Verwaltung und Budget",
       "facility": "Einrichtungsverwaltung",
       "data": "Daten",
       "settings": "Einstellungen"
@@ -19,6 +22,8 @@
       "shifts": "Schichten",
       "duties": "Dienste",
       "annual_plan": "Jahresplan",
+      "matches": "Spielaufzeichnungen",
+      "matchAnalytics": "Spielanalyse",
       "members": "Mitglieder",
       "circulation": "Umlauf",
       "safety_check": "Sicherheitscheck",
@@ -34,7 +39,11 @@
       "files": "Dateien",
       "analytics": "Analyse",
       "audit_logs": "Audit-Protokolle",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "faqSettings": "FAQ-Einstellungen",
+      "billing": "Abrechnung & Planverwaltung",
+      "leagueTransfers": "Liga-Transfers",
+      "adminConsole": "Administrationskonsole"
     }
   }
 }

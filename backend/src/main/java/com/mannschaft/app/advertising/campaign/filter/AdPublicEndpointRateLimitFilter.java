@@ -1,19 +1,19 @@
 package com.mannschaft.app.advertising.campaign.filter;
 
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
+import com.mannschaft.app.common.ratelimit.AbstractRateLimitFilter;
+import com.mannschaft.app.common.ratelimit.RateLimitResult;
+import com.mannschaft.app.common.ratelimit.RateLimitRule;
+import com.mannschaft.app.common.ratelimit.ValkeyRateLimiter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.regex.Pattern;
 
 /**
  * F09.17 Phase 11-b 公開エンドポイント (unsubscribe / 開封ピクセル) の IP 単位レートリミット。
@@ -23,40 +23,55 @@ import java.time.Duration;
  *   <li>{@code GET  /api/v1/ads/unsubscribe}     ─ 60 req/分（設計書 §6）</li>
  *   <li>{@code POST /api/v1/ads/unsubscribe}     ─ 60 req/分（F09.17 残課題 4 SPA POST 共通）</li>
  *   <li>{@code GET  /api/v1/ads/pixels/open}     ─ 600 req/分（メーラー再フェッチ考慮）</li>
+ *   <li>{@code POST /api/v1/ads/{campaignId}/click} ─ 60 req/分（公開網漏れ是正・クリック不正水増し対策）</li>
  * </ul>
  *
  * <p>認証不要エンドポイントのためユーザー識別子が無く、IP アドレスのみで制御する。
  * X-Forwarded-For は経路に reverse proxy がある場合のみ意味があるため、
  * 先頭値があれば使用しつつ {@code request.getRemoteAddr()} にフォールバックする。</p>
  *
- * <p>本フィルタは 60/分の unsubscribe と 600/分の pixel をそれぞれ別キャッシュで管理し、
+ * <p>本フィルタは 60/分の unsubscribe と 600/分の pixel をそれぞれ別 zone で管理し、
  * 一方の枯渇が他方に波及しないようにする。</p>
+ *
+ * <p>登録方式: {@link com.mannschaft.app.config.SecurityConfig#adPublicEndpointRateLimitFilterRegistration}
+ * で @Component 自動登録を無効化し、SecurityConfig の {@code addFilterBefore} 経由のみで動作させる。</p>
+ *
+ * <p><b>Valkey 化（第二陣B）</b>: 旧実装の Bucket4j + Caffeine（プロセス内カウント）は
+ * ECS 複数タスク構成でタスク数に比例して実効上限が緩むため、
+ * {@link ValkeyRateLimiter}（docs/security/06 §4.3）に移行した。
+ * カウント・§4.3 標準ヘッダー・429 応答は {@link AbstractRateLimitFilter} が担う。</p>
  */
 @Component
-public class AdPublicEndpointRateLimitFilter extends OncePerRequestFilter {
+public class AdPublicEndpointRateLimitFilter extends AbstractRateLimitFilter {
 
     private static final String UNSUBSCRIBE_PATH = "/api/v1/ads/unsubscribe";
     private static final String OPEN_PIXEL_PATH = "/api/v1/ads/pixels/open";
 
+    /**
+     * 公開網漏れ是正: クリック計測（{@code POST /api/v1/ads/{campaignId}/click}）。
+     * SecurityConfig に「将来 IP ベースのレート制限を本フィルタに追加」という TODO があった
+     * 未実装箇所。IDOR 防止のため {@code [^/]+} で 1 階層のみ捕捉する（{@code /**} 再帰は使わない）。
+     */
+    private static final Pattern CLICK_PATH = Pattern.compile("^/api/v1/ads/([^/]+)/click$");
+
     private static final int UNSUBSCRIBE_RATE_PER_MINUTE = 60;
     private static final int OPEN_PIXEL_RATE_PER_MINUTE = 600;
+    /** クリック不正水増し対策。unsubscribe と同程度に絞る。 */
+    private static final int CLICK_RATE_PER_MINUTE = 60;
 
-    private static final Duration BUCKET_TTL = Duration.ofHours(2);
-    private static final long MAX_BUCKETS = 50_000L;
+    private static final Duration WINDOW = Duration.ofMinutes(1);
 
-    private final Cache<String, Bucket> unsubscribeBuckets;
-    private final Cache<String, Bucket> openPixelBuckets;
+    /** unsubscribe 用 Valkey zone */
+    private static final String ZONE_UNSUBSCRIBE = "ad-public:unsubscribe";
 
-    public AdPublicEndpointRateLimitFilter() {
-        this.unsubscribeBuckets = newCache();
-        this.openPixelBuckets = newCache();
-    }
+    /** 開封ピクセル用 Valkey zone */
+    private static final String ZONE_PIXEL = "ad-public:pixel-open";
 
-    private static Cache<String, Bucket> newCache() {
-        return Caffeine.<String, Bucket>newBuilder()
-                .expireAfterAccess(BUCKET_TTL)
-                .maximumSize(MAX_BUCKETS)
-                .build();
+    /** クリック計測用 Valkey zone */
+    private static final String ZONE_CLICK = "ad-public:click";
+
+    public AdPublicEndpointRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
+        super(rateLimiterProvider);
     }
 
     @Override
@@ -72,45 +87,37 @@ public class AdPublicEndpointRateLimitFilter extends OncePerRequestFilter {
         if (OPEN_PIXEL_PATH.equals(path) && "GET".equalsIgnoreCase(method)) {
             return false;
         }
+        // クリック計測は POST のみ（公開網漏れ是正）
+        if (CLICK_PATH.matcher(path).matches() && "POST".equalsIgnoreCase(method)) {
+            return false;
+        }
         return true;
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain chain) throws ServletException, IOException {
+    protected RateLimitRule resolveRule(HttpServletRequest request) {
         String path = request.getServletPath();
-        String ipKey = "ip:" + resolveIp(request);
-
-        Bucket bucket;
         if (UNSUBSCRIBE_PATH.equals(path)) {
-            bucket = unsubscribeBuckets.get(ipKey,
-                    k -> newBucketPerMinute(UNSUBSCRIBE_RATE_PER_MINUTE));
-        } else {
-            bucket = openPixelBuckets.get(ipKey,
-                    k -> newBucketPerMinute(OPEN_PIXEL_RATE_PER_MINUTE));
+            return new RateLimitRule(ZONE_UNSUBSCRIBE, UNSUBSCRIBE_RATE_PER_MINUTE, WINDOW);
         }
-
-        if (bucket.tryConsume(1)) {
-            chain.doFilter(request, response);
-        } else {
-            response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
-            response.setHeader("Retry-After", "60");
+        if (OPEN_PIXEL_PATH.equals(path)) {
+            return new RateLimitRule(ZONE_PIXEL, OPEN_PIXEL_RATE_PER_MINUTE, WINDOW);
         }
+        if (CLICK_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_CLICK, CLICK_RATE_PER_MINUTE, WINDOW);
+        }
+        return null;
     }
 
-    private static String resolveIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            int comma = xff.indexOf(',');
-            return (comma > 0 ? xff.substring(0, comma) : xff).trim();
-        }
-        return request.getRemoteAddr();
-    }
-
-    private static Bucket newBucketPerMinute(int capacity) {
-        return Bucket.builder()
-                .addLimit(Bandwidth.simple(capacity, Duration.ofMinutes(1)))
-                .build();
+    /**
+     * IP キーを直接返す（X-Forwarded-For 優先）。
+     *
+     * <p>認証不要エンドポイントのためユーザー識別子が無く、IP のみで制御する。
+     * 基底の {@link #resolveClientKey} は認証済みならユーザーキーを返すが、
+     * 本フィルタは常に IP キーを使用する（旧実装の挙動と互換）。</p>
+     */
+    @Override
+    protected String resolveClientKey(HttpServletRequest request) {
+        return "ip:" + resolveIp(request);
     }
 }

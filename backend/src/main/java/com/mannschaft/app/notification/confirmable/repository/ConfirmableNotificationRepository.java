@@ -46,4 +46,19 @@ public interface ConfirmableNotificationRepository
     @Query("SELECT n FROM ConfirmableNotificationEntity n " +
            "WHERE n.status = 'ACTIVE' AND n.deadlineAt IS NOT NULL AND n.deadlineAt < :now")
     List<ConfirmableNotificationEntity> findExpiredNotifications(@Param("now") LocalDateTime now);
+
+    /**
+     * F22.1 市: 発生元（source_type, source_id）に対し指定ステータスの確認通知が存在するか。
+     *
+     * <p>最終認証通知の重複発火防止に用いる。{@code FULL→OPEN→再FULL} のように札が再度
+     * 充足したとき、未確認（{@code ACTIVE}）の {@code MARKET_FINALIZE} 通知が既に存在すれば
+     * 再送しない。{@code idx_cn_source(source_type, source_id)} を利用する。</p>
+     *
+     * @param sourceType 発生元種別（例: {@code MARKET_FINALIZE}）
+     * @param sourceId   発生元レコードID（例: {@code recruitment_listings.id}）
+     * @param status     ステータス（{@code ACTIVE} = 未確認）
+     * @return 存在すれば true
+     */
+    boolean existsBySourceTypeAndSourceIdAndStatus(
+            String sourceType, Long sourceId, ConfirmableNotificationStatus status);
 }

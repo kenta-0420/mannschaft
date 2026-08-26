@@ -49,7 +49,8 @@ public class ActivityTemplateController {
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId) {
         return ResponseEntity.ok(ApiResponse.of(
-                templateService.listTemplates(ActivityScopeType.valueOf(scopeType), scopeId)));
+                templateService.listTemplates(SecurityUtils.getCurrentUserId(),
+                        ActivityScopeType.valueOf(scopeType), scopeId)));
     }
 
     /**
@@ -59,7 +60,8 @@ public class ActivityTemplateController {
     @Operation(summary = "テンプレート詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ActivityTemplateResponse>> getTemplate(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(templateService.getTemplate(id)));
+        return ResponseEntity.ok(ApiResponse.of(
+                templateService.getTemplate(id, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -86,7 +88,8 @@ public class ActivityTemplateController {
     public ResponseEntity<ApiResponse<ActivityTemplateResponse>> updateTemplate(
             @PathVariable Long id,
             @Valid @RequestBody UpdateTemplateRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(templateService.updateTemplate(id, request)));
+        return ResponseEntity.ok(ApiResponse.of(
+                templateService.updateTemplate(id, SecurityUtils.getCurrentUserId(), request)));
     }
 
     /**
@@ -96,7 +99,7 @@ public class ActivityTemplateController {
     @Operation(summary = "テンプレート削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteTemplate(@PathVariable Long id) {
-        templateService.deleteTemplate(id);
+        templateService.deleteTemplate(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

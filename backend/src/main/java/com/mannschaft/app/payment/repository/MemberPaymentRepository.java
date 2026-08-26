@@ -13,6 +13,7 @@ import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 支払い記録リポジトリ。
@@ -45,6 +46,40 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
                                    @Param("paymentItemId") Long paymentItemId);
 
     /**
+     * 指定チームの代表（ADMIN/DEPUTY_ADMIN）のいずれかが、当該 payment_item に対して
+     * 有効な PAID レコードを持つかを判定する（F08.7.1/07 大会参加費の未払いゲート用）。
+     *
+     * <p>大会参加費は「チーム単位の費用を代表が支払う」モデルのため、チームの支払い済み判定は
+     * 「team の ADMIN/DEPUTY_ADMIN のいずれかが払っているか」で行う。クロスドメインは ID 参照の
+     * JOIN のみ（原則1）。{@code validUntil} による grace_period / 有効期限も考慮する。</p>
+     */
+    @Query(value = "SELECT COUNT(*) > 0 FROM member_payments mp " +
+            "JOIN user_roles ur ON ur.user_id = mp.user_id AND ur.team_id = :teamId " +
+            "JOIN roles r ON r.id = ur.role_id " +
+            "WHERE mp.payment_item_id = :paymentItemId " +
+            "  AND mp.status = 'PAID' " +
+            "  AND (mp.valid_until IS NULL OR mp.valid_until >= CURRENT_DATE) " +
+            "  AND r.name IN ('ADMIN', 'DEPUTY_ADMIN')",
+            nativeQuery = true)
+    boolean existsValidPaidPaymentByTeamRepresentative(@Param("teamId") Long teamId,
+                                                       @Param("paymentItemId") Long paymentItemId);
+
+    /**
+     * 受益者×項目の有効な PAID レコードを 1 件取得する（F08.9 P2 後見まとめ払いの paidBy 解決用）。
+     *
+     * <p>{@link #existsValidPaidPayment(Long, Long)} が真のとき、誰が払ったか（payer_user_id）・いつ払ったか
+     * （paid_at）を表示するために用いる。有効期限（validUntil）が切れていない PAID を支払い日時の新しい順で 1 件返す。
+     * 複数の有効 PAID が存在しうる不整合データでは最新の支払いを採る。</p>
+     */
+    @Query("SELECT mp FROM MemberPaymentEntity mp " +
+            "WHERE mp.userId = :userId AND mp.paymentItemId = :paymentItemId " +
+            "AND mp.status = 'PAID' " +
+            "AND (mp.validUntil IS NULL OR mp.validUntil >= CURRENT_DATE) " +
+            "ORDER BY mp.paidAt DESC, mp.createdAt DESC")
+    List<MemberPaymentEntity> findValidPaidPayments(@Param("userId") Long userId,
+                                                    @Param("paymentItemId") Long paymentItemId);
+
+    /**
      * Stripe Checkout Session ID で支払い記録を取得する（ロック付き）。
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
@@ -67,6 +102,20 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
      * 支払い項目の PAID 件数を取得する。
      */
     long countByPaymentItemIdAndStatus(Long paymentItemId, PaymentStatus status);
+
+    /**
+     * 支払い項目の期限切れ PAID 件数を取得する（F08.9 P8 サマリー拡張）。
+     *
+     * <p>valid_until が過去日（&lt; 指定日）かつ status = PAID の件数を返す。
+     * valid_until が NULL の場合（ITEM/DONATION 等の永続タイプ）は期限切れに該当しない。</p>
+     */
+    @Query("SELECT COUNT(mp) FROM MemberPaymentEntity mp " +
+            "WHERE mp.paymentItemId = :paymentItemId " +
+            "AND mp.status = 'PAID' " +
+            "AND mp.validUntil IS NOT NULL " +
+            "AND mp.validUntil < :referenceDate")
+    long countExpiredPaidByPaymentItemId(@Param("paymentItemId") Long paymentItemId,
+                                         @Param("referenceDate") java.time.LocalDate referenceDate);
 
     /**
      * ユーザーの全支払い記録を取得する（チーム/組織横断）。
@@ -100,6 +149,14 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
     List<MemberPaymentEntity> findByPaymentItemId(Long paymentItemId);
 
     /**
+     * 支払い項目に対する全支払い記録を作成日時降順で取得する（CSV エクスポート用）。
+     *
+     * <p>F08.9 P8 CSV エクスポートで使用する。ページング不要（全件出力）のため
+     * {@link #findByPaymentItemId(Long, Pageable)} ではなく専用クエリを用意する。</p>
+     */
+    List<MemberPaymentEntity> findByPaymentItemIdOrderByCreatedAtDesc(Long paymentItemId);
+
+    /**
      * 支払い項目の未払い（PENDING）ユーザーIDリストを取得する。
      */
     @Query("SELECT mp.userId FROM MemberPaymentEntity mp WHERE mp.paymentItemId = :paymentItemId AND mp.status = 'PENDING'")
@@ -110,6 +167,24 @@ public interface MemberPaymentRepository extends JpaRepository<MemberPaymentEnti
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<MemberPaymentEntity> findByIdAndPaymentItemId(Long id, Long paymentItemId);
+
+    // === F08.9 P1 Wave2: 払い手分離・money rail 連結クエリ（V74.001 追加列対応）===
+
+    /**
+     * escrow_transaction_id で支払い記録を取得する（F22.1 money rail 連結用）。
+     *
+     * <p>Connect 決済完了時に escrow から member_payment へ遡ってステータスを更新する際に使用する。
+     * NULL の場合は手動記録のため本メソッドで引くことはない。
+     * ペイウォール判定は引き続き {@link #existsValidPaidPayment(Long, Long)} を使うこと。</p>
+     */
+    Optional<MemberPaymentEntity> findByEscrowTransactionId(UUID escrowTransactionId);
+
+    /**
+     * payer_user_id で支払い記録一覧を取得する（払い手視点の履歴表示用）。
+     *
+     * <p>受益者視点の履歴は {@link #findByUserId(Long)} を使うこと。</p>
+     */
+    List<MemberPaymentEntity> findByPayerUserId(Long payerUserId);
 
     // === Analytics 集計用クエリ ===
 

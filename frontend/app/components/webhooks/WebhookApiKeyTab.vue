@@ -6,7 +6,7 @@ import type { ApiKeyResponse, ApiKeyIssueResult } from '~/types/webhook'
 
 const props = defineProps<{
   scopeType: 'ORGANIZATION' | 'TEAM'
-  scopeId: number
+  scopeId: string
 }>()
 
 const webhookApi = useWebhookApi()
@@ -92,7 +92,8 @@ const onIssueApiKey = handleApiKeySubmit(async (values) => {
       name: values.name,
       description: values.description,
       permissions: selectedPermissions.value,
-      expiresAt: values.expiresAt ? values.expiresAt.toISOString() : undefined,
+      // BE の IssueApiKeyRequest.expiresAt は LocalDate。UTC 基準の toISOString() では日付が 1 日ずれる
+      expiresAt: values.expiresAt ? toLocalDateString(values.expiresAt) : undefined,
     })
     issuedApiKey.value = result
     showApiKeyDialog.value = false

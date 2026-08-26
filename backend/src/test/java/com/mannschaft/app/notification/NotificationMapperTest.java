@@ -2,10 +2,8 @@ package com.mannschaft.app.notification;
 
 import com.mannschaft.app.notification.dto.NotificationResponse;
 import com.mannschaft.app.notification.dto.PreferenceResponse;
-import com.mannschaft.app.notification.dto.TypePreferenceResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.entity.NotificationPreferenceEntity;
-import com.mannschaft.app.notification.entity.NotificationTypePreferenceEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -63,13 +61,13 @@ class NotificationMapperTest {
             // Then
             assertThat(response.getId()).isEqualTo(100L);
             assertThat(response.getUserId()).isEqualTo(1L);
-            assertThat(response.getContent().notificationType()).isEqualTo("SCHEDULE_REMINDER");
-            assertThat(response.getContent().priority()).isEqualTo("NORMAL");
-            assertThat(response.getContent().title()).isEqualTo("リマインド");
-            assertThat(response.getContent().body()).isEqualTo("出欠未回答です");
-            assertThat(response.getScope().scopeType()).isEqualTo("TEAM");
-            assertThat(response.getScope().scopeId()).isEqualTo(5L);
-            assertThat(response.getStatus().isRead()).isFalse();
+            assertThat(response.getNotificationType()).isEqualTo("SCHEDULE_REMINDER");
+            assertThat(response.getPriority()).isEqualTo("NORMAL");
+            assertThat(response.getTitle()).isEqualTo("リマインド");
+            assertThat(response.getBody()).isEqualTo("出欠未回答です");
+            assertThat(response.getScopeType()).isEqualTo("TEAM");
+            assertThat(response.getScopeId()).isEqualTo(5L);
+            assertThat(response.getIsRead()).isFalse();
         }
 
         @Test
@@ -91,8 +89,8 @@ class NotificationMapperTest {
             NotificationResponse response = notificationMapper.toNotificationResponse(entity);
 
             // Then
-            assertThat(response.getContent().priority()).isEqualTo("HIGH");
-            assertThat(response.getScope().scopeType()).isEqualTo("SYSTEM");
+            assertThat(response.getPriority()).isEqualTo("HIGH");
+            assertThat(response.getScopeType()).isEqualTo("SYSTEM");
         }
 
         @Test
@@ -115,8 +113,8 @@ class NotificationMapperTest {
             NotificationResponse response = notificationMapper.toNotificationResponse(entity);
 
             // Then
-            assertThat(response.getContent().priority()).isEqualTo("URGENT");
-            assertThat(response.getScope().scopeType()).isEqualTo("ORGANIZATION");
+            assertThat(response.getPriority()).isEqualTo("URGENT");
+            assertThat(response.getScopeType()).isEqualTo("ORGANIZATION");
         }
 
         @Test
@@ -140,8 +138,8 @@ class NotificationMapperTest {
             NotificationResponse response = notificationMapper.toNotificationResponse(entity);
 
             // Then
-            assertThat(response.getStatus().isRead()).isTrue();
-            assertThat(response.getStatus().readAt()).isNotNull();
+            assertThat(response.getIsRead()).isTrue();
+            assertThat(response.getReadAt()).isNotNull();
         }
 
         @Test
@@ -164,8 +162,8 @@ class NotificationMapperTest {
             NotificationResponse response = notificationMapper.toNotificationResponse(entity);
 
             // Then
-            assertThat(response.getScope().scopeType()).isEqualTo("PERSONAL");
-            assertThat(response.getContent().priority()).isEqualTo("LOW");
+            assertThat(response.getScopeType()).isEqualTo("PERSONAL");
+            assertThat(response.getPriority()).isEqualTo("LOW");
         }
 
         @Test
@@ -188,8 +186,8 @@ class NotificationMapperTest {
 
             // Then
             assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getContent().title()).isEqualTo("通知A");
-            assertThat(responses.get(1).getContent().priority()).isEqualTo("HIGH");
+            assertThat(responses.get(0).getTitle()).isEqualTo("通知A");
+            assertThat(responses.get(1).getPriority()).isEqualTo("HIGH");
         }
     }
 
@@ -260,75 +258,6 @@ class NotificationMapperTest {
             // Then
             assertThat(responses).hasSize(2);
             assertThat(responses.get(0).getIsEnabled()).isTrue();
-            assertThat(responses.get(1).getIsEnabled()).isFalse();
-        }
-    }
-
-    // ========================================
-    // toTypePreferenceResponse
-    // ========================================
-
-    @Nested
-    @DisplayName("toTypePreferenceResponse")
-    class ToTypePreferenceResponse {
-
-        @Test
-        @DisplayName("正常系: NotificationTypePreferenceEntityがTypePreferenceResponseに変換される")
-        void toTypePreferenceResponse_正常_DTOに変換() {
-            // Given
-            NotificationTypePreferenceEntity entity = NotificationTypePreferenceEntity.builder()
-                    .userId(1L)
-                    .notificationType("SCHEDULE_REMINDER")
-                    .isEnabled(true)
-                    .build();
-            ReflectionTestUtils.setField(entity, "id", 20L);
-
-            // When
-            TypePreferenceResponse response = notificationMapper.toTypePreferenceResponse(entity);
-
-            // Then
-            assertThat(response.getId()).isEqualTo(20L);
-            assertThat(response.getUserId()).isEqualTo(1L);
-            assertThat(response.getNotificationType()).isEqualTo("SCHEDULE_REMINDER");
-            assertThat(response.getIsEnabled()).isTrue();
-        }
-
-        @Test
-        @DisplayName("正常系: 無効化された通知種別設定が変換される")
-        void toTypePreferenceResponse_無効化_DTOに変換() {
-            // Given
-            NotificationTypePreferenceEntity entity = NotificationTypePreferenceEntity.builder()
-                    .userId(1L)
-                    .notificationType("CHAT_MESSAGE")
-                    .isEnabled(false)
-                    .build();
-            ReflectionTestUtils.setField(entity, "id", 21L);
-
-            // When
-            TypePreferenceResponse response = notificationMapper.toTypePreferenceResponse(entity);
-
-            // Then
-            assertThat(response.getIsEnabled()).isFalse();
-            assertThat(response.getNotificationType()).isEqualTo("CHAT_MESSAGE");
-        }
-
-        @Test
-        @DisplayName("正常系: 通知種別設定リストが変換される")
-        void toTypePreferenceResponseList_正常_リスト変換() {
-            // Given
-            NotificationTypePreferenceEntity e1 = NotificationTypePreferenceEntity.builder()
-                    .userId(1L).notificationType("SCHEDULE_REMINDER").isEnabled(true).build();
-            NotificationTypePreferenceEntity e2 = NotificationTypePreferenceEntity.builder()
-                    .userId(1L).notificationType("SYSTEM_ALERT").isEnabled(false).build();
-            ReflectionTestUtils.setField(e1, "id", 1L);
-            ReflectionTestUtils.setField(e2, "id", 2L);
-
-            // When
-            List<TypePreferenceResponse> responses = notificationMapper.toTypePreferenceResponseList(List.of(e1, e2));
-
-            // Then
-            assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getNotificationType()).isEqualTo("SCHEDULE_REMINDER");
             assertThat(responses.get(1).getIsEnabled()).isFalse();
         }
     }

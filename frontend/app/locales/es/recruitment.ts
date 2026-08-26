@@ -54,6 +54,12 @@ export default {
       "location": "Lugar",
       "price": "Precio",
       "paymentEnabled": "Pago habilitado",
+      "payeeKind": "Tipo de destinatario",
+      "payeeKindUser": "Individual (usuario)",
+      "payeeKindTeam": "Equipo",
+      "payeeKindOrg": "Organización",
+      "payeeUser": "Destinatario",
+      "payeeUserPlaceholder": "Seleccionar destinatario",
       "cancellationPolicy": "Política de cancelación",
       "imageUrl": "URL de imagen",
       "note": "Nota",
@@ -71,6 +77,7 @@ export default {
       "cancelMyApplication": "Cancelar mi inscripción",
       "joinWaitlist": "Unirse a la lista de espera",
       "viewDetails": "Ver detalles",
+      "confirmApplication": "Confirmar",
       "createPolicy": "Crear política"
     },
     "confirmModal": {
@@ -133,7 +140,41 @@ export default {
       "noFeedItems": "No hay nuevas convocatorias",
       "listing": "Convocatoria",
       "waitlistPosition": "Lista de espera #{n}",
-      "postedAt": "Publicado"
+      "postedAt": "Publicado",
+      "loadError": "No se pudieron cargar los datos",
+      "listingLabel": "Convocatoria #{id}"
+    },
+    "guide": {
+      "feed": {
+        "title": "Cómo usar Nuevas convocatorias",
+        "what": {
+          "title": "¿Qué es el feed de convocatorias?",
+          "body": "Un feed de solo lectura que muestra las nuevas convocatorias de los equipos que sigues o apoyas, ordenadas de más recientes a más antiguas. Úsalo para descubrir convocatorias que te interesen."
+        },
+        "apply": {
+          "title": "Ver e inscribirse",
+          "body": "Toca una tarjeta para abrir la página de detalle de la convocatoria. La inscripción o el registro en lista de espera se hacen desde esa página de detalle."
+        },
+        "read": {
+          "title": "Cómo leer las tarjetas",
+          "body": "Las etiquetas como \"Abierta\" o \"Completa\" indican el estado. Los números se muestran como \"confirmados / cupo\" y los precios con \"¥\"."
+        }
+      },
+      "listings": {
+        "title": "Cómo usar Mis participaciones",
+        "what": {
+          "title": "¿Qué son mis participaciones?",
+          "body": "Aquí aparecen las convocatorias en las que te has inscrito o has sido confirmado. Solo se muestran las participaciones activas; las canceladas o finalizadas no aparecen."
+        },
+        "status": {
+          "title": "Cómo leer el estado",
+          "body": "Las etiquetas como \"Confirmada\", \"Inscrito\" o \"En lista de espera\" indican tu estado actual. En lista de espera, \"#posición\" muestra tu lugar en la cola."
+        },
+        "detail": {
+          "title": "Detalles y cancelación",
+          "body": "Abre la página de la convocatoria con \"Ver detalles\". Acciones como cancelar tu inscripción se realizan desde esa página de detalle."
+        }
+      }
     },
     "distribution": {
       "title": "Destinatarios",
@@ -177,6 +218,13 @@ export default {
       "applying": "Solicitando",
       "individual": "Individual",
       "team": "Equipo"
+    },
+    "payee": {
+      "required": "Por favor seleccione un tipo de destinatario",
+      "userRequired": "Por favor seleccione un usuario destinatario",
+      "PAYMENT_C011": "No se ha especificado el tipo de destinatario (payeeKind)",
+      "PAYMENT_C012": "No se ha especificado el usuario destinatario",
+      "PAYMENT_C013": "El destinatario especificado no es miembro de este ámbito"
     },
     "error": {
       "RECRUITMENT_001": "Convocatoria no encontrada",
@@ -262,6 +310,42 @@ export default {
         "expired": "Expirado",
         "lifted": "Levantado"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "Exención de tarifa de cancelación",
+      "pageDescription": "Exime las tarifas de cancelación que te corresponde cobrar",
+      "unknownUser": "Usuario desconocido",
+      "loadMore": "Ver más",
+      "reasonTooLong": "El motivo debe tener como máximo {max} caracteres",
+      "columns": {
+        "listing": "Convocatoria",
+        "user": "Usuario objetivo",
+        "feeAmount": "Tarifa de cancelación",
+        "status": "Estado",
+        "cancelledAt": "Fecha de cancelación"
+      },
+      "status": {
+        "pending": "Pendiente de pago",
+        "failed": "Pago fallido",
+        "uncollectible": "Incobrable",
+        "paid": "Pagado",
+        "waived": "Exonerado",
+        "notRequired": "No aplicable"
+      },
+      "waiveButton": "Exonerar",
+      "reasonLabel": "Motivo de la exención",
+      "reasonPlaceholder": "Introduzca el motivo de la exención (obligatorio)",
+      "reasonRequired": "El motivo es obligatorio",
+      "confirmDialog": {
+        "title": "Exención de tarifa de cancelación",
+        "message": "Se cancelará el cobro de la tarifa de cancelación de {amount} yenes. Esta acción no se puede deshacer.\nSi este usuario tiene otras tarifas de cancelación pendientes de pago, la restricción de inscripción no se levantará.",
+        "confirmButton": "Exonerar",
+        "cancelButton": "Volver"
+      },
+      "emptyMessage": "No hay registros de tarifas de cancelación exonerables",
+      "loadError": "No se pudo cargar la lista",
+      "waiveSuccess": "Tarifa de cancelación exonerada",
+      "waiveError": "No se pudo exonerar la tarifa"
     }
   }
 }

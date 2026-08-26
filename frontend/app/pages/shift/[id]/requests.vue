@@ -15,6 +15,7 @@ const teamStore = useTeamStore()
 const { getSchedule } = useShiftApi()
 const { listRequests, getRequestSummary } = useShiftRequestApi()
 const { handleApiError } = useErrorHandler()
+const { warn } = useNotification()
 
 const scheduleId = computed(() => Number(route.params.id))
 
@@ -26,16 +27,39 @@ const requests = ref<ShiftRequestResponse[]>([])
 const summary = ref<ShiftRequestSummaryResponse | null>(null)
 const loading = ref(false)
 
+// このページの参照系 API（希望一覧・サマリー）は BE 側で ADMIN/DEPUTY_ADMIN 限定。
+// 一般メンバーの直リンク・ブックマーク到達を塞ぐため、権限確定時点で詳細ページへ戻す。
+const canManage = computed(() => {
+  if (!schedule.value) return false
+  return teamStore.myTeams.some(
+    (t) =>
+      t.id === schedule.value!.teamId &&
+      (t.role === 'ADMIN' || t.role === 'SYSTEM_ADMIN' || t.role === 'DEPUTY_ADMIN'),
+  )
+})
+
+// 直リンク防御: 権限が確定した時点で管理者でなければ詳細ページへ戻す。
+watch(
+  [schedule, canManage],
+  () => {
+    if (schedule.value && !canManage.value) {
+      warn(t('shift.detail.accessDeniedRedirect'))
+      navigateTo(`/shift/${scheduleId.value}`)
+    }
+  },
+  { immediate: true },
+)
+
 onMounted(async () => {
   await teamStore.fetchMyTeams()
   loading.value = true
   try {
-    const [s, reqs, sum] = await Promise.all([
-      getSchedule(scheduleId.value),
+    schedule.value = await getSchedule(scheduleId.value)
+    if (!canManage.value) return
+    const [reqs, sum] = await Promise.all([
       listRequests(scheduleId.value),
       getRequestSummary(scheduleId.value),
     ])
-    schedule.value = s
     requests.value = reqs
     summary.value = sum
   } catch (error) {

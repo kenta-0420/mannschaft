@@ -159,14 +159,21 @@ class PdfGeneratorServiceTest {
 
         @Test
         @DisplayName("正常系: 同じ入力でも署名時刻が違えばトークンが異なる")
-        void 同じ入力_時刻違いでトークン異なる() throws InterruptedException {
+        void 同じ入力_時刻違いでトークン異なる() {
+            // Thread.sleep に依存せず、明示的に異なる 2 つの署名時刻を recomputeInternalToken へ渡して
+            // トークンが時刻成分（epochMs）に依存することを決定的に検証する。
             byte[] pdfBytes = "abc".getBytes();
-            SignedPdfResult r1 = pdfGeneratorService.signWithInternalToken(pdfBytes, "s1");
-            Thread.sleep(2);
-            SignedPdfResult r2 = pdfGeneratorService.signWithInternalToken(pdfBytes, "s1");
+            SignedPdfResult signed = pdfGeneratorService.signWithInternalToken(pdfBytes, "s1");
 
-            assertThat(r1.hashSha256()).isEqualTo(r2.hashSha256());
-            assertThat(r1.timestampToken()).isNotEqualTo(r2.timestampToken());
+            String hashHex = signed.hashSha256();
+            Instant t1 = Instant.ofEpochMilli(1_700_000_000_000L);
+            Instant t2 = Instant.ofEpochMilli(1_700_000_000_001L); // 1ms だけ後
+
+            String token1 = pdfGeneratorService.recomputeInternalToken(hashHex, "s1", t1);
+            String token2 = pdfGeneratorService.recomputeInternalToken(hashHex, "s1", t2);
+
+            // ハッシュ（PDF 内容）は同一だが、署名時刻が異なればトークンは異なる
+            assertThat(token1).isNotEqualTo(token2);
         }
 
         @Test

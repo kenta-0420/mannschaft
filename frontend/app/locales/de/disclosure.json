@@ -1,35 +1,35 @@
 {
   "disclosure": {
-    "title": "重要事項説明書（参考）",
-    "subtitle": "管理組合作成の参考情報。法定書式ではありません",
-    "newDraft": "新規ドラフトを作成",
-    "editDraft": "ドラフトを編集",
-    "exportHistory": "出力履歴",
-    "exportPdf": "PDFで出力",
-    "exportExcel": "Excelで出力",
-    "exportWord": "Wordで出力",
-    "noDrafts": "ドラフトがまだ登録されていません",
-    "noExports": "出力履歴がまだありません",
-    "loading": "読み込み中…",
-    "saving": "保存中…",
-    "saved": "保存しました",
-    "deleted": "削除しました",
-    "deleteConfirm": "本当に削除しますか？",
-    "back": "一覧に戻る",
+    "title": "Informationsblatt (Referenz)",
+    "subtitle": "Referenzinformationen des Verwaltungsverbands. Kein gesetzliches Formular",
+    "newDraft": "Neuen Entwurf erstellen",
+    "editDraft": "Entwurf bearbeiten",
+    "exportHistory": "Exportverlauf",
+    "exportPdf": "Als PDF exportieren",
+    "exportExcel": "Als Excel exportieren",
+    "exportWord": "Als Word exportieren",
+    "noDrafts": "Noch keine Entwürfe",
+    "noExports": "Noch kein Exportverlauf",
+    "loading": "Wird geladen…",
+    "saving": "Wird gespeichert…",
+    "saved": "Gespeichert",
+    "deleted": "Gelöscht",
+    "deleteConfirm": "Sind Sie sicher, dass Sie löschen möchten?",
+    "back": "Zurück zur Liste",
     "templatePicker": {
-      "title": "様式を選択",
-      "prefecture": "都道府県",
-      "allPrefectures": "全国共通",
-      "systemTemplates": "国交省標準書式",
-      "customTemplates": "組織カスタム",
-      "select": "この様式で作成",
-      "noTemplates": "利用可能な様式がありません",
-      "version": "バージョン {version}"
+      "title": "Format auswählen",
+      "prefecture": "Präfektur",
+      "allPrefectures": "Landesweit",
+      "systemTemplates": "Standardformat des Ministeriums",
+      "customTemplates": "Organisationsangepasst",
+      "select": "Mit diesem Format erstellen",
+      "noTemplates": "Keine Formate verfügbar",
+      "version": "Version {version}"
     },
     "draftStatus": {
-      "DRAFT": "下書き",
-      "READY": "出力準備完了",
-      "EXPORTED": "出力済"
+      "DRAFT": "Entwurf",
+      "READY": "Bereit zum Exportieren",
+      "EXPORTED": "Exportiert"
     },
     "outputFormat": {
       "PDF": "PDF",
@@ -37,72 +37,72 @@
       "WORD": "Word"
     },
     "fields": {
-      "title": "ドラフト名",
-      "template": "様式",
-      "prefecture": "都道府県",
-      "version": "バージョン",
-      "targetDwelling": "対象居室",
-      "targetDwellingPlaceholder": "居室番号（例: 101）",
-      "status": "ステータス",
-      "createdAt": "作成日",
-      "updatedAt": "更新日",
-      "outputFormat": "形式",
-      "templateCode": "様式コード",
+      "title": "Entwurfsname",
+      "template": "Format",
+      "prefecture": "Präfektur",
+      "version": "Version",
+      "targetDwelling": "Zielwohnung",
+      "targetDwellingPlaceholder": "Zimmernummer (z.B. 101)",
+      "status": "Status",
+      "createdAt": "Erstellungsdatum",
+      "updatedAt": "Aktualisierungsdatum",
+      "outputFormat": "Ausgabeformat",
+      "templateCode": "Formatcode",
       "sha256": "SHA-256",
-      "expiresAt": "有効期限"
+      "expiresAt": "Ablaufdatum"
     },
     "actions": {
-      "edit": "編集",
-      "delete": "削除",
-      "save": "保存",
-      "cancel": "キャンセル",
-      "create": "作成",
-      "download": "ダウンロード",
-      "viewExports": "出力履歴を見る"
+      "edit": "Bearbeiten",
+      "delete": "Löschen",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "create": "Erstellen",
+      "download": "Herunterladen",
+      "viewExports": "Exportverlauf anzeigen"
     },
     "autoFill": {
-      "title": "個人情報の自動引用",
-      "allowPersonalInfo": "個人情報の自動引用を許可",
-      "refresh": "自動引用を更新",
-      "note": "所有者氏名など個人情報を引用する場合のみチェックしてください",
-      "refreshed": "自動引用を更新しました",
-      "refreshFailed": "自動引用の更新に失敗しました"
+      "title": "Persönliche Daten automatisch ausfüllen",
+      "allowPersonalInfo": "Automatisches Ausfüllen persönlicher Daten erlauben",
+      "refresh": "Automatische Daten aktualisieren",
+      "note": "Nur auswählen, wenn persönliche Informationen wie der Eigentümername zitiert werden müssen",
+      "refreshed": "Automatische Daten aktualisiert",
+      "refreshFailed": "Fehler beim Aktualisieren der automatischen Daten"
     },
     "exported": {
-      "lockedTitle": "出力済ドラフト",
-      "lockedMessage": "このドラフトは既に出力されたため編集できません。コピーして新規ドラフトを作成してください（Phase 3）。"
+      "lockedTitle": "Exportierter Entwurf",
+      "lockedMessage": "Dieser Entwurf wurde bereits exportiert und kann nicht bearbeitet werden. Bitte kopieren und einen neuen Entwurf erstellen (Phase 3)."
     },
     "warnings": {
-      "title": "出力時の警告",
-      "close": "閉じる"
+      "title": "Warnungen beim Export",
+      "close": "Schließen"
     },
     "errors": {
-      "loadFailed": "読み込みに失敗しました",
-      "saveFailed": "保存に失敗しました",
-      "deleteFailed": "削除に失敗しました",
-      "versionConflict": "他のユーザーが先に編集しました。最新版を取得します。",
-      "exportFailed": "出力に失敗しました",
-      "downloadFailed": "ダウンロードに失敗しました",
-      "tampered": "ファイルの整合性検証に失敗しました（DISCLOSURE_010）"
+      "loadFailed": "Laden fehlgeschlagen",
+      "saveFailed": "Speichern fehlgeschlagen",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "versionConflict": "Ein anderer Benutzer hat zuerst bearbeitet. Neueste Version wird abgerufen.",
+      "exportFailed": "Export fehlgeschlagen",
+      "downloadFailed": "Download fehlgeschlagen",
+      "tampered": "Integritätsprüfung der Datei fehlgeschlagen (DISCLOSURE_010)"
     },
     "limit": {
-      "warning": "ドラフトは組織あたり 50 件までです（残り {remaining} 件）",
-      "exceeded": "ドラフトの上限（50 件）に達しています。不要なものを削除してください。"
+      "warning": "Maximal 50 Entwürfe pro Organisation (noch {remaining} verfügbar)",
+      "exceeded": "Das Entwurfslimit (50) wurde erreicht. Bitte löschen Sie nicht benötigte Entwürfe."
     },
     "validation": {
-      "required": "必須項目です",
-      "maxLength": "{max} 文字以内で入力してください",
-      "title": "ドラフト名は必須です",
-      "templateRequired": "様式を選択してください"
+      "required": "Pflichtfeld",
+      "maxLength": "Bitte geben Sie maximal {max} Zeichen ein",
+      "title": "Entwurfsname ist erforderlich",
+      "templateRequired": "Bitte wählen Sie ein Format aus"
     },
-    "extend_expiry": "保管期限を延長",
-    "extend_expiry_dialog_title": "保管期限の延長",
-    "extend_expiry_date_label": "新しい保管期限",
-    "extend_expiry_current_label": "現在の保管期限",
-    "extend_expiry_hint": "本日から最大 7 年先まで指定できます",
-    "extend_expiry_validation_future": "現在より未来の日時を指定してください",
-    "extend_expiry_validation_max_7_years": "本日から 7 年以内の日時を指定してください",
-    "extend_expiry_success": "保管期限を {date} まで延長しました",
-    "extend_expiry_error": "保管期限の延長に失敗しました"
+    "extend_expiry": "Aufbewahrungsfrist verlängern",
+    "extend_expiry_dialog_title": "Aufbewahrungsfrist verlängern",
+    "extend_expiry_date_label": "Neues Aufbewahrungsdatum",
+    "extend_expiry_current_label": "Aktuelles Aufbewahrungsdatum",
+    "extend_expiry_hint": "Sie können ein Datum bis zu 7 Jahre ab heute festlegen",
+    "extend_expiry_validation_future": "Bitte geben Sie ein zukünftiges Datum an",
+    "extend_expiry_validation_max_7_years": "Bitte geben Sie ein Datum innerhalb von 7 Jahren ab heute an",
+    "extend_expiry_success": "Aufbewahrungsfrist bis {date} verlängert",
+    "extend_expiry_error": "Fehler beim Verlängern der Aufbewahrungsfrist"
   }
 }

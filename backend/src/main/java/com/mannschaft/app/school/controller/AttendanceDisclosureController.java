@@ -2,6 +2,7 @@ package com.mannschaft.app.school.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.school.dto.DisclosedEvaluationResponse;
 import com.mannschaft.app.school.dto.DisclosureRequest;
 import com.mannschaft.app.school.dto.DisclosureResponse;
@@ -43,7 +44,7 @@ public class AttendanceDisclosureController {
     @PostMapping("/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/disclose")
     @Operation(summary = "出席要件評価結果の開示")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ApiResponse<DisclosureResponse> disclose(
             @PathVariable Long teamId,
             @PathVariable Long evaluationId,
@@ -63,7 +64,7 @@ public class AttendanceDisclosureController {
     @PostMapping("/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/withhold")
     @Operation(summary = "出席要件評価結果の非開示")
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ApiResponse<DisclosureResponse> withhold(
             @PathVariable Long teamId,
             @PathVariable Long evaluationId,
@@ -81,11 +82,12 @@ public class AttendanceDisclosureController {
      */
     @GetMapping("/teams/{teamId}/attendance/requirements/evaluations/{evaluationId}/disclosure-history")
     @Operation(summary = "開示・非開示判断の履歴取得")
-    @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ApiResponse<List<DisclosureResponse>> getDisclosureHistory(
             @PathVariable Long teamId,
             @PathVariable Long evaluationId) {
-        return ApiResponse.of(disclosureService.getDisclosureHistory(teamId, evaluationId));
+        Long operatorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(disclosureService.getDisclosureHistory(teamId, evaluationId, operatorUserId));
     }
 
     /**
@@ -93,6 +95,8 @@ public class AttendanceDisclosureController {
      *
      * @return 開示済み評価情報のリスト
      */
+    @SelfScopedEndpoint("DisclosureService#getDisclosedEvaluationsForUser が "
+            + "SecurityUtils.getCurrentUserId() のみを検索条件に束縛する")
     @GetMapping("/me/attendance/requirements/disclosed")
     @Operation(summary = "自分に開示された評価一覧取得")
     public ApiResponse<List<DisclosedEvaluationResponse>> getDisclosedEvaluationsForMe() {

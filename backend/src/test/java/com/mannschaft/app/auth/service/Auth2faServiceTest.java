@@ -74,6 +74,13 @@ class Auth2faServiceTest {
     @Mock
     private EncryptionService encryptionService;
 
+    // 認可基盤完全根治 Phase 1: トークン発行時に roles を解決するヘルパ。
+    @Mock
+    private RoleClaimResolver roleClaimResolver;
+
+    @Mock
+    private StatusClaimResolver statusClaimResolver;
+
     @InjectMocks
     private Auth2faService auth2faService;
 
@@ -505,9 +512,10 @@ class Auth2faServiceTest {
             given(twoFactorAuthRepository.save(any(TwoFactorAuthEntity.class)))
                     .willAnswer(invocation -> invocation.getArgument(0));
 
-            given(authTokenService.issueAccessToken(any(), any())).willReturn("jwt-access-token");
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
             given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
             given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(TEST_USER_ID)).willReturn(List.of());
             given(refreshTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
             // When
@@ -518,6 +526,63 @@ class Auth2faServiceTest {
             assertThat(response.getData().getRefreshToken()).isEqualTo("raw-refresh-token");
             assertThat(twoFactorAuth.getIsEnabled()).isFalse();
             verify(eventPublisher).publish(any());
+        }
+
+        @Test
+        @DisplayName("セキュリティ: MFA回復後に既存セッションが全て無効化される")
+        void confirmMfaRecovery_既存セッション無効化() {
+            // Given
+            String rawToken = "recovery-token";
+            String tokenHash = "hashed-recovery-token";
+            given(authTokenService.hashToken(rawToken)).willReturn(tokenHash);
+
+            MfaRecoveryTokenEntity recoveryToken = MfaRecoveryTokenEntity.builder()
+                    .userId(TEST_USER_ID)
+                    .tokenHash(tokenHash)
+                    .expiresAt(LocalDateTime.now().plusHours(1))
+                    .build();
+            given(mfaRecoveryTokenRepository.findByTokenHash(tokenHash)).willReturn(Optional.of(recoveryToken));
+            given(mfaRecoveryTokenRepository.save(any(MfaRecoveryTokenEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            TwoFactorAuthEntity twoFactorAuth = createEnabledTwoFactorAuth();
+            given(twoFactorAuthRepository.findByUserId(TEST_USER_ID)).willReturn(Optional.of(twoFactorAuth));
+            given(twoFactorAuthRepository.save(any(TwoFactorAuthEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            // 既存の active Refresh Token が 2 件あるシナリオ
+            com.mannschaft.app.auth.entity.RefreshTokenEntity existingToken1 =
+                    com.mannschaft.app.auth.entity.RefreshTokenEntity.builder()
+                            .userId(TEST_USER_ID)
+                            .tokenHash("existing-hash-1")
+                            .rememberMe(false)
+                            .expiresAt(LocalDateTime.now().plusDays(7))
+                            .build();
+            com.mannschaft.app.auth.entity.RefreshTokenEntity existingToken2 =
+                    com.mannschaft.app.auth.entity.RefreshTokenEntity.builder()
+                            .userId(TEST_USER_ID)
+                            .tokenHash("existing-hash-2")
+                            .rememberMe(false)
+                            .expiresAt(LocalDateTime.now().plusDays(7))
+                            .build();
+            given(refreshTokenRepository.findByUserIdAndRevokedAtIsNull(TEST_USER_ID))
+                    .willReturn(List.of(existingToken1, existingToken2));
+            given(refreshTokenRepository.saveAll(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+            given(authTokenService.issueAccessToken(any(), any(), anyBoolean())).willReturn("jwt-access-token");
+            given(authTokenService.generateRefreshToken()).willReturn("raw-refresh-token");
+            given(authTokenService.hashToken("raw-refresh-token")).willReturn("hashed-refresh-token");
+            given(refreshTokenRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+            // When
+            auth2faService.confirmMfaRecovery(rawToken);
+
+            // Then: 既存 Refresh Token が saveAll で保存される（revoke済み）
+            verify(refreshTokenRepository).saveAll(argThat(tokens ->
+                    ((java.util.Collection<?>) tokens).size() == 2
+            ));
+            // user_invalidated_at が更新される（JWT を即時失効させる）
+            verify(authTokenService).setUserInvalidationTimestamp(TEST_USER_ID);
         }
 
         @Test

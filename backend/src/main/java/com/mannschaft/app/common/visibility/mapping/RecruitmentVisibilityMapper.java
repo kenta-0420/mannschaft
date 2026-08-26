@@ -26,9 +26,15 @@ public final class RecruitmentVisibilityMapper {
     public static StandardVisibility toStandard(RecruitmentVisibility v) {
         return switch (v) {
             case PUBLIC -> StandardVisibility.PUBLIC;
-            case SCOPE_ONLY -> StandardVisibility.MEMBERS_ONLY;
+            // 挙動不変・名称正準化（W3）: SCOPE_AFFILIATED = isMemberOf = 旧 MEMBERS_ONLY と同一判定。
+            case SCOPE_ONLY -> StandardVisibility.SCOPE_AFFILIATED;
             case SUPPORTERS_ONLY -> StandardVisibility.SUPPORTERS_AND_ABOVE;
             case CUSTOM_TEMPLATE -> StandardVisibility.CUSTOM_TEMPLATE;
+            // F22.1 市: フレンドチーム限定の非公開札。可視範囲は scope ロールでは決まらず、
+            // recruitment_friend_targets を F01.5 サービスで都度解決する「機能独自セマンティクス」のため
+            // CUSTOM に正規化し、Resolver 側の個別ハンドリング（evaluateCustom）に委ねる。
+            // MEMBERS_ONLY 等にマップすると scope メンバーへ誤って公開されるため不可。
+            case FRIEND_TEAMS_ONLY -> StandardVisibility.CUSTOM;
         };
     }
 }

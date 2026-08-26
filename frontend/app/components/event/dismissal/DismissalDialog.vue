@@ -13,7 +13,7 @@
 import type { DismissalRequest } from '~/types/care'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   eventId: number
   open: boolean
   /** メッセージ初期値（i18n 由来のテキストを呼び出し側が組み立てて渡す）。省略時は空。 */

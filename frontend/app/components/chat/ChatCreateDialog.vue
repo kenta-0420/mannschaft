@@ -5,8 +5,8 @@ import type { MemberResponse } from '~/types/member'
 const visible = defineModel<boolean>('visible', { default: false })
 
 const props = defineProps<{
-  teamId?: number
-  organizationId?: number
+  teamId?: string
+  organizationId?: string
 }>()
 
 const emit = defineEmits<{
@@ -31,14 +31,56 @@ const zimmer = useChatMemberSelect(members, currentUserId)
 
 const startingChat = ref(false)
 
+// Zimmer（部屋）作成フォームの入力状態
+const name = ref('')
+const description = ref('')
+const isPrivate = ref(false)
+const submitting = ref(false)
+
+// === useFormDraft（ADHD配慮・Zimmer作成フォームの自動保存）===
+// teamId / organizationId が変わるとキーも変わるのでフォームスコープ分離される
+const zimmerDraftKey = computed(() => {
+  const scope = props.teamId
+    ? `team-${props.teamId}`
+    : props.organizationId
+      ? `org-${props.organizationId}`
+      : 'global'
+  return `zimmer-create-draft-${authStore.currentUser?.id ?? 'guest'}-${scope}`
+})
+
+interface ZimmerDraftShape {
+  name: string
+  description: string
+  isPrivate: boolean
+}
+
+const zimmerFormSnapshot = computed<ZimmerDraftShape>(() => ({
+  name: name.value,
+  description: description.value,
+  isPrivate: isPrivate.value,
+}))
+
+const { clear: clearZimmerDraft, restore: restoreZimmerDraft } = useFormDraft<ZimmerDraftShape>(
+  zimmerDraftKey.value,
+  { source: zimmerFormSnapshot, debounceMs: 1000, autoRestore: false },
+)
+
 const chatTypeLabel = computed(() =>
   contact.selected.value.length <= 1 ? 'Kabine(DM)' : 'Zimmer(部屋)',
 )
 
+/**
+ * 作成するチャンネルの種別を決定する。
+ *
+ * BE {@code ChannelType} の正準値に合わせる（valueOf で解決されるため不正値は 400/500）。
+ * - チーム文脈: 非公開トグルで TEAM_PRIVATE / TEAM_PUBLIC
+ * - 組織文脈: 非公開トグルで ORG_PRIVATE / ORG_PUBLIC
+ * - どちらでもない（横断チャット）: 複数人グループDM = GROUP_DM
+ */
 const channelType = computed<ChatChannelType>(() => {
-  if (props.teamId) return 'TEAM'
-  if (props.organizationId) return 'ORGANIZATION'
-  return 'CROSS_TEAM'
+  if (props.teamId) return isPrivate.value ? 'TEAM_PRIVATE' : 'TEAM_PUBLIC'
+  if (props.organizationId) return isPrivate.value ? 'ORG_PRIVATE' : 'ORG_PUBLIC'
+  return 'GROUP_DM'
 })
 
 async function loadMembers() {
@@ -91,11 +133,6 @@ async function startChat() {
   }
 }
 
-const name = ref('')
-const description = ref('')
-const isPrivate = ref(false)
-const submitting = ref(false)
-
 async function onSubmitZimmer() {
   if (!name.value.trim() || submitting.value) return
   submitting.value = true
@@ -109,6 +146,7 @@ async function onSubmitZimmer() {
       isPrivate: isPrivate.value,
       memberIds: zimmer.selected.value.map((m) => m.userId),
     })
+    clearZimmerDraft()
     notification.success('Zimmer(部屋)を作成しました')
     visible.value = false
     name.value = ''
@@ -131,6 +169,13 @@ watch(visible, (v) => {
     activeTab.value = 0
     contact.reset()
     zimmer.reset()
+    // Zimmer下書き復元
+    const saved = restoreZimmerDraft()
+    if (saved) {
+      name.value = saved.name ?? ''
+      description.value = saved.description ?? ''
+      isPrivate.value = saved.isPrivate ?? false
+    }
   }
 })
 </script>

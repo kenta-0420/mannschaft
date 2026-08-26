@@ -10,6 +10,31 @@
 #   トリガーされず永久に pending → BLOCKED でマージ不能になる問題を回避するため。
 #   全 PR でジョブを起動し、backend に変更が無ければ重い step を skip して
 #   ジョブを success で終える（= 必須チェックを success で満たす）構造とする。
+# 2026-05-30: backend CI 高速化② — test ジョブを matrix で 4 分割（shard）し
+#   壁時計を短縮。必須チェック名「Compile & Test」は集約ゲートジョブ（gate）として
+#   1 個だけ存在させ、各 shard は別名「Test (shard N)」とする。ゲートが全 shard の
+#   成否（および docs-only skip）を集約し、必須チェックの success/fail を返す。
+#   これにより:
+#     - main ブランチ保護 Ruleset の必須チェック「Compile & Test」は従来どおり 1 個。
+#     - docs-only PR は detect で backend_changed=false → shard skip → ゲート success。
+#     - shard が 1 つでも失敗すればゲート fail。
+# 2026-08-21: shard の振り分けを「完全修飾クラス名の安定ハッシュ」から、
+#   backend/src/test/resources/shard-weights.properties（実測秒数）を使った
+#   貪欲法の重み付け振り分けへ改良（build.gradle.kts 側の変更のみ・matrix構成は不変）。
+#   重み表に無いクラス・重み表自体が無い場合は従来の安定ハッシュへ自動フォールバックする。
+#   詳細: backend/.claudecode.md §31、再生成は backend/scripts/regen-shard-weights.sh。
+# 2026-06-20: D-5 番人 grep ガード追加 — @Builder(toBuilder=true) は @Retention(SOURCE)
+#   のため ArchUnit（バイトコード解析）では検知不能。ソースレベルの bash grep で
+#   BaseEntity 継承クラスへの @Builder(toBuilder=true) 残存を CI で検出する。
+#   lint ジョブは detect ジョブと並列に shard ジョブと並走し、gate の needs に追加。
+# 2026-07-20: shard を 4 → 6 分割へ拡張（timeout 逼迫の根治）。テスト総量の増加で
+#   各 shard の実測が 43〜55 分に達し、timeout-minutes: 60 に対する余裕が 1 割を
+#   切っていた。その結果 shard が 1h0m 台で cancelled となり、集約ゲートを道連れに
+#   して「テストは全て通っているのに CI が赤」という事象が複数 PR で発生していた。
+#   N=6 適用後の実測は 26〜46 分（最長 46 分・上限まで 14 分＝23% の余裕）。
+#   env.SHARD_TOTAL と matrix.shard を同じ N に揃えるだけで済む
+#   （build.gradle.kts のシャードフィルタはプロパティ駆動のため無改修）。
+#   詳細な数値と N 選定の根拠・残る課題はファイル末尾の備考を参照。
 # =============================================================================
 
 name: Backend — CI (PR Check)
@@ -27,24 +52,25 @@ concurrency:
 
 env:
   JAVA_VERSION: "21"
+  # テストシャード数。N=6 を既定とする（理由はファイル末尾の備考を参照）。
+  SHARD_TOTAL: "6"
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Compile + test (Docker required for Testcontainers)
+  # detect: backend 変更有無の判定だけを行う軽量ジョブ
   #
-  # 全 PR で起動する（paths フィルタなし）。先頭の変更検出 step で backend に
-  # 変更が無いと判定した場合は compile/test を含む重い step をすべて skip し、
-  # ジョブは success で終える。これにより docs-only PR でも必須チェック
-  # 「Compile & Test」が success となりマージ可能になる。
+  # 全 PR で起動する（paths フィルタなし）。PR の base...head 差分を見て backend/**
+  # または本 workflow 自身に変更があれば backend_changed=true を出力する。
+  # workflow_dispatch（手動実行）時は PR コンテキストが無いため常に true とする。
+  # この output を shard / gate ジョブが参照して実行可否・集約判定を行う。
   # ---------------------------------------------------------------------------
-  test:
-    name: Compile & Test
+  detect:
+    name: Detect changes
     runs-on: ubuntu-latest
-    timeout-minutes: 90
-    defaults:
-      run:
-        working-directory: ./backend
-
+    timeout-minutes: 5
+    outputs:
+      backend_changed: ${{ steps.changes.outputs.backend_changed }}
+      migrations_changed: ${{ steps.changes.outputs.migrations_changed }}
     steps:
       # 変更検出のため PR の base...head 差分を見られるよう全履歴を取得する
       - name: Checkout source
@@ -53,17 +79,16 @@ jobs:
           fetch-depth: 0
 
       # backend/** または本 workflow 自身に変更があるかを PR の base..head 差分で判定。
-      # 変更があれば backend_changed=true を出力し、以降の重い step を実行する。
-      # workflow_dispatch（手動実行）時は PR コンテキストが無いため常に true として
-      # フルビルドを実行する。
+      # 変更があれば backend_changed=true を出力し、shard ジョブを実行する。
       - name: 変更パス検出
         id: changes
-        working-directory: .
         run: |
           set -e
           if [ "${{ github.event_name }}" != "pull_request" ]; then
             echo "[INFO] non-PR event (${{ github.event_name }}) → backend_changed=true (full build)"
             echo "backend_changed=true" >> "$GITHUB_OUTPUT"
+            # 手動実行時はマイグレーションテストも含めたフル実行とする（安全側）
+            echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           BASE_SHA="${{ github.event.pull_request.base.sha }}"
@@ -84,62 +109,395 @@ jobs:
             echo "backend_changed=false" >> "$GITHUB_OUTPUT"
           fi
 
+          # Flyway マイグレーション（db/migration/**）の変更有無を判定する。
+          # 変更があれば Flyway 再生テスト（65 クラス）を従来どおり実行し、
+          # 無ければ除外して壁時計を短縮する（build.gradle.kts の
+          # -PexcludeMigrationTests を参照）。
+          # マイグレーションテスト本体・build.gradle.kts・本 workflow の変更時も
+          # 安全側に倒してフル実行する。
+          #
+          # 対象パスの正規表現は .github/scripts/migration-sensitive-paths.regex に
+          # 一本化してある（main側 backend-deploy.yml の detect ジョブも同じファイルを
+          # 参照する。2箇所に同じ正規表現を書くと必ずドリフトするため）。
+          #
+          # 【注意】外部ファイル参照にしたことで「ファイルが無い/読めない」という
+          # 新しい失敗様態が生まれた。grep -E -f はパターンファイルが読めないと
+          # exit 2 以上を返すが、素朴な if grep ...; then true; else false; fi の
+          # 二分岐では exit 2 が exit 1（一致なし）に潰れ、
+          # migrations_changed=false（Flyway 再生テストの黙った除外）に
+          # 誤って倒れてしまう。これは「判定不能なら除外する」に等しく禁止事項。
+          # そのため (1) ファイルの存在・非空を先に検証し、(2) grep の終了コードを
+          # 0(一致あり)/1(一致なし)/2以上(判定不能) の3分岐で扱う。
+          # なお本ステップ全体は `set -e` 下だが、`if <cmd>` の条件式は
+          # `set -e` の対象外（bash の仕様）のため、この分岐は明示的に書く必要がある。
+          PATTERN_FILE=".github/scripts/migration-sensitive-paths.regex"
+          if [ ! -s "${PATTERN_FILE}" ]; then
+            echo "[ERROR] パターンファイルが存在しないか空（${PATTERN_FILE}）→ 判定不能 → migrations_changed=true（フル実行へ倒す）"
+            echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # set -e 下でパイプラインの終了コードを取り違えないよう、
+          # 単独の `cmd; x=$?` ではなく `cmd || x=$?` の形にする（前者は
+          # set -e により grep 非0時点でスクリプトごと即終了し、後段の
+          # 判定コードへ到達できない。if/while の条件式や `||` の右辺は
+          # set -e の対象外という bash の仕様を利用して保護する）。
+          MIGRATION_GREP_STATUS=0
+          echo "${CHANGED}" | grep -E -f "${PATTERN_FILE}" > /dev/null || MIGRATION_GREP_STATUS=$?
+
+          case "${MIGRATION_GREP_STATUS}" in
+            0)
+              echo "[INFO] migration 関連の変更を検出 → migrations_changed=true（Flyway 再生テストを実行）"
+              echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
+              ;;
+            1)
+              echo "[INFO] migration 無変更 → migrations_changed=false（Flyway 再生テストを除外）"
+              echo "migrations_changed=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "[ERROR] grep 照合が失敗した（exit=${MIGRATION_GREP_STATUS}）→ 判定不能 → migrations_changed=true（フル実行へ倒す）"
+              echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+  # ---------------------------------------------------------------------------
+  # lint: ソースレベル静的チェック（D-5 @Builder guard）
+  #
+  # @Builder(toBuilder=true) は @Retention(SOURCE) のため ArchUnit（バイトコード解析）
+  # では検知不能。bash grep でソースを直接走査し、BaseEntity 継承クラスへの
+  # @Builder(toBuilder=true) 残存を検出する。
+  #
+  # detect.backend_changed が true のときだけ起動する（docs-only PR では skip）。
+  # checkout のみで動作するため Gradle キャッシュ不要・5 分以内に完了する。
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (D-5 @Builder guard)
+    needs: detect
+    if: needs.detect.outputs.backend_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: BaseEntity継承クラスの @Builder(toBuilder=true) 禁止チェック（D-5）
+        run: |
+          set -e
+          # 1. @Builder(toBuilder= を含み、かつ Super が直前にないファイルを抽出
+          #    grep -P '(?<!Super)@Builder\(toBuilder' は @SuperBuilder(toBuilder は無視し
+          #    純粋な @Builder(toBuilder だけを検知する。
+          CANDIDATES=$(grep -rPl '(?<!Super)@Builder\(toBuilder' \
+            backend/src/main/java/ --include="*.java" || true)
+
+          if [ -z "$CANDIDATES" ]; then
+            echo "[OK] @Builder(toBuilder=true) 違反なし"
+            exit 0
+          fi
+
+          # 2. 候補の中から BaseEntity / UuidV7Entity / UuidV7CharEntity を継承するものに絞る
+          VIOLATIONS=""
+          while IFS= read -r f; do
+            if grep -qE 'extends[[:space:]]+(BaseEntity|UuidV7Entity|UuidV7CharEntity)' "$f"; then
+              VIOLATIONS="$VIOLATIONS"$'\n'"$f"
+            fi
+          done <<< "$CANDIDATES"
+
+          if [ -n "$VIOLATIONS" ]; then
+            echo "[ERROR] BaseEntity継承クラスに @Builder(toBuilder=true) が残存しています。"
+            echo "  @SuperBuilder(toBuilder=true) に移行してください（D-5 規約）:"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "[OK] @Builder(toBuilder=true) 違反なし（BaseEntity継承クラス）"
+
+  # ---------------------------------------------------------------------------
+  # shard-coverage-guard: CI テストシャード重み付け振り分けの取りこぼし番人
+  #
+  # build.gradle.kts の verifyShardCoverage タスクを 1 回だけ実行する。
+  # 6 shard それぞれで重複実行すると無駄なため、gate 系の軽量ジョブとして独立させる
+  # （Testcontainers 不要・コンパイルのみで完結するため Docker 不要・数分で終わる）。
+  # 「重み表あり／なし双方で全テストクラスがちょうど1つの shard にのみ割り当たる」
+  # ことを、実際の Test.exclude フィルタと同一の判定関数（ShardAssignment.isIncluded）
+  # を通して検証する。壊れれば本ジョブが fail し、gate 経由で PR が赤くなる。
+  #
+  # detect.backend_changed が true のときだけ起動する（docs-only PR では skip）。
+  # ---------------------------------------------------------------------------
+  shard-coverage-guard:
+    name: Shard coverage guard
+    needs: detect
+    if: needs.detect.outputs.backend_changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
       - name: Set up Java ${{ env.JAVA_VERSION }}
-        if: steps.changes.outputs.backend_changed == 'true'
         uses: actions/setup-java@v4
         with:
           java-version: ${{ env.JAVA_VERSION }}
           distribution: temurin
-          # setup-java の組み込み Gradle キャッシュ（~/.gradle/caches, ~/.gradle/wrapper）
-          cache: gradle
 
-      # setup-java の cache: gradle は ~/.gradle を対象とするが、
-      # プロジェクト内の .gradle ディレクトリ（Gradle ビルドキャッシュ本体）は別途キャッシュする。
-      # --build-cache はこのローカルキャッシュを参照してタスクの再実行をスキップする。
-      - name: Gradle ビルドキャッシュ（プロジェクト内）
-        if: steps.changes.outputs.backend_changed == 'true'
-        uses: actions/cache@v4
+      - name: Set up Gradle（依存＋ビルドキャッシュ。shard ジョブと同じキーを共有）
+        uses: gradle/actions/setup-gradle@v4
         with:
-          path: backend/.gradle/buildOutputCleanup
-          key: gradle-build-cache-${{ runner.os }}-${{ hashFiles('backend/**/*.gradle*', 'backend/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            gradle-build-cache-${{ runner.os }}-
+          cache-read-only: false
+          gradle-home-cache-includes: |
+            caches
+            notifications
 
       - name: Grant Gradle wrapper execute permission
-        if: steps.changes.outputs.backend_changed == 'true'
+        run: chmod +x gradlew
+
+      - name: verifyShardCoverage（全shard.total値で取りこぼし・重複割当を検証）
+        run: >-
+          ./gradlew verifyShardCoverage --no-daemon --build-cache
+          -Pshard.total=${{ env.SHARD_TOTAL }}
+
+  # ---------------------------------------------------------------------------
+  # shard: compile + test を 6 並列で実行する（Docker required for Testcontainers）
+  #
+  # matrix で shard=0..5 の 6 ランナーへ分散する。各 shard は build.gradle.kts の
+  # シャードフィルタ（-Pshard.total / -Pshard.index）で「完全修飾クラス名の安定
+  # ハッシュ % total == index」のテストクラスのみを実行する。
+  #
+  # detect.backend_changed が true のときだけ起動する（docs-only PR では skip）。
+  # ※ このジョブの name は「Test (shard N)」であり、必須チェック「Compile & Test」
+  #   とは別物。必須チェックは下の gate ジョブが担う。
+  # ---------------------------------------------------------------------------
+  shard:
+    name: Test (shard ${{ matrix.shard }})
+    needs: detect
+    if: needs.detect.outputs.backend_changed == 'true'
+    runs-on: ubuntu-latest
+    # shard 4 がテスト・成果物アップロード成功後の後処理中に 60m21s で打ち切られたため、
+    # テストを省略せず後処理まで完了できる最小限の余裕を確保する。
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: ./backend
+    strategy:
+      # 1 shard が失敗しても他 shard を最後まで走らせ、全失敗を一度に把握できるようにする。
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Java ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: temurin
+          # Gradle キャッシュは下の setup-gradle に一本化するため、ここでは有効化しない。
+
+      # Gradle 公式の setup-gradle で依存・wrapper・Gradle ビルドキャッシュ本体
+      # （~/.gradle/caches/build-cache-1）・configuration-cache を一括でキャッシュする。
+      #
+      # 本 workflow は on: pull_request のみで main への push では起動しないため、
+      # setup-gradle 既定の「default ブランチのみ書き込み」だとキャッシュが永久に
+      # 育たない。そのため cache-read-only: false を明示し、PR ビルドでも
+      # read-write でキャッシュを更新する。
+      #
+      # 各 shard は同じ依存・コンパイル成果物を使うため、shard 間でキャッシュキーを
+      # 共有できるよう cache-encryption-key 等は使わず既定キーに任せる。最初に走った
+      # shard が暖めたビルドキャッシュ（compileJava 等）を後続 shard が再利用できる。
+      - name: Set up Gradle（依存＋ビルドキャッシュ）
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+          gradle-home-cache-includes: |
+            caches
+            notifications
+
+      - name: Grant Gradle wrapper execute permission
         run: chmod +x gradlew
 
       # Compile all source sets first so compilation errors surface quickly
-      # before the slower test run starts.
+      # before the slower test run starts.（各 shard で実行。ビルドキャッシュにより
+      # 2 つ目以降の shard はコンパイル結果を再利用してほぼ即時で通過する。）
       - name: Compile
-        if: steps.changes.outputs.backend_changed == 'true'
         run: ./gradlew compileJava compileTestJava --no-daemon --build-cache
 
-      # Run the full test suite.
-      # --build-cache: キャッシュヒット時にテストタスクの再実行をスキップして CI を高速化
+      # このシャードに割り当てられたテストクラスのみ実行する。
+      # --build-cache: キャッシュヒット時にテストタスクの再実行をスキップ
       # --continue: 全テスト失敗を収集（最初の失敗で打ち切りしない）
-      - name: Run tests
-        if: steps.changes.outputs.backend_changed == 'true'
-        run: ./gradlew test --no-daemon --continue --build-cache
+      # -Pshard.total / -Pshard.index: build.gradle.kts のシャードフィルタを起動
+      # -PexcludeMigrationTests: db/migration/** 無変更の PR では Flyway 再生テスト
+      #   （65 クラス・計測テスト時間の 72〜88% を占める）を除外する。
+      #   migration を触る PR では false となり従来どおり全件実行する。
+      #   除外分は backend-nightly-full.yml が毎晩フル実行して担保する。
+      - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
+        run: >-
+          ./gradlew test --no-daemon --continue --build-cache
+          -Pshard.total=${{ env.SHARD_TOTAL }}
+          -Pshard.index=${{ matrix.shard }}
+          -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
 
-      - name: テスト結果レポートをアップロード
-        if: always() && steps.changes.outputs.backend_changed == 'true'
+      # test-results の XML（JUnit 形式）。HTML レポートと違い各テストの time 属性を
+      # 持つため、「Run tests の壁時計」と「Gradle 集計テスト時間」の差を分解できる。
+      - name: テスト結果XML（JUnit）をアップロード
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: test-results-pr-${{ github.event.pull_request.number || 'manual' }}
-          path: build/reports/tests/
+          name: test-results-xml-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
+          path: backend/build/test-results/test/
+          retention-days: 7
+
+      - name: テスト結果レポートをアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
+          path: backend/build/reports/tests/
           retention-days: 7
 
       - name: JaCoCo カバレッジレポートをアップロード
-        if: always() && steps.changes.outputs.backend_changed == 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-pr-${{ github.event.pull_request.number || 'manual' }}
-          path: build/reports/jacoco/
+          name: coverage-report-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
+          path: backend/build/reports/jacoco/
           retention-days: 7
 
-      # openapi.json の生成は CI ではなくローカルで行う運用とする。
-      # Backend API 変更後: ./gradlew generateOpenApiDocs → docs/openapi.json をコミット
-      # CI では Frontend の drift 検出（frontend-ci.yml）で乖離を検出する。
+  # ---------------------------------------------------------------------------
+  # gate: 必須チェック「Compile & Test」本体（集約ゲート）
+  #
+  # ★ このジョブ名「Compile & Test」が main ブランチ保護 Ruleset の必須チェック。★
+  # ★ 名前を変えると全 PR がマージ不能になるため絶対に変更しないこと。           ★
+  #
+  # detect と shard の結果を集約して最終的な success/fail を 1 つに束ねる。
+  # if: always() で常に起動し（shard が skip/失敗しても必ず走る）、必須チェックが
+  # 確実に生成されるようにする。
+  #
+  # 【2026-08-21 是正・既存の gate 偽 green 穴も併せて是正】
+  #   旧ロジックは「backend_changed != 'true' なら無条件で success」としていたが、
+  #   detect ジョブ自体が failure/cancelled した場合も outputs.backend_changed は
+  #   空文字（≠ 'true'）になり、この分岐に落ちて「docs-only だから skip」と誤認して
+  #   緑になっていた。この穴は shard-coverage-guard 新設以前から gate に存在していた
+  #   既存の弱点であり、今回まとめて是正する。加えて、backend_changed == 'true' の
+  #   経路で shard / lint / shard-coverage-guard が `skipped`（走るべきなのに走らな
+  #   かった）だった場合も、旧ロジックの `!= 'success'` 判定自体は既に fail 側に落ちる
+  #   はずだが、detect 失敗経由の誤認 success を防いだ副次効果として、ここでも
+  #   明示的に「期待して走るべきジョブが skipped なら失敗」であることをコメントで
+  #   明記しておく。
+  #
+  # 判定ロジック（steps の中で評価）:
+  #   (0) needs.detect.result != 'success'（detect 自体が failure/cancelled/skipped）
+  #       → backend_changed の値に関わらず判定不能。fail（exit 1）。
+  #   (1) detect.result == 'success' かつ backend_changed != 'true'（docs-only 等）
+  #       → shard 系は正しく skip 済み。テスト不要なので success（exit 0）。
+  #   (2) backend_changed == 'true' で 全 shard + lint + shard-coverage-guard が
+  #       success（skipped/failure/cancelled のいずれでもない）→ success（exit 0）。
+  #   (3) それ以外（failure / cancelled / 走るべきなのに skipped 等の異常）
+  #       → fail（exit 1）。
+  #
+  # ※ GitHub Actions では matrix ジョブを needs に指定すると、needs.<job>.result は
+  #   matrix 全体の集約結果になる（1 つでも failure なら 'failure'、全 skip なら
+  #   'skipped'、全 success なら 'success'）。これを利用して 1 行で集約する。
+  # ---------------------------------------------------------------------------
+  gate:
+    name: Compile & Test
+    needs: [detect, shard, lint, shard-coverage-guard]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: 集約結果を判定
+        run: |
+          set -e
+          DETECT_RESULT="${{ needs.detect.result }}"
+          CHANGED="${{ needs.detect.outputs.backend_changed }}"
+          SHARD_RESULT="${{ needs.shard.result }}"
+          LINT_RESULT="${{ needs.lint.result }}"
+          COVERAGE_GUARD_RESULT="${{ needs.shard-coverage-guard.result }}"
+          echo "[INFO] needs.detect.result            = ${DETECT_RESULT}"
+          echo "[INFO] detect.backend_changed          = ${CHANGED}"
+          echo "[INFO] needs.shard.result              = ${SHARD_RESULT}"
+          echo "[INFO] needs.lint.result               = ${LINT_RESULT}"
+          echo "[INFO] needs.shard-coverage-guard.result = ${COVERAGE_GUARD_RESULT}"
+
+          # (0) detect 自体が success でない（failure/cancelled/skipped）→ 判定不能につき fail。
+          #     ここを通さないと、detect 失敗時に outputs.backend_changed が空文字になり
+          #     「backend 無変更」と誤認して shard 系が全て skip のまま緑になってしまう
+          #     （新設した shard-coverage-guard を含む全検証が走らずに Compile & Test が
+          #      success になる偽 green 穴。今回まとめて是正）。
+          if [ "${DETECT_RESULT}" != "success" ]; then
+            echo "[NG] detect が success ではない（結果: ${DETECT_RESULT}）。backend_changed の値は" \
+                 "信頼できず、shard/lint/shard-coverage-guard の要否も判定不能。CI を再実行せよ。"
+            exit 1
+          fi
+
+          # (1) detect success かつ backend 無変更（docs-only 等）: shard / lint / shard-coverage-guard は
+          #     意図的に skip 済み → テスト不要で success
+          if [ "${CHANGED}" != "true" ]; then
+            echo "[OK] backend に変更なし（docs-only 等）。shard / lint / shard-coverage-guard をスキップし success とする。"
+            exit 0
+          fi
+
+          # (2) backend_changed == 'true' の経路: 全 shard + lint + shard-coverage-guard が
+          #     厳密に success（skipped/failure/cancelled のいずれでもない）→ success
+          if [ "${SHARD_RESULT}" = "success" ] && [ "${LINT_RESULT}" = "success" ] && [ "${COVERAGE_GUARD_RESULT}" = "success" ]; then
+            echo "[OK] 全 shard + lint + shard-coverage-guard が success。Compile & Test は success。"
+            exit 0
+          fi
+
+          # (3) それ以外（failure / cancelled / 走るべきなのに skipped 等の異常） → fail
+          #     shard-coverage-guard が skipped のまま緑にはならない（走らない番人は無意味なため）。
+          echo "[NG] shard=${SHARD_RESULT}, lint=${LINT_RESULT}, shard-coverage-guard=${COVERAGE_GUARD_RESULT} — いずれかが success ではない。Compile & Test を失敗とする。"
+          exit 1
+
+# =============================================================================
+# 備考: シャード数 N=4 の根拠
+# -----------------------------------------------------------------------------
+# - N=4 導入時（当初）: 高速化前のフル test 約 56 分に対し、1 shard の壁時計は
+#   18〜22 分の見込みだった（JVM ウォームアップ・Testcontainers の MySQL 起動・
+#   Gradle セットアップの固定コストが数分乗るため、理想の 14 分より長くなる）。
+#
+# - 【2026-07-20 実測・N=4 → N=6 へ拡張】その後スイートが倍以上に育ち、実測は
+#   各 shard 43〜55 分に達していた（認可 IDOR 監査戦役で Testcontainers 実 MySQL
+#   を伴う契約 IT を約 180 件追加したことが主因）。timeout-minutes: 60 に対して
+#   余裕が 1 割を切り、ランナーの当たり外れや Testcontainers の起動揺れといった
+#   通常のばらつきだけで 60 分を跨ぐようになっていた（実際に shard が 1h0m03s /
+#   1h0m44s で cancelled となり、集約ジョブ Compile & Test を道連れにした事例が
+#   複数発生。テスト自体は失敗していない）。
+#   ※ 4 本すべてが同じ帯（43〜55 分）に固まっていたため、特定 shard の偏りでは
+#     なく「スイート全体が上限に張り付いた」状態だった。配分ではなく総量の問題。
+#
+# - 【N=6 適用後の実測（同日）】26 / 37 / 37 / 40 / 42 / 46 分。
+#   最長 46 分で上限まで 14 分（23%）の余裕。cancelled のリスクは大きく下がったが、
+#   当初見込んだ「30〜38 分」には届かなかった。理由は JVM ウォームアップ・
+#   Testcontainers の MySQL 起動・Gradle セットアップといった固定コストが
+#   shard 分割では減らないため（分割数に比例して壁時計が縮むわけではない）。
+#   N を増やす際はこの固定コストを勘定に入れること。
+#
+# - 【残る課題】上記実測は 26 分〜46 分と 20 分ばらついている。振り分けが
+#   「完全修飾クラス名の安定ハッシュ % total」で*実行時間を考慮していない*ため、
+#   重い Testcontainers IT が偏った shard が最長を決めてしまう。さらに余裕を
+#   増やしたい場合、N を増やすより (a) 実行時間ベースの振り分け（前回計測の
+#   フィードバック）や (b) Testcontainers のコンテナ再利用（singleton 化による
+#   固定コスト削減）の方が費用対効果が高い。
+#
+# - N をさらに増やす（例 8）と 1 shard の実行は短くなるが、固定コストがランナー数
+#   ぶん multiplied され「総 CI 分数（GitHub の課金/枠消費）」が増大する。private
+#   リポジトリ化後はこの総分数がコストに直結するため、壁時計の短縮効果が逓減する
+#   N=8 以降は割に合わない。N=6 は「上限に対する余裕を回復しつつ、固定コストの
+#   multiply を 6 倍に留める」現時点のバランス点。ubuntu-latest の同時実行枠
+#   （無料枠でも 20 並列まで可）にも収まる。
+#
+# - 将来テスト総量が増えて 1 shard が再び長くなった場合は、env.SHARD_TOTAL と
+#   matrix.shard の配列を同じ N に合わせて増やすだけで拡張できる（build.gradle.kts
+#   側はプロパティ駆動のため無改修）。ただし N を増やすのは対症療法であり、総量が
+#   さらに増える局面では Testcontainers のコンテナ再利用（singleton 化）による
+#   固定コスト削減の方が本命であることに留意する。
+#
+# 備考: openapi.json の生成は CI ではなくローカルで行う運用とする。
+#   Backend API 変更後: ./gradlew generateOpenApiDocs → docs/openapi.json をコミット
+#   CI では Frontend の drift 検出（frontend-ci.yml）で乖離を検出する。
+# =============================================================================

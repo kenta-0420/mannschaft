@@ -72,7 +72,7 @@ describe('useCorkboardApi', () => {
       mockFetch.mockResolvedValueOnce({ data: {} })
       const api = useCorkboardApi()
 
-      await api.getBoardDetail('TEAM', 10, 42)
+      await api.getBoardDetail('TEAM', '10', 42)
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/teams/10/corkboards/42')
     })
@@ -81,7 +81,7 @@ describe('useCorkboardApi', () => {
       mockFetch.mockResolvedValueOnce({ data: {} })
       const api = useCorkboardApi()
 
-      await api.getBoardDetail('ORGANIZATION', 99, 42)
+      await api.getBoardDetail('ORGANIZATION', '99', 42)
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/organizations/99/corkboards/42')
     })
@@ -433,7 +433,7 @@ describe('useCorkboardApi', () => {
       mockFetch.mockResolvedValueOnce({ data: [] })
       const api = useCorkboardApi()
 
-      await api.getTeamBoards(10)
+      await api.getTeamBoards('10')
 
       expect(mockFetch).toHaveBeenCalledWith('/api/v1/teams/10/corkboards')
     })
@@ -445,7 +445,7 @@ describe('useCorkboardApi', () => {
       const api = useCorkboardApi()
       const body = { name: 'チームボード', editPolicy: 'ALL_MEMBERS' }
 
-      await api.createTeamBoard(10, body)
+      await api.createTeamBoard('10', body)
 
       expect(mockFetch).toHaveBeenCalledWith(
         '/api/v1/teams/10/corkboards',

@@ -10,10 +10,10 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
@@ -31,8 +31,7 @@ import java.util.List;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ProxyInputConsentEntity extends BaseEntity {
 
     /** 代理される本人のユーザーID。 */
@@ -52,12 +51,16 @@ public class ProxyInputConsentEntity extends BaseEntity {
     @Column(nullable = false, length = 32)
     private ConsentMethod consentMethod;
 
-    /** 同意書スキャンPDFのS3オブジェクトキー（presigned URLは閲覧時に都度発行・5分TTL）。 */
-    @Column(length = 512)
+    /** 同意書スキャンPDFのS3オブジェクトキー（presigned URLは閲覧時に都度発行・5分TTL）。
+     * NOTE: S3Key のように数字を挟む命名は Hibernate 物理命名戦略 (CamelCaseToUnderscoresNamingStrategy) が
+     * 数字→大文字境界でアンダースコアを挿入しないため、DDL の列名と不一致になる。
+     * このクラスの S3Key 系フィールドには必ず @Column(name=...) を明示すること。*/
+    @Column(name = "scanned_document_s3_key", length = 512)
     private String scannedDocumentS3Key;
 
-    /** GUARDIAN_BY_COURT時の後見登記事項証明書S3キー。 */
-    @Column(length = 512)
+    /** GUARDIAN_BY_COURT時の後見登記事項証明書S3キー。
+     * NOTE: S3Key 命名の @Column(name) 必須理由は上記 scannedDocumentS3Key を参照。 */
+    @Column(name = "guardian_certificate_s3_key", length = 512)
     private String guardianCertificateS3Key;
 
     /** WITNESSED_ORAL時の立会人ユーザーID（ADMIN必須）。 */

@@ -24,6 +24,8 @@ public class SharedFileStarService {
 
     private final SharedFileStarRepository starRepository;
     private final FileSharingMapper fileSharingMapper;
+    /** F08.7.1 / 04: 大会フォルダ配下のスター操作に対する横断認可ゲート（大会以外は no-op）。 */
+    private final FolderScopeAccessGuard folderScopeAccessGuard;
 
     /**
      * ユーザーのスター一覧を取得する。
@@ -45,6 +47,8 @@ public class SharedFileStarService {
      */
     @Transactional
     public StarResponse addStar(Long fileId, Long userId) {
+        // F08.7.1 / 04 §3: 大会フォルダ配下のファイルにスターを付けられるのは閲覧可能な者のみ。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, userId);
         if (starRepository.existsByFileIdAndUserId(fileId, userId)) {
             throw new BusinessException(FileSharingErrorCode.STAR_ALREADY_EXISTS);
         }
@@ -67,6 +71,8 @@ public class SharedFileStarService {
      */
     @Transactional
     public void removeStar(Long fileId, Long userId) {
+        // 追加（addStar）と同一の閲覧認可を当てる。兄弟メソッド間で判定が食い違う状態を作らない。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, userId);
         SharedFileStarEntity entity = starRepository.findByFileIdAndUserId(fileId, userId)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.STAR_NOT_FOUND));
         starRepository.delete(entity);

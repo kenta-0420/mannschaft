@@ -21,7 +21,7 @@ export type TodoStatusLabelScope = 'me' | 'team' | 'organization'
 export function useTodoStatusLabelApi() {
   const api = useApi()
 
-  function buildBase(scope: TodoStatusLabelScope, scopeId?: number): string {
+  function buildBase(scope: TodoStatusLabelScope, scopeId?: string): string {
     if (scope === 'me') {
       return '/api/v1/users/me/todo-status-labels'
     }
@@ -40,7 +40,7 @@ export function useTodoStatusLabelApi() {
   /**
    * ラベル一覧取得（SYSTEM 既定 3 種 + スコープ独自を含む）
    */
-  async function listLabels(scope: TodoStatusLabelScope, scopeId?: number) {
+  async function listLabels(scope: TodoStatusLabelScope, scopeId?: string) {
     return api<TodoStatusLabelListResponse>(buildBase(scope, scopeId))
   }
 
@@ -49,7 +49,7 @@ export function useTodoStatusLabelApi() {
    */
   async function createLabel(
     scope: TodoStatusLabelScope,
-    scopeId: number | undefined,
+    scopeId: string | undefined,
     body: CreateTodoStatusLabelRequest,
   ) {
     return api<TodoStatusLabelResponse>(buildBase(scope, scopeId), {
@@ -63,7 +63,7 @@ export function useTodoStatusLabelApi() {
    */
   async function updateLabel(
     scope: TodoStatusLabelScope,
-    scopeId: number | undefined,
+    scopeId: string | undefined,
     labelId: number,
     body: UpdateTodoStatusLabelRequest,
   ) {
@@ -78,7 +78,7 @@ export function useTodoStatusLabelApi() {
    */
   async function deleteLabel(
     scope: TodoStatusLabelScope,
-    scopeId: number | undefined,
+    scopeId: string | undefined,
     labelId: number,
   ) {
     return api(`${buildBase(scope, scopeId)}/${labelId}`, { method: 'DELETE' })

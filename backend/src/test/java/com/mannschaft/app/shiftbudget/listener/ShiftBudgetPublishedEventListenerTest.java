@@ -134,7 +134,7 @@ class ShiftBudgetPublishedEventListenerTest {
         given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.of(ORG_ID));
         given(featureService.isEnabled(ORG_ID)).willReturn(false);
 
-        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID));
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         verify(slotRepository, never()).findByScheduleIdOrderBySlotDateAscStartTimeAsc(anyLong());
         verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
@@ -145,7 +145,7 @@ class ShiftBudgetPublishedEventListenerTest {
     void org解決不可_no_op() {
         given(rateQueryRepository.findOrganizationIdByTeamId(TEAM_ID)).willReturn(Optional.empty());
 
-        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID));
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         verify(featureService, never()).isEnabled(any());
         verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
@@ -164,7 +164,7 @@ class ShiftBudgetPublishedEventListenerTest {
         given(allocationRepository.findContainingPeriod(eq(ORG_ID), eq(null), any()))
                 .willReturn(Optional.empty());
 
-        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID));
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         // 消化記録は呼ばない（no-op）
         verify(consumptionService, never()).recordSingleConsumption(any(), any(), any(), any(), any(), any());
@@ -201,7 +201,7 @@ class ShiftBudgetPublishedEventListenerTest {
         given(hourlyRateRepository.findEffectiveRate(eq(USER_ID), eq(TEAM_ID), any()))
                 .willReturn(Optional.of(rate));
 
-        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID));
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         verify(consumptionService, times(1)).recordSingleConsumption(
                 eq(ALLOCATION_ID), eq(SCHEDULE_ID), eq(7L), eq(USER_ID),
@@ -239,7 +239,7 @@ class ShiftBudgetPublishedEventListenerTest {
                         any(), any(), any(), any(), any(), any());
 
         // 例外を握って監査ログ完走することを確認
-        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID));
+        listener.onShiftPublished(new ShiftPublishedEvent(SCHEDULE_ID, TEAM_ID, USER_ID, java.time.LocalDateTime.now()));
 
         verify(auditLogService).record(eq("SHIFT_BUDGET_CONSUMPTION_RECORDED"),
                 any(), any(), any(), any(), any(), any(), any(), any());

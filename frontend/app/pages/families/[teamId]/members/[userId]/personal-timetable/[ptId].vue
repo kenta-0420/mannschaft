@@ -11,7 +11,7 @@ const api = useFamilyPersonalTimetableApi()
 const { error } = useNotification()
 const { userTimezone } = useDatetime()
 
-const teamId = computed(() => Number(route.params.teamId))
+const teamId = computed(() => String(route.params.teamId))
 const userId = computed(() => Number(route.params.userId))
 const ptId = computed(() => Number(route.params.ptId))
 

@@ -15,8 +15,9 @@ import type {
  * @param scopeType スコープ種別（TEAM / ORGANIZATION）
  * @param scopeId   スコープ ID
  */
-export function useAnnouncementBroadcast(scopeType: AnnouncementScopeType, scopeId: number) {
+export function useAnnouncementBroadcast(scopeType: AnnouncementScopeType, scopeId: string) {
   const api = useApi()
+  const { t } = useI18n()
   const broadcasting = ref(false)
   const broadcastError = ref<string | null>(null)
 
@@ -40,9 +41,24 @@ export function useAnnouncementBroadcast(scopeType: AnnouncementScopeType, scope
       })
       return res.data
     }
-    catch {
-      broadcastError.value = '告知の送信に失敗しました'
-      throw broadcastError.value
+    catch (e: unknown) {
+      // BE の真因（error.code / error.message）を握り潰さず broadcastError に反映する。
+      // 表示の既定文言は i18n キー。BE から具体的メッセージ・コードが返れば
+      // それをそのまま添えてデバッグ可能にする（汎用文言での上書き＝症状隠しを禁止）。
+      const detail = (e as { data?: { error?: { code?: string; message?: string } } })?.data?.error
+      const beMessage = detail?.message
+      const beCode = detail?.code
+      if (beMessage) {
+        broadcastError.value = beCode ? `${beMessage} (${beCode})` : beMessage
+      }
+      else if (beCode) {
+        broadcastError.value = `${t('announcement.broadcast_error_generic')} (${beCode})`
+      }
+      else {
+        broadcastError.value = t('announcement.broadcast_error_generic')
+      }
+      // 原因（元の例外）を保持したまま再 throw する。
+      throw e
     }
     finally {
       broadcasting.value = false

@@ -104,7 +104,7 @@ class VillageControllerIntegrationTest extends AbstractVillageIntegrationTest {
         VillageCreateRequest req = new VillageCreateRequest(
                 slug, name, "テスト村",
                 VillageType.OFFICIAL, VillageJoinPolicy.FREE, VillageVisibility.PUBLIC,
-                "業種", null);
+                "業種", null, null);
 
         ResponseEntity<ApiResponse<VillageResponse>> res = controller.create(req);
 
@@ -123,7 +123,7 @@ class VillageControllerIntegrationTest extends AbstractVillageIntegrationTest {
         VillageCreateRequest req = new VillageCreateRequest(
                 uniqueSlug(), uniqueName(), null,
                 VillageType.COMMUNITY, VillageJoinPolicy.FREE, VillageVisibility.PUBLIC,
-                null, null);
+                null, null, null);
 
         assertThatThrownBy(() -> controller.create(req))
                 .isInstanceOf(BusinessException.class)
@@ -161,7 +161,7 @@ class VillageControllerIntegrationTest extends AbstractVillageIntegrationTest {
     }
 
     @Test
-    @DisplayName("GET /villages/{id} — UNLISTED 村は非村人だと VILLAGE_UNLISTED")
+    @DisplayName("AC-1: GET /villages/{id} — UNLISTED 村は非村人だと VILLAGE_NOT_FOUND（不在と同一コード）")
     void get_unlistedForbidden() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity v = persistVillage(VillageVisibility.UNLISTED);
@@ -169,7 +169,7 @@ class VillageControllerIntegrationTest extends AbstractVillageIntegrationTest {
         assertThatThrownBy(() -> controller.get(v.getId()))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
-                .isEqualTo(VillageErrorCode.VILLAGE_UNLISTED);
+                .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
     }
 
     // ─────────────────────────────────────────────
@@ -184,7 +184,7 @@ class VillageControllerIntegrationTest extends AbstractVillageIntegrationTest {
         persistHeadman(v.getId(), HEADMAN_USER_ID);
 
         VillageUpdateRequest req = new VillageUpdateRequest(
-                null, "更新後の説明", null, null, null, null, null, null);
+                null, "更新後の説明", null, null, null, null, null, null, null);
 
         ResponseEntity<ApiResponse<VillageResponse>> res = controller.update(v.getId(), null, req);
 
@@ -199,7 +199,7 @@ class VillageControllerIntegrationTest extends AbstractVillageIntegrationTest {
         VillageEntity v = persistVillage(VillageVisibility.PUBLIC);
 
         VillageUpdateRequest req = new VillageUpdateRequest(
-                null, "更新", null, null, null, null, null, null);
+                null, "更新", null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> controller.update(v.getId(), null, req))
                 .isInstanceOf(BusinessException.class)

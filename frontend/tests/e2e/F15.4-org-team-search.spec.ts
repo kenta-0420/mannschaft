@@ -27,16 +27,44 @@ const PUBLIC_ORG_ID = 7001
 const PRIVATE_ORG_ID = 7002
 const NOT_FOUND_ORG_ID = 9999999
 
+// Wave 3-B: OrganizationResponse ネスト構造に合わせたモック
 const MOCK_PUBLIC_ORG = {
   id: PUBLIC_ORG_ID,
-  name: 'テスト町内会（公開）',
-  description: 'F15.4 E2E 用',
-  visibility: 'PUBLIC',
+  basicInfo: {
+    name: 'テスト町内会（公開）',
+    nameKana: null,
+    nickname1: null,
+    nickname2: null,
+  },
+  hierarchy: {
+    orgType: 'NEIGHBORHOOD',
+    parentOrganizationId: null,
+  },
+  location: {
+    prefecture: null,
+    city: null,
+  },
+  visibility: {
+    visibility: 'PUBLIC',
+    hierarchyVisibility: 'NONE',
+    supporterEnabled: false,
+  },
+  metadata: {
+    version: 1,
+    memberCount: 0,
+    iconUrl: null,
+    bannerUrl: null,
+  },
+  timestamps: {
+    archivedAt: null,
+    createdAt: '2024-01-01T00:00:00',
+  },
 }
 
 const MOCK_TEAMS_PUBLIC = [
   {
     id: 8001,
+    slug: 'midori-1',
     name: 'みどり町第一支部',
     nameKana: 'ミドリチョウダイイチシブ',
     prefecture: '東京都',
@@ -46,6 +74,7 @@ const MOCK_TEAMS_PUBLIC = [
   },
   {
     id: 8002,
+    slug: 'midori-2',
     name: 'みどり町第二支部',
     nameKana: 'ミドリチョウダイニシブ',
     prefecture: '東京都',
@@ -215,11 +244,11 @@ async function waitForLayoutMounted(page: Page): Promise<void> {
 // シナリオ 1: 未ログイン → 公開組織 → 検索 → 結果 → カードクリックで詳細遷移しない
 // ──────────────────────────────────────────────────────────────────────────
 
-test('F15.4-1: 未ログインで公開組織のチームを検索し、カードに「ログイン CTA」が表示され、クリックで /public/teams/{id} へ遷移する', async ({
+test('F15.4-1: 未ログインで公開組織のチームを検索し、カードに「ログイン CTA」が表示され、クリックで /public/teams/{slug} へ遷移する', async ({
   page,
 }) => {
   // Phase 5-γ で公開詳細ページが新設されたため、本シナリオではカードクリック後の遷移先 API も
-  // モックしておく（未ログイン公開 API）。
+  // モックしておく（未ログイン公開 API）。slug ベースのルーティングに統一済み。
   await mockApis(page, { teamItems: MOCK_TEAMS_PUBLIC })
   await page.route('**/api/v1/public/teams/*', async (route: Route) => {
     await route.fulfill({
@@ -228,6 +257,7 @@ test('F15.4-1: 未ログインで公開組織のチームを検索し、カー�
       body: JSON.stringify({
         data: {
           id: 8001,
+          slug: 'midori-1',
           name: 'みどり町第一支部',
           nameKana: 'ミドリチョウダイイチシブ',
           nickname1: null,
@@ -263,9 +293,9 @@ test('F15.4-1: 未ログインで公開組織のチームを検索し、カー�
     page.getByText('詳細を見るにはログインしてください').first(),
   ).toBeVisible()
 
-  // Phase 5-γ: カードクリックで /public/teams/{id} へ遷移する
+  // Phase 5-γ: カードクリックで /public/teams/{slug} へ遷移する（id ベースは廃止）
   await card.click()
-  await expect(page).toHaveURL(/\/public\/teams\/8001/)
+  await expect(page).toHaveURL(/\/public\/teams\/midori-1/)
 })
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -279,23 +309,25 @@ test('F15.4-2: ログイン会員はカードから詳細遷移できる（CTA �
   // ログイン会員にはメンバー向け詳細 DTO（visibility あり）を返す
   await mockApis(page, { teamItems: MOCK_TEAMS_MEMBER_VIEW })
 
-  // チーム詳細遷移先のAPI をモック（dev mode でのコンポーネントコンパイル後に呼ばれる）
-  await page.route('**/api/v1/teams/8001/me/permissions', async (route: Route) => {
+  // チーム詳細遷移先の API をモック（dev mode でのコンポーネントコンパイル後に呼ばれる）
+  // API は slug ベース（/api/v1/teams/{slug}）に統一済み
+  await page.route('**/api/v1/teams/midori-1/me/permissions', async (route: Route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ data: { roleName: 'GUEST', permissions: [] } }),
     })
   })
-  await page.route('**/api/v1/teams/8001', async (route: Route) => {
+  await page.route('**/api/v1/teams/midori-1', async (route: Route) => {
     const url = new URL(route.request().url())
-    if (url.pathname.endsWith('/api/v1/teams/8001')) {
+    if (url.pathname.endsWith('/api/v1/teams/midori-1')) {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           data: {
             id: 8001,
+            slug: 'midori-1',
             name: 'みどり町第一支部',
             nameKana: 'ミドリチョウダイイチシブ',
             nickname1: null,
@@ -332,12 +364,12 @@ test('F15.4-2: ログイン会員はカードから詳細遷移できる（CTA �
 
   // 注: メンバー数表示は将来課題（設計書 §11.4 NOTE）。本テストでは検証範囲外。
 
-  // カードリンクが会員向け詳細 URL（/teams/{id}）を指していること（未ログイン時の /public/teams/{id} ではない）
-  await expect(cardLink).toHaveAttribute('href', '/teams/8001')
+  // カードリンクが会員向け詳細 URL（/teams/{slug}）を指していること（id ベースは廃止・/public/teams/ でもない）
+  await expect(cardLink).toHaveAttribute('href', '/teams/midori-1')
 
-  // カードクリックで /teams/{id} に遷移する（dev mode のコンポーネントコンパイル待ちのため長めのタイムアウト）
+  // カードクリックで /teams/{slug} に遷移する（dev mode のコンポーネントコンパイル待ちのため長めのタイムアウト）
   await cardLink.click()
-  await page.waitForURL(/\/teams\/8001/, { timeout: 30000 })
+  await page.waitForURL(/\/teams\/midori-1/, { timeout: 30000 })
 })
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -354,7 +386,8 @@ test('F15.4-3: 都道府県のみ指定で検索が成功し、クエリパラ�
     teamItems: MOCK_TEAMS_PUBLIC,
     onSearch: (url) => {
       searchCallCount++
-      const pref = url.searchParams.get('prefecture')
+      // F22.1 足場C第三陣: org検索はコード化され prefectureCode（JISコード）を送る（旧: prefecture 名称）
+      const pref = url.searchParams.get('prefectureCode')
       if (pref) observedPrefecture = pref
     },
   })
@@ -375,8 +408,8 @@ test('F15.4-3: 都道府県のみ指定で検索が成功し、クエリパラ�
   // 再検索（onFilterChange）で API が呼ばれる
   await expect.poll(() => searchCallCount).toBeGreaterThan(initialCount)
 
-  // バックエンドには prefecture=東京都 が渡っている（page.vue が code→name 解決）
-  expect(observedPrefecture).toBe('東京都')
+  // バックエンドには prefectureCode=13（東京都の JIS コード）が渡る（FE はコードを直接送信・dual-support）
+  expect(observedPrefecture).toBe('13')
 
   // 結果が表示されている
   await expect(page.getByText('みどり町第一支部', { exact: true })).toBeVisible()

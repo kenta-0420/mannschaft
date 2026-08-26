@@ -7,10 +7,9 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
@@ -23,8 +22,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ModuleDefinitionEntity extends BaseEntity {
 
     @Column(nullable = false, length = 100)
@@ -71,5 +69,23 @@ public class ModuleDefinitionEntity extends BaseEntity {
      */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 有料プラン要否を更新する（SYSTEM_ADMIN操作）。
+     *
+     * @param requiresPaidPlan 有料プランを必須とするか
+     */
+    public void applyRequiresPaidPlan(boolean requiresPaidPlan) {
+        this.requiresPaidPlan = requiresPaidPlan;
+    }
+
+    /**
+     * 有効/無効を更新する（SYSTEM_ADMIN操作）。
+     *
+     * @param isActive 有効化するか
+     */
+    public void applyActive(boolean isActive) {
+        this.isActive = isActive;
     }
 }

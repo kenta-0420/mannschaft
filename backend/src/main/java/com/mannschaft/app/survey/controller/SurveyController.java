@@ -2,6 +2,8 @@ package com.mannschaft.app.survey.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.membership.domain.ScopeType;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.DuplicateSurveyRequest;
 import com.mannschaft.app.survey.dto.ExtendDeadlineRequest;
@@ -10,8 +12,10 @@ import com.mannschaft.app.survey.dto.SurveyDetailResponse;
 import com.mannschaft.app.survey.dto.SurveyResponse;
 import com.mannschaft.app.survey.dto.SurveyStatsResponse;
 import com.mannschaft.app.survey.dto.UpdateSurveyRequest;
+import com.mannschaft.app.survey.service.SurveyAccessGuard;
 import com.mannschaft.app.survey.service.SurveyResultService;
 import com.mannschaft.app.survey.service.SurveyService;
+import com.mannschaft.app.team.service.TeamService;
 
 import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,10 +37,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpHeaders;
+import org.springframework.web.server.ResponseStatusException;
 import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * アンケートコントローラー。アンケートのCRUD・ライフサイクルAPIを提供する。
+ *
+ * <p><b>認可</b>: 変更系（作成・更新・公開・締切・削除）は {@link SurveyAccessGuard} を
+ * public 入口である本 Controller で通す。作成はスコープ会員（応援者を除く）、既存アンケートの
+ * 管理操作は作成者または ADMIN+。認可スコープはパス変数ではなくアンケート実体由来で確定し、
+ * パス変数と実体が一致しない場合は 404（存在秘匿）。</p>
  */
 @RestController
 @RequestMapping("/api/v1/{scopeType}/{scopeId}/surveys")
@@ -46,6 +56,9 @@ public class SurveyController {
 
     private final SurveyService surveyService;
     private final SurveyResultService surveyResultService;
+    private final SurveyAccessGuard surveyAccessGuard;
+    private final OrganizationService organizationService;
+    private final TeamService teamService;
 
 
     /**
@@ -56,12 +69,14 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<SurveyResponse>> listSurveys(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         Page<SurveyResponse> result = surveyService.listSurveys(
-                scopeType, scopeId, status, PageRequest.of(page, size));
+                canonicalScopeType, resolvedScopeId, status, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -75,81 +90,117 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SurveyDetailResponse>> getSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
-        SurveyDetailResponse response = surveyService.getSurveyDetail(scopeType, scopeId, surveyId);
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        SurveyDetailResponse response = surveyService.getSurveyDetail(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
      * アンケートを作成する。
+     *
+     * <p>認可: 当該スコープの会員のみ（応援者は作成不可）。非会員は 403。</p>
      */
     @PostMapping
     @Operation(summary = "アンケート作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<SurveyDetailResponse>> createSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @Valid @RequestBody CreateSurveyRequest request) {
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        surveyAccessGuard.checkCanCreate(currentUserId, canonicalScopeType, resolvedScopeId);
         SurveyDetailResponse response = surveyService.createSurvey(
-                scopeType, scopeId, SecurityUtils.getCurrentUserId(), request);
+                canonicalScopeType, resolvedScopeId, currentUserId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
     /**
      * アンケートを更新する。
+     *
+     * <p>認可: 作成者または ADMIN+。パス変数のスコープと実体のスコープが一致しない場合は
+     * 404（存在秘匿）。</p>
      */
     @PatchMapping("/{surveyId}")
     @Operation(summary = "アンケート更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<SurveyResponse>> updateSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId,
             @Valid @RequestBody UpdateSurveyRequest request) {
-        SurveyResponse response = surveyService.updateSurvey(scopeType, scopeId, surveyId, request);
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        surveyAccessGuard.checkCanManage(
+                SecurityUtils.getCurrentUserId(), canonicalScopeType, resolvedScopeId, surveyId);
+        SurveyResponse response = surveyService.updateSurvey(canonicalScopeType, resolvedScopeId, surveyId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
      * アンケートを公開する。
+     *
+     * <p>認可: 作成者または ADMIN+。パス変数のスコープと実体のスコープが一致しない場合は
+     * 404（存在秘匿）。</p>
      */
     @PostMapping("/{surveyId}/publish")
     @Operation(summary = "アンケート公開")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "公開成功")
     public ResponseEntity<ApiResponse<SurveyResponse>> publishSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
-        SurveyResponse response = surveyService.publishSurvey(scopeType, scopeId, surveyId);
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        surveyAccessGuard.checkCanManage(
+                SecurityUtils.getCurrentUserId(), canonicalScopeType, resolvedScopeId, surveyId);
+        SurveyResponse response = surveyService.publishSurvey(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
      * アンケートを締め切る。
+     *
+     * <p>認可: 作成者または ADMIN+。パス変数のスコープと実体のスコープが一致しない場合は
+     * 404（存在秘匿）。</p>
      */
     @PostMapping("/{surveyId}/close")
     @Operation(summary = "アンケート締め切り")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "締め切り成功")
     public ResponseEntity<ApiResponse<SurveyResponse>> closeSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
-        SurveyResponse response = surveyService.closeSurvey(scopeType, scopeId, surveyId);
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        surveyAccessGuard.checkCanManage(
+                SecurityUtils.getCurrentUserId(), canonicalScopeType, resolvedScopeId, surveyId);
+        SurveyResponse response = surveyService.closeSurvey(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
      * アンケートを削除する。
+     *
+     * <p>認可: 作成者または ADMIN+。パス変数のスコープと実体のスコープが一致しない場合は
+     * 404（存在秘匿）。</p>
      */
     @DeleteMapping("/{surveyId}")
     @Operation(summary = "アンケート削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
-        surveyService.deleteSurvey(scopeType, scopeId, surveyId);
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        surveyAccessGuard.checkCanManage(
+                SecurityUtils.getCurrentUserId(), canonicalScopeType, resolvedScopeId, surveyId);
+        surveyService.deleteSurvey(canonicalScopeType, resolvedScopeId, surveyId);
         return ResponseEntity.noContent().build();
     }
 
@@ -165,7 +216,7 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<RespondentResponse>>> getRespondents(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
         List<RespondentResponse> respondents = surveyResultService.getRespondents(
                 surveyId, SecurityUtils.getCurrentUserId());
@@ -184,10 +235,12 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<byte[]> exportResults(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId) {
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         byte[] csv = surveyResultService.exportResultsCsv(
-                scopeType, scopeId, surveyId, SecurityUtils.getCurrentUserId());
+                canonicalScopeType, resolvedScopeId, surveyId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"survey_" + surveyId + ".csv\"")
                 .contentType(MediaType.parseMediaType("text/csv; charset=UTF-8"))
@@ -206,11 +259,13 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
     public ResponseEntity<ApiResponse<SurveyDetailResponse>> duplicateSurvey(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId,
             @RequestBody(required = false) DuplicateSurveyRequest request) {
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         SurveyDetailResponse response = surveyService.duplicateSurvey(
-                scopeType, scopeId, surveyId, request, SecurityUtils.getCurrentUserId());
+                canonicalScopeType, resolvedScopeId, surveyId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -225,11 +280,13 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "延長成功")
     public ResponseEntity<ApiResponse<SurveyResponse>> extendDeadline(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId,
+            @PathVariable String scopeId,
             @PathVariable Long surveyId,
             @Valid @RequestBody ExtendDeadlineRequest request) {
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
         SurveyResponse response = surveyService.extendDeadline(
-                scopeType, scopeId, surveyId, request.getNewDeadline(), SecurityUtils.getCurrentUserId());
+                canonicalScopeType, resolvedScopeId, surveyId, request.getNewDeadline(), SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -241,8 +298,49 @@ public class SurveyController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SurveyStatsResponse>> getStats(
             @PathVariable String scopeType,
-            @PathVariable Long scopeId) {
-        SurveyStatsResponse response = surveyService.getStats(scopeType, scopeId);
+            @PathVariable String scopeId) {
+        String canonicalScopeType = resolveScopeType(scopeType);
+        Long resolvedScopeId = resolveScopeId(scopeType, scopeId);
+        SurveyStatsResponse response = surveyService.getStats(canonicalScopeType, resolvedScopeId);
         return ResponseEntity.ok(ApiResponse.of(response));
+    }
+
+    /**
+     * URLパス語の scopeType を正準 enum 値の文字列に変換する。
+     *
+     * <p>URL パスでは複数形（"organizations" / "teams"）が使われるが、
+     * DB・Service 層では正準 enum 値（"ORGANIZATION" / "TEAM"）を期待する。
+     * 本メソッドで変換することで、汚染値が保存されるのを防ぐ。</p>
+     *
+     * @param scopeType URLパス語（"organizations" または "teams"）
+     * @return 正準値（"ORGANIZATION" または "TEAM"）
+     * @throws ResponseStatusException 不明な scopeType の場合（HTTP 400）
+     */
+    private String resolveScopeType(String scopeType) {
+        if ("organizations".equalsIgnoreCase(scopeType)) {
+            return ScopeType.ORGANIZATION.name();
+        } else if ("teams".equalsIgnoreCase(scopeType)) {
+            return ScopeType.TEAM.name();
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不明な scopeType: " + scopeType);
+    }
+
+    /**
+     * scopeType と scopeId（スラッグ文字列）から内部 BIGINT ID を解決する。
+     *
+     * <p>slug 形式のスコープIDを、scopeType に応じて
+     * OrganizationService または TeamService 経由で内部 ID に変換する。</p>
+     *
+     * @param scopeType "organizations" または "teams"（URLパス語）
+     * @param scopeId   スラッグ文字列
+     * @return 内部 BIGINT ID
+     */
+    private Long resolveScopeId(String scopeType, String scopeId) {
+        if ("organizations".equalsIgnoreCase(scopeType)) {
+            return organizationService.resolveOrgId(scopeId);
+        } else if ("teams".equalsIgnoreCase(scopeType)) {
+            return teamService.resolveTeamId(scopeId);
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "不明な scopeType: " + scopeType);
     }
 }

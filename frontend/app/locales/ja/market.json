@@ -1,0 +1,247 @@
+{
+  "market": {
+    "title": "市（いち）",
+    "listing": {
+      "label": "札",
+      "count": "{count}件",
+      "regionNone": "全国（地域指定なしを含む）"
+    },
+    "page": {
+      "newListing": "札を立てる"
+    },
+    "action": {
+      "post": "札を立てる",
+      "apply": "札に応じる",
+      "takeDown": "札を下げる",
+      "loginToApply": "ログインして応募",
+      "selectTeam": "応募するチームを選択",
+      "goToDashboard": "ダッシュボードへ",
+      "postFromDashboard": "チーム/組織のダッシュボードで札を立てる"
+    },
+    "region": {
+      "add": "地域を追加",
+      "selected": "選択中の地域",
+      "none": "地域未選択（地域問わず）"
+    },
+    "filter": {
+      "prefecture": "都道府県",
+      "city": "市区町村",
+      "category": "ジャンル",
+      "keyword": "キーワード検索",
+      "allPrefectures": "全国",
+      "allCities": "市区町村を選択",
+      "allCategories": "すべてのジャンル",
+      "includeRegionNone": "地域指定なしも含む",
+      "mobileToggle": "絞り込み"
+    },
+    "breadcrumb": {
+      "national": "全国",
+      "count": "({count}件)"
+    },
+    "card": {
+      "deadline": "締切",
+      "capacity": "{confirmed}/{capacity}人",
+      "region": "地域",
+      "regionNone": "地域問わず",
+      "category": "ジャンル",
+      "organizer": "主催"
+    },
+    "status": {
+      "OPEN": "募集中",
+      "FULL": "満員（認証待ち）",
+      "COMPLETED": "成立",
+      "CANCELLED": "取り下げ済み",
+      "AUTO_CANCELLED": "不成立（自動取消）"
+    },
+    "visibility": {
+      "public": "市に公開",
+      "friendsOnly": "フレンドチームのみ",
+      "label": "公開範囲"
+    },
+    "friendTarget": {
+      "allFriends": "すべての成立フレンド",
+      "folder": "フォルダ指定",
+      "team": "個別に指定",
+      "addTeam": "チームを追加",
+      "selectFolder": "フォルダを選択",
+      "noFolders": "フォルダがありません"
+    },
+    "empty": {
+      "title": "札が見つかりません",
+      "cta": {
+        "canPost": "あなたのチームで最初の札を立てませんか？",
+        "noPermission": "札を立てるにはチーム/組織の管理者になるか、管理者に依頼してください",
+        "guest": "ログインして札を立てる / 応募する"
+      }
+    },
+    "detail": {
+      "organizer": "主催",
+      "region": "開催地域",
+      "regionNone": "地域問わず",
+      "startAt": "開催日時",
+      "deadline": "応募締切",
+      "capacity": "定員",
+      "confirmedCount": "応募中",
+      "status": "ステータス",
+      "location": "場所",
+      "category": "ジャンル",
+      "notFound": "この札は見つかりません",
+      "notPublic": "この札は公開されていません"
+    },
+    "notify": {
+      "applicationReceived": "あなたの札に声がかかりました（{owner} / {title}）",
+      "friendListing": "{team}から「{title}」が届きました",
+      "finalizeRequest": "募集が定員に達しました。確定して札を下げますか？",
+      "reminderShortfall": "締切が近づいています。あと{count}名の応募が必要です",
+      "autoCancelled": "「{title}」は応募が集まらず締め切られました",
+      "cancelledToApplicant": "申し訳ありません。「{title}」は主催者により取り下げられました",
+      "seeOtherListings": "{team}の他の札を見る"
+    },
+    "error": {
+      "loadFailed": "市の情報取得に失敗しました",
+      "MARKET_001": "地域コードが不正または都道府県と市区町村が一致しません",
+      "MARKET_002": "フレンドチームのみの場合は宛先を1件以上指定してください",
+      "MARKET_003": "フレンド未成立のチームは宛先に指定できません",
+      "MARKET_004": "他のチームが所有するフォルダは指定できません",
+      "MARKET_005": "フレンドのみ公開と配信先の併用はできません"
+    },
+    "payment": {
+      "breakdown": {
+        "includesFeeNote": "※お支払い合計には決済手数料が含まれます。",
+        "refundFeeConditionalNote": "※ご返金の場合、決済手数料が返金されないことがあります（返金条件は募集主の設定によります）。",
+        "title": "お支払い内訳",
+        "faceAmountLabel": "謝礼（額面）",
+        "feeLabel": "支払手数料",
+        "totalLabel": "お支払い合計"
+      },
+      "refund": {
+        "title": "返金",
+        "feeBearerLabel": "決済手数料の負担者",
+        "feeBearer": {
+          "PAYER": "支払者が負担（支払者都合のキャンセル）",
+          "PAYEE": "受取側が負担（こちらの都合・中止）"
+        },
+        "feeBearerHint": {
+          "PAYER": "支払者へ受取額（手数料を差し引いた額）を返金します。決済手数料は支払者の負担です。",
+          "PAYEE": "支払者へ満額を返金します。決済手数料はこちら（受取側）の負担となり、最終的に次回入金等で精算されます。"
+        },
+        "submit": "返金する",
+        "confirmTitle": "返金の確認",
+        "confirmPayee": "受取側負担での返金です。支払者へ満額が返金され、決済手数料はこちらの負担となります。よろしいですか？",
+        "amountLabel": "返金額",
+        "amountFull": "全額返金",
+        "amountPartial": "一部返金",
+        "amountRequired": "返金額を入力してください。",
+        "amountTooLarge": "返金額が返金可能額を超えています。",
+        "reasonLabel": "理由（任意）",
+        "failed": "返金に失敗しました。"
+      },
+      "connect": {
+        "title": "受取口座（謝礼の受け取り）",
+        "loading": "読み込み中…",
+        "statusLabel": "状態",
+        "status": {
+          "ready": "登録完了",
+          "onboarding": "審査中",
+          "restricted": "追加情報が必要",
+          "notRegistered": "未登録"
+        },
+        "registrationRequired": "謝礼を受け取るには受取口座の登録が必要です。",
+        "register": "受取口座を登録する",
+        "continue": "登録を続ける",
+        "redirecting": "遷移中…",
+        "linkFailed": "受取口座の登録リンクを取得できませんでした。"
+      },
+      "confirm": {
+        "title": "謝礼のお支払い確認",
+        "intro": "応募者を成立させる前に、謝礼のお支払い（カード与信）を確認してください。",
+        "expiryNotice": "この与信は約7日間有効です。7日以内に役務完了の最終認証が必要です（超過時は完了時に改めてお支払いいただきます）。",
+        "deferredNotice": "成立から役務完了まで7日を超えるため、いまは与信を行いません。役務完了の最終認証時に改めてお支払いいただきます。",
+        "alreadyAuthorized": "このお支払いは確認済みです。",
+        "preparing": "決済情報を準備しています。少し待ってから再度お試しください。",
+        "retry": "再読み込み",
+        "submit": "お支払いを確認する",
+        "processing": "処理中…",
+        "succeeded": "お支払いの確認が完了しました。",
+        "loadFailed": "決済情報の取得に失敗しました。",
+        "payeeNotReady": "受取側の受取口座が未登録のため、まだお支払いできません。",
+        "proceed": "成立を続行する"
+      },
+      "received": {
+        "pageTitle": "謝礼の受け取り・返金管理",
+        "pageSubtitle": "受け取った謝礼を確認し、必要に応じて返金できます。",
+        "scopeLabel": "受取先",
+        "scope": {
+          "self": "自分（個人）",
+          "team": "チーム",
+          "org": "組織"
+        },
+        "statusFilterLabel": "状態で絞り込む",
+        "statusFilterAll": "すべて",
+        "loading": "読み込み中…",
+        "empty": "受け取った謝礼はまだありません。",
+        "loadFailed": "受取一覧の取得に失敗しました。",
+        "noScope": "受取先がありません。チーム/組織の管理者になると、その受取一覧を確認できます。",
+        "col": {
+          "source": "出所",
+          "status": "状態",
+          "faceAmount": "額面",
+          "chargeAmount": "請求額",
+          "fee": "手数料",
+          "refunded": "返金済",
+          "createdAt": "受取日",
+          "actions": "操作"
+        },
+        "sourceKind": {
+          "RECRUITMENT": "謝礼（市の札）",
+          "MEMBERSHIP": "会費",
+          "JOBMATCHING": "ジョブマッチング",
+          "FLEAMARKET": "フリマ"
+        },
+        "refundButton": "返金",
+        "refundUnavailable": "返金不可",
+        "refundSucceeded": "返金を受け付けました。",
+        "status": {
+          "PENDING_CONFIRMATION": "確認待ち",
+          "DEFERRED": "完了時払い予定",
+          "AUTHORIZED": "与信済",
+          "HELD": "払出保留",
+          "CAPTURED": "受取確定",
+          "PARTIALLY_REFUNDED": "一部返金済",
+          "REFUNDED": "全額返金済",
+          "CANCELLED": "取消",
+          "DISPUTED": "係争中"
+        }
+      }
+    },
+    "market_guide": {
+      "page_title": "市の使い方",
+      "what": {
+        "title": "市とは？",
+        "body": "チームや組織が出す「一緒に活動しよう」という公募情報を誰でも閲覧できる公開掲示板です。ログイン不要で検索・閲覧でき、参加したい募集を見つけたら「札に応じる」で応募できます。"
+      },
+      "search": {
+        "title": "絞り込み検索",
+        "body": "都道府県・市区町村・ジャンル・キーワードで条件を絞り込めます。",
+        "steps": {
+          "step1": "都道府県を選ぶと、市区町村のドロップダウンが有効になります",
+          "step2": "ジャンルや自由入力キーワードを追加してさらに絞り込めます",
+          "step3": "絞り込み条件はURLに保存されるため、リンクで共有・ブックマークが可能です"
+        }
+      },
+      "apply": {
+        "title": "札に応じる（応募する）",
+        "body": "気になる募集をクリックして詳細を確認し、「札に応じる」ボタンで応募できます。応募にはログインが必要です。",
+        "steps": {
+          "step1": "一覧から気になる札をクリックして詳細ページを開く",
+          "step2": "開催日時・応募締切・定員・地域を確認する",
+          "step3": "「札に応じる」ボタンを押すと応募完了"
+        }
+      },
+      "team_apply": {
+        "title": "チーム名義での応募",
+        "body": "「チームで参加」と記載された募集は、自分の所属チームを選んで応募します。ドロップダウンでチームを選択してから「札に応じる」ボタンを押してください。"
+      }
+    }
+  }
+}

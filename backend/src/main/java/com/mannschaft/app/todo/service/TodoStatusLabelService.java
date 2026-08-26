@@ -20,6 +20,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.todo.dto.TodoStatusLabelView;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,8 +31,14 @@ import java.util.Optional;
  * TODO カスタムステータスラベルサービス（F02.3.1 Phase 1a）。
  *
  * <p>SYSTEM 既定ラベル + 個人/チーム/組織スコープのラベルを管理する。
- * SYSTEM ラベルは不変、個人スコープは本人のみ、チーム・組織スコープは ADMIN/DEPUTY_ADMIN のみ
+ * SYSTEM ラベルは不変、個人スコープは本人のみ、チーム・組織スコープは ADMIN のみ
  * 編集可能。1スコープあたり最大 20 件。</p>
+ *
+ * <p><b>認可の所在</b>: 参照・作成・更新・削除の全経路が {@code validateScopeAccess} を通る。
+ * チーム・組織スコープの<b>参照はメンバーに限定</b>し、<b>CRUD は ADMIN に限定</b>する。
+ * 更新・削除ではさらに、path から渡されたスコープと<b>ラベル本体（entity）のスコープが一致すること</b>を
+ * 先に照合し、不一致は 404（{@link TodoErrorCode#STATUS_LABEL_NOT_FOUND}）で存在を秘匿する。
+ * 認可判定は必ず entity 由来のスコープで行い、リクエスト値をそのまま信頼しない（BOLA/IDOR 対策）。</p>
  */
 @Slf4j
 @Service
@@ -44,6 +52,17 @@ public class TodoStatusLabelService {
     private final TodoStatusLabelRepository labelRepository;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+
+    /**
+     * 自己プロキシ参照（issue #2544）。{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用するため、
+     * {@link #findSystemDefaultByBucket} から {@link #getSystemDefaultsByBucket} を {@code this.} で
+     * 呼ぶとプロキシをバイパスし、{@code systemDefaultLabels} キャッシュが一度も発火しない
+     * （唯一の呼び出し元が同一クラス内なので、実質「死んだ注釈」になっていた）。
+     * 循環参照を避けるため {@code @Lazy} を付けたフィールド注入とする。
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private TodoStatusLabelService self;
 
     /**
      * SYSTEM 既定ラベル + 当該スコープのアクティブラベル一覧を sort_order 順で取得する。
@@ -259,35 +278,63 @@ public class TodoStatusLabelService {
     }
 
     /**
-     * SYSTEM 既定ラベルを bucket → entity の Map で取得する（F02.3.1 後続 B-6）。
+     * SYSTEM 既定ラベルを bucket名 → entity の Map で取得する（F02.3.1 後続 B-6）。
      *
      * <p>{@link TodoStatusBucket} ごとに1件ずつ存在することを想定。SYSTEM 既定ラベルは
      * V19.003 マイグレーションで投入され、論理削除も改名も発生しないため
      * {@link Cacheable} でキャッシュする。バケット → ラベル の即時参照に使用。</p>
      *
-     * @return bucket をキーとした SYSTEM 既定ラベルのマップ（空はあり得ないが、欠落時は空の Map を返す）
+     * <p><strong>キーが {@link TodoStatusBucket} ではなく {@code String}（= {@code bucket.name()}）
+     * である理由:</strong> Redis(Valkey) の JSON シリアライザ（{@code GenericJackson2JsonRedisSerializer}）
+     * は Map を JSON オブジェクト化するが、JSON のキーは常に文字列であり、デシリアライズ時に
+     * 「キーが enum 型である」という情報が失われる。{@code EnumMap<TodoStatusBucket, ...>} を
+     * キャッシュするとキャッシュ HIT 時にキーが {@code String} 化した Map が返り、
+     * {@code map.get(bucket)}（enum キー）が常に null を返して既定ラベル参照が静かに壊れる。
+     * キーを最初から {@code String} にすることで JSON ラウンドトリップで形が崩れない。</p>
+     *
+     * <p><b>戻り値を呼び出し側で変異させないこと（issue #2544）。</b>
+     * 復元可能性のため不変コレクションをやめて可変の実装を返しているが、
+     * これは「変更してよい」という意味ではない。test プロファイルの
+     * {@code ConcurrentMapCacheManager} はキャッシュ済みの<b>同一インスタンス</b>を返すため、
+     * 呼び出し側が {@code add}/{@code remove}/{@code put} するとキャッシュ本体が汚染され、
+     * 以降の全呼び出し元が汚染後の値を受け取る（本番の Valkey は毎回デシリアライズするので
+     * 症状が出ず、<b>テストと本番で挙動が食い違う</b>厄介な形になる）。
+     * 加工が要る場合は必ずコピーしてから行うこと。</p>
+     *
+     * @return bucket名（{@link TodoStatusBucket#name()}）をキーとした SYSTEM 既定ラベルのマップ
+     *         （空はあり得ないが、欠落時は空の Map を返す）
      */
     @Cacheable("systemDefaultLabels")
-    public Map<TodoStatusBucket, TodoStatusLabelEntity> getSystemDefaultsByBucket() {
-        Map<TodoStatusBucket, TodoStatusLabelEntity> result = new java.util.EnumMap<>(TodoStatusBucket.class);
+    public Map<String, TodoStatusLabelView> getSystemDefaultsByBucket() {
+        Map<String, TodoStatusLabelView> result = new java.util.LinkedHashMap<>();
         for (TodoStatusLabelEntity entity : labelRepository.findAllSystemDefaults()) {
             // 同一 bucket が複数あった場合は sort_order が小さい方を優先（findAllSystemDefaults が ASC 順）
-            result.putIfAbsent(entity.getBucket(), entity);
+            // issue #2544 D 群: JPA エンティティは setter を持たず往復で全 null 化するため View へ射影する。
+            result.putIfAbsent(entity.getBucket().name(),
+                    new TodoStatusLabelView(
+                            entity.getId(),
+                            entity.getName(),
+                            entity.getBucket().name(),
+                            entity.getColor()));
         }
-        return Map.copyOf(result);
+        // issue #2544 B 群: Map.copyOf(...) は java.util.ImmutableCollections$MapN を返し、
+        // RedisConfig が埋め込む具象型 ID から復元できない（既定コンストラクタが無い）。
+        // 可変の LinkedHashMap をそのまま返す（挿入順＝sort_order 昇順も保たれる）。
+        return result;
     }
 
     /**
      * 指定 bucket の SYSTEM 既定ラベルを取得する（F02.3.1 後続 B-6）。
      *
      * @param bucket 取得したいバケット
-     * @return SYSTEM 既定ラベル（マイグレーション欠落時は empty）
+     * @return SYSTEM 既定ラベルの View（マイグレーション欠落時は empty）
      */
-    public Optional<TodoStatusLabelEntity> findSystemDefaultByBucket(TodoStatusBucket bucket) {
+    public Optional<TodoStatusLabelView> findSystemDefaultByBucket(TodoStatusBucket bucket) {
         if (bucket == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(getSystemDefaultsByBucket().get(bucket));
+        // issue #2544: 自己プロキシ経由で呼ぶ（this. だと @Cacheable が発火しない）。
+        return Optional.ofNullable(self.getSystemDefaultsByBucket().get(bucket.name()));
     }
 
     // ─────────────────────────────────────────────
@@ -297,14 +344,23 @@ public class TodoStatusLabelService {
     /**
      * スコープへのアクセス権を検証する。
      *
-     * <p>F02.3.1 設計書 §2 の権限マトリクスでは、チーム・組織スコープのラベル CRUD は
-     * <strong>ADMIN のみ</strong>（DEPUTY_ADMIN は不可）と定義されているため、設計書を正として
-     * {@link AccessControlService#isAdmin} で厳格判定する。違反時は 403。</p>
+     * <p>保証する内容（F02.3.1 設計書 §2 の権限マトリクス）:</p>
+     * <ul>
+     *   <li><b>個人スコープ</b>: 参照・CRUD とも本人のみ（{@code actorId == scopeId}）。違反時は 403。</li>
+     *   <li><b>チーム・組織スコープの参照</b>: 当該スコープの<b>メンバーに限定</b>する
+     *       （{@link AccessControlService#checkMembership}）。非メンバーは 403。</li>
+     *   <li><b>チーム・組織スコープの CRUD</b>: <b>ADMIN のみ</b>（DEPUTY_ADMIN は不可）。
+     *       設計書を正として {@link AccessControlService#isAdmin} で厳格判定する。違反時は 403。</li>
+     * </ul>
+     *
+     * <p>参照とCRUDのいずれの経路でも認可判定を必ず通す（無条件に素通しする分岐を持たない）。
+     * ラベルは所属スコープの運用語彙であり、スコープ外の利用者には参照させない方針である。</p>
      *
      * @param scopeType   スコープ種別
      * @param scopeId     スコープ ID
      * @param actorId     操作ユーザー ID
-     * @param adminOnly   true の場合は CRUD 権限（個人=本人 / チーム・組織=ADMIN のみ）
+     * @param adminOnly   true の場合は CRUD 権限（個人=本人 / チーム・組織=ADMIN のみ）、
+     *                    false の場合は参照権限（個人=本人 / チーム・組織=メンバー）
      */
     private void validateScopeAccess(TodoStatusLabelScope scopeType, Long scopeId, Long actorId, boolean adminOnly) {
         if (actorId == null) {
@@ -322,11 +378,17 @@ public class TodoStatusLabelService {
             case TEAM:
                 if (adminOnly) {
                     requireAdminStrict(actorId, scopeId, "TEAM");
+                } else {
+                    // 参照は当該チームのメンバーに限定する（非メンバーは 403）。
+                    accessControlService.checkMembership(actorId, scopeId, "TEAM");
                 }
                 return;
             case ORGANIZATION:
                 if (adminOnly) {
                     requireAdminStrict(actorId, scopeId, "ORGANIZATION");
+                } else {
+                    // 参照は当該組織のメンバーに限定する（非メンバーは 403）。
+                    accessControlService.checkMembership(actorId, scopeId, "ORGANIZATION");
                 }
                 return;
             default:

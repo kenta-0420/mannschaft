@@ -11,8 +11,10 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -29,8 +31,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class RecruitmentListingEntity extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
@@ -93,6 +94,22 @@ public class RecruitmentListingEntity extends BaseEntity {
 
     private Integer price;
 
+    /**
+     * F22.1 市の謝礼決済: 札ごとの受領主体種別 {@code USER}/{@code TEAM}/{@code ORG}。
+     * {@code payment_enabled=TRUE} 時に必須（chk_rl_payee）。既存札は NULL（決済無効・後方互換）。
+     * 値は VARCHAR(8) で保持し、{@code RecruitmentScopeType}（TEAM/ORGANIZATION の2値）とは別系統。
+     * 変換は ConnectAccountService 等に集約する（設計書 §4.1 実装注意）。
+     */
+    @Column(name = "payee_kind", length = 8)
+    private String payeeKind;
+
+    /**
+     * F22.1 市の謝礼決済: {@code payee_kind=USER} の受領者（users.id 論理参照・FKなし）。
+     * {@code payee_kind=USER} のとき必須・それ以外では NULL（chk_rl_payee_user）。
+     */
+    @Column(name = "payee_user_id")
+    private Long payeeUserId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default
@@ -109,6 +126,20 @@ public class RecruitmentListingEntity extends BaseEntity {
 
     @Column(length = 200)
     private String location;
+
+    /**
+     * 都道府県コード（JIS X 0401・CHAR(2)）。F22.1 市の地域フィルタ用。
+     * {@code prefectures.code} を参照（FK なし・Service 検証）。地域未指定の札は NULL。
+     */
+    @Column(name = "prefecture_code", length = 2)
+    private String prefectureCode;
+
+    /**
+     * 市区町村コード（JIS X 0402・CHAR(5)）。F22.1 市の地域フィルタ用。
+     * {@code cities.code} を参照（FK なし・Service 検証）。市区町村未確定の札は NULL。
+     */
+    @Column(name = "city_code", length = 5)
+    private String cityCode;
 
     private Long reservationLineId;
 
@@ -170,9 +201,40 @@ public class RecruitmentListingEntity extends BaseEntity {
         this.status = RecruitmentListingStatus.AUTO_CANCELLED;
     }
 
+    /**
+     * F22.1 市「札を下げる」最終認証: FULL → COMPLETED に遷移する。
+     *
+     * <p>札が要件充足（{@code FULL}）した後、札主が F04.9 確認通知で最終認証
+     * （{@code source_type='MARKET_FINALIZE'}）に応答したときに呼び出す。
+     * 「要件充足だが未認証」は {@code FULL}、「最終認証済み」は {@code COMPLETED} で
+     * 表現する（新カラム不要・02_api_design §6.1）。</p>
+     *
+     * @throws IllegalStateException FULL 以外の状態から呼び出した場合
+     */
+    public void finalizeComplete() {
+        if (this.status != RecruitmentListingStatus.FULL) {
+            throw new IllegalStateException("FULL 以外からは finalizeComplete できません: status=" + this.status);
+        }
+        this.status = RecruitmentListingStatus.COMPLETED;
+    }
+
     /** 論理削除を行う。 */
     public void softDelete() {
         this.deletedAt = LocalDateTime.now();
+    }
+
+    /**
+     * F22.1 市: 地域コード（都道府県・市区町村）を更新する。
+     *
+     * <p>呼び出し前に Service 層で {@code MarketRegionValidator} による整合検証
+     * （{@code MARKET_001}）を済ませること。両方 null は「地域を問わない」札を表す。</p>
+     *
+     * @param prefectureCode 正規化済み都道府県コード（null 可）
+     * @param cityCode       市区町村コード（null 可）
+     */
+    public void updateRegion(String prefectureCode, String cityCode) {
+        this.prefectureCode = prefectureCode;
+        this.cityCode = cityCode;
     }
 
     /**
@@ -258,7 +320,9 @@ public class RecruitmentListingEntity extends BaseEntity {
             String location,
             Long reservationLineId,
             String imageUrl,
-            Long cancellationPolicyId
+            Long cancellationPolicyId,
+            String payeeKind,
+            Long payeeUserId
     ) {
         if (this.status == RecruitmentListingStatus.COMPLETED
                 || this.status == RecruitmentListingStatus.CANCELLED
@@ -293,6 +357,22 @@ public class RecruitmentListingEntity extends BaseEntity {
             throw new IllegalStateException("決済を有効化する場合は料金が必要");
         }
 
+        // F22.1 市 謝礼決済: 受領主体の防御的検証（DB chk_rl_payee / chk_rl_payee_user 相当・Service 検証の二重化）。
+        // payeeKind=null は「変更なし」、空でない値は変更。effective 値で CHECK 不変条件を満たすことを確認する。
+        String effectivePayeeKind = payeeKind != null ? payeeKind : this.payeeKind;
+        Long effectivePayeeUserId = payeeUserId != null ? payeeUserId : this.payeeUserId;
+        if (Boolean.TRUE.equals(effectivePaymentEnabled)
+                && (effectivePayeeKind == null || effectivePayeeKind.isBlank())) {
+            throw new IllegalStateException("決済を有効化する場合は受領主体（payeeKind）が必要");
+        }
+        if ("USER".equals(effectivePayeeKind) && effectivePayeeUserId == null) {
+            throw new IllegalStateException("payeeKind=USER の場合は受領者ユーザー（payeeUserId）が必要");
+        }
+        if (effectivePayeeKind != null && !"USER".equals(effectivePayeeKind)) {
+            // 非 USER（TEAM/ORG）では payee_user_id は NULL でなければならない（chk_rl_payee_user）。
+            effectivePayeeUserId = null;
+        }
+
         if (title != null) this.title = title;
         if (description != null) this.description = description;
         if (subcategoryId != null) this.subcategoryId = subcategoryId;
@@ -309,5 +389,13 @@ public class RecruitmentListingEntity extends BaseEntity {
         if (reservationLineId != null) this.reservationLineId = reservationLineId;
         if (imageUrl != null) this.imageUrl = imageUrl;
         if (cancellationPolicyId != null) this.cancellationPolicyId = cancellationPolicyId;
+        // 受領主体は CHECK 整合を取った effective 値で確定する（非 USER は user_id を NULL に正規化済み）。
+        if (payeeKind != null) {
+            this.payeeKind = effectivePayeeKind;
+            this.payeeUserId = effectivePayeeUserId;
+        } else if (payeeUserId != null) {
+            // payeeKind 未指定だが payeeUserId のみ更新（既存 payeeKind=USER の受領者付け替え）。
+            this.payeeUserId = effectivePayeeUserId;
+        }
     }
 }

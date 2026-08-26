@@ -2,6 +2,8 @@
 const props = defineProps<{
   event: {
     id: number
+    /** 親 schedules 行の ID（BE CalendarEntryResponse.scheduleId・設計書 §1.5 / AC-07(b)）。null ならコメント欄非表示。 */
+    scheduleId?: number | null
     title: string
     description: string | null
     location: string | null
@@ -15,26 +17,139 @@ const props = defineProps<{
     attendanceRequired: boolean
     myAttendance: string | null
     attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
+    targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+    targetCount?: number
+    targets?: Array<{
+      userId: number
+      displayName: string
+      avatarUrl: string | null
+      calendarColor: string | null
+    }>
   }
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   canEdit: boolean
   skipDelegations?: boolean
   scopeName?: string | null
   scopeIconUrl?: string | null
+  showAudience?: boolean
+  /** 通知リンク（?commentId=）から遷移してきた場合のハイライト対象コメント ID（設計書 §6.4）。 */
+  highlightCommentId?: string | null
 }>()
 
 const emit = defineEmits<{
   edit: []
   delete: []
   responded: []
+  /** ハイライト処理（発見/未発見いずれも）が完了し、呼び出し元が commentId クエリを除去してよいタイミング。 */
+  'comment-highlighted': []
 }>()
 
 const { formatDate, formatDateTime: isoFormatDateTime } = useDatetime()
+const { t } = useI18n()
+const scheduleApi = useScheduleApi()
+const notification = useNotification()
+
+// F08.10 入口④: カレンダー予定（TEAM スコープ）から試合記録へ合流する。
+// 予定の publicId(scopeId) を数値 orgId/teamId に解決し、既存 match があれば live を開く・
+// 無ければ予定情報をプリフィルして作成 → live へ遷移する（二重起票防止）。
+const { resolveContext } = useMatchOrgContext()
+const { resolveMatchBySchedule, createMatch } = useMatchApi()
+// TEAM スコープ予定のみ記録ボタンを出す（teamId 文脈が要るため・organization/personal では非表示）。
+// Bug B 修正: scopeId が空の場合（個人予定）はボタンを非表示にする。
+const canRecordMatch = computed(() => props.scopeType === 'team' && !!props.scopeId)
+const recordingMatch = ref(false)
+
+async function recordMatch(): Promise<void> {
+  if (!canRecordMatch.value || recordingMatch.value) return
+  recordingMatch.value = true
+  try {
+    const ctx = await resolveContext(props.scopeId)
+    if (!ctx) {
+      // Bug C 修正: ctx が null の場合（チームが組織に所属していない等）はユーザーへ通知する。
+      // 以前のコメント「composable 内で通知済み」は誤記で、実際には通知されていなかった。
+      notification.warn(t('match.entry.no_org_for_record'))
+      return
+    }
+
+    // 1) この予定に紐づく既存 match があれば live を開く
+    const existing = await resolveMatchBySchedule(ctx.orgId, ctx.teamId, props.event.id)
+    if (existing?.id) {
+      await navigateTo(`/teams/${props.scopeId}/matches/${existing.id}/live`)
+      return
+    }
+
+    // 2) 無ければ予定情報をプリフィルして作成（kind 既定=PRACTICE・相手名/日時/会場は取れる範囲）
+    // BE CreateMatchRequest.kickoffAt は LocalDateTime（タイムゾーンなし）のため、
+    // ScheduleResponse.time.startAt の OffsetDateTime 形式（"+09:00" 等）のオフセットを除去する。
+    const kickoffAtLocal = props.event.startAt.replace(/[+-]\d{2}:\d{2}$/, '')
+    const created = await createMatch(ctx.orgId, ctx.teamId, {
+      kind: 'PRACTICE',
+      opponentName: props.event.title,
+      scheduleId: props.event.id,
+      kickoffAt: kickoffAtLocal,
+      venue: props.event.location ?? undefined,
+    })
+    if (created.id) {
+      await navigateTo(`/teams/${props.scopeId}/matches/${created.id}/live`)
+    }
+  } catch {
+    // エラーは composable 内で通知済み（症状は隠さない）
+  } finally {
+    recordingMatch.value = false
+  }
+}
 
 function formatDateTime(dateStr: string, allDay: boolean): string {
   if (allDay) return formatDate(dateStr)
   return isoFormatDateTime(dateStr)
+}
+
+// 機能55: 予約タスク（PENDING の取消対応）
+interface ScheduledTaskView {
+  id: string
+  taskType: string
+  scheduledAt: string
+  status: string
+}
+const scheduledTasks = ref<ScheduledTaskView[]>([])
+const cancellingTaskId = ref<string | null>(null)
+
+const taskTypeLabel: Record<string, string> = {
+  SURVEY: t('schedule.scheduled_task.type_survey'),
+  ATTENDANCE: t('schedule.scheduled_task.type_attendance'),
+}
+
+const taskStatusConfig: Record<string, { label: string; severity: string }> = {
+  PENDING: { label: t('schedule.scheduled_task.status_pending'), severity: 'info' },
+  CREATED: { label: t('schedule.scheduled_task.status_created'), severity: 'success' },
+  CANCELLED: { label: t('schedule.scheduled_task.status_cancelled'), severity: 'secondary' },
+  FAILED: { label: t('schedule.scheduled_task.status_failed'), severity: 'danger' },
+}
+
+async function loadScheduledTasks() {
+  try {
+    const res = await scheduleApi.getSchedule(props.scopeType, props.scopeId, props.event.id)
+    const data = (res as { data: Record<string, unknown> }).data ?? {}
+    const raw = (data.scheduledTasks as ScheduledTaskView[] | undefined) ?? []
+    scheduledTasks.value = raw
+  } catch {
+    // 補助表示なので失敗時は空扱いで継続
+    scheduledTasks.value = []
+  }
+}
+
+async function cancelTask(taskId: string) {
+  cancellingTaskId.value = taskId
+  try {
+    await scheduleApi.cancelScheduledTask(props.scopeType, props.scopeId, props.event.id, taskId)
+    notification.success(t('schedule.scheduled_task.cancel_success'))
+    await loadScheduledTasks()
+  } catch {
+    notification.error(t('schedule.scheduled_task.cancel_failed'))
+  } finally {
+    cancellingTaskId.value = null
+  }
 }
 
 const statusConfig: Record<string, { label: string; severity: string }> = {
@@ -56,6 +171,11 @@ onMounted(async () => {
       // サイドパネルの補助情報なので失敗しても 0 件扱いで継続
       delegationCount.value = 0
     }
+  }
+  // 機能55: 予約タスクは編集権限者かつチーム/組織スコープにのみ表示・取消可能
+  // 個人予定（scopeId が空）の場合は GET /teams//schedules/{id} の二重スラッシュを避けるためスキップ
+  if (props.canEdit && props.scopeId) {
+    await loadScheduledTasks()
   }
 })
 </script>
@@ -108,6 +228,32 @@ onMounted(async () => {
         <i class="pi pi-user text-surface-400" />
         <span>作成: {{ event.createdBy.displayName }}</span>
       </div>
+      <div v-if="showAudience !== false" class="flex items-start gap-2">
+        <i class="pi pi-users mt-0.5 text-surface-400" aria-hidden="true" />
+        <div class="min-w-0">
+          <div class="text-xs text-surface-500">{{ $t('schedule.targetAudience.label') }}</div>
+          <ScheduleTargetAudience
+            :target-mode="event.targetMode"
+            :target-count="event.targetCount"
+            :targets="event.targets"
+            class="mt-1 text-surface-700 dark:text-surface-200"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- F08.10 入口④: TEAM スコープ予定のみ「この試合を記録」ボタンを出す -->
+    <div v-if="canRecordMatch">
+      <Button
+        :label="$t('match.entry.record_from_schedule')"
+        icon="pi pi-play"
+        outlined
+        size="small"
+        class="w-full"
+        :loading="recordingMatch"
+        @click="recordMatch"
+      />
+      <p class="mt-1 text-xs text-surface-400">{{ $t('match.entry.record_from_schedule_hint') }}</p>
     </div>
 
     <!-- 説明 -->
@@ -126,6 +272,50 @@ onMounted(async () => {
       @responded="emit('responded')"
     />
 
+    <!-- F03.1 (B) 組織出欠のチーム別内訳（組織スコープ + 管理者のみ）。
+         認可は BE 側 org-ADMIN 限定 EP。ここでは出し分けの一次フィルタとして
+         組織スコープ + canEdit(管理者) + 出欠あり を要求する（403 時はパネル内で明示表示）。 -->
+    <AttendanceTeamBreakdownPanel
+      v-if="event.attendanceRequired && scopeType === 'organization' && canEdit"
+      :org-public-id="scopeId"
+      :schedule-id="event.id"
+    />
+
+    <!-- 機能55: 予約タスク一覧（管理者 + 1件以上の場合のみ表示） -->
+    <div
+      v-if="canEdit && scheduledTasks.length > 0"
+      class="space-y-2"
+    >
+      <h3 class="text-sm font-medium">{{ $t('schedule.scheduled_task.label') }}</h3>
+      <div
+        v-for="task in scheduledTasks"
+        :key="task.id"
+        class="flex items-center justify-between gap-2 rounded border border-surface-200 p-2 text-sm dark:border-surface-600"
+      >
+        <div class="flex flex-col gap-0.5">
+          <div class="flex items-center gap-2">
+            <span class="font-medium">{{ taskTypeLabel[task.taskType] ?? task.taskType }}</span>
+            <Tag
+              :value="taskStatusConfig[task.status]?.label ?? task.status"
+              :severity="taskStatusConfig[task.status]?.severity ?? 'secondary'"
+              rounded
+            />
+          </div>
+          <span class="text-xs text-surface-500">{{ isoFormatDateTime(task.scheduledAt) }}</span>
+        </div>
+        <Button
+          v-if="task.status === 'PENDING'"
+          :label="$t('schedule.scheduled_task.cancel')"
+          icon="pi pi-times"
+          text
+          size="small"
+          severity="danger"
+          :loading="cancellingTaskId === task.id"
+          @click="cancelTask(task.id)"
+        />
+      </div>
+    </div>
+
     <!-- F03.10 第四陣 Wave2-B 代理出席件数バッジ（管理者 + 1件以上の場合のみ表示） -->
     <div
       v-if="canEdit && delegationCount > 0"
@@ -133,6 +323,18 @@ onMounted(async () => {
     >
       <span class="font-medium text-yellow-800 dark:text-yellow-200">{{ $t('proxy.delegation.admin.tab') }}: </span>
       <span class="text-yellow-700 dark:text-yellow-300">{{ delegationCount }}{{ $t('proxy.delegation.admin.count_suffix') }}</span>
+    </div>
+
+    <!-- F03.16 予定コメントスレッド。
+         親 schedules 行が存在するときのみ表示する（events.schedule_id が NULL のイベントには
+         コメントスレッドが成立しない・設計書 §1.5・AC-07(b)）。 -->
+    <div v-if="event.scheduleId !== null && event.scheduleId !== undefined" class="border-t border-surface-200 pt-4 dark:border-surface-700">
+      <ScheduleCommentSection
+        :schedule-id="event.scheduleId"
+        :can-manage-settings="canEdit"
+        :highlight-comment-id="highlightCommentId"
+        @highlighted="emit('comment-highlighted')"
+      />
     </div>
   </div>
 </template>

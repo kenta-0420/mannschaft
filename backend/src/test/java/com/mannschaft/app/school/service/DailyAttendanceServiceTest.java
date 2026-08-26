@@ -33,6 +33,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import org.mockito.ArgumentCaptor;
 
 /**
  * {@link DailyAttendanceService} 単体テスト。
@@ -310,6 +311,81 @@ class DailyAttendanceServiceTest {
                         BusinessException be = (BusinessException) ex;
                         assertThat(be.getErrorCode()).isEqualTo(SchoolErrorCode.DAILY_RECORD_NOT_FOUND);
                     });
+        }
+    }
+
+    // ========================================
+    // toBuilder 更新破壊 回帰テスト
+    // ========================================
+
+    /**
+     * toBuilder().build() で作り直すと BaseEntity.id が引き継がれず id=null の新インスタンスになり
+     * INSERT 化して行が重複するバグの回帰テスト。
+     * ArgumentCaptor で save に渡るインスタンスが findById で取得した same instance（isSameAs）
+     * かつ id を保持していること（=UPDATE 経路）を固定する。
+     */
+    @Nested
+    @DisplayName("toBuilder更新破壊回帰")
+    class ToBuilderUpdateRegression {
+
+        private static final Long EXISTING_ID = 42L;
+
+        @Test
+        @DisplayName("updateDailyRecord: 取得した同一インスタンスを id 保持のまま UPDATE する（新インスタンス化しない）")
+        void updateDailyRecord_既存行をUPDATE_id保持() {
+            // Given
+            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+
+            DailyAttendanceRecordEntity existing = buildEntity(null, STUDENT_USER_ID_1, AttendanceStatus.UNDECIDED);
+            ReflectionTestUtils.setField(existing, "id", EXISTING_ID);
+            given(dailyAttendanceRecordRepository.findById(EXISTING_ID)).willReturn(Optional.of(existing));
+
+            ArgumentCaptor<DailyAttendanceRecordEntity> captor =
+                    ArgumentCaptor.forClass(DailyAttendanceRecordEntity.class);
+            given(dailyAttendanceRecordRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            DailyAttendanceUpdateRequest request = new DailyAttendanceUpdateRequest();
+            ReflectionTestUtils.setField(request, "status", AttendanceStatus.ABSENT);
+
+            // When
+            dailyAttendanceService.updateDailyRecord(TEAM_ID, EXISTING_ID, request, OPERATOR_USER_ID);
+
+            // Then: save に渡るのは取得した同一インスタンスで、id が保持されている（=UPDATE 経路）
+            DailyAttendanceRecordEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getStatus()).isEqualTo(AttendanceStatus.ABSENT);
+        }
+
+        @Test
+        @DisplayName("submitDailyRollCall upsert: 既存行を id 保持のまま UPDATE する（toBuilder ではなく applyRollCallUpdate）")
+        void submitDailyRollCall_upsert_既存行をUPDATE_id保持() {
+            // Given
+            doNothing().when(accessControlService).checkMembership(OPERATOR_USER_ID, TEAM_ID, "TEAM");
+
+            DailyAttendanceRecordEntity existing = buildEntity(null, STUDENT_USER_ID_1, AttendanceStatus.UNDECIDED);
+            ReflectionTestUtils.setField(existing, "id", EXISTING_ID);
+
+            given(dailyAttendanceRecordRepository.findByTeamIdAndStudentUserIdAndAttendanceDate(
+                    TEAM_ID, STUDENT_USER_ID_1, ATTENDANCE_DATE)).willReturn(Optional.of(existing));
+
+            ArgumentCaptor<DailyAttendanceRecordEntity> captor =
+                    ArgumentCaptor.forClass(DailyAttendanceRecordEntity.class);
+            given(dailyAttendanceRecordRepository.save(captor.capture())).willAnswer(inv -> inv.getArgument(0));
+
+            DailyRollCallEntry entry = buildEntry(STUDENT_USER_ID_1, AttendanceStatus.ABSENT);
+            DailyRollCallRequest request = new DailyRollCallRequest();
+            ReflectionTestUtils.setField(request, "attendanceDate", ATTENDANCE_DATE);
+            ReflectionTestUtils.setField(request, "entries", List.of(entry));
+
+            // When
+            dailyAttendanceService.submitDailyRollCall(TEAM_ID, request, OPERATOR_USER_ID);
+
+            // Then: 同一インスタンス・id 保持・新ステータス反映
+            DailyAttendanceRecordEntity saved = captor.getValue();
+            assertThat(saved).isSameAs(existing);
+            assertThat(saved.getId()).isEqualTo(EXISTING_ID);
+            assertThat(saved.getStatus()).isEqualTo(AttendanceStatus.ABSENT);
         }
     }
 }

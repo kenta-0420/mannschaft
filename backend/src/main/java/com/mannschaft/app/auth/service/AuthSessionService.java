@@ -1,6 +1,8 @@
 package com.mannschaft.app.auth.service;
 
+import com.mannschaft.app.auth.AuditEventCategory;
 import com.mannschaft.app.auth.AuthErrorCode;
+import com.mannschaft.app.auth.dto.AuditLogResponse;
 import com.mannschaft.app.auth.dto.LoginHistoryResponse;
 import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.entity.RefreshTokenEntity;
@@ -16,8 +18,10 @@ import com.mannschaft.app.common.util.SessionHashUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -39,6 +43,7 @@ public class AuthSessionService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final AuthTokenService authTokenService;
     private final DomainEventPublisher eventPublisher;
+    private final AuditLogQueryService auditLogQueryService;
 
     // セッション上限
     private static final int MAX_ACTIVE_SESSIONS = 10;
@@ -64,8 +69,18 @@ public class AuthSessionService {
                     Long userId = token.getUserId();
 
                     // 2. JTIブラックリスト追加（残存TTL）
-                    long remainingTtl = expEpoch - (LocalDateTime.now().toEpochSecond(java.time.ZoneOffset.UTC));
-                    authTokenService.addJtiToBlacklist(jti, remainingTtl);
+                    // Instant.now() で UTC epoch 秒を正確に取得する。
+                    // LocalDateTime.now().toEpochSecond(UTC) は JVM TZ が非 UTC の場合にズレが生じるため使用禁止。
+                    long remainingTtl = expEpoch - Instant.now().getEpochSecond();
+                    // Valkey 障害時も @Transactional によるDB ロールバックを防ぐため try-catch で囲む。
+                    // リフレッシュトークンは DB 側で失効済みのため新トークン発行は不可。
+                    // アクセストークンは最大 remainingTtl 秒後に自然失効する（許容範囲）。
+                    try {
+                        authTokenService.addJtiToBlacklist(jti, remainingTtl);
+                    } catch (Exception e) {
+                        log.error("ログアウト時のJTIブラックリスト追加失敗（アクセストークンが{}秒有効なままになる可能性）: jti={}, error={}",
+                                remainingTtl, jti, e.getMessage());
+                    }
 
                     // 3. session_hash 計算（refresh_token の jti から）
                     String sessionHash = token.getJti() != null && !token.getJti().isBlank()
@@ -80,9 +95,20 @@ public class AuthSessionService {
      * 全デバイスからのログアウトを行う（後方互換）。
      * 全RefreshToken失効 + Valkeyにuser_invalidated_at設定。
      *
+     * <p><b>トランザクション境界（{@link Propagation#REQUIRES_NEW}）</b>:
+     * セッションの一斉無効化はセキュリティ上「呼び出し元トランザクションの結末に関わらず必ず永続化されねばならない」
+     * 操作である。特に {@link AuthTokenRotationService#refreshAccessToken} の<b>真リプレイ検出</b>経路は、
+     * 本メソッドで全トークンを revoke した直後に {@code BusinessException(AUTH_026)}（RuntimeException）を送出する。
+     * 本メソッドが呼び出し元と同一トランザクション（{@code REQUIRED}）で動いていると、この throw による
+     * ロールバックで revoke が巻き戻り、盗難トークン検出時の全デバイス無効化が実際には永続化されない
+     * （＝過小無効化・防御の無力化）。独立トランザクションで即コミットすることでこの巻き戻りを根治する。</p>
+     *
+     * <p>呼び出し元でロールバックが発生してもセッション kill は残る（fail-closed で安全側）。逆に本メソッド内で
+     * 例外が起きれば呼び出し元へ伝播し、呼び出し元も含めてロールバックされる（一貫性は保たれる）。</p>
+     *
      * @param userId ユーザーID
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logoutAllDevices(Long userId) {
         logoutAllDevices(userId, null, null, false);
     }
@@ -91,12 +117,18 @@ public class AuthSessionService {
      * 全デバイスからのログアウトを行う。
      * keepCurrent=true の場合は現セッションを除外して無効化する。
      *
+     * <p><b>トランザクション境界（{@link Propagation#REQUIRES_NEW}）</b>: 1 引数版と同じく、セッションの一斉無効化は
+     * 呼び出し元トランザクションの巻き戻しで消えてはならないため独立トランザクションで即コミットする。
+     * なお 1 引数版 {@link #logoutAllDevices(Long)} は本メソッドを<b>自己呼び出し（同一 Bean 内呼び出し）</b>するため、
+     * その経路では本アノテーションはプロキシを経由せず効かない（1 引数版が張った新トランザクションにそのまま参加する）。
+     * 本アノテーションが効くのは本メソッドが<b>外部 Bean から直接</b>呼ばれる経路（例: セッション画面からの一斉ログアウト）である。</p>
+     *
      * @param userId           ユーザーID
      * @param currentTokenHash 現セッションのトークンハッシュ（nullable）
      * @param currentSessionId 現セッションのID（nullable）
      * @param keepCurrent      true の場合、現セッションを維持する
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void logoutAllDevices(Long userId, String currentTokenHash, Long currentSessionId, boolean keepCurrent) {
         // 1. 全アクティブRefreshToken取得
         List<RefreshTokenEntity> activeTokens = refreshTokenRepository
@@ -118,8 +150,13 @@ public class AuthSessionService {
                         deviceCount++;
                     }
                 }
-                // user_invalidated_at設定（Valkey）
-                authTokenService.setUserInvalidationTimestamp(userId);
+                // user_invalidated_at設定（Valkey）。障害時もDB revoke は維持する。
+                try {
+                    authTokenService.setUserInvalidationTimestamp(userId);
+                } catch (Exception e) {
+                    log.error("全デバイスログアウト時のuser_invalidated_at設定失敗（既存トークンが最大15分有効なままになる可能性）: userId={}, error={}",
+                            userId, e.getMessage());
+                }
                 eventPublisher.publish(new LogoutEvent(userId, deviceCount, LogoutType.ALL_SESSIONS));
                 return;
             }
@@ -130,8 +167,13 @@ public class AuthSessionService {
         int deviceCount = activeTokens.size();
         activeTokens.forEach(RefreshTokenEntity::revoke);
 
-        // 2. user_invalidated_at設定（Valkey）
-        authTokenService.setUserInvalidationTimestamp(userId);
+        // 2. user_invalidated_at設定（Valkey）。障害時もDB revoke は維持する。
+        try {
+            authTokenService.setUserInvalidationTimestamp(userId);
+        } catch (Exception e) {
+            log.error("全デバイスログアウト時のuser_invalidated_at設定失敗（既存トークンが最大15分有効なままになる可能性）: userId={}, error={}",
+                    userId, e.getMessage());
+        }
 
         // 3. イベント発行
         eventPublisher.publish(new LogoutEvent(userId, deviceCount, LogoutType.ALL_SESSIONS));
@@ -226,14 +268,39 @@ public class AuthSessionService {
      * @param userId ユーザーID
      * @param cursor カーソル（null=先頭から）
      * @param limit  取得件数
+     * @param from   開始日時（null=制限なし）
+     * @param to     終了日時（null=制限なし）
      * @return ログイン履歴
      */
-    public CursorPagedResponse<LoginHistoryResponse> getLoginHistory(Long userId, String cursor, int limit) {
-        // 監査ログからログイン関連イベントを取得
-        // NOTE: AuditLogRepositoryにカーソルベースクエリメソッドを追加後に実装を完成させる
-        List<LoginHistoryResponse> history = List.of();
-        CursorPagedResponse.CursorMeta meta = new CursorPagedResponse.CursorMeta(null, false, limit);
-        return CursorPagedResponse.of(history, meta);
+    public CursorPagedResponse<LoginHistoryResponse> getLoginHistory(Long userId, String cursor, int limit, LocalDateTime from, LocalDateTime to) {
+        CursorPagedResponse<AuditLogResponse> logs = auditLogQueryService.getMyLogs(
+                userId,
+                null,
+                List.of(AuditEventCategory.AUTH),
+                from,
+                to,
+                cursor,
+                limit);
+
+        List<LoginHistoryResponse> history = logs.getData().stream()
+                .map(log -> new LoginHistoryResponse(
+                        log.getId(),
+                        log.getEventType(),
+                        log.getIpAddress(),
+                        log.getUserAgent(),
+                        resolveMethod(log.getEventType()),
+                        log.getCreatedAt()))
+                .toList();
+
+        return CursorPagedResponse.of(history, logs.getMeta());
+    }
+
+    private String resolveMethod(String eventType) {
+        if (eventType == null) return null;
+        return switch (eventType) {
+            case "WEBAUTHN_LOGIN", "WEBAUTHN_LOGIN_FAILED" -> "WebAuthn";
+            default -> null;
+        };
     }
 
     // ========================================

@@ -3,6 +3,7 @@ import { useBulletinThreads } from './bulletin/useBulletinThreads'
 import { useBulletinReplies } from './bulletin/useBulletinReplies'
 import { useBulletinReactions } from './bulletin/useBulletinReactions'
 import { useBulletinArchiveFolders } from './bulletin/useBulletinArchiveFolders'
+import { useBulletinAttachments } from './bulletin/useBulletinAttachments'
 
 /**
  * 掲示板 API ファサード。
@@ -23,6 +24,7 @@ export function useBulletinApi() {
   const replies = useBulletinReplies()
   const reactions = useBulletinReactions()
   const archiveFolders = useBulletinArchiveFolders()
+  const attachments = useBulletinAttachments()
 
   return {
     getCategories: categories.getCategories,
@@ -41,6 +43,7 @@ export function useBulletinApi() {
     toggleLock: threads.toggleLock,
     toggleArchive: threads.toggleArchive,
     readAll: threads.readAll,
+    getReplies: replies.getReplies,
     createReply: replies.createReply,
     createNestedReply: replies.createNestedReply,
     updateReply: replies.updateReply,
@@ -76,5 +79,14 @@ export function useBulletinApi() {
     deleteArchiveFolder: archiveFolders.deleteFolder,
     getArchiveThreads: archiveFolders.getArchiveThreads,
     moveThreadToFolder: archiveFolders.moveThreadToFolder,
+    // 添付ファイル（F05.1 §6 presigned URL 方式 A）
+    presignAttachment: attachments.presign,
+    uploadAttachmentToR2: attachments.uploadToR2,
+    confirmAttachment: attachments.confirm,
+    listThreadAttachments: attachments.listThreadAttachments,
+    listReplyAttachments: attachments.listReplyAttachments,
+    getAttachmentDownloadUrl: attachments.getDownloadUrl,
+    deleteAttachment: attachments.remove,
+    uploadAttachmentFile: attachments.uploadFile,
   }
 }

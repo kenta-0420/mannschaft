@@ -34,7 +34,7 @@ import type {
   UpdateOrgProviderRequest,
 } from '~/types/orgPointCard'
 
-export function useOrgWalletApi(orgId: () => number) {
+export function useOrgWalletApi(orgId: () => string) {
   const api = useApi()
   const base = () => `/api/v1/organizations/${orgId()}/point-cards`
 

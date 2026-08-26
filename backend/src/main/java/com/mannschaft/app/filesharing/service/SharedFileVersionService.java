@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.FileSharingErrorCode;
 import com.mannschaft.app.filesharing.FileSharingMapper;
 import com.mannschaft.app.filesharing.dto.CreateVersionRequest;
@@ -33,6 +34,8 @@ public class SharedFileVersionService {
     private final SharedFolderService folderService;
     private final FileSharingMapper fileSharingMapper;
     private final SharedFileQuotaService quotaService;
+    /** F08.7.1 / 04: 大会フォルダ配下のバージョン操作に対する横断認可ゲート（大会以外は no-op）。 */
+    private final FolderScopeAccessGuard folderScopeAccessGuard;
 
     /**
      * ファイルの全バージョンを取得する。
@@ -41,6 +44,8 @@ public class SharedFileVersionService {
      * @return バージョンレスポンスリスト
      */
     public List<FileVersionResponse> listVersions(Long fileId) {
+        // F08.7.1 / 04 §3: 大会フォルダ配下のファイルバージョン一覧は閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, SecurityUtils.getCurrentUserIdOrNull());
         List<SharedFileVersionEntity> versions = versionRepository.findByFileIdOrderByVersionNumberDesc(fileId);
         return fileSharingMapper.toVersionResponseList(versions);
     }
@@ -53,6 +58,8 @@ public class SharedFileVersionService {
      * @return バージョンレスポンス
      */
     public FileVersionResponse getVersion(Long fileId, Integer versionNumber) {
+        // F08.7.1 / 04 §3: 大会フォルダ配下のファイルバージョン詳細は閲覧認可を通す。
+        folderScopeAccessGuard.checkFolderViewByFileId(fileId, SecurityUtils.getCurrentUserIdOrNull());
         SharedFileVersionEntity entity = versionRepository.findByFileIdAndVersionNumber(fileId, versionNumber)
                 .orElseThrow(() -> new BusinessException(FileSharingErrorCode.VERSION_NOT_FOUND));
         return fileSharingMapper.toVersionResponse(entity);
@@ -71,6 +78,8 @@ public class SharedFileVersionService {
      */
     @Transactional
     public FileVersionResponse createVersion(Long fileId, Long userId, CreateVersionRequest request) {
+        // F08.7.1 / 04 §5: 大会フォルダ配下の新バージョンアップロードは編集認可を通す。
+        folderScopeAccessGuard.checkFolderPostByFileId(fileId, userId);
         SharedFileEntity fileEntity = fileService.findFileOrThrow(fileId);
 
         // F13 Phase 4-ε: クォータ事前チェック（フォルダからスコープを解決）

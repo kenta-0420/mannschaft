@@ -20,25 +20,25 @@ const ancestorList = computed<AncestorOrganization[]>(() => props.ancestors ?? [
       <div>
         <label class="text-sm font-medium text-gray-500">組織名</label>
         <p class="mt-1">
-          {{ org.name }}
+          {{ org.basicInfo?.name }}
         </p>
       </div>
-      <div v-if="org.nameKana">
+      <div v-if="org.basicInfo?.nameKana">
         <label class="text-sm font-medium text-gray-500">組織名（カナ）</label>
         <p class="mt-1">
-          {{ org.nameKana }}
+          {{ org.basicInfo?.nameKana }}
         </p>
       </div>
-      <div v-if="org.nickname1">
+      <div v-if="org.basicInfo?.nickname1">
         <label class="text-sm font-medium text-gray-500">ニックネーム1</label>
         <p class="mt-1">
-          {{ org.nickname1 }}
+          {{ org.basicInfo?.nickname1 }}
         </p>
       </div>
-      <div v-if="org.nickname2">
+      <div v-if="org.basicInfo?.nickname2">
         <label class="text-sm font-medium text-gray-500">ニックネーム2</label>
         <p class="mt-1">
-          {{ org.nickname2 }}
+          {{ org.basicInfo?.nickname2 }}
         </p>
       </div>
     </div>
@@ -61,7 +61,7 @@ const ancestorList = computed<AncestorOrganization[]>(() => props.ancestors ?? [
             </span>
             <NuxtLink
               v-else
-              :to="`/organizations/${ancestor.id}`"
+              :to="ancestor.slug ? `/organizations/${ancestor.slug}` : undefined"
               class="hover:text-primary hover:underline"
             >
               {{ ancestor.nickname1 || ancestor.name }}
@@ -72,23 +72,23 @@ const ancestorList = computed<AncestorOrganization[]>(() => props.ancestors ?? [
       <div>
         <label class="text-sm font-medium text-gray-500">所在地</label>
         <p class="mt-1">
-          {{ [org.prefecture, org.city].filter(Boolean).join(' ') || '未設定' }}
+          {{ [org.location?.prefecture, org.location?.city].filter(Boolean).join(' ') || '未設定' }}
         </p>
       </div>
       <div>
         <label class="text-sm font-medium text-gray-500">公開設定</label>
         <p class="mt-1">
-          {{ visibilityLabel[org.visibility] ?? org.visibility }}
+          {{ visibilityLabel[org.visibility?.visibility ?? ''] ?? org.visibility?.visibility }}
         </p>
       </div>
       <div>
         <label class="text-sm font-medium text-gray-500">メンバー数</label>
-        <p class="mt-1">{{ org.memberCount }}人</p>
+        <p class="mt-1">{{ org.metadata?.memberCount }}人</p>
       </div>
       <div>
         <label class="text-sm font-medium text-gray-500">サポーター機能</label>
         <p class="mt-1">
-          {{ org.supporterEnabled ? '有効' : '無効' }}
+          {{ org.visibility?.supporterEnabled ? '有効' : '無効' }}
         </p>
       </div>
       <div v-if="org.description">

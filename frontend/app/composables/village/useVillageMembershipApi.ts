@@ -1,6 +1,8 @@
 import type {
   CreationRequestListParams,
   JoinRequestCreateRequest,
+  JoinRequestListParams,
+  JoinRequestPageResponse,
   JoinRequestResponse,
   JoinRequestReviewRequest,
   MembershipBanRequest,
@@ -10,6 +12,7 @@ import type {
   MembershipResponse,
   RoleChangeRequest,
   VillageCreationRequestCreateRequest,
+  VillageCreationRequestPageResponse,
   VillageCreationRequestResponse,
   VillageCreationRequestReviewRequest,
   VillageRequestStatus,
@@ -99,9 +102,15 @@ export function useVillageMembershipApi() {
     return res.data
   }
 
-  /** §4.6.3 管理者向け一覧 */
+  /**
+   * §4.6.3 管理者向け一覧。
+   *
+   * BE: `GET /api/v1/admin/village-creation-requests` は `ApiResponse<Page<VillageCreationRequestResponse>>`
+   * を返す（Spring の `Page` をそのまま露出。`VillageCreationRequestControllerTest` で固定済み）。
+   * 自分の申請一覧（{@link listMyCreationRequests}）とは非対称（あちらは素の配列）。
+   */
   async function listAdminCreationRequests(params?: CreationRequestListParams) {
-    const res = await api<{ data: VillageCreationRequestResponse[] }>(
+    const res = await api<{ data: VillageCreationRequestPageResponse }>(
       `/api/v1/admin/village-creation-requests${qs(params)}`,
     )
     return res.data
@@ -167,10 +176,42 @@ export function useVillageMembershipApi() {
     return res.data
   }
 
-  /** §4.5.2 申請一覧（村長/長老向け） */
-  async function listJoinRequests(villageId: string, status?: VillageRequestStatus) {
+  /**
+   * §4.5.2 自分の参加申請一覧（申請者本人）。
+   *
+   * BE: `GET /api/v1/villages/{villageId}/join-requests/me` は
+   * `ApiResponse<List<JoinRequestResponse>>`（`createdAt` 降順・素の配列）を返す。
+   * 審査者向け一覧（{@link listJoinRequests}）が `Page` なのに対しこちらは素の配列という
+   * 非対称は、`GET /api/v1/me/village-creation-requests` と同じ既存流儀に合わせたもの
+   * （`VillageJoinRequestControllerTest#listMine_success` が `$.data[0].status` で固定済み）。
+   *
+   * 申請が無い場合は空配列（404 ではない）。
+   * 「誰の申請か」は BE が認証済みユーザーから解決するため、引数で渡す余地は無い。
+   */
+  async function listMyJoinRequests(villageId: string) {
     const res = await api<{ data: JoinRequestResponse[] }>(
-      `/api/v1/villages/${villageId}/join-requests${qs({ status })}`,
+      `/api/v1/villages/${villageId}/join-requests/me`,
+    )
+    return res.data
+  }
+
+  /**
+   * §4.5.2 申請一覧（村長/長老向け）。
+   *
+   * BE: `GET /api/v1/villages/{villageId}/join-requests` は `ApiResponse<Page<JoinRequestResponse>>`
+   * を返す（Spring の `Page` をそのまま露出。`VillageJoinRequestControllerTest#list_success` で固定済み）。
+   *
+   * `status` 未指定時は BE 側が PENDING で絞り込む（`VillageJoinRequestService#listForReviewers`）。
+   * 「全ステータス」は BE が提供していないため、呼び出し側は常に具体的な status を渡すこと。
+   * `params` 未指定時の BE 既定は page=0 / size=20。
+   */
+  async function listJoinRequests(
+    villageId: string,
+    status?: VillageRequestStatus,
+    params?: JoinRequestListParams,
+  ) {
+    const res = await api<{ data: JoinRequestPageResponse }>(
+      `/api/v1/villages/${villageId}/join-requests${qs({ status, ...params })}`,
     )
     return res.data
   }
@@ -244,6 +285,7 @@ export function useVillageMembershipApi() {
     reviewCreationRequest,
     // 参加申請
     createJoinRequest,
+    listMyJoinRequests,
     listJoinRequests,
     approveJoinRequest,
     rejectJoinRequest,

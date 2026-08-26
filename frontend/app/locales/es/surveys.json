@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "Borrador",
       "PUBLISHED": "Abierta",
-      "CLOSED": "Cerrada"
+      "CLOSED": "Cerrada",
+      "ARCHIVED": "Archivada"
     },
     "questionType": {
       "SINGLE_CHOICE": "Opción única",
@@ -17,7 +18,8 @@
       "label": "Visibilidad de resultados",
       "CREATOR_ONLY": "Solo el creador",
       "RESPONDENTS": "Solo los encuestados",
-      "ALL_MEMBERS": "Todos los miembros"
+      "ALL_MEMBERS": "Todos los miembros",
+      "AFTER_CLOSE": "Todos los miembros tras el cierre"
     },
     "unrespondedVisibility": {
       "label": "Visibilidad de no encuestados",
@@ -27,8 +29,10 @@
     },
     "list": {
       "filterAll": "Todos",
+      "filterDraft": "Borrador",
       "filterPlaceholder": "Estado",
       "createButton": "Crear encuesta",
+      "editDraft": "Añadir / editar preguntas",
       "answeredBadge": "Respondida",
       "anonymous": "Anónima",
       "responseCountUnit": "respuestas",
@@ -48,7 +52,13 @@
       "questions": "Preguntas",
       "cancel": "Cancelar",
       "save": "Guardar",
+      "saveDraft": "Guardar como borrador",
+      "saveAndPublish": "Crear y publicar",
+      "draftSaved": "Borrador guardado",
+      "draftRestored": "Entrada anterior restaurada",
+      "draftHint": "Puedes añadir preguntas después. Guarda solo con el título por ahora.",
       "successToast": "Encuesta creada",
+      "draftSuccessToast": "Guardado como borrador. Añade preguntas y publícala cuando estés listo.",
       "failureToast": "No se pudo crear la encuesta",
       "validation": {
         "titleRequired": "Introduce un título",
@@ -57,7 +67,8 @@
         "questionsRequired": "Añade al menos una pregunta",
         "questionTextRequired": "Introduce el texto de la pregunta {index}",
         "optionsTooFew": "La pregunta {index} requiere al menos dos opciones",
-        "optionEmpty": "La pregunta {index} tiene opciones vacías"
+        "optionEmpty": "La pregunta {index} tiene opciones vacías",
+        "questionTypeUnsupported": "Pregunta {index}: las preguntas de fecha aún no son compatibles. Elige otro tipo."
       },
       "questionEditor": {
         "empty": "Aún no hay preguntas",
@@ -77,7 +88,10 @@
         "ratingScale": "Escala de valoración (1-5)",
         "textHint": "Los encuestados responderán con texto libre",
         "dateHint": "Los encuestados elegirán una fecha"
-      }
+      },
+      "teamBreakdownEnabled": "Agrupar por equipo",
+      "teamBreakdownHint": "Agrupa las respuestas por equipo subordinado (solo distribucion de la organizacion).",
+      "teamBreakdownAnonymousConflict": "El desglose por equipo no esta disponible en encuestas anonimas."
     },
     "detail": {
       "scopeMissing": "Falta la información de alcance de la encuesta",
@@ -88,6 +102,8 @@
       "responseCount": "Respuestas",
       "anonymous": "Anónima",
       "draftHint": "Esta encuesta es un borrador. No aceptará respuestas hasta que se publique.",
+      "draftAddQuestionsHint": "Añade preguntas antes de publicar. Se puede publicar sin preguntas, pero los encuestados no podrán responder.",
+      "draftQuestionsSection": "Añadir preguntas",
       "publishButton": "Publicar",
       "publishSuccess": "Encuesta publicada",
       "publishFailed": "No se pudo publicar la encuesta",
@@ -151,6 +167,33 @@
       "unrespondedBadge": "Sin responder",
       "emptyResponded": "Aún no hay encuestados",
       "emptyUnresponded": "No hay miembros sin responder"
+    },
+    "teamBreakdown": {
+      "title": "Desglose por equipo",
+      "reload": "Recargar",
+      "retry": "Reintentar",
+      "fetchFailed": "No se pudo cargar el desglose por equipo.",
+      "forbidden": "No tienes permiso para ver este desglose.",
+      "empty": "No hay datos de desglose por equipo.",
+      "masked": "Oculto porque hay menos de 5 encuestados.",
+      "directMembers": "Miembros directos de la organizacion",
+      "totalRespondents": "Total de encuestados: {count}",
+      "respondentCount": "{count} encuestados",
+      "optionCount": "{count} ({percentage}%)",
+      "noOptionData": "Sin datos.",
+      "noQuestionData": "No hay preguntas que agregar."
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "Los resultados están ocultos mientras haya pocas respuestas",
+        "description": "En las encuestas anónimas, un cambio en el recuento justo después de que alguien responde puede revelar su respuesta. Los resultados se mostrarán cuando haya al menos {threshold} respuestas. (Actualmente {count})"
+      },
+      "respondCta": "Responder a esta encuesta",
+      "editResponseCta": "Editar tu respuesta",
+      "forbidden": {
+        "title": "No tienes permiso para ver los resultados de esta encuesta",
+        "description": "Esta encuesta está dirigida a un público limitado y no estás incluido. Si crees que es un error, contacta con la persona que la creó."
+      }
     }
   }
 }

@@ -15,7 +15,7 @@ interface FamilyTodo {
 }
 
 interface FamilyData {
-  teamId: number
+  teamId: string
   familyName: string
   announcements: BulletinThreadResponse[]
   todos: FamilyTodo[]
@@ -25,7 +25,7 @@ const familyTeams = computed(() => teamStore.myTeams.filter((t) => t.template ==
 
 const familyData = ref<FamilyData[]>([])
 const loading = ref(false)
-const selectedId = ref<number | null>(null)
+const selectedId = ref<string | null>(null)
 
 const selectedFamily = computed(
   () => familyData.value.find((f) => f.teamId === selectedId.value) ?? familyData.value[0],
@@ -46,11 +46,11 @@ async function load() {
       familyTeams.value.map(async (team) => {
         const name = team.nickname1 || team.name
         const [announcementsRes, todosRes] = await Promise.allSettled([
-          getScopedThreads('teams', team.id, { page: 0, size: 4 }),
-          listTodos('team', team.id, { size: 5 }),
+          getScopedThreads('teams', team.slug, { page: 0, size: 4 }),
+          listTodos('team', team.slug, { size: 5 }),
         ])
         return {
-          teamId: team.id,
+          teamId: team.slug,
           familyName: name,
           announcements: announcementsRes.status === 'fulfilled' ? announcementsRes.value.data : [],
           todos:
@@ -70,13 +70,20 @@ async function load() {
 }
 
 onMounted(load)
+
+// ストアが後から埋まったときに load を再実行（onMounted 時点でまだ空だった場合のフォールバック）
+watch(familyTeams, (newVal, oldVal) => {
+  if (newVal.length > 0 && oldVal.length === 0 && familyData.value.length === 0) {
+    load()
+  }
+})
 </script>
 
 <template>
   <DashboardWidgetCard
     title="家族"
     icon="pi pi-home"
-    to="/teams"
+    :to="selectedFamily ? `/teams/${selectedFamily.teamId}` : '/teams'"
     :loading="loading"
     :col-span="2"
     refreshable

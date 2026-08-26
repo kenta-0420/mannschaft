@@ -68,10 +68,10 @@ class ReservationMapperTest {
             // Then
             assertThat(response.getId()).isEqualTo(1L);
             assertThat(response.getTeamId()).isEqualTo(10L);
-            assertThat(response.getName()).isEqualTo("カット");
-            assertThat(response.getDescription()).isEqualTo("ヘアカット");
-            assertThat(response.getIsActive()).isTrue();
-            assertThat(response.getDefaultStaffUserId()).isEqualTo(5L);
+            assertThat(response.getMeta().name()).isEqualTo("カット");
+            assertThat(response.getMeta().description()).isEqualTo("ヘアカット");
+            assertThat(response.getMeta().isActive()).isTrue();
+            assertThat(response.getMeta().defaultStaffUserId()).isEqualTo(5L);
         }
 
         @Test
@@ -90,8 +90,8 @@ class ReservationMapperTest {
 
             // Then
             assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getName()).isEqualTo("カット");
-            assertThat(responses.get(1).getName()).isEqualTo("カラー");
+            assertThat(responses.get(0).getMeta().name()).isEqualTo("カット");
+            assertThat(responses.get(1).getMeta().name()).isEqualTo("カラー");
         }
     }
 
@@ -127,10 +127,10 @@ class ReservationMapperTest {
             assertThat(response.getId()).isEqualTo(20L);
             assertThat(response.getTeamId()).isEqualTo(10L);
             assertThat(response.getStaffUserId()).isEqualTo(5L);
-            assertThat(response.getTitle()).isEqualTo("午前の枠");
-            assertThat(response.getSlotStatus()).isEqualTo("AVAILABLE");
-            assertThat(response.getBookedCount()).isEqualTo(2);
-            assertThat(response.getPrice()).isEqualByComparingTo("3000");
+            assertThat(response.getBasic().title()).isEqualTo("午前の枠");
+            assertThat(response.getStatus().slotStatus()).isEqualTo("AVAILABLE");
+            assertThat(response.getStatus().bookedCount()).isEqualTo(2);
+            assertThat(response.getPricing().price()).isEqualByComparingTo("3000");
         }
 
         @Test
@@ -151,7 +151,7 @@ class ReservationMapperTest {
             ReservationSlotResponse response = reservationMapper.toSlotResponse(entity);
 
             // Then
-            assertThat(response.getSlotStatus()).isEqualTo("FULL");
+            assertThat(response.getStatus().slotStatus()).isEqualTo("FULL");
         }
 
         @Test
@@ -174,8 +174,8 @@ class ReservationMapperTest {
 
             // Then
             assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getSlotStatus()).isEqualTo("AVAILABLE");
-            assertThat(responses.get(1).getSlotStatus()).isEqualTo("CLOSED");
+            assertThat(responses.get(0).getStatus().slotStatus()).isEqualTo("AVAILABLE");
+            assertThat(responses.get(1).getStatus().slotStatus()).isEqualTo("CLOSED");
         }
     }
 
@@ -206,13 +206,14 @@ class ReservationMapperTest {
 
             // Then
             assertThat(response.getId()).isEqualTo(50L);
-            assertThat(response.getReservationSlotId()).isEqualTo(10L);
-            assertThat(response.getLineId()).isEqualTo(20L);
-            assertThat(response.getTeamId()).isEqualTo(30L);
-            assertThat(response.getUserId()).isEqualTo(100L);
-            assertThat(response.getStatus()).isEqualTo("PENDING");
-            assertThat(response.getCancelledBy()).isNull();
-            assertThat(response.getUserNote()).isEqualTo("ご希望メモ");
+            assertThat(response.getIdentifier().reservationSlotId()).isEqualTo(10L);
+            assertThat(response.getIdentifier().lineId()).isEqualTo(20L);
+            assertThat(response.getIdentifier().teamId()).isEqualTo(30L);
+            assertThat(response.getIdentifier().userId()).isEqualTo(100L);
+            assertThat(response.getIdentifier().userName()).isNull();
+            assertThat(response.getStatus().status()).isEqualTo("PENDING");
+            assertThat(response.getCancellation().cancelledBy()).isNull();
+            assertThat(response.getNotes().userNote()).isEqualTo("ご希望メモ");
         }
 
         @Test
@@ -234,9 +235,9 @@ class ReservationMapperTest {
             ReservationResponse response = reservationMapper.toReservationResponse(entity);
 
             // Then
-            assertThat(response.getStatus()).isEqualTo("CANCELLED");
-            assertThat(response.getCancelledBy()).isEqualTo("USER");
-            assertThat(response.getCancelReason()).isEqualTo("都合が悪くなりました");
+            assertThat(response.getStatus().status()).isEqualTo("CANCELLED");
+            assertThat(response.getCancellation().cancelledBy()).isEqualTo("USER");
+            assertThat(response.getCancellation().cancelReason()).isEqualTo("都合が悪くなりました");
         }
 
         @Test
@@ -258,7 +259,71 @@ class ReservationMapperTest {
             ReservationResponse response = reservationMapper.toReservationResponse(entity);
 
             // Then
-            assertThat(response.getCancelledBy()).isEqualTo("ADMIN");
+            assertThat(response.getCancellation().cancelledBy()).isEqualTo("ADMIN");
+        }
+
+        @Test
+        @DisplayName("正常系: スロット・ラインを付与したオーバーロードでスロットサマリが設定される")
+        void toReservationResponse_スロットライン付与_サマリ設定() {
+            // Given
+            ReservationEntity entity = ReservationEntity.builder()
+                    .reservationSlotId(10L)
+                    .lineId(20L)
+                    .teamId(30L)
+                    .userId(100L)
+                    .status(ReservationStatus.CONFIRMED)
+                    .build();
+            ReflectionTestUtils.setField(entity, "id", 60L);
+
+            ReservationSlotEntity slot = ReservationSlotEntity.builder()
+                    .teamId(30L)
+                    .title("午前の枠")
+                    .slotDate(LocalDate.of(2026, 4, 1))
+                    .startTime(LocalTime.of(10, 0))
+                    .endTime(LocalTime.of(11, 0))
+                    .build();
+            ReservationLineEntity line = ReservationLineEntity.builder()
+                    .teamId(30L)
+                    .name("カット")
+                    .build();
+
+            // When
+            ReservationResponse response = reservationMapper.toReservationResponse(entity, slot, line);
+
+            // Then
+            assertThat(response.getId()).isEqualTo(60L);
+            assertThat(response.getStatus().status()).isEqualTo("CONFIRMED");
+            assertThat(response.getSlot()).isNotNull();
+            assertThat(response.getSlot().lineName()).isEqualTo("カット");
+            assertThat(response.getSlot().title()).isEqualTo("午前の枠");
+            assertThat(response.getSlot().slotDate()).isEqualTo(LocalDate.of(2026, 4, 1));
+            assertThat(response.getSlot().startTime()).isEqualTo(LocalTime.of(10, 0));
+            assertThat(response.getSlot().endTime()).isEqualTo(LocalTime.of(11, 0));
+        }
+
+        @Test
+        @DisplayName("正常系: スロット・ラインがnullの場合サマリ各項目はnull")
+        void toReservationResponse_スロットラインnull_サマリnull() {
+            // Given
+            ReservationEntity entity = ReservationEntity.builder()
+                    .reservationSlotId(10L)
+                    .lineId(20L)
+                    .teamId(30L)
+                    .userId(100L)
+                    .status(ReservationStatus.PENDING)
+                    .build();
+            ReflectionTestUtils.setField(entity, "id", 61L);
+
+            // When
+            ReservationResponse response = reservationMapper.toReservationResponse(entity, null, null);
+
+            // Then
+            assertThat(response.getSlot()).isNotNull();
+            assertThat(response.getSlot().lineName()).isNull();
+            assertThat(response.getSlot().title()).isNull();
+            assertThat(response.getSlot().slotDate()).isNull();
+            assertThat(response.getSlot().startTime()).isNull();
+            assertThat(response.getSlot().endTime()).isNull();
         }
 
         @Test
@@ -279,8 +344,8 @@ class ReservationMapperTest {
 
             // Then
             assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getStatus()).isEqualTo("PENDING");
-            assertThat(responses.get(1).getStatus()).isEqualTo("CONFIRMED");
+            assertThat(responses.get(0).getStatus().status()).isEqualTo("PENDING");
+            assertThat(responses.get(1).getStatus().status()).isEqualTo("CONFIRMED");
         }
     }
 
@@ -311,10 +376,10 @@ class ReservationMapperTest {
             // Then
             assertThat(response.getId()).isEqualTo(100L);
             assertThat(response.getTeamId()).isEqualTo(10L);
-            assertThat(response.getDayOfWeek()).isEqualTo("MON");
-            assertThat(response.getIsOpen()).isTrue();
-            assertThat(response.getOpenTime()).isEqualTo(LocalTime.of(9, 0));
-            assertThat(response.getCloseTime()).isEqualTo(LocalTime.of(18, 0));
+            assertThat(response.getBusinessStatus().dayOfWeek()).isEqualTo("MON");
+            assertThat(response.getBusinessStatus().isOpen()).isTrue();
+            assertThat(response.getBusinessStatus().openTime()).isEqualTo(LocalTime.of(9, 0));
+            assertThat(response.getBusinessStatus().closeTime()).isEqualTo(LocalTime.of(18, 0));
         }
 
         @Test
@@ -334,8 +399,8 @@ class ReservationMapperTest {
 
             // Then
             assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getDayOfWeek()).isEqualTo("MON");
-            assertThat(responses.get(1).getIsOpen()).isFalse();
+            assertThat(responses.get(0).getBusinessStatus().dayOfWeek()).isEqualTo("MON");
+            assertThat(responses.get(1).getBusinessStatus().isOpen()).isFalse();
         }
     }
 
@@ -367,8 +432,8 @@ class ReservationMapperTest {
             // Then
             assertThat(response.getId()).isEqualTo(200L);
             assertThat(response.getTeamId()).isEqualTo(10L);
-            assertThat(response.getReason()).isEqualTo("昼休み");
-            assertThat(response.getStartTime()).isEqualTo(LocalTime.of(12, 0));
+            assertThat(response.getAudit().reason()).isEqualTo("昼休み");
+            assertThat(response.getTimeSlot().startTime()).isEqualTo(LocalTime.of(12, 0));
         }
 
         @Test
@@ -390,8 +455,8 @@ class ReservationMapperTest {
 
             // Then
             assertThat(responses).hasSize(2);
-            assertThat(responses.get(0).getReason()).isEqualTo("昼休み");
-            assertThat(responses.get(1).getReason()).isEqualTo("臨時休業");
+            assertThat(responses.get(0).getAudit().reason()).isEqualTo("昼休み");
+            assertThat(responses.get(1).getAudit().reason()).isEqualTo("臨時休業");
         }
     }
 

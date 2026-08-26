@@ -2,6 +2,7 @@ package com.mannschaft.app.quickmemo.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.quickmemo.QuickMemoErrorCode;
 import com.mannschaft.app.quickmemo.dto.AttachmentSummary;
@@ -40,9 +41,8 @@ public class QuickMemoAttachmentService {
     private static final int PRESIGN_EXPIRE_MINUTES = 5;
     private static final double SIZE_MISMATCH_TOLERANCE = 0.10; // 10%
 
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg", "image/png", "image/webp", "image/gif"
-    );
+    /** {@link FileTypeValidator#ALLOWED_IMAGE_TYPES} を参照する（ローカル定義を廃止）。 */
+    private static final Set<String> ALLOWED_CONTENT_TYPES = FileTypeValidator.ALLOWED_IMAGE_TYPES;
 
     private final QuickMemoRepository memoRepository;
     private final QuickMemoAttachmentRepository attachmentRepository;
@@ -73,8 +73,12 @@ public class QuickMemoAttachmentService {
             throw new BusinessException(QuickMemoErrorCode.ATTACHMENT_SIZE_EXCEEDED);
         }
 
-        // SVG拒否・MIME確認
-        if (!ALLOWED_CONTENT_TYPES.contains(req.contentType())) {
+        // SVG 拒否・ブロックリスト優先（危険な MIME タイプを明示排除）
+        if (FileTypeValidator.isBlocked(req.contentType())) {
+            throw new BusinessException(QuickMemoErrorCode.ATTACHMENT_INVALID_CONTENT_TYPE);
+        }
+        // MIME ホワイトリスト確認
+        if (!FileTypeValidator.isAllowed(req.contentType(), ALLOWED_CONTENT_TYPES)) {
             throw new BusinessException(QuickMemoErrorCode.ATTACHMENT_INVALID_CONTENT_TYPE);
         }
 

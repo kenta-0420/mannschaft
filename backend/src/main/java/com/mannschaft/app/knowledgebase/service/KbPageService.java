@@ -138,23 +138,32 @@ public class KbPageService {
             throw new BusinessException(KnowledgeBaseErrorCode.KB_003);
         }
 
-        // 親ページの存在確認と深さ計算
+        // 親ページの存在確認と深さ計算（BOLA是正: 親IDは同一scope内でのみ解決する。
+        // findByIdAndDeletedAtIsNull のみだと他team/orgの親ページIDにぶら下げられてしまう）
         KbPageEntity parentPage = null;
         int depth = 0;
         if (req.parentId() != null) {
-            parentPage = pageRepository.findByIdAndDeletedAtIsNull(req.parentId())
-                    .orElseThrow(() -> new BusinessException(KnowledgeBaseErrorCode.KB_001));
+            parentPage = findPageByIdAndScope(req.parentId(), scopeType, scopeId);
             depth = parentPage.getDepth() + 1;
             if (depth > MAX_DEPTH) {
                 throw new BusinessException(KnowledgeBaseErrorCode.KB_004);
             }
         }
 
-        // テンプレートからbodyを取得
+        // テンプレートからbodyを取得（BOLA是正: SYSTEM テンプレートは全scope共通で利用可だが、
+        // scope固有テンプレートは同一scopeのものしか流用できない。KbTemplateService#findTemplateByIdAndScope
+        // と同じ束縛ロジック）
         String body = req.body();
         if (req.templateId() != null && body == null) {
             KbTemplateEntity template = templateRepository.findById(req.templateId())
                     .orElseThrow(() -> new BusinessException(KnowledgeBaseErrorCode.KB_010));
+            if (template.getDeletedAt() != null) {
+                throw new BusinessException(KnowledgeBaseErrorCode.KB_010);
+            }
+            if (!Boolean.TRUE.equals(template.getIsSystem())
+                    && (!scopeType.equals(template.getScopeType()) || !scopeId.equals(template.getScopeId()))) {
+                throw new BusinessException(KnowledgeBaseErrorCode.KB_010);
+            }
             body = template.getBody();
         }
 
@@ -182,8 +191,9 @@ public class KbPageService {
             path = parentPage.getPath() + "/" + saved.getId();
         }
 
-        KbPageEntity withPath = saved.toBuilder().path(path).build();
-        KbPageEntity result = pageRepository.save(withPath);
+        // save 後にIDが確定するので managed entity のままミューテートして UPDATE する
+        saved.updatePath(path);
+        KbPageEntity result = pageRepository.save(saved);
 
         log.info("KBページを作成しました: id={}, slug={}, scope={}/{}", result.getId(), req.slug(), scopeType, scopeId);
         return ApiResponse.of(result);
@@ -209,15 +219,11 @@ public class KbPageService {
             saveRevision(page, userId);
         }
 
-        KbPageEntity updated = page.toBuilder()
-                .title(req.title() != null ? req.title() : page.getTitle())
-                .body(req.body() != null ? req.body() : page.getBody())
-                .icon(req.icon() != null ? req.icon() : page.getIcon())
-                .accessLevel(req.accessLevel() != null ? req.accessLevel() : page.getAccessLevel())
-                .lastEditedBy(userId)
-                .build();
+        // findById で取得した managed entity を直接ミューテートして UPDATE する
+        // （toBuilder().build() は BaseEntity の id を引き継がず INSERT 化する欠陥があるため使用禁止）
+        page.applyUpdate(req.title(), req.body(), req.icon(), req.accessLevel(), userId);
 
-        KbPageEntity saved = pageRepository.save(updated);
+        KbPageEntity saved = pageRepository.save(page);
         log.info("KBページを更新しました: id={}", pageId);
         return ApiResponse.of(saved);
     }
@@ -265,8 +271,8 @@ public class KbPageService {
 
         KbPageEntity newParent = null;
         if (newParentId != null) {
-            newParent = pageRepository.findByIdAndDeletedAtIsNull(newParentId)
-                    .orElseThrow(() -> new BusinessException(KnowledgeBaseErrorCode.KB_001));
+            // BOLA是正: 移動先親IDは同一scope内でのみ解決する（他team/orgの配下への越境移動を防ぐ）
+            newParent = findPageByIdAndScope(newParentId, scopeType, scopeId);
 
             // 循環参照チェック: 新親のpathが自身のpathで始まっていないか確認
             if (newParent.getPath().startsWith(page.getPath() + "/")
@@ -300,29 +306,22 @@ public class KbPageService {
         String oldPathPrefix = page.getPath();
         String newPath = newParent != null ? newParent.getPath() + "/" + pageId : "/" + pageId;
         int newDepth = newPageDepth;
+        // applyMove 前に旧深さを保存（子孫の相対深さ計算に使用する）
+        int oldDepth = page.getDepth();
 
-        // 自身のpath/depth更新
-        KbPageEntity movedPage = page.toBuilder()
-                .parent(newParent)
-                .path(newPath)
-                .depth(newDepth)
-                .build();
-        pageRepository.save(movedPage);
+        // 自身のpath/depth更新（managed entity を直接ミューテートして UPDATE する）
+        page.applyMove(newParent, newPath, newDepth);
+        pageRepository.save(page);
 
         // 子孫のpath/depth再計算と一括UPDATE
         if (!subtreeIds.isEmpty()) {
             List<KbPageEntity> descendants = pageRepository.findAllById(subtreeIds);
-            List<KbPageEntity> updated = descendants.stream()
-                    .map(d -> {
-                        String newChildPath = newPath + d.getPath().substring(oldPathPrefix.length());
-                        int newChildDepth = newDepth + (d.getDepth() - page.getDepth());
-                        return d.toBuilder()
-                                .path(newChildPath)
-                                .depth(newChildDepth)
-                                .build();
-                    })
-                    .toList();
-            pageRepository.saveAll(updated);
+            descendants.forEach(d -> {
+                String newChildPath = newPath + d.getPath().substring(oldPathPrefix.length());
+                int newChildDepth = newDepth + (d.getDepth() - oldDepth);
+                d.applyMove(d.getParent(), newChildPath, newChildDepth);
+            });
+            pageRepository.saveAll(descendants);
         }
 
         log.info("KBページを移動しました: id={}, newParentId={}", pageId, newParentId);
@@ -339,10 +338,8 @@ public class KbPageService {
             return ApiResponse.of(page);
         }
 
-        KbPageEntity published = page.toBuilder()
-                .status(PageStatus.PUBLISHED)
-                .build();
-        KbPageEntity saved = pageRepository.save(published);
+        page.applyStatus(PageStatus.PUBLISHED);
+        KbPageEntity saved = pageRepository.save(page);
 
         log.info("KBページを公開しました: id={}", pageId);
         return ApiResponse.of(saved);
@@ -359,10 +356,8 @@ public class KbPageService {
             return ApiResponse.of(page);
         }
 
-        KbPageEntity archived = page.toBuilder()
-                .status(PageStatus.ARCHIVED)
-                .build();
-        KbPageEntity saved = pageRepository.save(archived);
+        page.applyStatus(PageStatus.ARCHIVED);
+        KbPageEntity saved = pageRepository.save(page);
 
         log.info("KBページをアーカイブしました: id={}", pageId);
         return ApiResponse.of(saved);

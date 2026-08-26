@@ -37,6 +37,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link FriendNotificationController} の MockMvc 結合テスト（F01.5 Phase 2）。
@@ -76,6 +77,10 @@ class FriendNotificationControllerTest {
     @MockitoBean
     private ProxyInputContext proxyInputContext;
 
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
+
     @BeforeEach
     void setUpSecurityContext() {
         UsernamePasswordAuthenticationToken auth =
@@ -97,11 +102,20 @@ class FriendNotificationControllerTest {
             NotificationResponse notif = NotificationResponse.builder()
                     .id(1L)
                     .userId(USER_ID)
-                    .content(new NotificationResponse.NotificationContentDto(
-                            "FRIEND_ANNOUNCEMENT", "NORMAL", "テスト通知", "本文", null))
-                    .source(new NotificationResponse.NotificationSourceDto("FRIEND_TEAM", TEAM_ID))
-                    .scope(new NotificationResponse.NotificationScopeDto("FRIEND_TEAM", TARGET_TEAM_ID, USER_ID))
-                    .status(new NotificationResponse.NotificationStatusDto(false, null, null, null))
+                    .notificationType("FRIEND_ANNOUNCEMENT")
+                    .priority("NORMAL")
+                    .title("テスト通知")
+                    .body("本文")
+                    .actionUrl(null)
+                    .sourceType("FRIEND_TEAM")
+                    .sourceId(TEAM_ID)
+                    .scopeType("FRIEND_TEAM")
+                    .scopeId(TARGET_TEAM_ID)
+                    .actorId(USER_ID)
+                    .isRead(false)
+                    .readAt(null)
+                    .channelsSent(null)
+                    .snoozedUntil(null)
                     .createdAt(LocalDateTime.of(2026, 4, 17, 10, 0))
                     .build();
             Page<NotificationResponse> page = new PageImpl<>(List.of(notif));
@@ -112,7 +126,7 @@ class FriendNotificationControllerTest {
             mockMvc.perform(get("/api/v1/teams/{id}/friend-notifications", TEAM_ID))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.data.content[0].id").value(1))
-                    .andExpect(jsonPath("$.data.content[0].content.title").value("テスト通知"))
+                    .andExpect(jsonPath("$.data.content[0].title").value("テスト通知"))
                     .andExpect(jsonPath("$.data.totalElements").value(1));
         }
 

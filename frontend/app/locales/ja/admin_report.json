@@ -1,0 +1,90 @@
+{
+  "admin_report": {
+    "title": "レポート管理",
+    "empty": "レポートがありません",
+    "status_options": {
+      "all": "すべて",
+      "pending": "未対応",
+      "reviewing": "対応中",
+      "escalated": "エスカレーション",
+      "resolved": "解決済み",
+      "dismissed": "却下"
+    },
+    "messages": {
+      "load_failed": "レポートの取得に失敗しました",
+      "note_added": "メモを追加しました",
+      "note_add_failed": "メモの追加に失敗しました",
+      "review_started": "レビューを開始しました",
+      "review_failed": "レビュー開始に失敗しました",
+      "resolved": "レポートを解決しました",
+      "resolve_failed": "解決に失敗しました",
+      "dismissed": "レポートを却下しました",
+      "dismiss_failed": "却下に失敗しました",
+      "escalated": "エスカレーションしました",
+      "escalate_failed": "エスカレーションに失敗しました",
+      "reopened": "レポートを再開しました",
+      "reopen_failed": "再開に失敗しました",
+      "content_hidden": "コンテンツを非表示にしました",
+      "hide_failed": "非表示に失敗しました",
+      "content_restored": "コンテンツを復元しました",
+      "restore_failed": "復元に失敗しました"
+    },
+    "stats": {
+      "pending": "未対応",
+      "reviewing": "対応中",
+      "escalated": "エスカレ",
+      "resolved": "解決済",
+      "dismissed": "却下",
+      "total": "合計"
+    },
+    "table": {
+      "status": "ステータス",
+      "target_type": "対象種別",
+      "reason": "理由",
+      "reported_at": "報告日",
+      "actions": "操作",
+      "status_placeholder": "ステータス"
+    },
+    "actions": {
+      "review": "レビュー",
+      "resolve": "解決",
+      "dismiss": "却下",
+      "escalate": "エスカレ",
+      "reopen": "再開"
+    },
+    "detail": {
+      "header": "レポート詳細",
+      "target_type": "対象種別",
+      "status": "ステータス",
+      "reason": "理由",
+      "reported_at": "報告日",
+      "description": "詳細",
+      "hide_content": "コンテンツ非表示",
+      "restore_content": "コンテンツ復元",
+      "internal_notes": "内部メモ",
+      "no_notes": "メモがありません",
+      "note_placeholder": "メモを入力...",
+      "add_note": "追加"
+    },
+    "resolve": {
+      "header": "レポート解決",
+      "action_type": "アクション種別",
+      "note": "メモ",
+      "guideline_section": "ガイドラインセクション",
+      "cancel": "キャンセル",
+      "submit": "解決する",
+      "action": {
+        "warning": "警告",
+        "content_delete": "コンテンツ削除",
+        "account_freeze": "アカウント凍結"
+      }
+    },
+    "escalate": {
+      "header": "エスカレーション",
+      "reason": "理由",
+      "guideline_section": "ガイドラインセクション",
+      "cancel": "キャンセル",
+      "submit": "エスカレーションする"
+    }
+  }
+}

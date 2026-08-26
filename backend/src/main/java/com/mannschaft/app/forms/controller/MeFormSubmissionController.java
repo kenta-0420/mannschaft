@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 横断「自分の提出」一覧コントローラ（F05.7 Phase 11 第四陣 4-B）。
@@ -35,6 +36,8 @@ public class MeFormSubmissionController {
     /**
      * 自分の全提出一覧を取得する（スコープ横断）。
      */
+    @SelfScopedEndpoint("FormSubmissionService#listMySubmissions(userId,pageable) は"
+        + "SecurityUtils.getCurrentUserId() の submitted_by 絞り込みのみで全スコープを検索する")
     @GetMapping
     @Operation(summary = "自分の提出一覧（横断 me）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

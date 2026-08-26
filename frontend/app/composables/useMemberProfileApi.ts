@@ -8,13 +8,13 @@ import type {
 export function useMemberProfileApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // --- ページ管理 ---
 
-  async function listPages(scopeType: 'team' | 'organization', scopeId: number) {
+  async function listPages(scopeType: 'team' | 'organization', scopeId: string) {
     const base = buildBase(scopeType, scopeId)
     const res = await api<{ data: TeamPage[] }>(`${base}/pages`)
     return res.data
@@ -22,7 +22,7 @@ export function useMemberProfileApi() {
 
   async function createPage(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: { title: string; pageType: string; year?: number; visibility?: string },
   ) {
     const base = buildBase(scopeType, scopeId)
@@ -30,7 +30,7 @@ export function useMemberProfileApi() {
     return res.data
   }
 
-  async function getPage(scopeType: 'team' | 'organization', scopeId: number, pageId: number) {
+  async function getPage(scopeType: 'team' | 'organization', scopeId: string, pageId: number) {
     const base = buildBase(scopeType, scopeId)
     const res = await api<{ data: TeamPage }>(`${base}/pages/${pageId}`)
     return res.data
@@ -38,7 +38,7 @@ export function useMemberProfileApi() {
 
   async function updatePage(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     pageId: number,
     body: Partial<{ title: string; visibility: string }>,
   ) {
@@ -47,14 +47,14 @@ export function useMemberProfileApi() {
     return res.data
   }
 
-  async function publishPage(scopeType: 'team' | 'organization', scopeId: number, pageId: number) {
+  async function publishPage(scopeType: 'team' | 'organization', scopeId: string, pageId: number) {
     const base = buildBase(scopeType, scopeId)
     await api(`${base}/pages/${pageId}/publish`, { method: 'PATCH' })
   }
 
   // --- メンバープロフィール ---
 
-  async function listMembers(scopeType: 'team' | 'organization', scopeId: number) {
+  async function listMembers(scopeType: 'team' | 'organization', scopeId: string) {
     const base = buildBase(scopeType, scopeId)
     const res = await api<{ data: MemberProfile[] }>(`${base}/member-profiles`)
     return res.data
@@ -62,7 +62,7 @@ export function useMemberProfileApi() {
 
   async function createMember(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: CreateMemberProfileRequest,
   ) {
     const base = buildBase(scopeType, scopeId)
@@ -75,7 +75,7 @@ export function useMemberProfileApi() {
 
   async function updateMember(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     profileId: number,
     body: Partial<CreateMemberProfileRequest>,
   ) {
@@ -92,7 +92,7 @@ export function useMemberProfileApi() {
 
   // --- フィールド定義 ---
 
-  async function listFields(scopeType: 'team' | 'organization', scopeId: number) {
+  async function listFields(scopeType: 'team' | 'organization', scopeId: string) {
     const base = buildBase(scopeType, scopeId)
     const res = await api<{ data: MemberProfileField[] }>(`${base}/member-fields`)
     return res.data
@@ -100,7 +100,7 @@ export function useMemberProfileApi() {
 
   async function createField(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: { fieldName: string; fieldType: string; options?: string[]; isRequired: boolean },
   ) {
     const base = buildBase(scopeType, scopeId)

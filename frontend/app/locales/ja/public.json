@@ -33,6 +33,11 @@
       "siteName": "Mannschaft",
       "openMenu": "メニューを開く"
     },
+    "breadcrumb": {
+      "home": "ホーム",
+      "discoverTeams": "チームを探す",
+      "discoverOrganizations": "組織を探す"
+    },
     "team": {
       "title": "{name} - 公開ページ",
       "memberCount": "{n}人のメンバー",
@@ -40,14 +45,18 @@
       "philosophyTitle": "理念",
       "mapTitle": "地図",
       "homepageLabel": "公式サイト",
-      "establishedAt": "設立: {date}"
+      "establishedAt": "設立: {date}",
+      "geoDescription": "{prefecture}{city}を拠点に活動する{name}の公開ページです。",
+      "geoDescriptionNoLocation": "{name}の公開ページです。"
     },
     "organization": {
       "title": "{name} - 公開ページ",
       "philosophyTitle": "理念",
       "mapTitle": "地図",
       "homepageLabel": "公式サイト",
-      "establishedAt": "設立: {date}"
+      "establishedAt": "設立: {date}",
+      "geoDescription": "{prefecture}{city}を拠点に活動する{name}の公開ページです。",
+      "geoDescriptionNoLocation": "{name}の公開ページです。"
     },
     "posts": {
       "sectionTitle": "公開投稿",
@@ -149,6 +158,16 @@
     "events": {
       "title": "イベント",
       "empty": "イベントはありません"
+    },
+    "tabs": {
+      "posts": "投稿",
+      "timeline": "タイムライン",
+      "events": "行事",
+      "activities": "活動記録"
+    },
+    "activities": {
+      "sectionTitle": "活動記録",
+      "empty": "公開された活動記録はまだありません"
     }
   }
 }

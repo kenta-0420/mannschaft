@@ -3,8 +3,11 @@
     "category": {
       "home": "Home",
       "schedule": "Schedule",
+      "match": "Matches",
       "member": "Members",
       "ops": "Operations",
+      "ops_work": "Tasks & Progress",
+      "ops_admin": "Admin & Budget",
       "facility": "Facility",
       "data": "Data",
       "settings": "Settings"
@@ -19,6 +22,8 @@
       "shifts": "Shifts",
       "duties": "Duties",
       "annual_plan": "Annual Plan",
+      "matches": "Match Records",
+      "matchAnalytics": "Match Analytics",
       "members": "Members",
       "circulation": "Circulation",
       "safety_check": "Safety Check",
@@ -34,7 +39,11 @@
       "files": "Files",
       "analytics": "Analytics",
       "audit_logs": "Audit Logs",
-      "settings": "Settings"
+      "settings": "Settings",
+      "faqSettings": "FAQ Settings",
+      "billing": "Billing & plan management",
+      "leagueTransfers": "League Transfers",
+      "adminConsole": "Admin Console"
     }
   }
 }

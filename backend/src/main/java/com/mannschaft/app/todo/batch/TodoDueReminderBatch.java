@@ -1,6 +1,7 @@
 package com.mannschaft.app.todo.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -14,6 +15,7 @@ import com.mannschaft.app.todo.repository.TodoAssigneeRepository;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -28,12 +32,21 @@ import java.util.Set;
 /**
  * TODO の期限に関するリマインダー通知を送信するバッチ（F04.3 連携）。
  *
- * <p>毎朝 08:00（JST）に実行し、以下の2種の通知を担当者全員へ配信する:
+ * <p>1時間ごとに実行し、各ユーザーのタイムゾーン（{@code users.timezone}）を参照して
+ * 「そのユーザーのローカル時刻が 08:00〜08:59」の場合のみ通知を配信する。
+ * これにより非JSTユーザーにも正しいタイミングで通知が飛ぶ。</p>
+ *
+ * <p>以下の2種の通知を担当者全員へ配信する:
  * <ol>
  *   <li>{@code TODO_DUE_TOMORROW} — 明日が期限の未完了 TODO（priority=NORMAL）</li>
  *   <li>{@code TODO_OVERDUE} — 期限超過の未完了 TODO（priority=HIGH、同日中の重複送信を防止）</li>
  * </ol>
  * </p>
+ *
+ * <p><strong>TZ別送信タイミング:</strong>
+ * 実行時刻は UTC で固定。各担当者の {@code users.timezone}（例: "America/New_York"）を
+ * {@link UserRepository#findTimezoneById} で取得し、その TZ での現在時刻が 08:00 台のユーザーのみが
+ * 通知対象となる。timezone が取得できない場合は JST（Asia/Tokyo）にフォールバックする。</p>
  *
  * <p><strong>ロック中 TODO の除外:</strong>
  * F02.7 設計書 §5.2「ロック中 TODO への通知抑制」に従い、{@code milestone_locked = TRUE} の
@@ -70,14 +83,25 @@ public class TodoDueReminderBatch {
     /** 通知種別: 期限超過 */
     private static final String NOTIFICATION_TYPE_OVERDUE = "TODO_OVERDUE";
 
+    /** リマインダー通知を送信する現地時刻の時間帯（0〜23）。 */
+    private static final int REMINDER_HOUR = 8;
+
+    /** timezone 未取得時のフォールバックタイムゾーン。 */
+    private static final ZoneId FALLBACK_ZONE = ZoneId.of("Asia/Tokyo");
+
     private final TodoRepository todoRepository;
     private final TodoAssigneeRepository todoAssigneeRepository;
     private final NotificationService notificationService;
     private final NotificationDispatchService notificationDispatchService;
     private final NotificationRepository notificationRepository;
+    // TODO: ScheduleドメインとUserドメインをまたいでいる。将来はUserTimezoneQueryService等に分離予定
+    private final UserRepository userRepository;
 
     /**
-     * 毎朝 08:00（JST）に期限リマインダー通知を送信する。
+     * 1時間ごとにバッチを実行し、その実行時刻が「08:00〜08:59」のユーザーのみに通知する。
+     *
+     * <p>JSTのみ対象だった固定cron（毎朝08:00 JST）を廃止し、
+     * 各ユーザーのtimezoneフィールドを参照することで全タイムゾーンのユーザーに対応する。</p>
      *
      * <p>処理は以下の2段階で行う:
      * <ol>
@@ -86,8 +110,9 @@ public class TodoDueReminderBatch {
      * </ol>
      * </p>
      */
-    @BatchEndpoint(name = "todo-due-reminder-daily", description = "TODO の明日期限と期限超過リマインドを毎日 08:00 に送信する")
-    @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Tokyo")
+    @BatchEndpoint(name = "todo-due-reminder-hourly", description = "TODO の明日期限と期限超過リマインドをユーザーTZ別に毎時チェックして送信する")
+    @Scheduled(fixedDelay = 3_600_000)
+    @SchedulerLock(name = "todoDueReminderHourly", lockAtLeastFor = "PT50M", lockAtMostFor = "PT2H")
     public void run() {
         log.info("TodoDueReminderBatch 開始");
         int dueTomorrowCount = sendDueTomorrowReminders();
@@ -141,6 +166,10 @@ public class TodoDueReminderBatch {
     /**
      * TODO の担当者全員（不在なら作成者）に通知を送信する。
      *
+     * <p>各ユーザーの {@code users.timezone} を参照し、そのユーザーのローカル時刻が
+     * {@value #REMINDER_HOUR}:00 台の場合のみ通知する（非JST ユーザー対応）。
+     * timezone が取得できない場合は {@link #FALLBACK_ZONE}（Asia/Tokyo）にフォールバックする。</p>
+     *
      * @param todo             対象 TODO
      * @param notificationType 通知種別
      * @param priority         優先度
@@ -162,6 +191,12 @@ public class TodoDueReminderBatch {
         LocalDateTime startOfToday = LocalDate.now().atTime(LocalTime.MIN);
 
         for (Long userId : recipients) {
+            // ユーザーのtimezoneを取得し、現地時刻が08:00台でなければスキップ
+            if (!isReminderHourForUser(userId)) {
+                log.debug("TZスキップ: userId={}, todoId={}, type={}", userId, todo.getId(), notificationType);
+                continue;
+            }
+
             if (dedupSameDay && notificationRepository
                     .existsByUserIdAndNotificationTypeAndSourceTypeAndSourceIdAndCreatedAtGreaterThanEqual(
                             userId, notificationType, SOURCE_TYPE_TODO, todo.getId(), startOfToday)) {
@@ -195,6 +230,33 @@ public class TodoDueReminderBatch {
                         userId, todo.getId(), notificationType, ex);
             }
         }
+    }
+
+    /**
+     * ユーザーのタイムゾーンにおける現在時刻がリマインダー送信時間帯（{@value #REMINDER_HOUR}:00 台）かどうかを返す。
+     *
+     * <p>{@link UserRepository#findTimezoneById} でユーザーの timezone 文字列を取得し、
+     * {@link ZonedDateTime} でその TZ の現在時刻を求めて時（hour）を比較する。
+     * timezone が無効な値の場合は {@link #FALLBACK_ZONE} を使用する。</p>
+     *
+     * @param userId 対象ユーザーID
+     * @return リマインダー送信時間帯なら true
+     */
+    private boolean isReminderHourForUser(Long userId) {
+        String tzString = userRepository.findTimezoneById(userId).orElse(null);
+        ZoneId userZone;
+        if (tzString == null || tzString.isBlank()) {
+            userZone = FALLBACK_ZONE;
+        } else {
+            try {
+                userZone = ZoneId.of(tzString);
+            } catch (Exception e) {
+                log.warn("無効なtimezone: userId={}, timezone={}, フォールバック使用", userId, tzString);
+                userZone = FALLBACK_ZONE;
+            }
+        }
+        int currentHour = ZonedDateTime.now(userZone).getHour();
+        return currentHour == REMINDER_HOUR;
     }
 
     /**

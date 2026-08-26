@@ -3,7 +3,7 @@ import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 interface ScheduleApiItem {
@@ -28,6 +28,7 @@ const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> =
   return [
     ...scopeItems.map((e) => ({
       ...e,
+      uniqueKey: `${props.scopeType}:${e.id}`,
       allDay: e.allDay ?? false,
       color: e.color ?? null,
       isPersonal: false,
@@ -35,6 +36,7 @@ const fetcher = async (from: string, to: string): Promise<CalendarEventItem[]> =
     })),
     ...personalItems.map((e) => ({
       ...e,
+      uniqueKey: `personal:${e.id}`,
       allDay: e.allDay ?? false,
       color: e.color ?? null,
       isPersonal: true,

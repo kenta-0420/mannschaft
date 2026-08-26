@@ -11,31 +11,31 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum GamificationErrorCode implements ErrorCode {
 
-    /** 設定が見つからない */
+    /** 設定が見つからない（404） */
     GAMIFICATION_001("GAMIFICATION_001", "ゲーミフィケーション設定が見つかりません", Severity.WARN),
 
-    /** ポイントルールが見つからない */
+    /** ポイントルールが見つからない（404） */
     GAMIFICATION_002("GAMIFICATION_002", "ポイントルールが見つかりません", Severity.WARN),
 
-    /** バッジが見つからない */
+    /** バッジが見つからない（404） */
     GAMIFICATION_003("GAMIFICATION_003", "バッジが見つかりません", Severity.WARN),
 
-    /** システムルールは変更できない */
+    /** システムルールは変更できない（存在は隠さず権限拒否のため403） */
     GAMIFICATION_004("GAMIFICATION_004", "システムルールは変更できません", Severity.WARN),
 
-    /** ゲーミフィケーションが無効 */
+    /** ゲーミフィケーションが無効（throw元なし・未使用） */
     GAMIFICATION_005("GAMIFICATION_005", "ゲーミフィケーションが無効です", Severity.WARN),
 
-    /** バージョン不一致 */
+    /** バージョン不一致（楽観的ロック・状態競合のため409） */
     GAMIFICATION_006("GAMIFICATION_006", "バージョンが一致しません", Severity.WARN),
 
-    /** カスタムルールの上限到達 */
+    /** カスタムルールの上限到達（実装は重複ルールの存在チェックであり文言と実挙動が食い違うため見送り） */
     GAMIFICATION_007("GAMIFICATION_007", "カスタムルールの上限に達しました", Severity.WARN),
 
-    /** アクセス権限なし */
+    /** アクセス権限なし（実体はスコープ不一致・越境の存在秘匿のため404） */
     GAMIFICATION_008("GAMIFICATION_008", "アクセス権限がありません", Severity.WARN),
 
-    /** daily_limit到達 */
+    /** daily_limit到達（throw元なし・未使用） */
     GAMIFICATION_009("GAMIFICATION_009", "本日のポイント付与上限に達しました", Severity.WARN),
 
     /** 管理者調整の1日上限超過 */

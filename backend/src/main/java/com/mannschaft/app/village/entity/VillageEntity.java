@@ -1,6 +1,7 @@
 package com.mannschaft.app.village.entity;
 
 import com.mannschaft.app.common.entity.UuidV7Entity;
+import com.mannschaft.app.village.entity.enums.VillageBulletinVisibility;
 import com.mannschaft.app.village.entity.enums.VillageJoinPolicy;
 import com.mannschaft.app.village.entity.enums.VillageType;
 import com.mannschaft.app.village.entity.enums.VillageVisibility;
@@ -13,8 +14,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -37,8 +37,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PUBLIC)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 @EqualsAndHashCode(callSuper = true)
 public class VillageEntity extends UuidV7Entity {
 
@@ -62,6 +61,14 @@ public class VillageEntity extends UuidV7Entity {
     @Enumerated(EnumType.STRING)
     @Column(name = "visibility", nullable = false, length = 20)
     private VillageVisibility visibility;
+
+    /**
+     * 掲示板の公開範囲（F17.1 村掲示板グローバル方式）。
+     * {@link #visibility}（検索可否）とは独立した概念。PUBLIC=非メンバーも閲覧可 / MEMBERS_ONLY=村メンバーのみ。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "bulletin_visibility", nullable = false, length = 20)
+    private VillageBulletinVisibility bulletinVisibility;
 
     @Column(name = "category", length = 64)
     private String category;
@@ -113,6 +120,9 @@ public class VillageEntity extends UuidV7Entity {
         this.updatedAt = now;
         if (this.memberCountCache == null) {
             this.memberCountCache = 0L;
+        }
+        if (this.bulletinVisibility == null) {
+            this.bulletinVisibility = VillageBulletinVisibility.MEMBERS_ONLY;
         }
     }
 

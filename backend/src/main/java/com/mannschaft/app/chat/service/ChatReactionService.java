@@ -43,6 +43,9 @@ public class ChatReactionService {
     @Transactional
     public ReactionResponse addReaction(Long messageId, AddReactionRequest request, Long userId) {
         ChatMessageEntity message = messageService.findMessageOrThrow(messageId);
+        // F08.7.1: 大会/ディビジョン連絡チャットは閲覧権限（canView）が無ければリアクション付与不可。
+        // リアクションは閲覧者が押せるのが自然（設計書 §4.1）。通常チャンネルは no-op。
+        messageService.checkChannelViewAccess(message.getChannelId(), userId);
 
         if (reactionRepository.existsByMessageIdAndUserIdAndEmoji(messageId, userId, request.getEmoji())) {
             throw new BusinessException(ChatErrorCode.REACTION_ALREADY_EXISTS);
@@ -79,6 +82,8 @@ public class ChatReactionService {
     @Transactional
     public void removeReaction(Long messageId, String emoji, Long userId) {
         ChatMessageEntity message = messageService.findMessageOrThrow(messageId);
+        // F08.7.1: 大会/ディビジョン連絡チャットは閲覧権限（canView）が無ければ操作不可。通常チャンネルは no-op。
+        messageService.checkChannelViewAccess(message.getChannelId(), userId);
 
         if (!reactionRepository.existsByMessageIdAndUserIdAndEmoji(messageId, userId, emoji)) {
             throw new BusinessException(ChatErrorCode.REACTION_NOT_FOUND);

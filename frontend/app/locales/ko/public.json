@@ -5,93 +5,102 @@
         "label": "공개 표시",
         "enabledLabel": "공개 중",
         "disabledLabel": "비공개",
-        "toggleAriaLabel": "게시물 공개/비공개 전환",
+        "toggleAriaLabel": "게시물의 공개·비공개 전환",
         "enableConfirm": "이 게시물을 공개합니다. 계속하시겠습니까?",
-        "disableConfirm": "이 게시물을 비공개로 설정합니다. 계속하시겠습니까?",
-        "saveFailed": "전환에 실패했습니다. 다시 시도해 주세요."
+        "disableConfirm": "이 게시물을 비공개로 합니다. 계속하시겠습니까?",
+        "saveFailed": "전환에 실패했습니다. 다시 시도해 주세요"
       },
       "nameDisclosure": {
-        "title": "投稿者識別モード",
-        "displayName": "表示名で表示",
-        "realName": "本名で表示",
-        "warningTitle": "本名表示への切替について",
-        "warningBody": "この設定を有効にすると、以降の投稿に投稿者の本名が表示されます。一度公開された本名は外部に拡散する可能性があり、完全な取り消しはできません。",
-        "warningCheckbox": "上記の内容を理解した上で切り替える",
-        "confirmButton": "確認して切り替える",
-        "cancelButton": "キャンセル",
-        "historyTitle": "切替履歴",
-        "changedAt": "変更日時",
-        "changedBy": "変更者",
-        "fromMode": "変更前",
-        "toMode": "変更後"
+        "title": "게시자 식별 모드",
+        "displayName": "표시 이름으로 표시",
+        "realName": "본명으로 표시",
+        "warningTitle": "본명 표시로 전환에 대해",
+        "warningBody": "이 설정을 활성화하면 이후 게시물에 게시자의 본명이 표시됩니다. 한번 공개된 본명은 외부로 확산될 가능성이 있으며 완전한 취소는 불가능합니다.",
+        "warningCheckbox": "위 내용을 이해하고 전환합니다",
+        "confirmButton": "확인하고 전환",
+        "cancelButton": "취소",
+        "historyTitle": "전환 내역",
+        "changedAt": "변경 일시",
+        "changedBy": "변경자",
+        "fromMode": "변경 전",
+        "toMode": "변경 후"
       }
     },
     "layout": {
-      "skipToContent": "本文へスキップ",
-      "login": "ログイン",
-      "register": "新規登録",
+      "skipToContent": "본문으로 건너뛰기",
+      "login": "로그인",
+      "register": "신규 등록",
       "siteName": "Mannschaft",
-      "openMenu": "メニューを開く"
+      "openMenu": "메뉴 열기"
+    },
+    "breadcrumb": {
+      "home": "홈",
+      "discoverTeams": "팀 찾기",
+      "discoverOrganizations": "조직 찾기"
     },
     "team": {
-      "title": "{name} - 公開ページ",
-      "memberCount": "{n}人のメンバー",
-      "memberCountLabel": "メンバー数",
-      "philosophyTitle": "理念",
-      "mapTitle": "地図",
-      "homepageLabel": "公式サイト",
-      "establishedAt": "設立: {date}"
+      "title": "{name} - 공개 페이지",
+      "memberCount": "{n}명의 멤버",
+      "memberCountLabel": "멤버 수",
+      "philosophyTitle": "이념",
+      "mapTitle": "지도",
+      "homepageLabel": "공식 사이트",
+      "establishedAt": "설립: {date}",
+      "geoDescription": "{prefecture}{city}를 거점으로 활동하는 {name}의 공개 페이지입니다.",
+      "geoDescriptionNoLocation": "{name}의 공개 페이지입니다."
     },
     "organization": {
-      "title": "{name} - 公開ページ",
-      "philosophyTitle": "理念",
-      "mapTitle": "地図",
-      "homepageLabel": "公式サイト",
-      "establishedAt": "設立: {date}"
+      "title": "{name} - 공개 페이지",
+      "philosophyTitle": "이념",
+      "mapTitle": "지도",
+      "homepageLabel": "공식 사이트",
+      "establishedAt": "설립: {date}",
+      "geoDescription": "{prefecture}{city}를 거점으로 활동하는 {name}의 공개 페이지입니다.",
+      "geoDescriptionNoLocation": "{name}의 공개 페이지입니다."
     },
     "posts": {
-      "sectionTitle": "公開投稿",
-      "empty": "公開された投稿はまだありません",
-      "loading": "読み込み中...",
-      "readMore": "続きを読む",
-      "publishedAt": "公開: {date}",
-      "backToList": "一覧に戻る",
-      "totalCount": "全 {n} 件",
+      "sectionTitle": "공개 게시물",
+      "empty": "공개된 게시물이 아직 없습니다",
+      "loading": "불러오는 중...",
+      "readMore": "더 보기",
+      "publishedAt": "공개: {date}",
+      "backToList": "목록으로 돌아가기",
+      "totalCount": "전체 {n}건",
       "page": "{page} / {total}",
-      "next": "次へ",
-      "prev": "前へ"
+      "next": "다음",
+      "prev": "이전"
     },
     "author": {
-      "anonymous": "投稿者",
-      "member": "メンバー",
-      "organizer": "主催者",
-      "anonymousAvatarAlt": "投稿者（匿名表示）"
+      "anonymous": "게시자",
+      "member": "멤버",
+      "organizer": "주최자",
+      "anonymousAvatarAlt": "게시자（익명 표시）"
     },
     "cta": {
-      "join": "このチームに参加する",
-      "joinOrganization": "この組織に参加する",
-      "login": "ログインしてもっと見る",
-      "register": "新規登録",
-      "ctaHeading": "Mannschaft に参加しませんか？",
-      "ctaDescription": "メンバーになると、チームメンバーや活動内容をすべて閲覧できます。"
+      "join": "이 팀에 참가",
+      "joinOrganization": "이 조직에 참가",
+      "login": "로그인하여 더 보기",
+      "register": "신규 등록",
+      "ctaHeading": "Mannschaft에 참가하지 않겠습니까?",
+      "ctaDescription": "멤버가 되면 팀 멤버와 활동 내용을 모두 열람할 수 있습니다."
     },
     "error": {
-      "notFound": "指定されたページは存在しないか、公開されていません",
-      "notFoundTitle": "ページが見つかりません",
-      "loadFailed": "情報の取得に失敗しました",
-      "rateLimit": "アクセスが集中しています。しばらく経ってから再度お試しください",
-      "backToHome": "トップへ戻る"
+      "notFound": "지정한 페이지가 존재하지 않거나 공개되지 않았습니다",
+      "notFoundTitle": "페이지를 찾을 수 없습니다",
+      "loadFailed": "정보 불러오기 실패",
+      "rateLimit": "접속이 집중되고 있습니다. 잠시 후 다시 시도해 주세요",
+      "backToHome": "맨 위로 돌아가기"
     },
     "discover": {
       "teams": {
         "title": "공개 팀 찾기",
         "searchPlaceholder": "팀 이름으로 검색",
-        "noResults": "조건에 맞는 팀을 찾을 수 없습니다"
+        "noResults": "해당하는 팀을 찾을 수 없습니다"
       },
       "organizations": {
         "title": "공개 조직 찾기",
         "searchPlaceholder": "조직 이름으로 검색",
-        "noResults": "조건에 맞는 조직을 찾을 수 없습니다"
+        "noResults": "해당하는 조직을 찾을 수 없습니다"
       },
       "filter": {
         "keyword": "키워드",
@@ -101,46 +110,46 @@
       },
       "card": {
         "memberCount": "{count}명",
-        "lastPost": "마지막 게시: {date}",
+        "lastPost": "최종 게시: {date}",
         "noPost": "게시물 없음",
         "viewDetail": "자세히 보기"
       }
     },
     "meta": {
-      "ogDescriptionDefault": "Mannschaft の公開ページ",
+      "ogDescriptionDefault": "Mannschaft 공개 페이지",
       "ogSiteName": "Mannschaft"
     },
     "userProfile": {
       "title": "{name}님의 프로필",
-      "memberSince": "{date}부터 참여",
+      "memberSince": "{date}부터 참가",
       "posts": "공개 게시물",
       "noPosts": "공개 게시물이 없습니다"
     },
     "profileVisibility": {
       "title": "프로필 공개 설정",
-      "description": "공개 프로필을 활성화하면 로그인하지 않은 사용자도 프로필을 볼 수 있습니다",
+      "description": "공개 프로필을 활성화하면 로그인하지 않은 사용자도 귀하의 프로필을 열람할 수 있습니다",
       "enable": "공개 프로필 활성화",
-      "saved": "프로필 공개 설정이 저장되었습니다",
-      "saveError": "프로필 공개 설정 저장에 실패했습니다"
+      "saved": "프로필 공개 설정을 저장했습니다",
+      "saveError": "프로필 공개 설정 저장 실패"
     },
     "comments": {
       "title": "댓글",
       "empty": "아직 댓글이 없습니다",
-      "placeholder": "댓글을 입력하세요（최대 1000자）",
+      "placeholder": "댓글 입력（최대 1000자）",
       "submit": "게시",
       "delete": "삭제",
-      "loginToComment": "댓글을 남기려면 로그인하세요",
+      "loginToComment": "댓글을 작성하려면 로그인해 주세요",
       "loginLink": "로그인",
-      "deleteConfirm": "이 댓글을 삭제하시겠습니까？"
+      "deleteConfirm": "이 댓글을 삭제하시겠습니까?"
     },
     "publicSettings": {
       "title": "공개 설정",
       "timelinePostsPublic": "타임라인 게시물 공개",
-      "timelinePostsPublicDescription": "활성화하면 로그인하지 않은 사용자도 타임라인 게시물을 볼 수 있습니다",
+      "timelinePostsPublicDescription": "활성화하면 로그인하지 않은 사용자도 타임라인 게시물을 열람할 수 있습니다",
       "publicEventsEnabled": "이벤트 공개",
-      "publicEventsEnabledDescription": "활성화하면 로그인하지 않은 사용자도 이벤트 정보를 볼 수 있습니다",
-      "saved": "저장되었습니다",
-      "saveError": "저장에 실패했습니다"
+      "publicEventsEnabledDescription": "활성화하면 로그인하지 않은 사용자도 이벤트 정보를 열람할 수 있습니다",
+      "saved": "저장했습니다",
+      "saveError": "저장 실패"
     },
     "timeline": {
       "title": "타임라인 게시물",
@@ -149,6 +158,16 @@
     "events": {
       "title": "이벤트",
       "empty": "이벤트가 없습니다"
+    },
+    "tabs": {
+      "posts": "게시물",
+      "timeline": "타임라인",
+      "events": "이벤트",
+      "activities": "활동 기록"
+    },
+    "activities": {
+      "sectionTitle": "활동 기록",
+      "empty": "공개된 활동 기록이 아직 없습니다"
     }
   }
 }

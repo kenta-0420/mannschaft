@@ -5,93 +5,102 @@
         "label": "公开显示",
         "enabledLabel": "公开中",
         "disabledLabel": "非公开",
-        "toggleAriaLabel": "切换帖子的公开/非公开状态",
-        "enableConfirm": "将此帖子设为公开。确认吗？",
-        "disableConfirm": "将此帖子设为非公开。确认吗？",
-        "saveFailed": "切换失败，请重试"
+        "toggleAriaLabel": "切换投稿的公开/非公开",
+        "enableConfirm": "公开此投稿。确定吗？",
+        "disableConfirm": "将此投稿设为非公开。确定吗？",
+        "saveFailed": "切换失败。请重试。"
       },
       "nameDisclosure": {
-        "title": "投稿者識別モード",
-        "displayName": "表示名で表示",
-        "realName": "本名で表示",
-        "warningTitle": "本名表示への切替について",
-        "warningBody": "この設定を有効にすると、以降の投稿に投稿者の本名が表示されます。一度公開された本名は外部に拡散する可能性があり、完全な取り消しはできません。",
-        "warningCheckbox": "上記の内容を理解した上で切り替える",
-        "confirmButton": "確認して切り替える",
-        "cancelButton": "キャンセル",
-        "historyTitle": "切替履歴",
-        "changedAt": "変更日時",
-        "changedBy": "変更者",
-        "fromMode": "変更前",
-        "toMode": "変更後"
+        "title": "投稿者识别模式",
+        "displayName": "以显示名显示",
+        "realName": "以真实姓名显示",
+        "warningTitle": "关于切换到真实姓名显示",
+        "warningBody": "启用此设置后，以后的投稿将显示投稿者的真实姓名。一旦公开的真实姓名有可能扩散到外部，无法完全撤回。",
+        "warningCheckbox": "了解上述内容后切换",
+        "confirmButton": "确认切换",
+        "cancelButton": "取消",
+        "historyTitle": "切换历史",
+        "changedAt": "变更日时",
+        "changedBy": "变更者",
+        "fromMode": "变更前",
+        "toMode": "变更后"
       }
     },
     "layout": {
-      "skipToContent": "本文へスキップ",
-      "login": "ログイン",
-      "register": "新規登録",
+      "skipToContent": "跳转到正文",
+      "login": "登录",
+      "register": "注册",
       "siteName": "Mannschaft",
-      "openMenu": "メニューを開く"
+      "openMenu": "打开菜单"
+    },
+    "breadcrumb": {
+      "home": "主页",
+      "discoverTeams": "寻找团队",
+      "discoverOrganizations": "寻找组织"
     },
     "team": {
-      "title": "{name} - 公開ページ",
-      "memberCount": "{n}人のメンバー",
-      "memberCountLabel": "メンバー数",
+      "title": "{name} - 公开页面",
+      "memberCount": "{n}名成员",
+      "memberCountLabel": "成员数",
       "philosophyTitle": "理念",
-      "mapTitle": "地図",
-      "homepageLabel": "公式サイト",
-      "establishedAt": "設立: {date}"
+      "mapTitle": "地图",
+      "homepageLabel": "官方网站",
+      "establishedAt": "成立: {date}",
+      "geoDescription": "这是以{prefecture}{city}为据点活动的{name}的公开页面。",
+      "geoDescriptionNoLocation": "这是{name}的公开页面。"
     },
     "organization": {
-      "title": "{name} - 公開ページ",
+      "title": "{name} - 公开页面",
       "philosophyTitle": "理念",
-      "mapTitle": "地図",
-      "homepageLabel": "公式サイト",
-      "establishedAt": "設立: {date}"
+      "mapTitle": "地图",
+      "homepageLabel": "官方网站",
+      "establishedAt": "成立: {date}",
+      "geoDescription": "这是以{prefecture}{city}为据点活动的{name}的公开页面。",
+      "geoDescriptionNoLocation": "这是{name}的公开页面。"
     },
     "posts": {
-      "sectionTitle": "公開投稿",
-      "empty": "公開された投稿はまだありません",
-      "loading": "読み込み中...",
-      "readMore": "続きを読む",
-      "publishedAt": "公開: {date}",
-      "backToList": "一覧に戻る",
-      "totalCount": "全 {n} 件",
+      "sectionTitle": "公开投稿",
+      "empty": "还没有公开的投稿",
+      "loading": "加载中...",
+      "readMore": "继续阅读",
+      "publishedAt": "公开: {date}",
+      "backToList": "返回列表",
+      "totalCount": "共 {n} 件",
       "page": "{page} / {total}",
-      "next": "次へ",
-      "prev": "前へ"
+      "next": "下一页",
+      "prev": "上一页"
     },
     "author": {
       "anonymous": "投稿者",
-      "member": "メンバー",
-      "organizer": "主催者",
-      "anonymousAvatarAlt": "投稿者（匿名表示）"
+      "member": "成员",
+      "organizer": "主办方",
+      "anonymousAvatarAlt": "投稿者（匿名显示）"
     },
     "cta": {
-      "join": "このチームに参加する",
-      "joinOrganization": "この組織に参加する",
-      "login": "ログインしてもっと見る",
-      "register": "新規登録",
-      "ctaHeading": "Mannschaft に参加しませんか？",
-      "ctaDescription": "メンバーになると、チームメンバーや活動内容をすべて閲覧できます。"
+      "join": "加入此团队",
+      "joinOrganization": "加入此组织",
+      "login": "登录查看更多",
+      "register": "注册",
+      "ctaHeading": "要加入Mannschaft吗？",
+      "ctaDescription": "成为成员后，可查看所有团队成员和活动内容。"
     },
     "error": {
-      "notFound": "指定されたページは存在しないか、公開されていません",
-      "notFoundTitle": "ページが見つかりません",
-      "loadFailed": "情報の取得に失敗しました",
-      "rateLimit": "アクセスが集中しています。しばらく経ってから再度お試しください",
-      "backToHome": "トップへ戻る"
+      "notFound": "指定页面不存在或未公开",
+      "notFoundTitle": "找不到页面",
+      "loadFailed": "获取信息失败",
+      "rateLimit": "访问集中。请稍后重试。",
+      "backToHome": "返回顶页"
     },
     "discover": {
       "teams": {
-        "title": "查找公开团队",
-        "searchPlaceholder": "按团队名称搜索",
-        "noResults": "未找到符合条件的团队"
+        "title": "寻找公开团队",
+        "searchPlaceholder": "按团队名搜索",
+        "noResults": "找不到符合条件的团队"
       },
       "organizations": {
-        "title": "查找公开组织",
-        "searchPlaceholder": "按组织名称搜索",
-        "noResults": "未找到符合条件的组织"
+        "title": "寻找公开组织",
+        "searchPlaceholder": "按组织名搜索",
+        "noResults": "找不到符合条件的组织"
       },
       "filter": {
         "keyword": "关键词",
@@ -102,53 +111,63 @@
       "card": {
         "memberCount": "{count}人",
         "lastPost": "最后投稿: {date}",
-        "noPost": "暂无投稿",
-        "viewDetail": "查看详情"
+        "noPost": "无投稿",
+        "viewDetail": "查看详细"
       }
     },
     "meta": {
-      "ogDescriptionDefault": "Mannschaft の公開ページ",
+      "ogDescriptionDefault": "Mannschaft 的公开页面",
       "ogSiteName": "Mannschaft"
     },
     "userProfile": {
       "title": "{name}的个人资料",
-      "memberSince": "{date}加入",
-      "posts": "公开帖子",
-      "noPosts": "暂无公开帖子"
+      "memberSince": "从{date}开始参加",
+      "posts": "公开投稿",
+      "noPosts": "没有公开投稿"
     },
     "profileVisibility": {
       "title": "个人资料公开设置",
-      "description": "启用公开个人资料后，未登录的用户也可以查看您的个人资料",
+      "description": "启用公开个人资料后，未登录用户也可查看您的个人资料",
       "enable": "启用公开个人资料",
-      "saved": "个人资料公开设置已保存",
+      "saved": "已保存个人资料公开设置",
       "saveError": "保存个人资料公开设置失败"
     },
     "comments": {
       "title": "评论",
-      "empty": "暂无评论",
+      "empty": "还没有评论",
       "placeholder": "输入评论（最多1000字）",
       "submit": "发布",
       "delete": "删除",
       "loginToComment": "请登录后发表评论",
       "loginLink": "登录",
-      "deleteConfirm": "确定要删除此评论吗？"
+      "deleteConfirm": "删除此评论吗？"
     },
     "publicSettings": {
       "title": "公开设置",
-      "timelinePostsPublic": "公开时间线帖子",
-      "timelinePostsPublicDescription": "启用后，未登录的用户也可以查看时间线帖子",
-      "publicEventsEnabled": "公开活动信息",
-      "publicEventsEnabledDescription": "启用后，未登录的用户也可以查看活动信息",
+      "timelinePostsPublic": "公开时间线投稿",
+      "timelinePostsPublicDescription": "启用后，未登录用户也可查看时间线投稿",
+      "publicEventsEnabled": "公开活动",
+      "publicEventsEnabledDescription": "启用后，未登录用户也可查看活动信息",
       "saved": "已保存",
       "saveError": "保存失败"
     },
     "timeline": {
-      "title": "时间线帖子",
-      "empty": "暂无时间线帖子"
+      "title": "时间线投稿",
+      "empty": "没有时间线投稿"
     },
     "events": {
       "title": "活动",
-      "empty": "暂无活动"
+      "empty": "没有活动"
+    },
+    "tabs": {
+      "posts": "投稿",
+      "timeline": "时间线",
+      "events": "活动",
+      "activities": "活动记录"
+    },
+    "activities": {
+      "sectionTitle": "活动记录",
+      "empty": "尚无公开的活动记录"
     }
   }
 }

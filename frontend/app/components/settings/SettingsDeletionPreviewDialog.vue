@@ -13,6 +13,7 @@ const emit = defineEmits<{
 
 const { getDeletionPreview } = useGdprApi()
 const notification = useNotification()
+const { t } = useI18n()
 
 const preview = ref<DeletionPreviewResponse | null>(null)
 const loadingPreview = ref(false)
@@ -47,7 +48,7 @@ async function loadPreview() {
     const res = await getDeletionPreview()
     preview.value = res?.data ?? null
   } catch {
-    notification.error('削除プレビューの取得に失敗しました')
+    notification.error(t('deletion_preview.fetch_error'))
   } finally {
     loadingPreview.value = false
   }
@@ -77,24 +78,24 @@ function confirm() {
 <template>
   <Dialog
     :visible="visible"
-    header="アカウント削除の確認"
+    :header="$t('deletion_preview.dialog_title')"
     :modal="true"
     class="w-full max-w-2xl"
     @update:visible="emit('update:visible', $event)"
   >
     <div class="space-y-5">
       <p class="font-medium text-red-600">
-        この操作は取り消せません。本当にアカウントを削除しますか？
+        {{ $t('deletion_preview.confirm_message') }}
       </p>
 
       <div v-if="loadingPreview" class="flex items-center gap-2 text-sm text-surface-500">
         <i class="pi pi-spin pi-spinner" />
-        <span>削除プレビューを読み込み中...</span>
+        <span>{{ $t('button.loading') }}</span>
       </div>
 
       <template v-else-if="preview">
         <div v-if="preview.warnings?.length" class="rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-900/20">
-          <p class="mb-1 text-sm font-semibold text-yellow-700 dark:text-yellow-400">注意事項</p>
+          <p class="mb-1 text-sm font-semibold text-yellow-700 dark:text-yellow-400">{{ $t('deletion_preview.warning_title') }}</p>
           <ul class="list-inside list-disc space-y-1">
             <li
               v-for="(w, i) in preview.warnings"
@@ -107,41 +108,41 @@ function confirm() {
         </div>
 
         <div>
-          <h3 class="mb-2 text-sm font-semibold">削除されるデータ</h3>
+          <h3 class="mb-2 text-sm font-semibold">{{ $t('deletion_preview.deleted_data_title') }}</h3>
           <DataTable
             :value="deletedRows"
             size="small"
             class="text-sm"
             :row-hover="true"
           >
-            <Column field="category" header="カテゴリ" />
-            <Column field="count" header="件数">
-              <template #body="{ data }">{{ data.count }}件</template>
+            <Column field="category" :header="$t('deletion_preview.table_category')" />
+            <Column field="count" :header="$t('deletion_preview.table_count')">
+              <template #body="{ data }">{{ $t('deletion_preview.table_count_unit', { count: data.count }) }}</template>
             </Column>
           </DataTable>
         </div>
 
         <div v-if="anonymizedRows.length">
-          <h3 class="mb-2 text-sm font-semibold">匿名化されるデータ</h3>
+          <h3 class="mb-2 text-sm font-semibold">{{ $t('deletion_preview.anonymized_data_title') }}</h3>
           <DataTable
             :value="anonymizedRows"
             size="small"
             class="text-sm"
             :row-hover="true"
           >
-            <Column field="entity" header="対象" />
-            <Column field="field" header="フィールド" />
+            <Column field="entity" :header="$t('deletion_preview.table_entity')" />
+            <Column field="field" :header="$t('deletion_preview.table_field')" />
           </DataTable>
         </div>
 
         <p v-if="preview.retentionDays" class="text-xs text-surface-500">
-          ※ 一部のデータは法的要件により {{ preview.retentionDays }} 日間保持された後に削除されます。
+          {{ $t('settings.delete_account.retention_note', { days: preview.retentionDays }) }}
         </p>
       </template>
 
       <div v-if="hasPassword" class="flex flex-col gap-2">
         <label for="deletePassword" class="text-sm font-semibold">
-          確認のため現在のパスワードを入力してください
+          {{ $t('settings.delete_account.password_confirm_label') }}
         </label>
         <Password
           v-model="currentPassword"
@@ -149,7 +150,7 @@ function confirm() {
           :feedback="false"
           toggle-mask
           fluid
-          placeholder="現在のパスワード"
+          :placeholder="$t('settings.delete_account.password_placeholder')"
         />
       </div>
     </div>
@@ -157,12 +158,14 @@ function confirm() {
     <template #footer>
       <div class="flex justify-end gap-2">
         <Button
-          label="キャンセル"
+          translate="no"
+          :label="$t('deletion_preview.cancel_button')"
           severity="secondary"
           @click="cancel"
         />
         <Button
-          label="削除する"
+          translate="no"
+          :label="$t('deletion_preview.delete_button')"
           severity="danger"
           icon="pi pi-trash"
           :disabled="loadingPreview || (hasPassword && !currentPassword)"

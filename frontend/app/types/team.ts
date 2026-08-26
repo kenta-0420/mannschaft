@@ -15,36 +15,85 @@ export type TeamTemplate =
   | 'NEIGHBORHOOD'
   | 'CONDO'
   | 'OTHER'
-export type TeamVisibility = 'PUBLIC' | 'ORGANIZATION_ONLY' | 'PRIVATE'
+export type TeamVisibility = 'PUBLIC' | 'GUESTS_AND_ABOVE' | 'SUPPORTERS_AND_ABOVE' | 'MEMBERS_AND_ABOVE'
 
-export interface TeamResponse {
-  id: number
-  name: string
-  nameKana: string | null
-  nickname1: string | null
-  nickname2: string | null
-  template: TeamTemplate
-  prefecture: string | null
-  city: string | null
-  description: string | null
-  visibility: TeamVisibility
-  supporterEnabled: boolean
-  version: number
-  memberCount: number
-  archivedAt: string | null
-  createdAt: string
-  iconUrl: string | null
-  bannerUrl: string | null
-  teamFriendCount: number
-  supporterCount: number
+// Wave 3-B: TeamResponse ネスト構造（BE側変更に対応）
+export interface TeamBasicInfoDto {
+  name?: string
+  nameKana?: string | null
+  nickname1?: string | null
+  nickname2?: string | null
+}
+
+export interface TeamLocationDto {
+  template?: string
+  prefecture?: string | null
+  city?: string | null
+  /**
+   * 都道府県コード（JIS X 0401・2 桁、null 許容）。
+   * BE `TeamResponse.TeamLocationDto.prefectureCode`（Jackson 既定 camelCase）と 1:1。
+   */
+  prefectureCode?: string | null
+  /**
+   * 市区町村コード（JIS X 0402・5 桁、null 許容）。
+   * BE `TeamResponse.TeamLocationDto.cityCode` と 1:1。
+   */
+  cityCode?: string | null
+}
+
+export interface TeamVisibilityDto {
+  visibility?: TeamVisibility
+  supporterEnabled?: boolean
+}
+
+export interface TeamMetadataDto {
+  version?: number
+  memberCount?: number
+  iconUrl?: string | null
+  bannerUrl?: string | null
   /**
    * F15.4 Phase 5-β: Google Maps 埋め込み URL（管理画面表示用、null 許容）
    */
-  mapEmbedUrl: string | null
+  mapEmbedUrl?: string | null
+}
+
+export interface TeamSocialDto {
+  teamFriendCount?: number
+  supporterCount?: number
+}
+
+export interface TeamTimestampsDto {
+  archivedAt?: string | null
+  createdAt?: string
+}
+
+export interface TeamResponse {
+  /**
+   * URL 識別子（カスタムスラッグ）。実体は slug と同値の string 型。BE slug 移行対応。
+   * 数値ではない（旧コメントは誤り。数値 ID が必要な場合は numericId を使う）。
+   */
+  id: string
+  /** カスタムスラッグ。URLに使用する string 型。BE slug 移行対応 */
+  slug: string
+  /**
+   * チームの内部 BIGINT ID（F09.19.10）。URL には使わない（URL 識別子は上記 id/slug が正準）。
+   * Spotlight 掲載面など BE が Long スコープ ID を要求する内部連携専用に使用する。
+   */
+  numericId?: number
+  basicInfo?: TeamBasicInfoDto
+  location?: TeamLocationDto
+  visibility?: TeamVisibilityDto
+  /** 予約等の業務ローカル時刻に使う IANA タイムゾーン。 */
+  timezone?: string
+  metadata?: TeamMetadataDto
+  social?: TeamSocialDto
+  timestamps?: TeamTimestampsDto
 }
 
 export interface TeamSummaryResponse {
   id: number
+  /** チームスラッグ（URLルーティング用）。{@code /teams/{slug}} に使用する。 */
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -59,12 +108,22 @@ export interface TeamSummaryResponse {
 
 export interface CreateTeamRequest {
   name: string
+  /** カスタムスラッグ（英小文字・数字・ハイフン、3〜30文字）。省略時は名前から自動生成される */
+  slug?: string
   nameKana?: string
   nickname1?: string
   nickname2?: string
   template: TeamTemplate
   prefecture?: string
   city?: string
+  /**
+   * 都道府県コード（JIS X 0401・2 桁）。BE `CreateTeamRequest.prefectureCode`（camelCase）と 1:1。
+   */
+  prefectureCode?: string
+  /**
+   * 市区町村コード（JIS X 0402・5 桁）。BE `CreateTeamRequest.cityCode`（camelCase）と 1:1。
+   */
+  cityCode?: string
   description?: string
   visibility: TeamVisibility
   supporterEnabled: boolean
@@ -78,7 +137,10 @@ export interface CreateTeamRequest {
  * 内部状態は含めない（バックエンド `TeamPublicDetailResponse` と一致）。
  */
 export interface TeamPublicDetailResponse {
-  id: number
+  /** BIGINT 内部 ID。 */
+  id: string
+  /** カスタムスラッグ。URLに使用する string 型。 */
+  slug: string
   name: string
   nameKana: string | null
   nickname1: string | null
@@ -98,12 +160,24 @@ export interface TeamPublicDetailResponse {
 }
 
 export interface UpdateTeamRequest {
+  /** 予約等の業務ローカル時刻に使う IANA タイムゾーン。 */
+  timezone?: string
   name?: string
   nameKana?: string
   nickname1?: string
   nickname2?: string
   prefecture?: string
   city?: string
+  /**
+   * 都道府県コード（JIS X 0401・2 桁）。BE `UpdateTeamRequest.prefectureCode`（camelCase）と 1:1。
+   * undefined（指定なし）は既存値を維持する。
+   */
+  prefectureCode?: string
+  /**
+   * 市区町村コード（JIS X 0402・5 桁）。BE `UpdateTeamRequest.cityCode`（camelCase）と 1:1。
+   * undefined（指定なし）は既存値を維持する。
+   */
+  cityCode?: string
   description?: string
   visibility?: TeamVisibility
   supporterEnabled?: boolean

@@ -28,7 +28,7 @@ export interface SpringPage<T> {
 /** 公開 DTO 用のスコープ参照（チーム / 組織）。 */
 export interface PublicScopeRef {
   scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: number
+  scopeId: string
   scopeName: string
 }
 
@@ -172,6 +172,8 @@ export interface PublicPostComment {
 /** F19.1 公開チーム検索結果 1 件の DTO。 */
 export interface PublicTeamSearchResult {
   id: number
+  /** チームスラッグ（/public/teams/{slug} ルートに使用） */
+  slug: string
   name: string
   iconUrl: string | null
   memberCount: number
@@ -181,6 +183,8 @@ export interface PublicTeamSearchResult {
 /** F19.1 公開組織検索結果 1 件の DTO。 */
 export interface PublicOrganizationSearchResult {
   id: number
+  /** 組織スラッグ（URLルーティング用）。{@code /organizations/{slug}} に使用する。 */
+  slug: string
   name: string
   iconUrl: string | null
   memberCount: number

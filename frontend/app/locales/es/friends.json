@@ -1,131 +1,131 @@
 {
   "friends": {
-    "title": "フレンドチーム",
-    "subtitle": "他チームとのフレンド関係管理",
+    "title": "Equipos amigos",
+    "subtitle": "Gestión de relaciones de amistad entre equipos",
     "list": {
-      "empty": "フレンドチームがありません",
-      "established_at": "成立日",
-      "visibility_public": "公開",
-      "visibility_private": "非公開",
-      "supporter_notice": "公開されているフレンドチームのみ表示されています",
-      "target_team_id": "対象チーム ID",
-      "comment_label": "挨拶コメント（任意）"
+      "empty": "No hay equipos amigos",
+      "established_at": "Fecha de establecimiento",
+      "visibility_public": "Público",
+      "visibility_private": "Privado",
+      "supporter_notice": "Solo se muestran los equipos amigos públicos",
+      "target_team_id": "ID del equipo objetivo",
+      "comment_label": "Comentario de saludo (opcional)"
     },
     "actions": {
-      "follow": "フォロー",
-      "unfollow": "フォロー解除",
-      "toggle_visibility": "公開設定を切替"
+      "follow": "Seguir",
+      "unfollow": "Dejar de seguir",
+      "toggle_visibility": "Cambiar visibilidad"
     },
     "messages": {
-      "follow_success": "フォローしました",
-      "follow_mutual_success": "相互フォロー成立 — フレンドチームになりました",
-      "follow_retry": "フォロー処理中です。{seconds}秒後に再度お試しください",
-      "unfollow_success": "フォローを解除しました",
-      "unfollow_confirm": "このチームへのフォローを解除しますか？",
-      "visibility_changed": "公開設定を変更しました"
+      "follow_success": "Seguido",
+      "follow_mutual_success": "Seguimiento mutuo establecido — ahora son equipos amigos",
+      "follow_retry": "Procesando seguimiento. Por favor intente nuevamente en {seconds} segundos",
+      "unfollow_success": "Dejado de seguir",
+      "unfollow_confirm": "¿Dejar de seguir a este equipo?",
+      "visibility_changed": "Visibilidad cambiada"
     },
     "errors": {
-      "self_follow": "自チームはフォローできません",
-      "already_following": "既にフォロー済みです",
-      "target_not_found": "対象チームが見つかりません",
-      "permission_denied": "権限がありません"
+      "self_follow": "No puedes seguir tu propio equipo",
+      "already_following": "Ya estás siguiendo",
+      "target_not_found": "No se encontró el equipo objetivo",
+      "permission_denied": "Sin permiso"
     }
   },
   "folders": {
-    "title": "フレンドフォルダ",
-    "create": "フォルダ作成",
+    "title": "Carpetas de amigos",
+    "create": "Crear carpeta",
     "list": {
-      "empty": "フォルダがありません",
-      "member_count": "{count}チーム",
-      "remaining": "残り{remaining}個作成可能（最大20個）"
+      "empty": "No hay carpetas",
+      "member_count": "{count} equipos",
+      "remaining": "Puede crear {remaining} más (máximo 20)"
     },
     "fields": {
-      "name": "フォルダ名",
-      "description": "説明（任意）",
-      "color": "色"
+      "name": "Nombre de carpeta",
+      "description": "Descripción (opcional)",
+      "color": "Color"
     },
     "actions": {
-      "edit": "編集",
-      "delete": "削除",
-      "manage_members": "メンバー管理",
-      "add_member": "フレンドを追加",
-      "remove_member": "削除"
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "manage_members": "Gestionar miembros",
+      "add_member": "Añadir amigo",
+      "remove_member": "Eliminar"
     },
     "placeholders": {
-      "name": "例: 系列校",
-      "description": "このフォルダの用途・メモ（任意）"
+      "name": "Ej.: Escuelas afiliadas",
+      "description": "Uso o nota para esta carpeta (opcional)"
     },
     "members": {
-      "title": "メンバー管理",
-      "current": "登録中のフレンド",
-      "available": "追加可能なフレンド",
-      "empty": "フォルダに登録されているフレンドはいません",
-      "no_friends": "追加可能なフレンドがいません"
+      "title": "Gestión de miembros",
+      "current": "Amigos registrados",
+      "available": "Amigos disponibles para añadir",
+      "empty": "No hay amigos registrados en esta carpeta",
+      "no_friends": "No hay amigos disponibles para añadir"
     },
     "messages": {
-      "created": "フォルダを作成しました",
-      "updated": "フォルダを更新しました",
-      "deleted": "フォルダを削除しました",
-      "delete_confirm": "このフォルダを削除しますか？",
-      "max_exceeded": "フォルダは最大20個まで作成できます",
-      "name_required": "フォルダ名を入力してください",
-      "name_too_long": "フォルダ名は50文字以内で入力してください",
-      "description_too_long": "説明は300文字以内で入力してください",
-      "name_conflict": "同じ名前のフォルダが既に存在します",
-      "member_added": "フォルダにフレンドを追加しました",
-      "member_removed": "フォルダからフレンドを削除しました",
-      "duplicate_member": "このフレンドは既にフォルダに登録されています"
+      "created": "Carpeta creada",
+      "updated": "Carpeta actualizada",
+      "deleted": "Carpeta eliminada",
+      "delete_confirm": "¿Eliminar esta carpeta?",
+      "max_exceeded": "Se pueden crear hasta 20 carpetas",
+      "name_required": "Por favor ingrese el nombre de la carpeta",
+      "name_too_long": "El nombre de la carpeta no debe superar 50 caracteres",
+      "description_too_long": "La descripción no debe superar 300 caracteres",
+      "name_conflict": "Ya existe una carpeta con ese nombre",
+      "member_added": "Amigo añadido a la carpeta",
+      "member_removed": "Amigo eliminado de la carpeta",
+      "duplicate_member": "Este amigo ya está registrado en la carpeta"
     }
   },
   "friend_feed": {
-    "title": "管理者フィード",
-    "subtitle": "フレンドチームの投稿を確認・転送",
-    "badge": "フレンドから",
-    "forwarded_badge": "転送済み",
-    "permission_denied": "この画面を表示する権限がありません",
+    "title": "Feed del administrador",
+    "subtitle": "Verificar y reenviar publicaciones de equipos amigos",
+    "badge": "De un amigo",
+    "forwarded_badge": "Reenviado",
+    "permission_denied": "No tiene permiso para ver esta pantalla",
     "list": {
-      "empty": "フレンドからの投稿はありません"
+      "empty": "No hay publicaciones de amigos"
     },
     "forward": {
-      "button": "自チームに転送",
-      "modal_title": "投稿を転送する",
-      "target_label": "配信範囲",
-      "target_member": "メンバーのみ",
-      "target_supporter": "メンバー + サポーター（Phase 3以降）",
-      "target_supporter_tooltip": "Phase 3以降で利用可能になります",
-      "comment_label": "管理者コメント（任意）",
-      "comment_placeholder": "転送時に添えるコメントを入力（任意）",
-      "submit": "転送する",
-      "cancel": "キャンセル",
-      "success": "投稿を転送しました",
-      "revoke": "転送を取消",
-      "revoke_success": "転送を取消しました",
-      "revoke_confirm": "この転送を取り消しますか？",
-      "error": "転送に失敗しました"
+      "button": "Reenviar a mi equipo",
+      "modal_title": "Reenviar publicación",
+      "target_label": "Alcance de distribución",
+      "target_member": "Solo miembros",
+      "target_supporter": "Miembros + Seguidores (Phase 3+)",
+      "target_supporter_tooltip": "Disponible en Phase 3 o posterior",
+      "comment_label": "Comentario del administrador (opcional)",
+      "comment_placeholder": "Ingrese un comentario para adjuntar al reenvío (opcional)",
+      "submit": "Reenviar",
+      "cancel": "Cancelar",
+      "success": "Publicación reenviada",
+      "revoke": "Cancelar reenvío",
+      "revoke_success": "Reenvío cancelado",
+      "revoke_confirm": "¿Cancelar este reenvío?",
+      "error": "Error al reenviar"
     }
   },
   "forward_exports": {
-    "title": "逆転送履歴",
-    "subtitle": "自チーム投稿がどのフレンドに転送されたか",
-    "permission_denied": "この画面を表示する権限がありません",
+    "title": "Historial de reenvíos salientes",
+    "subtitle": "Qué amigos reenviaron las publicaciones de tu equipo",
+    "permission_denied": "No tiene permiso para ver esta pantalla",
     "list": {
-      "empty": "転送履歴はまだありません",
-      "anonymous_team": "匿名チーム",
-      "revoked": "取消済",
-      "target_member": "メンバー",
-      "target_supporter": "メンバー+サポーター"
+      "empty": "Aún no hay historial de reenvíos",
+      "anonymous_team": "Equipo anónimo",
+      "revoked": "Cancelado",
+      "target_member": "Miembros",
+      "target_supporter": "Miembros+Seguidores"
     },
     "columns": {
-      "source_post": "元投稿",
-      "forwarding_team": "転送先チーム",
-      "forwarded_at": "転送日時",
-      "target": "配信範囲",
-      "status": "状態"
+      "source_post": "Publicación original",
+      "forwarding_team": "Equipo receptor",
+      "forwarded_at": "Fecha de reenvío",
+      "target": "Alcance",
+      "status": "Estado"
     },
     "pagination": {
-      "showing": "{total}件中 {from}〜{to}件を表示",
-      "prev": "前へ",
-      "next": "次へ"
+      "showing": "Mostrando {from}–{to} de {total}",
+      "prev": "Anterior",
+      "next": "Siguiente"
     }
   },
   "nav": {

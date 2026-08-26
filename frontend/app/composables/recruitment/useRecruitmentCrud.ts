@@ -54,7 +54,7 @@ export function useRecruitmentCrud() {
   // サブカテゴリ (§9.6)
   // ===========================================
 
-  async function listTeamSubcategories(teamId: number, categoryId?: number) {
+  async function listTeamSubcategories(teamId: string, categoryId?: number) {
     const q = new URLSearchParams()
     if (categoryId != null) q.set('categoryId', String(categoryId))
     const suffix = q.toString() ? `?${q.toString()}` : ''
@@ -63,14 +63,14 @@ export function useRecruitmentCrud() {
     )
   }
 
-  async function createTeamSubcategory(teamId: number, body: CreateRecruitmentSubcategoryRequest) {
+  async function createTeamSubcategory(teamId: string, body: CreateRecruitmentSubcategoryRequest) {
     return api<ApiResponse<RecruitmentSubcategoryResponse>>(
       `/api/v1/teams/${teamId}/recruitment-subcategories`,
       { method: 'POST', body },
     )
   }
 
-  async function archiveTeamSubcategory(teamId: number, subcategoryId: number) {
+  async function archiveTeamSubcategory(teamId: string, subcategoryId: number) {
     return api(
       `/api/v1/teams/${teamId}/recruitment-subcategories/${subcategoryId}/archive`,
       { method: 'POST' },
@@ -82,7 +82,7 @@ export function useRecruitmentCrud() {
   // ===========================================
 
   async function listTeamListings(
-    teamId: number,
+    teamId: string,
     params?: { status?: string; page?: number; size?: number },
   ) {
     const q = new URLSearchParams()
@@ -95,9 +95,16 @@ export function useRecruitmentCrud() {
     )
   }
 
-  async function createListing(teamId: number, body: CreateRecruitmentListingRequest) {
+  async function createListing(teamId: string, body: CreateRecruitmentListingRequest) {
     return api<ApiResponse<RecruitmentListingResponse>>(
       `/api/v1/teams/${teamId}/recruitment-listings`,
+      { method: 'POST', body },
+    )
+  }
+
+  async function createOrgListing(orgId: string, body: CreateRecruitmentListingRequest) {
+    return api<ApiResponse<RecruitmentListingResponse>>(
+      `/api/v1/organizations/${orgId}/recruitment-listings`,
       { method: 'POST', body },
     )
   }
@@ -144,13 +151,13 @@ export function useRecruitmentCrud() {
   // キャンセルポリシー (§9.9)
   // ===========================================
 
-  async function listTeamCancellationPolicies(teamId: number) {
+  async function listTeamCancellationPolicies(teamId: string) {
     return api<ApiResponse<CancellationPolicyResponse[]>>(
       `/api/v1/teams/${teamId}/cancellation-policies`,
     )
   }
 
-  async function createCancellationPolicy(teamId: number, body: CreateCancellationPolicyRequest) {
+  async function createCancellationPolicy(teamId: string, body: CreateCancellationPolicyRequest) {
     return api<ApiResponse<CancellationPolicyResponse>>(
       `/api/v1/teams/${teamId}/cancellation-policies`,
       { method: 'POST', body },
@@ -204,6 +211,7 @@ export function useRecruitmentCrud() {
     archiveTeamSubcategory,
     listTeamListings,
     createListing,
+    createOrgListing,
     getListing,
     updateListing,
     publishListing,

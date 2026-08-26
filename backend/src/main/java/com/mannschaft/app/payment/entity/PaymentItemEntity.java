@@ -1,6 +1,7 @@
 package com.mannschaft.app.payment.entity;
 
 import com.mannschaft.app.common.BaseEntity;
+import com.mannschaft.app.payment.BillingInterval;
 import com.mannschaft.app.payment.PaymentItemType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -8,13 +9,16 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
+import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -25,8 +29,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class PaymentItemEntity extends BaseEntity {
 
     private Long teamId;
@@ -68,6 +71,58 @@ public class PaymentItemEntity extends BaseEntity {
     @Builder.Default
     private Short gracePeriodDays = 0;
 
+    /**
+     * F08.9 P5: 継続課金（Stripe Subscription 管理）か。TRUE の項目は P5 で Subscription を作成する対象。
+     * 後方互換: 既定 FALSE で現挙動と完全一致（設計書 01 §1.2）。
+     */
+    @Column(name = "is_recurring", nullable = false)
+    @Builder.Default
+    private Boolean isRecurring = false;
+
+    /**
+     * F08.9 P5: 課金周期（MONTHLY/YEARLY）。{@code isRecurring=TRUE} 時に必須・それ以外は NULL。
+     * {@link PaymentItemType#MONTHLY_FEE}/{@link PaymentItemType#ANNUAL_FEE} と整合（設計書 01 §1.2）。
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "billing_interval", length = 8)
+    private BillingInterval billingInterval;
+
+    /**
+     * F08.9 P6: 期別有効開始日（{@link PaymentItemType#TERM} のみ使用）。
+     */
+    @Column(name = "term_starts_on")
+    private LocalDate termStartsOn;
+
+    /**
+     * F08.9 P6: 期別有効終了日（{@link PaymentItemType#TERM} のみ使用）。
+     * TERM 型のチェックアウト完了時に {@code member_payments.valid_until} として設定される。
+     */
+    @Column(name = "term_ends_on")
+    private LocalDate termEndsOn;
+
+    // === F08.9 P8: 税からくり列（将来の国別TaxPolicy実装まで null のまま）===
+
+    /**
+     * F08.9 P8: 税区分（例: STANDARD_10 / REDUCED_8 / EXEMPT）。
+     * 税理士確認後に設定する。現時点では NULL。
+     */
+    @Column(name = "tax_category", length = 30)
+    private String taxCategory;
+
+    /**
+     * F08.9 P8: 税率（0.1000=10%）。
+     * 税理士確認後に設定する。現時点では NULL。
+     */
+    @Column(name = "tax_rate", precision = 5, scale = 4)
+    private BigDecimal taxRate;
+
+    /**
+     * F08.9 P8: 税込み価格フラグ。TRUE の場合 amount は税込み価格を示す。
+     * 税理士確認後に設定する。現時点では NULL。
+     */
+    @Column(name = "price_includes_tax")
+    private Boolean priceIncludesTax;
+
     private Long createdBy;
 
     private LocalDateTime deletedAt;
@@ -99,6 +154,18 @@ public class PaymentItemEntity extends BaseEntity {
      */
     public void updateStripePriceId(String stripePriceId) {
         this.stripePriceId = stripePriceId;
+    }
+
+    /**
+     * Stripe Product ID のみ更新する（Product 再利用のための焼き付け用）。
+     *
+     * <p>継続課金（F08.9 P5）は Product を項目と共有しつつ、Price は<b>会費分と支払側手数料分の 2 本</b>を
+     * 契約側（{@code membership_subscriptions}）に保持する。{@code stripePriceId} は一回払い（額面のみ）の
+     * Price を指すカラムであり、金額の異なる recurring Price を書き込むと誤課金の源になるため、
+     * 継続課金からは本メソッドで Product だけを焼き付ける。</p>
+     */
+    public void updateStripeProductId(String stripeProductId) {
+        this.stripeProductId = stripeProductId;
     }
 
     /**

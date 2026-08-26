@@ -1,0 +1,97 @@
+{
+  "circulation": {
+    "status": {
+      "DRAFT": "草稿",
+      "ACTIVE": "传阅中",
+      "COMPLETED": "已完成",
+      "CANCELLED": "已取消"
+    },
+    "recipient_status": {
+      "PENDING": "未盖章",
+      "STAMPED": "已盖章",
+      "SKIPPED": "已跳过",
+      "REJECTED": "已拒绝"
+    },
+    "detail": {
+      "title": "传阅详情",
+      "close": "关闭",
+      "cancel": "取消",
+      "forbidden": "您没有查看此传阅的权限（您不是收件人）。",
+      "load_failed": "加载传阅失败",
+      "unknown_user": "未知用户",
+      "created_by": "{name}",
+      "due": "截止 {date}",
+      "progress": "已盖章",
+      "recipients": "收件人",
+      "no_recipients": "没有收件人",
+      "attachments": "附件",
+      "comments": "评论",
+      "no_comments": "暂无评论",
+      "stamp": {
+        "open": "盖章",
+        "choose_seal": "选择用于盖章的印章",
+        "no_seal": "没有可用的印章。请在设置中创建印章。",
+        "select_seal": "请选择印章",
+        "comment_placeholder": "盖章评论（可选）",
+        "submit": "盖章",
+        "success": "已盖章",
+        "failed": "盖章失败"
+      },
+      "comment": {
+        "placeholder": "输入评论",
+        "submit": "发表评论",
+        "failed": "评论发表失败"
+      }
+    },
+    "create": {
+      "title": "创建传阅",
+      "cancel": "取消",
+      "submit": "创建并开始传阅",
+      "success": "已创建并开始传阅",
+      "failed": "创建传阅失败",
+      "no_members": "没有可选为收件人的成员",
+      "recipients_selected": "已选择 {count} 人",
+      "order_title": "传阅顺序（从上到下依次传阅）",
+      "move_up": "上移",
+      "move_down": "下移",
+      "field": {
+        "title": "标题",
+        "title_placeholder": "请输入传阅标题",
+        "body": "正文",
+        "body_placeholder": "请输入传阅内容",
+        "mode": "传阅方式",
+        "recipients": "收件人",
+        "priority": "优先级",
+        "due_date": "截止日期（可选）",
+        "sequential_count": "顺序传阅人数（前 N 人）",
+        "sequential_count_placeholder": "请输入人数"
+      },
+      "mode": {
+        "SIMULTANEOUS": "同时",
+        "SEQUENTIAL": "顺序",
+        "HYBRID": "混合"
+      },
+      "mode_hint": {
+        "SIMULTANEOUS": "同时向所有收件人传阅",
+        "SEQUENTIAL": "从上到下逐一传阅",
+        "HYBRID": "前 N 人按顺序传阅，其余人同时传阅"
+      },
+      "hybrid_boundary": "↓ 以下同时传阅",
+      "hybrid_seq_count_hint": "请输入 1 至 {max} 之间的数字",
+      "hybrid_seq_count_needs_two": "请选择 2 名或以上收件人以指定 N 人数",
+      "priority": {
+        "NORMAL": "普通",
+        "URGENT": "紧急"
+      },
+      "error": {
+        "title_required": "请输入标题",
+        "title_too_long": "标题不能超过200个字符",
+        "body_required": "请输入正文",
+        "recipients_required": "请至少选择一名收件人",
+        "members_load_failed": "获取成员列表失败",
+        "hybrid_needs_two_or_more": "混合模式请至少选择 2 名收件人",
+        "sequential_count_range": "顺序传阅人数须在 1 至收件人数之间（最大 {max}）"
+      }
+    }
+  }
+}

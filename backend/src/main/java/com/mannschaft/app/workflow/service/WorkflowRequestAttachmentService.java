@@ -1,10 +1,14 @@
 package com.mannschaft.app.workflow.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.storage.FileTypeValidator;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.R2StorageService;
 import com.mannschaft.app.workflow.WorkflowErrorCode;
 import com.mannschaft.app.workflow.WorkflowMapper;
+import com.mannschaft.app.workflow.WorkflowScopes;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignRequest;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentPresignResponse;
 import com.mannschaft.app.workflow.dto.WorkflowAttachmentRegisterRequest;
@@ -19,6 +23,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -42,22 +47,39 @@ public class WorkflowRequestAttachmentService {
 
     private static final Duration PRESIGN_TTL = Duration.ofMinutes(15);
 
-    /** 許可 MIME タイプ（F05.6 §3 workflow_request_attachments 制約に基づく）。 */
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "application/pdf",
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "image/gif",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "text/csv"
-    );
+    /**
+     * 許可 MIME タイプ（F05.6 §3 workflow_request_attachments 制約に基づく）。
+     * {@link FileTypeValidator} の定数を合成して使用する。
+     */
+    private static final Set<String> ALLOWED_CONTENT_TYPES;
+
+    static {
+        var merged = new java.util.HashSet<String>();
+        merged.addAll(FileTypeValidator.ALLOWED_IMAGE_TYPES);
+        merged.addAll(FileTypeValidator.ALLOWED_DOCUMENT_TYPES);
+        ALLOWED_CONTENT_TYPES = java.util.Collections.unmodifiableSet(merged);
+    }
 
     private final WorkflowRequestAttachmentRepository attachmentRepository;
     private final WorkflowRequestRepository requestRepository;
     private final WorkflowMapper workflowMapper;
     private final R2StorageService r2StorageService;
+    private final AccessControlService accessControlService;
+
+    /**
+     * 申請の添付ファイル一覧を取得する（Wave 2 トランシェ2C で Controller の直リポジトリ参照を移管）。
+     *
+     * <p>認可: 申請者本人、または申請スコープのメンバー/ADMIN のみ（それ以外は 404 秘匿）。</p>
+     *
+     * @param requestId     申請 ID
+     * @param currentUserId 操作者ユーザー ID
+     * @return 添付ファイルレスポンスリスト
+     */
+    public List<WorkflowAttachmentResponse> listAttachments(Long requestId, Long currentUserId) {
+        findVisibleRequestOrThrow(requestId, currentUserId);
+        return workflowMapper.toAttachmentResponseList(
+                attachmentRepository.findByRequestIdOrderByCreatedAtAsc(requestId));
+    }
 
     /**
      * 添付ファイルのアップロード用 Pre-signed URL を発行する。
@@ -69,12 +91,16 @@ public class WorkflowRequestAttachmentService {
      */
     public WorkflowAttachmentPresignResponse presignUpload(
             Long requestId, Long currentUserId, WorkflowAttachmentPresignRequest request) {
-        // 1. 申請存在確認
-        WorkflowRequestEntity requestEntity = requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
+        // 1. 申請存在確認＋可視性検証（非所属者は 404 秘匿・Wave 2 トランシェ2C）
+        WorkflowRequestEntity requestEntity = findVisibleRequestOrThrow(requestId, currentUserId);
 
-        // 2. MIME タイプ許可リスト検証
-        if (!ALLOWED_CONTENT_TYPES.contains(request.contentType())) {
+        // 2. MIME タイプ検証（ブロックリスト優先 → ホワイトリスト）
+        if (FileTypeValidator.isBlocked(request.contentType())) {
+            log.warn("ワークフロー添付 presign-upload: ブロック対象 contentType={}, requestId={}",
+                    request.contentType(), requestId);
+            throw new BusinessException(WorkflowErrorCode.INVALID_FIELD_VALUE);
+        }
+        if (!FileTypeValidator.isAllowed(request.contentType(), ALLOWED_CONTENT_TYPES)) {
             log.warn("ワークフロー添付 presign-upload: 許可外 contentType={}, requestId={}",
                     request.contentType(), requestId);
             throw new BusinessException(WorkflowErrorCode.INVALID_FIELD_VALUE);
@@ -107,9 +133,8 @@ public class WorkflowRequestAttachmentService {
     @Transactional
     public WorkflowAttachmentResponse registerAttachment(
             Long requestId, Long currentUserId, WorkflowAttachmentRegisterRequest request) {
-        // 1. 申請存在確認
-        WorkflowRequestEntity requestEntity = requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
+        // 1. 申請存在確認＋可視性検証（非所属者は 404 秘匿・Wave 2 トランシェ2C）
+        WorkflowRequestEntity requestEntity = findVisibleRequestOrThrow(requestId, currentUserId);
 
         // 2. fileKey 整合性チェック（prefix が workflow-attachments/{requestId}/ で始まること）
         String expectedPrefix = "workflow-attachments/" + requestEntity.getId() + "/";
@@ -147,16 +172,24 @@ public class WorkflowRequestAttachmentService {
      */
     @Transactional
     public void deleteAttachment(Long requestId, Long attachmentId, Long currentUserId) {
-        // 1. 申請存在確認
-        requestRepository.findById(requestId)
-                .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
+        // 1. 申請存在確認＋可視性検証（非所属者は 404 秘匿・Wave 2 トランシェ2C）
+        WorkflowRequestEntity requestEntity = findVisibleRequestOrThrow(requestId, currentUserId);
 
         // 2. 添付存在確認
         WorkflowRequestAttachmentEntity entity = attachmentRepository
                 .findByIdAndRequestId(attachmentId, requestId)
                 .orElseThrow(() -> new BusinessException(WorkflowErrorCode.ATTACHMENT_NOT_FOUND));
 
-        // 3. R2 オブジェクト削除（失敗してもログのみ。DB との整合性は将来のクリーニングバッチで担保）
+        // 3. 削除権限: アップロード者本人・申請者本人・entity 由来スコープの ADMIN のみ（403）
+        boolean uploader = currentUserId != null && currentUserId.equals(entity.getUploadedBy());
+        boolean requester = currentUserId != null && currentUserId.equals(requestEntity.getRequestedBy());
+        if (!uploader && !requester && !accessControlService.isAdminOrAbove(
+                currentUserId, requestEntity.getScopeId(),
+                WorkflowScopes.canonical(requestEntity.getScopeType()))) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+
+        // 4. R2 オブジェクト削除（失敗してもログのみ。DB との整合性は将来のクリーニングバッチで担保）
         try {
             r2StorageService.delete(entity.getFileKey());
         } catch (Exception e) {
@@ -164,10 +197,28 @@ public class WorkflowRequestAttachmentService {
                     entity.getFileKey(), e.getMessage());
         }
 
-        // 4. DB 物理削除
+        // 5. DB 物理削除
         attachmentRepository.delete(entity);
         log.info("ワークフロー添付削除: requestId={}, attachmentId={}, userId={}",
                 requestId, attachmentId, currentUserId);
+    }
+
+    /**
+     * 親申請を取得し、可視性（申請者本人 or entity 由来スコープのメンバー/ADMIN）を検証する。
+     * いずれでもない場合は 404（REQUEST_NOT_FOUND）で存在秘匿する（★BOLA厳禁★・Wave 2 トランシェ2C）。
+     */
+    private WorkflowRequestEntity findVisibleRequestOrThrow(Long requestId, Long actorUserId) {
+        WorkflowRequestEntity requestEntity = requestRepository.findById(requestId)
+                .orElseThrow(() -> new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND));
+        if (actorUserId != null && actorUserId.equals(requestEntity.getRequestedBy())) {
+            return requestEntity;
+        }
+        String canonicalScope = WorkflowScopes.canonical(requestEntity.getScopeType());
+        if (accessControlService.isMember(actorUserId, requestEntity.getScopeId(), canonicalScope)
+                || accessControlService.isAdminOrAbove(actorUserId, requestEntity.getScopeId(), canonicalScope)) {
+            return requestEntity;
+        }
+        throw new BusinessException(WorkflowErrorCode.REQUEST_NOT_FOUND);
     }
 
     /**

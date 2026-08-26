@@ -1,5 +1,6 @@
 package com.mannschaft.app.proxyvote.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.repository.MembershipRepository;
@@ -42,13 +43,20 @@ public class ProxyDelegationService {
     private final ProxyVoteMotionRepository motionRepository;
     private final ProxyVoteMapper mapper;
     private final MembershipRepository membershipRepository;
+    private final AccessControlService accessControlService;
 
     /**
      * 委任状を提出する。
+     *
+     * <p>認可根治戦役 Wave7: 兄弟の {@link ProxyVoteCastService#castVote} と同一の
+     * {@link AccessControlService#checkMembership} を敷き、セッションスコープの会員であることを
+     * 要求する（票の水増し防止）。</p>
      */
     @Transactional
     public DelegationResponse delegate(Long sessionId, DelegateRequest request, Long currentUserId) {
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(sessionId);
+        // 認可: 議決権 = セッションスコープの会員であること（票の水増し防止・castVoteと同一方式）
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
 
         if (session.getStatus() != SessionStatus.OPEN) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
@@ -94,10 +102,14 @@ public class ProxyDelegationService {
 
     /**
      * 委任状を取り下げる。
+     *
+     * <p>認可根治戦役 Wave7: {@link #delegate} と同一の理由で
+     * {@link AccessControlService#checkMembership} を敷く。</p>
      */
     @Transactional
     public void cancelDelegation(Long sessionId, Long currentUserId) {
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(sessionId);
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
         if (session.getStatus() != SessionStatus.OPEN) {
             throw new BusinessException(ProxyVoteErrorCode.STATUS_MUST_BE_OPEN);
         }
@@ -137,6 +149,10 @@ public class ProxyDelegationService {
         ProxyDelegationEntity delegation = delegationRepository.findById(delegationId)
                 .orElseThrow(() -> new BusinessException(ProxyVoteErrorCode.DELEGATION_NOT_FOUND));
 
+        // 認可: 当該セッションスコープの管理者のみ承認/却下可（委任 = 票の移転のため BOLA 厳禁）
+        ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(delegation.getSessionId());
+        accessControlService.checkAdminOrAbove(reviewerId, session.resolveScopeId(), session.scopeTypeName());
+
         if (delegation.getStatus() != DelegationStatus.SUBMITTED) {
             throw new BusinessException(ProxyVoteErrorCode.DELEGATION_NOT_SUBMITTED);
         }
@@ -157,9 +173,14 @@ public class ProxyDelegationService {
 
     /**
      * 出席・委任状況一覧を取得する。
+     *
+     * <p>認可根治戦役 Wave7: {@link ProxyVoteCastService#castVote} と同一の
+     * {@link AccessControlService#checkMembership} を敷き、セッションスコープの会員に
+     * 限定する。</p>
      */
-    public AttendanceResponse getAttendance(Long sessionId) {
+    public AttendanceResponse getAttendance(Long sessionId, Long currentUserId) {
         ProxyVoteSessionEntity session = sessionService.findSessionOrThrow(sessionId);
+        accessControlService.checkMembership(currentUserId, session.resolveScopeId(), session.scopeTypeName());
 
         long votedCount = voteRepository.countDistinctVotersBySessionId(sessionId);
         long delegatedCount = delegationRepository.countBySessionIdAndStatus(sessionId, DelegationStatus.ACCEPTED);

@@ -130,7 +130,7 @@ class SocialControllerTest {
     }
 
     @Test
-    @DisplayName("getMyProfile: 200 OK")
+    @DisplayName("getMyProfile: 200 OK（プロフィール作成済み）")
     void getMyProfile_200() {
         given(profileService.getMyProfile(USER_ID)).willReturn(sampleProfile());
 
@@ -138,6 +138,18 @@ class SocialControllerTest {
 
         assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(resp.getBody().getData().getHandle()).isEqualTo("testhandle");
+    }
+
+    @Test
+    @DisplayName("getMyProfile: 200 OK かつ data:null（未作成ユーザー・AC1）")
+    void getMyProfile_未作成ユーザー_200_dataNullを返す() {
+        // 未作成ユーザーはサービスがnullを返す（PROFILE_NOT_FOUNDを投げない）
+        given(profileService.getMyProfile(USER_ID)).willReturn(null);
+
+        ResponseEntity<ApiResponse<ProfileResponse>> resp = profileController.getMyProfile();
+
+        assertThat(resp.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(resp.getBody().getData()).isNull();
     }
 
     @Test

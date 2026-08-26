@@ -1,6 +1,8 @@
 <script setup lang="ts">
-defineProps<{
+const props = defineProps<{
   visible: boolean
+  scopeType: string
+  scopeId: string
 }>()
 
 const emit = defineEmits<{
@@ -24,7 +26,9 @@ async function submit() {
   try {
     await safetyApi.triggerSafetyCheck({
       title: form.value.title.trim(),
-      description: form.value.description.trim() || undefined,
+      message: form.value.description.trim() || undefined,
+      scopeType: props.scopeType,
+      scopeId: props.scopeId,
       isDrill: form.value.isDrill,
     })
     notification.success(

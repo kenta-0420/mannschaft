@@ -1,62 +1,62 @@
 {
   "email_outbox": {
-    "title": "メール送信キュー",
+    "title": "Cola de Envío de Correo",
     "metrics": {
-      "pending": "待機中",
-      "dead_letter": "デッドレター",
-      "success_rate": "24h 成功率",
-      "oldest_pending": "最古待機（秒）"
+      "pending": "Pendiente",
+      "dead_letter": "Cola Muerta",
+      "success_rate": "Tasa de éxito 24h",
+      "oldest_pending": "Más antiguo pendiente (seg)"
     },
     "filter": {
-      "status": "ステータス",
-      "source_domain": "送信元ドメイン",
-      "from_date": "開始日",
-      "to_date": "終了日",
-      "all_statuses": "全ステータス",
-      "apply": "適用",
-      "clear": "クリア"
+      "status": "Estado",
+      "source_domain": "Dominio de origen",
+      "from_date": "Fecha de inicio",
+      "to_date": "Fecha de fin",
+      "all_statuses": "Todos los estados",
+      "apply": "Aplicar",
+      "clear": "Limpiar"
     },
     "table": {
       "id": "ID",
-      "status": "ステータス",
-      "template": "テンプレート",
-      "source": "送信元",
-      "retry_count": "リトライ回数",
-      "created_at": "作成日時",
-      "actions": "操作"
+      "status": "Estado",
+      "template": "Plantilla",
+      "source": "Origen",
+      "retry_count": "Reintentos",
+      "created_at": "Creado en",
+      "actions": "Acciones"
     },
     "detail": {
-      "title": "詳細",
-      "to_address": "宛先",
-      "payload_vars": "テンプレート変数",
-      "ses_message_id": "SES メッセージ ID",
-      "body_purged": "本文は GDPR ポリシーにより消去済みです",
-      "next_attempt_at": "次回試行予定",
-      "sent_at": "送信日時",
-      "last_error": "最後のエラー",
-      "locale": "ロケール",
-      "source_domain": "送信元ドメイン",
-      "source_event_id": "送信元イベント ID"
+      "title": "Detalles",
+      "to_address": "Destinatario",
+      "payload_vars": "Variables de plantilla",
+      "ses_message_id": "ID de mensaje SES",
+      "body_purged": "El cuerpo ha sido eliminado según la política GDPR",
+      "next_attempt_at": "Próximo intento programado",
+      "sent_at": "Enviado en",
+      "last_error": "Último error",
+      "locale": "Idioma",
+      "source_domain": "Dominio de origen",
+      "source_event_id": "ID de evento de origen"
     },
     "action": {
-      "retry": "再試行",
-      "cancel": "キャンセル",
-      "back": "一覧へ戻る"
+      "retry": "Reintentar",
+      "cancel": "Cancelar",
+      "back": "Volver a la lista"
     },
     "status": {
-      "PENDING": "待機中",
-      "SENDING": "送信中",
-      "SENT": "送信済み",
-      "FAILED": "失敗",
-      "DEAD_LETTER": "デッドレター",
-      "CANCELLED": "キャンセル済み"
+      "PENDING": "Pendiente",
+      "SENDING": "Enviando",
+      "SENT": "Enviado",
+      "FAILED": "Fallido",
+      "DEAD_LETTER": "Cola Muerta",
+      "CANCELLED": "Cancelado"
     },
-    "retry_success": "再試行キューに登録しました",
-    "cancel_success": "キャンセルしました",
-    "retry_conflict": "この状態では再試行できません",
-    "cancel_conflict": "この状態ではキャンセルできません",
-    "load_failed": "データの取得に失敗しました",
-    "no_data": "データがありません",
+    "retry_success": "Agregado a la cola de reintento",
+    "cancel_success": "Cancelado correctamente",
+    "retry_conflict": "No se puede reintentar en este estado",
+    "cancel_conflict": "No se puede cancelar en este estado",
+    "load_failed": "Error al cargar los datos",
+    "no_data": "No hay datos disponibles",
     "na": "N/A"
   }
 }

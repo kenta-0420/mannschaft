@@ -109,8 +109,18 @@ async function mockSafetyCheckApis(page: import('@playwright/test').Page) {
     const url = route.request().url()
     const method = route.request().method()
 
-    if (method === 'POST') {
-      // 安否確認の作成
+    if (method === 'POST' && !/\/safety-checks\/\d+\//.test(url)) {
+      // 安否確認の作成: BE 契約（scopeType / scopeId / message）を強制検証
+      const body = route.request().postDataJSON() as Record<string, unknown> | null
+      if (!body || !body.scopeType || body.scopeId === undefined || body.scopeId === null) {
+        // scope 欠落＝契約不整合の再発。わざと 400 を返してテストを赤くする
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'BAD_REQUEST', message: 'scopeType / scopeId は必須です' }),
+        })
+        return
+      }
       await route.fulfill({
         status: 201,
         contentType: 'application/json',
@@ -145,7 +155,16 @@ async function mockSafetyCheckApis(page: import('@playwright/test').Page) {
         body: JSON.stringify({ data: MOCK_SAFETY_CHECK_DETAIL }),
       })
     } else if (method === 'GET') {
-      // 一覧取得
+      // 一覧取得 / 履歴取得: BE 契約（scopeType=TEAM / scopeId 必須）を強制検証
+      if (!url.includes('scopeType=TEAM') || !/[?&]scopeId=\d+/.test(url)) {
+        // scope 欠落＝契約不整合の再発。わざと 400 を返してテストを赤くする
+        await route.fulfill({
+          status: 400,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'BAD_REQUEST', message: 'scopeType / scopeId は必須です' }),
+        })
+        return
+      }
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -385,7 +404,9 @@ test.describe('F03.6: 緊急安否確認 - 履歴と統計', () => {
     await waitForHydration(page)
     await expect(page.getByRole('heading', { name: '安否確認' })).toBeVisible({ timeout: 10_000 })
     // 複数の安否確認が表示されている
+    // loadChecks() の非同期描画完了を待ってから件数を数える（.count() は自動待機しないため）
     const checkItems = page.getByText('地震発生に伴う安否確認')
+    await expect(checkItems.first()).toBeVisible({ timeout: 10_000 })
     const itemCount = await checkItems.count()
     expect(itemCount).toBeGreaterThanOrEqual(1)
   })

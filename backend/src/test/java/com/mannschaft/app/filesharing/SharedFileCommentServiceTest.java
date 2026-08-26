@@ -6,6 +6,7 @@ import com.mannschaft.app.filesharing.dto.CreateCommentRequest;
 import com.mannschaft.app.filesharing.dto.UpdateCommentRequest;
 import com.mannschaft.app.filesharing.entity.SharedFileCommentEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileCommentRepository;
+import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileCommentService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -38,6 +39,9 @@ class SharedFileCommentServiceTest {
 
     @Mock
     private FileSharingMapper fileSharingMapper;
+
+    @Mock
+    private FolderScopeAccessGuard folderScopeAccessGuard;
 
     @InjectMocks
     private SharedFileCommentService sharedFileCommentService;

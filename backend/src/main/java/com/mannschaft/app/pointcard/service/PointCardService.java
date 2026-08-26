@@ -54,12 +54,6 @@ public class PointCardService {
      */
     public static final int CARD_LIMIT_PER_USER = 200;
 
-    /**
-     * 現行の規約バージョン。{@link PointCardUserSettingsService#assertTermsAcceptedAndCurrent} に渡す。
-     * 設計書 §13 未解決事項として application.yml 化は後付け可（運用判断）。
-     */
-    private static final String CURRENT_TERMS_VERSION = "v1.0.0";
-
     private final UserPointCardRepository cardRepository;
     private final PointCardProviderRepository providerRepository;
     private final ProviderMatchService providerMatchService;
@@ -128,7 +122,7 @@ public class PointCardService {
     @Transactional
     public UserPointCardDetailResponse createCard(Long userId, CreateUserPointCardRequest req) {
         // 1. 規約検証
-        userSettingsService.assertTermsAcceptedAndCurrent(userId, CURRENT_TERMS_VERSION);
+        userSettingsService.assertTermsAcceptedAndCurrent(userId, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
 
         // 2. 上限チェック
         long currentCount = cardRepository.countByUserId(userId);

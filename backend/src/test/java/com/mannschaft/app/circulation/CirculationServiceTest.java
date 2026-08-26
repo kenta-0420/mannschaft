@@ -1,5 +1,7 @@
 package com.mannschaft.app.circulation;
 
+import com.mannschaft.app.circulation.CirculationMode;
+import com.mannschaft.app.circulation.CirculationStatus;
 import com.mannschaft.app.circulation.dto.DocumentResponse;
 import com.mannschaft.app.circulation.dto.DocumentStatsResponse;
 import com.mannschaft.app.circulation.dto.UpdateDocumentRequest;
@@ -19,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
@@ -57,8 +60,28 @@ class CirculationServiceTest {
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
+    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
+    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock private MessageSource messageSource;
+
     @InjectMocks
     private CirculationService circulationService;
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.Map.of());
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     private static final Long DOCUMENT_ID = 100L;
     private static final Long SCOPE_ID = 1L;
@@ -79,10 +102,12 @@ class CirculationServiceTest {
     }
 
     private DocumentResponse createDocumentResponse() {
-        return new DocumentResponse(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID, USER_ID,
-                "回覧テスト", "回覧本文", "SIMULTANEOUS", 0, "DRAFT", "NORMAL",
-                null, false, (short) 24, "STANDARD", 0, 0, null, 0, 0,
-                null, null);
+        return DocumentResponse.builder()
+                .id(DOCUMENT_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                .title("回覧テスト").body("回覧本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                .status("DRAFT").priority("NORMAL").stampDisplayStyle("STANDARD")
+                .totalRecipientCount(0).stampedCount(0).attachmentCount(0).commentCount(0)
+                .build();
     }
 
     @Nested
@@ -291,6 +316,55 @@ class CirculationServiceTest {
             assertThat(result.getTotal()).isEqualTo(11L);
             assertThat(result.getDraft()).isEqualTo(2L);
             assertThat(result.getActive()).isEqualTo(3L);
+        }
+    }
+
+    @Nested
+    @DisplayName("activateDocument - toBuilder 廃止・id 保持回帰テスト")
+    class ActivateDocumentToBuilderRegression {
+
+        @Test
+        @DisplayName("activateDocument_SEQUENTIAL → save に渡るのが findById の同一インスタンスかつ id 保持")
+        void activateDocument_sequential_savesOriginalInstanceWithIdPreserved() throws Exception {
+            // Given: SEQUENTIAL モードの DRAFT 文書（id をリフレクションでセット）
+            CirculationDocumentEntity entity = CirculationDocumentEntity.builder()
+                    .scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                    .title("回覧テスト").body("回覧本文")
+                    .circulationMode(CirculationMode.SEQUENTIAL)
+                    .build();
+            java.lang.reflect.Field idField = findField(entity.getClass(), "id");
+            idField.setAccessible(true);
+            idField.set(entity, DOCUMENT_ID);
+
+            DocumentResponse response = createDocumentResponse();
+            given(documentRepository.findByIdAndScopeTypeAndScopeId(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(entity));
+            given(recipientRepository.countByDocumentId(DOCUMENT_ID)).willReturn(3L);
+            given(documentRepository.save(any())).willReturn(entity);
+            given(circulationMapper.toDocumentResponse(entity)).willReturn(response);
+
+            // When
+            circulationService.activateDocument(SCOPE_TYPE, SCOPE_ID, DOCUMENT_ID);
+
+            // Then: save に渡るのが findById の同一インスタンスかつ id を保持していることを検証
+            ArgumentCaptor<CirculationDocumentEntity> captor =
+                    ArgumentCaptor.forClass(CirculationDocumentEntity.class);
+            verify(documentRepository).save(captor.capture());
+            assertThat(captor.getValue()).isSameAs(entity);
+            assertThat(captor.getValue().getId()).isEqualTo(DOCUMENT_ID);
+            assertThat(captor.getValue().getStatus()).isEqualTo(CirculationStatus.ACTIVE);
+            assertThat(captor.getValue().getSequentialCount()).isEqualTo(3);
+        }
+
+        private java.lang.reflect.Field findField(Class<?> clazz, String name) throws NoSuchFieldException {
+            while (clazz != null) {
+                try {
+                    return clazz.getDeclaredField(name);
+                } catch (NoSuchFieldException e) {
+                    clazz = clazz.getSuperclass();
+                }
+            }
+            throw new NoSuchFieldException(name);
         }
     }
 }

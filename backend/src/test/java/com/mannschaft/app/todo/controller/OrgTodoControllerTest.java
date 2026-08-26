@@ -22,6 +22,8 @@ import com.mannschaft.app.todo.service.TodoAssigneeService;
 import com.mannschaft.app.todo.service.TodoService;
 import com.mannschaft.app.todo.service.TodoSharedMemoService;
 import com.mannschaft.app.todo.service.TodoStatusService;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,6 +37,8 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.context.MessageSource;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
@@ -95,6 +99,9 @@ class OrgTodoControllerTest {
     private TodoPersonalMemoService personalMemoService;
 
     @Mock
+    private TodoAccessGuard todoAccessGuard;
+
+    @Mock
     private MessageSource messageSource;
 
     @InjectMocks
@@ -113,13 +120,24 @@ class OrgTodoControllerTest {
         mockMvc = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler(messageSource))
                 .build();
+        // 各 EP は SecurityUtils.getCurrentUserId() を要求するため認証コンテキストを用意する
+        // （TodoAccessGuard は @Mock で no-op のため認可自体は素通り。POST/PATCH は個別に
+        // MockedStatic<SecurityUtils> で USER_ID を固定するが、その scope 外の GET/DELETE 用に
+        // 実 SecurityContext も併せて設定する）。
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(USER_ID.toString(), null, List.of()));
+    }
+
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
     }
 
     private TodoResponse sampleTodo() {
         return TodoResponse.builder()
                 .id(TODO_ID)
                 .scope(new TodoResponse.TodoScopeDto(
-                        TodoScopeType.ORGANIZATION.name(), ORG_ID, null, null))
+                        TodoScopeType.ORGANIZATION.name(), ORG_ID, null, null, null))
                 .content(new TodoResponse.TodoContentDto(
                         "テスト組織TODO", "説明", null, null, false, 0))
                 .schedule(new TodoResponse.TodoScheduleDto(
@@ -147,8 +165,8 @@ class OrgTodoControllerTest {
         void GET_todos_正常系_200で一覧が返る() throws Exception {
             PagedResponse<TodoResponse> paged = PagedResponse.of(
                     List.of(sampleTodo()),
-                    new PagedResponse.PageMeta(1L, 1, 20, 1));
-            given(todoService.listTodos(eq(TodoScopeType.ORGANIZATION), eq(ORG_ID), eq((TodoStatus) null), eq(1), eq(20)))
+                    new PagedResponse.PageMeta(1L, 0, 20, 1));
+            given(todoService.listTodos(eq(TodoScopeType.ORGANIZATION), eq(ORG_ID), eq((TodoStatus) null), eq(0), eq(20), eq("RECENT")))
                     .willReturn(paged);
 
             mockMvc.perform(get("/api/v1/organizations/{orgId}/todos", ORG_ID))

@@ -34,7 +34,7 @@ public class OrgSegmentPresetController {
     @GetMapping("/api/v1/organizations/{orgId}/segment-presets")
     @Operation(summary = "プリセット一覧")
     public ResponseEntity<ApiResponse<List<SegmentPresetResponse>>> list(@PathVariable Long orgId) {
-        return ResponseEntity.ok(ApiResponse.of(presetService.list("ORGANIZATION", orgId)));
+        return ResponseEntity.ok(ApiResponse.of(presetService.list("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/segment-presets")
@@ -51,13 +51,13 @@ public class OrgSegmentPresetController {
     public ResponseEntity<ApiResponse<SegmentPresetResponse>> update(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody CreateSegmentPresetRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(presetService.update("ORGANIZATION", orgId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(presetService.update("ORGANIZATION", orgId, id, request, SecurityUtils.getCurrentUserId())));
     }
 
     @DeleteMapping("/api/v1/organizations/{orgId}/segment-presets/{id}")
     @Operation(summary = "プリセット削除")
     public ResponseEntity<Void> delete(@PathVariable Long orgId, @PathVariable Long id) {
-        presetService.delete("ORGANIZATION", orgId, id);
+        presetService.delete("ORGANIZATION", orgId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

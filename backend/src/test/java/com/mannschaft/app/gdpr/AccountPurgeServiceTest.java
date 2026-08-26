@@ -129,7 +129,7 @@ class AccountPurgeServiceTest {
         given(oAuthAccountRepository.findByUserId(userId)).willReturn(List.of());
         given(twoFactorAuthRepository.findByUserId(userId)).willReturn(Optional.empty());
         given(webAuthnCredentialRepository.findByUserId(userId)).willReturn(List.of());
-        given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any())).willReturn(List.of());
+        given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any())).willReturn(List.of());
     }
 
     @Nested
@@ -202,7 +202,7 @@ class AccountPurgeServiceTest {
         }
 
         @Test
-        @DisplayName("Phase D-8: AccountPurgedEvent 発火前に 6 ドメイン分の PENDING レコードが INSERT される")
+        @DisplayName("Phase D-8/残債1: AccountPurgedEvent 発火前に 8 ドメイン分の PENDING レコードが INSERT される")
         void PhaseD8_PENDING_レコードがINSERTされる() {
             UserEntity user = buildUser(USER_ID);
             given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
@@ -211,11 +211,12 @@ class AccountPurgeServiceTest {
 
             service.purgeExpiredAccounts();
 
-            // 6 ドメイン（role/team/payment/chart/proxy/errorreport）分の save が呼ばれること
-            verify(completionStatusRepository, atLeast(6)).save(any(AccountPurgeCompletionStatusEntity.class));
+            // 8 ドメイン（role/team/payment/chart/proxy/errorreport/resume/billing）分の save が呼ばれること
+            verify(completionStatusRepository, atLeast(8)).save(any(AccountPurgeCompletionStatusEntity.class));
 
-            // 各ドメイン名の PENDING レコードが INSERT されること
-            for (String domain : List.of("role", "team", "payment", "chart", "proxy", "errorreport")) {
+            // 各ドメイン名の PENDING レコードが INSERT されること（残債1: billing を追加登録）
+            for (String domain : List.of(
+                    "role", "team", "payment", "chart", "proxy", "errorreport", "resume", "billing")) {
                 verify(completionStatusRepository).save(argThat(entity ->
                         entity.getUserId().equals(USER_ID)
                                 && entity.getDomainName().equals(domain)
@@ -268,7 +269,7 @@ class AccountPurgeServiceTest {
                     .status("COMPLETED")
                     .s3Key("exports/100/data.zip")
                     .build();
-            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+            given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any()))
                     .willReturn(List.of(dataExport));
 
             service.purgeExpiredAccounts();
@@ -295,7 +296,7 @@ class AccountPurgeServiceTest {
                     .status("COMPLETED")
                     .s3Key("exports/100/data.zip")
                     .build();
-            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+            given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any()))
                     .willReturn(List.of(dataExport));
             org.mockito.Mockito.doThrow(new RuntimeException("S3 connection refused"))
                     .when(storageService).delete("exports/100/data.zip");
@@ -318,6 +319,75 @@ class AccountPurgeServiceTest {
         }
 
         @Test
+        @DisplayName("GDPR §17: purgeUser実行時にpassword_reset_tokensが削除される")
+        void GDPR_password_reset_tokens削除() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            verify(passwordResetTokenRepository).deleteByUserId(USER_ID);
+        }
+
+        @Test
+        @DisplayName("GDPR §17: purgeUser実行時にemail_change_tokensが削除される")
+        void GDPR_email_change_tokens削除() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            verify(emailChangeTokenRepository).deleteByUserId(USER_ID);
+        }
+
+        @Test
+        @DisplayName("GDPR §17: purgeUser実行時にmfa_recovery_tokensが削除される")
+        void GDPR_mfa_recovery_tokens削除() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            verify(mfaRecoveryTokenRepository).deleteByUserId(USER_ID);
+        }
+
+        @Test
+        @DisplayName("GDPR §17: purgeUser実行時にoauth_link_tokensが削除される")
+        void GDPR_oauth_link_tokens削除() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            verify(oAuthLinkTokenRepository).deleteByUserId(USER_ID);
+        }
+
+        @Test
+        @DisplayName("GDPR §17: purgeUser実行時に4種のトークンが全件削除される（一括確認）")
+        void GDPR_4種トークン全件削除() {
+            UserEntity user = buildUser(USER_ID);
+            given(userRepository.findPurgeTargets(any(LocalDateTime.class), any(Pageable.class)))
+                    .willReturn(List.of(user));
+            stubAuthAndGdprMocks(USER_ID);
+
+            service.purgeExpiredAccounts();
+
+            // 4種類のトークン削除が全て実行されることを確認
+            verify(passwordResetTokenRepository).deleteByUserId(USER_ID);
+            verify(emailChangeTokenRepository).deleteByUserId(USER_ID);
+            verify(mfaRecoveryTokenRepository).deleteByUserId(USER_ID);
+            verify(oAuthLinkTokenRepository).deleteByUserId(USER_ID);
+        }
+
+        @Test
         @DisplayName("異常系: S3削除失敗エラーメッセージが500文字を超える場合、切り詰めて記録する")
         void 異常_S3削除失敗_エラーメッセージ切り詰め() {
             UserEntity user = buildUser(USER_ID);
@@ -334,7 +404,7 @@ class AccountPurgeServiceTest {
                     .status("COMPLETED")
                     .s3Key("exports/100/data.zip")
                     .build();
-            given(dataExportRepository.findByExpiresAtBeforeAndS3KeyIsNotNull(any()))
+            given(dataExportRepository.findByUserIdAndS3KeyIsNotNull(any()))
                     .willReturn(List.of(dataExport));
 
             // 501文字のエラーメッセージ

@@ -10,8 +10,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -25,8 +25,7 @@ import java.time.LocalDateTime;
 @Table(name = "analytics_alert_rules")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class AnalyticsAlertRuleEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -48,16 +47,18 @@ public class AnalyticsAlertRuleEntity extends BaseEntity {
     private ComparisonPeriod comparisonPeriod;
 
     @Builder.Default
+    @Column(nullable = false)
     private boolean enabled = true;
 
     @Column(nullable = false, columnDefinition = "JSON")
     private String notifyChannels;
 
-    @Column(columnDefinition = "TINYINT UNSIGNED")
+    @Column(nullable = false, columnDefinition = "TINYINT UNSIGNED")
     @Builder.Default
     private int consecutiveTriggers = 1;
 
     @Builder.Default
+    @Column(nullable = false)
     private int cooldownHours = 24;
 
     @Column(nullable = false)

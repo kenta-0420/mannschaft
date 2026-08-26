@@ -1,5 +1,6 @@
 package com.mannschaft.app.team.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -13,10 +14,25 @@ import java.time.LocalDateTime;
 @Getter
 public class TeamResponse {
 
-    private Long id;
+    /** URL 識別子（カスタムスラッグ）。実体は {@code slug} と同値。 */
+    private String id;
+    /** チームスラッグ（URL ルーティング用）。{@code /teams/{slug}} に使用する。 */
+    private String slug;
+    /**
+     * チームの内部 BIGINT ID（F09.19.10）。
+     *
+     * <p>URL には使用しない（URL 識別子は上記 {@code id}/{@code slug} が正準）。
+     * Spotlight 掲載面 API（{@code GET /api/v1/spotlight/content?scopeType=TEAM&scopeId=}）等、
+     * BE が Long スコープ ID を要求する内部連携専用に公開する。露出先は当該チームを閲覧可能な者
+     * （visibility ラダー準拠）に限られ、cross-domain FK には使わない。</p>
+     */
+    private Long numericId;
     private TeamBasicInfoDto basicInfo;
     private TeamLocationDto location;
     private TeamVisibilityDto visibility;
+    /** 予約枠の現地日付・時刻を解釈するチーム固有の IANA タイムゾーン。 */
+    @Schema(description = "チームのIANAタイムゾーン")
+    private String timezone;
     private TeamMetadataDto metadata;
     private TeamSocialDto social;
     private TeamTimestampsDto timestamps;
@@ -29,11 +45,19 @@ public class TeamResponse {
             String nickname2
     ) {}
 
-    /** チームの所在地情報。 */
+    /**
+     * チームの所在地情報。
+     *
+     * <p>F22.1 市 Phase 2 足場C: 名称（{@code prefecture}/{@code city}）に加え、構造化キーの
+     * {@code prefectureCode}/{@code cityCode} を併存して返す（旧名称は表示用に残置）。
+     * フィールド名は Jackson 既定の camelCase。</p>
+     */
     public record TeamLocationDto(
             String prefecture,
             String city,
-            String template
+            String template,
+            String prefectureCode,
+            String cityCode
     ) {}
 
     /** チームの公開設定。 */

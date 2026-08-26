@@ -12,6 +12,7 @@ const teamStore = useTeamStore()
 const { getSchedule } = useShiftApi()
 const { listConstraints, getTeamDefault } = useMemberWorkConstraintApi()
 const { handleApiError } = useErrorHandler()
+const { warn } = useNotification()
 
 const scheduleId = computed(() => Number(route.params.id))
 
@@ -53,10 +54,10 @@ async function load() {
   loading.value = true
   try {
     const [constraints, def] = await Promise.all([
-      listConstraints(schedule.value.teamId),
+      listConstraints(String(schedule.value.teamId)),
       (async () => {
         try {
-          return await getTeamDefault(schedule.value!.teamId)
+          return await getTeamDefault(String(schedule.value!.teamId))
         } catch (e) {
           // 未設定（404 / WORK_CONSTRAINT_NOT_FOUND）のみ null として許容。
           // 403/500/ネットワーク断などは上位へ伝搬させ、handleApiError で通知する。
@@ -75,10 +76,24 @@ async function load() {
   }
 }
 
+// このページの一覧取得 API（listConstraints）は BE 側で ADMIN/DEPUTY_ADMIN 限定。
+// 一般メンバーの直リンク・ブックマーク到達を塞ぐため、権限確定時点で詳細ページへ戻す。
+watch(
+  [schedule, canManage],
+  () => {
+    if (schedule.value && !canManage.value) {
+      warn(t('shift.detail.accessDeniedRedirect'))
+      navigateTo(`/shift/${scheduleId.value}`)
+    }
+  },
+  { immediate: true },
+)
+
 onMounted(async () => {
   await teamStore.fetchMyTeams()
   try {
     schedule.value = await getSchedule(scheduleId.value)
+    if (!canManage.value) return
     await load()
   } catch (error) {
     handleApiError(error)
@@ -191,7 +206,7 @@ function confirmAddMember() {
         <ShiftWorkConstraintForm
           v-if="canManage && schedule"
           :constraint="teamDefault"
-          :team-id="schedule.teamId"
+          :team-id="String(schedule.teamId)"
           :user-id="null"
           @saved="teamDefault = $event"
           @deleted="teamDefault = null"
@@ -276,7 +291,7 @@ function confirmAddMember() {
               <ShiftWorkConstraintForm
                 v-if="canManage && schedule"
                 :constraint="constraint"
-                :team-id="schedule.teamId"
+                :team-id="String(schedule.teamId)"
                 :user-id="constraint.userId"
                 @saved="handleMemberConstraintSaved"
                 @deleted="handleMemberConstraintDeleted(constraint.userId!)"

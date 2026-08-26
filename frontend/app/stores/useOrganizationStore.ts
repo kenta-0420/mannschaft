@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 
 interface MyOrganization {
   id: number
+  slug: string
   name: string
   nickname1: string | null
   iconUrl: string | null

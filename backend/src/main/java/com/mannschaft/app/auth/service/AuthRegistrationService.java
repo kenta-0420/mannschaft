@@ -18,6 +18,8 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.common.util.AgeGroupCalculator;
+import com.mannschaft.app.postal.CountryResolver;
+import com.mannschaft.app.postal.PostalCodePolicyRegistry;
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.weather.event.UserPostalCodeUpdatedEvent;
 import lombok.RequiredArgsConstructor;
@@ -58,12 +60,21 @@ public class AuthRegistrationService {
     private final EncryptionService encryptionService;
     private final BetaRestrictionService betaRestrictionService;
     private final InviteService inviteService;
+    private final CountryResolver countryResolver;
+    private final PostalCodePolicyRegistry postalCodePolicyRegistry;
 
     // レートリミット設定
     private static final int REGISTER_MAX_ATTEMPTS = 10;
     private static final Duration REGISTER_WINDOW = Duration.ofHours(1);
 
     private static final String EMAIL_VERIFY_COOLDOWN_PREFIX = "mannschaft:auth:email_verify_cooldown:";
+
+    // 公開網漏れ是正: verify-email/resend の IP 単位レートリミット。
+    // 既存のメールアドレス単位 60 秒クールダウンは「同一メール宛の連投」しか防げず、
+    // 攻撃者が異なるメールアドレスを次々指定するメール爆撃・送信コスト増を防げなかった。
+    // register と同じ 10 回/時/IP に揃える。
+    private static final int RESEND_VERIFICATION_MAX_ATTEMPTS = 10;
+    private static final Duration RESEND_VERIFICATION_WINDOW = Duration.ofHours(1);
 
     // トークン有効期限
     private static final Duration EMAIL_VERIFICATION_EXPIRY = Duration.ofHours(24);
@@ -128,6 +139,22 @@ public class AuthRegistrationService {
             throw new BusinessException(AuthErrorCode.AUTH_053);
         }
 
+        // 3.6. 郵便番号検証（F02.10 §391・国別レジストリ駆動）
+        // RegisterRequest に countryCode は無いため locale（既定 "ja"）から実効国を解決する。
+        // 対応国では郵便番号必須・フォーマット検証あり。未対応国は検証スキップ。
+        String effectiveLocale = req.getLocale() != null ? req.getLocale() : "ja";
+        countryResolver.resolve(null, effectiveLocale)
+                .filter(postalCodePolicyRegistry::isSupported)
+                .ifPresent(country -> {
+                    String postal = req.getPostalCode();
+                    if (postal == null || postal.isBlank()) {
+                        throw new BusinessException(AuthErrorCode.AUTH_071);
+                    }
+                    if (!postalCodePolicyRegistry.isValidFormat(country, postal)) {
+                        throw new BusinessException(AuthErrorCode.AUTH_072);
+                    }
+                });
+
         // 4. ユーザー作成
         UserEntity user = UserEntity.builder()
                 .email(req.getEmail())
@@ -143,7 +170,14 @@ public class AuthRegistrationService {
                 .status(UserEntity.UserStatus.PENDING_VERIFICATION)
                 .isSearchable(true)
                 .birthDate(req.getBirthDate())
+                // birth_date は AES-256-GCM（ランダム IV）暗号化列のため SQL で範囲比較できない。
+                // 生年のみ平文・索引付きの birth_year に複写し、年齢に基づくバッチ・セグメント抽出が
+                // SQL 側で粗く絞り込めるようにする（登録時に必ずセットする唯一の書き込み口）。
+                .birthYear(birthDate.getYear())
                 .build();
+        // 4.1. プライバシーポリシー同意を記録する（F_privacy_policy。GDPR Art.7 準拠）
+        // privacyPolicyAccepted=false は @Valid で弾かれているため、ここに到達した場合は必ず true。
+        user.recordPrivacyPolicyConsent(LocalDateTime.now(), req.getPrivacyPolicyVersion());
         userRepository.save(user);
 
         // 4.5. ベータ招待トークンがあれば自動参加
@@ -228,12 +262,21 @@ public class AuthRegistrationService {
      * メール認証メールを再送信する。
      * クールダウン期間中は再送不可。ユーザー不在でも同一レスポンスを返す（情報漏洩防止）。
      *
-     * @param email メールアドレス
+     * <p>公開網漏れ是正: メールアドレス単位クールダウンに加え、IP 単位のレートリミット
+     * （{@value #RESEND_VERIFICATION_MAX_ATTEMPTS} 回 / {@value #RESEND_VERIFICATION_WINDOW}）を
+     * register と同じ作法で通す（異なるメールアドレスへの連続送信＝メール爆撃対策）。</p>
+     *
+     * @param email     メールアドレス
+     * @param ipAddress リクエスト元 IP アドレス
      * @return 再送完了メッセージ
      */
     @Transactional
-    public ApiResponse<MessageResponse> resendVerificationEmail(String email) {
-        // 1. Valkeyクールダウンチェック（60秒）
+    public ApiResponse<MessageResponse> resendVerificationEmail(String email, String ipAddress) {
+        // 0. IP 単位レートリミットチェック（公開 EP の濫用防止）
+        String rateLimitKey = "mannschaft:auth:verify_email_resend_attempt:" + ipAddress;
+        authTokenService.checkRateLimit(rateLimitKey, RESEND_VERIFICATION_MAX_ATTEMPTS, RESEND_VERIFICATION_WINDOW);
+
+        // 1. Valkeyクールダウンチェック（60秒・メールアドレス単位）
         String cooldownKey = EMAIL_VERIFY_COOLDOWN_PREFIX + email;
         if (Boolean.TRUE.equals(redisTemplate.hasKey(cooldownKey))) {
             throw new BusinessException(AuthErrorCode.AUTH_006);

@@ -1,0 +1,97 @@
+{
+  "circulation": {
+    "status": {
+      "DRAFT": "下書き",
+      "ACTIVE": "回覧中",
+      "COMPLETED": "完了",
+      "CANCELLED": "キャンセル"
+    },
+    "recipient_status": {
+      "PENDING": "未押印",
+      "STAMPED": "押印済み",
+      "SKIPPED": "スキップ",
+      "REJECTED": "拒否"
+    },
+    "detail": {
+      "title": "回覧の詳細",
+      "close": "閉じる",
+      "cancel": "キャンセル",
+      "forbidden": "この回覧の閲覧権限がありません（あて先ではありません）",
+      "load_failed": "回覧の取得に失敗しました",
+      "unknown_user": "不明なユーザー",
+      "created_by": "{name} さん",
+      "due": "締切 {date}",
+      "progress": "押印済み",
+      "recipients": "あて先",
+      "no_recipients": "あて先がありません",
+      "attachments": "添付ファイル",
+      "comments": "コメント",
+      "no_comments": "コメントはまだありません",
+      "stamp": {
+        "open": "押印する",
+        "choose_seal": "押印する印鑑を選択",
+        "no_seal": "押印できる印鑑がありません。設定から印鑑を作成してください。",
+        "select_seal": "印鑑を選択してください",
+        "comment_placeholder": "押印コメント（任意）",
+        "submit": "押印",
+        "success": "押印しました",
+        "failed": "押印に失敗しました"
+      },
+      "comment": {
+        "placeholder": "コメントを入力",
+        "submit": "コメント投稿",
+        "failed": "コメントの投稿に失敗しました"
+      }
+    },
+    "create": {
+      "title": "回覧の作成",
+      "cancel": "キャンセル",
+      "submit": "作成して回覧を開始",
+      "success": "回覧を作成し、回覧を開始しました",
+      "failed": "回覧の作成に失敗しました",
+      "no_members": "あて先に選べるメンバーがいません",
+      "recipients_selected": "{count} 人選択中",
+      "order_title": "回覧順（上から順に回ります）",
+      "move_up": "上へ移動",
+      "move_down": "下へ移動",
+      "field": {
+        "title": "タイトル",
+        "title_placeholder": "回覧のタイトルを入力",
+        "body": "本文",
+        "body_placeholder": "回覧する内容を入力",
+        "mode": "回覧方法",
+        "recipients": "あて先",
+        "priority": "優先度",
+        "due_date": "締切（任意）",
+        "sequential_count": "順番で回す人数（先頭 N 人）",
+        "sequential_count_placeholder": "人数を入力"
+      },
+      "mode": {
+        "SIMULTANEOUS": "一斉",
+        "SEQUENTIAL": "順番",
+        "HYBRID": "ハイブリッド"
+      },
+      "mode_hint": {
+        "SIMULTANEOUS": "あて先全員に同時に回覧します",
+        "SEQUENTIAL": "あて先を上から順に1人ずつ回覧します",
+        "HYBRID": "先頭 N 人は順番に、残りの全員には一斉に回覧します"
+      },
+      "hybrid_boundary": "↓ 以降は一斉回覧",
+      "hybrid_seq_count_hint": "1〜{max} の範囲で指定してください",
+      "hybrid_seq_count_needs_two": "あて先を2人以上選択するとN人数を指定できます",
+      "priority": {
+        "NORMAL": "通常",
+        "URGENT": "至急"
+      },
+      "error": {
+        "title_required": "タイトルを入力してください",
+        "title_too_long": "タイトルは200文字以内で入力してください",
+        "body_required": "本文を入力してください",
+        "recipients_required": "あて先を1人以上選択してください",
+        "members_load_failed": "メンバー一覧の取得に失敗しました",
+        "hybrid_needs_two_or_more": "ハイブリッドモードはあて先を2人以上選択してください",
+        "sequential_count_range": "順番で回す人数は1以上かつあて先数未満（最大 {max}）にしてください"
+      }
+    }
+  }
+}

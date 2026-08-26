@@ -49,13 +49,38 @@ public interface ErrorReportRepository extends JpaRepository<ErrorReportEntity, 
 
     /**
      * user_id から organization_id をルックアップする。
-     * user_roles → team_org_memberships の結合で組織IDを取得する。
+     *
+     * <p><b>候補集合は 2 系統の和集合（Issue #2786 丙層）</b>: {@code V60.010} 以後、
+     * 一般メンバーの在籍行は {@code memberships} にしか無く、{@code user_roles} を
+     * 唯一の起点にすると一般メンバーの所属組織が解決できず、エラーレポートの
+     * 組織紐付けが NULL 化する。解決経路を次の 3 本の {@code UNION} とする
+     * （{@code UNION ALL} ではなく {@code UNION} で重複を畳む）。</p>
+     * <ul>
+     *   <li>{@code user_roles} のチーム所属 → ACTIVE な {@code team_org_memberships} 経由</li>
+     *   <li>{@code memberships} の TEAM 在籍（{@code left_at IS NULL}）→ 同経由</li>
+     *   <li>{@code memberships} の ORGANIZATION 在籍（{@code left_at IS NULL}）＝組織直属</li>
+     * </ul>
+     *
+     * <p>{@code memberships} 側の枝は索引 {@code (scope_type, scope_id, left_at)} /
+     * {@code (user_id, left_at)} に載せるため、必ず {@code scope_type} の等値条件を伴う。</p>
      */
     @Query(value = """
-        SELECT DISTINCT tom.organization_id
-        FROM team_org_memberships tom
-        JOIN user_roles ur ON ur.team_id = tom.team_id
-        WHERE ur.user_id = :userId AND tom.status = 'ACTIVE'
+        SELECT cand.organization_id
+        FROM (
+            SELECT tom.organization_id AS organization_id
+              FROM team_org_memberships tom
+              JOIN user_roles ur ON ur.team_id = tom.team_id
+              WHERE ur.user_id = :userId AND tom.status = 'ACTIVE'
+            UNION
+            SELECT tom2.organization_id AS organization_id
+              FROM team_org_memberships tom2
+              JOIN memberships ms ON ms.scope_type = 'TEAM' AND ms.scope_id = tom2.team_id
+              WHERE ms.user_id = :userId AND ms.left_at IS NULL AND tom2.status = 'ACTIVE'
+            UNION
+            SELECT ms2.scope_id AS organization_id
+              FROM memberships ms2
+              WHERE ms2.user_id = :userId AND ms2.scope_type = 'ORGANIZATION' AND ms2.left_at IS NULL
+        ) cand
         LIMIT 1
         """, nativeQuery = true)
     Optional<Long> findOrganizationIdByUserId(@Param("userId") Long userId);

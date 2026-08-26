@@ -37,6 +37,9 @@ public class CommitteeService {
     private final CommitteeMemberRepository committeeMemberRepository;
     private final AccessControlService accessControlService;
 
+    /** 委員会メンバーシップ・委員会内ロールに基づく認可判定の一元窓口。 */
+    private final CommitteeAccessGuard committeeAccessGuard;
+
     // ========================================
     // 委員会 CRUD
     // ========================================
@@ -166,9 +169,8 @@ public class CommitteeService {
         CommitteeEntity committee = getCommitteeOrThrow(committeeId);
 
         // 認可チェック: CHAIR or VICE_CHAIR
-        if (!hasCommitteeRole(committeeId, currentUserId, CommitteeRole.CHAIR, CommitteeRole.VICE_CHAIR)) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        committeeAccessGuard.requireCommitteeRole(
+                committeeId, currentUserId, CommitteeRole.CHAIR, CommitteeRole.VICE_CHAIR);
 
         // 名前変更時は重複チェック
         if (request.getName() != null && !request.getName().equals(committee.getName())) {
@@ -177,26 +179,27 @@ public class CommitteeService {
             }
         }
 
-        // builder パターンで更新
-        CommitteeEntity updated = committee.toBuilder()
-                .name(request.getName() != null ? request.getName() : committee.getName())
-                .description(request.getDescription() != null ? request.getDescription() : committee.getDescription())
-                .purposeTag(request.getPurposeTag() != null ? request.getPurposeTag() : committee.getPurposeTag())
-                .startDate(request.getStartDate() != null ? request.getStartDate() : committee.getStartDate())
-                .endDate(request.getEndDate() != null ? request.getEndDate() : committee.getEndDate())
-                .visibilityToOrg(request.getVisibilityToOrg() != null ? request.getVisibilityToOrg() : committee.getVisibilityToOrg())
-                .defaultConfirmationMode(request.getDefaultConfirmationMode() != null
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        // （toBuilder().build()→save は継承フィールド id を引き継がず INSERT 化するため廃止）
+        committee.applyUpdate(
+                request.getName() != null ? request.getName() : committee.getName(),
+                request.getDescription() != null ? request.getDescription() : committee.getDescription(),
+                request.getPurposeTag() != null ? request.getPurposeTag() : committee.getPurposeTag(),
+                request.getStartDate() != null ? request.getStartDate() : committee.getStartDate(),
+                request.getEndDate() != null ? request.getEndDate() : committee.getEndDate(),
+                request.getVisibilityToOrg() != null ? request.getVisibilityToOrg() : committee.getVisibilityToOrg(),
+                request.getDefaultConfirmationMode() != null
                         ? request.getDefaultConfirmationMode()
-                        : committee.getDefaultConfirmationMode())
-                .defaultAnnouncementEnabled(request.getDefaultAnnouncementEnabled() != null
+                        : committee.getDefaultConfirmationMode(),
+                request.getDefaultAnnouncementEnabled() != null
                         ? request.getDefaultAnnouncementEnabled()
-                        : committee.isDefaultAnnouncementEnabled())
-                .defaultDistributionScope(request.getDefaultDistributionScope() != null
+                        : committee.isDefaultAnnouncementEnabled(),
+                request.getDefaultDistributionScope() != null
                         ? request.getDefaultDistributionScope()
-                        : committee.getDefaultDistributionScope())
-                .build();
+                        : committee.getDefaultDistributionScope()
+        );
 
-        return committeeRepository.save(updated);
+        return committeeRepository.save(committee);
     }
 
     /**
@@ -214,7 +217,7 @@ public class CommitteeService {
         CommitteeEntity committee = getCommitteeOrThrow(committeeId);
 
         // 認可チェック: CHAIR または ORG_ADMIN
-        boolean isChair = hasCommitteeRole(committeeId, currentUserId, CommitteeRole.CHAIR);
+        boolean isChair = committeeAccessGuard.hasCommitteeRole(committeeId, currentUserId, CommitteeRole.CHAIR);
         boolean isAdmin = accessControlService.isAdminOrAbove(currentUserId, committee.getOrganizationId(), "ORGANIZATION");
         if (!isChair && !isAdmin) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
@@ -255,11 +258,9 @@ public class CommitteeService {
                 throw new BusinessException(CommitteeErrorCode.INVALID_STATUS_TRANSITION);
         }
 
-        CommitteeEntity updated = committee.toBuilder()
-                .status(newStatus)
-                .archivedAt(newArchivedAt)
-                .build();
-        return committeeRepository.save(updated);
+        // managed エンティティを直接ミューテートして id を保持したまま UPDATE を発行する
+        committee.applyStatusTransition(newStatus, newArchivedAt);
+        return committeeRepository.save(committee);
     }
 
     // ========================================
@@ -276,9 +277,7 @@ public class CommitteeService {
         getCommitteeOrThrow(committeeId);
 
         // 認可チェック: CHAIR のみ
-        if (!hasCommitteeRole(committeeId, currentUserId, CommitteeRole.CHAIR)) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        committeeAccessGuard.requireCommitteeRole(committeeId, currentUserId, CommitteeRole.CHAIR);
 
         CommitteeMemberEntity member = getMemberOrThrow(committeeId, targetUserId);
 
@@ -304,9 +303,7 @@ public class CommitteeService {
         getCommitteeOrThrow(committeeId);
 
         // 認可チェック: CHAIR のみ
-        if (!hasCommitteeRole(committeeId, currentUserId, CommitteeRole.CHAIR)) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        committeeAccessGuard.requireCommitteeRole(committeeId, currentUserId, CommitteeRole.CHAIR);
 
         CommitteeMemberEntity member = getMemberOrThrow(committeeId, targetUserId);
 
@@ -330,7 +327,8 @@ public class CommitteeService {
     public void leaveCommittee(Long committeeId, Long currentUserId) {
         getCommitteeOrThrow(committeeId);
 
-        CommitteeMemberEntity member = getMemberOrThrow(committeeId, currentUserId);
+        // 認可チェック: 当該委員会の現役メンバー本人のみが離脱できる
+        CommitteeMemberEntity member = committeeAccessGuard.requireCommitteeMember(committeeId, currentUserId);
 
         // 唯一のCHAIRの場合は離脱不可
         if (CommitteeRole.CHAIR.equals(member.getRole())) {
@@ -352,9 +350,7 @@ public class CommitteeService {
     public List<CommitteeMemberEntity> listMembers(Long committeeId, Long currentUserId) {
         getCommitteeOrThrow(committeeId);
 
-        if (!isCommitteeMember(committeeId, currentUserId)) {
-            throw new BusinessException(CommonErrorCode.COMMON_002);
-        }
+        committeeAccessGuard.requireCommitteeMember(committeeId, currentUserId);
 
         return committeeMemberRepository.findByCommitteeIdAndLeftAtIsNull(committeeId);
     }
@@ -400,21 +396,5 @@ public class CommitteeService {
         return committeeMemberRepository.findByCommitteeIdAndUserIdAndLeftAtIsNull(committeeId, userId)
                 .map(CommitteeMemberEntity::getRole)
                 .orElse(null);
-    }
-
-    /**
-     * ユーザーが指定ロールのいずれかを持つかどうかを返す。
-     */
-    private boolean hasCommitteeRole(Long committeeId, Long userId, CommitteeRole... roles) {
-        CommitteeRole myRole = getCommitteeRole(committeeId, userId);
-        if (myRole == null) {
-            return false;
-        }
-        for (CommitteeRole role : roles) {
-            if (myRole == role) {
-                return true;
-            }
-        }
-        return false;
     }
 }

@@ -246,86 +246,125 @@
       "loadFailed": "Fehler beim Laden der Daten",
       "applicationsLoadFailed": "Fehler beim Laden der Bewerbungen"
     },
+    "guide": {
+      "title": "How to Use Job Listings",
+      "description": "On this page, you can search for and apply to open job listings from your teams. Follow the steps below to find a job.",
+      "team": {
+        "title": "Select a Team to Browse Jobs",
+        "body": "Jobs on Mannschaft are posted through teams you belong to. Start by selecting a team from the selector at the top of the page.",
+        "step1": "Click the \"Select a Team\" selector at the top of the page",
+        "step2": "Choose one of your teams from the list",
+        "step3": "Open job listings for that team will be displayed"
+      },
+      "card": {
+        "title": "Reading a Job Card",
+        "body": "Each job card shows the key information about a position at a glance.",
+        "item_status": "Badge (top right) — shows current status such as \"Open\"",
+        "item_pay": "Pay amount and type (lump sum / hourly / daily)",
+        "item_schedule": "Work date/time, location, headcount, and application deadline"
+      },
+      "detail": {
+        "title": "View Job Details",
+        "body": "Click a card to open the detail page, where you can see the full job description, location, pay, and deadline.",
+        "step1": "Click on a job card you're interested in",
+        "step2": "Review the full job description, conditions, and pay",
+        "step3": "Click \"Apply\" when you're ready to apply"
+      },
+      "apply": {
+        "title": "Apply for a Job",
+        "body": "Click \"Apply\" and enter a cover message (up to 500 characters). This is the first thing the hiring manager will see, so write carefully.",
+        "step1": "Click the \"Apply\" button on the job detail page",
+        "step2": "Enter your cover message in the dialog (up to 500 characters — optional)",
+        "step3": "Click \"Submit\" to complete your application",
+        "step4": "After applying, check your application status on \"My Jobs\""
+      },
+      "pagination": {
+        "title": "Browse More Listings",
+        "body": "If there are more than 20 listings, a pagination control will appear at the bottom.",
+        "step1": "Click a page number or the \">\" button at the bottom",
+        "step2": "The next 20 listings will be displayed"
+      }
+    },
     "qr": {
       "display": {
         "title": {
-          "IN": "入場 QR",
-          "OUT": "退場 QR"
+          "IN": "Eincheck-QR",
+          "OUT": "Auscheck-QR"
         },
-        "back": "戻る",
-        "switchIn": "入場",
-        "switchOut": "退場",
-        "loading": "QR を発行中...",
-        "unavailable": "QR コードを表示できません。再発行ボタンを押してください。",
-        "qrAriaLabel": "業務開始／終了のチェックイン QR コード",
-        "shortCodeLabel": "短コード（手動入力用）",
-        "remainingLabel": "有効時間",
-        "remainingSeconds": "残り {sec} 秒",
-        "showButton": "QR を表示",
-        "showForContract": "チェックイン QR を表示",
+        "back": "Zurück",
+        "switchIn": "Einchecken",
+        "switchOut": "Auschecken",
+        "loading": "QR wird ausgestellt...",
+        "unavailable": "QR-Code kann nicht angezeigt werden. Bitte drücken Sie die Neu-ausstellen-Taste.",
+        "qrAriaLabel": "QR-Code zum Ein-/Auschecken beim Arbeitsbeginn/-ende",
+        "shortCodeLabel": "Kurzcode (für manuelle Eingabe)",
+        "remainingLabel": "Gültigkeitsdauer",
+        "remainingSeconds": "Noch {sec} Sekunden",
+        "showButton": "QR anzeigen",
+        "showForContract": "Eincheck-QR anzeigen",
         "screenshotWarning": {
-          "title": "注意：スクリーンショットでの共有は禁止",
-          "body": "この QR は短時間で無効化されます。画面キャプチャやスクリーンショットを他人に共有しないでください。"
+          "title": "Warnung: Screenshots dürfen nicht geteilt werden",
+          "body": "Dieser QR-Code wird in kurzer Zeit ungültig. Teilen Sie keine Screenshots mit anderen Personen."
         }
       },
       "error": {
-        "issueFailed": "QR トークンの発行に失敗しました",
-        "renderFailed": "QR コードの描画に失敗しました",
-        "contractNotFound": "契約が見つかりませんでした"
+        "issueFailed": "QR-Token konnte nicht ausgestellt werden",
+        "renderFailed": "QR-Code konnte nicht gerendert werden",
+        "contractNotFound": "Vertrag nicht gefunden"
       },
       "checkInTimeline": {
-        "sectionTitle": "チェックイン状況",
-        "empty": "チェックイン履歴はまだありません",
-        "typeIn": "入場",
-        "typeOut": "退場",
-        "duration": "業務時間",
-        "durationMinutes": "{min} 分",
-        "geoAnomaly": "勤務地から離れた場所で記録されました",
-        "recordedAt": "記録日時：{at}"
+        "sectionTitle": "Eincheck-Status",
+        "empty": "Noch kein Eincheck-Verlauf",
+        "typeIn": "Einchecken",
+        "typeOut": "Auschecken",
+        "duration": "Arbeitszeit",
+        "durationMinutes": "{min} Min.",
+        "geoAnomaly": "Wurde an einem Ort weit vom Arbeitsort entfernt erfasst",
+        "recordedAt": "Erfasst am: {at}"
       },
       "scanner": {
         "title": {
-          "IN": "QR スキャン（入場）",
-          "OUT": "QR スキャン（退場）"
+          "IN": "QR-Scan (Einchecken)",
+          "OUT": "QR-Scan (Auschecken)"
         },
-        "switchIn": "入場をスキャン",
-        "switchOut": "退場をスキャン",
+        "switchIn": "Einchecken scannen",
+        "switchOut": "Auschecken scannen",
         "tab": {
-          "camera": "カメラでスキャン",
-          "manual": "コードを手入力"
+          "camera": "Mit Kamera scannen",
+          "manual": "Code manuell eingeben"
         },
-        "cameraInactive": "カメラは停止中です",
-        "startCamera": "カメラを起動",
-        "stopCamera": "カメラを停止",
-        "submitting": "送信中...",
-        "offlineBanner": "オフライン中です。読み取ったチェックインは復帰時に自動送信します。",
-        "geoConsent": "勤務地確認のため位置情報を利用する（任意）",
+        "cameraInactive": "Kamera ist inaktiv",
+        "startCamera": "Kamera starten",
+        "stopCamera": "Kamera stoppen",
+        "submitting": "Wird gesendet...",
+        "offlineBanner": "Sie sind offline. Gescannte Check-ins werden automatisch gesendet, wenn Sie wieder online sind.",
+        "geoConsent": "Standort zur Bestätigung des Arbeitsortes verwenden (optional)",
         "permission": {
-          "title": "カメラの利用を許可してください",
-          "body": "QR コードを読み取るため、カメラ権限が必要です。プライバシー保護のため映像はサーバーに送信しません。"
+          "title": "Bitte erlauben Sie den Kamerazugriff",
+          "body": "Kameraberechtigung ist zum Scannen von QR-Codes erforderlich. Das Video wird zum Datenschutz nicht an den Server gesendet."
         },
         "manual": {
-          "description": "依頼者画面の QR 下部に表示されている 6 桁の英数字を入力してください。",
+          "description": "Geben Sie den 6-stelligen alphanumerischen Code ein, der unter dem QR auf dem Bildschirm des Auftraggebers angezeigt wird.",
           "placeholder": "ABC123",
-          "submit": "送信する",
-          "invalid": "6 桁の英数字で入力してください"
+          "submit": "Senden",
+          "invalid": "Bitte 6 alphanumerische Zeichen eingeben"
         },
         "submitted": {
-          "inSuccess": "入場を記録しました",
-          "outSuccess": "退場を記録しました",
-          "outDetail": "業務時間 {min} 分",
-          "queuedTitle": "オフライン保留",
-          "queuedBody": "ネットワーク復帰時に自動送信します。",
-          "failedTitle": "チェックインに失敗しました",
-          "geoAnomalyTitle": "位置情報の注意",
-          "geoAnomalyBody": "勤務地として登録された場所と大きく離れています。依頼者にご確認ください。"
+          "inSuccess": "Einchecken erfasst",
+          "outSuccess": "Auschecken erfasst",
+          "outDetail": "Arbeitszeit: {min} Min.",
+          "queuedTitle": "Offline ausstehend",
+          "queuedBody": "Wird automatisch gesendet, wenn das Netzwerk wiederhergestellt ist.",
+          "failedTitle": "Einchecken fehlgeschlagen",
+          "geoAnomalyTitle": "Standortwarnung",
+          "geoAnomalyBody": "Sie befinden sich weit vom registrierten Arbeitsort entfernt. Bitte bestätigen Sie dies mit dem Auftraggeber."
         },
         "error": {
-          "cameraFailed": "カメラを起動できませんでした：{detail}"
+          "cameraFailed": "Kamera konnte nicht gestartet werden: {detail}"
         },
         "linkFromContract": {
-          "IN": "QR で入場する",
-          "OUT": "QR で退場する"
+          "IN": "Mit QR einchecken",
+          "OUT": "Mit QR auschecken"
         }
       }
     }

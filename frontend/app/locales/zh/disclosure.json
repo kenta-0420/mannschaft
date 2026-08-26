@@ -1,35 +1,35 @@
 {
   "disclosure": {
-    "title": "重要事項説明書（参考）",
-    "subtitle": "管理組合作成の参考情報。法定書式ではありません",
-    "newDraft": "新規ドラフトを作成",
-    "editDraft": "ドラフトを編集",
-    "exportHistory": "出力履歴",
-    "exportPdf": "PDFで出力",
-    "exportExcel": "Excelで出力",
-    "exportWord": "Wordで出力",
-    "noDrafts": "ドラフトがまだ登録されていません",
-    "noExports": "出力履歴がまだありません",
-    "loading": "読み込み中…",
+    "title": "重要事项说明书（参考）",
+    "subtitle": "管理组合制作的参考信息。非法定格式",
+    "newDraft": "新建草稿",
+    "editDraft": "编辑草稿",
+    "exportHistory": "输出历史",
+    "exportPdf": "以PDF导出",
+    "exportExcel": "以Excel导出",
+    "exportWord": "以Word导出",
+    "noDrafts": "还没有草稿",
+    "noExports": "还没有输出历史",
+    "loading": "加载中…",
     "saving": "保存中…",
-    "saved": "保存しました",
-    "deleted": "削除しました",
-    "deleteConfirm": "本当に削除しますか？",
-    "back": "一覧に戻る",
+    "saved": "已保存",
+    "deleted": "已删除",
+    "deleteConfirm": "确定要删除吗？",
+    "back": "返回列表",
     "templatePicker": {
-      "title": "様式を選択",
-      "prefecture": "都道府県",
-      "allPrefectures": "全国共通",
-      "systemTemplates": "国交省標準書式",
-      "customTemplates": "組織カスタム",
-      "select": "この様式で作成",
-      "noTemplates": "利用可能な様式がありません",
-      "version": "バージョン {version}"
+      "title": "选择格式",
+      "prefecture": "都道府县",
+      "allPrefectures": "全国通用",
+      "systemTemplates": "国土交通省标准格式",
+      "customTemplates": "组织自定义",
+      "select": "用此格式创建",
+      "noTemplates": "没有可用的格式",
+      "version": "版本 {version}"
     },
     "draftStatus": {
-      "DRAFT": "下書き",
-      "READY": "出力準備完了",
-      "EXPORTED": "出力済"
+      "DRAFT": "草稿",
+      "READY": "准备导出",
+      "EXPORTED": "已导出"
     },
     "outputFormat": {
       "PDF": "PDF",
@@ -37,72 +37,72 @@
       "WORD": "Word"
     },
     "fields": {
-      "title": "ドラフト名",
-      "template": "様式",
-      "prefecture": "都道府県",
-      "version": "バージョン",
-      "targetDwelling": "対象居室",
-      "targetDwellingPlaceholder": "居室番号（例: 101）",
-      "status": "ステータス",
-      "createdAt": "作成日",
-      "updatedAt": "更新日",
-      "outputFormat": "形式",
-      "templateCode": "様式コード",
+      "title": "草稿名称",
+      "template": "格式",
+      "prefecture": "都道府县",
+      "version": "版本",
+      "targetDwelling": "目标房间",
+      "targetDwellingPlaceholder": "房间号（例：101）",
+      "status": "状态",
+      "createdAt": "创建日期",
+      "updatedAt": "更新日期",
+      "outputFormat": "格式",
+      "templateCode": "格式代码",
       "sha256": "SHA-256",
-      "expiresAt": "有効期限"
+      "expiresAt": "有效期限"
     },
     "actions": {
-      "edit": "編集",
-      "delete": "削除",
+      "edit": "编辑",
+      "delete": "删除",
       "save": "保存",
-      "cancel": "キャンセル",
-      "create": "作成",
-      "download": "ダウンロード",
-      "viewExports": "出力履歴を見る"
+      "cancel": "取消",
+      "create": "创建",
+      "download": "下载",
+      "viewExports": "查看输出历史"
     },
     "autoFill": {
-      "title": "個人情報の自動引用",
-      "allowPersonalInfo": "個人情報の自動引用を許可",
-      "refresh": "自動引用を更新",
-      "note": "所有者氏名など個人情報を引用する場合のみチェックしてください",
-      "refreshed": "自動引用を更新しました",
-      "refreshFailed": "自動引用の更新に失敗しました"
+      "title": "自动引用个人信息",
+      "allowPersonalInfo": "允许自动引用个人信息",
+      "refresh": "刷新自动引用",
+      "note": "仅在需要引用姓名等个人信息时勾选",
+      "refreshed": "自动引用已刷新",
+      "refreshFailed": "刷新自动引用失败"
     },
     "exported": {
-      "lockedTitle": "出力済ドラフト",
-      "lockedMessage": "このドラフトは既に出力されたため編集できません。コピーして新規ドラフトを作成してください（Phase 3）。"
+      "lockedTitle": "已导出草稿",
+      "lockedMessage": "此草稿已导出，无法编辑。请复制并创建新草稿（Phase 3）。"
     },
     "warnings": {
-      "title": "出力時の警告",
-      "close": "閉じる"
+      "title": "导出时的警告",
+      "close": "关闭"
     },
     "errors": {
-      "loadFailed": "読み込みに失敗しました",
-      "saveFailed": "保存に失敗しました",
-      "deleteFailed": "削除に失敗しました",
-      "versionConflict": "他のユーザーが先に編集しました。最新版を取得します。",
-      "exportFailed": "出力に失敗しました",
-      "downloadFailed": "ダウンロードに失敗しました",
-      "tampered": "ファイルの整合性検証に失敗しました（DISCLOSURE_010）"
+      "loadFailed": "加载失败",
+      "saveFailed": "保存失败",
+      "deleteFailed": "删除失败",
+      "versionConflict": "其他用户已先行编辑。获取最新版本。",
+      "exportFailed": "导出失败",
+      "downloadFailed": "下载失败",
+      "tampered": "文件完整性验证失败（DISCLOSURE_010）"
     },
     "limit": {
-      "warning": "ドラフトは組織あたり 50 件までです（残り {remaining} 件）",
-      "exceeded": "ドラフトの上限（50 件）に達しています。不要なものを削除してください。"
+      "warning": "每个组织最多可创建50个草稿（剩余{remaining}个）",
+      "exceeded": "已达到草稿上限（50个）。请删除不需要的草稿。"
     },
     "validation": {
-      "required": "必須項目です",
-      "maxLength": "{max} 文字以内で入力してください",
-      "title": "ドラフト名は必須です",
-      "templateRequired": "様式を選択してください"
+      "required": "必填项",
+      "maxLength": "请在{max}个字符以内输入",
+      "title": "草稿名称为必填项",
+      "templateRequired": "请选择格式"
     },
-    "extend_expiry": "保管期限を延長",
-    "extend_expiry_dialog_title": "保管期限の延長",
-    "extend_expiry_date_label": "新しい保管期限",
-    "extend_expiry_current_label": "現在の保管期限",
-    "extend_expiry_hint": "本日から最大 7 年先まで指定できます",
-    "extend_expiry_validation_future": "現在より未来の日時を指定してください",
-    "extend_expiry_validation_max_7_years": "本日から 7 年以内の日時を指定してください",
-    "extend_expiry_success": "保管期限を {date} まで延長しました",
-    "extend_expiry_error": "保管期限の延長に失敗しました"
+    "extend_expiry": "延长保存期限",
+    "extend_expiry_dialog_title": "延长保存期限",
+    "extend_expiry_date_label": "新保存截止日期",
+    "extend_expiry_current_label": "当前保存截止日期",
+    "extend_expiry_hint": "可以指定今日起最多7年的日期",
+    "extend_expiry_validation_future": "请指定一个未来的日期",
+    "extend_expiry_validation_max_7_years": "请指定今日起7年以内的日期",
+    "extend_expiry_success": "保存期限已延长至{date}",
+    "extend_expiry_error": "延长保存期限失败"
   }
 }

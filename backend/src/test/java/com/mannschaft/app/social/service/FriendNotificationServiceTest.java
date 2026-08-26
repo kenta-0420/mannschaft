@@ -98,8 +98,10 @@ class FriendNotificationServiceTest {
 
             doNothing().when(accessControlService)
                     .checkPermission(USER_ID, TEAM_ID, "TEAM", "MANAGE_FRIEND_TEAMS");
+            // scope_type は enum で渡すこと（.name() の String はリポジトリ層で型不一致 → 実行時 500）。
+            // 実 DB での回帰は FriendNotificationScopeQueryContractIT が担保する。
             given(notificationRepository.findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
-                    NotificationScopeType.FRIEND_TEAM.name(), TEAM_ID, pageable))
+                    NotificationScopeType.FRIEND_TEAM, TEAM_ID, pageable))
                     .willReturn(entityPage);
             given(notificationMapper.toNotificationResponse(entity)).willReturn(response);
 
@@ -111,7 +113,7 @@ class FriendNotificationServiceTest {
             assertThat(result.getContent()).hasSize(1);
             assertThat(result.getContent().get(0).getId()).isEqualTo(1L);
             verify(notificationRepository).findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
-                    NotificationScopeType.FRIEND_TEAM.name(), TEAM_ID, pageable);
+                    NotificationScopeType.FRIEND_TEAM, TEAM_ID, pageable);
         }
 
         @Test
@@ -124,7 +126,7 @@ class FriendNotificationServiceTest {
             doNothing().when(accessControlService)
                     .checkPermission(USER_ID, TEAM_ID, "TEAM", "MANAGE_FRIEND_TEAMS");
             given(notificationRepository.findByScopeTypeAndScopeIdAndIsReadOrderByCreatedAtDesc(
-                    NotificationScopeType.FRIEND_TEAM.name(), TEAM_ID, false, pageable))
+                    NotificationScopeType.FRIEND_TEAM, TEAM_ID, false, pageable))
                     .willReturn(emptyPage);
 
             // when
@@ -134,7 +136,7 @@ class FriendNotificationServiceTest {
             // then
             assertThat(result.isEmpty()).isTrue();
             verify(notificationRepository).findByScopeTypeAndScopeIdAndIsReadOrderByCreatedAtDesc(
-                    NotificationScopeType.FRIEND_TEAM.name(), TEAM_ID, false, pageable);
+                    NotificationScopeType.FRIEND_TEAM, TEAM_ID, false, pageable);
             verify(notificationRepository, never()).findByScopeTypeAndScopeIdOrderByCreatedAtDesc(
                     any(), any(), any());
         }
@@ -267,11 +269,20 @@ class FriendNotificationServiceTest {
         return NotificationResponse.builder()
                 .id(id)
                 .userId(USER_ID)
-                .content(new NotificationResponse.NotificationContentDto(
-                        "FRIEND_ANNOUNCEMENT", "NORMAL", "テスト通知", "本文", null))
-                .source(new NotificationResponse.NotificationSourceDto("FRIEND_TEAM", TEAM_ID))
-                .scope(new NotificationResponse.NotificationScopeDto("FRIEND_TEAM", TARGET_TEAM_ID, USER_ID))
-                .status(new NotificationResponse.NotificationStatusDto(false, null, null, null))
+                .notificationType("FRIEND_ANNOUNCEMENT")
+                .priority("NORMAL")
+                .title("テスト通知")
+                .body("本文")
+                .actionUrl(null)
+                .sourceType("FRIEND_TEAM")
+                .sourceId(TEAM_ID)
+                .scopeType("FRIEND_TEAM")
+                .scopeId(TARGET_TEAM_ID)
+                .actorId(USER_ID)
+                .isRead(false)
+                .readAt(null)
+                .channelsSent(null)
+                .snoozedUntil(null)
                 .createdAt(LocalDateTime.now())
                 .build();
     }

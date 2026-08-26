@@ -4,7 +4,6 @@ import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.property.entity.VendorEntity;
 import com.mannschaft.app.property.repository.VendorRepository;
 import com.mannschaft.app.repairplan.RepairPlanErrorCode;
@@ -44,6 +43,13 @@ import java.util.concurrent.atomic.AtomicInteger;
  *   <li>FULL      — そのまま返す</li>
  * </ul>
  * <p>入札締切日前は visibility に関わらず業者名をマスクする。</p>
+ *
+ * <h2>認可（読み取り）</h2>
+ * <p>メンバーシップ検証は {@code RepairPlanQuoteKanbanController} の {@code checkReadAccess}（非メンバー遮断・
+ * SYSTEM_ADMIN 横断許可）で実施する。本サービスはマスキングの要否を、閲覧者 {@code userId} の
+ * <strong>当該カンバン scope に対する実ロール</strong>（{@code AccessControlService#isAdminOrAbove} /
+ * {@code isSystemAdmin}）で判定する（{@link #resolveIsAdmin}）。
+ * SYSTEM_ADMIN・当該 scope の ADMIN/DEPUTY_ADMIN は FULL、それ以外は visibility に従ってマスクする。</p>
  *
  * <h2>stage 遷移ルール（前進のみ）</h2>
  * <pre>
@@ -93,24 +99,29 @@ public class RepairPlanQuoteKanbanService {
 
     /**
      * スコープ配下のカンバン一覧を取得する（visibility フィルタ適用済み）。
+     *
+     * <p>メンバーシップ検証は Controller 層で実施済みの前提。本メソッドは閲覧者 {@code userId} の
+     * 実ロールに応じて、カンバンごとにマスキングの要否を判定する（管理者=FULL / 一般メンバー=マスク）。</p>
      */
-    public List<QuoteKanbanDto> listKanbans(String scopeType, Long scopeId, Long organizationId) {
+    public List<QuoteKanbanDto> listKanbans(String scopeType, Long scopeId, Long organizationId,
+                                            Long userId) {
         List<RepairQuoteKanban> kanbans =
                 kanbanRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByCreatedAtDesc(
                         scopeType, scopeId);
-        boolean isAdmin = isAdminRole();
         return kanbans.stream()
-                .map(k -> toDto(k, isAdmin))
+                .map(k -> toDto(k, resolveIsAdmin(userId, k)))
                 .toList();
     }
 
     /**
      * カンバンを 1 件取得する。
+     *
+     * <p>メンバーシップ検証は Controller 層で実施済みの前提。マスキングの要否は閲覧者 {@code userId} の
+     * 当該カンバン scope に対する実ロールで判定する。</p>
      */
-    public QuoteKanbanDto getKanban(UUID kanbanId, Long organizationId) {
+    public QuoteKanbanDto getKanban(UUID kanbanId, Long organizationId, Long userId) {
         RepairQuoteKanban kanban = findKanbanForOrg(kanbanId, organizationId);
-        boolean isAdmin = isAdminRole();
-        return toDto(kanban, isAdmin);
+        return toDto(kanban, resolveIsAdmin(userId, kanban));
     }
 
     /**
@@ -159,11 +170,15 @@ public class RepairPlanQuoteKanbanService {
 
     /**
      * カンバンを更新する（ADMIN/DEPUTY_ADMIN 以上）。楽観ロック適用。
+     *
+     * <p>認可根治戦役 Wave7: 兄弟の {@link #createKanban}/{@link #moveCard} と同一の
+     * {@link AccessControlService#checkAdminOrAbove} を敷く。</p>
      */
     @Transactional
     public QuoteKanbanDto updateKanban(UUID kanbanId, Long organizationId,
                                        UpdateKanbanRequest request, Long userId) {
         RepairQuoteKanban kanban = findKanbanForOrg(kanbanId, organizationId);
+        accessControlService.checkAdminOrAbove(userId, kanban.getScopeId(), kanban.getScopeType());
         try {
             if (request.title() != null) {
                 kanban.setTitle(request.title());
@@ -204,6 +219,9 @@ public class RepairPlanQuoteKanbanService {
     /**
      * カードをカンバンに追加する（ADMIN/DEPUTY_ADMIN 以上）。
      *
+     * <p>認可根治戦役 Wave7: {@link #updateKanban} と同一の
+     * {@link AccessControlService#checkAdminOrAbove} を敷く。</p>
+     *
      * <h3>反社チェック検証</h3>
      * <p>vendors.compliance_check_status が EXPIRED の業者はカードに追加できない。</p>
      */
@@ -212,6 +230,7 @@ public class RepairPlanQuoteKanbanService {
                                 AddCardRequest request, Long userId) {
         // IDOR 検証: kanban が組織に属することを確認
         RepairQuoteKanban kanban = findKanbanForOrg(kanbanId, organizationId);
+        accessControlService.checkAdminOrAbove(userId, kanban.getScopeId(), kanban.getScopeType());
 
         // TODO: VendorRepository は property ドメインへのクロスドメイン参照。
         //       将来は VendorService.getById() 経由に変更予定。
@@ -334,16 +353,29 @@ public class RepairPlanQuoteKanbanService {
                 .orElseThrow(() -> new BusinessException(RepairPlanErrorCode.KANBAN_NOT_FOUND));
     }
 
-    /** 現在のセキュリティコンテキストから管理者ロールかどうかを簡易判定する。 */
-    private boolean isAdminRole() {
-        try {
-            Long userId = SecurityUtils.getCurrentUserId();
-            // ロール情報は Controller 層で検証済みの前提。
-            // Service 層では全データを返し、呼び出し元が必要に応じてフィルタする。
-            return true;
-        } catch (Exception e) {
+    /**
+     * 閲覧者が当該カンバンの scope に対して「マスク不要（FULL 表示）」の立場かどうかを判定する。
+     *
+     * <p>判定基準（標準認可基盤に委譲）:</p>
+     * <ul>
+     *   <li>SYSTEM_ADMIN — 全スコープ横断で FULL 表示</li>
+     *   <li>当該 scope の ADMIN / DEPUTY_ADMIN（理事長・理事 MANAGE 相当）— FULL 表示</li>
+     *   <li>それ以外（一般メンバー等）— visibility に従ってマスク</li>
+     * </ul>
+     *
+     * <p>従来は「ロールは Controller で検証済み」という前提で常に true を返しており、
+     * 非メンバーを含む任意の認証ユーザーに業者名・金額が素通しになる漏洩があった。
+     * 本メソッドはカンバンごとの実 scope（scopeType/scopeId）でロールを判定し、これを根治する。</p>
+     */
+    private boolean resolveIsAdmin(Long userId, RepairQuoteKanban kanban) {
+        if (userId == null) {
             return false;
         }
+        if (accessControlService.isSystemAdmin(userId)) {
+            return true;
+        }
+        return accessControlService.isAdminOrAbove(
+                userId, kanban.getScopeId(), kanban.getScopeType());
     }
 
     private QuoteKanbanDto toDto(RepairQuoteKanban kanban, boolean isAdmin) {

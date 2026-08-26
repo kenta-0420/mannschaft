@@ -4,9 +4,11 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.role.repository.UserRoleRepository;
+import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.survey.dto.RespondentResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse;
 import com.mannschaft.app.survey.entity.SurveyEntity;
@@ -74,8 +76,28 @@ class SurveyResultServiceTest {
     @Mock
     private ContentVisibilityChecker contentVisibilityChecker;
 
+    @Mock
+    private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
+
     @InjectMocks
     private SurveyResultService surveyResultService;
+
+    /**
+     * 結果閲覧可否の判定点は<b>実物</b>を差し込む（Issue #2779）。
+     *
+     * <p>モックに置き換えると「403 を投げる経路」と「詳細応答の viewerCanViewResults」が
+     * 同じ判定を通っている保証が消えるため、モック化した可視性基盤を包んだ実物を使う。
+     * 既存の {@code contentVisibilityChecker} スタブはそのまま素通しで効く。</p>
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void injectRealResultAccessPolicy() {
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                surveyResultService, "resultAccessGuard",
+                new com.mannschaft.app.survey.service.SurveyResultAccessGuard(contentVisibilityChecker));
+    }
 
     private static final Long SURVEY_ID = 100L;
     private static final Long USER_ID = 10L;
@@ -567,6 +589,222 @@ class SurveyResultServiceTest {
 
             // Then: 母集団 2 名（targets ベース）。userRoleRepository は呼ばれない
             assertThat(result).hasSize(2);
+        }
+    }
+
+    /**
+     * (B) 組織→参加チーム配信 案C フェーズB（アンケートのチーム別内訳 by_team）の番人。
+     * 御裁可A（全チーム計上）・御裁可B（5名未満マスク）・トグル/匿名による by_team 省略・認可を検証する。
+     */
+    @Nested
+    @DisplayName("getTeamBreakdown チーム別内訳")
+    class GetTeamBreakdown {
+
+        private static final Long ORG_ID = 500L;
+        private static final Long Q1 = 11L;
+        private static final Long OPT_A = 101L;
+        private static final Long OPT_B = 102L;
+
+        /** team-breakdown 用の組織アンケートを生成する。 */
+        private SurveyEntity buildOrgSurvey(boolean teamBreakdownEnabled, boolean anonymous) {
+            SurveyEntity survey = SurveyEntity.builder()
+                    .scopeType("ORGANIZATION").scopeId(ORG_ID).title("内訳テスト")
+                    .isAnonymous(anonymous)
+                    .teamBreakdownEnabled(teamBreakdownEnabled)
+                    .includeSupporters(false)
+                    .resultsVisibility(ResultsVisibility.AFTER_CLOSE)
+                    .distributionMode(DistributionMode.ALL).createdBy(CREATOR_USER_ID).build();
+            setEntityId(survey, SURVEY_ID);
+            return survey;
+        }
+
+        private com.mannschaft.app.survey.entity.SurveyQuestionEntity singleChoiceQuestion() {
+            return com.mannschaft.app.survey.entity.SurveyQuestionEntity.builder()
+                    .id(Q1).surveyId(SURVEY_ID).questionType(QuestionType.SINGLE_CHOICE)
+                    .questionText("好きな色は?").displayOrder(1).build();
+        }
+
+        private List<com.mannschaft.app.survey.entity.SurveyOptionEntity> twoOptions() {
+            return List.of(
+                    com.mannschaft.app.survey.entity.SurveyOptionEntity.builder()
+                            .id(OPT_A).questionId(Q1).optionText("赤").displayOrder(1).build(),
+                    com.mannschaft.app.survey.entity.SurveyOptionEntity.builder()
+                            .id(OPT_B).questionId(Q1).optionText("青").displayOrder(2).build());
+        }
+
+        /** userId が optionId を選んだ回答行を生成する。 */
+        private SurveyResponseEntity answer(Long userId, Long optionId) {
+            return SurveyResponseEntity.builder()
+                    .surveyId(SURVEY_ID).questionId(Q1).userId(userId).optionId(optionId).build();
+        }
+
+        private OrganizationMembershipService.TeamRef ref(Long teamId, String name) {
+            return new OrganizationMembershipService.TeamRef(teamId, name);
+        }
+
+        @Test
+        @DisplayName("トグルOFF_byTeamは省略されtotalのみ返る")
+        void トグルOFF_byTeam省略() {
+            SurveyEntity survey = buildOrgSurvey(false, false);
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(SURVEY_ID))
+                    .willReturn(List.of(singleChoiceQuestion()));
+            given(optionRepository.findByQuestionIdOrderByDisplayOrderAsc(Q1)).willReturn(twoOptions());
+            given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                    .willReturn(List.of(answer(1L, OPT_A)));
+
+            var result = surveyResultService.getTeamBreakdown(SURVEY_ID, ADMIN_USER_ID);
+
+            assertThat(result.getByTeam()).isNull();
+            assertThat(result.getTotal().respondentCount()).isEqualTo(1);
+            // resolveMemberTeams は呼ばれない（トグルOFF）
+            org.mockito.Mockito.verify(organizationMembershipService, org.mockito.Mockito.never())
+                    .resolveMemberTeams(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyBoolean());
+        }
+
+        @Test
+        @DisplayName("匿名アンケートはトグルONでもbyTeam省略_二重防御")
+        void 匿名はbyTeam省略() {
+            SurveyEntity survey = buildOrgSurvey(true, true);
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(SURVEY_ID))
+                    .willReturn(List.of(singleChoiceQuestion()));
+            given(optionRepository.findByQuestionIdOrderByDisplayOrderAsc(Q1)).willReturn(twoOptions());
+            given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                    .willReturn(List.of(answer(1L, OPT_A)));
+
+            var result = surveyResultService.getTeamBreakdown(SURVEY_ID, ADMIN_USER_ID);
+
+            assertThat(result.getByTeam()).isNull();
+            org.mockito.Mockito.verify(organizationMembershipService, org.mockito.Mockito.never())
+                    .resolveMemberTeams(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyBoolean());
+        }
+
+        @Test
+        @DisplayName("トグルON_複数チーム所属者が全チームに計上_チーム別合計はtotal以上")
+        void トグルON_全チーム計上() {
+            SurveyEntity survey = buildOrgSurvey(true, false);
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(SURVEY_ID))
+                    .willReturn(List.of(singleChoiceQuestion()));
+            given(optionRepository.findByQuestionIdOrderByDisplayOrderAsc(Q1)).willReturn(twoOptions());
+
+            // 7 名が回答（うち user 1 はチームT1とT2を兼任 → 両チームに計上）。
+            // T1: users 1,2,3,4,5（5名）/ T2: users 1,6,7（3名）/ 組織直属枠(null): user 5
+            List<SurveyResponseEntity> responses = new java.util.ArrayList<>();
+            for (long u = 1; u <= 5; u++) {
+                responses.add(answer(u, OPT_A));
+            }
+            responses.add(answer(6L, OPT_B));
+            responses.add(answer(7L, OPT_B));
+            given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID)).willReturn(responses);
+
+            java.util.Map<Long, List<OrganizationMembershipService.TeamRef>> memberTeams = new java.util.HashMap<>();
+            memberTeams.put(1L, List.of(ref(1L, "T1"), ref(2L, "T2")));
+            memberTeams.put(2L, List.of(ref(1L, "T1")));
+            memberTeams.put(3L, List.of(ref(1L, "T1")));
+            memberTeams.put(4L, List.of(ref(1L, "T1")));
+            memberTeams.put(5L, List.of(ref(1L, "T1"), ref(null, null)));
+            memberTeams.put(6L, List.of(ref(2L, "T2")));
+            memberTeams.put(7L, List.of(ref(2L, "T2")));
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, false)).willReturn(memberTeams);
+
+            var result = surveyResultService.getTeamBreakdown(SURVEY_ID, ADMIN_USER_ID);
+
+            // total は実人数 7。
+            assertThat(result.getTotal().respondentCount()).isEqualTo(7);
+            assertThat(result.getByTeam()).isNotNull();
+
+            int sumOfTeamRespondents = result.getByTeam().stream()
+                    .mapToInt(SurveyTeamBreakdownItemRespondents()).sum();
+            // 御裁可A: のべ人数（T1=5 + T2=3 + null枠=1 = 9）≧ total（7）。
+            assertThat(sumOfTeamRespondents).isGreaterThanOrEqualTo(result.getTotal().respondentCount());
+
+            // T1 は 5 名でマスクされず、赤(OPT_A)が 5 票。
+            var t1 = result.getByTeam().stream().filter(i -> java.util.Objects.equals(i.teamId(), 1L))
+                    .findFirst().orElseThrow();
+            assertThat(t1.respondentCount()).isEqualTo(5);
+            assertThat(t1.masked()).isFalse();
+            long t1RedCount = t1.questionResults().get(0).optionResults().stream()
+                    .filter(o -> o.optionId().equals(OPT_A)).findFirst().orElseThrow().count();
+            assertThat(t1RedCount).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("5名未満チームはマスクされ設問内訳が空")
+        void 五名未満マスク() {
+            SurveyEntity survey = buildOrgSurvey(true, false);
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(SURVEY_ID))
+                    .willReturn(List.of(singleChoiceQuestion()));
+            given(optionRepository.findByQuestionIdOrderByDisplayOrderAsc(Q1)).willReturn(twoOptions());
+
+            // T2 は 3 名のみ → マスク対象。
+            given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID))
+                    .willReturn(List.of(answer(6L, OPT_B), answer(7L, OPT_B), answer(8L, OPT_A)));
+            java.util.Map<Long, List<OrganizationMembershipService.TeamRef>> memberTeams = new java.util.HashMap<>();
+            memberTeams.put(6L, List.of(ref(2L, "T2")));
+            memberTeams.put(7L, List.of(ref(2L, "T2")));
+            memberTeams.put(8L, List.of(ref(2L, "T2")));
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, false)).willReturn(memberTeams);
+
+            var result = surveyResultService.getTeamBreakdown(SURVEY_ID, ADMIN_USER_ID);
+
+            var t2 = result.getByTeam().stream().filter(i -> java.util.Objects.equals(i.teamId(), 2L))
+                    .findFirst().orElseThrow();
+            assertThat(t2.respondentCount()).isEqualTo(3);
+            assertThat(t2.masked()).isTrue();
+            assertThat(t2.questionResults()).isEmpty();
+        }
+
+        @Test
+        @DisplayName("team_id_null枠は組織直接メンバーとして集計される")
+        void null枠は組織直接メンバー() {
+            SurveyEntity survey = buildOrgSurvey(true, false);
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            given(questionRepository.findBySurveyIdOrderByDisplayOrderAsc(SURVEY_ID))
+                    .willReturn(List.of(singleChoiceQuestion()));
+            given(optionRepository.findByQuestionIdOrderByDisplayOrderAsc(Q1)).willReturn(twoOptions());
+
+            // 5 名全員が組織直属（teamId=null 枠）。
+            List<SurveyResponseEntity> responses = new java.util.ArrayList<>();
+            java.util.Map<Long, List<OrganizationMembershipService.TeamRef>> memberTeams = new java.util.HashMap<>();
+            for (long u = 1; u <= 5; u++) {
+                responses.add(answer(u, OPT_A));
+                memberTeams.put(u, List.of(ref(null, null)));
+            }
+            given(responseRepository.findBySurveyIdOrderByCreatedAtAsc(SURVEY_ID)).willReturn(responses);
+            given(organizationMembershipService.resolveMemberTeams(ORG_ID, false)).willReturn(memberTeams);
+
+            var result = surveyResultService.getTeamBreakdown(SURVEY_ID, ADMIN_USER_ID);
+
+            var directGroup = result.getByTeam().stream().filter(i -> i.teamId() == null)
+                    .findFirst().orElseThrow();
+            assertThat(directGroup.teamName()).isNull();
+            assertThat(directGroup.respondentCount()).isEqualTo(5);
+            assertThat(directGroup.masked()).isFalse();
+        }
+
+        @Test
+        @DisplayName("非ADMINは403_BusinessExceptionで集計に到達しない")
+        void 非ADMINは403() {
+            SurveyEntity survey = buildOrgSurvey(true, false);
+            given(surveyService.findSurveyEntityOrThrow(SURVEY_ID)).willReturn(survey);
+            org.mockito.BDDMockito.willThrow(new BusinessException(
+                            com.mannschaft.app.common.CommonErrorCode.COMMON_002))
+                    .given(accessControlService).checkAdminOrAbove(MEMBER_USER_ID, ORG_ID, "ORGANIZATION");
+
+            assertThatThrownBy(() -> surveyResultService.getTeamBreakdown(SURVEY_ID, MEMBER_USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            // 認可で弾かれ集計の入口（questions 取得）に到達しない
+            org.mockito.Mockito.verify(questionRepository, org.mockito.Mockito.never())
+                    .findBySurveyIdOrderByDisplayOrderAsc(org.mockito.ArgumentMatchers.anyLong());
+        }
+
+        /** byTeam の respondentCount を取り出す ToIntFunction（のべ人数の合計検証用）。 */
+        private java.util.function.ToIntFunction<com.mannschaft.app.survey.dto.SurveyTeamBreakdownResponse.TeamBreakdownItem>
+                SurveyTeamBreakdownItemRespondents() {
+            return com.mannschaft.app.survey.dto.SurveyTeamBreakdownResponse.TeamBreakdownItem::respondentCount;
         }
     }
 }

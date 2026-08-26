@@ -10,8 +10,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -27,8 +27,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ShiftScheduleEntity extends BaseEntity {
 
     @Column(nullable = false)
@@ -93,6 +92,53 @@ public class ShiftScheduleEntity extends BaseEntity {
     private Long version = 0L;
 
     private LocalDateTime deletedAt;
+
+    /**
+     * シフトスケジュールの更新可能フィールドを一括で書き換える（部分更新）。
+     *
+     * <p>本メソッドは managed entity をその場でミューテートする更新メソッドである。
+     * {@code @Transactional} 内で managed な本エンティティに対して呼ぶことで JPA の
+     * dirty checking により UPDATE が発行される。
+     *
+     * <p><strong>なぜ builder ({@code toBuilder().build()}) で作り直さないか:</strong>
+     * {@link ShiftScheduleEntity} は {@code @SuperBuilder(toBuilder = true)}（{@code @SuperBuilder} ではない）であり、
+     * 主キー {@code id} は基底クラス {@link com.mannschaft.app.common.BaseEntity} のフィールドである。
+     * {@code @SuperBuilder} は superclass のフィールドを取り込まないため、{@code toBuilder()} で
+     * 作り直すと継承フィールド {@code id} が引き継がれず {@code id = null} の新インスタンスになる。
+     * これを {@code save} すると UPDATE ではなく INSERT が走り、行重複が発生する
+     * （本メソッド導入の動機）。よって更新は必ず managed entity の直接ミューテートで行う。
+     *
+     * <p>各フィールドは「リクエスト値が非 null なら採用、null なら現値を維持」の部分更新セマンティクス。
+     * 日付整合性の検証は呼び出し側（{@code ShiftScheduleService}）の責務とし、本メソッドは検証済みの値を受け取る。
+     *
+     * @param title           新タイトル（null なら現値維持）
+     * @param periodType      新期間タイプ（null なら現値維持）
+     * @param startDate       新開始日（null なら現値維持）
+     * @param endDate         新終了日（null なら現値維持）
+     * @param requestDeadline 新希望提出期限（null なら現値維持）
+     * @param note            新メモ（null なら現値維持）
+     */
+    public void applyUpdate(String title, ShiftPeriodType periodType, LocalDate startDate,
+                            LocalDate endDate, LocalDateTime requestDeadline, String note) {
+        if (title != null) {
+            this.title = title;
+        }
+        if (periodType != null) {
+            this.periodType = periodType;
+        }
+        if (startDate != null) {
+            this.startDate = startDate;
+        }
+        if (endDate != null) {
+            this.endDate = endDate;
+        }
+        if (requestDeadline != null) {
+            this.requestDeadline = requestDeadline;
+        }
+        if (note != null) {
+            this.note = note;
+        }
+    }
 
     /**
      * ステータスを希望収集中に遷移する。

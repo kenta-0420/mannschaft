@@ -23,43 +23,247 @@
       "heading_kamo": " (probably)",
       "subheading": "All the features your team needs, in one platform",
       "items": {
-        "0": { "title": "Team & Org Management", "desc": "Invite members, assign roles, and manage permissions with ease", "detail": "Full coverage for member management, role assignment, and permission control. Manage multiple teams under one organization even at scale.", "features": ["Member invitation & management", "Team/org hierarchy management", "Role & permission settings", "Profile & avatar management"], "useCases": ["Sports team roster management", "Company department & project management", "Local community operations"] },
-        "1": { "title": "Events & Calendar", "desc": "Share schedules, track attendance, and set reminders in one place", "detail": "Centralize team events on a shared calendar. Share schedules at individual, team, or org level and handle attendance smoothly.", "features": ["Shared team calendar", "Attendance management & reminders", "Recurring event settings", "Integration with personal schedules"], "useCases": ["Practice & game schedule management", "Internal meetings & event management", "Class & school event calendars"] },
-        "2": { "title": "Chat & Bulletin Board", "desc": "Group chat, circulars, and timeline for seamless communication", "detail": "A multi-function communication tool combining real-time chat and bulletin boards. Create channels per team to keep information organized.", "features": ["Real-time chat", "Bulletin board & announcements", "Channel & group creation", "File attachment & image sharing"], "useCases": ["Day-to-day team communication", "Posting important announcements", "Project-specific discussions"] },
-        "3": { "title": "Shift Management", "desc": "Create shifts, collect preferences, and handle swap requests", "detail": "Digitize the entire shift management workflow — from schedule creation to preference collection, confirmation, and notifications. Supports hourly pay and labor cost calculation.", "features": ["Shift preference collection", "Auto-assisted schedule generation", "Hourly pay & labor cost calculation", "Shift change & substitute requests"], "useCases": ["Restaurant & retail shift management", "Medical & care staff scheduling", "Part-time employee attendance management"] },
-        "4": { "title": "Forms & Surveys", "desc": "Build forms, collect responses, and view analytics in one stop", "detail": "Easily collect opinions and registrations with customizable forms and surveys. Results are visualized with graphs.", "features": ["Custom form builder", "Survey aggregation & graph display", "Reminders to respondents", "CSV export"], "useCases": ["Event registration", "Team surveys", "Customer satisfaction surveys"] },
-        "5": { "title": "Gallery & Files", "desc": "Share photos, videos, and documents securely with your team", "detail": "Share memories of team activities in galleries. Manage documents and files in one place and find what you need instantly.", "features": ["Photo & video gallery", "File management & sharing", "Album creation", "Cloud storage integration"], "useCases": ["Sharing game & practice photos", "Storing documents & materials", "Archiving activity records"] },
-        "6": { "title": "Dues & Payments", "desc": "Digitize membership fee invoicing and payment tracking", "detail": "Handle team dues, expense reimbursements, and cost management entirely online. Automate payment status checks and reminders.", "features": ["Dues collection & management", "Expense reimbursement", "Payment status visualization", "Automated reminders"], "useCases": ["Monthly team dues management", "Trip & training camp cost settlement", "PTA & parent association accounting"] },
-        "7": { "title": "Matching & Tournaments", "desc": "Organize team matchups, tournaments, and record results", "detail": "Streamline team matching and tournament management. Total support from opponent recruitment to results management.", "features": ["Team matching", "Tournament & competition management", "Match result recording", "Rankings management"], "useCases": ["Sports tournament management", "Esports tournaments", "Local league & federation management"] }
+        "0": {
+          "title": "Team & Org Management",
+          "desc": "Invite members, assign roles, and manage permissions with ease",
+          "detail": "Full coverage for member management, role assignment, and permission control. Manage multiple teams under one organization even at scale.",
+          "features": [
+            "Member invitation & management",
+            "Team/org hierarchy management",
+            "Role & permission settings",
+            "Profile & avatar management"
+          ],
+          "useCases": [
+            "Sports team roster management",
+            "Company department & project management",
+            "Local community operations"
+          ]
+        },
+        "1": {
+          "title": "Events & Calendar",
+          "desc": "Share schedules, track attendance, and set reminders in one place",
+          "detail": "Centralize team events on a shared calendar. Share schedules at individual, team, or org level and handle attendance smoothly.",
+          "features": [
+            "Shared team calendar",
+            "Attendance management & reminders",
+            "Recurring event settings",
+            "Integration with personal schedules"
+          ],
+          "useCases": [
+            "Practice & game schedule management",
+            "Internal meetings & event management",
+            "Class & school event calendars"
+          ]
+        },
+        "2": {
+          "title": "Chat & Bulletin Board",
+          "desc": "Group chat, circulars, and timeline for seamless communication",
+          "detail": "A multi-function communication tool combining real-time chat and bulletin boards. Create channels per team to keep information organized.",
+          "features": [
+            "Real-time chat",
+            "Bulletin board & announcements",
+            "Channel & group creation",
+            "File attachment & image sharing"
+          ],
+          "useCases": [
+            "Day-to-day team communication",
+            "Posting important announcements",
+            "Project-specific discussions"
+          ]
+        },
+        "3": {
+          "title": "Shift Management",
+          "desc": "Create shifts, collect preferences, and handle swap requests",
+          "detail": "Digitize the entire shift management workflow — from schedule creation to preference collection, confirmation, and notifications. Supports hourly pay and labor cost calculation.",
+          "features": [
+            "Shift preference collection",
+            "Auto-assisted schedule generation",
+            "Hourly pay & labor cost calculation",
+            "Shift change & substitute requests"
+          ],
+          "useCases": [
+            "Restaurant & retail shift management",
+            "Medical & care staff scheduling",
+            "Part-time employee attendance management"
+          ]
+        },
+        "4": {
+          "title": "Forms & Surveys",
+          "desc": "Build forms, collect responses, and view analytics in one stop",
+          "detail": "Easily collect opinions and registrations with customizable forms and surveys. Results are visualized with graphs.",
+          "features": [
+            "Custom form builder",
+            "Survey aggregation & graph display",
+            "Reminders to respondents",
+            "CSV export"
+          ],
+          "useCases": [
+            "Event registration",
+            "Team surveys",
+            "Customer satisfaction surveys"
+          ]
+        },
+        "5": {
+          "title": "Gallery & Files",
+          "desc": "Share photos, videos, and documents securely with your team",
+          "detail": "Share memories of team activities in galleries. Manage documents and files in one place and find what you need instantly.",
+          "features": [
+            "Photo & video gallery",
+            "File management & sharing",
+            "Album creation",
+            "Cloud storage integration"
+          ],
+          "useCases": [
+            "Sharing game & practice photos",
+            "Storing documents & materials",
+            "Archiving activity records"
+          ]
+        },
+        "6": {
+          "title": "Dues & Payments",
+          "desc": "Digitize membership fee invoicing and payment tracking",
+          "detail": "Handle team dues, expense reimbursements, and cost management entirely online. Automate payment status checks and reminders.",
+          "features": [
+            "Dues collection & management",
+            "Expense reimbursement",
+            "Payment status visualization",
+            "Automated reminders"
+          ],
+          "useCases": [
+            "Monthly team dues management",
+            "Trip & training camp cost settlement",
+            "PTA & parent association accounting"
+          ]
+        },
+        "7": {
+          "title": "Matching & Tournaments",
+          "desc": "Organize team matchups, tournaments, and record results",
+          "detail": "Streamline team matching and tournament management. Total support from opponent recruitment to results management.",
+          "features": [
+            "Team matching",
+            "Tournament & competition management",
+            "Match result recording",
+            "Rankings management"
+          ],
+          "useCases": [
+            "Sports tournament management",
+            "Esports tournaments",
+            "Local league & federation management"
+          ]
+        }
       }
     },
     "steps": {
       "heading": "Get started in 3 steps",
       "cta": "Sign up for free now",
       "items": {
-        "0": { "title": "Sign up for free", "desc": "Get started right now with just your email address." },
-        "1": { "title": "Create a team or org", "desc": "Pick a template, create your team or organization, and invite members." },
-        "2": { "title": "Start using features", "desc": "Enable only the features you need — schedules, chat, shifts, and more." }
+        "0": {
+          "title": "Sign up for free",
+          "desc": "Get started right now with just your email address."
+        },
+        "1": {
+          "title": "Create a team or org",
+          "desc": "Pick a template, create your team or organization, and invite members."
+        },
+        "2": {
+          "title": "Start using features",
+          "desc": "Enable only the features you need — schedules, chat, shifts, and more."
+        }
       }
     },
     "useCases": {
       "heading": "Used in many settings",
       "subheading": "Adaptable to teams and organizations of any industry or size",
       "items": {
-        "0": { "title": "Sports Teams", "desc": "Practice & game schedules, shift coordination, attendance tracking, and standings.", "detail": "From practice and game scheduling to attendance confirmation and dues collection — everything a sports team needs.", "benefits": ["Easy sharing of practice & game schedules", "Reduce communication effort with attendance reminders", "Zero hassle for dues collection"], "features_used": ["Calendar", "Chat", "Dues Management", "Shift Management"] },
-        "1": { "title": "Local Communities", "desc": "Centralize event announcements, newsletters, and fee management online. Also great for reunions, neighborhood associations, and volunteer groups.", "detail": "Digital support for local connections like neighborhood associations, civic groups, and volunteer organizations. From announcements to activity records.", "benefits": ["Centralized announcements and communications", "Archive of activity records and photos", "Participant management and cost settlement"], "features_used": ["Bulletin Board", "Gallery", "Dues Management", "Surveys"] },
-        "2": { "title": "Businesses & Workplaces", "desc": "Cross-department project management, approval workflows, and internal communication. Also perfect for small businesses like salons and chiropractic clinics.", "detail": "From cross-department information sharing to shift management. A flexible organizational management tool for businesses of all sizes.", "benefits": ["Cross-department information sharing", "Digitize shift & attendance management", "Streamline internal surveys & request forms"], "features_used": ["Team Management", "Chat", "Shift Management", "Forms"] },
-        "3": { "title": "Education & Schools", "desc": "Parent communication, club management, activity records, photo sharing, and surveys.", "detail": "Support for all school-related communities including classes, clubs, PTAs, and parent groups. From bulletin boards to event management.", "benefits": ["Smooth communications to parents & students", "Share event & class schedules", "Manage and settle PTA dues"], "features_used": ["Calendar", "Bulletin Board", "Dues Management", "Surveys"] }
+        "0": {
+          "title": "Sports Teams",
+          "desc": "Practice & game schedules, shift coordination, attendance tracking, and standings.",
+          "detail": "From practice and game scheduling to attendance confirmation and dues collection — everything a sports team needs.",
+          "benefits": [
+            "Easy sharing of practice & game schedules",
+            "Reduce communication effort with attendance reminders",
+            "Zero hassle for dues collection"
+          ],
+          "features_used": [
+            "Calendar",
+            "Chat",
+            "Dues Management",
+            "Shift Management"
+          ]
+        },
+        "1": {
+          "title": "Local Communities",
+          "desc": "Centralize event announcements, newsletters, and fee management online. Also great for reunions, neighborhood associations, and volunteer groups.",
+          "detail": "Digital support for local connections like neighborhood associations, civic groups, and volunteer organizations. From announcements to activity records.",
+          "benefits": [
+            "Centralized announcements and communications",
+            "Archive of activity records and photos",
+            "Participant management and cost settlement"
+          ],
+          "features_used": [
+            "Bulletin Board",
+            "Gallery",
+            "Dues Management",
+            "Surveys"
+          ]
+        },
+        "2": {
+          "title": "Businesses & Workplaces",
+          "desc": "Cross-department project management, approval workflows, and internal communication. Also perfect for small businesses like salons and chiropractic clinics.",
+          "detail": "From cross-department information sharing to shift management. A flexible organizational management tool for businesses of all sizes.",
+          "benefits": [
+            "Cross-department information sharing",
+            "Digitize shift & attendance management",
+            "Streamline internal surveys & request forms"
+          ],
+          "features_used": [
+            "Team Management",
+            "Chat",
+            "Shift Management",
+            "Forms"
+          ]
+        },
+        "3": {
+          "title": "Education & Schools",
+          "desc": "Parent communication, club management, activity records, photo sharing, and surveys.",
+          "detail": "Support for all school-related communities including classes, clubs, PTAs, and parent groups. From bulletin boards to event management.",
+          "benefits": [
+            "Smooth communications to parents & students",
+            "Share event & class schedules",
+            "Manage and settle PTA dues"
+          ],
+          "features_used": [
+            "Calendar",
+            "Bulletin Board",
+            "Dues Management",
+            "Surveys"
+          ]
+        }
       }
     },
     "faq": {
       "heading": "Frequently asked questions",
       "items": {
-        "0": { "q": "Is it free to use?", "a": "Core features are free. We also offer paid plans for larger teams with advanced needs." },
-        "1": { "q": "How many members can I invite?", "a": "Even on the free plan, you can invite multiple members. For large-scale teams, consider our dedicated plans." },
-        "2": { "q": "Can I use it on my smartphone?", "a": "Yes. Mannschaft is fully responsive and works on smartphones and tablets via your web browser." },
-        "3": { "q": "Is my data safe?", "a": "We use SSL/TLS encryption and perform regular backups to keep your data secure." },
-        "4": { "q": "Can I manage multiple teams or organizations?", "a": "Yes. A single account can belong to multiple teams and organizations, each managed independently." }
+        "0": {
+          "q": "Is it free to use?",
+          "a": "Core features are free. We also offer paid plans for larger teams with advanced needs."
+        },
+        "1": {
+          "q": "How many members can I invite?",
+          "a": "Even on the free plan, you can invite multiple members. For large-scale teams, consider our dedicated plans."
+        },
+        "2": {
+          "q": "Can I use it on my smartphone?",
+          "a": "Yes. Mannschaft is fully responsive and works on smartphones and tablets via your web browser."
+        },
+        "3": {
+          "q": "Is my data safe?",
+          "a": "We use SSL/TLS encryption and perform regular backups to keep your data secure."
+        },
+        "4": {
+          "q": "Can I manage multiple teams or organizations?",
+          "a": "Yes. A single account can belong to multiple teams and organizations, each managed independently."
+        }
       }
     },
     "cta": {
@@ -84,6 +288,7 @@
       "footer_legal": "Legal",
       "footer_terms": "Terms of Service",
       "footer_privacy": "Privacy Policy",
+      "footer_commerce": "Commercial Transactions Act Disclosure",
       "footer_contact": "Contact Us",
       "skip_to_content": "Skip to main content",
       "open_menu": "Open menu",
@@ -92,59 +297,260 @@
     "product": {
       "title": "Mannschaft Product",
       "desc": "An all-in-one management platform with everything your team or organization needs",
-      "features_heading": "Key Features",
-      "pricing_heading": "Pricing Plans",
-      "pricing": {
-        "free": {
-          "name": "Free",
-          "price": "$0",
-          "desc": "For individuals & small teams",
-          "features": ["All basic features", "Up to 10 members", "1GB storage"]
-        },
-        "pro": {
-          "name": "Pro",
-          "price": "$9.80/mo",
-          "desc": "For growing teams",
-          "features": ["All Free features", "Unlimited members", "50GB storage", "Priority support"]
-        },
-        "enterprise": {
-          "name": "Enterprise",
-          "price": "Contact us",
-          "desc": "For large organizations",
-          "features": ["All Pro features", "Custom integrations", "Dedicated support", "SLA guarantee"]
-        }
-      }
+      "features_heading": "Key Features"
     },
     "legal": {
       "terms": {
         "title": "Terms of Service",
-        "last_updated": "Last updated",
-        "placeholder": "Terms of Service content will be placed here. Please replace with the actual legal document.",
-        "section1_title": "Article 1 (Application)",
-        "section1_content": "These terms set out the conditions for using Mannschaft (the \"Service\").",
-        "section2_title": "Article 2 (Registration)",
-        "section2_content": "Users shall register by agreeing to these terms and following the prescribed procedures.",
-        "section3_title": "Article 3 (Prohibited Activities)",
-        "section3_content": "Users may not engage in activities that violate laws or public order, or any other activities deemed inappropriate by the Service.",
-        "section4_title": "Article 4 (Disclaimer)",
-        "section4_content": "The Service accepts no liability for any interruption, termination, or modification of the Service.",
-        "section5_title": "Article 5 (Governing Law & Jurisdiction)",
-        "section5_content": "These terms shall be governed by Japanese law. The Tokyo District Court shall have exclusive jurisdiction over any disputes."
+        "seo_description": "Mannschaft Terms of Service: scope, account management, responsibilities of team administrators, fees, user content, disclaimers and governing law.",
+        "language_note": "The Japanese version of these Terms is the authoritative text. Translations are provided for reference only; in case of any discrepancy, the Japanese version prevails.",
+        "version_notice": "Version 1.0.0 — Enacted July 5, 2026",
+        "enacted_label": "Effective date",
+        "enacted_date": "2026-07-05",
+        "revised_label": "Last revised",
+        "revised_date": "2026-07-05",
+        "toc_label": "Table of contents",
+        "sections": [
+          {
+            "title": "Article 1 (Scope and Definitions)",
+            "content": [
+              "These Terms of Service (the \"Terms\") set out the conditions for use of the \"Mannschaft\" platform (the \"Service\") provided by the Mannschaft operator (the \"Company\"). Users shall use the Service only after agreeing to these Terms.",
+              "In these Terms: (1) \"User\" means any person who uses the Service; (2) \"Team\" means any team, organization or other group created on the Service; (3) \"Administrator\" means a User granted authority to manage a Team; and (4) \"Content\" means any text, images, files or other information that Users post to or store on the Service."
+            ]
+          },
+          {
+            "title": "Article 2 (Registration)",
+            "content": [
+              "Applicants shall apply for registration by the method prescribed by the Company after agreeing to these Terms. Registration is completed upon the Company’s approval.",
+              "The Company may decline an application in any of the following cases and has no obligation to disclose its reasons: (1) false statements, errors or omissions in the registration details; (2) a history of suspension or deregistration for breach of these Terms; (3) the applicant is, or is judged by the Company to be involved with, anti-social forces; or (4) the Company otherwise deems the registration inappropriate."
+            ]
+          },
+          {
+            "title": "Article 3 (Account Management)",
+            "content": [
+              "Users shall manage their email address, password and other credentials at their own responsibility and shall not share, lend or transfer them to any third party. The Company recommends the use of two-factor authentication (authenticator apps) and passkeys.",
+              "Except where the Company acts intentionally or with gross negligence, damage arising from inadequate management of credentials or from third-party use shall be borne by the User. Users shall promptly notify the Company upon becoming aware of possible unauthorized use of their account.",
+              "Users shall prepare, at their own cost and responsibility, the communication devices, software and other environment necessary to use the Service, and shall bear their own communication charges. The recommended environment is indicated within the Service."
+            ]
+          },
+          {
+            "title": "Article 4 (Use by Minors)",
+            "content": [
+              "Minors shall obtain the consent of a legal representative (parent or guardian) before using the Service. Registration by a person under 18 becomes effective only once linkage with the legal representative’s account (approval of consent) is completed, and the Service may not be used until such linkage is completed. The Company may request confirmation of consent where necessary.",
+              "Where a school or other organization creates a Team and uses the Service with the participation of children or students, the Administrator of that Team is responsible for obtaining the necessary consents and taking other appropriate measures. The handling of minors’ personal data is governed by the Privacy Policy.",
+              "For a child who is under 18 and of elementary school age or younger (in the Japanese school-age system, until the last day of the school year in which the child turns 12), the legal representative (parent or guardian) may, by the method prescribed by the Company, view and watch over the child’s schedule, attendance, affiliations, and notices from the Company, and may also perform, on the child’s behalf, the payment of membership fees and other operations within the scope displayed by the Company within the Service.",
+              "The authority to watch over and to act by proxy under the preceding paragraph automatically terminates on the first day (April 1) of the school year in which the child enters junior high school.",
+              "The legal representative shall be responsible for the results of any proxy operations that the legal representative performs, and the Company shall not be responsible for the results of such proxy operations except in cases of the Company’s intentional misconduct or gross negligence."
+            ]
+          },
+          {
+            "title": "Article 5 (Responsibilities of Teams and Administrators)",
+            "content": [
+              "Administrators acknowledge that, through the management of a Team, they handle members’ personal data (including names and contact details as well as attendance, dues payment status and health-related information such as treatment records stored in the health-record feature) and shall comply with the Act on the Protection of Personal Information and all other applicable laws.",
+              "Administrators shall use members’ personal data only for the purpose of managing the Team, shall not use it for other purposes or provide it to third parties without consent, and are responsible for properly explaining to members how their information is used.",
+              "Disputes arising within a Team (regarding dues, management policy, conflicts between members, etc.) shall be resolved between the parties concerned. The Company has no obligation to intervene except where it acts intentionally or with gross negligence.",
+              "Where a Team is dissolved or deleted, the handling of data stored in that Team (notifying members, preserving necessary data, etc.) is the responsibility of the Administrator. If an Administrator withdraws or is absent for an extended period, the Company may transfer authority to another member or take other measures necessary to maintain the operation of the Team."
+            ]
+          },
+          {
+            "title": "Article 6 (Fees and Payment)",
+            "content": [
+              "The core features of the Service are free of charge. Certain additional features (such as optional modules) may be subject to fees depending on the number or nature of the features selected; fees and billing conditions are displayed within the Service.",
+              "The Company may change the content and fees of paid plans. Any change will be announced in advance within the Service or by other appropriate means.",
+              "Fees already paid are, in principle, non-refundable, except where a refund is required by law.",
+              "Paid plans renew automatically on the same conditions unless the User completes the cancellation procedure. Cancellation takes effect at the end of the current billing period, and no pro-rata refund is made for mid-period cancellation, except where a refund is required by law."
+            ]
+          },
+          {
+            "title": "Article 7 (Payments and Dues Collection)",
+            "content": [
+              "Payment processing on the Service is performed through payment processors (such as Stripe). The Company does not store credit card numbers or other raw payment data (see the Privacy Policy for details).",
+              "The dues-collection feature merely provides a means of monetary exchange between a Team and its members. The setting, collection and refund of dues and all other handling of money are the responsibility of the Team, and any dispute arising therefrom shall be resolved between the parties concerned."
+            ]
+          },
+          {
+            "title": "Article 8 (Content)",
+            "content": [
+              "Copyright and other rights in Content belong to the User or the rightful owner.",
+              "Users grant the Company a non-exclusive, royalty-free licence to use Content (by reproduction, display, adaptation, etc.) to the extent necessary to provide, maintain and improve the Service and to address defects.",
+              "Users shall endeavour to keep their own backups of important data, for example by using the Service’s export features.",
+              "Content that a User or Administrator sets to public may be viewed by an unspecified audience, including third parties not registered with the Service. The User or Administrator who made the Content public is responsible for the visibility settings and the consequences of publication."
+            ]
+          },
+          {
+            "title": "Article 9 (Prohibited Acts)",
+            "content": [
+              "Users must not engage in any of the following: (1) acts that violate laws or public order and morals; (2) acts that infringe the intellectual property, portrait rights, privacy, honour or other rights or interests of others; (3) impersonation of others or registration or transmission of false information; (4) unauthorized access, placing excessive load on the Service’s servers or networks, or otherwise obstructing the operation of the Service; (5) collecting information from the Service by scraping or other automated means without the Company’s prior consent; (6) collecting, publishing or providing to third parties the personal data of other Users without their consent; (7) spam, indiscriminate solicitation or interference with business; (8) providing benefits to or otherwise cooperating with anti-social forces; or (9) any other act the Company reasonably deems inappropriate."
+            ]
+          },
+          {
+            "title": "Article 10 (Intellectual Property)",
+            "content": [
+              "Intellectual property rights in the programs, designs, logos, documents and other elements of the Service belong to the Company or to rightful owners who license them to the Company. Users shall not reproduce, repost, modify or distribute them beyond the scope permitted by these Terms."
+            ]
+          },
+          {
+            "title": "Article 11 (Privacy and Personal Data)",
+            "content": [
+              "The Company’s handling of personal data is governed by the Privacy Policy. Users shall agree to the Privacy Policy before using the Service.",
+              "Within a Team, the registered full name is, in principle, displayed to other members. Publicly visible profiles use a separately configured nickname (display name). Users join Teams with knowledge of and consent to the foregoing.",
+              "In the social features, Users may create and act through anonymous personas (up to three). These Terms also apply to activity under anonymous personas, and the Company will respond to lawful disclosure requests based on registered information to the extent required by law."
+            ]
+          },
+          {
+            "title": "Article 12 (Security)",
+            "content": [
+              "The Company implements reasonable security measures, including encrypted communication, access control and the provision of multi-factor authentication (see the Privacy Policy for details).",
+              "Users shall cooperate in keeping their own accounts secure, for example by managing passwords appropriately and logging out on shared devices."
+            ]
+          },
+          {
+            "title": "Article 13 (Outsourcing and Advertising)",
+            "content": [
+              "The Company may outsource all or part of the operation of the Service to third parties. The handling of personal data by contractors is governed by the Privacy Policy.",
+              "The Company may display advertisements of the Company or third parties on the Service. Transactions with advertisers are conducted at the User’s own responsibility, and the Company is not liable for damage arising from such transactions except in cases of the Company’s intent or gross negligence.",
+              "The types of targeted advertising and the opt-out procedure are governed by the Privacy Policy."
+            ]
+          },
+          {
+            "title": "Article 14 (Changes, Suspension and Termination of the Service)",
+            "content": [
+              "The Company may change, add to or discontinue the content of the Service at any time. Changes that materially affect Users will be announced in advance within the Service or by other appropriate means.",
+              "The Company may temporarily suspend all or part of the Service due to maintenance, failures, natural disasters or other unavoidable circumstances.",
+              "If the Company terminates the Service as a whole, it will in principle give prior notice within a reasonable period and endeavour to provide Users with an opportunity to export their data."
+            ]
+          },
+          {
+            "title": "Article 15 (Withdrawal)",
+            "content": [
+              "Users may request withdrawal at any time through the procedure prescribed by the Company.",
+              "Upon withdrawal, the Company anonymizes personal data such as name, email address and avatar. Posts, activity history and statistical data remain on the Service in a form that cannot identify the individual. The timing of erasure of personal data and the procedure for deletion requests under applicable law are governed by Article 11 of the Privacy Policy."
+            ]
+          },
+          {
+            "title": "Article 16 (Suspension and Deregistration)",
+            "content": [
+              "If the Company reasonably judges that a User has breached or is likely to breach these Terms, it may, without prior notice, delete the User’s posts, temporarily suspend use or deregister the User.",
+              "The Company is not liable for damage caused to Users by measures under this Article, except where it acts intentionally or with gross negligence."
+            ]
+          },
+          {
+            "title": "Article 17 (No Assignment; Business Transfer)",
+            "content": [
+              "Users may not assign, transfer or pledge as security their contractual status or their rights and obligations under these Terms to any third party without the Company’s prior written consent.",
+              "If the Company transfers the business relating to the Service to a third party (including business transfers, company splits and any other case in which the business is transferred), the Company may, in connection with such transfer, assign to the transferee the contractual status, the rights and obligations under these Terms and the Users’ registered and other information, and Users hereby consent in advance to such succession."
+            ]
+          },
+          {
+            "title": "Article 18 (No Warranty; Limitation of Liability)",
+            "content": [
+              "The Company provides the Service on an as-is basis and does not warrant its fitness for any particular purpose, completeness, accuracy or continuity.",
+              "Where a User suffers damage attributable to the Company, the Company’s liability is limited to direct and ordinary damage and capped at the total fees the User paid to the Company in the twelve months preceding the occurrence of the damage (or 10,000 yen if that total is less than 10,000 yen); provided that this limitation does not apply in cases of the Company’s intent or gross negligence or where limitation of liability is not permitted by law."
+            ]
+          },
+          {
+            "title": "Article 19 (Compensation by Users)",
+            "content": [
+              "A User who breaches these Terms and thereby causes damage to the Company or a third party shall be liable to compensate for that damage (including reasonable attorney fees)."
+            ]
+          },
+          {
+            "title": "Article 20 (Exclusion of Anti-Social Forces)",
+            "content": [
+              "Users represent and warrant, now and in the future, that they are not organized crime groups, members thereof or persons equivalent thereto (\"Anti-Social Forces\") and that they have no socially condemnable relationship with Anti-Social Forces. The Company may deregister a User without prior notice for breach of this Article."
+            ]
+          },
+          {
+            "title": "Article 21 (Amendment of the Terms)",
+            "content": [
+              "These Terms may be amended pursuant to Article 548-4 of the Civil Code of Japan (amendment of standard terms) where the amendment conforms to the general interest of Users or is reasonable and not contrary to the purpose of the contract.",
+              "When amending these Terms, the Company will set an effective date and announce the amended content and effective date in advance within the Service or by other appropriate means."
+            ]
+          },
+          {
+            "title": "Article 22 (Communications and Notices)",
+            "content": [
+              "Communications and notices from the Company to Users are made by display within the Service or by email to the registered address, and are deemed to have arrived at the time they would normally arrive. Communications from Users to the Company shall be made through the contact form within the Service."
+            ]
+          },
+          {
+            "title": "Article 23 (Severability)",
+            "content": [
+              "Even if any provision of these Terms or part thereof is held invalid or unenforceable under law, the remaining provisions shall continue in full force and effect."
+            ]
+          },
+          {
+            "title": "Article 24 (Survival)",
+            "content": [
+              "Articles 8, 10, 18, 19, 22, 23, 25 and 26, together with this Article, shall survive the termination of the use contract."
+            ]
+          },
+          {
+            "title": "Article 25 (Governing Law and Jurisdiction)",
+            "content": [
+              "These Terms are governed by the laws of Japan. The Oita District Court or the Oita Summary Court has exclusive jurisdiction in the first instance over any dispute arising out of or in connection with the Service."
+            ]
+          },
+          {
+            "title": "Article 26 (Language)",
+            "content": [
+              "The Japanese text of these Terms is authoritative. Even where the Company provides translations for reference, the Japanese version prevails in case of any discrepancy between the Japanese version and a translation."
+            ]
+          }
+        ]
       },
       "privacy": {
         "title": "Privacy Policy",
-        "last_updated": "Last updated",
-        "placeholder": "Privacy Policy content will be placed here. Please replace with the actual legal document.",
-        "section1_title": "1. Information We Collect",
-        "section1_content": "We collect information such as email address and name when you register for an account.",
-        "section2_title": "2. How We Use Information",
-        "section2_content": "Collected information is used for service provision, improvement, and customer support.",
-        "section3_title": "3. Sharing Information",
-        "section3_content": "We do not share personal information with third parties without consent, except as required by law.",
-        "section4_title": "4. Security",
-        "section4_content": "We implement appropriate security measures including SSL/TLS encryption and regular backups.",
-        "section5_title": "5. Contact",
-        "section5_content": "For inquiries regarding personal information handling, please contact us via the contact form."
+        "last_updated": "Last Updated",
+        "version_notice": "Version 1.1.0 / Updated June 25, 2026",
+        "section1_title": "Article 1: About Us",
+        "section1_content": "Mannschaft (hereinafter \"the Company\") is committed to protecting your personal information. This Privacy Policy (\"the Policy\") governs the handling of personal information in connection with the team management platform \"Mannschaft\" (\"the Service\"). Your consent to this Policy is required to use the Service.",
+        "section2_title": "Article 2: Information We Collect",
+        "section2_content": "We collect the following personal information from you.\n\n[Account Registration]\n- Email address\n- First and last name, display name (nickname)\n- Date of birth (for age verification and minor protection)\n- Postal code and country of residence (for regional services and location-targeted advertising)\n- Password (stored as a bcrypt hash; never stored in plain text)\n\n[Profile & Activity]\n- Profile photo / avatar\n- Teams, organizations, and sports types you belong to\n- Schedules, shifts, and attendance records\n- Messages, comments, and other posted content\n\n[System Information]\n- IP address, device info, and browser info\n- Login history, operation logs, and pages visited\n- Cookies and session data\n\n[Payment Information]\n- Payments are processed by Stripe, Inc. We do not store raw payment data such as card numbers or CVV.",
+        "section3_title": "Article 3: Purpose of Use",
+        "section3_content": "We use the personal information we collect for the following purposes:\n\n1. Providing, operating, maintaining, and improving the Service\n2. User authentication and account management\n3. Customer support and inquiry handling\n4. Notifications about important updates and service changes\n5. Legal compliance and prevention of unauthorized use or security breaches\n6. Advertising (see Article 4): Delivering location- and attribute-targeted ads using postal code, date of birth, and group affiliations\n7. Aggregation & analysis (see Article 5): Statistical analysis, service improvement, and business reporting in non-personally identifiable form\n\nWe will not use your information for any purpose beyond the above.",
+        "section4_title": "Article 4: Advertising & Targeting",
+        "section4_content": "Some features of the Service are provided free of charge through advertising revenue. We may use your information in the following ways when delivering ads:\n\n[Types of Targeted Advertising]\n- Location targeting (postal code, prefecture): e.g., ads for nearby sports shops\n- Attribute targeting (age group, sport type, team size): e.g., equipment relevant to your sport\n- Contextual targeting (content of the page you are viewing): e.g., sports-related ads on the schedule page\n\n[What We Do NOT Do]\n- Sell personal information directly (we do not sell your name, email, etc. to advertisers)\n- Provide detailed individual behavioral profiles to advertisers\n- Deliver ads based on sensitive information (health, religion, political views, etc.)\n- Target users under 18 with behavioral ads (see Article 13)\n\n[Opt-Out]\nYou can opt out of targeted advertising in Account Settings (Settings › Privacy). After opting out, only general (non-targeted) ads will be displayed.",
+        "section5_title": "Article 5: Aggregated Data Analysis & External Use",
+        "section5_content": "We may use aggregated and anonymized data—data from which no individual can be identified—for the following purposes:\n- Analyzing usage trends and improving features\n- Creating and publishing industry reports and statistics\n- Measuring and improving ad effectiveness\n- Business reporting for investors and partners\n\n[Conditions for Sharing Aggregated Data Externally]\n- Recipients are contractually prohibited from re-identifying individuals\n- The purpose is limited to research and statistics in the sports/community field\n- Data that may be cross-referenced with personal information requires your consent (Japanese Act on the Protection of Personal Information, 2022 amendment)\n\n[What We Explicitly Do NOT Do]\n- Sell personal information (we do not sell names, emails, phone numbers, or precise location data for monetary consideration)\n- Sell individually identifiable behavioral profiles or scoring data",
+        "section6_title": "Article 6: Third-Party Disclosure of Personal Information",
+        "section6_content": "Except for the aggregated data described in Article 5, we do not disclose your personal information to third parties except in the following cases:\n\n- When required by law (e.g., lawful requests from investigative authorities)\n- When necessary to protect the life, body, or property of you or a third party\n- When necessary for public health or the healthy development of children\n- When necessary for a government body or local authority to carry out duties prescribed by law\n- When you have given explicit consent",
+        "section7_title": "Article 7: Service Providers",
+        "section7_content": "We may entrust the processing of personal information to the following providers for the purpose of delivering the Service. All providers are required to meet our personal information protection standards.\n\n- Infrastructure & Storage: Amazon Web Services, Inc. (USA) - Servers and data storage\n- CDN & Security: Cloudflare, Inc. (USA) - Speed optimization and DDoS protection\n- Payment Processing: Stripe, Inc. (USA) - Membership fees and billing\n- Email Delivery: Amazon Simple Email Service (USA) - Authentication emails and notifications",
+        "section8_title": "Article 8: Cookies & Access Logs",
+        "section8_content": "[Types of Cookies]\n- Essential Cookies (login session maintenance, CSRF protection): Cannot be disabled (disabling them will prevent login)\n- Functional Cookies (saving preferences such as dark mode): Manageable from Account Settings\n- Advertising Cookies (frequency control and effectiveness measurement for targeted ads): Can be opted out via Account Settings (Settings › Privacy) or browser settings\n\nFor users in the EU/EEA, we obtain consent for non-essential cookies on first access.\n\n[Access Logs]\nWe retain IP addresses, access timestamps, and operation logs for up to 90 days for security monitoring and incident response.",
+        "section9_title": "Article 9: Administrator Account Access",
+        "section9_content": "To maintain service quality, provide customer support, and investigate unauthorized use, authorized system administrators may operate the Service on behalf of your account.\n\n[Conditions]\n1. Limited purpose: Only for customer support, technical investigation, and legal compliance checks\n2. Limited personnel: Only system administrators with explicit authorization\n3. Audit logging: All access is logged with the operator, purpose, reason, and timestamp\n4. Minimum necessary: Access is limited to the minimum scope required to achieve the purpose\n\nThis feature is a standard support practice used by major SaaS platforms such as Zendesk and Shopify.",
+        "section10_title": "Article 10: Security",
+        "section10_content": "We implement the following technical and organizational measures:\n\n- Encrypted communications (TLS/HTTPS)\n- bcrypt password hashing (no plain-text storage)\n- Role-based access control (RBAC)\n- Multi-factor authentication (TOTP authenticator apps, Passkey/WebAuthn)\n- Regular vulnerability scanning of dependencies\n\nIn the event of a personal information breach, we will promptly notify you and the relevant supervisory authority.",
+        "section11_title": "Article 11: Your Rights",
+        "section11_content": "- Access & Correction: You can review and update your personal information in Account Settings (/settings/profile)\n- Data Portability: You can request a data export from Account Settings\n- Withdrawal & Deletion: Upon withdrawal, we will erase your personal information within 30 days as required by GDPR Art. 17. Data required to be retained by law and anonymized aggregate data may be kept\n- Advertising Opt-Out: See Article 4\n\nUsers in the EU/EEA may also exercise rights under GDPR Art. 15-22 (restriction of processing, right to object, etc.).",
+        "section12_title": "Article 12: International Data Transfers",
+        "section12_content": "The Service uses AWS, Cloudflare, and other providers headquartered in the United States, so your personal information may be transferred to and stored outside Japan.\n\nFor data of EU/EEA residents, transfers are made under Standard Contractual Clauses (SCCs) pursuant to GDPR Art. 46, or other appropriate safeguards.",
+        "section13_title": "Article 13: Minors' Personal Information",
+        "section13_content": "Minors may use the Service in accordance with Article 4 of the Terms of Service: the prior consent of a legal representative (parent or guardian) and linkage with the guardian’s account (approval of consent) are required.\n\n- We do not deliver targeted advertising to users under 18\n- If we learn that the Service is being used without the consent of a legal representative, we may suspend use or take other appropriate measures\n- Date of birth collected at registration is used solely for age verification; only age groups (e.g., 20s, 30s) are used for ad targeting\n\nFor a child of elementary school age or younger (in the Japanese school-age system, until the last day of the school year in which the child turns 12), the legal representative (parent or guardian) may view and watch over the child’s schedule, attendance, affiliations, and notices from the Company, and may perform, on the child’s behalf, the payment of membership fees and other operations within the scope displayed by the Company within the Service (Article 4 of the Terms of Service). For this watching-over and proxy operation, we disclose the child’s personal data to the legal representative to the extent necessary for the purpose of the watching-over and proxy operation. This authority automatically terminates on the first day (April 1) of the school year in which the child enters junior high school.",
+        "section14_title": "Article 14: Changes to This Policy",
+        "section14_content": "We may update this Policy from time to time in response to legal changes or service updates.\n\n- Material changes (new purposes, new data collection, new third-party sharing, etc.) will be notified in advance via in-service notice or email\n- Minor changes will be indicated by updating the \"Last Updated\" date on this page\n- Your continued use of the Service after any revision constitutes your acceptance of the updated Policy",
+        "section15_title": "Article 15: Contact Us",
+        "section15_content": "For inquiries about personal information handling, advertising opt-out, or to exercise your rights, please contact us through the in-service inquiry form. We may ask you to provide your registered email address for identity verification."
+      },
+      "commerce": {
+        "title": "Commercial Transactions Act Disclosure",
+        "seo_description": "Mannschaft's disclosure under Japan's Act on Specified Commercial Transactions, including seller information, payment methods, and refund/cancellation policy.",
+        "items": {
+          "seller": { "label": "Seller", "value": "Mannschaft Operations Office" },
+          "manager": { "label": "Person in Charge of Operations", "value": "Disclosed without delay upon request from prospective customers" },
+          "address": { "label": "Address", "value": "Disclosed without delay upon request from prospective customers" },
+          "phone": { "label": "Phone Number", "value": "Disclosed without delay upon request from prospective customers" },
+          "contact": { "label": "Contact (How to Reach Us)", "value": "After logging in, please contact us via the \"Suggestion Box\" in the header at the top of the screen. Requests to disclose our address and phone number are also accepted through this channel." },
+          "price": { "label": "Selling Price", "value": "Prices follow those displayed on the purchase screen for each service, ticket, etc. (tax included)." },
+          "extraFee": { "label": "Additional Costs Besides the Selling Price", "value": "Internet connection fees and other communication charges are borne by the customer." },
+          "paymentMethod": { "label": "Payment Method", "value": "Credit card and other payment methods displayed on each purchase screen (payment processing is provided by Stripe, Inc.)." },
+          "paymentTiming": { "label": "Timing of Payment", "value": "Payment is finalized when the purchase procedure is completed. Subscriptions (recurring billing) are charged on each renewal date." },
+          "serviceTiming": { "label": "Timing of Service Provision", "value": "Available immediately after payment is completed." },
+          "refund": { "label": "Returns, Cancellations, and Refunds", "value": "Due to the nature of the service, refunds and cancellations after payment is completed are generally not accepted. However, for payments where a team or organization is the seller (tickets, membership fees, etc.), Mannschaft is a platform that provides the venue for the transaction, and whether a refund is available and its conditions are governed by the policy set by the relevant team or organization. Please contact the individual seller for details." },
+          "environment": { "label": "Operating Environment", "value": "The latest version of major browsers (Chrome / Safari / Edge / Firefox) is recommended." }
+        }
       }
     },
     "features_detail": {
@@ -176,12 +582,12 @@
         "copyright": "© 2026 MANNSCHAFT"
       },
       "sfc": {
-        "menu_start": "▶ はじめる",
-        "menu_continue": "　つづきから",
-        "menu_features": "　きのう一覧",
-        "save_dialog": "このぼうけんを　セーブしますか？",
-        "yes": "はい",
-        "no": "いいえ"
+        "menu_start": "▶ START",
+        "menu_continue": "　CONTINUE",
+        "menu_features": "　FEATURES",
+        "save_dialog": "Save this adventure?",
+        "yes": "YES",
+        "no": "NO"
       },
       "y1998": {
         "under_construction": "🚧 Under Construction 🚧",
@@ -190,6 +596,527 @@
         "best_viewed": "Best viewed in Netscape Navigator 4.0 at 800×600 resolution",
         "made_with": "♦ Made with Notepad ♦",
         "welcome_message": "★ Welcome to Mannschaft! The all-in-one platform to maximize your team's power ★"
+      }
+    },
+    "v2": {
+      "seo_title": "Mannschaft — Which door is yours?",
+      "hero": {
+        "badge": "Individuals, teams, organizations — all in one",
+        "cta_register": "Start free",
+        "login_prompt": "Already have an account?",
+        "login_link": "Log in",
+        "title_segments": [
+          "Chat apps, spreadsheets, single-purpose tools — bring it all into ",
+          "one place."
+        ],
+        "subtitle_segments": [
+          "An all-in-one platform for running things — whoever you are: an individual, a team, or an organization."
+        ],
+        "no_download_note": "No app download needed — start right in your browser"
+      },
+      "scope": {
+        "heading": "Which door is yours?",
+        "subheading": "Your entry point to Mannschaft depends on where you stand.",
+        "tab_personal": "Individual",
+        "tab_team": "Team",
+        "tab_org": "Organization",
+        "personal": {
+          "role_badge": "The participant",
+          "tagline": "For you — the one who books and takes part.",
+          "f0": "Keep point cards and QR member passes in one wallet",
+          "f1": "Your schedule and attendance in a single calendar",
+          "f2": "A personal dashboard across every team you belong to",
+          "mock_caption": "My dashboard"
+        },
+        "team": {
+          "role_badge": "The organizer",
+          "tagline": "For you — the one who runs the show.",
+          "f0": "Build shift tables, gather preferences, notify when set",
+          "f1": "Tally event attendance and send reminders",
+          "f2": "Collect dues and see who has paid at a glance",
+          "mock_caption": "Team dashboard"
+        },
+        "org": {
+          "role_badge": "The one who binds it together",
+          "tagline": "For you — the one who leads a larger organization.",
+          "f0": "Digitize voting rights and proxies for general meetings",
+          "f1": "Circulate documents with digital seals and read receipts",
+          "f2": "Keep resident registers and rosters safe",
+          "mock_caption": "Organization dashboard"
+        }
+      },
+      "stats": {
+        "users": "Users",
+        "teams": "Teams",
+        "organizations": "Organizations",
+        "heading_segments": [
+          "This many people are already on board"
+        ]
+      },
+      "features": {
+        "detail_link": "Learn more",
+        "close": "Close",
+        "items": {
+          "team": {
+            "title": "Team & organization management",
+            "desc": "Invite members and set roles and permissions with clarity. See who can do what at a glance.",
+            "points": [
+              "Invite members and set roles and permissions",
+              "Toggle only the features you use on or off (admins)",
+              "Manage team and organization levels under one account"
+            ]
+          },
+          "schedule": {
+            "title": "Schedule & attendance",
+            "desc": "Share plans and confirm attendance with one tap. Reminders are sent automatically.",
+            "points": [
+              "See all your teams' and personal events in one calendar",
+              "Answer attendance with one tap: attend, absent, undecided",
+              "Two-way sync of personal events with Google Calendar"
+            ]
+          },
+          "reservation": {
+            "title": "Reservations",
+            "desc": "Accept bookings by time slot or by staff. Capacity, full slots and cancellations are handled automatically.",
+            "points": [
+              "Book by tapping an open slot on the availability grid",
+              "Track status with badges: pending, confirmed, cancelled",
+              "Manage blocked slots and notification email recipients"
+            ]
+          },
+          "shift": {
+            "title": "Shift management",
+            "desc": "From gathering preferences and building the roster to notifying everyone once it is set.",
+            "points": [
+              "Collect shift preferences on a 5-level scale and review them in a matrix",
+              "Track progress through draft, collecting, adjusting and published stages",
+              "Members view confirmed shifts by month or week and request swaps"
+            ]
+          },
+          "chat": {
+            "title": "Chat",
+            "desc": "Keep conversations tidy with channels, and reply casually with threads and reactions.",
+            "points": [
+              "Organize conversations into channels per topic",
+              "Create channels per team or organization",
+              "React to messages casually with emoji"
+            ]
+          },
+          "timeline": {
+            "title": "Timeline",
+            "desc": "Share what is happening in your team through a familiar feed.",
+            "points": [
+              "Post short updates to a per-team feed",
+              "Keep loose conversations going with replies",
+              "Admins can pin important posts"
+            ]
+          },
+          "circulation": {
+            "title": "Circulars & digital seals",
+            "desc": "Pass documents around in sequence or all at once, with stamps and read status made visible.",
+            "points": [
+              "Circulate documents in order or to everyone at once",
+              "Recipients confirm by stamping with their registered digital seal",
+              "Track progress such as the number of stamps in real time"
+            ]
+          },
+          "survey": {
+            "title": "Surveys & voting",
+            "desc": "Build questions and tally answers, anonymous or named, with results shown as charts.",
+            "points": [
+              "Question types: single choice, multiple choice, free text, rating and date",
+              "Fine-grained settings for anonymity and result visibility",
+              "Manage responses with statuses and response counts"
+            ]
+          },
+          "files": {
+            "title": "File sharing",
+            "desc": "Organize documents and photos into folders and share them safely with the right people.",
+            "points": [
+              "Set the minimum role that can view each folder or file",
+              "Disable downloads per file when needed",
+              "Share externally with expiring public links (admin-issued)"
+            ]
+          },
+          "billing": {
+            "title": "Dues & payments",
+            "desc": "From issuing dues to checking payment status and sending reminders, all online.",
+            "points": [
+              "Manage dues invoices and payment status online",
+              "Recurring payments run automatically once a card is registered",
+              "Unpaid content stays protected behind a paywall"
+            ]
+          },
+          "matching": {
+            "title": "Matching & tournaments",
+            "desc": "From finding opponents to running tournaments and recording results.",
+            "points": [
+              "Search the whole platform for opponents and exchanges",
+              "Filter by type — match, practice, exchange — and level",
+              "Tournament management automates standings, fixtures and rankings"
+            ]
+          },
+          "safety": {
+            "title": "Emergency safety check",
+            "desc": "In a disaster or emergency, ask everyone at once and tally their status.",
+            "points": [
+              "Admins trigger a safety check for everyone at once (drill mode available)",
+              "Tally responses and response rates in real time",
+              "Review past checks and details afterwards"
+            ]
+          },
+          "qr": {
+            "title": "QR member pass",
+            "desc": "Issue member passes as QR codes and verify identity with a simple scan at the door.",
+            "points": [
+              "Issue digital member passes as QR codes",
+              "Check the check-in history",
+              "Suspend and resume passes as needed"
+            ]
+          },
+          "wallet": {
+            "title": "Point card wallet",
+            "desc": "Keep point cards from every shop together on your phone.",
+            "points": [
+              "Register up to 200 of your point cards",
+              "Group cards and switch quickly with a swipe",
+              "Show the barcode full-screen at the register, with biometric lock support"
+            ]
+          },
+          "karte": {
+            "title": "Health records",
+            "desc": "Keep intake forms, treatment records and progress together with photos and charts.",
+            "points": [
+              "Create records for treatments and progress",
+              "Organize with draft and final statuses plus pinning",
+              "Open details quickly in a dialog"
+            ]
+          },
+          "village": {
+            "title": "Village (community)",
+            "desc": "A relaxed common ground that connects people beyond a single team.",
+            "points": [
+              "Join villages of people who share your purpose (approval-based too)",
+              "Mingle via boards, timelines and the well-side lobby",
+              "From festival calls to meeting date votes and monthly chronicles"
+            ]
+          }
+        },
+        "heading_segments": [
+          "Features, right when you need them."
+        ],
+        "subheading_segments": [
+          "Tap any feature to open a quick explanation."
+        ],
+        "pricing_note_segments": [
+          "Core features are free. Add-on modules are opt-in — pick only what you need (picking many may require a paid plan)."
+        ],
+        "growing_title": "Mannschaft is still growing.",
+        "growing_note_segments": [
+          "Features keep being added, shaped by the voices of the people who use it."
+        ],
+        "can_do_label": "What you can do",
+        "more_label": "More details",
+        "less_label": "Hide details"
+      },
+      "usecases": {
+        "sports_team": "Sports team",
+        "clinic": "Osteopathic clinic",
+        "school": "School",
+        "alumni": "Alumni association",
+        "salon": "Hair salon",
+        "mansion": "Condo management association",
+        "neighborhood": "Neighborhood association",
+        "gym": "Gym",
+        "restaurant": "Restaurant",
+        "circle": "Club / circle",
+        "heading_segments": [
+          "The ways to use it are endless."
+        ],
+        "subheading_segments": [
+          "The same tools, a different role for every user."
+        ]
+      },
+      "cta": {
+        "register": "Start free",
+        "pricing_prompt": "Curious about pricing?",
+        "pricing_link": "See pricing plans",
+        "faq_heading": "Frequently asked questions",
+        "faq": {
+          "0": {
+            "q": "Is it free to use?",
+            "a": "Personal accounts and core features are free. Add-on modules are opt-in, and picking many may require a paid plan."
+          },
+          "1": {
+            "q": "Can I use it on my phone?",
+            "a": "Yes. It works right in your browser on phones and tablets — no app install needed."
+          },
+          "2": {
+            "q": "Can I belong to several teams?",
+            "a": "With a single account you can belong to multiple teams and organizations and switch between them."
+          },
+          "3": {
+            "q": "Can I export my data?",
+            "a": "Yes. Bulk export in CSV and JSON formats is supported."
+          },
+          "4": {
+            "q": "How about security?",
+            "a": "Traffic is TLS-encrypted, with two-factor authentication (authenticator app, passkeys) and role-based access control."
+          },
+          "5": {
+            "q": "What happens to my data if I leave?",
+            "a": "Personal data is erased within 30 days of a withdrawal request (GDPR-compliant). Posts and statistics remain in a form that cannot identify you."
+          },
+          "6": {
+            "q": "Which languages are supported?",
+            "a": "Six languages: Japanese, English, German, Spanish, Korean and Chinese."
+          },
+          "7": {
+            "q": "What if a feature I want is missing?",
+            "a": "Send us a request via the contact form. Mannschaft is a growing platform that adds features based on user feedback."
+          },
+          "8": {
+            "q": "Can people under 18 use it?",
+            "a": "Users under 18 can use the service only after linking to a parent (legal guardian) account and receiving their consent approval. The service cannot be used until linking is complete. In particular, children of elementary-school age or younger (before entering junior high school) are covered by \"Watch Mode\", in which a parent can view their schedules, attendance, memberships, and announcements to keep an eye on them and pay membership fees on their behalf (this ends automatically when the child enters junior high school).",
+            "a_terms_note": "See {link} for details.",
+            "a_terms_link": "Article 4 of the Terms of Service"
+          },
+          "9": {
+            "q": "Can I keep an eye on an elderly family member?",
+            "a": "Yes. With the consent of the person or their family, you can register a \"watcher\", and their family is automatically notified of attendance, arrival, and departure at events, as well as an absence alert when someone who is expected to attend cannot be confirmed as having arrived. There is no automatic registration based on age; it is always set up based on the consent of the person and their family."
+          }
+        },
+        "retro_hint": "🎮 Sometimes the screen goes retro… maybe?",
+        "heading_segments": [
+          "Start free."
+        ],
+        "subheading_segments": [
+          "A personal account is free. You can create a team later."
+        ]
+      },
+      "usecase_pages": {
+        "common": {
+          "back": "← Back to top",
+          "story_heading": "With Mannschaft, it goes like this",
+          "chips_heading": "Features used",
+          "cta": "Start free"
+        },
+        "sports_team": {
+          "title": "Sports team",
+          "problem": "Attendance gets lost in chat threads, dues are collected in cash, and photos live on someone else’s phone. Is one person carrying all the busywork?",
+          "story": [
+            "Add practices and matches to the calendar — members get attendance requests and reminders automatically",
+            "Bill monthly dues online, see who has paid at a glance, and let overdue reminders send themselves",
+            "Find opponents through matching, and let tournament management compute standings automatically",
+            "Collect match photos in the gallery and chat about the game afterwards",
+            "Settle trip expenses and pick dates with polls in the same place"
+          ],
+          "chips": [
+            "Schedule & attendance",
+            "Dues & payments",
+            "Matching & tournaments",
+            "Gallery",
+            "Chat"
+          ]
+        },
+        "clinic": {
+          "title": "Osteopathic clinic",
+          "problem": "Phone bookings interrupt treatments, and paper records take time to find and hand over.",
+          "story": [
+            "Publish booking slots so patients pick an opening from their phone",
+            "Automatic reminders the day before reduce no-shows",
+            "Record treatments and progress in health records, together with photos and body charts",
+            "Check-in is a single scan of the QR member pass",
+            "At busy times, the queue manager shows live waiting status"
+          ],
+          "chips": [
+            "Reservations",
+            "Health records",
+            "QR member pass",
+            "Queue management",
+            "Service history"
+          ]
+        },
+        "school": {
+          "title": "School",
+          "problem": "Parent communication relies on printed notes, and tallying event attendance or managing PTA dues eats time.",
+          "story": [
+            "Share events and open days on the calendar and tally attendance automatically",
+            "Send notices via boards and circulars — read receipts end the \"did it reach them?\" worry",
+            "Collect PTA dues online and check payment status in one list",
+            "Run parent surveys with forms and see results as charts",
+            "Manage timetables per term, including notices for last-minute changes"
+          ],
+          "chips": [
+            "Schedule & attendance",
+            "Circulars",
+            "Dues & payments",
+            "Surveys",
+            "Timetables"
+          ]
+        },
+        "alumni": {
+          "title": "Alumni association",
+          "problem": "Confirming contact details every few years is a huge task, and the organizer burden pushes reunions further away.",
+          "story": [
+            "Keep the member roster online — members update their own contact details",
+            "Send reunion invitations in one go and collect RSVPs with a tap",
+            "Collect fees cashlessly with online payments",
+            "Share photos from the day in the gallery as an archive",
+            "Pick the next date with a quick poll"
+          ],
+          "chips": [
+            "Member management",
+            "Schedule & attendance",
+            "Dues & payments",
+            "Gallery",
+            "Surveys"
+          ]
+        },
+        "salon": {
+          "title": "Hair salon",
+          "problem": "Phone bookings pile up, and each customer’s history lives only in the staff’s memory.",
+          "story": [
+            "Publish per-stylist booking slots so customers book their favorite from their phone",
+            "Day-before reminders reduce no-shows",
+            "Record treatments and products used in service history to shape the next visit",
+            "Handle staff shifts from preference collection to confirmation in the app",
+            "Encourage repeat visits with QR member passes and mail campaigns"
+          ],
+          "chips": [
+            "Reservations",
+            "Service history",
+            "Shift management",
+            "QR member pass",
+            "Mail delivery"
+          ]
+        },
+        "mansion": {
+          "title": "Condo management association",
+          "problem": "Proxies for the general meeting come back on paper, and circulars stall — nobody knows who has read what.",
+          "story": [
+            "Vote on meeting agenda items electronically, with online proxy submission",
+            "Distribute board decisions via circulars, with digital seals making confirmation visible",
+            "Manage unit and resident information safely in the resident register",
+            "Handle parking space assignment and vacancies in the app",
+            "Take guest room and common room bookings online"
+          ],
+          "chips": [
+            "Voting & proxies",
+            "Circulars & digital seals",
+            "Resident register",
+            "Parking management",
+            "Facility reservations"
+          ]
+        },
+        "neighborhood": {
+          "title": "Neighborhood association",
+          "problem": "The paper circular is slow to arrive, and in an emergency the only channel is a phone tree.",
+          "story": [
+            "Digitize the circular — pass it in sequence or send it to everyone, with visible read status",
+            "Share festival and clean-up dates on the calendar and tally participants automatically",
+            "Collect association dues online, ending door-to-door collection",
+            "In a disaster, send a safety check to everyone at once and tally the answers",
+            "Share event photos in the gallery as a community record"
+          ],
+          "chips": [
+            "Circulars",
+            "Emergency safety check",
+            "Schedule & attendance",
+            "Dues & payments",
+            "Gallery"
+          ]
+        },
+        "gym": {
+          "title": "Gym",
+          "problem": "Member passes, entry checks and monthly fees are scattered across separate tools.",
+          "story": [
+            "Issue QR member passes — a scan at the entrance checks members in",
+            "Publish class booking slots that close automatically when full",
+            "Collect monthly fees online, with automatic reminders for overdue members",
+            "Manage staff and trainer shifts from preferences to confirmation",
+            "Announce new programs to everyone at once"
+          ],
+          "chips": [
+            "QR member pass",
+            "Reservations",
+            "Dues & payments",
+            "Shift management",
+            "Announcements"
+          ]
+        },
+        "restaurant": {
+          "title": "Restaurant",
+          "problem": "Shift preferences drown in the group chat, and there are no hands free for the waiting line at peak time.",
+          "story": [
+            "Collect staff shift preferences in the app, build the roster and notify once confirmed",
+            "Hourly wage settings give you a running view of labor costs",
+            "Run the waiting list by QR code — guests check their place from their phone and get called when it’s their turn",
+            "Take and manage table reservations online in one place",
+            "Keep staff communication tidy in a store channel"
+          ],
+          "chips": [
+            "Shift management",
+            "Queue management",
+            "Reservations",
+            "Chat"
+          ]
+        },
+        "circle": {
+          "title": "Club / circle",
+          "problem": "Attendance is unpredictable, which makes booking venues hard — and trip expenses live in someone’s notes.",
+          "story": [
+            "Put activity days on the calendar and collect attendance automatically",
+            "Settle trip and event expenses transparently",
+            "Chat for daily talk, the board for announcements that matter",
+            "Turn activity photos into albums in the gallery",
+            "Take newcomer sign-ups with a form"
+          ],
+          "chips": [
+            "Schedule & attendance",
+            "Dues & payments",
+            "Chat",
+            "Gallery",
+            "Forms"
+          ]
+        }
+      },
+      "pwa": {
+        "heading_segments": [
+          "No app store needed. Use it as an app, right here."
+        ],
+        "desc_segments": [
+          "Mannschaft is a PWA — add it to your home screen and it opens like an app, no download required."
+        ],
+        "button": "Add to home screen",
+        "guide": {
+          "guide_button": "See how to add it",
+          "guide_title": "How to add to your home screen",
+          "tab_ios": "iPhone / iPad",
+          "tab_android": "Android",
+          "tab_desktop": "PC (Chrome / Edge)",
+          "android_step1": "Open this page in Chrome",
+          "android_step2": "Tap the menu (⋮) at the top right",
+          "android_step3": "Choose “Install app” or “Add to Home screen”",
+          "android_step4": "Tap “Install” to finish",
+          "desktop_step1": "Open this page in Chrome or Edge",
+          "desktop_step2": "Click the install icon (⊕) at the right end of the address bar",
+          "desktop_step3": "Or choose “Install app” from the menu",
+          "desktop_step4": "Click “Install” to finish",
+          "close": "Close"
+        }
+      },
+      "trust": {
+        "heading": "Our commitment to safety and security",
+        "badges": {
+          "minor": "Parental link required under 18",
+          "auth": "Two-factor auth & passkeys",
+          "i18n": "6 languages supported",
+          "encryption": "Encrypted communication & data",
+          "gdpr": "GDPR compliant",
+          "watch": "Watching over children & elderly family",
+          "safety": "Emergency group safety check"
+        }
       }
     }
   }

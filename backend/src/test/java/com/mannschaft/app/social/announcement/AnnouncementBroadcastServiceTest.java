@@ -254,7 +254,7 @@ class AnnouncementBroadcastServiceTest {
 
         return BroadcastRequest.builder()
                 .channel(channel)
-                .targetRole("MEMBERS_ONLY")
+                .targetRole("MEMBERS_AND_ABOVE")
                 .targetTeamIds(targetTeamIds)
                 .priority(priority)
                 .content(AnnouncementContentRequest.builder()

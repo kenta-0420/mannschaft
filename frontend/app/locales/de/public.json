@@ -2,96 +2,105 @@
   "public": {
     "admin": {
       "publicVisible": {
-        "label": "Öffentliche Sichtbarkeit",
+        "label": "Öffentlich anzeigen",
         "enabledLabel": "Öffentlich",
-        "disabledLabel": "Verborgen",
-        "toggleAriaLabel": "Sichtbarkeit des Beitrags umschalten",
-        "enableConfirm": "Diesen Beitrag öffentlich machen?",
-        "disableConfirm": "Diesen Beitrag aus der öffentlichen Ansicht ausblenden?",
-        "saveFailed": "Aktualisierung fehlgeschlagen. Bitte erneut versuchen."
+        "disabledLabel": "Nicht öffentlich",
+        "toggleAriaLabel": "Öffentlichkeit des Beitrags umschalten",
+        "enableConfirm": "Diesen Beitrag veröffentlichen?",
+        "disableConfirm": "Diesen Beitrag auf privat setzen?",
+        "saveFailed": "Umschalten fehlgeschlagen. Bitte versuchen Sie es erneut"
       },
       "nameDisclosure": {
-        "title": "投稿者識別モード",
-        "displayName": "表示名で表示",
-        "realName": "本名で表示",
-        "warningTitle": "本名表示への切替について",
-        "warningBody": "この設定を有効にすると、以降の投稿に投稿者の本名が表示されます。一度公開された本名は外部に拡散する可能性があり、完全な取り消しはできません。",
-        "warningCheckbox": "上記の内容を理解した上で切り替える",
-        "confirmButton": "確認して切り替える",
-        "cancelButton": "キャンセル",
-        "historyTitle": "切替履歴",
-        "changedAt": "変更日時",
-        "changedBy": "変更者",
-        "fromMode": "変更前",
-        "toMode": "変更後"
+        "title": "Autorenidentifikationsmodus",
+        "displayName": "Mit Anzeigename anzeigen",
+        "realName": "Mit echtem Namen anzeigen",
+        "warningTitle": "Über den Wechsel zur Anzeige des echten Namens",
+        "warningBody": "Wenn Sie diese Einstellung aktivieren, wird in zukünftigen Beiträgen der echte Name des Autors angezeigt. Einmal veröffentlichte echte Namen können sich extern verbreiten und können nicht vollständig rückgängig gemacht werden.",
+        "warningCheckbox": "Nach Verständnis des Obigen wechseln",
+        "confirmButton": "Bestätigen und wechseln",
+        "cancelButton": "Abbrechen",
+        "historyTitle": "Änderungsverlauf",
+        "changedAt": "Änderungszeitpunkt",
+        "changedBy": "Geändert von",
+        "fromMode": "Vor der Änderung",
+        "toMode": "Nach der Änderung"
       }
     },
     "layout": {
-      "skipToContent": "本文へスキップ",
-      "login": "ログイン",
-      "register": "新規登録",
+      "skipToContent": "Zum Inhalt springen",
+      "login": "Anmelden",
+      "register": "Registrieren",
       "siteName": "Mannschaft",
-      "openMenu": "メニューを開く"
+      "openMenu": "Menü öffnen"
+    },
+    "breadcrumb": {
+      "home": "Startseite",
+      "discoverTeams": "Teams entdecken",
+      "discoverOrganizations": "Organisationen entdecken"
     },
     "team": {
-      "title": "{name} - 公開ページ",
-      "memberCount": "{n}人のメンバー",
-      "memberCountLabel": "メンバー数",
-      "philosophyTitle": "理念",
-      "mapTitle": "地図",
-      "homepageLabel": "公式サイト",
-      "establishedAt": "設立: {date}"
+      "title": "{name} - Öffentliche Seite",
+      "memberCount": "{n} Mitglieder",
+      "memberCountLabel": "Mitgliederanzahl",
+      "philosophyTitle": "Philosophie",
+      "mapTitle": "Karte",
+      "homepageLabel": "Offizielle Website",
+      "establishedAt": "Gegründet: {date}",
+      "geoDescription": "Dies ist die öffentliche Seite von {name} mit Sitz in {prefecture}{city}.",
+      "geoDescriptionNoLocation": "Dies ist die öffentliche Seite von {name}."
     },
     "organization": {
-      "title": "{name} - 公開ページ",
-      "philosophyTitle": "理念",
-      "mapTitle": "地図",
-      "homepageLabel": "公式サイト",
-      "establishedAt": "設立: {date}"
+      "title": "{name} - Öffentliche Seite",
+      "philosophyTitle": "Philosophie",
+      "mapTitle": "Karte",
+      "homepageLabel": "Offizielle Website",
+      "establishedAt": "Gegründet: {date}",
+      "geoDescription": "Dies ist die öffentliche Seite von {name} mit Sitz in {prefecture}{city}.",
+      "geoDescriptionNoLocation": "Dies ist die öffentliche Seite von {name}."
     },
     "posts": {
-      "sectionTitle": "公開投稿",
-      "empty": "公開された投稿はまだありません",
-      "loading": "読み込み中...",
-      "readMore": "続きを読む",
-      "publishedAt": "公開: {date}",
-      "backToList": "一覧に戻る",
-      "totalCount": "全 {n} 件",
+      "sectionTitle": "Öffentliche Beiträge",
+      "empty": "Noch keine öffentlichen Beiträge",
+      "loading": "Wird geladen...",
+      "readMore": "Weiterlesen",
+      "publishedAt": "Veröffentlicht: {date}",
+      "backToList": "Zurück zur Liste",
+      "totalCount": "Gesamt: {n}",
       "page": "{page} / {total}",
-      "next": "次へ",
-      "prev": "前へ"
+      "next": "Weiter",
+      "prev": "Zurück"
     },
     "author": {
-      "anonymous": "投稿者",
-      "member": "メンバー",
-      "organizer": "主催者",
-      "anonymousAvatarAlt": "投稿者（匿名表示）"
+      "anonymous": "Autor",
+      "member": "Mitglied",
+      "organizer": "Organisator",
+      "anonymousAvatarAlt": "Autor (anonym angezeigt)"
     },
     "cta": {
-      "join": "このチームに参加する",
-      "joinOrganization": "この組織に参加する",
-      "login": "ログインしてもっと見る",
-      "register": "新規登録",
-      "ctaHeading": "Mannschaft に参加しませんか？",
-      "ctaDescription": "メンバーになると、チームメンバーや活動内容をすべて閲覧できます。"
+      "join": "Diesem Team beitreten",
+      "joinOrganization": "Dieser Organisation beitreten",
+      "login": "Anmelden für mehr",
+      "register": "Registrieren",
+      "ctaHeading": "Möchten Sie Mannschaft beitreten?",
+      "ctaDescription": "Als Mitglied können Sie alle Teammitglieder und Aktivitäten einsehen."
     },
     "error": {
-      "notFound": "指定されたページは存在しないか、公開されていません",
-      "notFoundTitle": "ページが見つかりません",
-      "loadFailed": "情報の取得に失敗しました",
-      "rateLimit": "アクセスが集中しています。しばらく経ってから再度お試しください",
-      "backToHome": "トップへ戻る"
+      "notFound": "Die angegebene Seite existiert nicht oder ist nicht veröffentlicht",
+      "notFoundTitle": "Seite nicht gefunden",
+      "loadFailed": "Informationen konnten nicht geladen werden",
+      "rateLimit": "Zu viele Anfragen. Bitte versuchen Sie es später erneut",
+      "backToHome": "Zur Startseite"
     },
     "discover": {
       "teams": {
-        "title": "Öffentliche Teams suchen",
+        "title": "Öffentliche Teams entdecken",
         "searchPlaceholder": "Nach Teamname suchen",
-        "noResults": "Keine Teams gefunden, die den Kriterien entsprechen"
+        "noResults": "Keine Teams gefunden"
       },
       "organizations": {
-        "title": "Öffentliche Organisationen suchen",
+        "title": "Öffentliche Organisationen entdecken",
         "searchPlaceholder": "Nach Organisationsname suchen",
-        "noResults": "Keine Organisationen gefunden, die den Kriterien entsprechen"
+        "noResults": "Keine Organisationen gefunden"
       },
       "filter": {
         "keyword": "Stichwort",
@@ -103,44 +112,44 @@
         "memberCount": "{count} Mitglieder",
         "lastPost": "Letzter Beitrag: {date}",
         "noPost": "Keine Beiträge",
-        "viewDetail": "Details anzeigen"
+        "viewDetail": "Details ansehen"
       }
     },
     "meta": {
-      "ogDescriptionDefault": "Mannschaft の公開ページ",
+      "ogDescriptionDefault": "Öffentliche Seite von Mannschaft",
       "ogSiteName": "Mannschaft"
     },
     "userProfile": {
       "title": "Profil von {name}",
       "memberSince": "Mitglied seit {date}",
       "posts": "Öffentliche Beiträge",
-      "noPosts": "Noch keine öffentlichen Beiträge"
+      "noPosts": "Keine öffentlichen Beiträge"
     },
     "profileVisibility": {
-      "title": "Profil-Sichtbarkeitseinstellungen",
-      "description": "Wenn das öffentliche Profil aktiviert ist, können auch nicht angemeldete Benutzer Ihr Profil sehen",
+      "title": "Profilsichtbarkeitseinstellungen",
+      "description": "Wenn Sie das öffentliche Profil aktivieren, können auch nicht angemeldete Benutzer Ihr Profil einsehen",
       "enable": "Öffentliches Profil aktivieren",
-      "saved": "Profil-Sichtbarkeitseinstellungen gespeichert",
-      "saveError": "Fehler beim Speichern der Profil-Sichtbarkeitseinstellungen"
+      "saved": "Profilsichtbarkeitseinstellungen gespeichert",
+      "saveError": "Fehler beim Speichern der Profilsichtbarkeitseinstellungen"
     },
     "comments": {
       "title": "Kommentare",
       "empty": "Noch keine Kommentare",
       "placeholder": "Kommentar eingeben (max. 1000 Zeichen)",
-      "submit": "Absenden",
+      "submit": "Veröffentlichen",
       "delete": "Löschen",
-      "loginToComment": "Bitte melden Sie sich an, um zu kommentieren",
+      "loginToComment": "Bitte anmelden, um zu kommentieren",
       "loginLink": "Anmelden",
-      "deleteConfirm": "Möchten Sie diesen Kommentar wirklich löschen?"
+      "deleteConfirm": "Diesen Kommentar löschen?"
     },
     "publicSettings": {
       "title": "Öffentlichkeitseinstellungen",
       "timelinePostsPublic": "Timeline-Beiträge öffentlich machen",
-      "timelinePostsPublicDescription": "Wenn aktiviert, können auch nicht angemeldete Benutzer Timeline-Beiträge sehen",
+      "timelinePostsPublicDescription": "Wenn aktiviert, können auch nicht angemeldete Benutzer Timeline-Beiträge einsehen",
       "publicEventsEnabled": "Veranstaltungen öffentlich machen",
-      "publicEventsEnabledDescription": "Wenn aktiviert, können auch nicht angemeldete Benutzer Veranstaltungsinformationen sehen",
+      "publicEventsEnabledDescription": "Wenn aktiviert, können auch nicht angemeldete Benutzer Veranstaltungsinformationen einsehen",
       "saved": "Gespeichert",
-      "saveError": "Fehler beim Speichern"
+      "saveError": "Speichern fehlgeschlagen"
     },
     "timeline": {
       "title": "Timeline-Beiträge",
@@ -149,6 +158,16 @@
     "events": {
       "title": "Veranstaltungen",
       "empty": "Keine Veranstaltungen"
+    },
+    "tabs": {
+      "posts": "Beiträge",
+      "timeline": "Timeline",
+      "events": "Veranstaltungen",
+      "activities": "Aktivitätsprotokolle"
+    },
+    "activities": {
+      "sectionTitle": "Aktivitätsprotokolle",
+      "empty": "Noch keine öffentlichen Aktivitätsprotokolle"
     }
   }
 }

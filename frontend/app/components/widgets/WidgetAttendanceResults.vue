@@ -4,7 +4,7 @@ import type { ScheduleResponse } from '~/types/schedule'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
 }>()
 
 const { listSchedules, getAttendances } = useScheduleApi()
@@ -29,9 +29,11 @@ async function load() {
   loading.value = true
   schedules.value = []
   try {
-    const now = new Date()
-    const from = new Date(now.getTime() - 30 * 86400000).toISOString().slice(0, 19)
-    const to = new Date(now.getTime() + 30 * 86400000).toISOString().slice(0, 19)
+    // toISOString() は UTC 壁時計を返すため、裸で送ると全ユーザーで9時間ずれた範囲を引いていた。
+    // ユーザーTZ基準のオフセット付き文字列で送る（Issue #2508 / BE は PR #2596 で受理可能）。
+    const now = dayjs().tz(userTimezone.value)
+    const from = now.subtract(30, 'day').format()
+    const to = now.add(30, 'day').format()
     const res = await listSchedules(props.scopeType, props.scopeId, { from, to, size: 10 })
     schedules.value = (res.data as ScheduleResponse[]).filter((s) => s.attendanceStats !== null)
   } catch (err) {

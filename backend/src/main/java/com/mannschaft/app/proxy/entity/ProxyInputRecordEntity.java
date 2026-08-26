@@ -35,8 +35,12 @@ public class ProxyInputRecordEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /** 根拠となる同意書ID（FK→proxy_input_consents.id）。 */
-    @Column(nullable = false, updatable = false)
+    /**
+     * 根拠となる同意書ID（FK→proxy_input_consents.id）。
+     * 後見切替セッション（F08.9 P3c・{@code input_source=GUARDIANSHIP_SWITCH}）は
+     * 紙の同意書を伴わないため {@code null}（V74.010 で NULLABLE 化）。
+     */
+    @Column(updatable = false)
     private Long proxyInputConsentId;
 
     /** 本人ユーザーID（集計用冗長保持）。 */
@@ -124,6 +128,13 @@ public class ProxyInputRecordEntity {
         /** 電話ヒアリングによる聴取 */
         PHONE_INTERVIEW,
         /** 対面での直接聴取 */
-        IN_PERSON
+        IN_PERSON,
+        /**
+         * 後見切替セッション（F08.9 P3c）。
+         * 保護者が子として acting-as するオンライン代理であり、紙・電話・対面のいずれでもない。
+         * 監査の正確性のため IN_PERSON 等を流用せず専用値を持つ（03_security §3.2 二重記録）。
+         * input_source カラムは VARCHAR(32)・CHECK なし（V18.012）のため enum 追加のみで表現できる。
+         */
+        GUARDIANSHIP_SWITCH
     }
 }

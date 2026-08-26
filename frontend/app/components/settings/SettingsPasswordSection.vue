@@ -14,13 +14,13 @@ defineEmits<{
 </script>
 
 <template>
-  <SectionCard :title="hasPassword ? 'パスワード変更' : 'パスワード設定'">
+  <SectionCard :title="hasPassword ? $t('settings.password.section_title_change') : $t('settings.password.section_title_set')">
     <div class="space-y-4">
       <p v-if="!hasPassword" class="text-sm text-surface-500">
-        現在パスワードが設定されていません。パスワードを設定することでメール・パスワードでもログインできるようになります。
+        {{ $t('settings.password.no_password_description') }}
       </p>
       <div v-if="hasPassword">
-        <label class="mb-1 block text-sm font-medium">現在のパスワード</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.current_password') }}</label>
         <Password
           v-model="passwordForm.currentPassword"
           :feedback="false"
@@ -30,16 +30,17 @@ defineEmits<{
         />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">新しいパスワード</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.new_password') }}</label>
         <Password
           v-model="passwordForm.newPassword"
           toggle-mask
           class="w-full"
           input-class="w-full"
         />
+        <p class="mt-1 text-xs text-surface-500">{{ $t('settings.password.policy_hint') }}</p>
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">新しいパスワード（確認）</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.confirm_password') }}</label>
         <Password
           v-model="passwordForm.confirmPassword"
           :feedback="false"
@@ -51,7 +52,8 @@ defineEmits<{
       <p v-if="passwordError" class="text-sm text-red-500">{{ passwordError }}</p>
       <div class="flex justify-end">
         <Button
-          :label="hasPassword ? 'パスワードを変更' : 'パスワードを設定'"
+          translate="no"
+          :label="hasPassword ? $t('settings.password.change_button') : $t('settings.password.set_button')"
           icon="pi pi-lock"
           :loading="submittingPassword"
           :disabled="!canSubmitPassword"

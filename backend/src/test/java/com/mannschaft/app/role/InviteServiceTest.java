@@ -1,7 +1,10 @@
 package com.mannschaft.app.role;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.membership.dto.MembershipCreateRequest;
+import com.mannschaft.app.membership.service.MembershipService;
 import com.mannschaft.app.role.dto.CreateInviteTokenRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import com.mannschaft.app.role.dto.InviteTokenResponse;
@@ -15,7 +18,7 @@ import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.scopefolder.dto.ScopeFolderResponse;
 import com.mannschaft.app.scopefolder.entity.AssignedVia;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
 import com.mannschaft.app.team.entity.TeamEntity;
@@ -71,6 +74,12 @@ class InviteServiceTest {
 
     @Mock
     private MyScopeFolderRepository myScopeFolderRepository;
+
+    @Mock
+    private MembershipService membershipService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private InviteService inviteService;
@@ -201,7 +210,7 @@ class InviteServiceTest {
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole()));
 
             // When
-            List<InviteTokenResponse> result = inviteService.getInviteTokens(TEAM_ID, "TEAM");
+            List<InviteTokenResponse> result = inviteService.getInviteTokens(TEAM_ID, "TEAM", USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -219,7 +228,7 @@ class InviteServiceTest {
             given(roleRepository.findById(ROLE_ID)).willReturn(Optional.of(createRole()));
 
             // When
-            List<InviteTokenResponse> result = inviteService.getInviteTokens(ORG_ID, "ORGANIZATION");
+            List<InviteTokenResponse> result = inviteService.getInviteTokens(ORG_ID, "ORGANIZATION", USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -244,7 +253,7 @@ class InviteServiceTest {
             given(inviteTokenRepository.findById(TOKEN_ID)).willReturn(Optional.of(token));
 
             // When
-            inviteService.revokeInviteToken(TOKEN_ID);
+            inviteService.revokeInviteToken(TOKEN_ID, USER_ID);
 
             // Then
             assertThat(token.getRevokedAt()).isNotNull();
@@ -257,7 +266,7 @@ class InviteServiceTest {
             given(inviteTokenRepository.findById(TOKEN_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> inviteService.revokeInviteToken(TOKEN_ID))
+            assertThatThrownBy(() -> inviteService.revokeInviteToken(TOKEN_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("ROLE_002"));
@@ -339,6 +348,19 @@ class InviteServiceTest {
             verify(userRoleRepository).save(any(UserRoleEntity.class));
             verify(myScopeFolderService).addItemWithAssignedVia(USER_ID, 999L, TEAM_ID, AssignedVia.DEFAULT);
             assertThat(token.getUsedCount()).isEqualTo(1);
+            // F00.5 認可基盤根治: memberships にも MEMBER として入会させる（join 経由）
+            org.mockito.ArgumentCaptor<MembershipCreateRequest> captor =
+                    org.mockito.ArgumentCaptor.forClass(MembershipCreateRequest.class);
+            verify(membershipService).join(captor.capture());
+            MembershipCreateRequest joinReq = captor.getValue();
+            assertThat(joinReq.getUserId()).isEqualTo(USER_ID);
+            assertThat(joinReq.getScopeType())
+                    .isEqualTo(com.mannschaft.app.membership.domain.ScopeType.TEAM);
+            assertThat(joinReq.getScopeId()).isEqualTo(TEAM_ID);
+            assertThat(joinReq.getRoleKind())
+                    .isEqualTo(com.mannschaft.app.membership.domain.RoleKind.MEMBER);
+            assertThat(joinReq.getInvitedBy()).isEqualTo(CREATED_BY);
+            assertThat(joinReq.getSource()).isEqualTo("INVITE_TOKEN");
         }
 
         @Test

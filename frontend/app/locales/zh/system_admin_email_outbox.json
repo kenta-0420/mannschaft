@@ -1,62 +1,62 @@
 {
   "email_outbox": {
-    "title": "メール送信キュー",
+    "title": "邮件发送队列",
     "metrics": {
-      "pending": "待機中",
-      "dead_letter": "デッドレター",
-      "success_rate": "24h 成功率",
-      "oldest_pending": "最古待機（秒）"
+      "pending": "等待中",
+      "dead_letter": "死信",
+      "success_rate": "24小时成功率",
+      "oldest_pending": "最旧等待（秒）"
     },
     "filter": {
-      "status": "ステータス",
-      "source_domain": "送信元ドメイン",
-      "from_date": "開始日",
-      "to_date": "終了日",
-      "all_statuses": "全ステータス",
-      "apply": "適用",
-      "clear": "クリア"
+      "status": "状态",
+      "source_domain": "来源域",
+      "from_date": "开始日期",
+      "to_date": "结束日期",
+      "all_statuses": "全部状态",
+      "apply": "应用",
+      "clear": "清除"
     },
     "table": {
       "id": "ID",
-      "status": "ステータス",
-      "template": "テンプレート",
-      "source": "送信元",
-      "retry_count": "リトライ回数",
-      "created_at": "作成日時",
+      "status": "状态",
+      "template": "模板",
+      "source": "来源",
+      "retry_count": "重试次数",
+      "created_at": "创建时间",
       "actions": "操作"
     },
     "detail": {
-      "title": "詳細",
-      "to_address": "宛先",
-      "payload_vars": "テンプレート変数",
-      "ses_message_id": "SES メッセージ ID",
-      "body_purged": "本文は GDPR ポリシーにより消去済みです",
-      "next_attempt_at": "次回試行予定",
-      "sent_at": "送信日時",
-      "last_error": "最後のエラー",
-      "locale": "ロケール",
-      "source_domain": "送信元ドメイン",
-      "source_event_id": "送信元イベント ID"
+      "title": "详情",
+      "to_address": "收件人",
+      "payload_vars": "模板变量",
+      "ses_message_id": "SES 消息 ID",
+      "body_purged": "正文已根据 GDPR 政策删除",
+      "next_attempt_at": "下次重试时间",
+      "sent_at": "发送时间",
+      "last_error": "最后错误",
+      "locale": "语言",
+      "source_domain": "来源域",
+      "source_event_id": "来源事件 ID"
     },
     "action": {
-      "retry": "再試行",
-      "cancel": "キャンセル",
-      "back": "一覧へ戻る"
+      "retry": "重试",
+      "cancel": "取消",
+      "back": "返回列表"
     },
     "status": {
-      "PENDING": "待機中",
-      "SENDING": "送信中",
-      "SENT": "送信済み",
-      "FAILED": "失敗",
-      "DEAD_LETTER": "デッドレター",
-      "CANCELLED": "キャンセル済み"
+      "PENDING": "等待中",
+      "SENDING": "发送中",
+      "SENT": "已发送",
+      "FAILED": "失败",
+      "DEAD_LETTER": "死信",
+      "CANCELLED": "已取消"
     },
-    "retry_success": "再試行キューに登録しました",
-    "cancel_success": "キャンセルしました",
-    "retry_conflict": "この状態では再試行できません",
-    "cancel_conflict": "この状態ではキャンセルできません",
-    "load_failed": "データの取得に失敗しました",
-    "no_data": "データがありません",
+    "retry_success": "已加入重试队列",
+    "cancel_success": "已取消",
+    "retry_conflict": "当前状态无法重试",
+    "cancel_conflict": "当前状态无法取消",
+    "load_failed": "获取数据失败",
+    "no_data": "暂无数据",
     "na": "N/A"
   }
 }

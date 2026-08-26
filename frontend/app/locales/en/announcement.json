@@ -25,37 +25,40 @@
     "empty": "No new announcements.",
     "pin_limit_reached": "You can pin up to 5 announcements.",
     "already_registered": "This content is already registered as an announcement.",
-    "broadcast_button_team": "チーム内告知",
-    "broadcast_button_org": "組織内告知",
-    "wizard_title": "告知を送る",
-    "step1_title": "対象範囲",
-    "step2_title": "チャネルを選ぶ",
-    "step3_title": "内容を入力",
+    "no_longer_available": "This announcement is no longer available, so it has been removed from the list.",
+    "mark_all_read_partial": "Marked {count} announcements as read. Some unread ones remain — press again to continue.",
+    "broadcast_button_team": "Team Announcement",
+    "broadcast_button_org": "Organization Announcement",
+    "wizard_title": "Send Announcement",
+    "step1_title": "Target Scope",
+    "step2_title": "Choose Channel",
+    "step3_title": "Enter Content",
     "step_of": "{current} / {total}",
-    "target_role_label": "誰に届けますか？",
-    "target_role_members_only": "メンバーのみ",
-    "target_role_supporters_and_above": "サポーター以上",
-    "target_role_public": "全員（公開）",
-    "target_teams_label": "対象チームを選択",
-    "target_teams_all": "すべてのチーム",
-    "target_teams_specific": "特定のチームを選ぶ",
-    "template_select_placeholder": "テンプレートから読み込む",
-    "template_quick_broadcast": "このテンプレートで告知する",
-    "channel_bulletin": "掲示板",
-    "channel_timeline": "タイムライン",
-    "channel_blog": "ブログ",
-    "channel_todo": "TODO（タスク配布）",
-    "channel_schedule": "スケジュール",
-    "channel_survey": "アンケート",
-    "channel_disabled_tooltip": "このスコープでは {channel} が無効です",
-    "todo_assignee_hint": "担当者はTODOページでADMINが割り当てるか、各メンバーが名乗り出てください",
-    "priority_label": "優先度",
-    "expires_at_label": "表示期限（任意）",
-    "preview_title": "プレビュー",
-    "submit_button": "告知を送る",
-    "unsaved_changes_warning": "入力内容が失われますがよいですか？",
-    "broadcast_success": "告知を送信しました",
-    "broadcast_success_cta": "お知らせウィジェットを確認する",
+    "target_role_label": "Who do you want to reach?",
+    "target_role_members_only": "Members only",
+    "target_role_supporters_and_above": "Supporters and above",
+    "target_role_public": "Everyone (Public)",
+    "target_teams_label": "Select target teams",
+    "target_teams_all": "All teams",
+    "target_teams_specific": "Select specific teams",
+    "template_select_placeholder": "Load from template",
+    "template_quick_broadcast": "Announce with this template",
+    "channel_bulletin": "Bulletin",
+    "channel_timeline": "Timeline",
+    "channel_blog": "Blog",
+    "channel_todo": "TODO (Task Distribution)",
+    "channel_schedule": "Schedule",
+    "channel_survey": "Survey",
+    "channel_disabled_tooltip": "{channel} is not available in this scope",
+    "todo_assignee_hint": "Assignees can be set by ADMIN on the TODO page, or members can volunteer.",
+    "priority_label": "Priority",
+    "expires_at_label": "Display deadline (optional)",
+    "preview_title": "Preview",
+    "submit_button": "Send Announcement",
+    "unsaved_changes_warning": "Your input will be lost. Are you sure?",
+    "broadcast_success": "Announcement sent",
+    "broadcast_error_generic": "Failed to send the announcement",
+    "broadcast_success_cta": "Check the announcement widget",
     "form_title": "Title",
     "form_body": "Body",
     "form_start_at": "Start Date/Time",
@@ -65,10 +68,67 @@
     "form_description": "Description (optional)",
     "form_closes_at": "Closing Date/Time (optional)",
     "survey_questions_hint": "Questions can be added from the survey edit page after sending.",
-    "template_name_label": "テンプレート名",
-    "template_set_default": "デフォルトとして設定",
-    "template_create": "テンプレートとして保存",
-    "template_save_success": "テンプレートを保存しました",
-    "template_delete_confirm": "このテンプレートを削除しますか？"
+    "template_name_label": "Template Name",
+    "template_set_default": "Set as default",
+    "template_create": "Save as template",
+    "template_name_placeholder": "Enter a template name",
+    "template_save_success": "Template saved",
+    "template_save_failed": "Failed to save template",
+    "template_delete_confirm": "Are you sure you want to delete this template?",
+    "incident": {
+      "dismiss": "Dismiss"
+    },
+    "broadcast_guide": {
+      "toggle": "使い方",
+      "description": "告知ウィザードの使い方を、ステップ順にまとめました。上から順に進めれば告知を送れます。",
+      "audience": {
+        "title": "誰に届けるか（対象範囲）",
+        "body": "告知を見せる相手の範囲を決めます（最初のステップ）。",
+        "steps": {
+          "step1": "届け先をメンバーのみ／サポーター以上／全員（公開）から選ぶ",
+          "step2": "（組織告知のみ）対象チームを『すべて』または個別に選ぶ"
+        }
+      },
+      "template": {
+        "title": "テンプレートで時短",
+        "body": "よく使う宛先設定を呼び出し・保存できます。",
+        "steps": {
+          "step1": "『テンプレートから読み込む』で宛先を自動入力",
+          "step2": "（管理者のみ）『テンプレートとして保存』で現在の範囲を登録（1範囲あたり20件まで）"
+        }
+      },
+      "channel": {
+        "title": "届け方を選ぶ（チャネル）",
+        "body": "掲示板・タイムライン・ブログ・TODO・スケジュール・アンケートから配信先を1つ選びます。",
+        "steps": {
+          "step1": "6つのカードから1つ選ぶ",
+          "step2": "『次へ』。※テンプレに既定チャネルがあるとこの画面は省略されます"
+        }
+      },
+      "content": {
+        "title": "内容を書く",
+        "body": "選んだチャネルに合わせて入力欄が変わります。＊印は必須です。",
+        "steps": {
+          "step1": "タイトル・本文など必須欄を入力",
+          "step2": "例: スケジュールは開始日時、タイムラインは本文が必須"
+        }
+      },
+      "priority": {
+        "title": "優先度と表示期限",
+        "body": "目立たせ方と掲載の終了日時を設定できます。",
+        "steps": {
+          "step1": "（管理者以上）優先度を通常／重要／緊急から選ぶ。一般メンバーは『通常』固定",
+          "step2": "表示期限を任意で設定"
+        }
+      },
+      "submit": {
+        "title": "送信して確認",
+        "body": "入力が揃うと送信できます。送信後はお知らせに表示されます。",
+        "steps": {
+          "step1": "『告知を送る』を押す",
+          "step2": "送信完了を確認。※アンケートの設問・TODOの担当者は送信後に各画面で追加します"
+        }
+      }
+    }
   }
 }

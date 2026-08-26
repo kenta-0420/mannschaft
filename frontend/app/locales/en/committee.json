@@ -42,7 +42,7 @@
       "archive": "Archive",
       "leave": "Leave committee",
       "remove_member": "Remove member",
-      "remove_member_confirm": "{name} を解任しますか？"
+      "remove_member_confirm": "Remove {name} from the committee?"
     },
     "distributions": {
       "title": "Distribution History",

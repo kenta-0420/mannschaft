@@ -1,7 +1,10 @@
 package com.mannschaft.app.tournament.entry;
 
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.common.ErrorCode;
 import com.mannschaft.app.common.pdf.PdfGeneratorService;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MemberDto;
@@ -57,26 +60,114 @@ public class TournamentEntryMemberService {
     private final MemberQueryDispatcher memberQueryDispatcher;
     private final UserRepository userRepository;
     private final PdfGeneratorService pdfGeneratorService;
+    private final AccessControlService accessControlService;
 
     // =========================================================
-    // IDOR検証チェーン
+    // IDOR検証チェーン（存在束縛）
     // =========================================================
 
     /**
-     * IDOR検証チェーン: orgId → tId → divId → pId の帰属を確認し、参加チームを返す。
-     * いずれか失敗した場合は PARTICIPANT_NOT_FOUND で 404 を返す。
+     * 大会をパスの組織 ID に束縛して取得する。不存在・他組織の大会は 404 で存在秘匿する。
+     *
+     * @param orgId        パスの組織 ID
+     * @param tId          大会 ID
+     * @param notFoundCode 不一致時に投げるエラーコード（404 マップ済みであること）
+     * @return パス org に属する大会エンティティ
      */
-    private TournamentParticipantEntity resolveParticipant(Long orgId, Long tId, Long divId, Long pId) {
-        TournamentEntity tournament = tournamentRepository.findById(tId)
+    private TournamentEntity resolveTournamentInOrg(Long orgId, Long tId, ErrorCode notFoundCode) {
+        return tournamentRepository.findById(tId)
                 .filter(t -> orgId.equals(t.getOrganizationId()))
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(notFoundCode));
+    }
 
+    /**
+     * IDOR検証チェーン: tId → divId → pId の帰属を確認し、参加チームを返す。
+     * いずれか失敗した場合は PARTICIPANT_NOT_FOUND で 404 を返す。
+     *
+     * @param tId   {@link #resolveTournamentInOrg} で org 束縛済みの大会 ID
+     * @param divId ディビジョン ID
+     * @param pId   参加チーム ID
+     * @return 当該ディビジョン配下の参加チーム
+     */
+    private TournamentParticipantEntity resolveParticipant(Long tId, Long divId, Long pId) {
         divisionRepository.findByIdAndTournamentId(divId, tId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
 
         return participantRepository.findById(pId)
                 .filter(p -> divId.equals(p.getDivisionId()))
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.PARTICIPANT_NOT_FOUND));
+    }
+
+    // =========================================================
+    // scope 認可（BOLA 回避: 認可 scope は必ずエンティティ由来の値で判定する）
+    // =========================================================
+
+    /**
+     * エントリー表の閲覧権限を検証する。
+     *
+     * <p>根拠: 設計書 {@code docs/features/F08.7_tournament_league.md} §Phase9 API 一覧
+     * 「エントリー一覧＋チームメンバー候補取得 / エントリー表PDF出力 = MEMBER+（自チームのみ）」および
+     * 同 §テスト観点「{@code GET /entry-members 403 他チームユーザーはアクセス不可}」。</p>
+     *
+     * <p>エントリー表は選手の {@code userId} と実名を保持するため、参加チーム
+     * （<b>エンティティ由来</b> {@code participant.teamId}）の MEMBER 以上、または主催組織
+     * （<b>エンティティ由来</b> {@code tournament.organizationId}）の ADMIN/DEPUTY_ADMIN のみ許可する。
+     * 主催組織 ADMIN を許すのは、主催者がエントリー状況を確認・是正する運用があるため
+     * （同 API 一覧の書込権限に「ADMIN, DEPUTY_ADMIN(MANAGE_TOURNAMENT)」が並ぶのと整合）。</p>
+     */
+    private void checkEntryViewable(Long currentUserId, TournamentEntity tournament,
+                                    TournamentParticipantEntity participant) {
+        if (accessControlService.isSystemAdmin(currentUserId)) {
+            return;
+        }
+        if (accessControlService.isMember(currentUserId, participant.getTeamId(), "TEAM")) {
+            return;
+        }
+        if (accessControlService.isAdminOrAbove(
+                currentUserId, tournament.getOrganizationId(), "ORGANIZATION")) {
+            return;
+        }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
+    }
+
+    /**
+     * エントリー表の編集権限を検証する。
+     *
+     * <p>根拠: 設計書 §Phase9 API 一覧「一括ロード / 全置換 / 個別削除 =
+     * ADMIN, DEPUTY_ADMIN(MANAGE_TOURNAMENT), チームADMIN」。参加チーム（エンティティ由来）の
+     * ADMIN/DEPUTY_ADMIN、または主催組織（エンティティ由来）の ADMIN/DEPUTY_ADMIN のみ許可する。</p>
+     */
+    private void checkEntryManageable(Long currentUserId, TournamentEntity tournament,
+                                      TournamentParticipantEntity participant) {
+        if (accessControlService.isSystemAdmin(currentUserId)) {
+            return;
+        }
+        if (accessControlService.isAdminOrAbove(currentUserId, participant.getTeamId(), "TEAM")) {
+            return;
+        }
+        if (accessControlService.isAdminOrAbove(
+                currentUserId, tournament.getOrganizationId(), "ORGANIZATION")) {
+            return;
+        }
+        throw new BusinessException(CommonErrorCode.COMMON_002);
+    }
+
+    /**
+     * 主催者向け集計（全チーム横断）の権限を検証する。
+     *
+     * <p>根拠: 設計書 §Phase9「全チームエントリーサマリー（主催者向け）」。全参加チームの
+     * エントリー充足状況を横断表示するため、主催組織（<b>エンティティ由来</b>
+     * {@code tournament.organizationId}）の ADMIN/DEPUTY_ADMIN 限定とする
+     * （FE も {@code isAdminOrDeputy} でのみ本 API を呼ぶ）。</p>
+     */
+    private void checkOrganizerAdmin(Long currentUserId, TournamentEntity tournament) {
+        if (accessControlService.isSystemAdmin(currentUserId)) {
+            return;
+        }
+        if (!accessControlService.isAdminOrAbove(
+                currentUserId, tournament.getOrganizationId(), "ORGANIZATION")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
     }
 
     /**
@@ -162,7 +253,10 @@ public class TournamentEntryMemberService {
      */
     public EntryMemberListResponse getEntryMembers(Long orgId, Long tId, Long divId, Long pId,
                                                     boolean includeTeamMembers, Long currentUserId) {
-        TournamentParticipantEntity participant = resolveParticipant(orgId, tId, divId, pId);
+        TournamentEntity tournament =
+                resolveTournamentInOrg(orgId, tId, TournamentErrorCode.PARTICIPANT_NOT_FOUND);
+        TournamentParticipantEntity participant = resolveParticipant(tId, divId, pId);
+        checkEntryViewable(currentUserId, tournament, participant);
         TournamentDivisionEntity division = divisionRepository.findById(divId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.DIVISION_NOT_FOUND));
 
@@ -224,9 +318,10 @@ public class TournamentEntryMemberService {
     @Transactional
     public EntryLoadResponse loadFromTeamMembers(Long orgId, Long tId, Long divId, Long pId,
                                                   LoadFromTeamRequest req, Long currentUserId) {
-        TournamentParticipantEntity participant = resolveParticipant(orgId, tId, divId, pId);
-        TournamentEntity tournament = tournamentRepository.findById(tId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        TournamentEntity tournament =
+                resolveTournamentInOrg(orgId, tId, TournamentErrorCode.PARTICIPANT_NOT_FOUND);
+        TournamentParticipantEntity participant = resolveParticipant(tId, divId, pId);
+        checkEntryManageable(currentUserId, tournament, participant);
         TournamentDivisionEntity division = divisionRepository.findById(divId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.DIVISION_NOT_FOUND));
 
@@ -317,9 +412,10 @@ public class TournamentEntryMemberService {
     @Transactional
     public EntryMemberListResponse upsertEntryMembers(Long orgId, Long tId, Long divId, Long pId,
                                                        UpsertEntryMembersRequest req, Long currentUserId) {
-        resolveParticipant(orgId, tId, divId, pId);
-        TournamentEntity tournament = tournamentRepository.findById(tId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        TournamentEntity tournament =
+                resolveTournamentInOrg(orgId, tId, TournamentErrorCode.PARTICIPANT_NOT_FOUND);
+        TournamentParticipantEntity participant = resolveParticipant(tId, divId, pId);
+        checkEntryManageable(currentUserId, tournament, participant);
         TournamentDivisionEntity division = divisionRepository.findById(divId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.DIVISION_NOT_FOUND));
 
@@ -330,7 +426,7 @@ public class TournamentEntryMemberService {
         entryMemberRepository.deleteByParticipantId(pId);
 
         List<TournamentEntryMemberEntity> newEntries = req.getMembers().stream()
-                .map(item -> TournamentEntryMemberEntity.builder()
+                .map(item -> (TournamentEntryMemberEntity) TournamentEntryMemberEntity.builder()
                         .participantId(pId)
                         .userId(item.getUserId())
                         .jerseyNumber(item.getJerseyNumber())
@@ -374,9 +470,10 @@ public class TournamentEntryMemberService {
     @Transactional
     public void deleteEntryMember(Long orgId, Long tId, Long divId, Long pId, UUID entryMemberId,
                                    boolean force, Long currentUserId) {
-        resolveParticipant(orgId, tId, divId, pId);
-        TournamentEntity tournament = tournamentRepository.findById(tId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        TournamentEntity tournament =
+                resolveTournamentInOrg(orgId, tId, TournamentErrorCode.PARTICIPANT_NOT_FOUND);
+        TournamentParticipantEntity participant = resolveParticipant(tId, divId, pId);
+        checkEntryManageable(currentUserId, tournament, participant);
 
         if (!force) {
             checkEntryLock(tournament, false);
@@ -400,9 +497,10 @@ public class TournamentEntryMemberService {
      * @return PDF のbyte[]
      */
     public byte[] generateEntryPdf(Long orgId, Long tId, Long divId, Long pId, Long currentUserId) {
-        TournamentParticipantEntity participant = resolveParticipant(orgId, tId, divId, pId);
-        TournamentEntity tournament = tournamentRepository.findById(tId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        TournamentEntity tournament =
+                resolveTournamentInOrg(orgId, tId, TournamentErrorCode.PARTICIPANT_NOT_FOUND);
+        TournamentParticipantEntity participant = resolveParticipant(tId, divId, pId);
+        checkEntryViewable(currentUserId, tournament, participant);
         TournamentDivisionEntity division = divisionRepository.findById(divId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.DIVISION_NOT_FOUND));
 
@@ -436,10 +534,11 @@ public class TournamentEntryMemberService {
      * @return ディビジョン単位のエントリーサマリー
      */
     public EntryMemberSummaryResponse getEntrySummary(Long orgId, Long tId, Long divId, Long currentUserId) {
-        // orgId → tId の帰属確認
-        TournamentEntity tournament = tournamentRepository.findById(tId)
-                .filter(t -> orgId.equals(t.getOrganizationId()))
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        // orgId → tId の帰属確認（不一致は 404 で存在秘匿）
+        TournamentEntity tournament =
+                resolveTournamentInOrg(orgId, tId, TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        // 主催者向け横断集計のため主催組織 ADMIN/DEPUTY_ADMIN 限定
+        checkOrganizerAdmin(currentUserId, tournament);
 
         TournamentDivisionEntity division = divisionRepository.findByIdAndTournamentId(divId, tId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.DIVISION_NOT_FOUND));

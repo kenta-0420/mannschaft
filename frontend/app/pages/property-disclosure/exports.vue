@@ -18,20 +18,47 @@ const { t } = useI18n()
 const { error: showError } = useNotification()
 const { userTimezone } = useDatetime()
 
-const organizationId = computed<number>(() => {
+const organizationId = computed<string>(() => {
   const raw = route.query.organizationId
-  const n = Number(Array.isArray(raw) ? raw[0] : raw)
-  return Number.isFinite(n) && n > 0 ? n : 0
+  return raw ? String(Array.isArray(raw) ? raw[0] : raw) : ''
 })
 
 const api = computed(() => useDisclosureApi(organizationId.value))
 
+/**
+ * 権限解決用の組織 **slug**。
+ *
+ * `useRoleAccess` が叩く `GET /api/v1/organizations/{id}/me/permissions` は
+ * **slug 専用**で、数値 ID を渡すと 404 ORG_001 を返す（実測）。
+ * 一方この画面のクエリ `?organizationId=N` は数値（`property-disclosure/index.vue` が
+ * `Number(organizationId)` を前提に組み立てている）。
+ * そのまま渡していたため権限取得が常に失敗し、`isAdmin` が恒常的に false となって
+ * **「保管期限延長」ボタンが誰にも表示されなかった**。
+ * ここで `/api/v1/me/organizations` を引いて数値 ID → slug を解決してから渡す。
+ */
+const organizationSlug = ref<string>('')
+
+async function resolveOrganizationSlug(numericId: string): Promise<void> {
+  const res = await useApi()<{ data: Array<{ id: number; slug: string }> }>('/api/v1/me/organizations')
+  organizationSlug.value = (res.data ?? []).find((o) => String(o.id) === numericId)?.slug ?? ''
+}
+
 // ADMIN のみ「保管延長」ボタンを表示する（バックエンドでも認可される）
-const { isAdmin, loadPermissions } = useRoleAccess('organization', organizationId)
+const { isAdmin, loadPermissions } = useRoleAccess('organization', organizationSlug)
 watch(
   () => organizationId.value,
-  (id) => {
-    if (id > 0) loadPermissions()
+  async (id) => {
+    if (!id) return
+    // 解決に失敗しても画面は一覧まで描画する（症状を隠さずログに残し、権限依存 UI だけ出さない）。
+    try {
+      await resolveOrganizationSlug(id)
+    }
+    catch (e) {
+      console.warn('[disclosure/exports] 組織 slug の解決に失敗しました（権限依存 UI は非表示になります）', e)
+      organizationSlug.value = ''
+      return
+    }
+    if (organizationSlug.value) loadPermissions()
   },
   { immediate: true },
 )
@@ -47,7 +74,7 @@ function openExtendDialog(item: DisclosureExport) {
 
 function onExtended(updated: DisclosureExport) {
   // 一覧の expiresAt を即時反映
-  const idx = exports_.value.findIndex(e => e.id === updated.id)
+  const idx = exports_.value.findIndex(e => e.exportId === updated.exportId)
   if (idx >= 0) {
     const cur = exports_.value[idx]
     if (cur) exports_.value[idx] = { ...cur, expiresAt: updated.expiresAt }
@@ -61,7 +88,7 @@ const page = ref(0)
 const size = ref(20)
 
 async function load() {
-  if (organizationId.value === 0) return
+  if (organizationId.value === '') return
   loading.value = true
   try {
     const res = await api.value.listExports({ page: page.value, size: size.value })
@@ -85,7 +112,7 @@ onMounted(load)
 
 async function download(item: DisclosureExport) {
   try {
-    const refreshed = await api.value.getExportDownloadUrl(item.id)
+    const refreshed = await api.value.getExportDownloadUrl(item.exportId)
     if (refreshed.downloadUrl) {
       window.open(refreshed.downloadUrl, '_blank', 'noopener,noreferrer')
     } else {
@@ -143,7 +170,7 @@ function formatSeverity(format: string): 'info' | 'success' | 'secondary' {
     </header>
 
     <p
-      v-if="organizationId === 0"
+      v-if="organizationId === ''"
       class="rounded-md border border-dashed border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
     >
       ?organizationId=N
@@ -205,7 +232,7 @@ function formatSeverity(format: string): 'info' | 'success' | 'secondary' {
                 :label="t('disclosure.actions.download')"
                 size="small"
                 severity="primary"
-                :data-testid="`disclosure-download-${data.id}`"
+                :data-testid="`disclosure-download-${data.exportId}`"
                 @click="download(data)"
               />
               <Button
@@ -215,7 +242,7 @@ function formatSeverity(format: string): 'info' | 'success' | 'secondary' {
                 size="small"
                 severity="secondary"
                 outlined
-                :data-testid="`disclosure-extend-expiry-${data.id}`"
+                :data-testid="`disclosure-extend-expiry-${data.exportId}`"
                 @click="openExtendDialog(data)"
               />
             </div>

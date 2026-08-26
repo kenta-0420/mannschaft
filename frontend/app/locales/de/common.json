@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…"
+    },
+    "mobile": {
+      "backToList": "Zurück zur Kanalliste",
+      "noChannels": "Noch keine Kanäle",
+      "createChannel": "Kanal erstellen"
     }
   },
   "button": {
@@ -76,12 +81,16 @@
     "submit": "Senden",
     "close": "Schliessen",
     "back": "Zuruck",
+    "help": "Anleitung",
     "next": "Weiter",
     "search": "Suchen",
     "loading": "Laden...",
     "confirm": "Bestatigen",
     "logout": "Abmelden",
-    "update": "Aktualisieren"
+    "update": "Aktualisieren",
+    "see_more": "Mehr anzeigen",
+    "view_all": "Alle anzeigen",
+    "undo": "Rückgängig"
   },
   "label": {
     "required": "Pflichtfeld",
@@ -217,18 +226,41 @@
   "error": {
     "server": "Ein Serverfehler ist aufgetreten",
     "server_retry": "Bitte versuchen Sie es spater erneut.",
+    "rate_limited": "Zu viele Anfragen",
+    "rate_limited_detail": "Sie haben in kurzer Zeit zu viele Anfragen gesendet. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+    "rate_limited_retry_after": "Sie haben in kurzer Zeit zu viele Anfragen gesendet. Bitte versuchen Sie es in etwa {seconds} Sekunden erneut.",
     "network": "Ein Netzwerkfehler ist aufgetreten",
     "unauthorized": "Bitte melden Sie sich an",
+    "section_load_failed": "Dieser Abschnitt konnte nicht geladen werden. Bitte neu laden.",
     "unknown": "Ein Fehler ist aufgetreten",
     "COMMON_001": "Die Eingaben sind fehlerhaft",
     "COMMON_002": "Sie haben keine Berechtigung fur diese Aktion",
     "COMMON_003": "Von einem anderen Benutzer aktualisiert. Bitte aktualisieren Sie die Seite",
     "COMMON_999": "Ein Systemfehler ist aufgetreten",
     "AUTH_001": "E-Mail-Adresse oder Passwort ist falsch",
-    "AUTH_002": "Die Sitzung ist abgelaufen. Bitte melden Sie sich erneut an",
-    "AUTH_003": "Diese E-Mail-Adresse ist bereits registriert",
-    "AUTH_004": "Das Konto ist deaktiviert",
-    "AUTH_005": "Der Verifizierungscode ist falsch"
+    "AUTH_002": "Ihre E-Mail-Adresse wurde noch nicht bestätigt",
+    "AUTH_003": "Ihr Konto ist gesperrt. Bitte versuchen Sie es in 30 Minuten erneut",
+    "AUTH_004": "Diese E-Mail-Adresse ist bereits registriert",
+    "AUTH_005": "Der Link in der Bestätigungs-E-Mail ist ungültig oder abgelaufen",
+    "AUTH_008": "Das Passwort muss mindestens 8 Zeichen lang sein und 3 oder mehr aus Großbuchstaben, Kleinbuchstaben, Ziffern und Symbolen enthalten",
+    "AUTH_015": "Der Link zum Zurücksetzen des Passworts ist ungültig oder abgelaufen. Bitte beantragen Sie ein erneutes Zurücksetzen.",
+    "AUTH_009": "Das neue Passwort muss sich vom aktuellen Passwort unterscheiden",
+    "AUTH_010": "Das aktuelle Passwort ist nicht korrekt",
+    "AUTH_011": "Es wurde noch kein Passwort festgelegt",
+    "AUTH_044": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut",
+    "SURVEY_023": "Die Team-Aufschluesselung kann bei anonymen Umfragen nicht aktiviert werden",
+    "SCHEDULE_KEEP_001": "キープが見つかりません",
+    "SCHEDULE_KEEP_002": "タイトルを入力してください",
+    "SCHEDULE_KEEP_003": "候補日は最大10件です",
+    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
+    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
+    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
+    "SCHEDULE_KEEP_007": "この状態では編集できません",
+    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
+    "SCHEDULE_KEEP_009": "この操作はできません",
+    "SCHEDULE_KEEP_010": "キープの上限に達しました",
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "Du hast das Limit von 200 Ausblendungen erreicht. Blende bitte etwas wieder ein."
   },
   "annual_plan": {
     "title": "Jahresveranstaltungsplan",
@@ -378,52 +410,52 @@
     }
   },
   "confirmable": {
-    "title": "確認通知",
-    "settings": "確認通知設定",
-    "send": "確認通知を送信",
-    "history": "発信履歴",
-    "recipients": "受信者一覧",
+    "title": "Bestätigungsbenachrichtigung",
+    "settings": "Einstellungen für Bestätigungsbenachrichtigungen",
+    "send": "Bestätigungsbenachrichtigung senden",
+    "history": "Sendungsverlauf",
+    "recipients": "Empfängerliste",
     "status": {
-      "ACTIVE": "受付中",
-      "COMPLETED": "完了",
-      "EXPIRED": "期限切れ",
-      "CANCELLED": "キャンセル"
+      "ACTIVE": "Aktiv",
+      "COMPLETED": "Abgeschlossen",
+      "EXPIRED": "Abgelaufen",
+      "CANCELLED": "Storniert"
     },
     "priority": {
-      "NORMAL": "通常",
-      "HIGH": "重要",
-      "URGENT": "緊急"
+      "NORMAL": "Normal",
+      "HIGH": "Wichtig",
+      "URGENT": "Dringend"
     },
     "confirmed_via": {
-      "APP": "アプリ",
-      "TOKEN": "URLリンク",
-      "BULK": "一括"
+      "APP": "App",
+      "TOKEN": "URL-Link",
+      "BULK": "Massenbestätigung"
     },
-    "pending_count": "保留中の確認: {count}件",
-    "confirmation_rate": "確認率",
-    "deadline": "確認期限",
-    "confirm_button": "確認する",
-    "already_confirmed": "確認済み",
-    "confirmed": "確認状態",
-    "confirmed_at": "確認日時",
-    "confirmed_via_label": "確認方法",
-    "first_reminder_sent": "1回目リマインド",
-    "second_reminder_sent": "2回目リマインド",
-    "reminder_minutes": "リマインド間隔（分）",
-    "first_reminder": "1回目リマインド",
-    "second_reminder": "2回目リマインド",
-    "alert_threshold": "未確認アラート閾値",
-    "resend_reminder": "リマインド再送",
-    "no_history": "発信履歴がありません",
-    "load_error": "確認通知の取得に失敗しました",
-    "load_settings_error": "設定の取得に失敗しました",
-    "load_recipients_error": "受信者一覧の取得に失敗しました",
-    "save_settings_error": "設定の保存に失敗しました",
-    "send_error": "確認通知の送信に失敗しました",
-    "cancel_error": "キャンセルに失敗しました",
-    "resend_error": "リマインド再送に失敗しました",
-    "title_required": "タイトルを入力してください",
-    "recipients_required": "受信者を1人以上指定してください",
+    "pending_count": "Ausstehende Bestätigungen: {count}",
+    "confirmation_rate": "Bestätigungsrate",
+    "deadline": "Bestätigungsfrist",
+    "confirm_button": "Bestätigen",
+    "already_confirmed": "Bereits bestätigt",
+    "confirmed": "Bestätigungsstatus",
+    "confirmed_at": "Bestätigungsdatum",
+    "confirmed_via_label": "Bestätigungsmethode",
+    "first_reminder_sent": "1. Erinnerung gesendet",
+    "second_reminder_sent": "2. Erinnerung gesendet",
+    "reminder_minutes": "Erinnerungsintervall (Minuten)",
+    "first_reminder": "1. Erinnerung",
+    "second_reminder": "2. Erinnerung",
+    "alert_threshold": "Alarmschwelle für unbestätigte",
+    "resend_reminder": "Erinnerung erneut senden",
+    "no_history": "Kein Sendungsverlauf vorhanden",
+    "load_error": "Bestätigungsbenachrichtigungen konnten nicht geladen werden",
+    "load_settings_error": "Einstellungen konnten nicht geladen werden",
+    "load_recipients_error": "Empfängerliste konnte nicht geladen werden",
+    "save_settings_error": "Einstellungen konnten nicht gespeichert werden",
+    "send_error": "Bestätigungsbenachrichtigung konnte nicht gesendet werden",
+    "cancel_error": "Stornieren fehlgeschlagen",
+    "resend_error": "Erinnerung konnte nicht erneut gesendet werden",
+    "title_required": "Bitte gib einen Titel ein",
+    "recipients_required": "Bitte gib mindestens einen Empfänger an",
     "unconfirmed_visibility": {
       "label": "Sichtbarkeit der Liste nicht bestaetigter Empfaenger",
       "help": "Waehlen Sie aus, wer die Liste der noch nicht bestaetigten Empfaenger sehen kann.",
@@ -442,7 +474,56 @@
     "videoUploadSuccess": "Video erfolgreich hochgeladen",
     "videoUploadError": "Video-Upload fehlgeschlagen",
     "videoRemove": "Video entfernen",
-    "mitayo": "Gesehen"
+    "mitayo": "Gesehen",
+    "imageTooMany": "Es können maximal 4 Bilder angehängt werden",
+    "imageUploadError": "Bild-Upload fehlgeschlagen",
+    "postSuccess": "Erfolgreich gepostet",
+    "postError": "Fehler beim Posten",
+    "announcementRegisterError": "Fehler bei der Ankündigung. Bitte manuell registrieren.",
+    "postSource": "Gepostet in",
+    "writeReply": "Antwort schreiben",
+    "replySubmit": "Antworten",
+    "noReplies": "Noch keine Antworten",
+    "loadMoreReplies": "Mehr anzeigen",
+    "composerPlaceholder": {
+      "TEAM": "Im Team posten...",
+      "VILLAGE": "Im Dorf posten...",
+      "ORGANIZATION": "In der Organisation posten...",
+      "PUBLIC": "Was gibt's Neues?"
+    },
+    "submitLabel": "Posten",
+    "pollOptionsCount": "{count} Optionen",
+    "deliveryScope": {
+      "label": "Zustellbereich",
+      "options": {
+        "DIRECT": "Nur Mitglieder dieser Organisation",
+        "CHILDREN": "Auch direkte untergeordnete Organisationen",
+        "DESCENDANTS": "Alle untergeordneten Organisationen"
+      },
+      "hints": {
+        "DIRECT": "Wird nur in den Timelines der Mitglieder dieser Organisation angezeigt.",
+        "CHILDREN": "Wird auch Mitgliedern der direkt untergeordneten Organisationen angezeigt.",
+        "DESCENDANTS": "Wird Mitgliedern aller untergeordneten Organisationen angezeigt."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Beiträge dieses Teams ausblenden",
+        "ORGANIZATION": "Beiträge dieser Organisation ausblenden"
+      },
+      "targetType": {
+        "TEAM": "Team",
+        "ORGANIZATION": "Organisation"
+      },
+      "muted": "Beiträge von {name} wurden ausgeblendet",
+      "undo": "Rückgängig",
+      "unmuted": "Beiträge werden wieder angezeigt",
+      "chip": "Ausgeblendet: {count}",
+      "dialogTitle": "Ausgeblendete Quellen",
+      "emptyList": "Du hast niemanden ausgeblendet.",
+      "unmuteAction": "Wieder anzeigen",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Galerie",
@@ -457,212 +538,302 @@
   },
   "blog": {
     "media": {
-      "uploadImage": "画像を挿入",
-      "uploadVideo": "動画を挿入",
-      "uploading": "アップロード中...",
-      "uploadSuccess": "アップロード完了",
-      "uploadError": "アップロードに失敗しました",
-      "selectImage": "画像ファイルを選択",
-      "selectVideo": "動画ファイルを選択"
+      "uploadImage": "Bild einfügen",
+      "uploadVideo": "Video einfügen",
+      "uploading": "Hochladen...",
+      "uploadSuccess": "Upload abgeschlossen",
+      "uploadError": "Upload fehlgeschlagen",
+      "selectImage": "Bilddatei auswählen",
+      "selectVideo": "Videodatei auswählen"
     },
     "post": {
-      "readMore": "続きを読む",
-      "publishedAt": "公開日",
-      "draft": "下書き",
-      "published": "公開",
-      "scheduled": "予約",
-      "author": "著者",
-      "series": "シリーズ",
-      "tags": "タグ",
-      "relatedPosts": "関連記事",
-      "noPost": "記事がありません",
-      "createFirst": "最初の記事を書く",
-      "settings": "ブログ設定",
-      "selfReview": "セルフレビュー",
-      "selfReviewDesc": "投稿前に見直し時間を設定します",
-      "myBlog": "マイブログ",
-      "createNew": "新規記事",
-      "editPost": "編集",
-      "deletePost": "削除",
-      "togglePublish": "公開/非公開",
+      "readMore": "Mehr lesen",
+      "publishedAt": "Veröffentlicht am",
+      "draft": "Entwurf",
+      "published": "Veröffentlicht",
+      "scheduled": "Geplant",
+      "author": "Autor",
+      "series": "Serie",
+      "tags": "Tags",
+      "relatedPosts": "Ähnliche Beiträge",
+      "noPost": "Keine Beiträge",
+      "createFirst": "Ersten Beitrag schreiben",
+      "settings": "Blog-Einstellungen",
+      "selfReview": "Selbstüberprüfung",
+      "selfReviewDesc": "Überprüfungszeitraum vor der Veröffentlichung festlegen",
+      "myBlog": "Mein Blog",
+      "createNew": "Neuer Beitrag",
+      "editPost": "Bearbeiten",
+      "deletePost": "Löschen",
+      "togglePublish": "Veröffentlichen/Zurückziehen",
       "myPosts": "Meine Beiträge",
       "allPosts": "Alle Beiträge",
       "latestCount": "Neueste {count} / {total} insgesamt",
-      "profileSettings": "プロフィール設定",
-      "blogTitle": "ブログタイトル",
-      "blogDescription": "ブログ説明",
-      "selfReviewStart": "セルフレビュー開始時刻",
-      "selfReviewEnd": "セルフレビュー終了時刻",
-      "selfReviewHelp": "設定した時間帯は投稿前の見直し期間として扱われます",
-      "saveSettings": "設定を保存"
+      "profileSettings": "Profileinstellungen",
+      "blogTitle": "Blog-Titel",
+      "blogDescription": "Blog-Beschreibung",
+      "selfReviewStart": "Startzeit der Selbstüberprüfung",
+      "selfReviewEnd": "Endzeit der Selbstüberprüfung",
+      "selfReviewHelp": "Der konfigurierte Zeitraum wird als Überprüfungsfenster vor der Veröffentlichung behandelt",
+      "saveSettings": "Einstellungen speichern",
+      "loadFailed": "Artikel konnte nicht geladen werden",
+      "scheduledPublishUnavailable": "Geplantes Veröffentlichen ist derzeit nicht verfügbar. Beim Veröffentlichen wird der Beitrag sofort sichtbar."
+    },
+    "autoSave": {
+      "label": "Automatisch speichern",
+      "saved": "Automatisch gespeichert",
+      "lastSaved": "Automatisch gespeichert um {time}",
+      "enabled": "Automatisches Speichern aktiviert",
+      "disabled": "Automatisches Speichern deaktiviert"
     }
   },
   "todo": {
-    "backToList": "TODO一覧",
+    "backToList": "Zurück zur Aufgabenliste",
     "list": {
-      "allDone": "TODOはすべて完了しています",
-      "overdueSuffix": "（期限切れ）",
-      "toggleCompleteHint": "クリックで完了状態を切り替え",
-      "toggleCompleteAria": "完了状態を切り替え",
-      "changeLabelHint": "クリックでステータスラベルを変更",
-      "changeLabelAria": "ステータスラベルを変更",
-      "popoverTitle": "ステータスを変更",
-      "popoverLoading": "読み込み中...",
-      "popoverEmpty": "ラベルがありません",
+      "allDone": "Alle Aufgaben sind erledigt",
+      "overdueSuffix": " (überfällig)",
+      "toggleCompleteHint": "Klicken zum Umschalten des Erledigungsstatus",
+      "toggleCompleteAria": "Erledigungsstatus umschalten",
+      "changeLabelHint": "Klicken zum Ändern der Statusbezeichnung",
+      "changeLabelAria": "Statusbezeichnung ändern",
+      "popoverTitle": "Status ändern",
+      "popoverLoading": "Wird geladen...",
+      "popoverEmpty": "Keine Bezeichnungen verfügbar",
       "viewModeList": "Listenansicht",
       "viewModeKanban": "Kanban-Ansicht",
       "deleteButton": "Löschen",
       "deleteAriaLabel": "Diesen Eintrag löschen",
-      "deleteConfirm": "Diesen Eintrag löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+      "deleteConfirm": "Diesen Eintrag löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "sortLabel": "Sortieren nach",
+      "sortRecent": "Neueste",
+      "sortPriority": "Priorität",
+      "deletedToast": "TODO gelöscht",
+      "restoredToast": "TODO wiederhergestellt",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "restoreFailed": "Rückgängig nicht möglich"
     },
     "field": {
-      "status": "ステータス",
-      "priority": "優先度",
-      "dueDate": "期限",
-      "creator": "作成者",
-      "description": "説明",
-      "title": "タイトル",
-      "descriptionOptional": "説明（任意）",
-      "startDate": "開始日",
-      "startDateOptional": "開始日（任意）",
-      "dueDateOptional": "期限（任意）",
+      "status": "Status",
+      "priority": "Priorität",
+      "dueDate": "Fälligkeitsdatum",
+      "creator": "Erstellt von",
+      "description": "Beschreibung",
+      "title": "Titel",
+      "descriptionOptional": "Beschreibung (optional)",
+      "startDate": "Startdatum",
+      "startDateOptional": "Startdatum (optional)",
+      "dueDateOptional": "Fälligkeitsdatum (optional)",
       "progressRate": "Fortschritt"
     },
     "detail": {
-      "loadFailed": "TODOの取得に失敗しました",
-      "assigneesSection": "担当者",
-      "noAssignees": "担当者未割り当て",
-      "unknownUser": "不明",
-      "completedByAt": "{name} が {at} に完了",
-      "editButton": "編集"
+      "loadFailed": "Aufgabe konnte nicht geladen werden",
+      "assigneesSection": "Zugewiesen an",
+      "noAssignees": "Nicht zugewiesen",
+      "unknownUser": "Unbekannt",
+      "completedByAt": "{name} abgeschlossen am {at}",
+      "editButton": "Bearbeiten"
     },
     "action": {
-      "save": "保存",
-      "cancel": "キャンセル",
-      "updated": "更新しました",
-      "updateFailed": "更新に失敗しました"
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "updated": "Aktualisiert",
+      "updateFailed": "Aktualisierung fehlgeschlagen"
     },
     "priorityValue": {
       "URGENT": "Dringend",
-      "HIGH": "高",
-      "MEDIUM": "中",
-      "LOW": "低"
+      "HIGH": "Hoch",
+      "MEDIUM": "Mittel",
+      "LOW": "Niedrig"
     },
     "progress": {
-      "updateRateFailed": "進捗率の更新に失敗しました",
-      "updateModeFailed": "進捗モードの切替に失敗しました"
+      "updateRateFailed": "Fortschritt konnte nicht aktualisiert werden",
+      "updateModeFailed": "Fortschrittsmodus konnte nicht umgeschaltet werden"
     },
     "statusLabel": {
       "management": {
-        "title": "ステータスラベル管理",
-        "create": "ラベルを追加",
-        "edit": "編集",
-        "delete": "削除",
-        "createSuccess": "ラベルを作成しました",
-        "updateSuccess": "ラベルを更新しました",
-        "deleteSuccess": "ラベルを削除しました",
-        "systemSection": "システム既定（編集不可）",
-        "userSection": "個人ラベル",
-        "teamSection": "チームラベル",
-        "organizationSection": "組織ラベル",
-        "empty": "まだラベルがありません",
-        "readOnlyForNonAdmin": "ラベルの作成・編集は管理者のみ可能です（閲覧のみ）"
+        "title": "Statusbezeichnungsverwaltung",
+        "create": "Bezeichnung hinzufügen",
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "createSuccess": "Bezeichnung erstellt",
+        "updateSuccess": "Bezeichnung aktualisiert",
+        "deleteSuccess": "Bezeichnung gelöscht",
+        "systemSection": "Systemvorgaben (schreibgeschützt)",
+        "userSection": "Persönliche Bezeichnungen",
+        "teamSection": "Team-Bezeichnungen",
+        "organizationSection": "Organisations-Bezeichnungen",
+        "empty": "Noch keine Bezeichnungen",
+        "readOnlyForNonAdmin": "Nur Admins können Bezeichnungen erstellen oder bearbeiten (nur lesen)"
       },
       "field": {
-        "name": "名前",
-        "bucket": "区分",
-        "color": "色",
-        "sortOrder": "並び順"
+        "name": "Name",
+        "bucket": "Kategorie",
+        "color": "Farbe",
+        "sortOrder": "Sortierreihenfolge"
       },
       "bucket": {
-        "OPEN": "未着手",
-        "IN_PROGRESS": "着手中",
-        "COMPLETED": "完了"
+        "OPEN": "Offen",
+        "IN_PROGRESS": "In Bearbeitung",
+        "COMPLETED": "Abgeschlossen"
       },
       "error": {
-        "duplicate": "同じ名前のラベルが既に存在します",
-        "limitExceeded": "ラベルは最大20件まで作成できます",
-        "inUse": "使用中のため削除できません",
-        "inUseWithCount": "このラベルは現在 {n} 件のTODOで使用されているため削除できません",
-        "systemImmutable": "システム既定ラベルは変更できません"
+        "duplicate": "Eine Bezeichnung mit demselben Namen existiert bereits",
+        "limitExceeded": "Du kannst bis zu 20 Bezeichnungen erstellen",
+        "inUse": "Kann nicht gelöscht werden: Bezeichnung wird verwendet",
+        "inUseWithCount": "Kann nicht gelöscht werden: Diese Bezeichnung wird von {n} Aufgabe(n) verwendet",
+        "systemImmutable": "Systemvorgaben können nicht geändert werden"
       },
-      "systemDefault": "（システム既定）",
-      "confirmDelete": "本当に削除しますか？"
+      "systemDefault": "(Systemvorgabe)",
+      "confirmDelete": "Bist du sicher, dass du das löschen möchtest?"
     },
     "statusChange": {
-      "section": "ステータス変更",
-      "applyButton": "変更",
-      "confirmTitle": "ステータス変更の確認",
-      "confirmBody": "ステータスを『{from}』から『{to}』に変更します。よろしいですか？",
-      "confirmButton": "変更する",
-      "cancelButton": "キャンセル",
-      "success": "ステータスを『{name}』に変更しました"
+      "section": "Status ändern",
+      "applyButton": "Anwenden",
+      "confirmTitle": "Statusänderung bestätigen",
+      "confirmBody": "Status von \"{from}\" zu \"{to}\" ändern. Fortfahren?",
+      "confirmButton": "Anwenden",
+      "cancelButton": "Abbrechen",
+      "success": "Status zu \"{name}\" geändert"
     },
     "enhancement": {
       "gantt": {
         "title": "TODO Gantt-Ansicht",
-        "no_data": "ガントバーに表示できる期間のある課題がありません",
+        "no_data": "Keine Aufgaben mit Datumsbereichen für das Gantt-Diagramm",
         "gantt_view_link": "TODO Gantt-Ansicht"
       },
       "progress": {
-        "tab_label": "進捗",
-        "manual_mode": "手動入力モード",
-        "auto_mode": "自動算出モード",
-        "switch_to_auto": "自動算出に切替",
-        "switch_to_manual": "手動入力に切替",
-        "overwrite_warning": "子課題の手動値が上書きされる場合があります。よろしいですか？"
+        "tab_label": "Fortschritt",
+        "manual_mode": "Manueller Eingabemodus",
+        "auto_mode": "Automatischer Berechnungsmodus",
+        "switch_to_auto": "Zu automatisch wechseln",
+        "switch_to_manual": "Zu manuell wechseln",
+        "overwrite_warning": "Manuelle Werte von Unteraufgaben können überschrieben werden. Fortfahren?"
       },
       "shared_memo": {
-        "title": "共有メモ",
-        "placeholder": "メモを入力...",
-        "quote_reply": "引用して返信",
-        "no_data": "共有メモがまだありません"
+        "title": "Gemeinsame Notiz",
+        "placeholder": "Notiz eingeben...",
+        "quote_reply": "Zitieren und antworten",
+        "no_data": "Noch keine gemeinsamen Notizen"
       },
       "personal_memo": {
-        "title": "個人メモ（自分だけ見えます）",
-        "placeholder": "個人メモを入力...（自動保存）",
-        "saving": "保存中...",
-        "saved": "保存しました"
+        "title": "Persönliche Notiz (nur für dich sichtbar)",
+        "placeholder": "Persönliche Notiz eingeben... (automatisch gespeichert)",
+        "saving": "Wird gespeichert...",
+        "saved": "Gespeichert"
       }
+    },
+    "create": {
+      "dialog_title": "TODO erstellen",
+      "title_label": "Titel",
+      "title_placeholder": "TODO-Titel",
+      "details_toggle": "Details festlegen (optional)",
+      "description_label": "Beschreibung (optional)",
+      "description_placeholder": "Details oder Notizen",
+      "scope_label": "Teilen mit",
+      "scope_personal": "Persönlich",
+      "priority_label": "Priorität",
+      "start_date_label": "Startdatum (optional)",
+      "due_date_label": "Fälligkeitsdatum (optional)",
+      "submit_button": "Erstellen",
+      "cancel_button": "Abbrechen",
+      "draft_restored": "Entwurf wiederhergestellt",
+      "create_success": "TODO erstellt",
+      "create_failed": "Erstellen fehlgeschlagen"
     }
   },
   "extended_profile": {
-    "title": "拡張プロフィール編集",
-    "section_profile": "基本プロフィール",
-    "section_visibility": "公開設定",
-    "section_officers": "役員",
-    "section_custom_fields": "カスタムフィールド",
-    "homepage_url": "ホームページURL",
-    "established_date": "設立日",
-    "established_date_precision": "設立日精度",
-    "philosophy": "組織理念",
-    "precision_year": "年のみ",
-    "precision_year_month": "年月",
-    "precision_full": "年月日",
-    "visibility_homepage_url": "ホームページURLを公開",
-    "visibility_established_date": "設立日を公開",
-    "visibility_philosophy": "組織理念を公開",
-    "visibility_officers": "役員情報を公開",
-    "visibility_custom_fields": "カスタムフィールドを公開",
-    "officer_name": "役員名",
-    "officer_title": "役職",
-    "officer_visible": "公開する",
-    "add_officer": "役員を追加",
-    "edit_officer": "役員を編集",
-    "field_label": "ラベル",
-    "field_value": "値",
-    "add_custom_field": "カスタムフィールドを追加",
-    "edit_custom_field": "カスタムフィールドを編集",
-    "save_order": "並び順を保存",
-    "save_profile": "プロフィールを保存",
-    "profile_saved": "プロフィールを保存しました",
-    "officer_added": "役員を追加しました",
-    "officer_updated": "役員を更新しました",
-    "officer_deleted": "役員を削除しました",
-    "order_saved": "並び順を保存しました",
-    "custom_field_added": "カスタムフィールドを追加しました",
-    "custom_field_updated": "カスタムフィールドを更新しました",
-    "custom_field_deleted": "カスタムフィールドを削除しました"
+    "title": "Erweitertes Profil bearbeiten",
+    "section_profile": "Basisprofil",
+    "section_visibility": "Sichtbarkeitseinstellungen",
+    "section_officers": "Vorstandsmitglieder",
+    "section_custom_fields": "Benutzerdefinierte Felder",
+    "homepage_url": "Homepage-URL",
+    "established_date": "Gründungsdatum",
+    "established_date_precision": "Datumspräzision",
+    "philosophy": "Organisationsphilosophie",
+    "precision_year": "Nur Jahr",
+    "precision_year_month": "Jahr und Monat",
+    "precision_full": "Vollständiges Datum",
+    "visibility_homepage_url": "Homepage-URL anzeigen",
+    "visibility_established_date": "Gründungsdatum anzeigen",
+    "visibility_philosophy": "Organisationsphilosophie anzeigen",
+    "visibility_officers": "Vorstandsmitglieder anzeigen",
+    "visibility_custom_fields": "Benutzerdefinierte Felder anzeigen",
+    "officer_name": "Name des Vorstandsmitglieds",
+    "officer_title": "Titel",
+    "officer_visible": "Öffentlich machen",
+    "add_officer": "Vorstandsmitglied hinzufügen",
+    "edit_officer": "Vorstandsmitglied bearbeiten",
+    "field_label": "Bezeichnung",
+    "field_value": "Wert",
+    "add_custom_field": "Benutzerdefiniertes Feld hinzufügen",
+    "edit_custom_field": "Benutzerdefiniertes Feld bearbeiten",
+    "save_order": "Reihenfolge speichern",
+    "save_profile": "Profil speichern",
+    "profile_saved": "Profil gespeichert",
+    "officer_added": "Vorstandsmitglied hinzugefügt",
+    "officer_updated": "Vorstandsmitglied aktualisiert",
+    "officer_deleted": "Vorstandsmitglied gelöscht",
+    "order_saved": "Reihenfolge gespeichert",
+    "custom_field_added": "Benutzerdefiniertes Feld hinzugefügt",
+    "custom_field_updated": "Benutzerdefiniertes Feld aktualisiert",
+    "custom_field_deleted": "Benutzerdefiniertes Feld gelöscht"
+  },
+  "notification": {
+    "todoHandedOff": {
+      "title": "Aufgabe wurde weitergegeben",
+      "body": "{from} hat \"{title}\" an dich weitergegeben (Status: {label})"
+    },
+    "pageTitle": "通知",
+    "guide": {
+      "title": "通知の使い方",
+      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "read": {
+        "title": "通知を読む",
+        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "steps": {
+          "step1": "気になる通知の行をタップします",
+          "step2": "自動で既読になり、関連する画面へ移動します",
+          "step3": "未読の通知は左端の青いドットで見分けられます"
+        }
+      },
+      "filter": {
+        "title": "絞り込み",
+        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "steps": {
+          "step1": "画面上部の「すべて／未読」ボタンを押します",
+          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
+          "step3": "「すべて」に戻すと全ての通知が表示されます"
+        }
+      },
+      "snooze": {
+        "title": "スヌーズ",
+        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "steps": {
+          "step1": "通知の右側にある時計アイコンを押します",
+          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
+          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+        }
+      },
+      "confirm": {
+        "title": "確認通知",
+        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "steps": {
+          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step2": "「確認する」ボタンを押して確認済みにします",
+          "step3": "確認後は「確認済み」ラベルに変わります"
+        }
+      },
+      "urgent": {
+        "title": "緊急休業・一括既読",
+        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "steps": {
+          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
+          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
+          "step3": "既読にするとベルのバッジも0になります"
+        }
+      }
+    }
   },
   "project": {
     "milestones": "Meilensteine",
@@ -699,7 +870,109 @@
     "reorder_failed": "Neuordnung fehlgeschlagen",
     "my_projects": "Meine Projekte",
     "my_projects_description": "Persönliche Aufgabenverwaltung und Ziele",
-    "no_my_projects": "Noch keine persönlichen Projekte"
+    "no_my_projects": "Noch keine persönlichen Projekte",
+    "team_projects_section": "Teamprojekte",
+    "no_team_projects": "Noch keine Projekte in Ihren Teams",
+    "org_projects_section": "Organisationsprojekte",
+    "no_org_projects": "Noch keine Projekte in Ihren Organisationen",
+    "create_button": "Projekt erstellen",
+    "dialog": {
+      "create_title": "Projekt erstellen",
+      "edit_title": "Projekt bearbeiten",
+      "title_label": "Titel",
+      "title_placeholder": "Projektname",
+      "description_label": "Beschreibung",
+      "due_date_label": "Fälligkeitsdatum",
+      "cancel": "Abbrechen",
+      "create": "Erstellen",
+      "update": "Aktualisieren"
+    },
+    "appearance": {
+      "emoji_label": "Emoji",
+      "color_label": "Farbe",
+      "none": "Keines",
+      "custom_emoji": "Benutzerdefiniert",
+      "custom_color": "Benutzerdefinierte Farbe",
+      "current": "Aktuell"
+    },
+    "guide": {
+      "button": "Anleitung",
+      "page_title": "Projektanleitung",
+      "description": "Erfahren Sie, wie Sie die Projektfunktion nutzen können.",
+      "what": {
+        "title": "Was ist ein Projekt?",
+        "body": "Ein Projekt ist eine Einheit zur Verwaltung von Aufgaben (TODOs) und Meilensteinen. Sie können Ziele und Fristen festlegen und den Fortschritt auf einen Blick verfolgen."
+      },
+      "create": {
+        "title": "So erstellen Sie ein Projekt",
+        "body": "Klicken Sie auf 'Projekt erstellen' und füllen Sie die folgenden Informationen aus.",
+        "item_title": "Titel (erforderlich): Name des Projekts",
+        "item_emoji": "Emoji: Symbol für das Projekt (aus Voreinstellungen wählen)",
+        "item_color": "Farbe: Erkennungsfarbe der Karte (aus Voreinstellungen wählen)",
+        "item_due_date": "Fälligkeitsdatum: Zieldatum für den Abschluss (optional)"
+      },
+      "milestone": {
+        "title": "Meilensteine und Tore",
+        "body": "Meilensteine sind Zwischenziele innerhalb eines Projekts. Wenn die Gate-Funktion aktiviert ist, wird der nächste Meilenstein gesperrt, bis der vorherige abgeschlossen ist.",
+        "completion_mode_label": "Über den Abschlussmodus",
+        "mode_auto": "Automatischer Abschluss",
+        "mode_auto_desc": "Wird automatisch als erreicht markiert, wenn alle TODOs im Meilenstein abgeschlossen sind.",
+        "mode_manual": "Manuell",
+        "mode_manual_desc": "Manuell als erreicht markieren, unabhängig vom TODO-Abschlussstatus."
+      },
+      "progress": {
+        "title": "Fortschritt verstehen",
+        "body": "Projektkarten zeigen einen Fortschrittsbalken, Abschlussrate und verbleibende Tage. Der Fortschrittsbalken wird automatisch aus abgeschlossenen TODOs / Gesamt-TODOs berechnet."
+      },
+      "scope": {
+        "title": "Persönliche vs. Team-Projekte",
+        "body": "Projekte haben zwei Arten von Umfang: 'persönlich' und 'Team'.",
+        "personal_title": "Persönliches Projekt",
+        "personal_desc": "Nur Sie können es anzeigen und verwalten. Zugriff über 'Meine Seite' → 'Projekte'.",
+        "team_title": "Team-Projekt",
+        "team_desc": "Mit Teammitgliedern teilen und gemeinsam verwalten. Zugriff über den Tab 'Projekte' auf der Teamseite."
+      },
+      "back_to_projects": "Zurück zur Projektliste"
+    },
+    "org_page": {
+      "title": "Projekte",
+      "empty": "Keine Projekte vorhanden",
+      "back_label": "Projektliste"
+    },
+    "error": {
+      "fetch_failed": "Projekte konnten nicht geladen werden",
+      "create_failed": "Projekt konnte nicht erstellt werden",
+      "update_failed": "Aktualisierung fehlgeschlagen",
+      "delete_failed": "Loeschen fehlgeschlagen",
+      "status_change_failed": "Statusaenderung fehlgeschlagen",
+      "milestone_save_failed": "Meilenstein konnte nicht gespeichert werden"
+    },
+    "status": {
+      "active": "Aktiv",
+      "completed": "Abgeschlossen",
+      "archived": "Archiviert"
+    },
+    "action": {
+      "edit": "Bearbeiten",
+      "complete": "Als abgeschlossen markieren",
+      "reopen": "Wieder oeffnen"
+    },
+    "stats": {
+      "progress": "Fortschritt",
+      "tasks": "Aufgaben",
+      "milestones": "Meilensteine",
+      "due_date": "Faelligkeitsdatum",
+      "no_due_date": "Nicht festgelegt"
+    },
+    "task_unit": "Aufgaben",
+    "days_remaining": "Noch {n} Tage",
+    "days_overdue": "{n} Tage ueberfaellig",
+    "related_tasks": "Verwandte Aufgaben",
+    "no_related_tasks": "Keine verwandten Aufgaben fuer dieses Projekt",
+    "widget": {
+      "label": "Projekte",
+      "description": "Projektfortschritt und Liste"
+    }
   },
   "inviteToken": {
     "printQrPdf": "QR PDF drucken",
@@ -749,13 +1022,13 @@
   },
   "survey": {
     "unresponded_visibility": {
-      "label": "未回答者リストの公開範囲",
-      "HIDDEN": "表示しない",
-      "CREATOR_AND_ADMIN": "作成者・管理者のみ",
-      "ALL_MEMBERS": "全員に公開"
+      "label": "Sichtbarkeit der Liste der Nicht-Antwortenden",
+      "HIDDEN": "Ausgeblendet",
+      "CREATOR_AND_ADMIN": "Nur Ersteller und Admins",
+      "ALL_MEMBERS": "Für alle Mitglieder sichtbar"
     },
-    "unresponded_count": "未回答: {count}名",
-    "unresponded_list": "未回答者一覧"
+    "unresponded_count": "Keine Antwort: {count}",
+    "unresponded_list": "Nicht-Antwortende"
   },
   "organization": {
     "parent_chain": "Übergeordnete Organisationen",
@@ -767,19 +1040,19 @@
     "load_more": "Mehr laden"
   },
   "teamShiftSettings": {
-    "title": "シフトリマインド設定",
-    "description": "希望提出期限前のリマインド通知タイミングを設定します",
-    "reminder48h": "48時間前リマインド",
-    "reminder24h": "24時間前リマインド",
-    "reminder12h": "12時間前リマインド（将来対応）",
-    "atLeastOneRequired": "少なくとも1つのリマインドを有効にしてください",
-    "saved": "設定を保存しました"
+    "title": "Schichtplanungseinstellungen",
+    "description": "Erinnerungsbenachrichtigungen vor der Einreichungsfrist konfigurieren",
+    "reminder48h": "48-Stunden-Erinnerung",
+    "reminder24h": "24-Stunden-Erinnerung",
+    "reminder12h": "12-Stunden-Erinnerung (demnächst)",
+    "atLeastOneRequired": "Bitte aktiviere mindestens eine Erinnerung",
+    "saved": "Einstellungen gespeichert"
   },
   "corkboard": {
-    "pin": "ピン止めする",
-    "unpin": "ピン止めを外す",
-    "pinned": "ピン止め済み",
-    "pinLimitReached": "ピン止め枠が満杯です（最大50枚）。先に他のカードのピン止めを解除してください",
+    "pin": "Anheften",
+    "unpin": "Abheften",
+    "pinned": "Angeheftet",
+    "pinLimitReached": "Heftplätze voll (max. 50). Bitte zuerst eine andere Karte abheften",
     "pinNote": {
       "title": "Haftnotiz",
       "placeholder": "Notiz schreiben (optional)",
@@ -796,35 +1069,35 @@
         "gray": "Grau"
       }
     },
-    "pageTitle": "マイコルクボード",
-    "totalCount": "全{count}件",
-    "sortByPinnedAt": "ピン止め日時の降順",
-    "filterByBoard": "ボードで絞り込み",
-    "allBoards": "全ボード",
-    "loadMore": "もっと読み込む",
-    "addNewPin": "新規ピン",
-    "addNewPinHint": "コルクボードでカードを作成し、📌 ボタンでピン止めしてください",
-    "back": "戻る",
-    "loadError": "ピン止めカードの取得に失敗しました",
-    "unpinSuccess": "ピン止めを外しました",
-    "unpinError": "ピン止めの解除に失敗しました",
-    "deleteConfirm": "このカードを削除しますか？この操作は取り消せません。",
-    "deleteSuccess": "カードを削除しました",
-    "deleteError": "カードの削除に失敗しました",
-    "editTitle": "ピン止めメモを編集",
-    "editUserNoteLabel": "メモ",
-    "editUserNotePlaceholder": "このカードに付けるメモ（任意）",
-    "saveSuccess": "メモを保存しました",
-    "saveError": "メモの保存に失敗しました",
-    "boardLabel": "ボード: {boardName}",
-    "pinnedAtLabel": "ピン止め: {datetime}",
-    "noAccessLabel": "閲覧権限なし",
-    "deletedRefLabel": "参照元は削除されました",
-    "navigationFailed": "このカードの参照先にアクセスできません",
-    "ariaUnpin": "ピン止めを外す",
-    "ariaEdit": "メモを編集",
-    "ariaDelete": "カードを削除",
-    "ariaNavigate": "参照先を開く",
+    "pageTitle": "Mein Pinnwand",
+    "totalCount": "{count} insgesamt",
+    "sortByPinnedAt": "Sortieren: Angeheftet am (abst.)",
+    "filterByBoard": "Nach Board filtern",
+    "allBoards": "Alle Boards",
+    "loadMore": "Mehr laden",
+    "addNewPin": "Neue Anheftung",
+    "addNewPinHint": "Erstelle eine Karte auf einem Pinnwand, dann drücke die Hefttaste um sie hier anzuheften.",
+    "back": "Zurück",
+    "loadError": "Angeheftete Karten konnten nicht geladen werden",
+    "unpinSuccess": "Karte abgeheftet",
+    "unpinError": "Abheften fehlgeschlagen",
+    "deleteConfirm": "Diese Karte löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+    "deleteSuccess": "Karte gelöscht",
+    "deleteError": "Karte konnte nicht gelöscht werden",
+    "editTitle": "Angeheftete Notiz bearbeiten",
+    "editUserNoteLabel": "Notiz",
+    "editUserNotePlaceholder": "Optionale Notiz für diese angeheftete Karte",
+    "saveSuccess": "Notiz gespeichert",
+    "saveError": "Notiz konnte nicht gespeichert werden",
+    "boardLabel": "Board: {boardName}",
+    "pinnedAtLabel": "Angeheftet: {datetime}",
+    "noAccessLabel": "Kein Zugriff",
+    "deletedRefLabel": "Referenziertes Element wurde gelöscht",
+    "navigationFailed": "Auf das referenzierte Element kann nicht zugegriffen werden",
+    "ariaUnpin": "Karte abheften",
+    "ariaEdit": "Notiz bearbeiten",
+    "ariaDelete": "Karte löschen",
+    "ariaNavigate": "Referenziertes Element öffnen",
     "scopePersonal": "Persönlich",
     "scopeTeam": "Team",
     "scopeOrganization": "Organisation",
@@ -1004,159 +1277,207 @@
       "event": "Bitte die numerische ID aus der Termin-Detail-URL eingeben (z. B. /events/77).",
       "document": "Bitte die numerische ID aus der Dokument-Detail-URL eingeben (z. B. /documents/55).",
       "url": "Für eine URL-Karte oben den „Kartentyp“ auf URL ändern."
+    },
+    "guide": {
+      "title": "So funktioniert Meine Pinnwand",
+      "description": "Sieh alle Karten, die du in deinen Pinnwänden angeheftet hast, an einem Ort.",
+      "what": {
+        "title": "Was ist Meine Pinnwand",
+        "body": "Karten, die du auf jeder Pinnwand 📌 angeheftet hast, werden hier gesammelt und nach Neuestem zuerst sortiert."
+      },
+      "open": {
+        "title": "Eine Karte öffnen",
+        "body": "Tippe auf eine Karte, um zu ihrer Referenz zu springen.",
+        "steps": {
+          "step1": "Tippe auf eine Karte, um zum ursprünglichen Beitrag, zur Datei, zum Termin usw. zu gelangen.",
+          "step2": "URL-Karten öffnen sich in einem neuen Tab.",
+          "step3": "Karten, auf die du keinen Zugriff mehr hast, können nicht geöffnet werden (angezeigt als „Kein Zugriff“)."
+        }
+      },
+      "editNote": {
+        "title": "Notiz bearbeiten",
+        "body": "Du kannst einer Karte eine Haftnotiz hinzufügen.",
+        "steps": {
+          "step1": "Drücke die Stift-Schaltfläche oben rechts auf der Karte.",
+          "step2": "Gib deine Notiz ein und speichere sie.",
+          "step3": "Die gespeicherte Notiz wird als Haftnotiz auf der Karte angezeigt."
+        }
+      },
+      "unpinDelete": {
+        "title": "Lösen / Löschen",
+        "body": "Entferne nicht mehr benötigte Karten aus der Liste oder lösche sie.",
+        "steps": {
+          "step1": "Mit der 📌-Schaltfläche löst du die Anheftung; die Karte verlässt diese Liste (die Karte auf der ursprünglichen Pinnwand bleibt).",
+          "step2": "Mit der 🗑-Schaltfläche löschst du eine Karte. Das Löschen kann nicht rückgängig gemacht werden."
+        }
+      },
+      "filterAndPin": {
+        "title": "Filtern / Neu anheften",
+        "body": "Grenze die angezeigten Karten ein oder hefte neue an.",
+        "steps": {
+          "step1": "Nutze die Pinnwand-Auswahl in der Symbolleiste, um nur die Karten einer bestimmten Pinnwand anzuzeigen.",
+          "step2": "Nutze „Mehr laden“, um weitere Karten anzuzeigen.",
+          "step3": "Nutze die Schaltfläche „Neu anheften“, um zu einer Pinnwand zu gehen und eine Karte 📌 anzuheften."
+        }
+      }
     }
   },
   "schedule": {
     "filter": {
       "allTeamsOrgs": "Teams & Organisationen (alle)",
       "selectScope": "Ziel auswählen"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Privat",
+        "unknown": "Weitere Termine",
+        "loadError": {
+          "summary": "Ebenen konnten nicht geladen werden",
+          "detail": "Die Team-/Organisationsfilter sind vorübergehend nicht verfügbar. Termine werden weiterhin angezeigt. Bitte später erneut laden."
+        }
+      }
     }
   },
   "handoff": {
     "button": {
-      "passToOther": "他のメンバーに渡す"
+      "passToOther": "An anderes Mitglied weitergeben"
     },
     "dialog": {
-      "title": "TODO を渡す"
+      "title": "Aufgabe weitergeben"
     },
     "field": {
-      "recipients": "宛先メンバー",
-      "recipientsPlaceholder": "メンバーを選択",
-      "statusLabel": "ステータス",
-      "message": "メッセージ（任意）",
-      "messagePlaceholder": "添えメッセージを入力（任意・500文字まで）"
+      "recipients": "Empfänger",
+      "recipientsPlaceholder": "Mitglieder auswählen",
+      "statusLabel": "Status",
+      "message": "Nachricht (optional)",
+      "messagePlaceholder": "Optionale Nachricht (bis zu 500 Zeichen)"
     },
     "confirm": {
-      "title": "確認",
-      "body": "{names} に「{title}」を渡します。ステータス: 「{label}」。よろしいですか？",
-      "button": "渡す",
-      "recipientSingle": "{name}さん",
-      "recipientWithOthers": "{name}さん 他{count}名"
+      "title": "Bestätigen",
+      "body": "\"{title}\" an {names} weitergeben. Status: \"{label}\". Fortfahren?",
+      "button": "Weitergeben",
+      "recipientSingle": "{name}",
+      "recipientWithOthers": "{name} und {count} weitere"
     },
-    "success": "TODO を渡しました",
+    "success": "Aufgabe weitergegeben",
     "error": {
-      "loadMembers": "メンバー一覧の取得に失敗しました",
-      "loadLabels": "ステータスラベルの取得に失敗しました",
-      "loadHistory": "履歴の取得に失敗しました",
-      "recipientsRequired": "宛先メンバーを選択してください",
-      "labelRequired": "ステータスラベルを選択してください",
-      "notAllowedPersonal": "個人 TODO はキャッチボールできません",
-      "invalidRecipient": "宛先メンバーが見つかりません",
-      "labelScopeMismatch": "指定したラベルはこの TODO のスコープでは使用できません",
-      "milestoneLocked": "マイルストーンロック中の TODO は渡せません",
-      "validation": "入力内容に不備があります",
-      "notFound": "TODO が見つかりません（削除されたか、権限がない可能性があります）",
-      "generic": "TODO の引き渡しに失敗しました"
+      "loadMembers": "Mitglieder konnten nicht geladen werden",
+      "loadLabels": "Statusbezeichnungen konnten nicht geladen werden",
+      "loadHistory": "Verlauf konnte nicht geladen werden",
+      "recipientsRequired": "Bitte wähle Empfänger aus",
+      "labelRequired": "Bitte wähle eine Statusbezeichnung",
+      "notAllowedPersonal": "Persönliche Aufgaben können nicht weitergegeben werden",
+      "invalidRecipient": "Empfänger nicht gefunden",
+      "labelScopeMismatch": "Die ausgewählte Bezeichnung kann im Bereich dieser Aufgabe nicht verwendet werden",
+      "milestoneLocked": "Aufgaben mit gesperrtem Meilenstein können nicht weitergegeben werden",
+      "validation": "Eingabevalidierung fehlgeschlagen",
+      "notFound": "Aufgabe nicht gefunden (möglicherweise gelöscht oder keine Berechtigung)",
+      "generic": "Aufgabe konnte nicht weitergegeben werden"
     },
     "timeline": {
-      "title": "キャッチボール履歴",
-      "empty": "まだ履歴はありません",
-      "deletedLabel": "（削除済み）"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "TODOが渡されました",
-      "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
+      "title": "Weitergabeverlauf",
+      "empty": "Noch kein Verlauf",
+      "deletedLabel": "(gelöscht)"
     }
   },
   "common": {
-    "cancel": "キャンセル",
+    "cancel": "Abbrechen",
+    "search": "Suchen",
     "resume": {
-      "title": "履歴書・職務経歴書",
-      "listTitle": "履歴書バージョン一覧",
-      "createNew": "新規作成",
-      "edit": "編集",
-      "duplicate": "複製",
-      "delete": "削除",
+      "title": "Lebenslauf und Berufserfahrung",
+      "listTitle": "Lebenslauf-Versionen",
+      "createNew": "Neu erstellen",
+      "edit": "Bearbeiten",
+      "duplicate": "Duplizieren",
+      "delete": "Löschen",
       "save": "Speichern",
-      "saved": "保存しました",
-      "saving": "保存中...",
-      "conflictError": "編集が競合しました。最新を再取得します",
-      "preview": "プレビュー",
-      "export": "出力",
-      "exportPdf": "PDFダウンロード",
-      "exportExcel": "Excelダウンロード",
-      "rirekisho": "履歴書",
-      "shokumukeirekisho": "職務経歴書",
-      "educations": "学歴",
-      "careers": "職歴",
-      "qualifications": "免許・資格",
-      "skills": "活かせるスキル",
-      "addRow": "追加",
-      "deleteRow": "削除",
-      "isCurrent": "在職中",
-      "includeInRirekisho": "履歴書に含める",
-      "includeInShokumukeireki": "職務経歴書に含める",
-      "western": "西暦",
-      "japanese": "和暦",
-      "photoUpload": "証明写真",
-      "uploadPhoto": "写真を選択",
-      "deletePhoto": "写真を削除",
-      "noVersions": "まだ履歴書がありません。新規作成してください",
-      "versionCount": "{n}件のバージョン",
-      "confirmDelete": "この履歴書バージョンを削除しますか？",
-      "motivation": "志望動機",
-      "selfPr": "自己PR・特技・趣味",
-      "personalRequest": "本人希望記入欄",
-      "careerSummary": "職務要約",
-      "skillsSummary": "活かせる経験・知識・技術",
-      "profileNote": "氏名・生年月日・性別はプロフィールから自動補完されます",
-      "readOnlyField": "プロフィールで変更できます",
-      "loadError": "履歴書の読み込みに失敗しました",
-      "saveError": "保存に失敗しました",
-      "deleteError": "削除に失敗しました",
-      "duplicateError": "複製に失敗しました",
-      "exportError": "出力に失敗しました",
-      "photoUploadError": "写真のアップロードに失敗しました",
-      "photoDeleteError": "写真の削除に失敗しました",
-      "deleteSuccess": "削除しました",
-      "duplicateSuccess": "複製しました",
-      "exportSuccess": "ダウンロードの準備ができました",
-      "photoUploadSuccess": "写真をアップロードしました",
-      "photoDeleteSuccess": "写真を削除しました",
-      "previewPdf": "PDF プレビュー",
-      "downloadPdf": "PDF ダウンロード",
-      "downloadExcel": "Excel ダウンロード",
-      "entryYear": "年",
-      "entryMonth": "月",
-      "endYear": "退職年",
-      "endMonth": "退職月",
-      "companyName": "会社名",
-      "department": "部署・役職",
-      "employmentType": "雇用形態",
-      "businessSummary": "事業内容",
-      "jobDescription": "職務内容",
-      "achievements": "実績・成果",
-      "qualificationName": "資格・免許名",
-      "note": "補足",
-      "skillName": "スキル名",
-      "skillLevel": "習熟度",
+      "saved": "Gespeichert",
+      "saving": "Wird gespeichert...",
+      "conflictError": "Bearbeitungskonflikt erkannt. Neueste Version wird geladen.",
+      "preview": "Vorschau",
+      "export": "Exportieren",
+      "exportPdf": "PDF herunterladen",
+      "exportExcel": "Excel herunterladen",
+      "rirekisho": "Lebenslauf",
+      "shokumukeirekisho": "Berufserfahrungsdokument",
+      "educations": "Ausbildung",
+      "careers": "Berufserfahrung",
+      "qualifications": "Lizenzen und Qualifikationen",
+      "skills": "Fähigkeiten",
+      "addRow": "Hinzufügen",
+      "deleteRow": "Löschen",
+      "isCurrent": "Derzeit angestellt",
+      "includeInRirekisho": "Im Lebenslauf einschließen",
+      "includeInShokumukeireki": "In Berufserfahrungsdokument einschließen",
+      "western": "Westliche Ära",
+      "japanese": "Japanische Ära",
+      "photoUpload": "Passfoto",
+      "uploadPhoto": "Foto auswählen",
+      "deletePhoto": "Foto löschen",
+      "noVersions": "Noch keine Lebensläufe. Bitte erstelle einen.",
+      "versionCount": "{n} Version(en)",
+      "confirmDelete": "Diese Lebenslauf-Version löschen?",
+      "motivation": "Bewerbungsgrund",
+      "selfPr": "Selbstdarstellung, Sonderfertigkeiten und Hobbys",
+      "personalRequest": "Bevorzugte Bedingungen",
+      "careerSummary": "Berufliche Zusammenfassung",
+      "skillsSummary": "Relevante Erfahrungen, Kenntnisse und Fähigkeiten",
+      "profileNote": "Name, Geburtsdatum und Geschlecht werden automatisch aus dem Profil ausgefüllt",
+      "readOnlyField": "Kann im Profil geändert werden",
+      "loadError": "Lebenslauf konnte nicht geladen werden",
+      "saveError": "Speichern fehlgeschlagen",
+      "deleteError": "Löschen fehlgeschlagen",
+      "duplicateError": "Duplizieren fehlgeschlagen",
+      "exportError": "Exportieren fehlgeschlagen",
+      "photoUploadError": "Foto hochladen fehlgeschlagen",
+      "photoDeleteError": "Foto löschen fehlgeschlagen",
+      "deleteSuccess": "Gelöscht",
+      "duplicateSuccess": "Dupliziert",
+      "exportSuccess": "Download bereit",
+      "photoUploadSuccess": "Foto hochgeladen",
+      "photoDeleteSuccess": "Foto gelöscht",
+      "previewPdf": "PDF-Vorschau",
+      "downloadPdf": "PDF herunterladen",
+      "downloadExcel": "Excel herunterladen",
+      "entryYear": "Jahr",
+      "entryMonth": "Monat",
+      "endYear": "Austrittsjahr",
+      "endMonth": "Austrittsmonat",
+      "companyName": "Firmenname",
+      "department": "Abteilung / Titel",
+      "employmentType": "Beschäftigungsart",
+      "businessSummary": "Geschäftsbeschreibung",
+      "jobDescription": "Stellenbeschreibung",
+      "achievements": "Leistungen",
+      "qualificationName": "Name der Qualifikation / Lizenz",
+      "note": "Notizen",
+      "skillName": "Fähigkeitsname",
+      "skillLevel": "Kompetenzniveau",
       "skillLevels": {
-        "BEGINNER": "初心者",
-        "INTERMEDIATE": "中級",
-        "ADVANCED": "上級",
-        "EXPERT": "エキスパート"
+        "BEGINNER": "Anfänger",
+        "INTERMEDIATE": "Fortgeschrittener",
+        "ADVANCED": "Experte",
+        "EXPERT": "Meister"
       },
-      "currentAddress": "現住所",
-      "currentAddressKana": "現住所（ふりがな）",
-      "contactAddress": "連絡先住所",
-      "contactAddressKana": "連絡先住所（ふりがな）",
-      "contactPhone": "連絡先電話番号",
-      "contactEmail": "連絡先メールアドレス",
-      "commuteMinutes": "通勤時間（分）",
-      "dependentsCount": "扶養家族数（配偶者を除く）",
-      "hasSpouse": "配偶者の有無",
-      "spouseSupport": "配偶者の扶養義務",
-      "headerSection": "基本情報",
-      "eraFormat": "年表記",
-      "versionTitle": "バージョン名",
-      "moveUp": "上へ",
-      "moveDown": "下へ",
-      "conflictRetry": "再取得する",
-      "previewLoading": "プレビューを生成中...",
-      "exportLoading": "出力ファイルを生成中...",
-      "previewError": "プレビューの生成に失敗しました",
+      "currentAddress": "Aktuelle Adresse",
+      "currentAddressKana": "Aktuelle Adresse (phonetisch)",
+      "contactAddress": "Kontaktadresse",
+      "contactAddressKana": "Kontaktadresse (phonetisch)",
+      "contactPhone": "Kontakttelefon",
+      "contactEmail": "Kontakt-E-Mail",
+      "commuteMinutes": "Pendelzeit (Minuten)",
+      "dependentsCount": "Anzahl der Unterhaltsberechtigten (ohne Ehepartner)",
+      "hasSpouse": "Familienstand",
+      "spouseSupport": "Ehepartner-Unterhalt",
+      "headerSection": "Grundinformationen",
+      "eraFormat": "Jahresformat",
+      "versionTitle": "Versionsname",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
+      "conflictRetry": "Neu laden",
+      "previewLoading": "Vorschau wird generiert...",
+      "exportLoading": "Exportdatei wird generiert...",
+      "previewError": "Vorschau konnte nicht generiert werden",
       "backToList": "Zurück zur Liste",
       "backToEditor": "Zurück zum Editor",
       "description": "Beschreibung",
@@ -1169,6 +1490,25 @@
       "skillsSummaryHint": "Beschreibe frei deine Erfahrungen, Kenntnisse und Fähigkeiten (strukturierte Skills bitte im unten stehenden Skills-Bereich eintragen)",
       "excelPreviewUnavailable": "Excel-Dateivorschau ist im Browser nicht verfügbar",
       "downloadLabel": "{format} herunterladen ({type})"
+    },
+    "menu": "Menü",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "Unterstützung beenden?",
+      "supporter_cancel_confirm_body": "Du beendest die Unterstützung von {name}. Bist du sicher?",
+      "supporter_cancel_action": "Beenden",
+      "supporter_registered": "Als Unterstützer registriert",
+      "supporter_applied": "Unterstützerantrag gesendet",
+      "supporter_canceled": "Unterstützung beendet",
+      "leave_action": "Verlassen",
+      "load_error_title": "Informationen konnten nicht geladen werden",
+      "load_error_body": "Bitte versuche es später erneut. Ohne Berechtigung ist die Anzeige evtl. nicht möglich.",
+      "back_to_dashboard": "Zurück zum Dashboard",
+      "retry": "Erneut versuchen",
+      "slow_loading": "Das Laden dauert länger als erwartet"
+    },
+    "unsavedChanges": {
+      "title": "Ungespeicherte Änderungen",
+      "confirmLeave": "Es gibt ungespeicherte Änderungen. Wenn Sie diese Seite verlassen, gehen Ihre Eingaben verloren. Fortfahren?"
     }
   },
   "teamHub": {
@@ -1188,7 +1528,7 @@
     "becomeSupporter": "Unterstützer werden",
     "supporterSuccess": "Als Unterstützer registriert",
     "supporterError": "Folgen fehlgeschlagen",
-    "folders": "フォルダ整理"
+    "folders": "Ordnerorganisation"
   },
   "orgHub": {
     "pageTitle": "Meine Organisationen",
@@ -1207,23 +1547,23 @@
     "becomeSupporter": "Unterstützer werden",
     "supporterSuccess": "Als Unterstützer registriert",
     "supporterError": "Folgen fehlgeschlagen",
-    "folders": "フォルダ整理"
+    "folders": "Ordnerorganisation"
   },
   "scopeFolder": {
-    "folders": "フォルダ",
-    "addFolder": "フォルダを追加",
-    "editFolder": "フォルダを編集",
-    "deleteFolder": "フォルダを削除",
-    "deleteConfirm": "フォルダを削除しますか？チームはフォルダから外れますが、削除されません。",
-    "folderName": "フォルダ名",
-    "folderColor": "フォルダカラー",
-    "uncategorized": "未分類",
-    "moveToFolder": "フォルダへ移動",
-    "removeFromFolder": "フォルダから外す",
-    "noFolders": "フォルダはまだありません",
+    "folders": "Ordner",
+    "addFolder": "Ordner hinzufügen",
+    "editFolder": "Ordner bearbeiten",
+    "deleteFolder": "Ordner löschen",
+    "deleteConfirm": "Diesen Ordner löschen? Teams werden aus dem Ordner entfernt, aber nicht gelöscht.",
+    "folderName": "Ordnername",
+    "folderColor": "Ordnerfarbe",
+    "uncategorized": "Nicht kategorisiert",
+    "moveToFolder": "In Ordner verschieben",
+    "removeFromFolder": "Aus Ordner entfernen",
+    "noFolders": "Noch keine Ordner",
     "emptyFolder": "Dieser Ordner ist leer",
-    "limitExceeded": "フォルダは最大20個まで作成できます",
-    "nameDuplicate": "同じ名前のフォルダが既に存在します",
+    "limitExceeded": "Du kannst bis zu 20 Ordner erstellen",
+    "nameDuplicate": "Ein Ordner mit demselben Namen existiert bereits",
     "title": "Meine Ordner",
     "untagged": "Unsortiert",
     "all": "Alle",
@@ -1286,11 +1626,21 @@
       "feedback": "Feedback",
       "reports": "Berichte",
       "advertisers": "Werbeverwaltung",
+      "adRateCards": "Anzeigen-Preiskarten",
+      "adCreditLimitRequests": "Anzeigen-Kreditlimit-Anträge",
+      "affiliateSettings": "Affiliate-Einstellungen",
       "auditLogs": "Audit-Protokolle",
       "shiftBudget": "Schichtbudget",
       "betaRestriction": "Beta-Einschränkung",
       "errorReports": "Fehlerberichte",
-      "gdprPurge": "DSGVO Bereinigungsstatus"
+      "gdprPurge": "DSGVO Bereinigungsstatus",
+      "feedbackInbox": "Feedback-Posteingang (Global)",
+      "billing": "Abrechnungs-Stammdaten",
+      "betaPerks": "ベータ特典管理"
+    },
+    "impersonation": {
+      "banner": "Identitätswechsel: {label}",
+      "exit": "Beenden"
     },
     "businessAlert": {
       "title": "Geschäftswarnungen",
@@ -1351,7 +1701,78 @@
     "addRecord": "Eintrag hinzufügen",
     "participantCount": "{count} Teilnehmer",
     "noRecords": "Keine Aktivitätsprotokolle",
-    "loadError": "Fehler beim Laden der Aktivitätsprotokolle"
+    "loadError": "Fehler beim Laden der Aktivitätsprotokolle",
+    "create": {
+      "dialogTitle": "Aktivitätsprotokoll hinzufügen",
+      "templateLabel": "Vorlage",
+      "templatePlaceholder": "Vorlage auswählen",
+      "noTemplatesTitle": "Noch keine Vorlagen",
+      "noTemplatesBody": "Um ein Aktivitätsprotokoll zu erstellen, lege bitte zuerst eine Vorlage an.",
+      "goToTemplates": "Vorlage erstellen",
+      "titleLabel": "Titel",
+      "titlePlaceholder": "Titel der Aktivität",
+      "dateLabel": "Aktivitätsdatum",
+      "descriptionLabel": "Beschreibung (optional)",
+      "visibilityLabel": "Sichtbarkeit",
+      "visibilityPublic": "Öffentlich",
+      "visibilityMembersOnly": "Nur Mitglieder",
+      "requiredFieldError": "Bitte fülle die Pflichtfelder aus",
+      "saveSuccess": "Aktivitätsprotokoll hinzugefügt",
+      "saveError": "Fehler beim Hinzufügen des Aktivitätsprotokolls",
+      "submit": "Hinzufügen",
+      "scopeResolveError": "Ziel konnte nicht ermittelt werden",
+      "templatesLoadError": "Fehler beim Laden der Vorlagen",
+      "draftHint": "Du kannst einen Entwurf nur mit einem Titel und Aktivitätsdatum speichern. Vorlagen und benutzerdefinierte Felder können später hinzugefügt werden.",
+      "saveDraft": "Entwurf speichern",
+      "draftSaved": "Entwurf gespeichert",
+      "draftRestored": "Vorherige Eingabe wiederhergestellt",
+      "draftSuccess": "Als Entwurf gespeichert"
+    },
+    "statusLabel": {
+      "DRAFT": "Entwurf",
+      "PUBLISHED": "Veröffentlicht"
+    },
+    "list": {
+      "filterAll": "Alle",
+      "filterDraft": "Entwurf",
+      "editDraft": "Bearbeiten und veröffentlichen"
+    },
+    "publish": {
+      "success": "Aktivitätsprotokoll veröffentlicht",
+      "error": "Fehler beim Veröffentlichen"
+    },
+    "guide": {
+      "title": "So verwendest du Aktivitätsprotokolle",
+      "description": "Halte die Aktivitäten deines Teams oder deiner Organisation fest (Training, Spiele, Events usw.), um sie nachzubereiten und zu teilen.",
+      "list": {
+        "title": "Protokolle anzeigen",
+        "body": "Aktivitäten werden als Karten in umgekehrter chronologischer Reihenfolge angezeigt. Titel, Datum, Ort und Teilnehmerzahl sind auf einen Blick sichtbar. Einträge mit der Sichtbarkeit „Öffentlich\" zeigen einen Teilen-Button, mit dem du den Link nach außen weitergeben kannst."
+      },
+      "add": {
+        "title": "Protokoll hinzufügen",
+        "body": "Tippe oben rechts auf „Protokoll hinzufügen\", um ein neues Aktivitätsprotokoll zu erstellen.",
+        "steps": {
+          "step1": "Oben rechts auf „Protokoll hinzufügen\" tippen",
+          "step2": "Eine Vorlage auswählen",
+          "step3": "Titel und Aktivitätsdatum eingeben (beide Pflichtfelder)",
+          "step4": "Sichtbarkeit wählen (Nur Mitglieder / Öffentlich)",
+          "step5": "Benutzerdefinierte Felder der Vorlage ausfüllen, falls vorhanden",
+          "step6": "Auf „Hinzufügen\" tippen, um den Eintrag in der Liste zu speichern"
+        }
+      },
+      "template": {
+        "title": "Wenn eine Vorlage benötigt wird",
+        "body": "Zum Erstellen eines Protokolls ist eine Vorlage erforderlich. Ist noch keine Vorlage vorhanden, wird ein Hinweisbildschirm anstelle des Formulars angezeigt. Bei Teams erstelle zuerst im Bereich „Aktivitätsvorlagen\" eine Vorlage, bevor du ein Protokoll hinzufügst."
+      },
+      "visibility": {
+        "title": "Sichtbarkeit (wer den Eintrag sehen kann)",
+        "members_only_label": "Nur Mitglieder",
+        "members_only_desc": "Nur Mitglieder des Teams oder der Organisation können diesen Eintrag sehen.",
+        "public_label": "Öffentlich",
+        "public_desc": "Jeder mit dem Link kann den Eintrag aufrufen. In der Liste wird ein Teilen-Button angezeigt, um den Link einfach weiterzugeben.",
+        "note": "Die Standard-Sichtbarkeit richtet sich nach den Einstellungen der Vorlage."
+      }
+    }
   },
   "dashboard": {
     "team_reservation_link": "Reservierungen"
@@ -1377,21 +1798,21 @@
     "rateLimitExceeded": "Zu viele Anfragen. Bitte später erneut versuchen"
   },
   "publicTeamDetail": {
-    "loginToSeeMembers": "メンバー一覧を見るにはログインしてください",
-    "loginToSeeAnnouncements": "お知らせを見るにはログインしてください",
-    "loginToSeeChat": "チャットを見るにはログインしてください",
-    "loginToSeeMore": "もっと見るにはログイン",
-    "loginCtaDescription": "メンバー一覧、お知らせ、チャット、詳細情報はログインしてご覧いただけます",
-    "loginButton": "ログイン",
-    "signupButton": "新規登録",
-    "mapTitle": "店舗の場所",
-    "noMap": "地図情報なし",
-    "philosophyTitle": "理念",
-    "establishedLabel": "設立",
-    "homepageLabel": "公式サイト",
-    "memberCountSuffix": "名のスタッフ",
-    "backToSearch": "店舗一覧に戻る",
-    "notFound": "店舗が見つかりません"
+    "loginToSeeMembers": "Anmelden um Mitglieder zu sehen",
+    "loginToSeeAnnouncements": "Anmelden um Ankündigungen zu sehen",
+    "loginToSeeChat": "Anmelden um Chat zu sehen",
+    "loginToSeeMore": "Anmelden um mehr zu sehen",
+    "loginCtaDescription": "Anmelden um Mitglieder, Ankündigungen, Chat und mehr Details zu sehen",
+    "loginButton": "Anmelden",
+    "signupButton": "Registrieren",
+    "mapTitle": "Standort",
+    "noMap": "Kein Kartenstandort",
+    "philosophyTitle": "Philosophie",
+    "establishedLabel": "Gegründet",
+    "homepageLabel": "Website",
+    "memberCountSuffix": " Mitarbeiter",
+    "backToSearch": "Zurück zur Liste",
+    "notFound": "Geschäft nicht gefunden"
   },
   "favorites": {
     "title": "Favoriten",
@@ -1416,56 +1837,357 @@
     "saveError": "Speichern fehlgeschlagen",
     "removeConfirm": "Möchtest du das wirklich entfernen?",
     "dragHandle": "Neu anordnen",
+    "labelFavorited": "Gespeichert",
     "entityType": {
       "TEAM": "Team",
       "ORGANIZATION": "Organisation",
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "Autor",
       "VILLAGE": "Dorf"
-    }
+    },
+    "restoredToast": "Zu Favoriten wiederhergestellt",
+    "restoreFailed": "Rückgängig nicht möglich"
   },
   "succession": {
     "legalFilings": {
-      "title": "法的手続き準備",
-      "create": "新規起票",
-      "filingType": "申立種別",
-      "absenteePropertyManager": "不在者財産管理人選任申立",
-      "inheritanceLiquidator": "相続財産清算人選任申立",
-      "buildEvidence": "証拠 ZIP 生成",
-      "downloadEvidence": "証拠 ZIP ダウンロード",
-      "evidenceNotReady": "証拠 ZIP 未生成",
-      "warningLegalCheck": "本機能は v1（弁護士監修なし）です。実際の提出前に弁護士へ確認してください。",
-      "residentRegistryId": "居住者台帳 ID",
-      "dwellingUnitId": "居室 ID",
-      "note": "備考",
-      "createdAt": "起票日時",
-      "evidenceBuiltAt": "証拠 ZIP 生成日時",
-      "externalCaseNumber": "外部受理番号",
-      "filedExternallyAt": "外部提出日時",
-      "action": "操作",
-      "cancel": "キャンセル",
-      "submit": "起票する",
-      "createSuccess": "法的手続きを起票しました",
-      "createError": "起票に失敗しました",
-      "evidenceBuildSuccess": "証拠 ZIP を生成しました",
-      "evidenceBuildError": "証拠 ZIP の生成に失敗しました",
-      "downloadError": "ダウンロード URL の取得に失敗しました",
-      "fetchError": "法的手続き一覧の取得に失敗しました",
-      "empty": "法的手続きはまだありません"
+      "title": "Vorbereitung rechtlicher Verfahren",
+      "create": "Antrag erstellen",
+      "filingType": "Antragstyp",
+      "absenteePropertyManager": "Antrag auf Bestellung eines Vermögensverwalters für Abwesende",
+      "inheritanceLiquidator": "Antrag auf Bestellung eines Nachlassliquidators",
+      "buildEvidence": "Beweismittel-ZIP erstellen",
+      "downloadEvidence": "Beweismittel-ZIP herunterladen",
+      "evidenceNotReady": "Beweismittel-ZIP noch nicht erstellt",
+      "warningLegalCheck": "Diese Funktion ist v1 (ohne anwaltliche Prüfung). Bitte vor der Einreichung einen Anwalt konsultieren.",
+      "residentRegistryId": "Einwohnermeldeamts-ID",
+      "dwellingUnitId": "Wohneinheits-ID",
+      "note": "Notizen",
+      "createdAt": "Antragsdatum",
+      "evidenceBuiltAt": "Beweismittel-ZIP erstellt am",
+      "externalCaseNumber": "Externes Aktenzeichen",
+      "filedExternallyAt": "Extern eingereicht am",
+      "action": "Aktionen",
+      "cancel": "Abbrechen",
+      "submit": "Antrag erstellen",
+      "createSuccess": "Rechtliches Verfahren erstellt",
+      "createError": "Antrag konnte nicht erstellt werden",
+      "evidenceBuildSuccess": "Beweismittel-ZIP erstellt",
+      "evidenceBuildError": "Beweismittel-ZIP konnte nicht erstellt werden",
+      "downloadError": "Download-URL konnte nicht abgerufen werden",
+      "fetchError": "Rechtliche Verfahren konnten nicht geladen werden",
+      "empty": "Noch keine rechtlichen Verfahren"
     }
   },
   "team": {
-    "mapEmbedUrlLabel": "店舗地図（Google Maps 埋め込み URL）",
+    "mapEmbedUrlLabel": "Standortkarte (Google Maps Einbettungs-URL)",
     "mapEmbedUrlPlaceholder": "https://www.google.com/maps/embed?...",
-    "mapEmbedUrlWarning": "⚠️ この URL は未ログインユーザーにも公開されます",
-    "mapEmbedUrlHelp": "Google Maps で「共有 > 地図を埋め込む > HTML をコピー」して src= の URL を貼り付けてください",
-    "mapEmbedUrlInvalidFormat": "Google Maps 埋め込み URL（https://www.google.com/maps/embed?...）の形式である必要があります",
-    "mapEmbedUrlSaved": "店舗地図 URL を保存しました"
+    "mapEmbedUrlWarning": "⚠️ Diese URL ist auch für nicht angemeldete Benutzer sichtbar",
+    "mapEmbedUrlHelp": "In Google Maps auf \"Teilen > Karte einbetten > HTML kopieren\" klicken und die src= URL einfügen",
+    "mapEmbedUrlInvalidFormat": "Muss eine Google Maps Einbettungs-URL sein (https://www.google.com/maps/embed?...)",
+    "mapEmbedUrlSaved": "Standortkarten-URL gespeichert",
+    "timezone": {
+      "label": "Zeitzone für Reservierungen",
+      "help": "IANA-Zeitzone für die Start- und Endzeiten von Reservierungen.",
+      "placeholder": "z. B. Asia/Tokyo",
+      "invalid": "Geben Sie eine gültige IANA-Zeitzone ein",
+      "saved": "Zeitzone gespeichert"
+    },
+    "regionCode": {
+      "label": "Standort (Präfektur / Stadt)",
+      "help": "Die Auswahl von Präfektur und Stadt legt die Standardwerte für regionale Suche und Inserate fest.",
+      "prefecture": "Präfektur",
+      "city": "Stadt",
+      "prefecturePlaceholder": "Präfektur auswählen",
+      "cityPlaceholder": "Stadt auswählen",
+      "saved": "Standort gespeichert"
+    }
   },
   "event": {
     "chatOpen": "Chat öffnen"
   },
   "surveyPage": {
     "bulletinOpen": "Im Forum diskutieren"
+  },
+  "scopeDashboard": {
+    "storageSummary": { "title": "Speicher", "personal": "Persönlich", "team": "Team", "organization": "Organisation", "details": "Details anzeigen", "error": "Speicher konnte nicht geladen werden", "retry": "Erneut versuchen", "unconfigured": "Kontingent nicht konfiguriert", "not_available": "Keine Speicherdaten", "meterLabel": "Speichernutzung {scope}", "meterValue": "Nutzung {percent}%", "warningTitle": "Speicherlimit wird erreicht", "warningMessage": "{scope} verwendet {percent}%. Erwägen Sie ein kostenpflichtiges Upgrade.", "viewPlans": "Tarife anzeigen", "checkStorage": "Speicher prüfen", "cancel": "Abbrechen" },
+    "tabs": {
+      "personal": "Persönlich",
+      "team": "Team",
+      "organization": "Organisation"
+    },
+    "prevPanel": "Vorheriges Panel",
+    "nextPanel": "Nächstes Panel",
+    "switchedTo": "Zu {name}-Panel gewechselt",
+    "searchTeam": "Teams suchen",
+    "searchOrganization": "Organisationen suchen",
+    "tagBar": {
+      "filterAll": "Alle",
+      "folderFilter": "Nach Ordner filtern",
+      "prevPage": "Vorherige Seite",
+      "nextPage": "Nächste Seite",
+      "reorder": "Anzeigereihenfolge ändern",
+      "goToScopePage": "Zur Team-/Organisationsseite",
+      "empty": "Du gehörst keinem Team oder keiner Organisation an",
+      "folderEmpty": "Keine Bereiche in diesem Ordner",
+      "loadError": "Tag-Liste konnte nicht geladen werden"
+    },
+    "orderDialog": {
+      "title": "Tag-Anzeigereihenfolge",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "saveError": "Anzeigereihenfolge konnte nicht gespeichert werden"
+    }
+  },
+  "slug": {
+    "label": "URL (Slug)",
+    "hint": "Wird in der öffentlichen URL des Teams/der Organisation verwendet (z.B. mein-team). Wenn leer, wird er aus dem Namen generiert.",
+    "placeholder": "mein-team",
+    "available": "Verfügbar",
+    "unavailable": "Dieser Slug ist bereits vergeben",
+    "checking": "Wird geprüft...",
+    "format": "Nur Kleinbuchstaben, Zahlen und Bindestriche (3-30 Zeichen)",
+    "reason": {
+      "SLUG_REQUIRED": "Bitte einen Slug eingeben",
+      "SLUG_INVALID_FORMAT": "Ungültiges Format (Kleinbuchstaben, Zahlen und Bindestriche, 3-30 Zeichen; keine führenden/abschließenden oder aufeinanderfolgenden Bindestriche)",
+      "SLUG_RESERVED": "Dieser Slug ist reserviert und kann nicht verwendet werden",
+      "SLUG_ALREADY_TAKEN": "Dieser Slug ist bereits vergeben",
+      "SLUG_RETIRED": "Dieser Slug wurde zuvor verwendet und kann nicht wiederverwendet werden (für Weiterleitungen reserviert)"
+    },
+    "rename": {
+      "title": "URL (Slug) ändern",
+      "help": "Ändern Sie den Slug in Ihrer öffentlichen URL. Alte URLs werden automatisch zur neuen weitergeleitet.",
+      "save": "Ändern",
+      "saved": "URL (Slug) geändert",
+      "saveError": "URL (Slug) konnte nicht geändert werden",
+      "unchanged": "Identisch mit dem aktuellen Slug (keine Änderung)"
+    }
+  },
+  "team_visibility": {
+    "PUBLIC": "Öffentlich",
+    "GUESTS_AND_ABOVE": "Gäste und höher",
+    "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
+    "MEMBERS_AND_ABOVE": "Mitglieder und höher"
+  },
+  "module_settings": {
+    "enabled_count": "有効な機能: {count} / {limit}",
+    "fetch_error": "機能一覧の取得に失敗しました",
+    "empty": "現在このスコープで利用できる追加機能はありません",
+    "toggle_success_on": "{name} を有効にしました",
+    "toggle_success_off": "{name} を無効にしました",
+    "badge": {
+      "level_unavailable": "このレベルでは利用できません",
+      "paid_plan": "有料プラン",
+      "limit_reached": "上限（{limit}）に達しています"
+    },
+    "error": {
+      "paid_required": "この機能は有料プランが必要です",
+      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
+      "level_unavailable": "このレベルではこの機能を利用できません",
+      "generic": "機能の切替に失敗しました"
+    }
+  },
+  "module_settings_guide": {
+    "title": "機能設定の使い方",
+    "help_button": "使い方",
+    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "what": {
+      "title": "機能設定とは",
+      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+    },
+    "toggle": {
+      "title": "機能を ON / OFF する",
+      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "steps": {
+        "step1": "一覧から使いたい機能のカードを探す",
+        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
+        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
+        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+      }
+    },
+    "count": {
+      "title": "今いくつ使えるかを確認する",
+      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+    },
+    "restrictions": {
+      "title": "使えないスイッチがあるとき",
+      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "items": {
+        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
+        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
+        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+      }
+    },
+    "empty": {
+      "title": "機能が表示されないとき",
+      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+    },
+    "permission": {
+      "title": "設定できる人",
+      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basisinfo",
+      "members": "Mitglieder",
+      "invites": "Einladungen",
+      "supporters": "Unterstützerverwaltung",
+      "modules": "Funktionen"
+    },
+    "action": {
+      "leave_confirm_title": "Team verlassen",
+      "leave_confirm_body": "Möchtest du dieses Team wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
+      "left": "Team verlassen"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basisinfo",
+      "members": "Mitglieder",
+      "member_teams": "Teams",
+      "invites": "Einladungen",
+      "permission_groups": "Berechtigungsgruppen",
+      "supporters": "Unterstützerverwaltung",
+      "modules": "Funktionen"
+    },
+    "action": {
+      "leave_confirm_title": "Organisation verlassen",
+      "leave_confirm_body": "Möchtest du diese Organisation wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
+      "left": "Organisation verlassen"
+    }
+  },
+  "blog_guide": {
+    "title": "So verwenden Sie Mein Blog",
+    "description": "Schreiben Sie Artikel und teilen Sie sie mit Ihren Team- und Organisationsmitgliedern. Speichern Sie zuerst als Entwurf, dann veröffentlichen Sie, wenn Sie bereit sind.",
+    "what": {
+      "title": "Was ist ein Blog?",
+      "body": "Ein Ort, um Ihre Gedanken und Lernerkenntnisse als Artikel zu schreiben und mit Ihren Team- und Organisationsmitgliedern zu teilen. Artikel können im Entwurfs-, Veröffentlicht-, Geplant- oder Archiviert-Zustand verwaltet werden."
+    },
+    "create": {
+      "title": "Einen Artikel schreiben",
+      "body": "Klicken Sie einfach auf '+ Neuer Artikel', um einen Entwurfsartikel zu erstellen. Sie können den Titel später ändern.",
+      "steps": {
+        "step1": "Klicken Sie oben rechts auf '+ Neuer Artikel'",
+        "step2": "Geben Sie den Artikeltitel ein (kann später geändert werden)",
+        "step3": "Wählen Sie das Veröffentlichungsziel (persönlich, Team oder Organisation)",
+        "step4": "Klicken Sie auf 'Erstellen und Bearbeiten', um zum Editor zu gelangen"
+      }
+    },
+    "publish": {
+      "title": "Einen Artikel veröffentlichen",
+      "body": "Klicken Sie auf das Augensymbol auf jeder Karte in 'Meine Beiträge', um zwischen öffentlich und privat zu wechseln.",
+      "steps": {
+        "step1": "Klicken Sie auf das Augensymbol auf einer Entwurfsartikelkarte",
+        "step2": "Wechselt zu 'Veröffentlicht' und wird für Team- und Organisationsmitglieder sichtbar",
+        "step3": "Erneut klicken, um wieder privat (Entwurf) zu werden"
+      }
+    },
+    "manage": {
+      "title": "Artikel verwalten",
+      "body": "'Meine Beiträge' zeigt die neuesten 5 Artikel in einem horizontalen Scroll. Verwenden Sie die Symbole auf jeder Karte zum Bearbeiten oder Löschen.",
+      "item_edit": "Bleistiftsymbol → Artikelinhalt bearbeiten",
+      "item_delete": "Papierkorbsymbol → Artikel löschen (kann nicht rückgängig gemacht werden)",
+      "item_count": "Überprüfen Sie die Artikelanzahl oben rechts",
+      "item_all": "Alle Artikel werden im Abschnitt 'Aller Beiträge' aufgelistet"
+    },
+    "settings": {
+      "title": "Blog-Einstellungen",
+      "body": "Sie können Ihren Blog-Titel, die Beschreibung und den Selbstüberprüfungszeitraum festlegen.",
+      "steps": {
+        "step1": "Klicken Sie oben rechts auf '⚙ Blog-Einstellungen'",
+        "step2": "Geben Sie Ihren Blog-Titel und Ihre Beschreibung ein",
+        "step3": "Legen Sie den Selbstüberprüfungszeitraum fest (Überprüfungszeitraum vor dem Posten)",
+        "step4": "Klicken Sie auf 'Einstellungen speichern'"
+      }
+    }
+  },
+  "analytics": {
+    "title": "Zugriffsanalyse",
+    "loadError": "Zugriffsanalysedaten konnten nicht geladen werden",
+    "empty": "Noch keine Zugriffsdaten vorhanden",
+    "summary": {
+      "totalViews": "Gesamt-PV",
+      "uniqueVisitors": "Eindeutige Besucher",
+      "memberViews": "Mitgliederaufrufe",
+      "guestViews": "Gastaufrufe"
+    },
+    "export": "Daten exportieren",
+    "topContent": {
+      "title": "Beliebte Inhalte",
+      "empty": "Keine Daten verfügbar"
+    },
+    "chart": {
+      "views": "Seitenaufrufe",
+      "daily": "Täglich",
+      "monthly": "Monatlich",
+      "toggle": "Ansicht wechseln",
+      "recentDays": "Zugriffsstatistiken der letzten 30 Tage",
+      "monthlyTrend": "Monatliche Zugriffstrendstatistiken"
+    },
+    "period": {
+      "allTime": "Gesamtzeitraum"
+    },
+    "guide": {
+      "page_title": "Verwendung von Analytics",
+      "what": {
+        "title": "Was ist Analytics?",
+        "body": "Mit Analytics können Sie sehen, wie oft die Seiten Ihres Teams oder Ihrer Organisation aufgerufen werden. Nutzen Sie es, um Besuchsmuster von Mitgliedern und Gästen zu verstehen und Inhalte zu verbessern."
+      },
+      "metrics": {
+        "title": "Gemessene Daten",
+        "total_views": "Gesamt-PV: Gesamtzahl der Seitenaufrufe",
+        "unique_visitors": "Eindeutige Besucher: Besucherzahl ohne Duplikate",
+        "member_views": "Mitglieder-Aufrufe: Seitenaufrufe durch Mitglieder",
+        "guest_views": "Gast-Aufrufe: Seitenaufrufe durch Gäste (Nicht-Mitglieder)"
+      },
+      "timing": {
+        "title": "Datenaktualisierungszeit",
+        "body": "Zugriffsdaten werden in einem täglichen Batch aggregiert. Daten vom selben Tag werden am nächsten Morgen angezeigt. Da es sich nicht um Echtzeit handelt, werden Zugriffe der letzten Stunden ab dem nächsten Tag angezeigt."
+      },
+      "chart": {
+        "title": "Diagramm verstehen",
+        "body": "Sie können das Diagramm zwischen «Täglich» und «Monatlich» umschalten.",
+        "daily_title": "Tägliches Diagramm",
+        "daily_desc": "Zeigt tägliche Seitenaufruf-Trends der letzten 30 Tage.",
+        "monthly_title": "Monatliches Diagramm",
+        "monthly_desc": "Zeigt monatlich aggregierte Werte. Nützlich zum Verstehen langfristiger Trends."
+      },
+      "top_content": {
+        "title": "Beliebte Inhalte",
+        "body": "Zeigt eine Rangliste der Inhalte nach Anzahl der Aufrufe. Solange noch keine Zugriffsdaten vorliegen, wird \"Keine Daten verfügbar\" angezeigt. Die Rangliste erscheint automatisch, sobald Aufrufe erfasst wurden."
+      }
+    }
+  },
+  "comingSoon": {
+    "title": "Demnächst verfügbar",
+    "description": "Diese Funktion befindet sich derzeit in der Entwicklung. Bitte schauen Sie später wieder vorbei."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Eigentum übertragen",
+    "sectionDescription": "Übergib die Rolle des Eigentümers (Administrator) an ein anderes Mitglied. Nach der Übertragung bist du stellvertretende:r Administrator:in und kannst administratorexklusive Aktionen nicht mehr ausführen.",
+    "openButton": "Eigentum übertragen",
+    "dialogTitle": "Eigentum übertragen",
+    "warning": "Diese Aktion kann nicht rückgängig gemacht werden. Die Administratorrechte gehen an die neue Eigentümerin bzw. den neuen Eigentümer über; nur diese Person kann sie zurückgeben.",
+    "targetLabel": "Neue:r Eigentümer:in",
+    "targetPlaceholder": "Mitglied auswählen",
+    "noCandidates": "Es gibt kein Mitglied, an das du das Eigentum übertragen kannst.",
+    "confirmLabel": "Gib zur Bestätigung „{name}“ ein",
+    "confirmMismatch": "Der Name stimmt nicht überein.",
+    "cancel": "Abbrechen",
+    "submit": "Übertragen",
+    "successTitle": "Eigentum übertragen",
+    "successDetail": "Die Administratorrechte wurden an die neue Eigentümerin bzw. den neuen Eigentümer übertragen."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Funktion nicht verfügbar",
+      "body": "Diese Funktion ist derzeit nicht verfügbar. Sie werden zum Dashboard zurückgeleitet."
+    },
+    "error": {
+      "fetchFailedTitle": "Verfügbarkeit der Funktion konnte nicht geprüft werden",
+      "fetchFailedBody": "Aufgrund eines Netzwerkfehlers konnte nicht geprüft werden, ob diese Funktion verfügbar ist. Bitte versuchen Sie es später erneut."
+    }
   }
 }

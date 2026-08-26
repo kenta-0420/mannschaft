@@ -1,197 +1,230 @@
 {
   "village": {
-    "title": "村",
-    "subtitle": "コミュニティ広場",
+    "title": "Village",
+    "subtitle": "Community Square",
+    "archivedNotice": "This village is frozen. It is read-only.",
     "action": {
-      "create": "村を作る",
-      "edit": "村を編集",
-      "delete": "村を削除",
-      "archive": "村を凍結",
-      "join": "参加する",
-      "leave": "退村する",
-      "pin": "お気に入りに追加",
-      "unpin": "お気に入りから外す",
-      "report": "通報する",
-      "search": "検索",
-      "save": "保存",
-      "cancel": "キャンセル",
-      "submit": "送信",
-      "approve": "承認",
-      "reject": "却下",
-      "withdraw": "取り下げ",
-      "resolve": "対応完了",
-      "dismiss": "却下",
+      "create": "Create a village",
+      "edit": "Edit village",
+      "delete": "Delete village",
+      "archive": "Archive village",
+      "join": "Join",
+      "leave": "Leave village",
+      "pin": "Add to favorites",
+      "unpin": "Remove from favorites",
+      "report": "Report",
+      "search": "Search",
+      "save": "Save",
+      "cancel": "Cancel",
+      "submit": "Submit",
+      "approve": "Approve",
+      "reject": "Reject",
+      "withdraw": "Withdraw",
+      "resolve": "Mark as resolved",
+      "dismiss": "Dismiss",
       "ban": "Ban",
       "unban": "Unban",
       "changeRole": "Change role",
       "viewAll": "View all villages"
     },
     "field": {
-      "name": "村名",
-      "slug": "スラッグ",
-      "category": "カテゴリ",
-      "description": "説明文",
-      "iconUrl": "アイコン",
-      "coverUrl": "カバー画像",
-      "type": "種別",
-      "joinPolicy": "参加方式",
-      "visibility": "公開範囲",
-      "guideline": "村ガイドライン",
-      "purpose": "活動目的",
-      "memberCount": "村人数",
-      "createdAt": "作成日",
-      "archivedAt": "凍結日"
+      "name": "Village name",
+      "slug": "Slug",
+      "category": "Category",
+      "description": "Description",
+      "iconUrl": "Icon",
+      "coverUrl": "Cover image",
+      "type": "Type",
+      "joinPolicy": "Join policy",
+      "visibility": "Visibility",
+      "bulletinVisibility": "Bulletin board visibility",
+      "guideline": "Village guideline",
+      "purpose": "Purpose",
+      "memberCount": "Member count",
+      "createdAt": "Created at",
+      "archivedAt": "Archived at"
     },
     "type": {
-      "OFFICIAL": "公式村",
-      "COMMUNITY": "コミュニティ村"
+      "OFFICIAL": "Official village",
+      "COMMUNITY": "Community village"
     },
     "joinPolicy": {
-      "FREE": "自由参加",
-      "APPROVAL": "承認制"
+      "FREE": "Open to all",
+      "APPROVAL": "Approval required"
     },
     "visibility": {
-      "PUBLIC": "公開",
-      "UNLISTED": "限定公開"
+      "PUBLIC": "Public",
+      "UNLISTED": "Unlisted"
+    },
+    "bulletinVisibility": {
+      "PUBLIC": "Visible to non-members too",
+      "MEMBERS_ONLY": "Members only"
     },
     "role": {
-      "HEADMAN": "村長",
-      "ELDER": "長老",
-      "VILLAGER": "村人",
-      "VISITOR": "訪問者"
+      "HEADMAN": "Village head",
+      "ELDER": "Elder",
+      "VILLAGER": "Villager",
+      "VISITOR": "Visitor"
     },
     "subjectType": {
-      "USER": "個人",
-      "TEAM": "チーム",
-      "ORGANIZATION": "組織"
+      "USER": "Individual",
+      "TEAM": "Team",
+      "ORGANIZATION": "Organization"
     },
     "tab": {
-      "bulletin": "掲示板",
-      "timeline": "タイムライン",
-      "lobby": "ロビー",
-      "members": "村人一覧",
-      "settings": "設定",
-      "reports": "通報管理",
-      "calendar": "歳時記",
-      "festival": "お祭り",
-      "matchRecruit": "練習試合・募集",
-      "meetup": "寄合",
-      "chronicle": "村史"
+      "bulletin": "Bulletin board",
+      "timeline": "Timeline",
+      "lobby": "Lobby",
+      "members": "Members",
+      "calendar": "Calendar",
+      "festival": "Festival",
+      "matchRecruit": "Match recruit",
+      "meetup": "Meetup",
+      "chronicle": "Chronicle",
+      "charter": "Village Charter"
+    },
+    "systemPost": {
+      "authorName": "Village Event Notice",
+      "eventCreated": "An event was created",
+      "eventUpcoming": "An event is coming up",
+      "meetupConfirmed": "The meetup date was confirmed",
+      "festivalStarted": "The festival has started"
     },
     "lobby": {
-      "title": "ロビー",
-      "today": "本日",
-      "yesterday": "昨日",
-      "daily": "日次スレッド",
-      "realtime": "リアルタイム",
-      "placeholder": "メッセージを入力...",
-      "empty": "まだメッセージはありません",
-      "loadMore": "もっと見る",
+      "title": "Lobby",
+      "today": "Today",
+      "yesterday": "Yesterday",
+      "daily": "Daily thread",
+      "realtime": "Real-time",
+      "placeholder": "Type a message...",
+      "empty": "No messages yet",
+      "loadMore": "Load more",
       "presence": {
         "count": "{count} people are here"
       }
     },
     "pin": {
-      "title": "お気に入りの村",
-      "empty": "ピン留めした村はまだありません",
-      "limit": "ピン留めは{max}件まで可能です",
-      "reorder": "並び替え",
-      "reorderSuccess": "並び順を保存しました"
+      "title": "Favorite villages",
+      "empty": "No pinned villages yet",
+      "limit": "You can pin up to {max} villages",
+      "reorder": "Reorder",
+      "reorderSuccess": "Order saved"
     },
     "nickname": {
-      "title": "村ニックネーム",
-      "placeholder": "村で使うニックネーム",
-      "bio": "自己紹介",
-      "avatar": "アバター",
-      "changeLimit": "ニックネーム変更は月{limit}回までです",
-      "remaining": "今月の残り変更回数: {count}回",
-      "saveSuccess": "ニックネームを保存しました"
+      "title": "Village nickname",
+      "placeholder": "Nickname to use in this village",
+      "bio": "Bio",
+      "avatar": "Avatar",
+      "changeLimit": "Nickname can be changed up to {limit} times per month",
+      "remaining": "Remaining changes this month: {count}",
+      "saveSuccess": "Nickname saved"
     },
     "report": {
       "dialog": {
-        "title": "通報する",
-        "reason": "通報理由",
-        "detail": "詳細（任意）",
-        "submit": "通報を送信",
-        "submitted": "通報を受け付けました。運営が確認します。",
-        "anonymous": "通報は匿名で送信されます"
+        "title": "Report",
+        "reason": "Reason",
+        "detail": "Detail (optional)",
+        "submit": "Submit report",
+        "submitted": "Your report has been received. Our team will review it.",
+        "anonymous": "Reports are submitted anonymously"
       },
       "list": {
-        "title": "通報一覧",
-        "empty": "通報はありません",
-        "status": "状態",
-        "target": "対象",
-        "reportedAt": "通報日時"
+        "title": "Reports",
+        "empty": "No reports",
+        "status": "Status",
+        "target": "Target",
+        "reportedAt": "Reported at"
       },
       "status": {
-        "PENDING": "未対応",
-        "REVIEWING": "確認中",
-        "RESOLVED": "対応済み",
-        "DISMISSED": "却下"
+        "PENDING": "Pending",
+        "REVIEWING": "Reviewing",
+        "RESOLVED": "Resolved",
+        "DISMISSED": "Dismissed"
       },
       "targetType": {
-        "POST": "投稿",
-        "MESSAGE": "メッセージ",
-        "MEMBERSHIP": "村人",
-        "VILLAGE": "村"
+        "POST": "Post",
+        "MESSAGE": "Message",
+        "MEMBERSHIP": "Member",
+        "VILLAGE": "Village"
       },
       "reason": {
-        "spam": "スパム・宣伝",
-        "harassment": "嫌がらせ・誹謗中傷",
-        "offensive": "不快・不適切な内容",
-        "other": "その他"
+        "spam": "Spam / Promotion",
+        "harassment": "Harassment / Defamation",
+        "offensive": "Offensive / Inappropriate content",
+        "other": "Other"
       }
     },
     "creationRequest": {
-      "title": "村作成申請",
-      "adminTitle": "村作成申請審査",
-      "guideline": "村ガイドラインに同意する",
-      "submitted": "申請を送信しました。運営の審査をお待ちください。",
-      "pending": "審査待ち",
-      "approved": "承認済み",
-      "rejected": "却下",
-      "withdrawn": "取り下げ済み",
-      "reviewComment": "審査コメント",
-      "reviewCommentPlaceholder": "審査コメントを入力してください",
-      "purpose": "活動目的・運営方針",
-      "empty": "申請はありません",
+      "title": "Village creation request",
+      "adminTitle": "Village creation request review",
+      "guideline": "Agree to village guidelines",
+      "submitted": "Your request has been submitted. Please wait for review.",
+      "pending": "Pending review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "withdrawn": "Withdrawn",
+      "reviewComment": "Review comment",
+      "reviewCommentPlaceholder": "Enter a review comment",
+      "purpose": "Purpose / Management policy",
+      "empty": "No requests",
       "filter": {
-        "all": "すべて",
-        "PENDING": "審査待ち",
-        "APPROVED": "承認済み",
-        "REJECTED": "却下",
-        "WITHDRAWN": "取り下げ済み"
+        "all": "All",
+        "PENDING": "Pending review",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "WITHDRAWN": "Withdrawn"
       },
       "column": {
-        "requester": "申請者",
-        "village": "村名",
-        "category": "カテゴリ",
-        "purpose": "目的",
-        "requestedAt": "申請日",
-        "actions": "操作"
+        "requester": "Requester",
+        "village": "Village name",
+        "category": "Category",
+        "purpose": "Purpose",
+        "requestedAt": "Requested at",
+        "actions": "Actions"
       },
       "confirm": {
-        "approve": "この村作成申請を承認します。よろしいですか?",
-        "reject": "この村作成申請を却下します。却下理由を入力してください。"
+        "approve": "Approve this village creation request?",
+        "reject": "Reject this village creation request. Please enter the reason for rejection."
       },
-      "detailTitle": "村作成申請の詳細",
-      "rejectCommentRequired": "却下時は審査コメントが必須です",
-      "noPermission": "この画面を閲覧する権限がありません",
-      "loadFailed": "村作成申請一覧の取得に失敗しました",
-      "approveSuccess": "申請を承認しました",
-      "rejectSuccess": "申請を却下しました",
-      "reviewFailed": "審査の処理に失敗しました"
+      "detailTitle": "Village creation request detail",
+      "rejectCommentRequired": "A review comment is required when rejecting",
+      "noPermission": "You do not have permission to view this page",
+      "loadFailed": "Failed to load village creation requests",
+      "approveSuccess": "Request approved",
+      "rejectSuccess": "Request rejected",
+      "reviewFailed": "Failed to process review"
     },
     "joinRequest": {
-      "title": "参加申請",
-      "message": "申請メッセージ（任意）",
-      "submitted": "参加申請を送信しました",
-      "pending": "審査待ち",
-      "approved": "承認済み",
-      "rejected": "却下",
-      "withdrawn": "取り下げ済み",
-      "reviewComment": "審査コメント",
-      "empty": "参加申請はありません"
+      "title": "Join request",
+      "message": "Request message (optional)",
+      "submitted": "Join request submitted",
+      "pending": "Pending review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "withdrawn": "Withdrawn",
+      "reviewComment": "Review comment",
+      "empty": "No join requests",
+      "description": "This village requires approval. You become a villager once the headman or an elder approves your request. Adding a message improves your chances.",
+      "formTitle": "Request to join",
+      "messagePlaceholder": "Tell them what you want to do in this village and why you want to join (optional, up to 500 characters)",
+      "submittedTitle": "Your submitted request",
+      "submittedBody": "Please wait for the headman or an elder to review it. You can withdraw it from this screen at any time while it is pending.",
+      "withdrawSuccess": "Join request withdrawn",
+      "approveSuccess": "Join request approved",
+      "rejectSuccess": "Join request rejected",
+      "rejectCommentRequired": "A review comment is required when rejecting",
+      "reviewCommentPlaceholder": "Enter a comment for the applicant (up to 500 characters)",
+      "reviewDescription": "Review join requests for this village. Approving a request makes the applicant a villager.",
+      "column": {
+        "requester": "Applicant",
+        "message": "Message",
+        "status": "Status",
+        "actions": "Actions"
+      },
+      "confirm": {
+        "approve": "Approve this join request? The applicant will become a villager.",
+        "reject": "Reject this join request?"
+      }
     },
     "feed": {
       "title": "Village feed",
@@ -214,97 +247,111 @@
     },
     "search": {
       "title": "Find Villages",
-      "placeholder": "村を検索...",
-      "internalPlaceholder": "この村の中を検索...",
-      "filterType": "種別で絞り込み",
-      "filterCategory": "カテゴリで絞り込み",
-      "filterJoinPolicy": "参加方式で絞り込み",
-      "empty": "条件に一致する村が見つかりません",
-      "internalEmpty": "この村内に該当する結果はありません",
+      "placeholder": "Search villages...",
+      "internalPlaceholder": "Search within this village...",
+      "filterType": "Filter by type",
+      "filterCategory": "Filter by category",
+      "filterJoinPolicy": "Filter by join policy",
+      "empty": "No villages found matching your criteria",
+      "internalEmpty": "No results found in this village",
       "result": {
-        "POST": "投稿",
-        "MESSAGE": "メッセージ",
-        "MEMBER": "村人"
+        "POST": "Post",
+        "MESSAGE": "Message",
+        "MEMBER": "Member"
       }
     },
     "members": {
-      "title": "村人一覧",
-      "empty": "村人がいません",
-      "banned": "BAN済み",
-      "you": "あなた",
-      "filterRole": "ロールで絞り込み"
+      "title": "Members",
+      "empty": "No members yet",
+      "banned": "Banned",
+      "you": "You",
+      "filterRole": "Filter by role",
+      "soloHeadmanHint": "Once other members join this village, you can appoint them as elders here."
+    },
+    "profile": {
+      "title": "Villager profile",
+      "villages": {
+        "title": "Villages",
+        "empty": "No villages to show",
+        "publicToggle": "Show this village in my village list",
+        "publicToggleHint": "When on, people who share a village with you can see this village in your village list."
+      }
     },
     "postingIdentity": {
-      "title": "投稿主体",
-      "asUser": "自分として投稿",
-      "asTeam": "チームとして投稿",
-      "asOrganization": "組織として投稿"
+      "title": "Post as",
+      "asUser": "Post as yourself",
+      "asTeam": "Post as a team",
+      "asOrganization": "Post as an organization"
     },
     "warn": {
-      "participationLimit": "30 村以上に参加しています。アクティブな村に絞ることをおすすめします。"
+      "participationLimit": "You are a member of 30 or more villages. We recommend narrowing down to active ones."
     },
     "success": {
-      "created": "村を作成しました",
-      "updated": "村情報を更新しました",
-      "deleted": "村を削除しました",
-      "archived": "村を凍結しました",
-      "joined": "村に参加しました",
-      "left": "村を退村しました",
-      "pinned": "お気に入りに追加しました",
-      "unpinned": "お気に入りから外しました",
-      "roleChanged": "ロールを変更しました",
-      "banned": "BANしました",
-      "reported": "通報を送信しました",
-      "reportResolved": "通報を対応済みにしました"
+      "created": "Village created",
+      "updated": "Village information updated",
+      "deleted": "Village deleted",
+      "archived": "Village archived",
+      "joined": "Joined the village",
+      "left": "Left the village",
+      "pinned": "Added to favorites",
+      "unpinned": "Removed from favorites",
+      "roleChanged": "Role changed",
+      "banned": "User banned",
+      "reported": "Report submitted",
+      "reportResolved": "Report marked as resolved"
     },
     "error": {
-      "VILLAGE_001": "村が見つかりません",
-      "VILLAGE_002": "この村は非公開です",
-      "VILLAGE_003": "その村名はすでに使われています",
-      "VILLAGE_004": "スラッグの形式が不正です（3〜40文字の英小文字・数字・ハイフン）",
-      "VILLAGE_005": "そのスラッグはすでに使われています",
-      "VILLAGE_006": "すでに村人です",
-      "VILLAGE_007": "この村のメンバーではありません",
-      "VILLAGE_008": "そのニックネームはすでに使われています",
-      "VILLAGE_009": "通報の上限に達しました（1時間に10件）",
-      "VILLAGE_010": "村作成申請のレート上限に達しました（1日3件・保有10件まで）",
-      "VILLAGE_011": "ニックネーム変更は月3回までです",
-      "VILLAGE_012": "参加可能な村数の上限（100）を超えました",
-      "VILLAGE_013": "お気に入り村の上限（30件）を超えました",
-      "VILLAGE_014": "村ガイドラインへの同意が必要です（直近1時間以内）",
-      "VILLAGE_015": "この主体として参加する権限がありません",
-      "VILLAGE_016": "指定された主体は村人ではありません",
-      "VILLAGE_017": "村長は後継を指名するまで退村できません",
-      "VILLAGE_018": "他のユーザーが情報を更新しました。最新の内容を確認して再度お試しください",
-      "VILLAGE_019": "この村は承認が必要です。参加申請をご利用ください",
-      "VILLAGE_022": "新規アカウントはこの操作を行えません",
-      "VILLAGE_024": "この操作を行う権限がありません",
-      "VILLAGE_025": "短時間に参加と退出を繰り返しています。しばらく時間をおいてからお試しください",
-      "VILLAGE_026": "通報対象が不正です",
-      "VILLAGE_027": "この村は凍結されています",
-      "VILLAGE_028": "ニックネームが無効です（長さ・禁止語・使用文字を確認してください）",
-      "VILLAGE_029": "入力値が不正です",
-      "VILLAGE_031": "この村から BAN されています",
-      "VILLAGE_032": "村作成申請が見つかりません",
-      "VILLAGE_033": "この村作成申請は既に審査済みです",
-      "VILLAGE_034": "この村作成申請は拒否済みです",
-      "VILLAGE_035": "指定された slug は既に使用されています",
-      "VILLAGE_036": "一般ユーザーは公式村を申請できません",
-      "VILLAGE_037": "公式村の作成には運営権限が必要です",
-      "VILLAGE_038": "参加申請が見つかりません",
-      "VILLAGE_039": "既に審査待ちの参加申請があります",
-      "VILLAGE_040": "この参加申請は既に処理済みです",
-      "VILLAGE_041": "この村は自由参加です。参加申請ではなく直接参加してください",
-      "VILLAGE_042": "通報が見つかりません",
-      "VILLAGE_043": "この通報は既に処理済みです",
-      "VILLAGE_044": "お気に入り村のピンが見つかりません",
-      "generic": "村機能でエラーが発生しました",
-      "backToList": "村一覧へ戻る",
-      "headmanOnly": "Only the headman can modify this setting"
+      "VILLAGE_001": "Village not found",
+      "VILLAGE_002": "This village is private",
+      "VILLAGE_003": "That village name is already in use",
+      "VILLAGE_004": "Invalid slug format (3–40 lowercase letters, numbers, or hyphens)",
+      "VILLAGE_005": "That slug is already in use",
+      "VILLAGE_006": "You are already a member",
+      "VILLAGE_007": "You are not a member of this village",
+      "VILLAGE_008": "That nickname is already in use",
+      "VILLAGE_009": "Report limit reached (10 per hour)",
+      "VILLAGE_010": "Village creation rate limit reached. Please wait a while and try again.",
+      "VILLAGE_011": "Nickname can only be changed 3 times per month",
+      "VILLAGE_012": "You have reached the maximum number of villages you can join (100)",
+      "VILLAGE_013": "You have reached the maximum number of pinned villages (30)",
+      "VILLAGE_014": "You must agree to the village guidelines (within the last hour)",
+      "VILLAGE_015": "You do not have permission to join as this subject",
+      "VILLAGE_016": "The specified subject is not a member",
+      "VILLAGE_017": "The village head must designate a successor before leaving",
+      "VILLAGE_018": "Another user has updated the information. Please check the latest content and try again",
+      "VILLAGE_019": "This village requires approval. Please submit a join request",
+      "VILLAGE_022": "New accounts cannot perform this action",
+      "VILLAGE_024": "You do not have permission to perform this action",
+      "VILLAGE_025": "You are joining and leaving too frequently. Please wait a while before trying again",
+      "VILLAGE_026": "Invalid report target",
+      "VILLAGE_027": "This village is archived",
+      "VILLAGE_028": "Invalid nickname (check length, prohibited words, and allowed characters)",
+      "VILLAGE_029": "Invalid input",
+      "VILLAGE_031": "You are banned from this village",
+      "VILLAGE_032": "Village creation request not found",
+      "VILLAGE_033": "This village creation request has already been reviewed",
+      "VILLAGE_034": "This village creation request has already been rejected",
+      "VILLAGE_035": "The specified slug is already in use",
+      "VILLAGE_036": "Regular users cannot apply for an official village",
+      "VILLAGE_037": "Admin privileges are required to create an official village",
+      "VILLAGE_038": "Join request not found",
+      "VILLAGE_039": "A join request is already pending review",
+      "VILLAGE_040": "This join request has already been processed",
+      "VILLAGE_041": "This village is open to all. Please join directly instead of submitting a request",
+      "VILLAGE_042": "Report not found",
+      "VILLAGE_043": "This report has already been processed",
+      "VILLAGE_044": "Pinned village not found",
+      "VILLAGE_052": "Representative delegation not found",
+      "VILLAGE_053": "This membership/user combination has already been delegated as representative",
+      "VILLAGE_054": "The target membership is not a team or organization",
+      "VILLAGE_055": "The delegated user is not a member of the target team/organization",
+      "generic": "An error occurred in the village feature",
+      "backToList": "Back to village list",
+      "moderatorOnly": "Only the headman and elders can modify this setting"
     },
     "placeholder": {
-      "bulletinComingSoon": "村の掲示板は Phase 2 で実装予定です",
-      "timelineComingSoon": "村のタイムラインは Phase 2 で実装予定です"
+      "bulletinComingSoon": "The village bulletin board is planned for Phase 2",
+      "timelineComingSoon": "The village timeline is planned for Phase 2"
     },
     "editDialog": {
       "title": "Edit Village",
@@ -322,230 +369,429 @@
       "errorR2KeyTooLong": "R2 key must be {max} characters or less"
     },
     "monsho": {
-      "title": "村紋",
-      "upload": "村紋をアップロード",
-      "remove": "村紋を削除"
+      "title": "Village crest",
+      "upload": "Upload village crest",
+      "remove": "Remove village crest",
+      "label": "Village crest (emblem / logo)",
+      "change": "Change crest",
+      "uploading": "Uploading…",
+      "hint": "JPG / PNG / WebP, up to 5MB",
+      "errorMime": "Only JPG, PNG and WebP images are supported",
+      "errorSize": "File size must be 5MB or less",
+      "uploadSuccess": "Village crest uploaded",
+      "removeSuccess": "Village crest removed"
     },
     "calendar": {
-      "title": "歳時記カレンダー",
-      "create": "行事を追加",
-      "createTitle": "行事を追加",
-      "editTitle": "行事を編集",
-      "eventTitle": "行事名",
-      "description": "説明",
-      "eventDate": "開催日",
-      "eventEndDate": "終了日（任意）",
-      "annualRecurring": "毎年繰り返す",
-      "icon": "アイコン絵文字",
-      "color": "テーマカラー",
-      "edit": "編集",
-      "delete": "削除",
-      "prev": "前月",
-      "next": "翌月",
-      "today": "今月",
-      "confirmDelete": "この行事を削除します。よろしいですか?",
-      "saveSuccess": "行事を保存しました",
-      "deleteSuccess": "行事を削除しました",
-      "empty": "登録された行事はありません",
-      "noEventsInMonth": "今月の行事はありません",
-      "loadFailed": "歳時記の取得に失敗しました"
+      "title": "Village calendar",
+      "create": "Add event",
+      "createTitle": "Add event",
+      "editTitle": "Edit event",
+      "eventTitle": "Event name",
+      "description": "Description",
+      "eventDate": "Event date",
+      "eventEndDate": "End date (optional)",
+      "annualRecurring": "Repeat annually",
+      "icon": "Icon emoji",
+      "color": "Theme color",
+      "edit": "Edit",
+      "delete": "Delete",
+      "prev": "Previous month",
+      "next": "Next month",
+      "today": "This month",
+      "confirmDelete": "Delete this event?",
+      "saveSuccess": "Event saved",
+      "deleteSuccess": "Event deleted",
+      "empty": "No events registered",
+      "noEventsInMonth": "No events this month",
+      "loadFailed": "Failed to load calendar",
+      "log": {
+        "title": "Last year's log",
+        "lastYear": "{year} log",
+        "addLog": "Add a log",
+        "year": "Year",
+        "note": "Note",
+        "notePlaceholder": "A short note about how it went",
+        "photoKey": "Photo (R2 key, optional)",
+        "photoKeyHint": "Photo upload is coming soon. You can enter an R2 key already registered",
+        "submit": "Save log",
+        "delete": "Delete",
+        "empty": "No logs yet",
+        "loadFailed": "Failed to load logs",
+        "addSuccess": "Log saved",
+        "addFailed": "Failed to add log",
+        "deleteConfirm": "Delete this log?",
+        "deleteSuccess": "Log deleted",
+        "deleteFailed": "Failed to delete log"
+      }
     },
     "festival": {
-      "title": "お祭り",
-      "festivalTitle": "お祭り名",
-      "description": "概要",
-      "starts": "開始",
-      "ends": "終了",
-      "period": "開催期間",
-      "bannerImage": "バナー画像（R2 キー）",
-      "themeColor": "テーマカラー",
-      "create": "お祭りを企画",
-      "createTitle": "お祭りを企画",
-      "editTitle": "お祭りを編集",
-      "edit": "編集",
-      "cancel": "お祭りを中止",
-      "confirmCancel": "このお祭りを中止します。よろしいですか?",
-      "empty": "開催中・予定のお祭りはありません",
-      "noBanner": "バナー画像なし",
-      "saveSuccess": "お祭りを保存しました",
-      "cancelSuccess": "お祭りを中止しました",
-      "loadFailed": "お祭り一覧の取得に失敗しました",
-      "filterAll": "すべて",
+      "title": "Festival",
+      "festivalTitle": "Festival name",
+      "description": "Overview",
+      "starts": "Start",
+      "ends": "End",
+      "period": "Period",
+      "bannerImage": "Banner image (R2 key)",
+      "themeColor": "Theme color",
+      "create": "Plan a festival",
+      "createTitle": "Plan a festival",
+      "editTitle": "Edit festival",
+      "edit": "Edit",
+      "cancel": "Cancel festival",
+      "confirmCancel": "Cancel this festival?",
+      "empty": "No ongoing or upcoming festivals",
+      "noBanner": "No banner image",
+      "saveSuccess": "Festival saved",
+      "cancelSuccess": "Festival cancelled",
+      "loadFailed": "Failed to load festival list",
+      "invalidDateTime": "The start/end date-time is invalid. Please re-enter it.",
+      "filterAll": "All",
       "status": {
-        "SCHEDULED": "開催予定",
-        "ACTIVE": "開催中",
-        "ENDED": "終了",
-        "CANCELLED": "中止"
+        "SCHEDULED": "Scheduled",
+        "ACTIVE": "Active",
+        "ENDED": "Ended",
+        "CANCELLED": "Cancelled"
+      },
+      "rsvp": {
+        "title": "RSVP",
+        "going": "Going",
+        "maybe": "Maybe",
+        "roleLabel": "Role",
+        "roleLabelPlaceholder": "Role (optional, e.g. stall staff)",
+        "submit": "Submit",
+        "cancel": "Cancel RSVP",
+        "empty": "No one has RSVP'd yet",
+        "loadFailed": "Failed to load the attendee list",
+        "saveSuccess": "RSVP saved",
+        "saveFailed": "Failed to save RSVP",
+        "cancelSuccess": "RSVP cancelled",
+        "cancelFailed": "Failed to cancel RSVP"
+      },
+      "live": {
+        "title": "Live updates",
+        "tagAsLive": "Write something to post as a live update",
+        "submit": "Post as live update",
+        "empty": "No live updates yet",
+        "viewPost": "View post",
+        "loadFailed": "Failed to load live updates",
+        "tagSuccess": "Posted as a live update",
+        "tagFailed": "Failed to post the live update"
       }
     },
     "matchRecruit": {
-      "title": "練習試合・募集",
-      "recruitTitle": "募集タイトル",
-      "description": "詳細",
-      "venue": "場所",
-      "matchDate": "試合日",
-      "matchTime": "試合時間",
-      "matchTimeStart": "開始時刻",
-      "matchTimeEnd": "終了時刻",
-      "requiredCount": "必要人数 / チーム数",
-      "contactMethod": "連絡方法",
-      "deadline": "応募締切",
-      "empty": "募集中の案件はありません",
-      "create": "募集を作成",
-      "createTitle": "募集を作成",
-      "editTitle": "募集を編集",
-      "apply": "応募する",
-      "applyTitle": "応募する",
-      "applyMessage": "応募メッセージ（任意）",
-      "applyAsTeam": "チームとして応募する場合のチーム ID（任意）",
-      "applySuccess": "応募を送信しました",
-      "applications": "応募一覧",
-      "noApplications": "応募はまだありません",
-      "applicantUser": "応募者ユーザー",
-      "close": "募集を締切",
-      "fulfill": "成立にする",
-      "cancelRecruit": "募集を取消",
-      "confirmClose": "この募集を締切ります。よろしいですか?",
-      "confirmFulfill": "この募集を成立として確定します。よろしいですか?",
-      "confirmCancel": "この募集を取消します。よろしいですか?",
-      "filterAllCategory": "全カテゴリ",
-      "filterAllStatus": "全ステータス",
-      "loadFailed": "募集一覧の取得に失敗しました",
-      "saveSuccess": "募集を保存しました",
+      "title": "Match recruit",
+      "recruitTitle": "Recruit title",
+      "description": "Details",
+      "venue": "Venue",
+      "matchDate": "Match date",
+      "matchTime": "Match time",
+      "matchTimeStart": "Start time",
+      "matchTimeEnd": "End time",
+      "requiredCount": "Required count / teams",
+      "contactMethod": "Contact method",
+      "deadline": "Application deadline",
+      "empty": "No open listings",
+      "create": "Create listing",
+      "createTitle": "Create listing",
+      "editTitle": "Edit listing",
+      "apply": "Apply",
+      "applyTitle": "Apply",
+      "applyMessage": "Application message (optional)",
+      "applyAsTeam": "Team ID if applying as a team (optional)",
+      "applySuccess": "Application submitted",
+      "applications": "Applications",
+      "noApplications": "No applications yet",
+      "applicantUser": "Applicant",
+      "close": "Close listing",
+      "fulfill": "Mark as fulfilled",
+      "cancelRecruit": "Cancel listing",
+      "confirmClose": "Close this listing?",
+      "confirmFulfill": "Confirm this listing as fulfilled?",
+      "confirmCancel": "Cancel this listing?",
+      "filterAllCategory": "All categories",
+      "filterAllStatus": "All statuses",
+      "loadFailed": "Failed to load listings",
+      "saveSuccess": "Listing saved",
       "category": {
-        "PRACTICE_MATCH": "練習試合",
-        "REFEREE": "審判",
-        "VENUE": "会場",
-        "OTHER": "その他"
+        "PRACTICE_MATCH": "Practice match",
+        "REFEREE": "Referee",
+        "VENUE": "Venue",
+        "OTHER": "Other"
       },
       "status": {
-        "OPEN": "募集中",
-        "CLOSED": "募集締切",
-        "FULFILLED": "成立",
-        "CANCELLED": "取消"
+        "OPEN": "Open",
+        "CLOSED": "Closed",
+        "FULFILLED": "Fulfilled",
+        "CANCELLED": "Cancelled"
       }
     },
     "matchApplication": {
-      "review": "応募を審査",
-      "accept": "受諾",
-      "reject": "辞退",
-      "withdraw": "応募を取下げ",
-      "confirmWithdraw": "この応募を取下げます。よろしいですか?",
-      "acceptSuccess": "応募を受諾しました",
-      "rejectSuccess": "応募を辞退しました",
-      "withdrawSuccess": "応募を取下げました",
-      "reviewComment": "審査コメント（任意）",
+      "review": "Review application",
+      "accept": "Accept",
+      "reject": "Decline",
+      "withdraw": "Withdraw application",
+      "confirmWithdraw": "Withdraw this application?",
+      "acceptSuccess": "Application accepted",
+      "rejectSuccess": "Application declined",
+      "withdrawSuccess": "Application withdrawn",
+      "reviewComment": "Review comment (optional)",
       "status": {
-        "PENDING": "審査中",
-        "ACCEPTED": "受諾",
-        "REJECTED": "辞退",
-        "WITHDRAWN": "取下げ"
+        "PENDING": "Pending",
+        "ACCEPTED": "Accepted",
+        "REJECTED": "Declined",
+        "WITHDRAWN": "Withdrawn"
       }
     },
     "representative": {
-      "title": "代表委任",
-      "grant": "代表に委任する",
-      "revoke": "委任を取消",
-      "empty": "委任された代表はいません",
-      "grantedBy": "委任元",
-      "note": "メモ"
+      "title": "Representative delegation",
+      "subtitle": "Delegate the right to post as a representative to an individual user, on behalf of a team/organization membership in this village.",
+      "grant": "Delegate as representative",
+      "revoke": "Revoke delegation",
+      "empty": "No delegated representatives",
+      "grantedBy": "Delegated by",
+      "grantedAt": "Delegated at",
+      "note": "Note",
+      "target": "Target (team/organization)",
+      "targetPlaceholder": "Select a team/organization to delegate to",
+      "noTargets": "No team/organization memberships available for delegation",
+      "unknownTarget": "Unknown target",
+      "representativeUser": "Representative user",
+      "loadFailed": "Failed to load representative delegations",
+      "confirmRevokeTitle": "Revoke this delegation?",
+      "confirmRevokeBody": "This will revoke the representative delegation for {name}. Are you sure?",
+      "revokeSuccess": "Delegation revoked"
     },
     "meetup": {
-      "title": "寄合",
-      "create": "寄合を企画",
-      "createTitle": "寄合を企画",
-      "editTitle": "寄合を編集",
-      "meetupTitle": "寄合名",
-      "description": "説明",
-      "venue": "場所",
-      "candidateDates": "候補日",
-      "addCandidateDate": "候補日を追加",
-      "removeCandidateDate": "候補日を削除",
-      "candidateDate": "候補日",
-      "candidateTimeStart": "開始時刻",
-      "candidateTimeEnd": "終了時刻",
-      "vote": "投票",
-      "voteComment": "コメント（任意）",
-      "voteSubmit": "投票する",
-      "confirm": "この日に決定",
-      "confirmedDate": "確定日",
-      "cancel": "寄合を中止",
-      "confirmCancel": "この寄合を中止します。よろしいですか?",
-      "empty": "予定されている寄合はありません",
-      "participantCount": "参加予定",
-      "saveSuccess": "寄合を保存しました",
-      "voteSuccess": "投票しました",
-      "confirmSuccess": "開催日を確定しました",
-      "cancelSuccess": "寄合を中止しました",
-      "loadFailed": "寄合の取得に失敗しました",
+      "title": "Meetup",
+      "create": "Plan a meetup",
+      "createTitle": "Plan a meetup",
+      "editTitle": "Edit meetup",
+      "meetupTitle": "Meetup name",
+      "description": "Description",
+      "location": "Venue",
+      "candidateDates": "Candidate dates",
+      "addCandidateDate": "Add candidate date",
+      "removeCandidateDate": "Remove candidate date",
+      "candidateDate": "Candidate date",
+      "candidateTime": "Time",
+      "allDay": "All day",
+      "timeOptionalHint": "Time is optional (leave blank for all day)",
+      "vote": "Vote",
+      "confirm": "Confirm this date",
+      "confirmedDate": "Confirmed date",
+      "cancel": "Cancel meetup",
+      "confirmCancel": "Cancel this meetup?",
+      "empty": "No upcoming meetups",
+      "saveSuccess": "Meetup saved",
+      "voteSuccess": "Vote submitted",
+      "confirmSuccess": "Date confirmed",
+      "cancelSuccess": "Meetup cancelled",
+      "loadFailed": "Failed to load meetups",
       "voteType": {
-        "YES": "参加",
-        "NO": "不参加",
-        "MAYBE": "未定"
+        "AVAILABLE": "Available",
+        "MAYBE": "Maybe",
+        "UNAVAILABLE": "Unavailable"
       },
       "status": {
-        "DRAFT": "下書き",
-        "OPEN": "投票受付中",
-        "CONFIRMED": "開催確定",
-        "CANCELLED": "中止",
-        "CLOSED": "終了"
+        "PLANNING": "Voting open",
+        "CONFIRMED": "Confirmed",
+        "CANCELLED": "Cancelled"
+      },
+      "attendance": {
+        "title": "Attendance",
+        "going": "Going",
+        "maybe": "Maybe",
+        "absent": "Not going",
+        "notConfirmedHint": "You can register attendance once the date is confirmed",
+        "empty": "No responses yet",
+        "unknownMember": "Villager",
+        "saveSuccess": "Attendance saved",
+        "saveFailed": "Failed to save attendance"
+      },
+      "comment": {
+        "title": "Comments",
+        "placeholder": "Write a comment",
+        "submit": "Post",
+        "empty": "No comments yet",
+        "delete": "Delete",
+        "postFailed": "Failed to post comment",
+        "deleteConfirm": "Delete this comment?",
+        "deleteSuccess": "Comment deleted",
+        "deleteFailed": "Failed to delete comment"
+      },
+      "decisions": {
+        "title": "Decisions",
+        "placeholder": "Note down what was decided, things to bring, etc.",
+        "edit": "Edit",
+        "empty": "Nothing decided yet",
+        "saveSuccess": "Decisions saved",
+        "saveFailed": "Failed to save decisions"
+      },
+      "todo": {
+        "title": "To-dos",
+        "titlePlaceholder": "What needs doing? (e.g. buy snacks)",
+        "add": "Add",
+        "claim": "I'll do this",
+        "complete": "Mark complete",
+        "release": "Give up task",
+        "unassigned": "Unassigned",
+        "empty": "No to-dos yet",
+        "alreadyClaimed": "This to-do is already assigned to someone",
+        "addSuccess": "To-do added",
+        "addFailed": "Failed to add to-do",
+        "claimSuccess": "You took on this to-do",
+        "completeSuccess": "Marked complete",
+        "completeFailed": "Failed to update completion",
+        "releaseSuccess": "Task released",
+        "releaseFailed": "Failed to release task"
       }
     },
     "chronicle": {
-      "title": "村史",
-      "subtitle": "村の月次まとめ",
-      "yearMonth": "対象月",
-      "generatedAt": "生成日時",
-      "postCount": "投稿数",
-      "newMemberCount": "新規村人",
-      "topicTags": "話題タグ",
-      "empty": "村史はまだ生成されていません",
-      "loadFailed": "村史の取得に失敗しました",
-      "viewDetail": "詳細を見る"
+      "title": "Chronicle",
+      "subtitle": "Monthly village summary",
+      "yearMonth": "Target month",
+      "generatedAt": "Generated at",
+      "postCount": "Post count",
+      "newMemberCount": "New members",
+      "topicTags": "Topic tags",
+      "empty": "No chronicles generated yet",
+      "loadFailed": "Failed to load chronicles",
+      "viewDetail": "View detail"
+    },
+    "archive": {
+      "title": "Chronicle",
+      "subtitle": "Records of the village's festivals, calendar events, and meetups",
+      "empty": "No chronicle entries yet",
+      "loadFailed": "Failed to load the chronicle",
+      "archivedAt": "Recorded",
+      "filterAll": "All",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Calendar event",
+        "meetup": "Meetup"
+      }
+    },
+    "charter": {
+      "title": "Village Charter",
+      "subtitle": "The village's shared promises",
+      "empty": "This village charter has not been established yet",
+      "enactedAt": "Enacted on",
+      "lastRevisedAt": "Last revised on",
+      "article": {
+        "label": "Article {n}",
+        "add": "+ Add article",
+        "bodyPlaceholder": "Enter the article text",
+        "bodyRequired": "Please enter the article text",
+        "delete": "Delete article",
+        "deleteConfirm": "Delete this article?"
+      },
+      "supplement": {
+        "add": "+ Add supplement",
+        "label": "Supplement",
+        "placeholder": "Enter a supplement (optional)"
+      },
+      "reorder": {
+        "hint": "Use the up/down buttons to reorder articles",
+        "up": "Move up",
+        "down": "Move down"
+      },
+      "drafters": {
+        "title": "Drafters",
+        "add": "+ Add drafter",
+        "empty": "No drafters have been registered yet",
+        "delete": "Remove drafter",
+        "deleteConfirm": "Remove \"{name}\" from the drafters?",
+        "selectPlaceholder": "Select a villager",
+        "loadMembersFailed": "The village member list could not be loaded, so drafters cannot be added.",
+        "reloadMembers": "Reload"
+      },
+      "revision": {
+        "confirm": "Confirm revision",
+        "confirmHint": "This records the current moment as a revision (it does not change the visibility of any article).",
+        "confirmSuccess": "Revision confirmed",
+        "notePlaceholder": "Revision note (optional)",
+        "history": "Revision history",
+        "historyEmpty": "No revisions yet"
+      },
+      "error": {
+        "loadFailed": "Failed to load the village charter",
+        "mutationFailed": "The operation failed",
+        "versionConflict": "Another village head edited this at the same time. Please reload the latest version.",
+        "drafterDuplicate": "This villager is already a drafter"
+      }
     },
     "serendipity": {
-      "title": "ご縁スコア",
-      "subtitle": "あなたとの相性度",
-      "rank": "順位",
-      "score": "スコア",
-      "myScore": "あなたのスコア",
-      "ranking": "ランキング",
-      "lastComputedAt": "最終計算日時",
-      "empty": "まだご縁スコアは計算されていません",
-      "loadFailed": "ご縁スコアの取得に失敗しました"
+      "title": "Serendipity score",
+      "subtitle": "Accumulated encounters in this village",
+      "rank": "Rank",
+      "score": "Score",
+      "myScore": "Your score",
+      "ranking": "Ranking",
+      "lastComputedAt": "Last computed at",
+      "empty": "Serendipity score not yet calculated",
+      "loadFailed": "Failed to load serendipity score"
+    },
+    "affinity": {
+      "title": "Compatibility hint",
+      "subtitle": "See if this village might be a good fit before you join",
+      "categoryMatch": "Close to your interests and categories",
+      "hidden": "No compatibility hint right now",
+      "sharedVillagers": {
+        "hidden": "Not shown yet",
+        "few": "A few",
+        "many": "10 or more"
+      },
+      "reason": {
+        "categoryMatch": "This village is close to your interests",
+        "sharedVillagers": "There are villagers you already have a connection with",
+        "pioneer": "You can join now as a founding member"
+      },
+      "pioneer": {
+        "title": "You can become a founding member!",
+        "body": "This is still a small village. If you join now, you'll become one of the founding members who help build it together."
+      }
     },
     "pilgrimage": {
-      "title": "村巡礼",
-      "subtitle": "本日のおすすめ村",
-      "todaysRecommendation": "本日のおすすめ",
-      "visit": "訪問する",
-      "recorded": "訪問済み",
-      "reason": "おすすめ理由",
-      "myVisits": "訪問履歴",
-      "empty": "本日のおすすめはありません",
-      "visitsEmpty": "訪問履歴はありません",
-      "visitSuccess": "訪問を記録しました",
-      "loadFailed": "巡礼情報の取得に失敗しました"
+      "title": "Village pilgrimage",
+      "subtitle": "Today's recommended village",
+      "todaysRecommendation": "Today's recommendation",
+      "visit": "Visit",
+      "recorded": "Visited",
+      "reason": "Reason for recommendation",
+      "myVisits": "Visit history",
+      "empty": "No recommendations for today",
+      "visitsEmpty": "No visit history",
+      "visitSuccess": "Visit recorded",
+      "loadFailed": "Failed to load pilgrimage info"
     },
     "newsletter": {
-      "title": "ニュースレター",
-      "subtitle": "村の更新通知",
-      "settings": "ニュースレター設定",
-      "frequency": "配信頻度",
-      "lastSentAt": "最終配信日時",
-      "nextScheduledAt": "次回配信予定",
-      "optOut": "配信停止",
-      "optIn": "配信再開",
-      "optedOut": "配信を停止中です",
-      "saveSuccess": "ニュースレター設定を保存しました",
-      "optOutSuccess": "配信を停止しました",
-      "optInSuccess": "配信を再開しました",
-      "loadFailed": "ニュースレター設定の取得に失敗しました",
-      "frequencyOption": {
-        "DAILY": "毎日",
-        "WEEKLY": "毎週",
-        "MONTHLY": "毎月",
-        "NEVER": "停止"
+      "title": "Newsletter",
+      "subtitle": "Village updates",
+      "settings": "Newsletter settings",
+      "lastSentAt": "Last sent",
+      "saveSuccess": "Newsletter settings saved",
+      "optOutSuccess": "Unsubscribed from the newsletter",
+      "optInSuccess": "Resubscribed to the newsletter",
+      "loadFailed": "Failed to load newsletter settings",
+      "manageOnlyHint": "Only the headman and elders can change the village delivery settings.",
+      "comingSoonNote": "Newsletter delivery is coming soon. You can save settings, but newsletters are not sent yet.",
+      "villageSection": {
+        "title": "Village delivery settings",
+        "subtitle": "Turn the weekly and monthly newsletters on or off independently."
+      },
+      "weekly": {
+        "label": "Weekly newsletter",
+        "timing": "Delivered every Friday"
+      },
+      "monthly": {
+        "label": "Monthly newsletter",
+        "timing": "Delivered at month end"
+      },
+      "personalSection": {
+        "title": "Your subscription",
+        "toggleLabel": "Receive this village's newsletter",
+        "receivingHint": "You are currently receiving this newsletter.",
+        "stoppedHint": "You have stopped receiving this newsletter."
       }
     },
     "slug": {
@@ -574,6 +820,356 @@
       "levelRoot": "Root",
       "level2": "Sub-category",
       "level3": "Detail"
+    },
+    "listGuide": {
+      "page_title": "村一覧の使い方",
+      "description": "ここは「村」をさがして参加するための一覧ページです。気になる村を見つけて中に入ったり、自分で新しい村を作ったりできます。",
+      "search": {
+        "title": "村をさがす",
+        "body": "キーワードや種別・カテゴリで、公開されている村をしぼり込めます。",
+        "steps": {
+          "step1": "上の検索ボックスにキーワード（村名・話題など）を入力します。",
+          "step2": "「種別」で公式・コミュニティをしぼり込めます。",
+          "step3": "「カテゴリ」に言葉を入れると、そのカテゴリの村だけ表示されます。"
+        }
+      },
+      "cards": {
+        "title": "村カードの見方",
+        "body": "各カードに村のアイコン・名前・公式バッジ・カテゴリ・人数・紹介文が表示されます。",
+        "steps": {
+          "step1": "「公式」バッジは運営公認の村の印です。",
+          "step2": "人数が多い村ほど活発に動いています。",
+          "step3": "紹介文でその村の雰囲気を確認できます。"
+        }
+      },
+      "enter": {
+        "title": "村に入る",
+        "body": "気になる村のカードを押すと、その村の中（掲示板・チャットなど）に入れます。",
+        "steps": {
+          "step1": "村のカードをクリックします。",
+          "step2": "村の中で「参加する」を押すと正式なメンバーになれます。",
+          "step3": "村の中の各タブの使い方は、村ヘッダーの「？使い方」で確認できます。"
+        }
+      },
+      "create": {
+        "title": "新しい村をつくる",
+        "body": "自分で新しい村を立ち上げられます（運営の承認制）。",
+        "steps": {
+          "step1": "右上の「村を作る」ボタンを押します。",
+          "step2": "申請フォームに村名・種別などを入力します。",
+          "step3": "運営に承認されると村が作成されます。"
+        }
+      }
+    },
+    "guide": {
+      "page_title": "村の使い方",
+      "description": "村は、同じ目的や興味を持つ仲間が集まる小さなコミュニティです。参加すると掲示板・チャット・投稿などの機能が使えます。下のカードで、村でできることと操作の手順を順番に確認できます。",
+      "join": {
+        "title": "村に参加する／お気に入り登録",
+        "body": "村に参加すると、掲示板・タイムライン・チャットなど村のすべての機能が使えるようになります。よく見る村はお気に入り（ピン留め）にしておくと探しやすくなります。",
+        "steps": {
+          "step1": "ヘッダー右上の「参加する」ボタンを押します。",
+          "step2": "だれでも入れる村はその場で参加完了。承認制の村は参加申請の画面が開くので、申請を送って承認を待ちます。",
+          "step3": "参加後は★（お気に入りに追加）でピン留め、「退村する」で抜けられます。"
+        }
+      },
+      "bulletin": {
+        "title": "掲示板でお知らせを読む",
+        "body": "村長や長老からの大切なお知らせが、話題（スレッド）ごとに並びます。村人になると読めるようになります。",
+        "steps": {
+          "step1": "「掲示板」タブを開きます。",
+          "step2": "気になるスレッドを押すと、本文と返信が表示されます。",
+          "step3": "村長・長老は「スレッド作成」から新しいお知らせを投稿できます。"
+        }
+      },
+      "timeline": {
+        "title": "タイムラインに投稿する",
+        "body": "村の仲間みんなに見える、ひとことフィードです。村人ならだれでも気軽に投稿できます。",
+        "steps": {
+          "step1": "「タイムライン」タブを開きます。",
+          "step2": "上の入力欄に本文を書いて「送信」を押すと投稿されます。",
+          "step3": "村長・長老は投稿のピン留めや削除ができます。"
+        }
+      },
+      "lobby": {
+        "title": "井戸端（ロビー）でリアルタイムに話す",
+        "body": "その日の村人とリアルタイムで雑談できるチャットです。過去7日分のやりとりも日付ごとにさかのぼれます。",
+        "steps": {
+          "step1": "「ロビー」タブを開きます。",
+          "step2": "左の日付一覧から日を選びます（過去の日は読むだけ）。",
+          "step3": "「今日」を選ぶと入力欄が出るので、メッセージを書いてEnterまたは送信ボタンで投稿します。"
+        }
+      },
+      "members": {
+        "title": "メンバーを見る・管理する",
+        "body": "村に参加している人の一覧です。村長は役割（長老／村人）の変更や、迷惑な人の追放（BAN）ができます。",
+        "steps": {
+          "step1": "「メンバー」タブを開きます。",
+          "step2": "一覧から相手のメニューを開きます。",
+          "step3": "村長は「役割変更」「追放（BAN）」、村人はだれでも「通報」ができます。"
+        }
+      },
+      "calendar": {
+        "title": "歳時記カレンダーで行事を知る",
+        "body": "村の記念日やイベントを月ごとのカレンダーで確認できます。毎年くり返す行事も登録できます。",
+        "steps": {
+          "step1": "「カレンダー」タブを開きます。",
+          "step2": "「前月」「翌月」ボタンで月を切り替えます。",
+          "step3": "行事カードを押すと詳細が出ます。村長・長老は「行事を追加」から登録・編集・削除ができます。"
+        }
+      },
+      "events": {
+        "title": "お祭り・練習試合の募集",
+        "body": "村のイベント（お祭り）や、対外試合・審判・会場などの募集をまとめて告知できます。状態でしぼり込めます。",
+        "steps": {
+          "step1": "「お祭り」または「練習試合・募集」タブを開きます。",
+          "step2": "上のフィルタで「募集中」などにしぼり込めます。",
+          "step3": "村人は「企画」「募集を作成」から新規作成、カードを押すと詳細表示や応募ができます。"
+        }
+      },
+      "meetup": {
+        "title": "寄合で集まる日を決める",
+        "body": "村の集まりの開催日を、みんなの投票で決める機能です。複数の候補日から投票し、開催者が確定します。",
+        "steps": {
+          "step1": "「寄合」タブを開きます。",
+          "step2": "村人は「寄合を開く」から候補日をいくつか出して作成します。",
+          "step3": "詳細画面で候補日ごとに賛成／保留／反対を投票し、開催者が日を選んで「確定」します。"
+        }
+      },
+      "chronicle": {
+        "title": "村史で歩みをふり返る",
+        "body": "村の月ごとの記録です。投稿数・新しく参加した人の数・よく使われた話題が自動でまとまります（読むだけのページです）。",
+        "steps": {
+          "step1": "「村史」タブを開きます。",
+          "step2": "年でしぼり込むと、その年の月別カードが並びます。",
+          "step3": "各カードで、その月の盛り上がりをふり返れます。"
+        }
+      },
+      "charter": {
+        "title": "Record the village's promises in the charter",
+        "body": "The village head/elders can define the village's rules (articles) and publish them even to non-members (public villages show them to prospective members too).",
+        "steps": {
+          "step1": "Open the \"Village Charter\" tab.",
+          "step2": "The village head/elders can write articles with \"+ Add article\", and attach an optional supplement.",
+          "step3": "Reordering and deleting apply immediately. Use \"Confirm revision\" to record it in the revision history."
+        }
+      }
+    },
+    "joinRequestGuide": {
+      "page_title": "How to use join requests",
+      "description": "Learn how to request to join an approval-based village and how the headman and elders review requests.",
+      "apply": {
+        "title": "Request to join",
+        "body": "You cannot join an approval-based village directly. Send a request and wait for the headman or an elder to approve it. A message is optional but improves your chances.",
+        "steps": {
+          "step1": "Write what you want to do in the village and why you want to join (optional, up to 500 characters).",
+          "step2": "Press Submit to send the request to the headman and elders.",
+          "step3": "Right after sending, you can cancel the request with the Withdraw button."
+        }
+      },
+      "status": {
+        "title": "Check the review status",
+        "body": "A request starts as Pending review, then the headman or an elder marks it Approved or Rejected. Once approved you become a villager and all village features unlock.",
+        "steps": {
+          "step1": "Right after sending, the status shows as Pending review.",
+          "step2": "Once approved you become a villager and every village tab opens up.",
+          "step3": "If rejected, the review comment explains why. Read it and request again if appropriate."
+        }
+      },
+      "review": {
+        "title": "Review requests (headman and elders)",
+        "body": "The headman and elders see the list of join requests on this screen. Read each message and decide whether to approve or reject it.",
+        "steps": {
+          "step1": "Use the tabs to switch between Pending review, Approved, Rejected and Withdrawn.",
+          "step2": "Press Approve to make the applicant a villager. The review comment is optional.",
+          "step3": "When pressing Reject, a review comment is required so the applicant knows why."
+        }
+      }
+    },
+    "admin": {
+      "title": "Village management",
+      "subtitle": "Management menu for the headman and elders",
+      "cards": {
+        "recruitCategories": {
+          "title": "Recruit categories",
+          "desc": "Add, edit, and reorder recruitment categories."
+        },
+        "newsletter": {
+          "title": "Newsletter settings",
+          "desc": "Configure delivery frequency and opt-out."
+        },
+        "members": {
+          "title": "Members & roles",
+          "desc": "Manage villagers, change roles, and ban members."
+        },
+        "representatives": {
+          "title": "Representative delegation",
+          "desc": "Delegate and manage users who can post as a representative for a team/organization membership."
+        },
+        "joinRequests": {
+          "title": "Review join requests",
+          "desc": "Review and approve or reject join requests."
+        },
+        "reports": {
+          "title": "Reports",
+          "desc": "Review and handle reports (coming soon)."
+        },
+        "settings": {
+          "title": "Village basic settings",
+          "desc": "Edit the village's name, description, and other basic info."
+        }
+      },
+      "comingSoon": "Coming soon",
+      "accessDenied": "Only the headman and elders can access this screen."
+    },
+    "adminGuide": {
+      "page_title": "How to use village management",
+      "description": "A management menu for the headman and elders. Each card takes you to a screen you need for day-to-day operations.",
+      "open": {
+        "title": "Open village management",
+        "body": "Open it from the gear icon \"Village management\" button in the village header. This button is shown only to the headman and elders.",
+        "steps": {
+          "step1": "Press the \"Village management\" button in the top-right of the village header.",
+          "step2": "A list of cards appears. Press a card to go to that screen."
+        }
+      },
+      "cards": {
+        "title": "What you can do with each card",
+        "body": "You can access recruit categories, newsletter settings, members and roles, join request review, reports, and the village basic settings.",
+        "steps": {
+          "step1": "\"Recruit categories\" lets you add, edit, and reorder recruitment categories such as festivals or practice matches.",
+          "step2": "\"Members & roles\" and \"Review join requests\" let you manage villagers and review new applicants.",
+          "step3": "\"Village basic settings\" can only be opened by the headman. It edits the village's name, description, and more."
+        }
+      },
+      "permissions": {
+        "title": "Difference between the headman and elders",
+        "body": "Most cards can be used by both the headman and elders, but the village's basic settings (and currently newsletter settings) can only be opened by the headman.",
+        "steps": {
+          "step1": "Elders can use the recruit categories, members, join requests, and reports cards.",
+          "step2": "Only the headman can edit the village basic settings."
+        }
+      }
+    },
+    "recruitCategory": {
+      "title": "Recruit categories",
+      "subtitle": "Define recruitment categories freely to match how your village actually works.",
+      "add": "Add category",
+      "edit": "Edit category",
+      "name": "Category name",
+      "namePlaceholder": "e.g. Looking for participants",
+      "description": "Description (optional)",
+      "descriptionPlaceholder": "Explain what this category is used for",
+      "color": "Color (optional)",
+      "displayOrder": "Display order",
+      "preset": "Default",
+      "usage": "Recruits in use",
+      "usageCount": "{count}",
+      "empty": "No categories yet. Use \"Add category\" to create one.",
+      "reorder": "Reorder",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "reorderSaved": "Order saved",
+      "created": "Category added",
+      "updated": "Category updated",
+      "deleted": "Category deleted",
+      "confirmDelete": "Delete this category?",
+      "confirmDeleteBody": "This deletes \"{name}\". Categories used by a recruit cannot be deleted.",
+      "limitNote": "Up to {max} categories per village (currently {count}).",
+      "error": {
+        "VILLAGE_083": "Recruit category not found",
+        "VILLAGE_084": "A recruit category with the same name already exists",
+        "VILLAGE_085": "You can have at most {max} recruit categories",
+        "VILLAGE_086": "This category is used by a recruit and cannot be deleted",
+        "loadFailed": "Failed to load recruit categories"
+      },
+      "validation": {
+        "nameRequired": "Category name is required",
+        "nameMax": "Category name must be {max} characters or fewer",
+        "descriptionMax": "Description must be {max} characters or fewer"
+      },
+      "clearColor": "Clear colour"
+    },
+    "recruitCategoryGuide": {
+      "page_title": "How to use recruit categories",
+      "description": "Define the categories used to classify recruits, per village. The headman and elders can edit them.",
+      "manage": {
+        "title": "Add and edit categories",
+        "body": "Use \"Add category\" to create a new one. You can name it freely and add a description and colour.",
+        "steps": {
+          "step1": "Press the \"Add category\" button.",
+          "step2": "Enter a category name (required, up to 40 characters). Description and colour are optional.",
+          "step3": "Press Save to add it to the list. You can edit it any time from the pencil icon."
+        }
+      },
+      "preset": {
+        "title": "Default categories can be changed too",
+        "body": "The default categories created with your village (participants, helpers, other) are just data. If they do not fit your village, rename or delete them.",
+        "steps": {
+          "step1": "Even with the \"Default\" badge, there is no restriction on editing or deleting.",
+          "step2": "If a name does not suit your village, simply rewrite it."
+        }
+      },
+      "order": {
+        "title": "Ordering and deletion",
+        "body": "Reordering with the up/down arrows also changes the order shown when creating and filtering recruits. Categories in use cannot be deleted, to protect existing recruits.",
+        "steps": {
+          "step1": "Reordering with the up/down arrows saves immediately.",
+          "step2": "Categories with zero \"Recruits in use\" can be deleted with the trash icon.",
+          "step3": "To delete a category that is in use, first change the category of those recruits."
+        }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "How to use the newsletter",
+      "description": "The village newsletter bundles village updates into a single notification. Weekly and monthly can be toggled independently, and each member chooses whether to receive it.",
+      "toggles": {
+        "title": "Toggle weekly and monthly independently",
+        "body": "In the village delivery settings you can switch weekly and monthly separately. You can enable just one.",
+        "steps": {
+          "step1": "Use the Weekly newsletter toggle to turn weekly delivery on or off.",
+          "step2": "Use the Monthly newsletter toggle to turn monthly delivery on or off.",
+          "step3": "Changes are saved immediately when you flip a toggle (no save button)."
+        }
+      },
+      "timing": {
+        "title": "Delivery timing",
+        "body": "Weekly is delivered every Friday; monthly is delivered at the end of each month."
+      },
+      "permission": {
+        "title": "Who can change it",
+        "body": "Only the headman and elders can change the village delivery settings. Other members see the current settings as read-only."
+      },
+      "personal": {
+        "title": "Your subscription",
+        "body": "Each member chooses whether to receive the newsletter. Receiving is on by default.",
+        "steps": {
+          "step1": "Turn off the Your subscription toggle to stop receiving this village's newsletter.",
+          "step2": "Turn it back on to resume receiving."
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ Newsletter delivery is coming soon. You can save settings, but newsletters are not actually sent yet."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "How to use",
+      "what": {
+        "title": "What is the villager mini profile",
+        "body": "Tap a name in the member list to open this villager's simple profile. You can see their role and the villages they've chosen to show."
+      },
+      "villages": {
+        "title": "About the village list",
+        "body": "Only villages the villager has made visible are listed. It shows the village name, emblem, and category only, never a nickname. Tap a card to go to that village's top page."
+      },
+      "toggle": {
+        "title": "When you open your own profile",
+        "body": "Your own mini profile shows a \"Show this village in my village list\" toggle. Turning it on lets people who share a village with you see this village in your list. It can be set per village."
+      },
+      "privacy": {
+        "title": "About privacy",
+        "body": "The village list is only shown when you and the other person share at least one village. If there is nothing to show, it neutrally says \"No villages to show\" without revealing whether you share a village."
+      }
     }
   }
 }

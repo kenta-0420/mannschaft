@@ -3,31 +3,26 @@ package com.mannschaft.app.team.service;
 import com.mannschaft.app.team.entity.TeamEntity;
 import com.mannschaft.app.team.entity.TeamOrgMembershipEntity;
 import com.mannschaft.app.team.repository.TeamRepository;
+import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.time.LocalDateTime;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -51,37 +46,22 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <p><b>セットアップ方針</b>: {@code ActivityResultVisibilityProjectionRepositoryTest} を踏襲し、
  * {@code ddl-auto=create-drop}・{@code @Transactional} ロールバックで隔離する。</p>
  */
-@SpringBootTest
-@Testcontainers
-@ActiveProfiles("test")
 @Transactional
+@EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 @DisplayName("TeamSearchSpecifications 結合テスト")
-class TeamSearchSpecificationsTest {
-
-    @Container
-    @SuppressWarnings("resource")
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-            .withDatabaseName("mannschaft_test")
-            .withUsername("test")
-            .withPassword("test")
-            .withTmpFs(java.util.Map.of("/var/lib/mysql", "rw"));
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", mysql::getJdbcUrl);
-        registry.add("spring.datasource.username", mysql::getUsername);
-        registry.add("spring.datasource.password", mysql::getPassword);
-    }
-
-    // OOM 対策（既存 Repository テストパターン踏襲）
-    @MockitoBean
-    private org.springframework.data.redis.core.StringRedisTemplate redisTemplate;
+class TeamSearchSpecificationsTest extends AbstractMySqlIntegrationTest {
 
     @Autowired
     private TeamRepository teamRepository;
 
     @PersistenceContext
     private EntityManager em;
+
+    private static final AtomicInteger slugCounter = new AtomicInteger(0);
+
+    private static String nextSlug() {
+        return "t-" + slugCounter.incrementAndGet();
+    }
 
     private static final Long ORG_A = 1001L;
     private static final Long ORG_B = 1002L;
@@ -220,8 +200,8 @@ class TeamSearchSpecificationsTest {
         @DisplayName("許可集合に含まれる可視性のみ返す")
         void onlyAllowedVisibilities() {
             Long publicTeam = persistTeam("公開", "こうかい", TeamEntity.Visibility.PUBLIC, null, null);
-            Long orgOnly = persistTeam("組織のみ", "そしきのみ", TeamEntity.Visibility.ORGANIZATION_ONLY, null, null);
-            Long priv = persistTeam("非公開", "ひこうかい", TeamEntity.Visibility.PRIVATE, null, null);
+            Long guestsAndAbove = persistTeam("ゲスト以上", "げすといじょう", TeamEntity.Visibility.GUESTS_AND_ABOVE, null, null);
+            Long membersAndAbove = persistTeam("メンバー以上", "めんばーいじょう", TeamEntity.Visibility.MEMBERS_AND_ABOVE, null, null);
 
             em.flush();
             em.clear();
@@ -233,35 +213,35 @@ class TeamSearchSpecificationsTest {
             assertThat(result.getContent())
                     .extracting(TeamEntity::getId)
                     .contains(publicTeam)
-                    .doesNotContain(orgOnly, priv);
+                    .doesNotContain(guestsAndAbove, membersAndAbove);
         }
 
         @Test
-        @DisplayName("PUBLIC + ORGANIZATION_ONLY 集合: PRIVATE のみ除外")
-        void publicAndOrgOnly_excludesPrivate() {
+        @DisplayName("PUBLIC + GUESTS_AND_ABOVE 集合: MEMBERS_AND_ABOVE のみ除外")
+        void publicAndGuestsAndAbove_excludesMembersAndAbove() {
             Long publicTeam = persistTeam("公開", "こうかい", TeamEntity.Visibility.PUBLIC, null, null);
-            Long orgOnly = persistTeam("組織のみ", "そしきのみ", TeamEntity.Visibility.ORGANIZATION_ONLY, null, null);
-            Long priv = persistTeam("非公開", "ひこうかい", TeamEntity.Visibility.PRIVATE, null, null);
+            Long guestsAndAbove = persistTeam("ゲスト以上", "げすといじょう", TeamEntity.Visibility.GUESTS_AND_ABOVE, null, null);
+            Long membersAndAbove = persistTeam("メンバー以上", "めんばーいじょう", TeamEntity.Visibility.MEMBERS_AND_ABOVE, null, null);
 
             em.flush();
             em.clear();
 
             Page<TeamEntity> result = teamRepository.findAll(
                     TeamSearchSpecifications.visibilityIn(
-                            EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.ORGANIZATION_ONLY)),
+                            EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.GUESTS_AND_ABOVE)),
                     pageable);
 
             assertThat(result.getContent())
                     .extracting(TeamEntity::getId)
-                    .contains(publicTeam, orgOnly)
-                    .doesNotContain(priv);
+                    .contains(publicTeam, guestsAndAbove)
+                    .doesNotContain(membersAndAbove);
         }
 
         @Test
         @DisplayName("null: 全件パススルー（恒真）")
         void nullAllowed_passesThroughAll() {
             Long publicTeam = persistTeam("公開", "こうかい", TeamEntity.Visibility.PUBLIC, null, null);
-            Long priv = persistTeam("非公開", "ひこうかい", TeamEntity.Visibility.PRIVATE, null, null);
+            Long guestsAndAbove = persistTeam("ゲスト以上", "げすといじょう", TeamEntity.Visibility.GUESTS_AND_ABOVE, null, null);
 
             em.flush();
             em.clear();
@@ -271,7 +251,7 @@ class TeamSearchSpecificationsTest {
 
             assertThat(result.getContent())
                     .extracting(TeamEntity::getId)
-                    .contains(publicTeam, priv);
+                    .contains(publicTeam, guestsAndAbove);
         }
 
         @Test
@@ -557,6 +537,142 @@ class TeamSearchSpecificationsTest {
     }
 
     // ════════════════════════════════════════════════════════════
+    // F22.1 市 Phase 2 足場C: 地域コード（prefectureCode / cityCode）+ dual-support
+    // ════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("地域コード（F22.1）: code 一致 + dual-support フォールバック")
+    class RegionCodeSpecs {
+
+        @Test
+        @DisplayName("prefectureCodeEquals: 完全一致のみ")
+        void prefectureCode_exactMatch() {
+            Long tokyo = persistTeamWithCodes("東京店", "とうきょうてん", "13", "13113");
+            Long osaka = persistTeamWithCodes("大阪店", "おおさかてん", "27", "27100");
+
+            em.flush();
+            em.clear();
+
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.prefectureCodeEquals("13"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(tokyo)
+                    .doesNotContain(osaka);
+        }
+
+        @Test
+        @DisplayName("cityCodeEquals: 完全一致のみ")
+        void cityCode_exactMatch() {
+            Long shibuya = persistTeamWithCodes("渋谷店", "しぶやてん", "13", "13113");
+            Long shinjuku = persistTeamWithCodes("新宿店", "しんじゅくてん", "13", "13104");
+
+            em.flush();
+            em.clear();
+
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.cityCodeEquals("13113"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(shibuya)
+                    .doesNotContain(shinjuku);
+        }
+
+        @Test
+        @DisplayName("prefectureFilter: code 指定あり → code 一致（名称は無視）")
+        void prefectureFilter_codePreferred() {
+            // 名称は同じ「東京都」だが code が異なる 2 店
+            Long codeMatch = persistTeamFullWithCodes("店A", "てんえー", "東京都", "渋谷区", "13", "13113");
+            Long codeMiss = persistTeamFullWithCodes("店B", "てんびー", "東京都", "新宿区", "27", "27100");
+
+            em.flush();
+            em.clear();
+
+            // code=13 を指定 → 名称が同じでも code=27 はヒットしない
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.prefectureFilter("13", "東京都"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(codeMatch)
+                    .doesNotContain(codeMiss);
+        }
+
+        @Test
+        @DisplayName("prefectureFilter: code 未指定 → 名称一致にフォールバック（dual-support）")
+        void prefectureFilter_nameFallback() {
+            Long tokyo = persistTeamFullWithCodes("店A", "てんえー", "東京都", "渋谷区", null, null);
+            Long osaka = persistTeamFullWithCodes("店B", "てんびー", "大阪府", "梅田", null, null);
+
+            em.flush();
+            em.clear();
+
+            // code=null → 名称 "東京都" にフォールバック
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.prefectureFilter(null, "東京都"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(tokyo)
+                    .doesNotContain(osaka);
+        }
+
+        @Test
+        @DisplayName("cityFilter: code 指定あり → code 一致（名称は無視）")
+        void cityFilter_codePreferred() {
+            Long codeMatch = persistTeamFullWithCodes("店A", "てんえー", "東京都", "渋谷区", "13", "13113");
+            Long codeMiss = persistTeamFullWithCodes("店B", "てんびー", "東京都", "渋谷区", "13", "13104");
+
+            em.flush();
+            em.clear();
+
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.cityFilter("13113", "渋谷区"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(codeMatch)
+                    .doesNotContain(codeMiss);
+        }
+
+        @Test
+        @DisplayName("cityFilter: code 未指定 → 名称一致にフォールバック（dual-support）")
+        void cityFilter_nameFallback() {
+            Long shibuya = persistTeamFullWithCodes("店A", "てんえー", "東京都", "渋谷区", null, null);
+            Long shinjuku = persistTeamFullWithCodes("店B", "てんびー", "東京都", "新宿区", null, null);
+
+            em.flush();
+            em.clear();
+
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.cityFilter(null, "渋谷区"), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(shibuya)
+                    .doesNotContain(shinjuku);
+        }
+
+        @Test
+        @DisplayName("prefectureFilter(null, null): 全件パススルー（恒真）")
+        void prefectureFilter_bothNull_passesThrough() {
+            Long t = persistTeamFullWithCodes("店", "てん", "東京都", "渋谷区", "13", "13113");
+
+            em.flush();
+            em.clear();
+
+            Page<TeamEntity> result = teamRepository.findAll(
+                    TeamSearchSpecifications.prefectureFilter(null, null), pageable);
+
+            assertThat(result.getContent())
+                    .extracting(TeamEntity::getId)
+                    .contains(t);
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════
     // 複合 Specification: 実際のサービス層の組み合わせを再現
     // ════════════════════════════════════════════════════════════
 
@@ -566,39 +682,39 @@ class TeamSearchSpecificationsTest {
         // ORG_A 配下に複数チームを配置
         Long publicHit = persistTeamFull("整骨院公開", "せいこついんこうかい",
                 TeamEntity.Visibility.PUBLIC, "東京都", "渋谷区", "salon");
-        Long orgOnlyHit = persistTeamFull("整骨院組織のみ", "せいこついんそしき",
-                TeamEntity.Visibility.ORGANIZATION_ONLY, "東京都", "渋谷区", "salon");
-        Long privateMiss = persistTeamFull("整骨院非公開", "せいこついんひこうかい",
-                TeamEntity.Visibility.PRIVATE, "東京都", "渋谷区", "salon");
+        Long guestsAndAboveHit = persistTeamFull("整骨院ゲスト以上", "せいこついんげすと",
+                TeamEntity.Visibility.GUESTS_AND_ABOVE, "東京都", "渋谷区", "salon");
+        Long membersAndAboveMiss = persistTeamFull("整骨院メンバー以上", "せいこついんめんばー",
+                TeamEntity.Visibility.MEMBERS_AND_ABOVE, "東京都", "渋谷区", "salon");
         Long unrelated = persistTeamFull("無関係", "むかんけい",
                 TeamEntity.Visibility.PUBLIC, "東京都", "渋谷区", "salon");
         Long orgBMiss = persistTeamFull("整骨院組織B", "せいこついんびー",
                 TeamEntity.Visibility.PUBLIC, "東京都", "渋谷区", "salon");
 
         persistMembership(publicHit, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
-        persistMembership(orgOnlyHit, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
-        persistMembership(privateMiss, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
+        persistMembership(guestsAndAboveHit, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
+        persistMembership(membersAndAboveMiss, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
         persistMembership(unrelated, ORG_A, TeamOrgMembershipEntity.Status.ACTIVE);
         persistMembership(orgBMiss, ORG_B, TeamOrgMembershipEntity.Status.ACTIVE);
 
         em.flush();
         em.clear();
 
-        // メンバー視点: PUBLIC + ORGANIZATION_ONLY を許可、キーワード "整骨院"
+        // メンバー視点: PUBLIC + GUESTS_AND_ABOVE を許可、キーワード "整骨院"
         Specification<TeamEntity> spec = Specification
                 .where(TeamSearchSpecifications.notDeleted())
                 .and(TeamSearchSpecifications.notArchived())
                 .and(TeamSearchSpecifications.belongsToOrganization(ORG_A))
                 .and(TeamSearchSpecifications.visibilityIn(
-                        EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.ORGANIZATION_ONLY)))
+                        EnumSet.of(TeamEntity.Visibility.PUBLIC, TeamEntity.Visibility.GUESTS_AND_ABOVE)))
                 .and(TeamSearchSpecifications.nameOrKanaContains("整骨院"));
 
         Page<TeamEntity> result = teamRepository.findAll(spec, pageable);
 
         assertThat(result.getContent())
                 .extracting(TeamEntity::getId)
-                .containsExactlyInAnyOrder(publicHit, orgOnlyHit)
-                .doesNotContain(privateMiss, unrelated, orgBMiss);
+                .containsExactlyInAnyOrder(publicHit, guestsAndAboveHit)
+                .doesNotContain(membersAndAboveMiss, unrelated, orgBMiss);
     }
 
     // ════════════════════════════════════════════════════════════
@@ -608,6 +724,7 @@ class TeamSearchSpecificationsTest {
     private Long persistTeam(String name, String kana, TeamEntity.Visibility v,
                              String prefecture, String city) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(v)
@@ -622,6 +739,7 @@ class TeamSearchSpecificationsTest {
     private Long persistTeamFull(String name, String kana, TeamEntity.Visibility v,
                                   String prefecture, String city, String template) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(v)
@@ -634,8 +752,40 @@ class TeamSearchSpecificationsTest {
         return team.getId();
     }
 
+    /** F22.1: 地域コード（名称なし）でチームを作る。 */
+    private Long persistTeamWithCodes(String name, String kana, String prefectureCode, String cityCode) {
+        TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
+                .name(name)
+                .nameKana(kana)
+                .visibility(TeamEntity.Visibility.PUBLIC)
+                .supporterEnabled(false)
+                .build();
+        team.updateRegionCodes(prefectureCode, cityCode);
+        em.persist(team);
+        return team.getId();
+    }
+
+    /** F22.1: 名称 + 地域コードの両方を持つチームを作る。 */
+    private Long persistTeamFullWithCodes(String name, String kana, String prefecture, String city,
+                                          String prefectureCode, String cityCode) {
+        TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
+                .name(name)
+                .nameKana(kana)
+                .visibility(TeamEntity.Visibility.PUBLIC)
+                .supporterEnabled(false)
+                .prefecture(prefecture)
+                .city(city)
+                .build();
+        team.updateRegionCodes(prefectureCode, cityCode);
+        em.persist(team);
+        return team.getId();
+    }
+
     private Long persistDeletedTeam(String name, String kana) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)
@@ -648,6 +798,7 @@ class TeamSearchSpecificationsTest {
 
     private Long persistArchivedTeam(String name, String kana) {
         TeamEntity team = TeamEntity.builder()
+                .slug(nextSlug())
                 .name(name)
                 .nameKana(kana)
                 .visibility(TeamEntity.Visibility.PUBLIC)

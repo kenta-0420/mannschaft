@@ -3,7 +3,7 @@ import type { AttendanceMode, EventVisibility } from '~/types/event'
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   eventId?: number
   visible: boolean
 }>()
@@ -177,6 +177,7 @@ function close() {
           class="w-full"
           :class="{ 'p-invalid': fieldErrors.subtitle }"
           placeholder="イベントのタイトル"
+          data-testid="team-event-title-input"
         />
         <small v-if="fieldErrors.subtitle" class="text-red-500">{{ fieldErrors.subtitle }}</small>
       </div>
@@ -306,6 +307,7 @@ function close() {
         :label="isEdit ? '更新' : '作成'"
         icon="pi pi-check"
         :loading="submitting"
+        data-testid="team-event-form-submit"
         @click="submit"
       />
     </template>

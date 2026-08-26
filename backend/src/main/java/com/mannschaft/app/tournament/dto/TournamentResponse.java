@@ -26,7 +26,7 @@ public class TournamentResponse {
     public record TournamentScopeDto(Long organizationId, Long templateId, Long previousTournamentId) {}
 
     public record TournamentContentDto(
-            String name, String description, String format, String season,
+            String name, String description, String format, String sport, String season,
             LocalDate startDate, LocalDate endDate) {}
 
     public record TournamentScoringDto(

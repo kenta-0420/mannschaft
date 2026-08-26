@@ -17,7 +17,6 @@ import com.mannschaft.app.village.entity.VillageRepresentativeEntity;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -66,7 +65,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PostingIdentityService {
 
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final UserVillageNicknameRepository nicknameRepository;
     private final UserRoleRepository userRoleRepository;
@@ -74,6 +72,7 @@ public class PostingIdentityService {
     private final OrganizationRepository organizationRepository;
     /** Phase 2 U10: 専用代表ロール委任の判定に利用。 */
     private final VillageRepresentativeService villageRepresentativeService;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // §4.6 投稿主体一覧
@@ -99,7 +98,7 @@ public class PostingIdentityService {
     @Transactional(readOnly = true)
     public PostingIdentityListResponse listIdentities(Long actorUserId, UUID villageId) {
         // 村存在性・凍結確認
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
 
         // 呼び出しユーザーが USER として村のメンバーであること
         if (!isUserVillageMember(villageId, actorUserId)) {
@@ -252,7 +251,7 @@ public class PostingIdentityService {
         }
 
         // 村存在性・凍結確認
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
 
         // 呼び出しユーザーが村のメンバーであること
         if (!isUserVillageMember(villageId, actorUserId)) {
@@ -309,26 +308,55 @@ public class PostingIdentityService {
     // 共通ヘルパ
     // ========================================================================
 
-    /** 有効な村を取得する（削除/凍結は VILLAGE_001 で扱う）。 */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
-    /** 当該ユーザーが対象村の現役 USER 主体メンバーであるか。 */
-    private boolean isUserVillageMember(UUID villageId, Long userId) {
+    /**
+     * 当該ユーザーが対象村の現役 USER 主体メンバーであるか。
+     *
+     * <p>村メンバーシップ（{@code village_memberships}）に基づく村メンバー判定の正準実装。
+     * 村掲示板グローバル方式の閲覧認可（{@code VillageBulletinAccessService}）など、
+     * village ドメイン内の他サービスからも参照されるため public とする。
+     * 退会（{@code left_at}）・BAN（{@code banned_at}）済みは非メンバー扱い。</p>
+     *
+     * @param villageId 対象村 ID
+     * @param userId    判定対象ユーザー ID
+     * @return 現役 USER メンバーなら {@code true}
+     */
+    public boolean isUserVillageMember(UUID villageId, Long userId) {
         return membershipRepository
                 .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                         villageId, VillageSubjectType.USER, userId)
                 .filter(m -> m.getBannedAt() == null)
                 .isPresent();
+    }
+
+    /**
+     * 指定ユーザーが USER 主体として現役所属している村の ID 一覧を返す（認可根治 Wave3-B7-timeline）。
+     *
+     * <p>{@code timeline} ドメインの {@code TimelinePostService#getUserPosts} が「呼び出し元が
+     * 見える VILLAGE スコープ」を絞り込むために利用する。
+     * {@code com.mannschaft.app.membership.service.MembershipService#getActiveTeamIdsByUser}
+     * と同じ思想（プリミティブのみ返却・ドメイン境界原則5・D-3 ArchUnit 準拠）で、village ドメインの
+     * {@link VillageMembershipRepository} を他ドメインへ直接漏らさない越境窓口。
+     * 退会（{@code left_at}）・BAN（{@code banned_at}）済みは除外（{@link #isUserVillageMember} と同一の現役定義）。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return 現役 USER メンバーとして所属する村の ID 一覧
+     */
+    public List<UUID> getActiveVillageIdsByUser(Long userId) {
+        return membershipRepository.findActiveUserMemberships(userId).stream()
+                .map(VillageMembershipEntity::getVillageId)
+                .toList();
     }
 
     /**

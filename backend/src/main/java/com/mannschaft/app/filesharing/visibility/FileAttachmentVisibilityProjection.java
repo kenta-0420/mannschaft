@@ -17,7 +17,7 @@ import com.mannschaft.app.filesharing.FileScopeType;
  *
  * <p><strong>スコープ → StandardVisibility マッピング</strong>:</p>
  * <ul>
- *   <li>{@link FileScopeType#TEAM} → {@link com.mannschaft.app.common.visibility.StandardVisibility#MEMBERS_ONLY}
+ *   <li>{@link FileScopeType#TEAM} → {@link com.mannschaft.app.common.visibility.StandardVisibility#SCOPE_AFFILIATED}
  *       — チームメンバーのみ可視</li>
  *   <li>{@link FileScopeType#ORGANIZATION} → {@link com.mannschaft.app.common.visibility.StandardVisibility#ORGANIZATION_WIDE}
  *       — 組織メンバー全員可視</li>
@@ -60,7 +60,8 @@ public record FileAttachmentVisibilityProjection(
         }
         return switch (fileScopeType) {
             case TEAM -> "TEAM";
-            case ORGANIZATION -> "ORGANIZATION";
+            // F08.7.1 / 04: 大会・ディビジョンは主催組織の可視性に集約（§6・organizationId で判定）。
+            case ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION -> "ORGANIZATION";
             case PERSONAL -> null;
         };
     }
@@ -78,7 +79,8 @@ public record FileAttachmentVisibilityProjection(
         }
         return switch (fileScopeType) {
             case TEAM -> teamId;
-            case ORGANIZATION -> organizationId;
+            // F08.7.1 / 04: 大会・ディビジョンは主催組織 ID（organizationId）で可視性判定（§6）。
+            case ORGANIZATION, TOURNAMENT, TOURNAMENT_DIVISION -> organizationId;
             case PERSONAL -> null;
         };
     }

@@ -3,6 +3,8 @@ import type { ScopeFolder } from '~/types/scopeFolder'
 
 interface ScopeItem {
   id: number
+  /** チーム/組織 UUID（ルートナビゲーションに使用） */
+  slug?: string
   name: string
   nickname1: string | null
   iconUrl: string | null
@@ -54,7 +56,7 @@ onMounted(loadFolders)
 
 // フォルダに属しているアイテムのScopeIdセット
 const assignedScopeIds = computed(() => {
-  const ids = new Set<number>()
+  const ids = new Set<string>()
   for (const folder of folders.value) {
     for (const scopeId of folder.itemScopeIds) {
       ids.add(scopeId)
@@ -65,13 +67,13 @@ const assignedScopeIds = computed(() => {
 
 // 未分類アイテム
 const uncategorizedItems = computed(() =>
-  props.items.filter(item => !assignedScopeIds.value.has(item.id)),
+  props.items.filter(item => !assignedScopeIds.value.has(String(item.id))),
 )
 
 // フォルダ内アイテムを取得
 function folderItems(folder: ScopeFolder): ScopeItem[] {
   return folder.itemScopeIds
-    .map(id => props.items.find(item => item.id === id))
+    .map(id => props.items.find(item => String(item.id) === id))
     .filter((item): item is ScopeItem => item !== undefined)
 }
 
@@ -148,7 +150,7 @@ function toggleMoveMenu(itemId: number) {
 
 // アイテムが属しているフォルダID（複数フォルダは非対応、先頭のみ）
 function itemCurrentFolderId(itemId: number): number | null {
-  const folder = folders.value.find(f => f.itemScopeIds.includes(itemId))
+  const folder = folders.value.find(f => f.itemScopeIds.includes(String(itemId)))
   return folder ? folder.id : null
 }
 
@@ -158,10 +160,10 @@ async function moveItemToFolder(itemId: number, targetFolderId: number | null) {
   // 現在のフォルダから外す
   if (currentFolderId !== null) {
     try {
-      await folderApi.removeItem(currentFolderId, itemId)
+      await folderApi.removeItem(currentFolderId, String(itemId))
       const folder = folders.value.find(f => f.id === currentFolderId)
       if (folder) {
-        folder.itemScopeIds = folder.itemScopeIds.filter(id => id !== itemId)
+        folder.itemScopeIds = folder.itemScopeIds.filter(id => id !== String(itemId))
       }
     }
     catch {
@@ -179,10 +181,10 @@ async function moveItemToFolder(itemId: number, targetFolderId: number | null) {
   // 新しいフォルダへ追加
   if (targetFolderId !== null) {
     try {
-      await folderApi.addItem(targetFolderId, itemId)
+      await folderApi.addItem(targetFolderId, String(itemId))
       const folder = folders.value.find(f => f.id === targetFolderId)
-      if (folder && !folder.itemScopeIds.includes(itemId)) {
-        folder.itemScopeIds.push(itemId)
+      if (folder && !folder.itemScopeIds.includes(String(itemId))) {
+        folder.itemScopeIds.push(String(itemId))
       }
     }
     catch {
@@ -223,8 +225,6 @@ onUnmounted(() => {
 
 <template>
   <div>
-    <ConfirmDialog />
-
     <!-- フォルダ一覧 -->
     <div v-if="loading" class="flex justify-center py-8">
       <i class="pi pi-spin pi-spinner text-2xl text-surface-400" />
@@ -299,7 +299,7 @@ onUnmounted(() => {
                 shape="circle"
                 size="normal"
               />
-              <div class="min-w-0 flex-1" @click="navigateTo(scopeType === 'TEAM' ? `/teams/${item.id}` : `/organizations/${item.id}`)">
+              <div class="min-w-0 flex-1" @click="item.slug ? navigateTo(scopeType === 'TEAM' ? `/teams/${item.slug}` : `/organizations/${item.slug}`) : undefined">
                 <span class="block truncate font-semibold">{{ item.nickname1 || item.name }}</span>
                 <span class="text-xs text-surface-400">
                   <i class="pi pi-users mr-1" />{{ item.memberCount }}
@@ -383,7 +383,7 @@ onUnmounted(() => {
                 shape="circle"
                 size="normal"
               />
-              <div class="min-w-0 flex-1" @click="navigateTo(scopeType === 'TEAM' ? `/teams/${item.id}` : `/organizations/${item.id}`)">
+              <div class="min-w-0 flex-1" @click="item.slug ? navigateTo(scopeType === 'TEAM' ? `/teams/${item.slug}` : `/organizations/${item.slug}`) : undefined">
                 <span class="block truncate font-semibold">{{ item.nickname1 || item.name }}</span>
                 <span class="text-xs text-surface-400">
                   <i class="pi pi-users mr-1" />{{ item.memberCount }}

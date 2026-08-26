@@ -1,29 +1,43 @@
 package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.CalendarEventCreateRequest;
 import com.mannschaft.app.village.dto.CalendarEventListResponse;
+import com.mannschaft.app.village.dto.CalendarEventLogCreateRequest;
+import com.mannschaft.app.village.dto.CalendarEventLogResponse;
 import com.mannschaft.app.village.dto.CalendarEventResponse;
 import com.mannschaft.app.village.dto.CalendarEventUpdateRequest;
+import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import com.mannschaft.app.village.entity.VillageCalendarEventEntity;
+import com.mannschaft.app.village.entity.VillageCalendarEventLogEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
+import com.mannschaft.app.village.entity.enums.VillageEventNotificationType;
 import com.mannschaft.app.village.entity.enums.VillageRole;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.event.VillageEventOccurredEvent;
+import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
+import com.mannschaft.app.village.repository.VillageCalendarEventLogRepository;
 import com.mannschaft.app.village.repository.VillageCalendarEventRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * F17.1 Phase 2 U4 — 村歳時記カレンダー Service（設計書 §2.2）。
@@ -54,9 +68,20 @@ public class VillageCalendarService {
     /** カラーコード形式（#RRGGBB の 16 進）。 */
     private static final Pattern COLOR_HEX_PATTERN = Pattern.compile("^#[0-9A-Fa-f]{6}$");
 
-    private final VillageRepository villageRepository;
+    /** F17.2 Wave1 ④年輪 一覧の既定/最大ページサイズ（設計書 §13.5）。 */
+    private static final int DEFAULT_LOG_PAGE_SIZE = 20;
+    private static final int MAX_LOG_PAGE_SIZE = 100;
+
     private final VillageCalendarEventRepository calendarRepository;
     private final VillageMembershipRepository membershipRepository;
+    // F17.2 Wave1 ④歳時記×村史の年輪
+    private final VillageCalendarEventLogRepository logRepository;
+    private final MediaUrlResolver mediaUrlResolver;
+    private final UserVillageNicknameRepository nicknameRepository;
+    private final VillageNicknameResolver villageNicknameResolver;
+    /** F17.2 Wave2 ①: 行事→村フィード自動還流イベントの発行（AFTER_COMMIT リスナーが購読・§3.3.1）。 */
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final VillageAccessGate accessGate;
 
     // ========================================================================
     // 作成
@@ -74,7 +99,7 @@ public class VillageCalendarService {
     public CalendarEventResponse createEvent(UUID villageId,
                                               CalendarEventCreateRequest request,
                                               Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireModerator(villageId, actorUserId);
 
         validateDateRange(request.eventDate(), request.eventEndDate());
@@ -94,6 +119,12 @@ public class VillageCalendarService {
         VillageCalendarEventEntity saved = calendarRepository.save(entity);
         log.info("Village calendar event created: villageId={} eventId={} title={} recurring={}",
                 villageId, saved.getId(), request.title(), saved.getIsAnnualRecurring());
+
+        // F17.2 Wave2 ①: 歳時記作成の還流（EVENT_CREATED・本体コミット後に AFTER_COMMIT リスナーが発火・§3.3.1）。
+        eventPublisher.publishEvent(new VillageEventOccurredEvent(
+                villageId, VillageEventNotificationType.EVENT_CREATED, saved.getId(),
+                saved.getTitle(), "/villages/" + villageId + "/calendar/" + saved.getId()));
+
         return CalendarEventResponse.from(saved);
     }
 
@@ -110,7 +141,7 @@ public class VillageCalendarService {
                                               UUID eventId,
                                               CalendarEventUpdateRequest request,
                                               Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireModerator(villageId, actorUserId);
 
         VillageCalendarEventEntity entity = loadActiveEvent(villageId, eventId);
@@ -160,7 +191,7 @@ public class VillageCalendarService {
      */
     @Transactional
     public void deleteEvent(UUID villageId, UUID eventId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireModerator(villageId, actorUserId);
 
         VillageCalendarEventEntity entity = loadActiveEvent(villageId, eventId);
@@ -174,7 +205,7 @@ public class VillageCalendarService {
     // ========================================================================
 
     /**
-     * 指定月の歳時記イベント一覧を取得する。
+     * 指定月の歳時記イベント一覧を取得する。村人（現役メンバー）のみ閲覧可（クラス javadoc §村人は閲覧のみ）。
      *
      * <p>該当条件:</p>
      * <ul>
@@ -183,8 +214,9 @@ public class VillageCalendarService {
      * </ul>
      */
     @Transactional(readOnly = true)
-    public CalendarEventListResponse listEventsByMonth(UUID villageId, int year, int month) {
-        loadActiveVillage(villageId);
+    public CalendarEventListResponse listEventsByMonth(UUID villageId, int year, int month, Long actorUserId) {
+        loadActiveVillage(villageId, actorUserId);
+        requireVillager(villageId, actorUserId);
 
         if (month < 1 || month > 12) {
             throw new BusinessException(VillageErrorCode.VILLAGE_FIELD_INVALID);
@@ -195,10 +227,14 @@ public class VillageCalendarService {
         return new CalendarEventListResponse(items, year, month);
     }
 
-    /** 歳時記イベント詳細を取得する。論理削除済みは {@link VillageErrorCode#CALENDAR_EVENT_NOT_FOUND}。 */
+    /**
+     * 歳時記イベント詳細を取得する。村人（現役メンバー）のみ閲覧可（クラス javadoc §村人は閲覧のみ）。
+     * 論理削除済みは {@link VillageErrorCode#CALENDAR_EVENT_NOT_FOUND}。
+     */
     @Transactional(readOnly = true)
-    public CalendarEventResponse getEvent(UUID villageId, UUID eventId) {
-        loadActiveVillage(villageId);
+    public CalendarEventResponse getEvent(UUID villageId, UUID eventId, Long actorUserId) {
+        loadActiveVillage(villageId, actorUserId);
+        requireVillager(villageId, actorUserId);
         VillageCalendarEventEntity entity = loadActiveEvent(villageId, eventId);
         return CalendarEventResponse.from(entity);
     }
@@ -228,17 +264,16 @@ public class VillageCalendarService {
     // 共通ヘルパ
     // ========================================================================
 
-    /** 有効な村を取得する（削除/凍結済みは VILLAGE_001 / VILLAGE_027 で扱う）。 */
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     /**
@@ -255,20 +290,179 @@ public class VillageCalendarService {
     }
 
     /**
-     * 当該ユーザーが対象村のモデレーター（HEADMAN / ELDER）であることを要求する。
-     * 一般村人や非村人は {@link VillageErrorCode#MODERATION_FORBIDDEN}（403）。
+     * 当該ユーザーが対象村の<strong>現役</strong>モデレーター（HEADMAN / ELDER）であることを要求する。
+     * 一般村人・非村人・退村済み・BAN 済みは {@link VillageErrorCode#MODERATION_FORBIDDEN}（403）。
+     *
+     * <p>BAN / 退村の検査は {@code findActiveByVillageIdAndSubject} のクエリに委譲する（#2284 §12）。
+     * 従来はここで手書きの {@code bannedAt != null} 分岐を持っていたが、同じ判定が村ドメイン全体に
+     * コピーされ 5 実装で書き忘れられていた。述語をクエリ 1 箇所に寄せ、書き忘れの余地を無くす。</p>
      */
     private VillageMembershipEntity requireModerator(UUID villageId, Long actorUserId) {
         VillageMembershipEntity m = membershipRepository
-                .findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
-                        villageId, VillageSubjectType.USER, actorUserId)
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
-        if (m.getBannedAt() != null) {
-            throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
-        }
         if (m.getRole() != VillageRole.HEADMAN && m.getRole() != VillageRole.ELDER) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }
         return m;
+    }
+
+    // ========================================================================
+    // F17.2 Wave1 ④歳時記×村史の年輪（village_calendar_event_logs）
+    // ========================================================================
+
+    /**
+     * 歳時記に年輪（その年の様子）を追加する（村人・設計書 §6.4/AC-18）。
+     * 同一 {@code (calendarEventId, year)} に複数件を許す（UNIQUE を張らない・§6.3）。
+     */
+    @Transactional
+    public CalendarEventLogResponse addLog(UUID villageId, UUID eventId,
+                                           CalendarEventLogCreateRequest request, Long actorUserId) {
+        loadActiveVillage(villageId, actorUserId);
+        loadActiveEvent(villageId, eventId);   // 村跨ぎ IDOR は CALENDAR_EVENT_NOT_FOUND（404）
+        requireVillager(villageId, actorUserId);
+
+        VillageCalendarEventLogEntity entity = VillageCalendarEventLogEntity.builder()
+                .calendarEventId(eventId)
+                .year(request.year())
+                .photoR2Key(request.photoR2Key())
+                .note(request.note())
+                .createdByUserId(actorUserId)
+                .build();
+        VillageCalendarEventLogEntity saved = logRepository.save(entity);
+        log.info("Village calendar event log added: villageId={} eventId={} logId={} year={}",
+                villageId, eventId, saved.getId(), saved.getYear());
+        return CalendarEventLogResponse.of(saved,
+                mediaUrlResolver.resolve(saved.getPhotoR2Key()),
+                resolveUserDisplayName(actorUserId, villageId));
+    }
+
+    /**
+     * 年輪一覧を取得する（村人・設計書 §6.4/§13.5/AC-19）。
+     *
+     * <p>既定は year 降順→作成日降順。{@code year} 指定時はその年で絞り込む。
+     * {@code photo_r2_key} は {@link MediaUrlResolver#resolveAll} で署名 URL へ一括解決し N+1 を回避する。</p>
+     */
+    @Transactional(readOnly = true)
+    public List<CalendarEventLogResponse> listLogs(UUID villageId, UUID eventId, Integer year,
+                                                   Long actorUserId, Pageable pageable) {
+        loadActiveVillage(villageId, actorUserId);
+        loadActiveEvent(villageId, eventId);
+        requireVillager(villageId, actorUserId);
+
+        Pageable resolved = resolveLogPageable(pageable);
+        Page<VillageCalendarEventLogEntity> page = (year == null)
+                ? logRepository.findByCalendarEventIdAndDeletedAtIsNullOrderByYearDescCreatedAtDesc(eventId, resolved)
+                : logRepository.findByCalendarEventIdAndYearAndDeletedAtIsNullOrderByCreatedAtDesc(eventId, year, resolved);
+        List<VillageCalendarEventLogEntity> logs = page.getContent();
+
+        // 署名 URL を一括解決（N+1 回避・AC-19）
+        Map<String, String> urlMap = mediaUrlResolver.resolveAll(
+                logs.stream().map(VillageCalendarEventLogEntity::getPhotoR2Key).collect(Collectors.toList()));
+        // 表示名も一括解決（N+1 回避・検分 §3）
+        Map<Long, String> names = resolveDisplayNames(
+                logs.stream().map(VillageCalendarEventLogEntity::getCreatedByUserId).toList(), villageId);
+
+        return logs.stream()
+                .map(l -> CalendarEventLogResponse.of(
+                        l,
+                        l.getPhotoR2Key() == null ? null : urlMap.get(l.getPhotoR2Key()),
+                        names.get(l.getCreatedByUserId())))
+                .toList();
+    }
+
+    /**
+     * 年輪を論理削除する（投稿者本人＋村長/長老のみ・設計書 §6.4/AC-18b）。
+     * それ以外は {@link VillageErrorCode#CALENDAR_LOG_FORBIDDEN}（403）。
+     */
+    @Transactional
+    public void deleteLog(UUID villageId, UUID eventId, UUID logId, Long actorUserId) {
+        loadActiveVillage(villageId, actorUserId);
+        loadActiveEvent(villageId, eventId);
+        requireVillager(villageId, actorUserId);
+
+        VillageCalendarEventLogEntity logEntity = loadActiveLog(eventId, logId);
+        boolean isAuthor = logEntity.getCreatedByUserId().equals(actorUserId);
+        if (!isAuthor && !isModerator(villageId, actorUserId)) {
+            throw new BusinessException(VillageErrorCode.CALENDAR_LOG_FORBIDDEN);
+        }
+        logEntity.setDeletedAt(LocalDateTime.now());
+        logRepository.save(logEntity);
+        log.info("Village calendar event log deleted: villageId={} eventId={} logId={}", villageId, eventId, logId);
+    }
+
+    /** 年輪を歳時記スコープで取得する。他歳時記・論理削除済みは 404（CALENDAR_EVENT_NOT_FOUND で存在秘匿）。 */
+    private VillageCalendarEventLogEntity loadActiveLog(UUID eventId, UUID logId) {
+        VillageCalendarEventLogEntity l = logRepository.findById(logId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.CALENDAR_EVENT_NOT_FOUND));
+        if (!eventId.equals(l.getCalendarEventId()) || l.getDeletedAt() != null) {
+            throw new BusinessException(VillageErrorCode.CALENDAR_EVENT_NOT_FOUND);
+        }
+        return l;
+    }
+
+    /** 当該ユーザーが対象村の現役村人であることを要求する（非村人・退村・BAN は 403）。 */
+    private void requireVillager(UUID villageId, Long actorUserId) {
+        membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
+    }
+
+    /** 当該ユーザーが対象村の現役モデレーター（HEADMAN/ELDER）かを判定する。 */
+    private boolean isModerator(UUID villageId, Long actorUserId) {
+        return membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .map(m -> m.getRole() == VillageRole.HEADMAN || m.getRole() == VillageRole.ELDER)
+                .orElse(false);
+    }
+
+    /**
+     * 村人の表示名を村ニックネームで解決する（実名スナップショット禁止・§10 G4）。
+     * 村内ニックネーム → 全村共通ニックネーム → {@code "USER:#id"} の順にフォールバック。
+     */
+    private String resolveUserDisplayName(Long userId, UUID villageId) {
+        // F17.3 前工程リファクタ: 共有ヘルパへ委譲（ふるまい不変・重複ドリフト防止・§15.4）。
+        return villageNicknameResolver.resolve(userId, villageId);
+    }
+
+    /**
+     * 村人集合の表示名を村ニックネームで<strong>一括</strong>解決する（年輪一覧の N+1 回避・検分 §3）。
+     * 単票版 {@link #resolveUserDisplayName(Long, UUID)} と同一の解決順（村内 → 全村共通 → {@code "USER:#id"}）
+     * を保ちつつ、クエリを user_id 集合の先読み 2 回に抑える。
+     */
+    private Map<Long, String> resolveDisplayNames(java.util.Collection<Long> userIds, UUID villageId) {
+        java.util.Set<Long> ids = userIds.stream()
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        Map<Long, String> result = new java.util.HashMap<>();
+        if (ids.isEmpty()) {
+            return result;
+        }
+        if (villageId != null) {
+            for (UserVillageNicknameEntity n : nicknameRepository.findByUserIdInAndVillageId(ids, villageId)) {
+                result.put(n.getUserId(), n.getNickname());
+            }
+        }
+        java.util.Set<Long> remaining = ids.stream()
+                .filter(id -> !result.containsKey(id))
+                .collect(Collectors.toSet());
+        if (!remaining.isEmpty()) {
+            for (UserVillageNicknameEntity n : nicknameRepository.findByUserIdInAndVillageIdIsNull(remaining)) {
+                result.putIfAbsent(n.getUserId(), n.getNickname());
+            }
+        }
+        for (Long id : ids) {
+            result.putIfAbsent(id, "USER:#" + id);
+        }
+        return result;
+    }
+
+    /** 年輪一覧の Pageable を解決する（ソートは Repository メソッド名に委譲・既定 20・上限 100）。 */
+    private Pageable resolveLogPageable(Pageable pageable) {
+        if (pageable == null) {
+            return PageRequest.of(0, DEFAULT_LOG_PAGE_SIZE);
+        }
+        int size = Math.min(pageable.getPageSize(), MAX_LOG_PAGE_SIZE);
+        return PageRequest.of(Math.max(pageable.getPageNumber(), 0), size <= 0 ? DEFAULT_LOG_PAGE_SIZE : size);
     }
 }

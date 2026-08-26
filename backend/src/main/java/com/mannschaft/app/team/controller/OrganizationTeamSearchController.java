@@ -4,7 +4,9 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.exception.OrganizationNotFoundException;
+import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.dto.TeamPublicSummaryResponse;
 import com.mannschaft.app.team.dto.TeamSearchCriteria;
 import com.mannschaft.app.team.dto.TeamSearchResultResponse;
@@ -45,7 +47,7 @@ import java.util.Set;
  *   → F19.1 Phase 1 {@link com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter}。
  */
 @RestController
-@RequestMapping("/api/v1/organizations/{orgId}/teams")
+@RequestMapping("/api/v1/organizations/{orgPublicId}/teams")
 @Tag(name = "組織内チーム検索 (F15.4)")
 @RequiredArgsConstructor
 public class OrganizationTeamSearchController {
@@ -62,6 +64,9 @@ public class OrganizationTeamSearchController {
 
     private final TeamSearchService teamSearchService;
     private final AccessControlService accessControlService;
+    private final OrganizationService organizationService;
+    /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 組織配下のチーム（店舗）を検索する。
@@ -72,28 +77,33 @@ public class OrganizationTeamSearchController {
      *   <li>未ログイン／非メンバー → {@link TeamPublicSummaryResponse}（抑制版）</li>
      * </ul>
      *
-     * <p>組織が PRIVATE/ORGANIZATION_ONLY で非メンバー／未ログインの場合は
+     * <p>組織が PUBLIC 以外で非メンバー／未ログインの場合は
      * エニュメレーション対策で 404 を返す（{@code TeamSearchService} 内部判定）。
      *
-     * @param orgId       組織 ID
-     * @param keyword     部分一致キーワード（{@code name} または {@code name_kana}）
-     * @param prefecture  都道府県（完全一致）
-     * @param city        市町村（完全一致。{@code prefecture} 未指定時は無視）
-     * @param template    業種テンプレート（完全一致）
-     * @param page        ページ番号（0 起点、既定 0）
-     * @param size        ページサイズ（1〜50、既定 20）
-     * @param sort        ソート指定（{@code field,direction} 形式。既定 {@code nameKana,asc}）
+     * @param orgPublicId    組織の公開 UUID
+     * @param keyword        部分一致キーワード（{@code name} または {@code name_kana}）
+     * @param prefecture     都道府県名称（完全一致。{@code prefectureCode} 未指定時のフォールバック）
+     * @param city           市町村名称（完全一致。{@code prefecture} 未指定時は無視）
+     * @param template       業種テンプレート（完全一致）
+     * @param prefectureCode 都道府県コード（F22.1 dual-support：指定時は名称より優先）
+     * @param cityCode       市区町村コード（F22.1 dual-support：指定時は名称より優先）
+     * @param page           ページ番号（0 起点、既定 0）
+     * @param size           ページサイズ（1〜50、既定 20）
+     * @param sort           ソート指定（{@code field,direction} 形式。既定 {@code nameKana,asc}）
      * @return ページング済み検索結果
      */
     @GetMapping("/search")
     @Operation(summary = "組織内チーム（店舗）検索",
-            description = "未ログインでも実行可能。組織メンバーには詳細版、非メンバー／未ログインには抑制版 DTO を返す。")
+            description = "未ログインでも実行可能。組織メンバーには詳細版、非メンバー／未ログインには抑制版 DTO を返す。"
+                    + "F22.1: prefectureCode/cityCode 指定時はコード優先、未指定なら名称（prefecture/city）にフォールバック（dual-support）。")
     public ResponseEntity<PagedResponse<?>> search(
-            @PathVariable Long orgId,
+            @PathVariable String orgPublicId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String prefecture,
             @RequestParam(required = false) String city,
             @RequestParam(required = false) String template,
+            @RequestParam(required = false) String prefectureCode,
+            @RequestParam(required = false) String cityCode,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "nameKana,asc") String sort
@@ -106,28 +116,38 @@ public class OrganizationTeamSearchController {
         // 2. Pageable 生成
         Pageable pageable = PageRequest.of(page, size, sortSpec);
 
-        // 3. 検索条件構築
-        TeamSearchCriteria criteria = new TeamSearchCriteria(keyword, prefecture, city, template);
+        // 3. 検索条件構築（F22.1 dual-support: code 優先・名称フォールバック）
+        TeamSearchCriteria criteria = new TeamSearchCriteria(
+                keyword, prefecture, city, template, prefectureCode, cityCode);
 
         // 4. 現在ユーザー（未ログイン許容）
         Long currentUserId = SecurityUtils.getCurrentUserIdOrNull();
 
-        // 5. 検索実行（TeamSearchService 内で 404 判定を含む）
+        // 5. publicId → 内部 orgId 解決
+        Long orgId = organizationService.resolveOrgId(orgPublicId);
+
+        // 6. 検索実行（TeamSearchService 内で 404 判定を含む）
         Page<TeamEntity> resultPage = teamSearchService.search(orgId, criteria, currentUserId, pageable);
 
-        // 6. メンバー判定で DTO 切り替え
+        // 7. メンバー判定で DTO 切り替え
         boolean isMember = currentUserId != null
                 && accessControlService.isMember(currentUserId, orgId, SCOPE_ORGANIZATION);
 
         PagedResponse<?> body;
         if (isMember) {
             List<TeamSearchResultResponse> content = resultPage.getContent().stream()
-                    .map(TeamSearchResultResponse::from)
+                    // 画像 URL 根治 Phase 1: icon/banner を署名付き表示 URL へ解決して渡す。
+                    .map(team -> TeamSearchResultResponse.from(
+                            team,
+                            mediaUrlResolver.resolve(team.getIconUrl()),
+                            mediaUrlResolver.resolve(team.getBannerUrl())))
                     .toList();
             body = PagedResponse.of(content, buildMeta(resultPage, page, size));
         } else {
             List<TeamPublicSummaryResponse> content = resultPage.getContent().stream()
-                    .map(TeamPublicSummaryResponse::from)
+                    // 画像 URL 根治 Phase 1: icon を署名付き表示 URL へ解決して渡す（抑制版はバナーなし）。
+                    .map(team -> TeamPublicSummaryResponse.from(
+                            team, mediaUrlResolver.resolve(team.getIconUrl())))
                     .toList();
             body = PagedResponse.of(content, buildMeta(resultPage, page, size));
         }

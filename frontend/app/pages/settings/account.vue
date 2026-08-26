@@ -3,6 +3,7 @@ import type { ScopeDefault } from '~/types/seal'
 
 definePageMeta({ middleware: 'auth' })
 
+const { t } = useI18n()
 const showDeletionPreviewDialog = ref(false)
 const api = useApi()
 const notification = useNotification()
@@ -13,20 +14,22 @@ async function handleDeleteAccount(currentPassword: string | null) {
       method: 'DELETE',
       body: { currentPassword: currentPassword ?? null },
     })
-    notification.success('アカウントを削除しました。ご利用ありがとうございました。')
+    notification.success(t('settings.delete_account.delete_success'))
     authStore.logout()
     setTimeout(() => navigateTo('/login'), 2000)
   } catch {
-    notification.error('アカウントの削除に失敗しました')
+    notification.error(t('settings.delete_account.delete_error'))
   }
 }
 
 const authStore = useAuthStore()
 const appearanceStore = useAppearanceStore()
-const teamStore = useTeamStore()
-const orgStore = useOrganizationStore()
 
 const loading = ref(true)
+// SSR/CSR 初期マークアップを一致させるためのマウントフラグ。
+// SSR では authStore.user が未復元で userId が undefined になるため、
+// マウント前は全コンテンツをローディング表示に統一して Hydration mismatch を防ぐ。
+const isMounted = ref(false)
 const userId = computed(() => authStore.user?.id)
 
 const {
@@ -38,6 +41,7 @@ const {
   canSubmitEmail,
   passwordForm,
   submittingPassword,
+  redirecting,
   passwordError,
   canSubmitPassword,
   savingLocale,
@@ -80,6 +84,7 @@ const {
   loadLinkedAccounts,
   handleUnlinkOAuth,
   handleUnlinkLine,
+  handleLinkOAuth,
 } = useAccountLinkedAccounts()
 
 const {
@@ -114,20 +119,10 @@ const {
   handleSaveDefaults,
 } = useAccountSeals()
 
-const {
-  gcalStatus,
-  gcalSyncSettings,
-  gcalSyncing,
-  loadGcal,
-  connectGoogle,
-  disconnectGoogle,
-  saveGcalSettings,
-  manualGcalSync,
-  toggleTeamSync,
-  toggleOrgSync,
-} = useAccountGcal()
+const { gcalStatus, loadGcal } = useAccountGcal()
 
 onMounted(async () => {
+  isMounted.value = true
   await Promise.allSettled([
     loadProfile(),
     loadSecurity(),
@@ -138,8 +133,6 @@ onMounted(async () => {
     loadSeals(userId.value),
     loadGcal(),
     appearanceStore.loadFromServer(),
-    teamStore.fetchMyTeams(),
-    orgStore.fetchMyOrganizations(),
   ])
   loading.value = false
 })
@@ -147,10 +140,24 @@ onMounted(async () => {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <BackButton to="/settings" />
-    <PageHeader title="アカウント設定" />
+    <!-- パスワード変更後のリダイレクト中オーバーレイ（フェードイン表示） -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div
+          v-if="redirecting"
+          class="fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-surface-0 dark:bg-surface-900"
+        >
+          <LoadingBounce />
+          <p class="text-sm font-medium text-surface-600 dark:text-surface-300">
+            {{ $t('settings.password.redirecting') }}
+          </p>
+        </div>
+      </Transition>
+    </Teleport>
 
-    <PageLoading v-if="loading" />
+    <PageHeader :title="$t('settings.account.page_title')" />
+
+    <PageLoading v-if="!isMounted || loading" />
 
     <div v-else class="fade-in space-y-8">
       <SettingsProfileSection
@@ -186,7 +193,7 @@ onMounted(async () => {
 
       <SettingsAppearanceSection />
 
-      <SectionCard title="通知設定">
+      <SectionCard :title="$t('settings.account.notification_settings')">
         <NotificationPreferences />
       </SectionCard>
 
@@ -214,6 +221,7 @@ onMounted(async () => {
         :line-status="lineStatus"
         @unlink-o-auth="handleUnlinkOAuth"
         @unlink-line="handleUnlinkLine"
+        @link-o-auth="handleLinkOAuth"
       />
 
       <SettingsMemberCardSection
@@ -254,19 +262,7 @@ onMounted(async () => {
         @load-more="loadLoginHistory"
       />
 
-      <SettingsGcalSection
-        v-model:gcal-sync-settings="gcalSyncSettings"
-        :gcal-status="gcalStatus"
-        :gcal-syncing="gcalSyncing"
-        :teams="teamStore.myTeams"
-        :organizations="orgStore.myOrganizations"
-        @connect="connectGoogle"
-        @disconnect="disconnectGoogle"
-        @save-settings="saveGcalSettings"
-        @manual-sync="manualGcalSync"
-        @toggle-team-sync="toggleTeamSync"
-        @toggle-org-sync="toggleOrgSync"
-      />
+      <SettingsGcalSection :gcal-status="gcalStatus" />
 
       <SettingsDataExportSection />
 

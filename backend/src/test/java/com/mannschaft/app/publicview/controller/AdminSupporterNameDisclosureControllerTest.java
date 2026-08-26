@@ -34,6 +34,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * {@link AdminSupporterNameDisclosureController} の MockMvc 結合テスト (F19.1 Phase 2)。
@@ -81,6 +82,10 @@ class AdminSupporterNameDisclosureControllerTest {
 
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     /** 各テスト前: ADMIN ロールを持つ認証済みユーザーを設定する。 */
     @BeforeEach
@@ -192,7 +197,7 @@ class AdminSupporterNameDisclosureControllerTest {
     void getTeamDisclosureHistory_returns200WithHistoryList() throws Exception {
         UUID logId = UUID.randomUUID();
         LocalDateTime changedAt = LocalDateTime.of(2026, 5, 19, 10, 0, 0);
-        given(service.getTeamChangeHistory(eq(TEAM_ID)))
+        given(service.getTeamChangeHistory(eq(TEAM_ID), eq(OPERATOR_USER_ID)))
                 .willReturn(List.of(new NameDisclosureChangeLogResponse(
                         logId,
                         NameDisclosureMode.DISPLAY_NAME,
@@ -212,7 +217,7 @@ class AdminSupporterNameDisclosureControllerTest {
     @Test
     @DisplayName("GET /admin/teams/{teamId}/supporter-name-disclosure/history: 履歴なし → 200 + 空リスト")
     void getTeamDisclosureHistory_noHistory_returns200EmptyList() throws Exception {
-        given(service.getTeamChangeHistory(eq(TEAM_ID))).willReturn(List.of());
+        given(service.getTeamChangeHistory(eq(TEAM_ID), eq(OPERATOR_USER_ID))).willReturn(List.of());
 
         mockMvc.perform(get("/api/v1/admin/teams/{teamId}/supporter-name-disclosure/history", TEAM_ID))
                 .andExpect(status().isOk())
@@ -248,7 +253,7 @@ class AdminSupporterNameDisclosureControllerTest {
     void getOrganizationDisclosureHistory_returns200WithHistoryList() throws Exception {
         UUID logId = UUID.randomUUID();
         LocalDateTime changedAt = LocalDateTime.of(2026, 5, 19, 11, 0, 0);
-        given(service.getOrganizationChangeHistory(eq(ORG_ID)))
+        given(service.getOrganizationChangeHistory(eq(ORG_ID), eq(OPERATOR_USER_ID)))
                 .willReturn(List.of(new NameDisclosureChangeLogResponse(
                         logId,
                         NameDisclosureMode.DISPLAY_NAME,

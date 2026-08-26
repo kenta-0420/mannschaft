@@ -65,7 +65,21 @@ public enum TeamErrorCode implements ErrorCode {
     TEAM_050("TEAM_050", "役員が見つかりません", Severity.WARN),
 
     /** カスタムフィールドが見つかりません */
-    TEAM_051("TEAM_051", "カスタムフィールドが見つかりません", Severity.WARN);
+    TEAM_051("TEAM_051", "カスタムフィールドが見つかりません", Severity.WARN),
+
+    // --- ユーザー任意 slug（村方式統一）---
+
+    /** slug の形式が不正（422）。3〜30文字の英小文字・数字・ハイフン、先頭/末尾/連続ハイフン不可 */
+    TEAM_060("TEAM_060", "スラッグの形式が不正です（3〜30文字の英小文字・数字・ハイフン、先頭/末尾/連続ハイフン不可）", Severity.WARN),
+
+    /** slug が予約語（422）。フロントエンドの固定ルートと衝突する語は使用できない */
+    TEAM_061("TEAM_061", "そのスラッグは予約語のため使用できません", Severity.WARN),
+
+    /** slug が既に使用されている（409） */
+    TEAM_062("TEAM_062", "そのスラッグはすでに使われています", Severity.WARN),
+
+    /** slug が他チームの履歴に予約済み（恒久 301 リダイレクト保全のため使用不可・409） */
+    TEAM_063("TEAM_063", "そのスラッグは過去に他チームで使われていたため使用できません", Severity.WARN);
 
     private final String code;
     private final String message;

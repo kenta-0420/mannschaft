@@ -30,14 +30,64 @@ import type {
   CreateAdCreativeRequest,
   UpdateAdCreativeRequest,
   AdCreativeStatus,
+  ScopeType,
 } from '~/types/advertiser'
+
+// F09.19.6 で billing/analytics/creatives 系メソッドを scope 化（org/team 両対応）。
+// 手順は useAdMessagingCampaignApi (F09.17 Phase 11-d-3) に倣うが、BE URL 体系が非対称なため
+// 2 系統のヘルパーを用意する:
+//
+//  1) billing/analytics/account 系（account/overview/invoices/report-schedules/
+//     credit-limit-requests/campaigns/{id}/performance,export,creatives(比較),breakdown）:
+//     - ORGANIZATION: 旧来の /api/v1/advertiser/{resource} + ?organizationId= クエリ式（変更なし）
+//     - TEAM: F09.19.5b で新設された /api/v1/teams/{teamId}/advertiser/{resource} パス式
+//     組織側にまだパス式の同等 API が無いため、真に対称な buildBasePath は組めない。
+//
+//  2) creatives CRUD（ad-campaigns/{campaignId}/creatives 配下）:
+//     - 既に org/team 双方がパス式 /api/v1/{organizations|teams}/{scopeId}/advertiser/ad-campaigns/...
+//       を持つため、useAdMessagingCampaignApi と同じ buildBasePath パターンをそのまま適用する。
+
+/**
+ * billing/analytics/account 系 API の base path を組み立てる。
+ *
+ * <p>{@code TEAM} は F09.19.5b で新設されたパス式、{@code ORGANIZATION} は
+ * 既存のクエリパラメータ式（{@code /api/v1/advertiser/*}）のまま。</p>
+ */
+function billingBasePath(scopeType: ScopeType, scopeId: string, resource: string): string {
+  return scopeType === 'TEAM'
+    ? `/api/v1/teams/${scopeId}/advertiser/${resource}`
+    : `/api/v1/advertiser/${resource}`
+}
+
+/**
+ * billing/analytics/account 系 API のクエリパラメータを組み立てる。
+ *
+ * <p>{@code ORGANIZATION} は {@code organizationId} をクエリに載せる必要があるが、
+ * {@code TEAM} は teamId がパスに含まれるため不要。</p>
+ */
+function billingParams(
+  scopeType: ScopeType,
+  scopeId: string,
+  extra?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  return scopeType === 'TEAM' ? extra : { organizationId: scopeId, ...extra }
+}
+
+function scopeSegment(scopeType: ScopeType): 'organizations' | 'teams' {
+  return scopeType === 'TEAM' ? 'teams' : 'organizations'
+}
+
+/** creatives CRUD（ad-campaigns/{campaignId}/creatives）の base path を組み立てる。 */
+function creativesBasePath(scopeType: ScopeType, scopeId: string, campaignId: number): string {
+  return `/api/v1/${scopeSegment(scopeType)}/${scopeId}/advertiser/ad-campaigns/${campaignId}/creatives`
+}
 
 export function useAdvertiserApi() {
   const api = useApi()
 
   // ─── 広告主向け API ───
 
-  async function register(organizationId: number, body: RegisterAdvertiserRequest) {
+  async function register(organizationId: string, body: RegisterAdvertiserRequest) {
     return api<{ data: AdvertiserAccountResponse }>('/api/v1/advertiser/register', {
       method: 'POST',
       params: { organizationId },
@@ -45,30 +95,30 @@ export function useAdvertiserApi() {
     })
   }
 
-  async function registerTeam(teamId: number, body: RegisterAdvertiserRequest) {
+  async function registerTeam(teamId: string, body: RegisterAdvertiserRequest) {
     return api<{ data: AdvertiserAccountResponse }>(`/api/v1/teams/${teamId}/advertiser/register`, {
       method: 'POST',
       body,
     })
   }
 
-  async function getAccount(organizationId: number) {
-    return api<{ data: AdvertiserAccountResponse }>('/api/v1/advertiser/account', {
-      params: { organizationId },
+  async function getAccount(scopeType: ScopeType, scopeId: string) {
+    return api<{ data: AdvertiserAccountResponse }>(billingBasePath(scopeType, scopeId, 'account'), {
+      params: billingParams(scopeType, scopeId),
     })
   }
 
-  async function updateAccount(organizationId: number, body: UpdateAdvertiserAccountRequest) {
-    return api<{ data: AdvertiserAccountResponse }>('/api/v1/advertiser/account', {
+  async function updateAccount(scopeType: ScopeType, scopeId: string, body: UpdateAdvertiserAccountRequest) {
+    return api<{ data: AdvertiserAccountResponse }>(billingBasePath(scopeType, scopeId, 'account'), {
       method: 'PATCH',
-      params: { organizationId },
+      params: billingParams(scopeType, scopeId),
       body,
     })
   }
 
-  async function getOverview(organizationId: number) {
-    return api<{ data: AdvertiserOverviewResponse }>('/api/v1/advertiser/overview', {
-      params: { organizationId },
+  async function getOverview(scopeType: ScopeType, scopeId: string) {
+    return api<{ data: AdvertiserOverviewResponse }>(billingBasePath(scopeType, scopeId, 'overview'), {
+      params: billingParams(scopeType, scopeId),
     })
   }
 
@@ -92,113 +142,113 @@ export function useAdvertiserApi() {
   }
 
   // Performance
-  async function getCampaignPerformance(campaignId: number, organizationId: number, from: string, to: string) {
-    return api<{ data: CampaignPerformanceResponse }>(`/api/v1/advertiser/campaigns/${campaignId}/performance`, {
-      params: { organizationId, from, to },
+  async function getCampaignPerformance(scopeType: ScopeType, scopeId: string, campaignId: number, from: string, to: string) {
+    return api<{ data: CampaignPerformanceResponse }>(billingBasePath(scopeType, scopeId, `campaigns/${campaignId}/performance`), {
+      params: billingParams(scopeType, scopeId, { from, to }),
     })
   }
 
-  async function getCreativeComparison(campaignId: number, organizationId: number, from: string, to: string) {
-    return api<{ data: CreativeComparisonResponse }>(`/api/v1/advertiser/campaigns/${campaignId}/creatives`, {
-      params: { organizationId, from, to },
+  async function getCreativeComparison(scopeType: ScopeType, scopeId: string, campaignId: number, from: string, to: string) {
+    return api<{ data: CreativeComparisonResponse }>(billingBasePath(scopeType, scopeId, `campaigns/${campaignId}/creatives`), {
+      params: billingParams(scopeType, scopeId, { from, to }),
     })
   }
 
-  async function getBreakdown(campaignId: number, organizationId: number, from: string, to: string, breakdownBy?: string) {
-    return api<{ data: BreakdownResponse }>(`/api/v1/advertiser/campaigns/${campaignId}/breakdown`, {
-      params: { organizationId, from, to, breakdownBy },
+  async function getBreakdown(scopeType: ScopeType, scopeId: string, campaignId: number, from: string, to: string, breakdownBy?: string) {
+    return api<{ data: BreakdownResponse }>(billingBasePath(scopeType, scopeId, `campaigns/${campaignId}/breakdown`), {
+      params: billingParams(scopeType, scopeId, { from, to, breakdownBy }),
     })
   }
 
-  async function exportCampaignCsv(campaignId: number, organizationId: number, from: string, to: string) {
-    return api(`/api/v1/advertiser/campaigns/${campaignId}/export`, {
-      params: { organizationId, from, to },
+  async function exportCampaignCsv(scopeType: ScopeType, scopeId: string, campaignId: number, from: string, to: string) {
+    return api(billingBasePath(scopeType, scopeId, `campaigns/${campaignId}/export`), {
+      params: billingParams(scopeType, scopeId, { from, to }),
       responseType: 'blob' as const,
     }) as Promise<Blob>
   }
 
   // Invoices
-  async function getInvoices(organizationId: number, params?: { status?: InvoiceStatus; page?: number; size?: number }) {
-    return api<{ data: InvoiceSummaryResponse[]; meta: { totalElements: number; page: number; size: number; totalPages: number } }>('/api/v1/advertiser/invoices', {
-      params: { organizationId, ...params },
+  async function getInvoices(scopeType: ScopeType, scopeId: string, params?: { status?: InvoiceStatus; page?: number; size?: number }) {
+    return api<{ data: InvoiceSummaryResponse[]; meta: { totalElements: number; page: number; size: number; totalPages: number } }>(billingBasePath(scopeType, scopeId, 'invoices'), {
+      params: billingParams(scopeType, scopeId, params),
     })
   }
 
-  async function getInvoiceDetail(invoiceId: number, organizationId: number) {
-    return api<{ data: InvoiceDetailResponse }>(`/api/v1/advertiser/invoices/${invoiceId}`, {
-      params: { organizationId },
+  async function getInvoiceDetail(scopeType: ScopeType, scopeId: string, invoiceId: number) {
+    return api<{ data: InvoiceDetailResponse }>(billingBasePath(scopeType, scopeId, `invoices/${invoiceId}`), {
+      params: billingParams(scopeType, scopeId),
     })
   }
 
-  async function downloadInvoicePdf(invoiceId: number, organizationId: number) {
-    return api(`/api/v1/advertiser/invoices/${invoiceId}/pdf`, {
-      params: { organizationId },
+  async function downloadInvoicePdf(scopeType: ScopeType, scopeId: string, invoiceId: number) {
+    return api(billingBasePath(scopeType, scopeId, `invoices/${invoiceId}/pdf`), {
+      params: billingParams(scopeType, scopeId),
       responseType: 'blob' as const,
     }) as Promise<Blob>
   }
 
   // Report Schedules
-  async function getReportSchedules(organizationId: number) {
-    return api<{ data: ReportScheduleResponse[] }>('/api/v1/advertiser/report-schedules', {
-      params: { organizationId },
+  async function getReportSchedules(scopeType: ScopeType, scopeId: string) {
+    return api<{ data: ReportScheduleResponse[] }>(billingBasePath(scopeType, scopeId, 'report-schedules'), {
+      params: billingParams(scopeType, scopeId),
     })
   }
 
-  async function createReportSchedule(organizationId: number, body: CreateReportScheduleRequest) {
-    return api<{ data: ReportScheduleResponse }>('/api/v1/advertiser/report-schedules', {
+  async function createReportSchedule(scopeType: ScopeType, scopeId: string, body: CreateReportScheduleRequest) {
+    return api<{ data: ReportScheduleResponse }>(billingBasePath(scopeType, scopeId, 'report-schedules'), {
       method: 'POST',
-      params: { organizationId },
+      params: billingParams(scopeType, scopeId),
       body,
     })
   }
 
-  async function deleteReportSchedule(id: number, organizationId: number) {
-    return api(`/api/v1/advertiser/report-schedules/${id}`, {
+  async function deleteReportSchedule(scopeType: ScopeType, scopeId: string, id: number) {
+    return api(billingBasePath(scopeType, scopeId, `report-schedules/${id}`), {
       method: 'DELETE',
-      params: { organizationId },
+      params: billingParams(scopeType, scopeId),
     })
   }
 
   // Credit Limit Requests
-  async function createCreditLimitRequest(organizationId: number, body: CreateCreditLimitRequest) {
-    return api<{ data: CreditLimitRequestResponse }>('/api/v1/advertiser/credit-limit-requests', {
+  async function createCreditLimitRequest(scopeType: ScopeType, scopeId: string, body: CreateCreditLimitRequest) {
+    return api<{ data: CreditLimitRequestResponse }>(billingBasePath(scopeType, scopeId, 'credit-limit-requests'), {
       method: 'POST',
-      params: { organizationId },
+      params: billingParams(scopeType, scopeId),
       body,
     })
   }
 
-  async function getCreditLimitRequests(organizationId: number) {
-    return api<{ data: CreditLimitRequestResponse[] }>('/api/v1/advertiser/credit-limit-requests', {
-      params: { organizationId },
+  async function getCreditLimitRequests(scopeType: ScopeType, scopeId: string) {
+    return api<{ data: CreditLimitRequestResponse[] }>(billingBasePath(scopeType, scopeId, 'credit-limit-requests'), {
+      params: billingParams(scopeType, scopeId),
     })
   }
 
   // ─── 広告主向け クリエイティブ API ───
 
-  async function createCreative(organizationId: number, campaignId: number, body: CreateAdCreativeRequest) {
+  async function createCreative(scopeType: ScopeType, scopeId: string, campaignId: number, body: CreateAdCreativeRequest) {
     return api<{ data: AdCreativeResponse }>(
-      `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives`,
+      creativesBasePath(scopeType, scopeId, campaignId),
       { method: 'POST', body },
     )
   }
 
-  async function listCreatives(organizationId: number, campaignId: number) {
+  async function listCreatives(scopeType: ScopeType, scopeId: string, campaignId: number) {
     return api<{ data: AdCreativeResponse[] }>(
-      `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives`,
+      creativesBasePath(scopeType, scopeId, campaignId),
     )
   }
 
-  async function updateCreative(organizationId: number, campaignId: number, adId: number, body: UpdateAdCreativeRequest) {
+  async function updateCreative(scopeType: ScopeType, scopeId: string, campaignId: number, adId: number, body: UpdateAdCreativeRequest) {
     return api<{ data: AdCreativeResponse }>(
-      `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives/${adId}`,
+      `${creativesBasePath(scopeType, scopeId, campaignId)}/${adId}`,
       { method: 'PUT', body },
     )
   }
 
-  async function deleteCreative(organizationId: number, campaignId: number, adId: number) {
+  async function deleteCreative(scopeType: ScopeType, scopeId: string, campaignId: number, adId: number) {
     return api(
-      `/api/v1/organizations/${organizationId}/advertiser/ad-campaigns/${campaignId}/creatives/${adId}`,
+      `${creativesBasePath(scopeType, scopeId, campaignId)}/${adId}`,
       { method: 'DELETE' },
     )
   }

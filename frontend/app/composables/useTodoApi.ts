@@ -83,9 +83,12 @@ interface CommentList {
   data: Array<{
     id: number
     todoId: number
-    userId: number
-    displayName: string
-    avatarUrl: string | null
+    /** BE の CommentResponse は user フィールドにネストして返す（ProjectResponse.UserInfo 準拠） */
+    user: {
+      id: number
+      displayName: string
+      avatarUrl?: string | null
+    }
     body: string
     createdAt: string
     updatedAt: string
@@ -124,6 +127,14 @@ export function useTodoApi() {
   }
 
   /**
+   * 論理削除済みの個人 TODO を復元する（Undo Toast の「元に戻す」から呼ぶ）。
+   * BE: {@code POST /api/v1/todos/{id}/restore}
+   */
+  async function restorePersonalTodo(todoId: number) {
+    return api(`/api/v1/todos/${todoId}/restore`, { method: 'POST' })
+  }
+
+  /**
    * スコープを問わず使える汎用ステータス変更
    *
    * F02.3.1 でリクエストボディが拡張され、`status` / `statusLabelId` のいずれか（または両方）を指定可能。
@@ -131,7 +142,7 @@ export function useTodoApi() {
    */
   async function changeTodoStatusById(
     scopeType: string,
-    scopeId: number | null,
+    scopeId: string | null,
     todoId: number,
     payload: { status?: string; statusLabelId?: number } | string,
   ) {
@@ -148,13 +159,13 @@ export function useTodoApi() {
   }
 
   // === Team TODO CRUD ===
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   async function listTodos(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: TodoListParams,
   ) {
     const query = new URLSearchParams()
@@ -168,13 +179,13 @@ export function useTodoApi() {
     return api<PagedTodos>(`${buildBase(scopeType, scopeId)}/todos?${query}`)
   }
 
-  async function getTodo(scopeType: 'team' | 'organization', scopeId: number, todoId: number) {
+  async function getTodo(scopeType: 'team' | 'organization', scopeId: string, todoId: number) {
     return api<TodoDetail>(`${buildBase(scopeType, scopeId)}/todos/${todoId}`)
   }
 
   async function createTodo(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<TodoDetail>(`${buildBase(scopeType, scopeId)}/todos`, { method: 'POST', body })
@@ -182,7 +193,7 @@ export function useTodoApi() {
 
   async function updateTodo(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: Record<string, unknown>,
   ) {
@@ -192,8 +203,16 @@ export function useTodoApi() {
     })
   }
 
-  async function deleteTodo(scopeType: 'team' | 'organization', scopeId: number, todoId: number) {
+  async function deleteTodo(scopeType: 'team' | 'organization', scopeId: string, todoId: number) {
     return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}`, { method: 'DELETE' })
+  }
+
+  /**
+   * 論理削除済みのチーム / 組織 TODO を復元する（Undo Toast の「元に戻す」から呼ぶ）。
+   * BE: {@code POST /api/v1/{teams|organizations}/{scopeId}/todos/{id}/restore}
+   */
+  async function restoreTodo(scopeType: 'team' | 'organization', scopeId: string, todoId: number) {
+    return api(`${buildBase(scopeType, scopeId)}/todos/${todoId}/restore`, { method: 'POST' })
   }
 
   // === Status ===
@@ -205,7 +224,7 @@ export function useTodoApi() {
    */
   async function changeTodoStatus(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     payload: { status?: string; statusLabelId?: number } | string,
   ) {
@@ -219,7 +238,7 @@ export function useTodoApi() {
 
   async function bulkChangeTodoStatus(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoIds: number[],
     status: string,
   ) {
@@ -232,7 +251,7 @@ export function useTodoApi() {
   // === Assignees ===
   async function addAssignee(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     userId: number,
   ) {
@@ -244,7 +263,7 @@ export function useTodoApi() {
 
   async function removeAssignee(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     userId: number,
   ) {
@@ -256,7 +275,7 @@ export function useTodoApi() {
   // === Comments ===
   async function getComments(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     page: number = 0,
   ) {
@@ -267,7 +286,7 @@ export function useTodoApi() {
 
   async function addComment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: string,
   ) {
@@ -279,7 +298,7 @@ export function useTodoApi() {
 
   async function updateComment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     commentId: number,
     body: string,
@@ -292,7 +311,7 @@ export function useTodoApi() {
 
   async function deleteComment(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     commentId: number,
   ) {
@@ -308,7 +327,7 @@ export function useTodoApi() {
    */
   async function handoff(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
     body: HandoffRequest,
   ) {
@@ -323,7 +342,7 @@ export function useTodoApi() {
    */
   async function getHandoffHistory(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     todoId: number,
   ) {
     return api<HandoffHistoryResponse>(
@@ -337,12 +356,14 @@ export function useTodoApi() {
     createPersonalTodo,
     updatePersonalTodo,
     deletePersonalTodo,
+    restorePersonalTodo,
     changeTodoStatusById,
     listTodos,
     getTodo,
     createTodo,
     updateTodo,
     deleteTodo,
+    restoreTodo,
     changeTodoStatus,
     bulkChangeTodoStatus,
     addAssignee,

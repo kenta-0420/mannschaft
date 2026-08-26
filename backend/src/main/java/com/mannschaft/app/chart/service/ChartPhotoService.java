@@ -6,8 +6,10 @@ import com.mannschaft.app.chart.ChartPhotoUrlProvider;
 import com.mannschaft.app.chart.PhotoType;
 import com.mannschaft.app.chart.dto.ChartPhotoResponse;
 import com.mannschaft.app.chart.entity.ChartPhotoEntity;
+import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.repository.ChartPhotoRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.StorageService;
 import lombok.RequiredArgsConstructor;
@@ -42,16 +44,22 @@ public class ChartPhotoService {
     private final ChartMapper chartMapper;
     private final ChartPhotoUrlProvider photoUrlProvider;
     private final StorageService storageService;
+    private final AccessControlService accessControlService;
+
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     /**
      * 写真をアップロードする。
      */
     @Transactional
-    public ChartPhotoResponse uploadPhoto(Long teamId, Long chartId, MultipartFile file,
+    public ChartPhotoResponse uploadPhoto(Long teamId, Long chartId, Long actorUserId, MultipartFile file,
                                           String photoType, String note, Boolean isSharedToCustomer) {
         // カルテ存在確認
-        recordRepository.findByIdAndTeamId(chartId, teamId)
+        ChartRecordEntity record = recordRepository.findByIdAndTeamId(chartId, teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         // ファイルバリデーション
         validateFile(file);
@@ -101,13 +109,15 @@ public class ChartPhotoService {
      * 写真を削除する。
      */
     @Transactional
-    public void deletePhoto(Long teamId, Long photoId) {
+    public void deletePhoto(Long teamId, Long photoId, Long actorUserId) {
         ChartPhotoEntity photo = photoRepository.findById(photoId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.PHOTO_NOT_FOUND));
 
         // カルテがこのチームに属しているか確認
-        recordRepository.findByIdAndTeamId(photo.getChartRecordId(), teamId)
+        ChartRecordEntity record = recordRepository.findByIdAndTeamId(photo.getChartRecordId(), teamId)
                 .orElseThrow(() -> new BusinessException(ChartErrorCode.CHART_NOT_FOUND));
+        // BOLA厳禁: entity 由来 teamId で認可する。
+        accessControlService.checkAdminOrAbove(actorUserId, record.getTeamId(), SCOPE_TEAM);
 
         photoRepository.delete(photo);
         log.info("写真削除: photoId={}", photoId);

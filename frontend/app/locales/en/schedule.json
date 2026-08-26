@@ -1,0 +1,335 @@
+{
+  "schedule": {
+    "attendance": {
+      "yes": "Attend",
+      "no": "Absent",
+      "maybe": "Maybe",
+      "respondSuccess": "Attendance response saved",
+      "respondError": "Failed to save attendance response"
+    },
+    "list": {
+      "allDay": "All day",
+      "empty": "No events for this period",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month"
+    },
+    "common_delete": "Delete",
+    "description_label": "Description",
+    "error_title_required": "Title is required",
+    "success_create": "Event created",
+    "success_update": "Event updated",
+    "success_create_personal": "Schedule added",
+    "success_update_personal": "Schedule updated",
+    "error_load_event": "Failed to load event information",
+    "reminder": {
+      "label": "Reminders",
+      "add": "Add reminder",
+      "max_reached": "You can set up to 5 reminders",
+      "kind_label": "Type",
+      "kind_relative": "Before event",
+      "kind_absolute": "Specific date/time",
+      "relative_value_label": "Value",
+      "absolute_at_label": "Notify at",
+      "error_absolute_required": "Please enter a date and time for the absolute reminder",
+      "error_past": "A past date and time cannot be specified",
+      "preset_minutes_before": "{n} min before",
+      "preset_hours_before": "{n} hr before",
+      "preset_days_before": "{n} day before",
+      "preset_weeks_before": "{n} week before"
+    },
+    "scheduled_survey": {
+      "label": "Schedule a survey",
+      "scheduled_at": "Creation time",
+      "title_label": "Survey title",
+      "title_placeholder": "Enter the survey title",
+      "anonymous": "Allow anonymous responses",
+      "results_visibility": "Results visibility",
+      "visibility_public": "Visible to everyone",
+      "visibility_owner": "Owner only",
+      "visibility_respondents": "Respondents only",
+      "question_placeholder": "Enter a question",
+      "qtype_single": "Single choice",
+      "qtype_multiple": "Multiple choice",
+      "required": "Required",
+      "option_placeholder": "Enter an option",
+      "add_option": "Add option",
+      "add_question": "Add question",
+      "error_scheduled_at_required": "Please enter the survey creation time",
+      "error_past": "The survey creation time must be in the future"
+    },
+    "scheduled_attendance": {
+      "label": "Schedule an attendance request",
+      "scheduled_at": "Creation time",
+      "deadline": "Response deadline",
+      "comment_option": "Comments",
+      "comment_none": "No comments",
+      "comment_optional": "Optional comments",
+      "comment_required": "Required comments",
+      "error_scheduled_at_required": "Please enter the attendance request creation time",
+      "error_past": "The attendance request creation time must be in the future"
+    },
+    "scheduled_task": {
+      "label": "Scheduled tasks",
+      "type_survey": "Scheduled survey",
+      "type_attendance": "Scheduled attendance request",
+      "status_pending": "Pending",
+      "status_created": "Created",
+      "status_cancelled": "Cancelled",
+      "status_failed": "Failed",
+      "cancel": "Cancel",
+      "cancel_success": "The scheduled task has been cancelled",
+      "cancel_failed": "Failed to cancel the scheduled task"
+    },
+    "attendanceTeamBreakdown": {
+      "toggleLabel": "Aggregate by team",
+      "toggleHint": "Aggregate attendance per member team (organization distribution only).",
+      "title": "Attendance by team",
+      "team": "Team",
+      "attending": "Attending",
+      "partial": "Partial",
+      "absent": "Absent",
+      "undecided": "Undecided",
+      "total": "Total",
+      "totalNote": "Total counts unique people; per-team counts may overlap (members in multiple teams are counted in each).",
+      "directMembers": "Direct organization members",
+      "reload": "Reload",
+      "retry": "Retry",
+      "exportCsv": "Export CSV",
+      "exportFailed": "Failed to export CSV.",
+      "fetchFailed": "Failed to load the attendance breakdown by team.",
+      "forbidden": "You do not have permission to view this breakdown.",
+      "empty": "No attendance breakdown data available."
+    },
+    "recurrence": {
+      "label": "Repeat",
+      "interval": {
+        "DAILY": "Daily",
+        "WEEKLY": "Weekly",
+        "MONTHLY": "Monthly",
+        "YEARLY": "Yearly"
+      },
+      "days": {
+        "SUNDAY": "Sun",
+        "MONDAY": "Mon",
+        "TUESDAY": "Tue",
+        "WEDNESDAY": "Wed",
+        "THURSDAY": "Thu",
+        "FRIDAY": "Fri",
+        "SATURDAY": "Sat"
+      },
+      "end_label": "End",
+      "end_never": "Never",
+      "end_date": "On date",
+      "end_count": "After",
+      "end_count_suffix": "times"
+    },
+    "event_add": "Add event",
+    "calendar_guide": {
+      "page_title": "My Calendar",
+      "description": "My Calendar lets you view your personal events alongside events from your teams and organizations, all in one screen.",
+      "what": {
+        "title": "What is My Calendar?",
+        "body": "View all events from your teams, organizations, and personal schedule in a single calendar. Switch between the calendar view and the Gantt view (TODO list)."
+      },
+      "add": {
+        "title": "Add an event",
+        "body": "Click the 'Add event' button or click on a date in the calendar to create an event. You can add personal events as well as team or organization events.",
+        "step1": "Click 'Add event' in the top right, or click on a date cell",
+        "step2": "Enter a title, date/time, and location",
+        "step3": "Select personal, team, or organization under 'Scope'",
+        "step4": "Click 'Save' to finish"
+      },
+      "filter": {
+        "title": "Filter the view",
+        "body": "Use the buttons at the bottom of the calendar to toggle the display of each scope (personal, team, organization). If there are 6 or more, use the dropdown to select.",
+        "personal": "Green dot: personal events",
+        "team_org": "Indigo dot: team / organization events"
+      },
+      "gantt": {
+        "title": "Gantt view (TODO list)",
+        "body": "Press the 'Gantt' tab to display deadline-based TODOs as a Gantt chart. It syncs with the scope switcher in the top right to show personal, team, or organization TODOs."
+      },
+      "detail": {
+        "title": "Event details & attendance",
+        "body": "Click on an event in the calendar to open the detail panel on the right.",
+        "item_edit": "Use the pencil icon to edit, or the trash icon to delete",
+        "item_attendance": "For events with attendance tracking, select 'Attending', 'Not attending', or 'Maybe'",
+        "item_match": "Use the 'Record this match' button from a team event to start a match record"
+      },
+      "google_sync": {
+        "title": "Google Calendar integration",
+        "body": "Connect your Google account to sync your personal events with Google Calendar in both directions. Events you add or edit in Mannschaft appear in Google Calendar, and changes made in Google Calendar are imported back.",
+        "step1": "Open 'Settings' → 'Google Calendar integration'",
+        "step2": "Press 'Connect Google account' and authorize the connection",
+        "step3": "Turn on 'Personal calendar' to enable syncing",
+        "step4": "Run 'Manual sync' when you want changes reflected immediately"
+      }
+    },
+    "google_sync_notice": "Connected to Google Calendar. Any changes made in Google will be replaced by Mannschaft data the next time you save this event here.",
+    "comment": {
+      "title": "Comments",
+      "placeholder": "Comment on this event…",
+      "submit": "Post",
+      "cancel": "Cancel",
+      "save": "Save",
+      "reply": "Reply",
+      "replyTo": "Reply to {name}",
+      "showReplies": "Show {count} more replies",
+      "empty": "No comments yet",
+      "loadMore": "Load more",
+      "edit": "Edit",
+      "edited": "(edited)",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this comment?",
+      "deleted": "This comment was deleted",
+      "deletedAuthor": "Deleted user",
+      "closed": "Comments are closed for this event",
+      "cancelled": "You cannot comment on a cancelled event",
+      "updateSuccess": "Comment updated",
+      "deleteSuccess": "Comment deleted",
+      "postSuccess": "Comment posted",
+      "settings": {
+        "enable": "Allow comments",
+        "disable": "Close comments",
+        "updateSuccess": "Comment settings updated"
+      },
+      "mention": {
+        "hint": "You can mention a member",
+        "empty": "No matching members"
+      },
+      "count": "{count} comments",
+      "error": {
+        "bodyRequired": "Please enter a comment",
+        "bodyTooLong": "Comments must be 2000 characters or fewer",
+        "maxDepth": "You cannot reply to this reply",
+        "closed": "Comments are closed",
+        "forbidden": "You do not have permission for this action",
+        "tooManyMentions": "You can mention up to 20 people",
+        "rateLimited": "Too many posts. Please try again later",
+        "generic": "The operation failed",
+        "notFound": "Comment not found"
+      }
+    },
+    "targetAudience": {
+      "label": "Schedule audience",
+      "allMembers": "Everyone",
+      "selectMembers": "Select members",
+      "memberPlaceholder": "Select audience members",
+      "more": "+{count} more",
+      "selectedCount": "{count} selected",
+      "invalidSelection": "Select between 1 and 500 audience members"
+    },
+    "memberColor": {
+      "column": "Schedule color",
+      "auto": "Automatic",
+      "reset": "Reset to automatic color",
+      "updated": "Member schedule color updated",
+      "resetDone": "Member schedule color reset",
+      "updateFailed": "Could not update member schedule color",
+      "colorLabel": "Schedule color for {name}"
+    },
+    "todo_load_error": {
+      "summary": "Failed to load TODOs",
+      "detail": "TODOs could not be shown on the calendar. Schedules are still displayed. Please reload after a while."
+    }
+  },
+  "scheduleKeep": {
+    "title": "Keep",
+    "subtitle": "A place for plans without a date yet",
+    "empty": "Nothing here yet. Jot down an idea.",
+    "form": {
+      "titleLabel": "What do you want to do?",
+      "titlePlaceholder": "e.g. Summer camp",
+      "memoLabel": "Memo (optional)",
+      "candidateDatesLabel": "Candidate dates (optional)",
+      "submit": "Keep it"
+    },
+    "action": {
+      "convert": "Add to calendar",
+      "convertFromCandidate": "Pick this date",
+      "pickDate": "Choose a date",
+      "specifyTime": "Specify a time",
+      "archive": "Archive",
+      "restore": "Restore",
+      "revert": "Undo scheduling",
+      "reorder": "Reorder"
+    },
+    "status": {
+      "kept": "Kept",
+      "scheduled": "Scheduled",
+      "archived": "Archived"
+    },
+    "filter": {
+      "kept": "Kept",
+      "scheduled": "Scheduled",
+      "archived": "Archived",
+      "all": "All"
+    },
+    "badge": {
+      "candidateCount": "{count} candidate dates"
+    },
+    "origin": {
+      "label": "Created from a keep",
+      "cancelled": "The event was cancelled",
+      "deleted": "The scheduled event was deleted"
+    },
+    "lockedHint": {
+      "scheduled": "This is now an event — edit it on the calendar",
+      "archived": "Archived items are read-only. Restore to edit."
+    },
+    "notification": {
+      "converted": "The date for \"{title}\" is set",
+      "created": "\"{title}\" was kept"
+    },
+    "confirm": {
+      "archive": "Archive this? You can restore it later."
+    },
+    "limit": {
+      "hint": "Archiving items frees up space"
+    },
+    "help": {
+      "title": "How to use Keep",
+      "body": "Keep is a place to set aside plans without a fixed date yet. Create one with just a title, then add candidate dates or a memo later. Once a candidate date is chosen, one tap turns it into a calendar event.",
+      "create": {
+        "title": "Keep an idea",
+        "body": "You only need a title to create a keep. Candidate dates and memos can be added later.",
+        "steps": {
+          "step1": "Type what you want to do as the title",
+          "step2": "Optionally add candidate dates or a memo",
+          "step3": "Press \"Keep it\""
+        }
+      },
+      "convert": {
+        "title": "Convert to an event",
+        "body": "With a candidate date it's one tap; without one it's a date picker away — two taps at most.",
+        "steps": {
+          "step1": "Tap a candidate date badge, or \"Add to calendar\"",
+          "step2": "Pick a date if there's no candidate yet",
+          "step3": "It appears on the calendar as an event"
+        }
+      },
+      "organize": {
+        "title": "Organize",
+        "body": "Archived keeps disappear from the list, but you can always bring them back with Restore. Reordering is also available.",
+        "steps": {
+          "step1": "Archive keeps you no longer need",
+          "step2": "Restore them from the Archived filter",
+          "step3": "Drag to reorder"
+        }
+      }
+    },
+    "error": {
+      "notFound": "Keep not found",
+      "titleRequired": "Please enter a title",
+      "tooManyCandidateDates": "Up to 10 candidate dates",
+      "invalidCandidateDate": "Invalid date format",
+      "forbidden": "You don't have permission for this keep",
+      "notConvertible": "This keep can't be converted",
+      "notEditable": "Can't edit in this state",
+      "revertBlockedByAttendance": "Can't undo — attendance replies exist",
+      "invalidStateTransition": "This transition isn't allowed",
+      "limitExceeded": "Keep limit reached",
+      "invalidReorder": "Invalid reorder request"
+    }
+  }
+}

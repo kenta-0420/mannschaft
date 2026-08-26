@@ -1,12 +1,9 @@
 package com.mannschaft.app.chat.service;
 
-import com.mannschaft.app.chat.ChannelMemberRole;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
-import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
-import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
@@ -62,7 +59,7 @@ public class ChatAttachmentService {
 
     private final StorageQuotaService storageQuotaService;
     private final StorageService storageService;
-    private final ChatChannelMemberRepository chatChannelMemberRepository;
+    private final ChatChannelAccessGuard channelAccessGuard;
 
     /**
      * presign 直前のクォータ・UX ガード事前チェック。
@@ -180,6 +177,15 @@ public class ChatAttachmentService {
             // F17.1 Phase 1: 村ロビーチャネルは添付スコープ未サポート（村スコープのストレージは Phase 2 以降）
             case VILLAGE_LOBBY -> throw new UnsupportedOperationException(
                     "VILLAGE_LOBBY 添付はまだサポートされていません (channelId=" + channel.getId() + ")");
+            // F08.7.1: 大会/ディビジョン連絡チャットは team/org に属さない横断スペースのため、
+            // 添付は操作者の PERSONAL クォータに計上する（VILLAGE_LOBBY と同方針）。
+            case TOURNAMENT_CHAT, TOURNAMENT_DIVISION_CHAT -> {
+                if (userId == null) {
+                    throw new IllegalStateException(
+                            "TOURNAMENT chat scope requires userId: channelId=" + channel.getId());
+                }
+                yield new ScopeResolution(StorageScopeType.PERSONAL, userId);
+            }
             // イベント専用チャンネルはチームまたは組織スコープにフォールバックする
             case EVENT_CHAT -> {
                 if (channel.getTeamId() != null) {
@@ -228,16 +234,9 @@ public class ChatAttachmentService {
                                                           String contentType,
                                                           long fileSize,
                                                           String fileName) {
-        // 1. 認可チェック: OWNER / ADMIN のみアイコン変更可能
-        ChatChannelMemberEntity member = chatChannelMemberRepository
-                .findByChannelIdAndUserId(channel.getId(), currentUserId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED));
-        ChannelMemberRole role = member.getRole();
-        if (role != ChannelMemberRole.OWNER && role != ChannelMemberRole.ADMIN) {
-            log.info("チャンネルアイコン presign 拒否（権限不足）: channelId={}, userId={}, role={}",
-                    channel.getId(), currentUserId, role);
-            throw new BusinessException(ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
-        }
+        // 1. 認可: 当該チャンネルの OWNER / ADMIN のみアイコンを変更できる。
+        channelAccessGuard.requireChannelManagerRole(
+                channel.getId(), currentUserId, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
 
         // 2. MIME ホワイトリスト
         String normalizedType = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);

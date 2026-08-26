@@ -31,6 +31,9 @@ const captureVisible = computed({
 const selectedMemoId = ref<number | null>(null)
 const drawerVisible = ref(false)
 
+// 使い方ガイド
+const showGuide = ref(false)
+
 // ─── データ取得 ────────────────────────────────────────────────────────────
 
 async function loadMemos() {
@@ -148,123 +151,132 @@ const showLimitBanner = computed(
 
 <template>
   <div>
-  <div class="mx-auto max-w-2xl px-4 py-6">
-    <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-xl font-bold">{{ t('quick_memo.title') }}</h1>
-      <div class="flex gap-2">
-        <Button
-          icon="pi pi-cog"
-          rounded
-          text
-          :title="t('quick_memo.settings')"
-          @click="$router.push('/quick-memos/settings')"
-        />
-        <Button
-          icon="pi pi-trash"
-          rounded
-          text
-          :title="t('quick_memo.trash.title')"
-          @click="$router.push('/quick-memos/trash')"
-        />
-        <Button
-          icon="pi pi-feather"
-          :label="t('quick_memo.capture_modal.submit')"
-          @click="capture.open()"
-        />
+    <div class="mx-auto max-w-2xl">
+      <PageHeader
+        :title="t('quick_memo.title')"
+        :back="false"
+        help
+        @help="showGuide = true"
+      >
+        <template #actions>
+          <Button
+            icon="pi pi-cog"
+            rounded
+            text
+            :title="t('quick_memo.settings')"
+            @click="$router.push('/quick-memos/settings')"
+          />
+          <Button
+            icon="pi pi-trash"
+            rounded
+            text
+            :title="t('quick_memo.trash.title')"
+            @click="$router.push('/quick-memos/trash')"
+          />
+          <Button
+            icon="pi pi-feather"
+            :label="t('quick_memo.capture_modal.submit')"
+            @click="capture.open()"
+          />
+        </template>
+      </PageHeader>
+
+      <div class="px-4 pb-6">
+        <!-- 上限警告バナー -->
+        <Message v-if="showWarningBanner" severity="warn" class="mb-4" :closable="false">
+          {{ t('quick_memo.limit_warning', { count: unsortedCount }) }}
+        </Message>
+        <Message v-if="showLimitBanner" severity="error" class="mb-4" :closable="false">
+          {{ t('quick_memo.limit_exceeded') }}
+        </Message>
+
+        <!-- 検索バー -->
+        <div class="mb-4">
+          <IconField>
+            <InputIcon class="pi pi-search" />
+            <InputText
+              v-model="searchQuery"
+              :placeholder="t('quick_memo.search.placeholder')"
+              class="w-full"
+            />
+          </IconField>
+        </div>
+
+        <!-- タブ -->
+        <div class="mb-4 flex gap-1 rounded-lg bg-surface-100 p-1 dark:bg-surface-700">
+          <button
+            v-for="tab in (['UNSORTED', 'ARCHIVED', 'CONVERTED'] as const)"
+            :key="tab"
+            class="flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
+            :class="
+              activeTab === tab
+                ? 'bg-surface-0 shadow-sm text-surface-800 dark:bg-surface-800 dark:text-surface-100'
+                : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'
+            "
+            @click="activeTab = tab"
+          >
+            {{ t(`quick_memo.status.${tab}`) }}
+            <span
+              v-if="tab === 'UNSORTED' && unsortedCount > 0"
+              class="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs text-primary"
+            >
+              {{ unsortedCount }}
+            </span>
+          </button>
+        </div>
+
+        <!-- メモ一覧 -->
+        <div v-if="loading" class="space-y-3">
+          <Skeleton v-for="i in 5" :key="i" height="80px" border-radius="12px" />
+        </div>
+
+        <div v-else-if="displayedMemos.length === 0" class="py-16 text-center text-surface-400">
+          <i class="pi pi-feather mb-3 text-4xl" />
+          <p>{{ t('quick_memo.no_memos') }}</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <QuickMemoCard
+            v-for="memo in displayedMemos"
+            :key="memo.id"
+            :memo="memo"
+            @click="openDetail"
+            @archive="handleArchive"
+            @restore="handleRestore"
+            @delete="handleDelete"
+            @convert="(m) => openDetail(m)"
+          />
+        </div>
+
+        <!-- ページネーション -->
+        <div v-if="totalPages > 1 && !searchResults" class="mt-6 flex justify-center">
+          <Paginator
+            v-model:first="page"
+            :rows="1"
+            :total-records="totalPages"
+            @page="(e) => { page = e.page + 1; loadMemos() }"
+          />
+        </div>
       </div>
     </div>
 
-    <!-- 上限警告バナー -->
-    <Message v-if="showWarningBanner" severity="warn" class="mb-4" :closable="false">
-      {{ t('quick_memo.limit_warning', { count: unsortedCount }) }}
-    </Message>
-    <Message v-if="showLimitBanner" severity="error" class="mb-4" :closable="false">
-      {{ t('quick_memo.limit_exceeded') }}
-    </Message>
+    <!-- 入力モーダル -->
+    <QuickMemoCaptureModal v-model:visible="captureVisible" @created="loadMemos" />
 
-    <!-- 検索バー -->
-    <div class="mb-4">
-      <IconField>
-        <InputIcon class="pi pi-search" />
-        <InputText
-          v-model="searchQuery"
-          :placeholder="t('quick_memo.search.placeholder')"
-          class="w-full"
-        />
-      </IconField>
-    </div>
+    <!-- 詳細ドロワー -->
+    <QuickMemoDetailDrawer
+      v-model:visible="drawerVisible"
+      :memo-id="selectedMemoId"
+      @updated="loadMemos"
+      @archived="loadMemos"
+      @deleted="loadMemos"
+      @converted="(todoId) => router.push(`/todos/${todoId}`)"
+    />
 
-    <!-- タブ -->
-    <div class="mb-4 flex gap-1 rounded-lg bg-surface-100 p-1 dark:bg-surface-700">
-      <button
-        v-for="tab in (['UNSORTED', 'ARCHIVED', 'CONVERTED'] as const)"
-        :key="tab"
-        class="flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors"
-        :class="
-          activeTab === tab
-            ? 'bg-surface-0 shadow-sm text-surface-800 dark:bg-surface-800 dark:text-surface-100'
-            : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'
-        "
-        @click="activeTab = tab"
-      >
-        {{ t(`quick_memo.status.${tab}`) }}
-        <span
-          v-if="tab === 'UNSORTED' && unsortedCount > 0"
-          class="ml-1 rounded-full bg-primary/10 px-1.5 py-0.5 text-xs text-primary"
-        >
-          {{ unsortedCount }}
-        </span>
-      </button>
-    </div>
+    <!-- 常駐フローティングボタン（ページ内に入れないよう注意：layout側推奨だが暫定） -->
+    <QuickMemoFloatingButton />
 
-    <!-- メモ一覧 -->
-    <div v-if="loading" class="space-y-3">
-      <Skeleton v-for="i in 5" :key="i" height="80px" border-radius="12px" />
-    </div>
-
-    <div v-else-if="displayedMemos.length === 0" class="py-16 text-center text-surface-400">
-      <i class="pi pi-feather mb-3 text-4xl" />
-      <p>{{ t('quick_memo.no_memos') }}</p>
-    </div>
-
-    <div v-else class="space-y-3">
-      <QuickMemoCard
-        v-for="memo in displayedMemos"
-        :key="memo.id"
-        :memo="memo"
-        @click="openDetail"
-        @archive="handleArchive"
-        @restore="handleRestore"
-        @delete="handleDelete"
-        @convert="(m) => openDetail(m)"
-      />
-    </div>
-
-    <!-- ページネーション -->
-    <div v-if="totalPages > 1 && !searchResults" class="mt-6 flex justify-center">
-      <Paginator
-        v-model:first="page"
-        :rows="1"
-        :total-records="totalPages"
-        @page="(e) => { page = e.page + 1; loadMemos() }"
-      />
-    </div>
-  </div>
-
-  <!-- 入力モーダル -->
-  <QuickMemoCaptureModal v-model:visible="captureVisible" @created="loadMemos" />
-
-  <!-- 詳細ドロワー -->
-  <QuickMemoDetailDrawer
-    v-model:visible="drawerVisible"
-    :memo-id="selectedMemoId"
-    @updated="loadMemos"
-    @archived="loadMemos"
-    @deleted="loadMemos"
-    @converted="(todoId) => router.push(`/todos/${todoId}`)"
-  />
-
-  <!-- 常駐フローティングボタン（ページ内に入れないよう注意：layout側推奨だが暫定） -->
-  <QuickMemoFloatingButton />
+    <!-- 使い方ガイドモーダル -->
+    <QuickMemoGuideModal v-model:visible="showGuide" />
   </div>
 </template>

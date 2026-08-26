@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +21,32 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
 
     String SEARCH_BY_TEAM = "SELECT * FROM blog_posts WHERE team_id = :teamId AND MATCH(title, body) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL";
     String SEARCH_BY_ORG = "SELECT * FROM blog_posts WHERE organization_id = :orgId AND MATCH(title, body) AGAINST(:keyword IN BOOLEAN MODE) AND deleted_at IS NULL";
+
+    /**
+     * 予約公開バッチ用: 公開時刻に達した予約記事の ID を取得する（issue #2616・F06.1 §2210-2226）。
+     *
+     * <p>対象条件は {@code status = DRAFT AND published_at IS NOT NULL AND published_at <= :baseTime}。
+     * 論理削除済みは {@code @SQLRestriction("deleted_at IS NULL")} が自動除外する
+     * （削除済み記事が復活公開されると事故になる）。</p>
+     *
+     * <p><b>エンティティではなく ID だけを返す</b>: 実処理は 1 件ごとに
+     * {@code REQUIRES_NEW} の別トランザクションで最新状態を取り直すため、抽出トランザクションの
+     * managed エンティティを跨いで渡す意味がない。抽出は<b>常に 1 本のクエリ</b>で完結し、
+     * 対象件数に比例したクエリ（N+1）を出さない（AC-15）。</p>
+     *
+     * <p>並びは {@code published_at ASC}（予約が古い順＝待たせている記事から公開する）。
+     * 取得件数は呼び出し側が {@code Pageable} で上限化する。</p>
+     *
+     * @param baseTime 判定基準時刻
+     * @param pageable 取得上限（{@code BlogScheduledPublishService.MAX_POSTS_PER_RUN}）
+     * @return 公開時刻に達した予約記事の ID
+     */
+    @Query("SELECT bp.id FROM BlogPostEntity bp "
+            + "WHERE bp.status = com.mannschaft.app.cms.PostStatus.DRAFT "
+            + "AND bp.publishedAt IS NOT NULL "
+            + "AND bp.publishedAt <= :baseTime "
+            + "ORDER BY bp.publishedAt ASC, bp.id ASC")
+    List<Long> findDueScheduledPostIds(@Param("baseTime") LocalDateTime baseTime, Pageable pageable);
 
     Page<BlogPostEntity> findByTeamIdAndStatusOrderByPinnedDescPublishedAtDesc(
             Long teamId, PostStatus status, Pageable pageable);
@@ -47,6 +74,17 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
 
     @Query(value = SEARCH_BY_ORG, nativeQuery = true)
     Page<BlogPostEntity> searchByOrganization(@Param("orgId") Long orgId, @Param("keyword") String keyword, Pageable pageable);
+
+    /**
+     * 認証ユーザー自身のブログ記事をID指定で取得する（削除済み除外）。
+     *
+     * <p>authorId 不一致 / 削除済み / 不在 は全て空を返す（IDOR 対策）。</p>
+     *
+     * @param id       ブログ記事 ID
+     * @param authorId 著者（認証ユーザー）ID
+     * @return 該当する BlogPostEntity（存在しない場合は空）
+     */
+    Optional<BlogPostEntity> findByIdAndAuthorIdAndDeletedAtIsNull(Long id, Long authorId);
 
     long countBySeriesId(Long seriesId);
 
@@ -162,34 +200,68 @@ public interface BlogPostRepository extends JpaRepository<BlogPostEntity, Long> 
             @Param("organizationId") Long organizationId, @Param("postId") Long postId);
 
     /**
-     * F19.1 Phase 3 sitemap.xml 用: チーム配下の PUBLIC + PUBLISHED 投稿を全件取得する。
+     * F19.1 Phase 3 sitemap.xml 用: <b>公開チーム</b>配下の PUBLIC + PUBLISHED 投稿を全件取得する。
+     *
+     * <h3>親スコープの公開性まで見る理由（sitemap 固有の要件）</h3>
+     * <p>投稿自身の可視性しか見ないと、<b>非公開チーム配下の PUBLIC 投稿</b>が sitemap に載る。
+     * 単票 API なら「親が非公開なら 404」で守れるが、<b>sitemap は URL をそのまま検索エンジンに
+     * 教える</b>ため、載せた時点で取り返しがつかない。しかも投稿 URL は
+     * {@code /public/teams/{teamId}/posts/{postId}} という形で親 ID を含むため、
+     * 「非公開チームが実在すること」と「その配下の投稿 ID」を同時に開示してしまう。
+     * よって本メソッドは公開チーム ID 集合を受け取り、SQL の段で親スコープを絞り込む。</p>
+     *
+     * <p>絞り込みを SQL に降ろすのは、スコープごとに 1 本ずつ撃つ N+1 を避けるためでもある
+     * （活動記録側の金型 {@code ActivityResultRepository#findPublicForSitemap} と同じ書き味）。</p>
      *
      * <p>sitemap は1時間キャッシュ前提のため N+1 を気にせず一括取得してよい。
-     * {@code @SQLRestriction} により論理削除済み投稿は自動除外される。</p>
+     * {@code @SQLRestriction} により論理削除済み投稿は自動除外される。
+     * {@code status = PUBLISHED} は<b>決して外さないこと</b>（下書きの URL を配ってしまう）。</p>
      *
      * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2</p>
+     *
+     * <h3>空集合を渡してはならない（回避方式が金型と異なる）</h3>
+     * <p>空集合は JPQL が {@code IN ()} を生成して SQL 構文エラーになるため渡せない。
+     * 本メソッド群では、<b>呼び出し元が空集合のとき SQL を撃たずに早期 return する</b>
+     * という約束で回避している（{@code SitemapQueryService#findPublicTeamPostEntries}）。
+     * <b>番兵値は使わない。</b></p>
+     *
+     * <p>金型の活動記録側 {@code ActivityResultRepository#findPublicForSitemap} は
+     * <b>番兵方式</b>（実在しない ID を入れる）だが、あちらは<b>チームと組織の 2 集合を
+     * 1 本の SQL に渡す</b>ため、片方だけが空という状況が普通に起きて早期 return できない。
+     * 本メソッドは集合を 1 つしか取らないので早期 return で足りる。
+     * <b>流儀の違いは意図的であり、番兵方式へ書き戻さないこと</b>
+     * （番兵を渡すと早期 return が死に、SQL は必ず 0 件を返すのに
+     * 「動いているように見える」状態になる）。</p>
+     *
+     * @param publicTeamIds 公開チームの ID 集合（<b>空にしないこと</b>。理由と回避方式は上記参照）
+     * @return 親チームが公開である PUBLIC + PUBLISHED の投稿（全件）
      */
     @Query("SELECT bp FROM BlogPostEntity bp "
-            + "WHERE bp.teamId IS NOT NULL "
+            + "WHERE bp.teamId IN :publicTeamIds "
             + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
             + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
             + "ORDER BY bp.teamId ASC, bp.id ASC")
-    List<BlogPostEntity> findAllPublicPostsByTeam();
+    List<BlogPostEntity> findAllPublicPostsByTeam(
+            @Param("publicTeamIds") Collection<Long> publicTeamIds);
 
     /**
-     * F19.1 Phase 3 sitemap.xml 用: 組織配下の PUBLIC + PUBLISHED 投稿を全件取得する。
+     * F19.1 Phase 3 sitemap.xml 用: <b>公開組織</b>配下の PUBLIC + PUBLISHED 投稿を全件取得する。
      *
-     * <p>sitemap は1時間キャッシュ前提のため N+1 を気にせず一括取得してよい。
-     * {@code @SQLRestriction} により論理削除済み投稿は自動除外される。</p>
+     * <p>親スコープを絞る理由・空集合の扱い（<b>番兵値は使わず呼び出し元が早期 return する</b>）は
+     * {@link #findAllPublicPostsByTeam(Collection)} と同一（チームを組織に読み替えること）。</p>
      *
      * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2</p>
+     *
+     * @param publicOrganizationIds 公開組織の ID 集合（<b>空にしないこと</b>。理由と回避方式は上記参照）
+     * @return 親組織が公開である PUBLIC + PUBLISHED の投稿（全件）
      */
     @Query("SELECT bp FROM BlogPostEntity bp "
-            + "WHERE bp.organizationId IS NOT NULL "
+            + "WHERE bp.organizationId IN :publicOrganizationIds "
             + "AND bp.visibility = com.mannschaft.app.cms.Visibility.PUBLIC "
             + "AND bp.status = com.mannschaft.app.cms.PostStatus.PUBLISHED "
             + "ORDER BY bp.organizationId ASC, bp.id ASC")
-    List<BlogPostEntity> findAllPublicPostsByOrganization();
+    List<BlogPostEntity> findAllPublicPostsByOrganization(
+            @Param("publicOrganizationIds") Collection<Long> publicOrganizationIds);
 
     // ========================================================================
     // F19.1 Phase 4: 公開検索用 lastPostDate 一括取得（N+1 防止）

@@ -1,0 +1,213 @@
+{
+  "payment": {
+    "paywall": {
+      "locked": "此内容需要支付会费才能查看",
+      "unlock": "付款后查看",
+      "requiredItem": "所需支付: {name}",
+      "hiddenContent": "此内容无法查看",
+      "loading": "正在确认访问权限..."
+    },
+    "membership": {
+      "subscribe": {
+        "cardLabel": "支付卡",
+        "submit": "使用此卡加入",
+        "processing": "处理中…",
+        "loadFailed": "支付表单加载失败。请稍后重试",
+        "keyMissing": "支付设置尚未完成。请联系管理员",
+        "genericError": "处理支付时发生错误。请稍后重试",
+        "noPaymentMethod": "无法确认您的支付方式。请检查卡片信息后重试",
+        "pageTitle": "加入持续付款",
+        "stepBeneficiary": "选择对象",
+        "stepCard": "卡片信息",
+        "stepConfirm": "确认并执行",
+        "stepDone": "完成",
+        "beneficiaryHelp": "请选择此持续付款的会费对象。",
+        "beneficiarySelf": "本人",
+        "unnamedChild": "（未命名的孩子）",
+        "beneficiaryRequired": "请选择要加入的对象",
+        "next": "下一步",
+        "invalidItem": "未找到会费项目。请从入口重新开始",
+        "finalizing": "正在完成加入手续…",
+        "authFailed": "卡片认证未完成。请重新输入卡片信息",
+        "errorNotRecurring": "此会费不支持持续付款",
+        "errorPmNotSaved": "尚未保存支付方式。请重新输入卡片信息",
+        "errorAlreadyExists": "此对象已加入有效的持续付款",
+        "beneficiaryUnverified": "无法确认受益人，处理已中断。您的支付方式已保存，请重新选择受益人后再试",
+        "doneTitle": "加入完成",
+        "doneMessage": "持续付款已开始。今后将自动付款。",
+        "toSubscriptions": "管理持续付款"
+      },
+      "subscription": {
+        "title": "持续付款",
+        "empty": "暂无进行中的持续付款",
+        "unnamedItem": "（未命名的会费）",
+        "monthly": "月付",
+        "yearly": "年付",
+        "beneficiary": "对象会员",
+        "nextBilling": "下次付款日",
+        "validUntil": "使用期限",
+        "skip": "跳过本月",
+        "skipConfirm": "本月的付款将暂停。下次付款日为 {date}。在此期间浏览期限不会延长。",
+        "skipped": "本月暂停中（下次 {date}）",
+        "skipSuccess": "已跳过本月付款",
+        "resume": "恢复",
+        "resumeConfirm": "取消跳过并恢复持续付款吗？",
+        "resumeSuccess": "已恢复持续付款",
+        "cancel": "解约",
+        "cancelAtPeriodEnd": "在周期结束时解约",
+        "cancelConfirm": "您可使用至 {date}。在周期结束时解约吗？（不按比例退款）",
+        "cancelScheduled": "可使用至 {date}（已预约在周期结束时解约）",
+        "cancelSuccess": "已预约在周期结束时解约",
+        "pastDue": "需要付款",
+        "pastDueGuide": "卡付款失败。请更新您的付款方式。",
+        "confirmAction": "确认执行",
+        "loadError": "获取持续付款失败",
+        "actionError": "操作失败。请稍后重试",
+        "status": {
+          "PENDING": "待处理",
+          "ACTIVE": "有效",
+          "PAST_DUE": "待付款",
+          "CANCELLED": "已解约",
+          "EXPIRED": "已过期"
+        }
+      }
+    },
+    "term": {
+      "periodLabel": "有效期间",
+      "from": "开始",
+      "until": "结束",
+      "typeLabel": {
+        "ANNUAL_FEE": "年费",
+        "MONTHLY_FEE": "月费",
+        "ITEM": "单品",
+        "DONATION": "捐款",
+        "TERM": "期间费用"
+      }
+    },
+    "admin": {
+      "pageTitle": "支付管理",
+      "permissionDenied": "このページは管理者のみアクセスできます",
+      "itemsTitle": "支付项目",
+      "selectItem": "请选择支付项目",
+      "remindUnpaid": "催缴未付款",
+      "loadItemsError": "获取支付项目失败",
+      "loadPaymentsError": "获取支付状态失败",
+      "remindSuccess": "催缴通知已发送",
+      "remindError": "发送失败",
+      "exportError": "CSV下载失败",
+      "status": {
+        "PAID": "已支付",
+        "UNPAID": "未支付",
+        "EXPIRED": "已过期",
+        "PENDING": "待处理",
+        "REFUNDED": "已退款",
+        "CANCELLED": "已取消"
+      },
+      "method": {
+        "CASH": "现金",
+        "BANK_TRANSFER": "银行转账",
+        "MANUAL": "手动记录"
+      },
+      "record": {
+        "recordButton": "记录入账",
+        "title": "记录入账",
+        "member": "会员",
+        "memberPlaceholder": "选择会员",
+        "amount": "入账金额",
+        "paidAt": "入账日期",
+        "method": "支付方式",
+        "note": "备注",
+        "notePlaceholder": "可选（最多500字）",
+        "submit": "记录",
+        "cancel": "取消",
+        "success": "已记录入账",
+        "error": "记录入账失败"
+      },
+      "bulk": {
+        "bulkButton": "批量记录",
+        "title": "批量记录",
+        "description": "选择未付款会员以批量记录入账。",
+        "noUnpaid": "没有未付款的会员",
+        "submit": "记录{count}条",
+        "error": "批量记录失败",
+        "resultSummary": "已记录{created}条，跳过{skipped}条"
+      },
+      "cancel": {
+        "button": "撤销",
+        "success": "已撤销入账",
+        "error": "撤销失败"
+      },
+      "beneficiarySetting": {
+        "label": "仅限会员",
+        "description": "启用后，应援者（支持者）将被排除在受益者之外。如果想将会费对象限定为正式会员，请使用此功能。",
+        "saveSuccess": "受益者限制设置已保存",
+        "saveError": "设置保存失败"
+      }
+    },
+    "receipt": {
+      "title": "收据",
+      "download": "下载",
+      "issuedBy": "发行方",
+      "amount": "金额",
+      "issuedDate": "发行日期",
+      "pending": "准备中",
+      "noReceipts": "暂无收据",
+      "loadError": "获取支付记录失败",
+      "loadReceiptError": "获取收据失败"
+    },
+    "summary": {
+      "expired": "已过期",
+      "payer": "付款方",
+      "beneficiary": "受益人"
+    },
+    "exportCsv": "下载CSV",
+    "feeStatements": {
+      "title": "手续费明细",
+      "period": "账单月份",
+      "totalFeeAmount": "手续费合计",
+      "issuerName": "发行方",
+      "noData": "所选月份无数据",
+      "loadError": "手续费明细获取失败"
+    },
+    "guardianBulkPayment": {
+      "title": "监护人批量付款",
+      "subtitle": "可以一次性支付您管理的孩子的未缴会费",
+      "noItems": "没有未缴的会费",
+      "beneficiary": "受益人",
+      "scope": "所属",
+      "itemName": "会费名称",
+      "amount": "金额",
+      "dueDate": "截止日期",
+      "alreadyPaid": "已支付",
+      "paidBy": "{name}已支付",
+      "kind": {
+        "ONE_TIME": "一次性",
+        "RECURRING": "持续付款",
+        "TERM": "期间付款"
+      },
+      "via": {
+        "SELF": "本人",
+        "GUARDIAN": "监护人",
+        "GUARDIAN_PROXY": "监护代理",
+        "PROXY_GRANT": "代理权"
+      },
+      "selectAll": "全部选择",
+      "deselectAll": "全部取消",
+      "paySelected": "支付{count}件",
+      "totalAmount": "合计: ¥{amount}",
+      "processing": "处理中...",
+      "result": {
+        "title": "支付结果",
+        "checkedOut": "支付完成",
+        "skipped": "已跳过",
+        "skipReasons": {
+          "ALREADY_PAID": "已支付",
+          "NOT_AUTHORIZED": "无支付权限",
+          "CONNECT_NOT_READY": "收款账户未设置",
+          "ITEM_NOT_FOUND": "会费项目不存在",
+          "ERROR": "错误"
+        }
+      }
+    }
+  }
+}

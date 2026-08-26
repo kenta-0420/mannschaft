@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
@@ -31,9 +30,19 @@ import java.util.concurrent.TimeUnit;
  * JWT発行・検証およびValkey（Redis互換）を利用したトークン管理サービス。
  * Access Token（JWT HS256）とRefresh Token（Opaque SHA-256）の発行・検証・無効化、
  * レートリミット機能を提供する。
+ *
+ * <p><b>トランザクション境界（重要・セキュリティ）</b>: 本サービスは <b>DB（RDB）を一切触らず</b>、
+ * JWT 暗号処理と Valkey（Redis）操作のみを行う。したがって {@code @Transactional} は付与しない。
+ * かつては誤ってクラスレベル {@code @Transactional(readOnly = true)} が付いており、Valkey 専用メソッド
+ * （{@link #setUserInvalidationTimestamp}/{@link #addJtiToBlacklist} 等）がプロキシ経由で
+ * <b>呼び出し元の DB トランザクションに参加</b>していた。この状態で Valkey が例外を投げると、内側の
+ * トランザクション境界で現在のトランザクションが rollback-only にマークされ、呼び出し元が例外を握って
+ * fail-open を意図しても commit 時に {@code UnexpectedRollbackException} が発生し、DB 側の書き込み
+ * （例: セッション無効化の refresh_token revoke）ごと巻き戻る不具合があった（docs/security/02 §4.1）。
+ * Valkey 障害が DB トランザクションを汚さないよう、本サービスは非トランザクショナルに保つ。
+ * Valkey 例外は呼び出し元の try-catch へ素通しで届き、fail-open が正しく機能する。</p>
  */
 @Service
-@Transactional(readOnly = true)
 @Slf4j
 public class AuthTokenService {
 
@@ -65,13 +74,30 @@ public class AuthTokenService {
     // ========================================
 
     /**
-     * Access Token を発行する。
+     * Access Token を発行する（後方互換オーバーロード。{@code ppc=false} 相当）。
      *
      * @param userId ユーザーID
      * @param roles  ロール一覧
      * @return JWT文字列
      */
     public String issueAccessToken(Long userId, List<String> roles) {
+        return issueAccessToken(userId, roles, false);
+    }
+
+    /**
+     * Access Token を発行する。
+     *
+     * <p>F01.9 保護者同意ゲート: {@code ppc}（pending parental consent）クレームを載せる。
+     * {@code true} の場合、{@link com.mannschaft.app.config.ParentalConsentGateFilter} が
+     * 許可リスト外の保護 API を 403 {@code AUTH_070} で遮断する。判定は
+     * {@link StatusClaimResolver} が発行・更新の全経路で行う。</p>
+     *
+     * @param userId                  ユーザーID
+     * @param roles                   ロール一覧
+     * @param pendingParentalConsent  保護者同意待ち（未成年・同意未完了）なら true
+     * @return JWT文字列
+     */
+    public String issueAccessToken(Long userId, List<String> roles, boolean pendingParentalConsent) {
         Instant now = Instant.now();
         Instant expiry = now.plusSeconds(accessTokenExpirationSeconds);
 
@@ -79,6 +105,7 @@ public class AuthTokenService {
                 .subject(String.valueOf(userId))
                 .id(UUID.randomUUID().toString())
                 .claim("roles", roles)
+                .claim("ppc", pendingParentalConsent)
                 .issuer(ISSUER)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiry))
@@ -260,13 +287,13 @@ public class AuthTokenService {
      * @param key         Valkeyキー
      * @param maxAttempts 最大試行回数
      * @param window      ウィンドウ期間
-     * @throws BusinessException レートリミット超過時（AUTH_031）
+     * @throws BusinessException レートリミット超過時（AUTH_044）
      */
     public void checkRateLimit(String key, int maxAttempts, Duration window) {
         try {
             long currentCount = incrementRateLimit(key, window);
             if (currentCount > maxAttempts) {
-                throw new BusinessException(AuthErrorCode.AUTH_031);
+                throw new BusinessException(AuthErrorCode.AUTH_044);
             }
         } catch (BusinessException e) {
             throw e;

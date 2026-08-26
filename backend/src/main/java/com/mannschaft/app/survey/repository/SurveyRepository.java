@@ -51,6 +51,35 @@ public interface SurveyRepository extends JpaRepository<SurveyEntity, Long> {
     long countByScopeTypeAndScopeIdAndStatus(String scopeType, Long scopeId, SurveyStatus status);
 
     /**
+     * F22.1 第二波: 指定スコープで、当該ユーザーが「未回答」の公開中（PUBLISHED）アンケートを
+     * 直近作成順に取得する。
+     *
+     * <p>{@code survey_responses} に当該ユーザーの回答行が 1 件も存在しない PUBLISHED アンケートを
+     * 対象とする（NOT EXISTS サブクエリ）。N+1 を避けるため 1 SQL で判定する。
+     * {@code @SQLRestriction("deleted_at IS NULL")} により論理削除済は自動除外される。</p>
+     *
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @param userId    閲覧ユーザー ID
+     * @return 未回答の公開中アンケート（作成日時の降順）
+     */
+    @Query("""
+            SELECT s FROM SurveyEntity s
+            WHERE s.scopeType = :scopeType
+              AND s.scopeId = :scopeId
+              AND s.status = com.mannschaft.app.survey.SurveyStatus.PUBLISHED
+              AND NOT EXISTS (
+                  SELECT 1 FROM com.mannschaft.app.survey.entity.SurveyResponseEntity r
+                  WHERE r.surveyId = s.id AND r.userId = :userId
+              )
+            ORDER BY s.createdAt DESC
+            """)
+    List<SurveyEntity> findUnansweredPublishedForUserInScope(
+            @Param("scopeType") String scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("userId") Long userId);
+
+    /**
      * F00 共通可視性基盤 — {@link SurveyVisibilityProjection} を 1 SQL でバルク取得する。
      *
      * <p>設計書: {@code docs/features/F00_content_visibility_resolver.md} §4.6 / §6.3.2 工程 6。
@@ -72,7 +101,9 @@ public interface SurveyRepository extends JpaRepository<SurveyEntity, Long> {
                 s.createdBy,
                 s.status,
                 s.resultsVisibility,
-                s.expiresAt)
+                s.expiresAt,
+                s.includeSupporters,
+                s.distributionMode)
             FROM SurveyEntity s
             WHERE s.id IN :ids AND s.deletedAt IS NULL
             """)

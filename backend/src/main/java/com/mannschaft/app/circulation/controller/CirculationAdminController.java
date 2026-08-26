@@ -46,12 +46,17 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>status: 回覧先メンバー / 作成者 / ADMIN / SYSTEM_ADMIN → 当面 ADMIN で安全側、緩和は将来軍議</li>
  * </ul>
  *
- * <p><b>本番認可有効化の前提条件:</b>
- * 本クラスの {@code @PreAuthorize} は {@code SecurityConfig} に
- * {@code @EnableMethodSecurity} が付与されたフェーズで初めて実機に効く。
- * 現状は宣言だけ済ませた状態であり、{@code .anyRequest().permitAll()} の暫定フォールバック下では
- * フィルターチェーン認可が走らない。F09.18 Phase 18-d で {@code @EnableMethodSecurity} を
- * 付与し、本クラスを含むメソッドレベル認可が一斉発火する設計とする（#829 と同じパターン）。</p>
+ * <p><b>真の認可強制点（認可根治 Phase 3-b / 2026-05-30）:</b>
+ * 旧 {@code @PreAuthorize("hasRole('ADMIN')")} は {@code @EnableMethodSecurity} 点火時に JWT へ
+ * ROLE_ADMIN が乗らず一斉 403 となるため、宣言を {@code isAuthenticated()} に是正した。
+ * 本コントローラーの 5 EP の scope は <b>パス変数でなく文書エンティティ由来</b>（{@code documentId} から
+ * 文書を引いて scopeType/scopeId を解決）であり、SpEL からパス変数で scope を参照できないため SpEL ガード化
+ * できない。よって宣言は {@code isAuthenticated()} とし、真の per-scope 認可は
+ * 本コントローラーの 5 エンドポイントが収束する {@link CirculationService} の各メソッド
+ * （{@code forceCompleteDocument} / {@code forceCompleteBatch} / {@code remindDocument} /
+ * {@code duplicateDocument} / {@code getDocumentStatus}）の処理本体前で、対象文書のスコープに対する
+ * per-scope 認可（{@code AccessControlService} による ADMIN/DEPUTY_ADMIN 必須、SYSTEM_ADMIN は全許可）を
+ * 実施する。scopeId は文書エンティティ由来で解決するため、別スコープの文書を操作する IDOR を防ぐ。</p>
  */
 @RestController
 @RequestMapping("/api/v1/circulation-documents")
@@ -67,7 +72,7 @@ public class CirculationAdminController {
     @PostMapping("/{documentId}/force-complete")
     @Operation(summary = "回覧文書強制完了", description = "全受信者が未押印でも管理者判断で完了扱いとする")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "強制完了成功")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentResponse>> forceComplete(
             @PathVariable Long documentId) {
         DocumentResponse response = circulationService.forceCompleteDocument(
@@ -81,7 +86,7 @@ public class CirculationAdminController {
     @PostMapping("/force-complete/batch")
     @Operation(summary = "回覧文書一括強制完了", description = "最大 20 件まで一括で強制完了する")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "一括処理完了（部分成功を含む）")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ForceCompleteBatchResponse>> forceCompleteBatch(
             @Valid @RequestBody ForceCompleteBatchRequest request) {
         ForceCompleteBatchResponse response = circulationService.forceCompleteBatch(
@@ -95,7 +100,7 @@ public class CirculationAdminController {
     @PostMapping("/{documentId}/remind")
     @Operation(summary = "回覧文書手動リマインド", description = "未押印の受信者全員に通知を発火する")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信成功")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<RemindResponse>> remind(
             @PathVariable Long documentId) {
         RemindResponse response = circulationService.remindDocument(
@@ -109,7 +114,7 @@ public class CirculationAdminController {
     @PostMapping("/{documentId}/duplicate")
     @Operation(summary = "回覧文書複製", description = "受信者をコピーした新規 DRAFT 文書を作成する")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentResponse>> duplicate(
             @PathVariable Long documentId) {
         DocumentResponse response = circulationService.duplicateDocument(
@@ -123,10 +128,11 @@ public class CirculationAdminController {
     @GetMapping("/{documentId}/status")
     @Operation(summary = "回覧文書受信者押印状況一覧", description = "詳細画面の主要表示要素")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<DocumentStatusResponse>> getStatus(
             @PathVariable Long documentId) {
-        DocumentStatusResponse response = circulationService.getDocumentStatus(documentId);
+        DocumentStatusResponse response = circulationService.getDocumentStatus(
+                documentId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

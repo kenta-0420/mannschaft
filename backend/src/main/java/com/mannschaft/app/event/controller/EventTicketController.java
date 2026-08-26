@@ -3,6 +3,7 @@ package com.mannschaft.app.event.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.event.dto.TicketResponse;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import com.mannschaft.app.event.service.EventTicketService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * イベントチケットコントローラー。チケットの照会・キャンセルAPIを提供する。
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class EventTicketController {
 
     private final EventTicketService ticketService;
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
      * チケット一覧を取得する。
@@ -38,6 +41,7 @@ public class EventTicketController {
             @PathVariable Long eventId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        eventScopeAccessGuard.requireMemberByEventId(SecurityUtils.getCurrentUserId(), eventId);
         Page<TicketResponse> result = ticketService.listTickets(eventId, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -53,7 +57,9 @@ public class EventTicketController {
     public ResponseEntity<ApiResponse<TicketResponse>> getTicket(
             @PathVariable Long eventId,
             @PathVariable Long ticketId) {
-        TicketResponse response = ticketService.getTicket(ticketId);
+        eventScopeAccessGuard.requireMemberByEventId(SecurityUtils.getCurrentUserId(), eventId);
+        // 親子BOLA根治: ticketId が eventId に属するかは Service 側で突合し、越境は404秘匿する。
+        TicketResponse response = ticketService.getTicket(eventId, ticketId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -66,12 +72,13 @@ public class EventTicketController {
     public ResponseEntity<ApiResponse<TicketResponse>> getTicketByQrToken(
             @PathVariable Long eventId,
             @RequestParam String qrToken) {
-        TicketResponse response = ticketService.getTicketByQrToken(qrToken);
+        eventScopeAccessGuard.requireMemberByEventId(SecurityUtils.getCurrentUserId(), eventId);
+        TicketResponse response = ticketService.getTicketByQrToken(eventId, qrToken);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**
-     * チケットをキャンセルする。
+     * チケットをキャンセルする（スタッフ操作。ADMIN/DEPUTY_ADMIN 専用）。
      */
     @PostMapping("/{ticketId}/cancel")
     @Operation(summary = "チケットキャンセル")
@@ -79,7 +86,8 @@ public class EventTicketController {
     public ResponseEntity<ApiResponse<TicketResponse>> cancelTicket(
             @PathVariable Long eventId,
             @PathVariable Long ticketId) {
-        TicketResponse response = ticketService.cancelTicket(ticketId);
+        eventScopeAccessGuard.requireAdminByEventId(SecurityUtils.getCurrentUserId(), eventId);
+        TicketResponse response = ticketService.cancelTicket(eventId, ticketId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

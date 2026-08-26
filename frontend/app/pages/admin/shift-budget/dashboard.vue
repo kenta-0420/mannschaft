@@ -98,7 +98,7 @@ async function executeMonthlyClose() {
   monthlyCloseExecuting.value = true
   try {
     const request: MonthlyCloseRequest = {
-      organization_id: organizationId.value,
+      organization_id: Number(organizationId.value),
       year_month: yearMonth,
     }
     const res = await api.executeMonthlyClose(request)

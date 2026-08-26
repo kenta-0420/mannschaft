@@ -11,7 +11,7 @@ import type {
  *
  * <p>設計書 docs/features/F08.8_repair_longterm_dashboard.md Phase 5 に準拠。</p>
  */
-export function useHandoverPackApi(scopeType: string, scopeId: number) {
+export function useHandoverPackApi(scopeType: string, scopeId: string) {
   const api = useApi()
   const BASE = `/api/v1/${scopeType}/${scopeId}/repair-plan/handover-packs`
 
@@ -56,7 +56,7 @@ export function useHandoverPackApi(scopeType: string, scopeId: number) {
 /**
  * 理事任期 API クライアント。
  */
-export function useTermApi(teamId: number) {
+export function useTermApi(teamId: string) {
   const api = useApi()
   const BASE = `/api/v1/teams/${teamId}/member-terms`
 

@@ -1,34 +1,449 @@
 {
   "data_export": {
-    "section_title": "データエクスポート",
-    "export_button": "個人データをエクスポート",
-    "status_completed": "完了",
-    "status_failed": "失敗",
-    "status_processing": "処理中",
-    "download_button": "ダウンロード",
-    "fetch_error": "エクスポート状態の取得に失敗しました",
-    "step_completed": "エクスポート完了 — ダウンロード期限: {expiry}",
-    "step_failed": "エクスポートに失敗しました",
-    "step_processing": "エクスポート中...",
-    "step_preparing": "準備中..."
+    "section_title": "数据导出",
+    "export_button": "导出个人数据",
+    "status_completed": "已完成",
+    "status_failed": "失败",
+    "status_processing": "处理中",
+    "download_button": "下载",
+    "fetch_error": "获取导出状态失败",
+    "step_completed": "导出完成 — 下载截止日期: {expiry}",
+    "step_failed": "导出失败",
+    "step_processing": "导出中...",
+    "step_preparing": "准备中...",
+    "description": "您可以将个人数据导出为 ZIP 文件。"
   },
   "deletion_preview": {
-    "dialog_title": "アカウント削除の確認",
-    "confirm_message": "この操作は取り消せません。本当にアカウントを削除しますか？",
-    "loading": "削除プレビューを読み込み中...",
-    "warning_title": "注意事項",
-    "deleted_data_title": "削除されるデータ",
-    "anonymized_data_title": "匿名化されるデータ",
-    "table_category": "カテゴリ",
-    "table_count": "件数",
-    "table_count_unit": "{count}件",
-    "table_entity": "対象",
-    "table_field": "フィールド",
-    "cancel_button": "キャンセル",
-    "delete_button": "削除する",
-    "fetch_error": "削除プレビューの取得に失敗しました"
+    "dialog_title": "确认账户删除",
+    "confirm_message": "此操作无法撤销。确定要删除您的账户吗？",
+    "loading": "正在加载删除预览...",
+    "warning_title": "注意事项",
+    "deleted_data_title": "将被删除的数据",
+    "anonymized_data_title": "将被匿名化的数据",
+    "table_category": "类别",
+    "table_count": "数量",
+    "table_count_unit": "{count} 条",
+    "table_entity": "对象",
+    "table_field": "字段",
+    "cancel_button": "取消",
+    "delete_button": "删除",
+    "fetch_error": "获取删除预览失败"
   },
   "signature": {
-    "clear": "クリア"
+    "clear": "清除"
+  },
+  "nav": {
+    "calendar": "日历",
+    "settings": "设置",
+    "todo": "待办",
+    "shiftManagement": "班次管理",
+    "timeline": "时间线",
+    "chat": "聊天",
+    "myShift": "我的班次",
+    "myPage": "我的页面",
+    "qa": "问答",
+    "blog": "博客",
+    "reservations": "预约确认",
+    "wallet": "积分卡",
+    "inbox": "收件箱",
+    "market": "市集",
+    "jobs": "招聘",
+    "matching": "配对",
+    "myFiles": "我的文件"
+  },
+  "settings": {
+    "navigation": {
+      "title": "导航栏设置",
+      "description": "自定义显示的导航项目",
+      "required": "必须",
+      "resetToDefault": "恢复默认",
+      "saveSuccess": "设置已保存",
+      "saveError": "保存失败",
+      "reorderHint": "拖动手柄即可调整导航项的显示顺序",
+      "dragHandleLabel": "拖动手柄",
+      "pinnedBottom": "固定在底部"
+    },
+    "account": {
+      "page_title": "账户设置",
+      "notification_settings": "通知设置"
+    },
+    "profile": {
+      "section_title": "个人资料",
+      "avatar_alt": "头像",
+      "change_image": "更换图片",
+      "image_hint": "JPG、PNG，5MB以下",
+      "display_name": "显示名称",
+      "phone_number": "电话号码",
+      "phone_placeholder": "090-0000-0000",
+      "postal_code": "邮政编码",
+      "postal_placeholder": "000-0000",
+      "postal_unsupported_region": "您所在地区不支持邮政编码验证，将跳过格式检查。",
+      "searchable_label": "在用户搜索中显示",
+      "searchable_description": "开启后，其他用户可通过搜索找到您",
+      "toast": {
+        "save_success": "个人资料已更新",
+        "save_error": "更新个人资料失败",
+        "avatar_size_error": "文件大小必须在5MB以下",
+        "avatar_success": "头像已更新",
+        "avatar_error": "上传头像失败",
+        "weather_postal_not_found": "邮政编码已保存，但无法推导天气地点。请确认邮政编码是否正确",
+        "weather_country_not_supported": "邮政编码已保存，但您所在国家或地区的天气信息暂未提供"
+      }
+    },
+    "email": {
+      "section_title": "更改邮箱地址",
+      "current_email": "当前邮箱地址",
+      "new_email": "新邮箱地址",
+      "new_email_placeholder": "new{'@'}example.com",
+      "current_password": "当前密码",
+      "send_confirmation": "发送确认邮件",
+      "sent_title": "确认邮件已发送",
+      "sent_description": "确认邮件已发送至 {email}。请点击链接完成更改。",
+      "toast": {
+        "send_success": "确认邮件已发送",
+        "send_error": "更改邮箱地址请求失败"
+      }
+    },
+    "password": {
+      "section_title_change": "更改密码",
+      "section_title_set": "设置密码",
+      "no_password_description": "当前未设置密码。设置密码后可使用邮箱和密码登录。",
+      "current_password": "当前密码",
+      "new_password": "新密码",
+      "confirm_password": "确认新密码",
+      "policy_hint": "至少8个字符，并包含大写字母、小写字母、数字、符号中的3种以上。",
+      "load_error": "获取个人资料信息失败",
+      "length_error": "密码至少需要8个字符",
+      "policy_violation": "请包含大写字母、小写字母、数字、符号中的3种以上",
+      "mismatch_error": "两次输入的密码不一致",
+      "change_button": "更改密码",
+      "set_button": "设置密码",
+      "change_success": "密码已更改",
+      "change_error": "更改密码失败。请检查当前密码",
+      "toast": {
+        "change_success": "密码已更改",
+        "setup_success": "密码已设置",
+        "change_error": "更改密码失败。请检查当前密码",
+        "setup_error": "设置密码失败"
+      },
+      "redirecting": "密码已更改。正在跳转至登录页面…"
+    },
+    "locale": {
+      "section_title": "语言与时区",
+      "display_language": "显示语言",
+      "timezone": "时区",
+      "toast": {
+        "save_success": "语言与时区已更新",
+        "save_error": "更新语言与时区失败"
+      }
+    },
+    "appearance": {
+      "section_title": "外观",
+      "hide_chat_preview_label": "隐藏聊天预览",
+      "hide_chat_preview_description": "在通知横幅中不显示聊天内容",
+      "save_button": "保存外观",
+      "save_success": "外观设置已保存"
+    },
+    "security": {
+      "two_fa_section_title": "双重认证（2FA）",
+      "two_fa_description": "使用认证应用（如 Google Authenticator）来加强账户安全性。",
+      "setup_2fa_button": "设置 2FA",
+      "regenerate_backup_codes_button": "重新生成备用代码",
+      "scan_qr_description": "请使用认证应用扫描二维码。",
+      "totp_qr_alt": "TOTP 二维码",
+      "secret_key": "密钥",
+      "sessions_section_title": "活跃会话",
+      "logout_all_button": "全部退出",
+      "no_sessions": "暂无会话信息",
+      "unknown_device": "未知设备",
+      "current_session_tag": "当前",
+      "webauthn_section_title": "安全密钥（WebAuthn）",
+      "webauthn_description": "注册 FIDO2/WebAuthn 兼容的安全密钥或生物识别认证。",
+      "no_credentials": "未注册安全密钥",
+      "default_credential_name": "安全密钥",
+      "last_used": "最后使用: {date}",
+      "registered": "注册: {date}",
+      "backup_codes_dialog_title": "备用代码",
+      "backup_codes_description": "请将以下备用代码保存在安全的地方。每个代码只能使用一次。",
+      "rename_dialog_title": "重命名设备",
+      "device_name_label": "设备名称",
+      "webauthn": {
+        "register_button": "注册通行密钥",
+        "register_dialog_title": "注册通行密钥",
+        "device_name_label": "设备名称（可选）",
+        "device_name_placeholder": "例：iPhone 的 Touch ID",
+        "register_confirm": "注册",
+        "register_cancel": "取消",
+        "register_success": "通行密钥注册成功",
+        "register_error": "通行密钥注册失败"
+      },
+      "session": {
+        "device_label": "{os} 上的 {browser}",
+        "unknown_device": "未知设备"
+      },
+      "toast": {
+        "setup_2fa_error": "2FA 设置启动失败",
+        "regenerate_success": "备用代码已重新生成",
+        "regenerate_error": "重新生成备用代码失败",
+        "revoke_success": "会话已注销",
+        "revoke_error": "注销会话失败",
+        "revoke_all_success": "已从所有设备退出",
+        "revoke_all_error": "从所有设备退出失败",
+        "delete_key_success": "安全密钥已删除",
+        "delete_key_error": "删除安全密钥失败",
+        "rename_success": "设备名称已更新",
+        "rename_error": "更新设备名称失败"
+      }
+    },
+    "linked_accounts": {
+      "page_title": "关联账户",
+      "oauth_section_title": "OAuth 连接",
+      "no_oauth": "暂无关联账户",
+      "connected_at": "关联日期: {date}",
+      "unlink_button": "解除",
+      "google_link_button": "与 Google 关联",
+      "google_link_loading": "关联中...",
+      "line_section_title": "LINE 连接",
+      "line_icon_alt": "LINE 图标",
+      "line_default_user": "LINE 用户",
+      "line_linked_at": "关联日期: {date}",
+      "line_unlink_button": "解除 LINE 连接",
+      "line_not_linked": "未关联 LINE 账户",
+      "line_link_instruction": "请通过 LINE 应用进行关联",
+      "toast": {
+        "load_error": "获取关联信息失败",
+        "unlink_success": "已解除 {provider} 连接",
+        "unlink_error": "解除连接失败",
+        "line_unlink_success": "已解除 LINE 连接",
+        "line_unlink_error": "解除 LINE 连接失败",
+        "link_success": "已与 {provider} 关联",
+        "link_error": "获取关联 URL 失败",
+        "already_linked": "此账户已与 {provider} 关联",
+        "taken_by_other": "此 Google 账户已被其他用户使用",
+        "oauth_denied": "Google 认证已取消",
+        "link_with_calendar_success": "Google 账号和日历已关联"
+      },
+      "calendar_sync_toggle": "同时设置 Google 日历同步",
+      "guide": {
+        "title": "关于账户关联",
+        "google_title": "使用 Google 登录",
+        "google_desc": "无需密码，即可使用 Google 账户轻松登录。",
+        "apple_title": "使用 Apple 登录（即将推出）",
+        "apple_desc": "为 iPhone 用户提供的便捷登录方式，即将推出。",
+        "line_title": "LINE 通知",
+        "line_desc": "将机器人添加到 LINE 群组后，即可通过 LINE 接收日程和出勤通知。请从 LINE 应用进行关联。"
+      }
+    },
+    "member_card": {
+      "section_title": "QR 会员证",
+      "tab_list": "会员证列表",
+      "tab_history": "签到历史",
+      "toast": {
+        "suspend_success": "会员证已暂停",
+        "suspend_error": "暂停失败",
+        "reactivate_success": "会员证已恢复",
+        "reactivate_error": "恢复失败"
+      }
+    },
+    "social_profile": {
+      "section_title": "社交档案",
+      "create_button": "新建",
+      "count_description": "最多可创建 3 个档案（{count}/3）",
+      "no_profiles": "暂无档案",
+      "dialog_title_create": "创建档案",
+      "dialog_title_edit": "编辑档案",
+      "handle_label": "用户名 *",
+      "handle_placeholder": "my_handle",
+      "handle_hint": "仅限字母、数字和下划线（每30天可修改一次）",
+      "display_name_label": "显示名称 *",
+      "bio_label": "个人简介",
+      "bio_count": "{count}/300",
+      "update_button": "更新",
+      "create_submit_button": "创建",
+      "toast": {
+        "update_success": "档案已更新",
+        "create_success": "档案已创建",
+        "save_error": "保存失败",
+        "delete_success": "档案已删除",
+        "delete_error": "删除失败"
+      }
+    },
+    "seal_guide": {
+      "title": "电子印章使用方法",
+      "description": "使用电子印章在文件上盖章和管理。",
+      "preview": {
+        "title": "印章预览",
+        "body": "查看根据您注册姓名自动生成的3种电子印章（姓氏·全名·名字）。",
+        "steps": {
+          "step1": "打开「印章预览」标签",
+          "step2": "在网格中确认显示的3个印章（姓氏·全名·名字）"
+        }
+      },
+      "regenerate": {
+        "title": "重新生成印章",
+        "body": "可以将当前印章重新生成为新设计。当姓名变更或想更新设计时使用。",
+        "note": "每小时最多可执行3次。达到上限后，请等待一段时间后再重试。",
+        "steps": {
+          "step1": "打开「印章预览」标签",
+          "step2": "点击「重新生成印章」按钮",
+          "step3": "完成后，新印章将显示在网格中"
+        }
+      },
+      "defaults": {
+        "title": "默认设置",
+        "body": "设置在文件盖章时自动使用的变体（姓氏·全名·名字）。省去每次重新选择的麻烦。",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
+        "steps": {
+          "step1": "打开「默认设置」标签",
+          "step2": "从下拉菜单中选择要使用的变体（姓氏·全名·名字）",
+          "step3": "点击「保存」按钮保存设置"
+        }
+      },
+      "history": {
+        "title": "盖章历史",
+        "body": "可以查看过去盖章记录的列表。显示盖章日期时间·使用的变体·对象·状态（有效／已取消）。",
+        "steps": {
+          "step1": "打开「盖章历史」标签",
+          "step2": "滚动列表查看",
+          "step3": "通过「加载更多」按钮加载更早的历史记录"
+        }
+      }
+    },
+    "seal": {
+      "section_title": "电子印章",
+      "tab_preview": "印章预览",
+      "tab_defaults": "默认设置",
+      "tab_history": "盖章历史",
+      "regenerate_button": "重新生成印章",
+      "regenerate_hint": "印章根据您的注册姓名自动生成（每小时最多3次）",
+      "toast": {
+        "regenerate_success": "印章已重新生成",
+        "regenerate_error": "重新生成失败（每小时最多3次）",
+        "save_defaults_success": "默认设置已保存",
+        "save_defaults_error": "保存设置失败"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
+      }
+    },
+    "login_history": {
+      "section_title": "登录历史",
+      "no_history": "暂无登录历史",
+      "load_more": "加载更多",
+      "event_login_success": "登录成功",
+      "event_login_failure": "登录失败",
+      "event_logout": "退出登录",
+      "event_token_refresh": "令牌刷新",
+      "event_password_change": "密码变更",
+      "event_mfa_verify": "2FA 验证"
+    },
+    "gcal": {
+      "section_title": "Google 日历集成",
+      "connection_status_title": "连接状态",
+      "connected_label": "已连接",
+      "last_synced": "最后同步: {date}",
+      "last_sync_error": "同步错误: {message}",
+      "manual_sync_button": "手动同步",
+      "disconnect_button": "解除连接",
+      "disconnect_confirm": "确定要解除 Google 日历连接吗？",
+      "sync_settings_title": "同步设置",
+      "personal_calendar_label": "个人日历",
+      "personal_calendar_description": "将个人日程同步到 Google 日历",
+      "team_calendars_label": "团队日历",
+      "org_calendars_label": "组织日历",
+      "no_team_calendars": "您尚未加入任何团队",
+      "no_org_calendars": "您尚未加入任何组织",
+      "not_connected_description": "连接您的 Google 账户以同步日历",
+      "connect_button": "连接 Google 账户",
+      "detail_link_button": "前往详细设置",
+      "toast": {
+        "connect_error": "连接失败",
+        "oauth_connected": "已与 Google 日历连接",
+        "oauth_connect_failed": "Google 日历连接失败",
+        "disconnect_success": "已解除连接",
+        "disconnect_error": "解除连接失败",
+        "sync_success": "同步已执行",
+        "sync_error": "同步失败",
+        "load_error": "读取失败",
+        "toggle_on_success": "已开启{name}的同步",
+        "toggle_off_success": "已关闭{name}的同步",
+        "backfill_info": "已将{count}项日程加入同步队列"
+      }
+    },
+    "delete_account": {
+      "section_title": "删除账户",
+      "description": "删除账户将永久删除您的所有数据。此操作无法撤销。",
+      "delete_button": "删除账户",
+      "confirm_message": "删除账户将永久删除您的所有数据。确定要继续吗？",
+      "confirm_dialog_title": "确认账户删除",
+      "confirm_reject_label": "取消",
+      "confirm_accept_label": "继续删除",
+      "password_confirm_label": "请输入当前密码以确认",
+      "password_placeholder": "当前密码",
+      "retention_note": "※ 由于法律要求，部分数据将在 {days} 天后删除。",
+      "delete_success": "账户已删除。感谢您的使用。",
+      "delete_error": "删除账户失败"
+    },
+    "notification": {
+      "load_error": "获取设置失败",
+      "save_success": "已保存通知设置",
+      "save_error": "保存失败",
+      "save_button": "保存设置",
+      "global_section_title": "自动推送",
+      "priority_auto_delivery_label": "按优先级自动推送",
+      "priority_auto_delivery_desc": "将重要通知自动以推送通知发送。",
+      "scope_section_title": "按团队・组织的通知",
+      "scope_section_desc": "可按所属的团队或组织设置通知接收。",
+      "scope_type_team": "团队",
+      "scope_type_organization": "组织",
+      "scope_receiving": "接收中",
+      "scope_muted": "已静音",
+      "scope_empty": "没有所属的团队或组织",
+      "type_section_title": "通知类型",
+      "type_section_desc": "可按类型设置接收。点击“展开”可分别控制应用内和推送。",
+      "expand": "展开",
+      "collapse": "折叠",
+      "channel_in_app": "应用内",
+      "channel_push": "推送",
+      "locked_tag": "紧急",
+      "locked_desc": "此通知无法关闭"
+    },
+    "storage": {
+      "page_title": "存储",
+      "group_personal": "个人",
+      "group_team": "团队",
+      "group_org": "组织",
+      "scope_personal": "个人存储",
+      "file_count": "{count}个文件",
+      "limit": "上限",
+      "unlimited": "无限制",
+      "error_fetch": "获取存储使用量失败",
+      "empty": "没有可显示的存储信息"
+    },
+    "fileBrowser": {
+      "upload_button": "上传文件",
+      "upload_need_folder": "请先打开文件夹后再上传",
+      "upload_success": "「{name}」上传成功",
+      "upload_error": "「{name}」上传失败",
+      "uploading": "上传中..."
+    }
   }
 }

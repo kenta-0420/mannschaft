@@ -1,5 +1,6 @@
 package com.mannschaft.app.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.service.dto.CreateTemplateRequest;
 import com.mannschaft.app.service.entity.ServiceRecordTemplateEntity;
@@ -30,12 +31,14 @@ class ServiceRecordTemplateServiceTest {
     @Mock private ServiceRecordTemplateValueRepository templateValueRepository;
     @Mock private ServiceRecordFieldRepository fieldRepository;
     @Mock private ServiceRecordMapper mapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ServiceRecordTemplateService service;
 
     private static final Long TEAM_ID = 1L;
     private static final Long TEMPLATE_ID = 10L;
+    private static final Long ACTOR_USER_ID = 100L;
 
     @Nested
     @DisplayName("createTeamTemplate")
@@ -47,7 +50,7 @@ class ServiceRecordTemplateServiceTest {
             CreateTemplateRequest request = new CreateTemplateRequest();
             request.setName("テンプレート");
 
-            assertThatThrownBy(() -> service.createTeamTemplate(TEAM_ID, 100L, request))
+            assertThatThrownBy(() -> service.createTeamTemplate(TEAM_ID, ACTOR_USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("SERVICE_RECORD_008"));
@@ -63,7 +66,7 @@ class ServiceRecordTemplateServiceTest {
             ServiceRecordTemplateEntity entity = ServiceRecordTemplateEntity.builder()
                     .teamId(TEAM_ID).name("テスト").build();
             given(templateRepository.findByIdAndTeamId(TEMPLATE_ID, TEAM_ID)).willReturn(Optional.of(entity));
-            service.deleteTeamTemplate(TEAM_ID, TEMPLATE_ID);
+            service.deleteTeamTemplate(TEAM_ID, TEMPLATE_ID, ACTOR_USER_ID);
             verify(templateRepository).save(entity);
         }
 
@@ -71,7 +74,7 @@ class ServiceRecordTemplateServiceTest {
         @DisplayName("異常系: テンプレート不在でSERVICE_RECORD_003例外")
         void 削除_不在_例外() {
             given(templateRepository.findByIdAndTeamId(TEMPLATE_ID, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deleteTeamTemplate(TEAM_ID, TEMPLATE_ID))
+            assertThatThrownBy(() -> service.deleteTeamTemplate(TEAM_ID, TEMPLATE_ID, ACTOR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("SERVICE_RECORD_003"));

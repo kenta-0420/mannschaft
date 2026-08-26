@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const api = useApi()
 const notification = useNotification()
+const { t } = useI18n()
 
 const changingPassword = ref(false)
 
@@ -12,13 +13,13 @@ const passwordForm = ref({
 
 const passwordError = computed(() => {
   if (passwordForm.value.newPassword && passwordForm.value.newPassword.length < 8) {
-    return 'パスワードは8文字以上で入力してください'
+    return t('min_length', { min: 8 })
   }
   if (
     passwordForm.value.confirmPassword &&
     passwordForm.value.newPassword !== passwordForm.value.confirmPassword
   ) {
-    return 'パスワードが一致しません'
+    return t('password_mismatch')
   }
   return null
 })
@@ -42,9 +43,9 @@ async function changePassword() {
       },
     })
     passwordForm.value = { currentPassword: '', newPassword: '', confirmPassword: '' }
-    notification.success('パスワードを変更しました')
+    notification.success(t('settings.password.change_success'))
   } catch {
-    notification.error('パスワードの変更に失敗しました。現在のパスワードを確認してください')
+    notification.error(t('settings.password.change_error'))
   } finally {
     changingPassword.value = false
   }
@@ -52,10 +53,10 @@ async function changePassword() {
 </script>
 
 <template>
-  <SectionCard title="パスワード変更">
+  <SectionCard :title="$t('settings.password.section_title_change')">
     <div class="space-y-4">
       <div>
-        <label class="mb-1 block text-sm font-medium">現在のパスワード</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.current_password') }}</label>
         <Password
           v-model="passwordForm.currentPassword"
           :feedback="false"
@@ -65,16 +66,17 @@ async function changePassword() {
         />
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">新しいパスワード</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.new_password') }}</label>
         <Password
           v-model="passwordForm.newPassword"
           toggle-mask
           class="w-full"
           input-class="w-full"
         />
+        <small class="mt-1 block text-surface-500">{{ $t('settings.password.policy_hint') }}</small>
       </div>
       <div>
-        <label class="mb-1 block text-sm font-medium">新しいパスワード（確認）</label>
+        <label class="mb-1 block text-sm font-medium">{{ $t('settings.password.confirm_password') }}</label>
         <Password
           v-model="passwordForm.confirmPassword"
           :feedback="false"
@@ -86,7 +88,8 @@ async function changePassword() {
       <p v-if="passwordError" class="text-sm text-red-500">{{ passwordError }}</p>
       <div class="flex justify-end">
         <Button
-          label="パスワードを変更"
+          translate="no"
+          :label="$t('settings.password.change_button')"
           icon="pi pi-lock"
           :loading="changingPassword"
           :disabled="!canSubmitPassword"

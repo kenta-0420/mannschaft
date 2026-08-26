@@ -21,6 +21,7 @@ import com.mannschaft.app.chat.service.ChatChannelService;
 import com.mannschaft.app.chat.service.ChatMemberService;
 import com.mannschaft.app.chat.service.ChatMessageService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -61,6 +62,8 @@ public class ChatChannelController {
     /**
      * 自分が参加しているチャンネル一覧を取得する。
      */
+    @SelfScopedEndpoint("検索条件が SecurityUtils.getCurrentUserId() のみで、リクエストは他ユーザーの識別子を受け取らない"
+            + "（ChatChannelService#listMyChannels の findByMemberUserId が認証主体の参加チャンネルに束縛される）")
     @GetMapping
     @Operation(summary = "チャンネル一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -88,7 +91,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネル詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> getChannel(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.getChannel(channelId);
+        ChannelResponse response = channelService.getChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -101,7 +104,7 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<ChannelResponse>> updateChannel(
             @PathVariable Long channelId,
             @Valid @RequestBody UpdateChannelRequest request) {
-        ChannelResponse response = channelService.updateChannel(channelId, request);
+        ChannelResponse response = channelService.updateChannel(channelId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -112,7 +115,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネル削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteChannel(@PathVariable Long channelId) {
-        channelService.deleteChannel(channelId);
+        channelService.deleteChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -123,7 +126,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネルアーカイブ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> archiveChannel(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.archiveChannel(channelId);
+        ChannelResponse response = channelService.archiveChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -134,7 +137,7 @@ public class ChatChannelController {
     @Operation(summary = "チャンネルアーカイブ解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ解除成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> unarchiveChannel(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.unarchiveChannel(channelId);
+        ChannelResponse response = channelService.unarchiveChannel(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -147,7 +150,7 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<List<MemberResponse>>> addMembers(
             @PathVariable Long channelId,
             @Valid @RequestBody AddMemberRequest request) {
-        List<MemberResponse> responses = memberService.addMembers(channelId, request);
+        List<MemberResponse> responses = memberService.addMembers(channelId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
     }
 
@@ -160,7 +163,7 @@ public class ChatChannelController {
     public ResponseEntity<Void> removeMember(
             @PathVariable Long channelId,
             @PathVariable Long userId) {
-        memberService.removeMember(channelId, userId);
+        memberService.removeMember(channelId, userId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -185,7 +188,7 @@ public class ChatChannelController {
             @PathVariable Long channelId,
             @PathVariable Long userId,
             @Valid @RequestBody ChangeRoleRequest request) {
-        MemberResponse response = memberService.changeRole(channelId, userId, request);
+        MemberResponse response = memberService.changeRole(channelId, userId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -232,7 +235,7 @@ public class ChatChannelController {
     @Operation(summary = "DMをグループDMに変換")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "変換成功")
     public ResponseEntity<ApiResponse<ChannelResponse>> convertToGroup(@PathVariable Long channelId) {
-        ChannelResponse response = channelService.convertToGroup(channelId);
+        ChannelResponse response = channelService.convertToGroup(channelId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -254,6 +257,9 @@ public class ChatChannelController {
     /**
      * チャンネルの個人設定を更新する。
      */
+    @SelfScopedEndpoint("更新対象は (channelId, SecurityUtils.getCurrentUserId()) のメンバー行に限定され、"
+            + "対象ユーザー ID をリクエストで指定する余地が無い"
+            + "（ChatMemberService#updateSettings の findByChannelIdAndUserId が認証主体に束縛される）")
     @PatchMapping("/{channelId}/settings")
     @Operation(summary = "チャンネル個人設定")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
@@ -272,6 +278,9 @@ public class ChatChannelController {
      *
      * <p>認可: チャンネルメンバーであること（自分自身のみ）。</p>
      */
+    @SelfScopedEndpoint("更新対象は (channelId, SecurityUtils.getCurrentUserId()) のメンバー行に限定され、"
+            + "対象ユーザー ID をリクエストで指定する余地が無い"
+            + "（ChatMemberService#updateMySettings の findByChannelIdAndUserId が認証主体に束縛される）")
     @PatchMapping("/{channelId}/members/me")
     @Operation(summary = "自分のチャンネル個人設定更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
@@ -293,9 +302,16 @@ public class ChatChannelController {
      *   <li>アーカイブ済みのチャンネルへの設定変更は不可</li>
      *   <li>{@code is_inquiry_channel=true} にする場合、同チームに既に問い合わせチャンネルがあれば 409 Conflict</li>
      * </ul>
+     *
+     * <p><b>認可（認可根治 Phase 3-b / 2026-05-30）:</b> 旧 {@code @PreAuthorize("hasRole('ADMIN')")} は
+     * {@code @EnableMethodSecurity} 点火時に JWT へ ROLE_ADMIN が乗らず一斉 403 となるため是正した。
+     * scope は <b>パス変数でなくチャンネルエンティティ由来</b>（{@code channelId} から取得した teamId）であり
+     * SpEL でパス変数参照できないため、宣言は {@code isAuthenticated()} とし、真の per-scope 認可は
+     * {@code ChatChannelService.updateInquiryChannel} 内で {@code AccessControlService} により強制する
+     *（当該チャンネルのチーム ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN 短絡）。</p>
      */
     @PatchMapping("/{channelId}/inquiry")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "問い合わせチャンネル設定更新（F10.7）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "チームチャンネル以外 / アーカイブ済み")
@@ -303,7 +319,8 @@ public class ChatChannelController {
     public ResponseEntity<ApiResponse<ChannelResponse>> updateInquiryChannel(
             @PathVariable Long channelId,
             @Valid @RequestBody UpdateInquiryChannelRequest request) {
-        ChannelResponse response = channelService.updateInquiryChannel(channelId, request);
+        ChannelResponse response = channelService.updateInquiryChannel(
+                channelId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

@@ -1,3 +1,6 @@
+import type { TeamDashboardResponse, OrgDashboardResponse } from '~/types/dashboard-scope'
+import type { ActivityFeedDetail } from '~/types/dashboard'
+
 interface PlatformAnnouncement {
   id: number
   title: string
@@ -35,6 +38,11 @@ export function useDashboardApi() {
     return api<{
       data: Array<{
         id: number
+        /**
+         * 司令塔第二弾（ADHD-UX戦役第四陣）: 種別（イベント/本人シフト/本人予約）。
+         * 既存イベントは EVENT。後方互換のため未知の値でも描画は落とさない想定。
+         */
+        kind: 'EVENT' | 'SHIFT' | 'RESERVATION'
         title: string
         start_at: string
         end_at: string
@@ -56,28 +64,58 @@ export function useDashboardApi() {
         priority: string
         dueDate: string | null
         scopeType: string
-        scopeId: number | null
+        scopeId: string | null
       }>
     }>('/api/v1/todos/my')
+  }
+
+  /**
+   * 司令塔ウィジェット（WidgetCommandCenter）向け: 個人TODOの未完了一覧＋期限切れ件数。
+   * BE (DashboardService#getPersonalTodos) が overdue_count をタイムゾーン考慮済みで算出する。
+   * `getPersonalTodos` という名前は `/api/v1/todos/my`（getMyTodos）で既に使用しているため、
+   * URL に対応した名前として区別する。
+   */
+  async function getDashboardTodoSummary() {
+    return api<{
+      data: {
+        items: Array<{
+          id: number
+          title: string
+          status: string
+          priority: string
+          due_date: string | null
+          parent_id: number | null
+          depth: number
+        }>
+        overdue_count: number
+        total_incomplete: number
+      }
+    }>('/api/v1/dashboard/todos')
   }
 
   async function getActivity(params?: { cursor?: string; limit?: number }) {
     const query = new URLSearchParams()
     if (params?.cursor) query.set('cursor', params.cursor)
     query.set('limit', String(params?.limit ?? 10))
+    // F03.18: レスポンスは配列直返しから { items, nextCursor } のラッパー型へ変更された（破壊的変更）。
     return api<{
-      data: Array<{
-        id: number
-        type: string
-        actor: { id: number; displayName: string; avatarUrl: string | null }
-        scopeType: string
-        scopeId: number
-        scopeName: string
-        targetType: string
-        targetId: number
-        summary: string
-        createdAt: string
-      }>
+      data: {
+        items: Array<{
+          id: number
+          type: string
+          actor: { id: number; displayName: string; avatarUrl: string | null }
+          scopeType: string
+          scopeId: string
+          scopeName: string
+          targetType: string
+          targetId: number
+          summary: string
+          /** F03.18 §3.3: BE はパース済み object を返す（JSON 文字列ではない）。既存7種別は null */
+          detail: ActivityFeedDetail | null
+          createdAt: string
+        }>
+        nextCursor: string | null
+      }
     }>(`/api/v1/dashboard/activity?${query}`)
   }
 
@@ -140,18 +178,18 @@ export function useDashboardApi() {
   }
 
   // === Scoped Dashboard ===
-  async function getOrganizationDashboard(orgId: number, statsPeriod?: string) {
+  async function getOrganizationDashboard(orgId: string, statsPeriod?: string) {
     const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
-    return api<{ data: unknown }>(`/api/v1/dashboard/organization/${orgId}${query}`)
+    return api<{ data: OrgDashboardResponse }>(`/api/v1/dashboard/organization/${orgId}${query}`)
   }
 
-  async function getTeamDashboard(teamId: number, statsPeriod?: string) {
+  async function getTeamDashboard(teamId: string, statsPeriod?: string) {
     const query = statsPeriod ? `?statsPeriod=${statsPeriod}` : ''
-    return api<{ data: unknown }>(`/api/v1/dashboard/team/${teamId}${query}`)
+    return api<{ data: TeamDashboardResponse }>(`/api/v1/dashboard/team/${teamId}${query}`)
   }
 
   // Widget settings
-  async function getWidgetSettings(scopeType: string, scopeId: number | null) {
+  async function getWidgetSettings(scopeType: string, scopeId: string | null) {
     const query = new URLSearchParams()
     query.set('scopeType', scopeType)
     if (scopeId) query.set('scopeId', String(scopeId))
@@ -163,7 +201,7 @@ export function useDashboardApi() {
   async function updateWidgetSettings(
     settings: Array<{ key: string; visible: boolean; order: number }>,
     scopeType: string,
-    scopeId: number | null,
+    scopeId: string | null,
   ) {
     return api('/api/v1/dashboard/widgets', {
       method: 'PUT',
@@ -171,7 +209,7 @@ export function useDashboardApi() {
     })
   }
 
-  async function resetWidgetSettings(scopeType: string, scopeId: number | null) {
+  async function resetWidgetSettings(scopeType: string, scopeId: string | null) {
     const query = new URLSearchParams()
     query.set('scopeType', scopeType)
     if (scopeId) query.set('scopeId', String(scopeId))
@@ -183,6 +221,7 @@ export function useDashboardApi() {
     getNotices,
     getUpcomingEvents,
     getPersonalTodos,
+    getDashboardTodoSummary,
     getActivity,
     getUnreadThreads,
     getPlatformAnnouncements,

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { describe, it, expect, beforeAll, beforeEach, afterEach, vi } from 'vitest'
 import { mountSuspended } from '@nuxt/test-utils/runtime'
 import { setActivePinia, createPinia } from 'pinia'
 import LateNoticeDialog from '~/components/event/advanceNotice/LateNoticeDialog.vue'
@@ -51,6 +51,22 @@ function getByTestId<T extends Element = HTMLElement>(testId: string): T {
   return el
 }
 
+/**
+ * 最初の {@code mountSuspended} は、コンポーネント本体と PrimeVue の依存を
+ * オンデマンドで変換（transform）するコストを丸ごと背負う。これは 5,000ms の
+ * testTimeout に収まらないことがあり、「先頭のテストだけがタイムアウトする」という
+ * 実装とは無関係な失敗になっていた（テストの中身ではなくモジュール変換が遅いだけ）。
+ * 変換コストは本来セットアップの仕事なので、hookTimeout 側の beforeAll で
+ * 一度マウントして温めておき、各テストは温まった状態から始める。
+ */
+beforeAll(async () => {
+  setActivePinia(createPinia())
+  const warmup = await mountSuspended(LateNoticeDialog, {
+    props: { teamId: '7', eventId: 42, userId: 101, open: false },
+  })
+  warmup.unmount()
+})
+
 beforeEach(() => {
   setActivePinia(createPinia())
   mockSubmitLate.mockReset()
@@ -69,14 +85,14 @@ afterEach(() => {
 describe('LateNoticeDialog.vue', () => {
   it('open=false ではダイアログが表示されない', async () => {
     await mountSuspended(LateNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: false },
+      props: { teamId: '7', eventId: 42, userId: 101, open: false },
     })
     expect(findByTestId('late-notice-dialog')).toBeNull()
   })
 
   it('open=true でダイアログが表示される', async () => {
     await mountSuspended(LateNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     expect(findByTestId('late-notice-dialog')).not.toBeNull()
     expect(findByTestId('late-notice-submit')).not.toBeNull()
@@ -84,7 +100,7 @@ describe('LateNoticeDialog.vue', () => {
 
   it('範囲外（0 分）では送信ボタンが disabled になる', async () => {
     const wrapper = await mountSuspended(LateNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     // VM の内部 ref を直接操作してバリデーション分岐を検証
     const vm = wrapper.vm as unknown as { lateArrivalMinutes: number }
@@ -96,7 +112,7 @@ describe('LateNoticeDialog.vue', () => {
 
   it('範囲外（121 分）では送信ボタンが disabled になる', async () => {
     const wrapper = await mountSuspended(LateNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     const vm = wrapper.vm as unknown as { lateArrivalMinutes: number }
     vm.lateArrivalMinutes = 121
@@ -118,7 +134,7 @@ describe('LateNoticeDialog.vue', () => {
     mockSubmitLate.mockResolvedValueOnce(expectedRes)
 
     const wrapper = await mountSuspended(LateNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     const vm = wrapper.vm as unknown as { lateArrivalMinutes: number; comment: string }
     vm.lateArrivalMinutes = 25
@@ -151,7 +167,7 @@ describe('LateNoticeDialog.vue', () => {
     mockSubmitLate.mockResolvedValueOnce(null)
 
     const wrapper = await mountSuspended(LateNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     const vm = wrapper.vm as unknown as { lateArrivalMinutes: number }
     vm.lateArrivalMinutes = 10
@@ -168,7 +184,7 @@ describe('LateNoticeDialog.vue', () => {
 
   it('キャンセルボタンで update:open(false) を emit', async () => {
     const wrapper = await mountSuspended(LateNoticeDialog, {
-      props: { teamId: 7, eventId: 42, userId: 101, open: true },
+      props: { teamId: '7', eventId: 42, userId: 101, open: true },
     })
     getByTestId<HTMLButtonElement>('late-notice-cancel').click()
     await wrapper.vm.$nextTick()

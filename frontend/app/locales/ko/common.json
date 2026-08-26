@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "연결이 끊어졌습니다. 재연결을 시도하고 있습니다…"
+    },
+    "mobile": {
+      "backToList": "채널 목록으로 돌아가기",
+      "noChannels": "아직 채널이 없습니다",
+      "createChannel": "채널 만들기"
     }
   },
   "button": {
@@ -76,12 +81,16 @@
     "submit": "제출",
     "close": "닫기",
     "back": "뒤로",
+    "help": "사용법",
     "next": "다음",
     "search": "검색",
     "loading": "로딩 중...",
     "confirm": "확인",
     "logout": "로그아웃",
-    "update": "업데이트"
+    "update": "업데이트",
+    "see_more": "더 보기",
+    "view_all": "모두 보기",
+    "undo": "실행 취소"
   },
   "label": {
     "required": "필수",
@@ -217,18 +226,41 @@
   "error": {
     "server": "서버 오류가 발생했습니다",
     "server_retry": "잠시 후 다시 시도해 주세요.",
+    "rate_limited": "요청이 너무 많습니다",
+    "rate_limited_detail": "짧은 시간에 요청이 너무 많았습니다. 잠시 기다린 후 다시 시도해 주세요.",
+    "rate_limited_retry_after": "짧은 시간에 요청이 너무 많았습니다. 약 {seconds}초 후에 다시 시도해 주세요.",
     "network": "네트워크 오류가 발생했습니다",
     "unauthorized": "로그인이 필요합니다",
+    "section_load_failed": "이 항목을 불러오지 못했습니다. 새로고침해 주세요.",
     "unknown": "오류가 발생했습니다",
     "COMMON_001": "입력 내용에 오류가 있습니다",
     "COMMON_002": "이 작업을 수행할 권한이 없습니다",
     "COMMON_003": "다른 사용자가 업데이트했습니다. 화면을 새로고침하세요",
     "COMMON_999": "시스템 오류가 발생했습니다",
     "AUTH_001": "이메일 주소 또는 비밀번호가 올바르지 않습니다",
-    "AUTH_002": "세션이 만료되었습니다. 다시 로그인해 주세요",
-    "AUTH_003": "이미 등록된 이메일 주소입니다",
-    "AUTH_004": "계정이 비활성화되어 있습니다",
-    "AUTH_005": "인증 코드가 올바르지 않습니다"
+    "AUTH_002": "이메일 주소가 아직 확인되지 않았습니다",
+    "AUTH_003": "계정이 잠겨 있습니다. 30분 후에 다시 시도해 주세요",
+    "AUTH_004": "이미 등록된 이메일 주소입니다",
+    "AUTH_005": "확인 이메일의 링크가 유효하지 않거나 만료되었습니다",
+    "AUTH_008": "비밀번호는 8자 이상이며 대문자·소문자·숫자·기호 중 3종류 이상을 포함해야 합니다",
+    "AUTH_015": "비밀번호 재설정 링크가 유효하지 않거나 만료되었습니다. 재설정을 다시 신청해 주세요.",
+    "AUTH_009": "새 비밀번호는 현재 비밀번호와 달라야 합니다",
+    "AUTH_010": "현재 비밀번호가 올바르지 않습니다",
+    "AUTH_011": "아직 비밀번호가 설정되지 않았습니다",
+    "AUTH_044": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요",
+    "SURVEY_023": "익명 설문에서는 팀별 내역을 활성화할 수 없습니다",
+    "SCHEDULE_KEEP_001": "キープが見つかりません",
+    "SCHEDULE_KEEP_002": "タイトルを入力してください",
+    "SCHEDULE_KEEP_003": "候補日は最大10件です",
+    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
+    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
+    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
+    "SCHEDULE_KEEP_007": "この状態では編集できません",
+    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
+    "SCHEDULE_KEEP_009": "この操作はできません",
+    "SCHEDULE_KEEP_010": "キープの上限に達しました",
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "숨김 상한(200건)에 도달했습니다. 불필요한 숨김을 해제해 주세요."
   },
   "annual_plan": {
     "title": "연간 행사 계획",
@@ -378,52 +410,52 @@
     }
   },
   "confirmable": {
-    "title": "確認通知",
-    "settings": "確認通知設定",
-    "send": "確認通知を送信",
-    "history": "発信履歴",
-    "recipients": "受信者一覧",
+    "title": "확인 알림",
+    "settings": "확인 알림 설정",
+    "send": "확인 알림 보내기",
+    "history": "발송 기록",
+    "recipients": "수신자 목록",
     "status": {
-      "ACTIVE": "受付中",
-      "COMPLETED": "完了",
-      "EXPIRED": "期限切れ",
-      "CANCELLED": "キャンセル"
+      "ACTIVE": "접수 중",
+      "COMPLETED": "완료",
+      "EXPIRED": "기한 만료",
+      "CANCELLED": "취소됨"
     },
     "priority": {
-      "NORMAL": "通常",
-      "HIGH": "重要",
-      "URGENT": "緊急"
+      "NORMAL": "보통",
+      "HIGH": "중요",
+      "URGENT": "긴급"
     },
     "confirmed_via": {
-      "APP": "アプリ",
-      "TOKEN": "URLリンク",
-      "BULK": "一括"
+      "APP": "앱",
+      "TOKEN": "URL 링크",
+      "BULK": "일괄"
     },
-    "pending_count": "保留中の確認: {count}件",
-    "confirmation_rate": "確認率",
-    "deadline": "確認期限",
-    "confirm_button": "確認する",
-    "already_confirmed": "確認済み",
-    "confirmed": "確認状態",
-    "confirmed_at": "確認日時",
-    "confirmed_via_label": "確認方法",
-    "first_reminder_sent": "1回目リマインド",
-    "second_reminder_sent": "2回目リマインド",
-    "reminder_minutes": "リマインド間隔（分）",
-    "first_reminder": "1回目リマインド",
-    "second_reminder": "2回目リマインド",
-    "alert_threshold": "未確認アラート閾値",
-    "resend_reminder": "リマインド再送",
-    "no_history": "発信履歴がありません",
-    "load_error": "確認通知の取得に失敗しました",
-    "load_settings_error": "設定の取得に失敗しました",
-    "load_recipients_error": "受信者一覧の取得に失敗しました",
-    "save_settings_error": "設定の保存に失敗しました",
-    "send_error": "確認通知の送信に失敗しました",
-    "cancel_error": "キャンセルに失敗しました",
-    "resend_error": "リマインド再送に失敗しました",
-    "title_required": "タイトルを入力してください",
-    "recipients_required": "受信者を1人以上指定してください",
+    "pending_count": "대기 중인 확인: {count}건",
+    "confirmation_rate": "확인율",
+    "deadline": "확인 기한",
+    "confirm_button": "확인하기",
+    "already_confirmed": "이미 확인됨",
+    "confirmed": "확인 상태",
+    "confirmed_at": "확인 일시",
+    "confirmed_via_label": "확인 방법",
+    "first_reminder_sent": "1차 리마인드",
+    "second_reminder_sent": "2차 리마인드",
+    "reminder_minutes": "리마인드 간격（분）",
+    "first_reminder": "1차 리마인드",
+    "second_reminder": "2차 리마인드",
+    "alert_threshold": "미확인 알림 임계값",
+    "resend_reminder": "리마인드 재전송",
+    "no_history": "발송 기록이 없습니다",
+    "load_error": "확인 알림을 불러오지 못했습니다",
+    "load_settings_error": "설정을 불러오지 못했습니다",
+    "load_recipients_error": "수신자 목록을 불러오지 못했습니다",
+    "save_settings_error": "설정 저장에 실패했습니다",
+    "send_error": "확인 알림 전송에 실패했습니다",
+    "cancel_error": "취소에 실패했습니다",
+    "resend_error": "리마인드 재전송에 실패했습니다",
+    "title_required": "제목을 입력해 주세요",
+    "recipients_required": "수신자를 1명 이상 지정해 주세요",
     "unconfirmed_visibility": {
       "label": "미확인자 목록 공개 범위",
       "help": "미확인자 목록을 누가 볼 수 있는지 선택합니다.",
@@ -442,7 +474,56 @@
     "videoUploadSuccess": "동영상을 업로드했습니다",
     "videoUploadError": "동영상 업로드에 실패했습니다",
     "videoRemove": "동영상 삭제",
-    "mitayo": "Gesehen"
+    "mitayo": "확인함",
+    "imageTooMany": "이미지는 최대 4개까지 첨부할 수 있습니다",
+    "imageUploadError": "이미지 업로드에 실패했습니다",
+    "postSuccess": "게시되었습니다",
+    "postError": "게시에 실패했습니다",
+    "announcementRegisterError": "공지 등록에 실패했습니다. 나중에 수동으로 등록해 주세요.",
+    "postSource": "게시 위치",
+    "writeReply": "답글 작성",
+    "replySubmit": "답글",
+    "noReplies": "아직 답글이 없습니다",
+    "loadMoreReplies": "더 보기",
+    "composerPlaceholder": {
+      "TEAM": "팀에 게시...",
+      "VILLAGE": "마을에 게시...",
+      "ORGANIZATION": "조직에 게시...",
+      "PUBLIC": "지금 무슨 일이 있나요?"
+    },
+    "submitLabel": "게시",
+    "pollOptionsCount": "{count}개 선택지",
+    "deliveryScope": {
+      "label": "전달 범위",
+      "options": {
+        "DIRECT": "이 단체의 멤버에게만",
+        "CHILDREN": "바로 아래 하위 단체까지",
+        "DESCENDANTS": "산하 모든 단체"
+      },
+      "hints": {
+        "DIRECT": "이 단체에 소속된 사람의 타임라인에만 표시됩니다.",
+        "CHILDREN": "이 단체와 바로 아래 하위 단체의 멤버에게도 표시됩니다.",
+        "DESCENDANTS": "이 단체 산하 모든 단체의 멤버에게 표시됩니다."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "이 팀의 게시물 숨기기",
+        "ORGANIZATION": "이 단체의 게시물 숨기기"
+      },
+      "targetType": {
+        "TEAM": "팀",
+        "ORGANIZATION": "단체"
+      },
+      "muted": "{name} 의 게시물을 숨겼습니다",
+      "undo": "실행 취소",
+      "unmuted": "다시 표시하도록 했습니다",
+      "chip": "숨김: {count}건",
+      "dialogTitle": "숨긴 대상",
+      "emptyList": "숨긴 대상이 없습니다.",
+      "unmuteAction": "다시 표시",
+      "unknownTarget": "{type}(ID: {id})"
+    }
   },
   "gallery": {
     "title": "갤러리",
@@ -457,212 +538,302 @@
   },
   "blog": {
     "media": {
-      "uploadImage": "画像を挿入",
-      "uploadVideo": "動画を挿入",
-      "uploading": "アップロード中...",
-      "uploadSuccess": "アップロード完了",
-      "uploadError": "アップロードに失敗しました",
-      "selectImage": "画像ファイルを選択",
-      "selectVideo": "動画ファイルを選択"
+      "uploadImage": "이미지 삽입",
+      "uploadVideo": "동영상 삽입",
+      "uploading": "업로드 중...",
+      "uploadSuccess": "업로드 완료",
+      "uploadError": "업로드 실패",
+      "selectImage": "이미지 파일 선택",
+      "selectVideo": "동영상 파일 선택"
     },
     "post": {
-      "readMore": "続きを読む",
-      "publishedAt": "公開日",
-      "draft": "下書き",
-      "published": "公開",
-      "scheduled": "予約",
-      "author": "著者",
-      "series": "シリーズ",
-      "tags": "タグ",
-      "relatedPosts": "関連記事",
-      "noPost": "記事がありません",
-      "createFirst": "最初の記事を書く",
-      "settings": "ブログ設定",
-      "selfReview": "セルフレビュー",
-      "selfReviewDesc": "投稿前に見直し時間を設定します",
-      "myBlog": "マイブログ",
-      "createNew": "新規記事",
-      "editPost": "編集",
-      "deletePost": "削除",
-      "togglePublish": "公開/非公開",
+      "readMore": "계속 읽기",
+      "publishedAt": "게시일",
+      "draft": "초안",
+      "published": "공개됨",
+      "scheduled": "예약됨",
+      "author": "작성자",
+      "series": "시리즈",
+      "tags": "태그",
+      "relatedPosts": "관련 게시글",
+      "noPost": "게시글이 없습니다",
+      "createFirst": "첫 번째 글 작성",
+      "settings": "블로그 설정",
+      "selfReview": "셀프 리뷰",
+      "selfReviewDesc": "게시 전 검토 시간 설정",
+      "myBlog": "내 블로그",
+      "createNew": "새 게시글",
+      "editPost": "편집",
+      "deletePost": "삭제",
+      "togglePublish": "공개/비공개",
       "myPosts": "내 게시물",
       "allPosts": "모든 게시물",
       "latestCount": "최신 {count}개 / 전체 {total}개",
-      "profileSettings": "プロフィール設定",
-      "blogTitle": "ブログタイトル",
-      "blogDescription": "ブログ説明",
-      "selfReviewStart": "セルフレビュー開始時刻",
-      "selfReviewEnd": "セルフレビュー終了時刻",
-      "selfReviewHelp": "設定した時間帯は投稿前の見直し期間として扱われます",
-      "saveSettings": "設定を保存"
+      "profileSettings": "프로필 설정",
+      "blogTitle": "블로그 제목",
+      "blogDescription": "블로그 설명",
+      "selfReviewStart": "셀프 리뷰 시작 시간",
+      "selfReviewEnd": "셀프 리뷰 종료 시간",
+      "selfReviewHelp": "설정한 시간대는 게시 전 검토 기간으로 처리됩니다",
+      "saveSettings": "설정 저장",
+      "loadFailed": "게시글을 불러올 수 없습니다",
+      "scheduledPublishUnavailable": "예약 발행은 현재 사용할 수 없습니다. 발행하면 게시물이 즉시 공개됩니다."
+    },
+    "autoSave": {
+      "label": "자동 저장",
+      "saved": "자동 저장되었습니다",
+      "lastSaved": "{time}에 자동 저장됨",
+      "enabled": "자동 저장이 활성화되었습니다",
+      "disabled": "자동 저장이 비활성화되었습니다"
     }
   },
   "todo": {
-    "backToList": "TODO一覧",
+    "backToList": "할 일 목록으로 돌아가기",
     "list": {
-      "allDone": "TODOはすべて完了しています",
-      "overdueSuffix": "（期限切れ）",
-      "toggleCompleteHint": "クリックで完了状態を切り替え",
-      "toggleCompleteAria": "完了状態を切り替え",
-      "changeLabelHint": "クリックでステータスラベルを変更",
-      "changeLabelAria": "ステータスラベルを変更",
-      "popoverTitle": "ステータスを変更",
-      "popoverLoading": "読み込み中...",
-      "popoverEmpty": "ラベルがありません",
+      "allDone": "모든 할 일이 완료되었습니다",
+      "overdueSuffix": "（기한 초과）",
+      "toggleCompleteHint": "클릭하여 완료 상태 전환",
+      "toggleCompleteAria": "완료 상태 전환",
+      "changeLabelHint": "클릭하여 상태 레이블 변경",
+      "changeLabelAria": "상태 레이블 변경",
+      "popoverTitle": "상태 변경",
+      "popoverLoading": "불러오는 중...",
+      "popoverEmpty": "레이블이 없습니다",
       "viewModeList": "목록 보기",
       "viewModeKanban": "칸반 보기",
       "deleteButton": "삭제",
       "deleteAriaLabel": "이 할 일 삭제",
-      "deleteConfirm": "이 할 일을 삭제하시겠습니까？삭제 후에는 복구할 수 없습니다。"
+      "deleteConfirm": "이 할 일을 삭제하시겠습니까？삭제 후에는 복구할 수 없습니다。",
+      "sortLabel": "정렬 기준",
+      "sortRecent": "최신순",
+      "sortPriority": "우선순위순",
+      "deletedToast": "TODO를 삭제했습니다",
+      "restoredToast": "TODO를 복원했습니다",
+      "deleteFailed": "삭제에 실패했습니다",
+      "restoreFailed": "실행 취소할 수 없습니다"
     },
     "field": {
-      "status": "ステータス",
-      "priority": "優先度",
-      "dueDate": "期限",
-      "creator": "作成者",
-      "description": "説明",
-      "title": "タイトル",
-      "descriptionOptional": "説明（任意）",
-      "startDate": "開始日",
-      "startDateOptional": "開始日（任意）",
-      "dueDateOptional": "期限（任意）",
+      "status": "상태",
+      "priority": "우선순위",
+      "dueDate": "기한",
+      "creator": "작성자",
+      "description": "설명",
+      "title": "제목",
+      "descriptionOptional": "설명（선택사항）",
+      "startDate": "시작일",
+      "startDateOptional": "시작일（선택사항）",
+      "dueDateOptional": "기한（선택사항）",
       "progressRate": "진행률"
     },
     "detail": {
-      "loadFailed": "TODOの取得に失敗しました",
-      "assigneesSection": "担当者",
-      "noAssignees": "担当者未割り当て",
-      "unknownUser": "不明",
-      "completedByAt": "{name} が {at} に完了",
-      "editButton": "編集"
+      "loadFailed": "할 일을 불러오지 못했습니다",
+      "assigneesSection": "담당자",
+      "noAssignees": "담당자 미지정",
+      "unknownUser": "알 수 없음",
+      "completedByAt": "{name}이（가） {at}에 완료",
+      "editButton": "편집"
     },
     "action": {
-      "save": "保存",
-      "cancel": "キャンセル",
-      "updated": "更新しました",
-      "updateFailed": "更新に失敗しました"
+      "save": "저장",
+      "cancel": "취소",
+      "updated": "업데이트됨",
+      "updateFailed": "업데이트 실패"
     },
     "priorityValue": {
       "URGENT": "긴급",
-      "HIGH": "高",
-      "MEDIUM": "中",
-      "LOW": "低"
+      "HIGH": "높음",
+      "MEDIUM": "보통",
+      "LOW": "낮음"
     },
     "progress": {
-      "updateRateFailed": "進捗率の更新に失敗しました",
-      "updateModeFailed": "進捗モードの切替に失敗しました"
+      "updateRateFailed": "진행률 업데이트 실패",
+      "updateModeFailed": "진행 모드 전환 실패"
     },
     "statusLabel": {
       "management": {
-        "title": "ステータスラベル管理",
-        "create": "ラベルを追加",
-        "edit": "編集",
-        "delete": "削除",
-        "createSuccess": "ラベルを作成しました",
-        "updateSuccess": "ラベルを更新しました",
-        "deleteSuccess": "ラベルを削除しました",
-        "systemSection": "システム既定（編集不可）",
-        "userSection": "個人ラベル",
-        "teamSection": "チームラベル",
-        "organizationSection": "組織ラベル",
-        "empty": "まだラベルがありません",
-        "readOnlyForNonAdmin": "ラベルの作成・編集は管理者のみ可能です（閲覧のみ）"
+        "title": "상태 레이블 관리",
+        "create": "레이블 추가",
+        "edit": "편집",
+        "delete": "삭제",
+        "createSuccess": "레이블이 생성되었습니다",
+        "updateSuccess": "레이블이 업데이트되었습니다",
+        "deleteSuccess": "레이블이 삭제되었습니다",
+        "systemSection": "시스템 기본（편집 불가）",
+        "userSection": "개인 레이블",
+        "teamSection": "팀 레이블",
+        "organizationSection": "조직 레이블",
+        "empty": "아직 레이블이 없습니다",
+        "readOnlyForNonAdmin": "레이블 생성・편집은 관리자만 가능합니다（보기 전용）"
       },
       "field": {
-        "name": "名前",
-        "bucket": "区分",
-        "color": "色",
-        "sortOrder": "並び順"
+        "name": "이름",
+        "bucket": "구분",
+        "color": "색상",
+        "sortOrder": "정렬 순서"
       },
       "bucket": {
-        "OPEN": "未着手",
-        "IN_PROGRESS": "着手中",
-        "COMPLETED": "完了"
+        "OPEN": "시작 전",
+        "IN_PROGRESS": "진행 중",
+        "COMPLETED": "완료"
       },
       "error": {
-        "duplicate": "同じ名前のラベルが既に存在します",
-        "limitExceeded": "ラベルは最大20件まで作成できます",
-        "inUse": "使用中のため削除できません",
-        "inUseWithCount": "このラベルは現在 {n} 件のTODOで使用されているため削除できません",
-        "systemImmutable": "システム既定ラベルは変更できません"
+        "duplicate": "같은 이름의 레이블이 이미 존재합니다",
+        "limitExceeded": "레이블은 최대 20개까지 만들 수 있습니다",
+        "inUse": "사용 중이므로 삭제할 수 없습니다",
+        "inUseWithCount": "이 레이블은 현재 {n}개의 할 일에서 사용 중이므로 삭제할 수 없습니다",
+        "systemImmutable": "시스템 기본 레이블은 변경할 수 없습니다"
       },
-      "systemDefault": "（システム既定）",
-      "confirmDelete": "本当に削除しますか？"
+      "systemDefault": "（시스템 기본）",
+      "confirmDelete": "정말로 삭제하시겠습니까？"
     },
     "statusChange": {
-      "section": "ステータス変更",
-      "applyButton": "変更",
-      "confirmTitle": "ステータス変更の確認",
-      "confirmBody": "ステータスを『{from}』から『{to}』に変更します。よろしいですか？",
-      "confirmButton": "変更する",
-      "cancelButton": "キャンセル",
-      "success": "ステータスを『{name}』に変更しました"
+      "section": "상태 변경",
+      "applyButton": "변경",
+      "confirmTitle": "상태 변경 확인",
+      "confirmBody": "상태를 「{from}」에서 「{to}」로 변경합니다. 계속하시겠습니까？",
+      "confirmButton": "변경하기",
+      "cancelButton": "취소",
+      "success": "상태를 「{name}」으로 변경했습니다"
     },
     "enhancement": {
       "gantt": {
         "title": "TODO 간트 뷰",
-        "no_data": "ガントバーに表示できる期間のある課題がありません",
+        "no_data": "간트 차트에 표시할 기간이 있는 과제가 없습니다",
         "gantt_view_link": "TODO 간트 뷰"
       },
       "progress": {
-        "tab_label": "進捗",
-        "manual_mode": "手動入力モード",
-        "auto_mode": "自動算出モード",
-        "switch_to_auto": "自動算出に切替",
-        "switch_to_manual": "手動入力に切替",
-        "overwrite_warning": "子課題の手動値が上書きされる場合があります。よろしいですか？"
+        "tab_label": "진행률",
+        "manual_mode": "수동 입력 모드",
+        "auto_mode": "자동 계산 모드",
+        "switch_to_auto": "자동 계산으로 전환",
+        "switch_to_manual": "수동 입력으로 전환",
+        "overwrite_warning": "하위 과제의 수동 값이 덮어쓰여질 수 있습니다. 계속하시겠습니까？"
       },
       "shared_memo": {
-        "title": "共有メモ",
-        "placeholder": "メモを入力...",
-        "quote_reply": "引用して返信",
-        "no_data": "共有メモがまだありません"
+        "title": "공유 메모",
+        "placeholder": "메모 입력...",
+        "quote_reply": "인용하여 답글",
+        "no_data": "아직 공유 메모가 없습니다"
       },
       "personal_memo": {
-        "title": "個人メモ（自分だけ見えます）",
-        "placeholder": "個人メモを入力...（自動保存）",
-        "saving": "保存中...",
-        "saved": "保存しました"
+        "title": "개인 메모（나만 볼 수 있음）",
+        "placeholder": "개인 메모 입력...（자동 저장）",
+        "saving": "저장 중...",
+        "saved": "저장됨"
       }
+    },
+    "create": {
+      "dialog_title": "TODO 만들기",
+      "title_label": "제목",
+      "title_placeholder": "TODO 제목",
+      "details_toggle": "세부 사항 설정（선택사항）",
+      "description_label": "설명（선택사항）",
+      "description_placeholder": "세부 내용이나 보충 설명",
+      "scope_label": "공유 대상",
+      "scope_personal": "개인",
+      "priority_label": "우선순위",
+      "start_date_label": "시작일（선택사항）",
+      "due_date_label": "마감일（선택사항）",
+      "submit_button": "만들기",
+      "cancel_button": "취소",
+      "draft_restored": "임시 저장 내용을 복원했습니다",
+      "create_success": "TODO를 만들었습니다",
+      "create_failed": "만들기에 실패했습니다"
     }
   },
   "extended_profile": {
-    "title": "拡張プロフィール編集",
-    "section_profile": "基本プロフィール",
-    "section_visibility": "公開設定",
-    "section_officers": "役員",
-    "section_custom_fields": "カスタムフィールド",
-    "homepage_url": "ホームページURL",
-    "established_date": "設立日",
-    "established_date_precision": "設立日精度",
-    "philosophy": "組織理念",
-    "precision_year": "年のみ",
-    "precision_year_month": "年月",
-    "precision_full": "年月日",
-    "visibility_homepage_url": "ホームページURLを公開",
-    "visibility_established_date": "設立日を公開",
-    "visibility_philosophy": "組織理念を公開",
-    "visibility_officers": "役員情報を公開",
-    "visibility_custom_fields": "カスタムフィールドを公開",
-    "officer_name": "役員名",
-    "officer_title": "役職",
-    "officer_visible": "公開する",
-    "add_officer": "役員を追加",
-    "edit_officer": "役員を編集",
-    "field_label": "ラベル",
-    "field_value": "値",
-    "add_custom_field": "カスタムフィールドを追加",
-    "edit_custom_field": "カスタムフィールドを編集",
-    "save_order": "並び順を保存",
-    "save_profile": "プロフィールを保存",
-    "profile_saved": "プロフィールを保存しました",
-    "officer_added": "役員を追加しました",
-    "officer_updated": "役員を更新しました",
-    "officer_deleted": "役員を削除しました",
-    "order_saved": "並び順を保存しました",
-    "custom_field_added": "カスタムフィールドを追加しました",
-    "custom_field_updated": "カスタムフィールドを更新しました",
-    "custom_field_deleted": "カスタムフィールドを削除しました"
+    "title": "확장 프로필 편집",
+    "section_profile": "기본 프로필",
+    "section_visibility": "공개 설정",
+    "section_officers": "임원",
+    "section_custom_fields": "사용자 정의 필드",
+    "homepage_url": "홈페이지 URL",
+    "established_date": "설립일",
+    "established_date_precision": "날짜 정밀도",
+    "philosophy": "조직 이념",
+    "precision_year": "연도만",
+    "precision_year_month": "연월",
+    "precision_full": "연월일",
+    "visibility_homepage_url": "홈페이지 URL 공개",
+    "visibility_established_date": "설립일 공개",
+    "visibility_philosophy": "조직 이념 공개",
+    "visibility_officers": "임원 정보 공개",
+    "visibility_custom_fields": "사용자 정의 필드 공개",
+    "officer_name": "임원명",
+    "officer_title": "직책",
+    "officer_visible": "공개하기",
+    "add_officer": "임원 추가",
+    "edit_officer": "임원 편집",
+    "field_label": "레이블",
+    "field_value": "값",
+    "add_custom_field": "사용자 정의 필드 추가",
+    "edit_custom_field": "사용자 정의 필드 편집",
+    "save_order": "정렬 순서 저장",
+    "save_profile": "프로필 저장",
+    "profile_saved": "프로필이 저장되었습니다",
+    "officer_added": "임원이 추가되었습니다",
+    "officer_updated": "임원이 업데이트되었습니다",
+    "officer_deleted": "임원이 삭제되었습니다",
+    "order_saved": "정렬 순서가 저장되었습니다",
+    "custom_field_added": "사용자 정의 필드가 추가되었습니다",
+    "custom_field_updated": "사용자 정의 필드가 업데이트되었습니다",
+    "custom_field_deleted": "사용자 정의 필드가 삭제되었습니다"
+  },
+  "notification": {
+    "todoHandedOff": {
+      "title": "할 일이 넘겨졌습니다",
+      "body": "{from}님으로부터 「{title}」을（를） 받았습니다（상태: {label}）"
+    },
+    "pageTitle": "通知",
+    "guide": {
+      "title": "通知の使い方",
+      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "read": {
+        "title": "通知を読む",
+        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "steps": {
+          "step1": "気になる通知の行をタップします",
+          "step2": "自動で既読になり、関連する画面へ移動します",
+          "step3": "未読の通知は左端の青いドットで見分けられます"
+        }
+      },
+      "filter": {
+        "title": "絞り込み",
+        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "steps": {
+          "step1": "画面上部の「すべて／未読」ボタンを押します",
+          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
+          "step3": "「すべて」に戻すと全ての通知が表示されます"
+        }
+      },
+      "snooze": {
+        "title": "スヌーズ",
+        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "steps": {
+          "step1": "通知の右側にある時計アイコンを押します",
+          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
+          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+        }
+      },
+      "confirm": {
+        "title": "確認通知",
+        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "steps": {
+          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step2": "「確認する」ボタンを押して確認済みにします",
+          "step3": "確認後は「確認済み」ラベルに変わります"
+        }
+      },
+      "urgent": {
+        "title": "緊急休業・一括既読",
+        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "steps": {
+          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
+          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
+          "step3": "既読にするとベルのバッジも0になります"
+        }
+      }
+    }
   },
   "project": {
     "milestones": "마일스톤",
@@ -699,7 +870,109 @@
     "reorder_failed": "순서 변경에 실패했습니다",
     "my_projects": "개인 프로젝트",
     "my_projects_description": "개인 작업 관리 및 목표",
-    "no_my_projects": "아직 개인 프로젝트가 없습니다"
+    "no_my_projects": "아직 개인 프로젝트가 없습니다",
+    "team_projects_section": "팀 프로젝트",
+    "no_team_projects": "소속 팀에 아직 프로젝트가 없습니다",
+    "org_projects_section": "조직 프로젝트",
+    "no_org_projects": "소속 조직에 아직 프로젝트가 없습니다",
+    "create_button": "프로젝트 생성",
+    "dialog": {
+      "create_title": "프로젝트 생성",
+      "edit_title": "프로젝트 편집",
+      "title_label": "제목",
+      "title_placeholder": "프로젝트 이름",
+      "description_label": "설명",
+      "due_date_label": "마감일",
+      "cancel": "취소",
+      "create": "생성",
+      "update": "업데이트"
+    },
+    "appearance": {
+      "emoji_label": "이모지",
+      "color_label": "색상",
+      "none": "없음",
+      "custom_emoji": "사용자 지정",
+      "custom_color": "사용자 지정 색상",
+      "current": "현재 값"
+    },
+    "guide": {
+      "button": "사용 방법",
+      "page_title": "프로젝트 사용 방법",
+      "description": "프로젝트 기능의 기본 사용 방법을 알아보세요.",
+      "what": {
+        "title": "프로젝트란?",
+        "body": "프로젝트는 작업(TODO)과 마일스톤을 함께 관리하는 단위입니다. 목표와 마감일을 설정하고 진행 상황을 한눈에 파악할 수 있습니다."
+      },
+      "create": {
+        "title": "프로젝트 만들기",
+        "body": "'프로젝트 생성' 버튼을 클릭하고 다음 정보를 입력하세요.",
+        "item_title": "제목 (필수): 프로젝트 이름",
+        "item_emoji": "이모지: 프로젝트를 나타내는 아이콘 (프리셋에서 선택)",
+        "item_color": "색상: 카드의 식별 색상 (프리셋에서 선택)",
+        "item_due_date": "마감일: 완료 목표일 (선택사항)"
+      },
+      "milestone": {
+        "title": "마일스톤과 게이트",
+        "body": "마일스톤은 프로젝트 내의 중간 목표입니다. 게이트 기능을 활성화하면 이전 마일스톤이 완료될 때까지 다음 마일스톤이 잠깁니다.",
+        "completion_mode_label": "완료 모드에 대하여",
+        "mode_auto": "자동 완료",
+        "mode_auto_desc": "마일스톤의 모든 TODO가 완료되면 자동으로 달성 처리됩니다.",
+        "mode_manual": "수동",
+        "mode_manual_desc": "TODO 완료 여부와 관계없이 수동으로 달성 표시를 합니다."
+      },
+      "progress": {
+        "title": "진행 상황 보기",
+        "body": "프로젝트 카드에는 진행 바, 완료율, 남은 일수가 표시됩니다. 진행 바는 완료된 TODO / 전체 TODO 수에서 자동 계산됩니다."
+      },
+      "scope": {
+        "title": "개인 프로젝트 vs. 팀 프로젝트",
+        "body": "프로젝트에는 '개인'과 '팀' 두 가지 범위가 있습니다.",
+        "personal_title": "개인 프로젝트",
+        "personal_desc": "본인만 조회 및 관리할 수 있습니다. '마이 페이지' → '프로젝트'에서 접근하세요.",
+        "team_title": "팀 프로젝트",
+        "team_desc": "팀원과 공유하고 함께 관리합니다. 팀 페이지의 '프로젝트' 탭에서 접근하세요."
+      },
+      "back_to_projects": "프로젝트 목록으로 돌아가기"
+    },
+    "org_page": {
+      "title": "프로젝트",
+      "empty": "프로젝트가 없습니다",
+      "back_label": "프로젝트 목록"
+    },
+    "error": {
+      "fetch_failed": "프로젝트를 불러오지 못했습니다",
+      "create_failed": "프로젝트 생성에 실패했습니다",
+      "update_failed": "업데이트에 실패했습니다",
+      "delete_failed": "삭제에 실패했습니다",
+      "status_change_failed": "상태 변경에 실패했습니다",
+      "milestone_save_failed": "마일스톤 저장에 실패했습니다"
+    },
+    "status": {
+      "active": "진행 중",
+      "completed": "완료",
+      "archived": "보관됨"
+    },
+    "action": {
+      "edit": "편집",
+      "complete": "완료로 표시",
+      "reopen": "다시 열기"
+    },
+    "stats": {
+      "progress": "진행률",
+      "tasks": "작업",
+      "milestones": "마일스톤",
+      "due_date": "기한",
+      "no_due_date": "미설정"
+    },
+    "task_unit": "개 작업",
+    "days_remaining": "{n}일 남음",
+    "days_overdue": "{n}일 초과",
+    "related_tasks": "관련 작업",
+    "no_related_tasks": "이 프로젝트에 관련 작업이 없습니다",
+    "widget": {
+      "label": "프로젝트",
+      "description": "프로젝트 진행 상황 및 목록"
+    }
   },
   "inviteToken": {
     "printQrPdf": "QR코드 PDF 인쇄",
@@ -749,13 +1022,13 @@
   },
   "survey": {
     "unresponded_visibility": {
-      "label": "未回答者リストの公開範囲",
-      "HIDDEN": "表示しない",
-      "CREATOR_AND_ADMIN": "作成者・管理者のみ",
-      "ALL_MEMBERS": "全員に公開"
+      "label": "미응답자 목록 공개 범위",
+      "HIDDEN": "표시 안 함",
+      "CREATOR_AND_ADMIN": "작성자・관리자만",
+      "ALL_MEMBERS": "전체 공개"
     },
-    "unresponded_count": "未回答: {count}名",
-    "unresponded_list": "未回答者一覧"
+    "unresponded_count": "미응답: {count}명",
+    "unresponded_list": "미응답자 목록"
   },
   "organization": {
     "parent_chain": "상위 조직",
@@ -767,19 +1040,19 @@
     "load_more": "더 불러오기"
   },
   "teamShiftSettings": {
-    "title": "シフトリマインド設定",
-    "description": "希望提出期限前のリマインド通知タイミングを設定します",
-    "reminder48h": "48時間前リマインド",
-    "reminder24h": "24時間前リマインド",
-    "reminder12h": "12時間前リマインド（将来対応）",
-    "atLeastOneRequired": "少なくとも1つのリマインドを有効にしてください",
-    "saved": "設定を保存しました"
+    "title": "시프트 리마인드 설정",
+    "description": "희망 제출 기한 전 리마인드 알림 타이밍을 설정합니다",
+    "reminder48h": "48시간 전 리마인드",
+    "reminder24h": "24시간 전 리마인드",
+    "reminder12h": "12시간 전 리마인드（추후 대응）",
+    "atLeastOneRequired": "적어도 하나의 리마인드를 활성화해 주세요",
+    "saved": "설정이 저장되었습니다"
   },
   "corkboard": {
-    "pin": "ピン止めする",
-    "unpin": "ピン止めを外す",
-    "pinned": "ピン止め済み",
-    "pinLimitReached": "ピン止め枠が満杯です（最大50枚）。先に他のカードのピン止めを解除してください",
+    "pin": "고정하기",
+    "unpin": "고정 해제",
+    "pinned": "고정됨",
+    "pinLimitReached": "고정 슬롯이 꽉 찼습니다（최대 50개）. 다른 카드의 고정을 먼저 해제해 주세요",
     "pinNote": {
       "title": "포스트잇",
       "placeholder": "메모 쓰기(선택)",
@@ -796,35 +1069,35 @@
         "gray": "회색"
       }
     },
-    "pageTitle": "マイコルクボード",
-    "totalCount": "全{count}件",
-    "sortByPinnedAt": "ピン止め日時の降順",
-    "filterByBoard": "ボードで絞り込み",
-    "allBoards": "全ボード",
-    "loadMore": "もっと読み込む",
-    "addNewPin": "新規ピン",
-    "addNewPinHint": "コルクボードでカードを作成し、📌 ボタンでピン止めしてください",
-    "back": "戻る",
-    "loadError": "ピン止めカードの取得に失敗しました",
-    "unpinSuccess": "ピン止めを外しました",
-    "unpinError": "ピン止めの解除に失敗しました",
-    "deleteConfirm": "このカードを削除しますか？この操作は取り消せません。",
-    "deleteSuccess": "カードを削除しました",
-    "deleteError": "カードの削除に失敗しました",
-    "editTitle": "ピン止めメモを編集",
-    "editUserNoteLabel": "メモ",
-    "editUserNotePlaceholder": "このカードに付けるメモ（任意）",
-    "saveSuccess": "メモを保存しました",
-    "saveError": "メモの保存に失敗しました",
-    "boardLabel": "ボード: {boardName}",
-    "pinnedAtLabel": "ピン止め: {datetime}",
-    "noAccessLabel": "閲覧権限なし",
-    "deletedRefLabel": "参照元は削除されました",
-    "navigationFailed": "このカードの参照先にアクセスできません",
-    "ariaUnpin": "ピン止めを外す",
-    "ariaEdit": "メモを編集",
-    "ariaDelete": "カードを削除",
-    "ariaNavigate": "参照先を開く",
+    "pageTitle": "내 코르크보드",
+    "totalCount": "전체 {count}건",
+    "sortByPinnedAt": "고정 일시 내림차순",
+    "filterByBoard": "보드로 필터링",
+    "allBoards": "전체 보드",
+    "loadMore": "더 불러오기",
+    "addNewPin": "새 고정",
+    "addNewPinHint": "코르크보드에서 카드를 만들고 📌 버튼으로 고정하세요",
+    "back": "뒤로가기",
+    "loadError": "고정된 카드를 불러오지 못했습니다",
+    "unpinSuccess": "고정이 해제되었습니다",
+    "unpinError": "고정 해제에 실패했습니다",
+    "deleteConfirm": "이 카드를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+    "deleteSuccess": "카드가 삭제되었습니다",
+    "deleteError": "카드 삭제에 실패했습니다",
+    "editTitle": "고정 메모 편집",
+    "editUserNoteLabel": "메모",
+    "editUserNotePlaceholder": "이 카드에 붙일 메모（선택사항）",
+    "saveSuccess": "메모가 저장되었습니다",
+    "saveError": "메모 저장에 실패했습니다",
+    "boardLabel": "보드: {boardName}",
+    "pinnedAtLabel": "고정: {datetime}",
+    "noAccessLabel": "열람 권한 없음",
+    "deletedRefLabel": "참조 원본이 삭제되었습니다",
+    "navigationFailed": "이 카드의 참조 대상에 접근할 수 없습니다",
+    "ariaUnpin": "고정 해제",
+    "ariaEdit": "메모 편집",
+    "ariaDelete": "카드 삭제",
+    "ariaNavigate": "참조 대상 열기",
     "scopePersonal": "개인",
     "scopeTeam": "팀",
     "scopeOrganization": "조직",
@@ -1004,159 +1277,207 @@
       "event": "이벤트 상세 URL(예: /events/77)의 숫자 ID를 입력하세요.",
       "document": "문서 상세 URL(예: /documents/55)의 숫자 ID를 입력하세요.",
       "url": "URL 카드를 사용하려면 위의 「카드 종류」를 URL로 변경하세요."
+    },
+    "guide": {
+      "title": "내 코크보드 사용법",
+      "description": "각 코크보드에서 고정한 카드를 한 곳에 모아 볼 수 있습니다.",
+      "what": {
+        "title": "내 코크보드란",
+        "body": "각 보드에서 📌 고정한 카드가 이 화면에 모여 최신순으로 표시됩니다."
+      },
+      "open": {
+        "title": "카드 열기",
+        "body": "카드를 탭하면 참조 대상으로 이동합니다.",
+        "steps": {
+          "step1": "카드를 탭하면 원래 게시물·파일·이벤트 등으로 이동합니다.",
+          "step2": "URL 카드는 새 탭에서 열립니다.",
+          "step3": "열람 권한을 잃은 카드는 열 수 없습니다(“열람 권한 없음”으로 표시)."
+        }
+      },
+      "editNote": {
+        "title": "메모 편집",
+        "body": "카드에 메모를 붙일 수 있습니다.",
+        "steps": {
+          "step1": "카드 오른쪽 위 연필 버튼을 누릅니다.",
+          "step2": "메모를 입력하고 저장합니다.",
+          "step3": "저장한 메모는 포스트잇처럼 카드에 표시됩니다."
+        }
+      },
+      "unpinDelete": {
+        "title": "고정 해제 / 삭제",
+        "body": "필요 없는 카드를 목록에서 제거하거나 삭제합니다.",
+        "steps": {
+          "step1": "📌 버튼으로 고정을 해제하면 이 목록에서 제외됩니다(원래 보드의 카드는 남음).",
+          "step2": "🗑 버튼으로 카드를 삭제합니다. 삭제는 취소할 수 없습니다."
+        }
+      },
+      "filterAndPin": {
+        "title": "필터 / 새 고정",
+        "body": "표시할 카드를 좁히거나 새로 고정합니다.",
+        "steps": {
+          "step1": "툴바의 보드 선택으로 특정 보드의 카드만 표시합니다.",
+          "step2": "“더 불러오기”로 다음 카드를 추가 표시합니다.",
+          "step3": "“새 고정” 버튼으로 코크보드로 이동해 카드를 📌 고정합니다."
+        }
+      }
     }
   },
   "schedule": {
     "filter": {
       "allTeamsOrgs": "팀・조직 (전체)",
       "selectScope": "생성 대상 선택"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "개인",
+        "unknown": "기타 일정",
+        "loadError": {
+          "summary": "레이어 목록을 불러오지 못했습니다",
+          "detail": "팀・조직 표시 전환을 일시적으로 사용할 수 없습니다. 일정은 계속 표시됩니다. 잠시 후 다시 시도해 주세요."
+        }
+      }
     }
   },
   "handoff": {
     "button": {
-      "passToOther": "他のメンバーに渡す"
+      "passToOther": "다른 회원에게 넘기기"
     },
     "dialog": {
-      "title": "TODO を渡す"
+      "title": "할 일 넘기기"
     },
     "field": {
-      "recipients": "宛先メンバー",
-      "recipientsPlaceholder": "メンバーを選択",
-      "statusLabel": "ステータス",
-      "message": "メッセージ（任意）",
-      "messagePlaceholder": "添えメッセージを入力（任意・500文字まで）"
+      "recipients": "수신 회원",
+      "recipientsPlaceholder": "회원 선택",
+      "statusLabel": "상태",
+      "message": "메시지（선택사항）",
+      "messagePlaceholder": "메시지 입력（선택사항，최대 500자）"
     },
     "confirm": {
-      "title": "確認",
-      "body": "{names} に「{title}」を渡します。ステータス: 「{label}」。よろしいですか？",
-      "button": "渡す",
-      "recipientSingle": "{name}さん",
-      "recipientWithOthers": "{name}さん 他{count}名"
+      "title": "확인",
+      "body": "{names}에게 「{title}」을（를） 넘깁니다. 상태: 「{label}」. 계속하시겠습니까？",
+      "button": "넘기기",
+      "recipientSingle": "{name}님",
+      "recipientWithOthers": "{name}님 외 {count}명"
     },
-    "success": "TODO を渡しました",
+    "success": "할 일이 넘겨졌습니다",
     "error": {
-      "loadMembers": "メンバー一覧の取得に失敗しました",
-      "loadLabels": "ステータスラベルの取得に失敗しました",
-      "loadHistory": "履歴の取得に失敗しました",
-      "recipientsRequired": "宛先メンバーを選択してください",
-      "labelRequired": "ステータスラベルを選択してください",
-      "notAllowedPersonal": "個人 TODO はキャッチボールできません",
-      "invalidRecipient": "宛先メンバーが見つかりません",
-      "labelScopeMismatch": "指定したラベルはこの TODO のスコープでは使用できません",
-      "milestoneLocked": "マイルストーンロック中の TODO は渡せません",
-      "validation": "入力内容に不備があります",
-      "notFound": "TODO が見つかりません（削除されたか、権限がない可能性があります）",
-      "generic": "TODO の引き渡しに失敗しました"
+      "loadMembers": "회원 목록을 불러오지 못했습니다",
+      "loadLabels": "상태 레이블을 불러오지 못했습니다",
+      "loadHistory": "기록을 불러오지 못했습니다",
+      "recipientsRequired": "수신 회원을 선택해 주세요",
+      "labelRequired": "상태 레이블을 선택해 주세요",
+      "notAllowedPersonal": "개인 할 일은 넘길 수 없습니다",
+      "invalidRecipient": "수신 회원을 찾을 수 없습니다",
+      "labelScopeMismatch": "지정한 레이블은 이 할 일의 범위에서 사용할 수 없습니다",
+      "milestoneLocked": "마일스톤이 잠긴 할 일은 넘길 수 없습니다",
+      "validation": "입력 내용에 문제가 있습니다",
+      "notFound": "할 일을 찾을 수 없습니다（삭제되었거나 권한이 없을 수 있습니다）",
+      "generic": "할 일 넘기기에 실패했습니다"
     },
     "timeline": {
-      "title": "キャッチボール履歴",
-      "empty": "まだ履歴はありません",
-      "deletedLabel": "（削除済み）"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "TODOが渡されました",
-      "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
+      "title": "전달 기록",
+      "empty": "아직 기록이 없습니다",
+      "deletedLabel": "（삭제됨）"
     }
   },
   "common": {
-    "cancel": "キャンセル",
+    "cancel": "취소",
+    "search": "검색",
     "resume": {
-      "title": "履歴書・職務経歴書",
-      "listTitle": "履歴書バージョン一覧",
-      "createNew": "新規作成",
-      "edit": "編集",
-      "duplicate": "複製",
-      "delete": "削除",
+      "title": "이력서・직무경력서",
+      "listTitle": "이력서 버전 목록",
+      "createNew": "새로 만들기",
+      "edit": "편집",
+      "duplicate": "복제",
+      "delete": "삭제",
       "save": "저장",
-      "saved": "保存しました",
-      "saving": "保存中...",
-      "conflictError": "編集が競合しました。最新を再取得します",
-      "preview": "プレビュー",
-      "export": "出力",
-      "exportPdf": "PDFダウンロード",
-      "exportExcel": "Excelダウンロード",
-      "rirekisho": "履歴書",
-      "shokumukeirekisho": "職務経歴書",
-      "educations": "学歴",
-      "careers": "職歴",
-      "qualifications": "免許・資格",
-      "skills": "活かせるスキル",
-      "addRow": "追加",
-      "deleteRow": "削除",
-      "isCurrent": "在職中",
-      "includeInRirekisho": "履歴書に含める",
-      "includeInShokumukeireki": "職務経歴書に含める",
-      "western": "西暦",
-      "japanese": "和暦",
-      "photoUpload": "証明写真",
-      "uploadPhoto": "写真を選択",
-      "deletePhoto": "写真を削除",
-      "noVersions": "まだ履歴書がありません。新規作成してください",
-      "versionCount": "{n}件のバージョン",
-      "confirmDelete": "この履歴書バージョンを削除しますか？",
-      "motivation": "志望動機",
-      "selfPr": "自己PR・特技・趣味",
-      "personalRequest": "本人希望記入欄",
-      "careerSummary": "職務要約",
-      "skillsSummary": "活かせる経験・知識・技術",
-      "profileNote": "氏名・生年月日・性別はプロフィールから自動補完されます",
-      "readOnlyField": "プロフィールで変更できます",
-      "loadError": "履歴書の読み込みに失敗しました",
-      "saveError": "保存に失敗しました",
-      "deleteError": "削除に失敗しました",
-      "duplicateError": "複製に失敗しました",
-      "exportError": "出力に失敗しました",
-      "photoUploadError": "写真のアップロードに失敗しました",
-      "photoDeleteError": "写真の削除に失敗しました",
-      "deleteSuccess": "削除しました",
-      "duplicateSuccess": "複製しました",
-      "exportSuccess": "ダウンロードの準備ができました",
-      "photoUploadSuccess": "写真をアップロードしました",
-      "photoDeleteSuccess": "写真を削除しました",
-      "previewPdf": "PDF プレビュー",
-      "downloadPdf": "PDF ダウンロード",
-      "downloadExcel": "Excel ダウンロード",
-      "entryYear": "年",
-      "entryMonth": "月",
-      "endYear": "退職年",
-      "endMonth": "退職月",
-      "companyName": "会社名",
-      "department": "部署・役職",
-      "employmentType": "雇用形態",
-      "businessSummary": "事業内容",
-      "jobDescription": "職務内容",
-      "achievements": "実績・成果",
-      "qualificationName": "資格・免許名",
-      "note": "補足",
-      "skillName": "スキル名",
-      "skillLevel": "習熟度",
+      "saved": "저장됨",
+      "saving": "저장 중...",
+      "conflictError": "편집 충돌이 발생했습니다. 최신 버전을 다시 불러옵니다",
+      "preview": "미리보기",
+      "export": "내보내기",
+      "exportPdf": "PDF 다운로드",
+      "exportExcel": "Excel 다운로드",
+      "rirekisho": "이력서",
+      "shokumukeirekisho": "직무경력서",
+      "educations": "학력",
+      "careers": "직무 경력",
+      "qualifications": "면허・자격증",
+      "skills": "활용 가능한 기술",
+      "addRow": "추가",
+      "deleteRow": "삭제",
+      "isCurrent": "재직 중",
+      "includeInRirekisho": "이력서에 포함",
+      "includeInShokumukeireki": "직무경력서에 포함",
+      "western": "서력",
+      "japanese": "일본 연호",
+      "photoUpload": "증명사진",
+      "uploadPhoto": "사진 선택",
+      "deletePhoto": "사진 삭제",
+      "noVersions": "아직 이력서가 없습니다. 새로 만들어 주세요",
+      "versionCount": "{n}개의 버전",
+      "confirmDelete": "이 이력서 버전을 삭제하시겠습니까？",
+      "motivation": "지원 동기",
+      "selfPr": "자기소개・특기・취미",
+      "personalRequest": "희망 사항",
+      "careerSummary": "직무 요약",
+      "skillsSummary": "활용 가능한 경험・지식・기술",
+      "profileNote": "이름・생년월일・성별은 프로필에서 자동으로 채워집니다",
+      "readOnlyField": "프로필에서 변경할 수 있습니다",
+      "loadError": "이력서를 불러오지 못했습니다",
+      "saveError": "저장 실패",
+      "deleteError": "삭제 실패",
+      "duplicateError": "복제 실패",
+      "exportError": "내보내기 실패",
+      "photoUploadError": "사진 업로드 실패",
+      "photoDeleteError": "사진 삭제 실패",
+      "deleteSuccess": "삭제됨",
+      "duplicateSuccess": "복제됨",
+      "exportSuccess": "다운로드 준비 완료",
+      "photoUploadSuccess": "사진이 업로드되었습니다",
+      "photoDeleteSuccess": "사진이 삭제되었습니다",
+      "previewPdf": "PDF 미리보기",
+      "downloadPdf": "PDF 다운로드",
+      "downloadExcel": "Excel 다운로드",
+      "entryYear": "년",
+      "entryMonth": "월",
+      "endYear": "퇴직 연도",
+      "endMonth": "퇴직 월",
+      "companyName": "회사명",
+      "department": "부서・직위",
+      "employmentType": "고용 형태",
+      "businessSummary": "사업 내용",
+      "jobDescription": "직무 내용",
+      "achievements": "실적・성과",
+      "qualificationName": "자격・면허명",
+      "note": "비고",
+      "skillName": "기술명",
+      "skillLevel": "숙련도",
       "skillLevels": {
-        "BEGINNER": "初心者",
-        "INTERMEDIATE": "中級",
-        "ADVANCED": "上級",
-        "EXPERT": "エキスパート"
+        "BEGINNER": "초급",
+        "INTERMEDIATE": "중급",
+        "ADVANCED": "고급",
+        "EXPERT": "전문가"
       },
-      "currentAddress": "現住所",
-      "currentAddressKana": "現住所（ふりがな）",
-      "contactAddress": "連絡先住所",
-      "contactAddressKana": "連絡先住所（ふりがな）",
-      "contactPhone": "連絡先電話番号",
-      "contactEmail": "連絡先メールアドレス",
-      "commuteMinutes": "通勤時間（分）",
-      "dependentsCount": "扶養家族数（配偶者を除く）",
-      "hasSpouse": "配偶者の有無",
-      "spouseSupport": "配偶者の扶養義務",
-      "headerSection": "基本情報",
-      "eraFormat": "年表記",
-      "versionTitle": "バージョン名",
-      "moveUp": "上へ",
-      "moveDown": "下へ",
-      "conflictRetry": "再取得する",
-      "previewLoading": "プレビューを生成中...",
-      "exportLoading": "出力ファイルを生成中...",
-      "previewError": "プレビューの生成に失敗しました",
+      "currentAddress": "현재 주소",
+      "currentAddressKana": "현재 주소（후리가나）",
+      "contactAddress": "연락처 주소",
+      "contactAddressKana": "연락처 주소（후리가나）",
+      "contactPhone": "연락처 전화번호",
+      "contactEmail": "연락처 이메일",
+      "commuteMinutes": "통근 시간（분）",
+      "dependentsCount": "부양가족 수（배우자 제외）",
+      "hasSpouse": "배우자 유무",
+      "spouseSupport": "배우자 부양 의무",
+      "headerSection": "기본 정보",
+      "eraFormat": "연도 형식",
+      "versionTitle": "버전명",
+      "moveUp": "위로",
+      "moveDown": "아래로",
+      "conflictRetry": "다시 불러오기",
+      "previewLoading": "미리보기 생성 중...",
+      "exportLoading": "내보내기 파일 생성 중...",
+      "previewError": "미리보기 생성 실패",
       "backToList": "목록으로 돌아가기",
       "backToEditor": "에디터로 돌아가기",
       "description": "내용",
@@ -1169,6 +1490,25 @@
       "skillsSummaryHint": "활용 가능한 경험·지식·기술을 자유롭게 기술해 주세요（구조화된 스킬은 아래 스킬 섹션에 입력）",
       "excelPreviewUnavailable": "브라우저에서 Excel 파일을 미리 볼 수 없습니다",
       "downloadLabel": "{format} 다운로드（{type}）"
+    },
+    "menu": "메뉴",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "서포터를 그만두시겠습니까？",
+      "supporter_cancel_confirm_body": "{name}의 서포터를 그만둡니다. 괜찮으신가요？",
+      "supporter_cancel_action": "그만두기",
+      "supporter_registered": "서포터로 등록했습니다",
+      "supporter_applied": "서포터 신청을 보냈습니다",
+      "supporter_canceled": "서포터를 그만두었습니다",
+      "leave_action": "나가기",
+      "load_error_title": "정보를 가져올 수 없습니다",
+      "load_error_body": "잠시 후 다시 시도해 주세요. 권한이 없으면 표시되지 않을 수 있습니다.",
+      "back_to_dashboard": "대시보드로 돌아가기",
+      "retry": "다시 시도",
+      "slow_loading": "로딩이 지연되고 있습니다"
+    },
+    "unsavedChanges": {
+      "title": "저장되지 않은 변경 사항",
+      "confirmLeave": "저장되지 않은 변경 사항이 있습니다. 이 페이지를 벗어나면 입력한 내용이 사라집니다. 계속하시겠습니까?"
     }
   },
   "teamHub": {
@@ -1188,7 +1528,7 @@
     "becomeSupporter": "서포터 되기",
     "supporterSuccess": "서포터로 등록했습니다",
     "supporterError": "팔로우에 실패했습니다",
-    "folders": "フォルダ整理"
+    "folders": "폴더 정리"
   },
   "orgHub": {
     "pageTitle": "내 조직",
@@ -1207,23 +1547,23 @@
     "becomeSupporter": "서포터 되기",
     "supporterSuccess": "서포터로 등록했습니다",
     "supporterError": "팔로우에 실패했습니다",
-    "folders": "フォルダ整理"
+    "folders": "폴더 정리"
   },
   "scopeFolder": {
-    "folders": "フォルダ",
-    "addFolder": "フォルダを追加",
-    "editFolder": "フォルダを編集",
-    "deleteFolder": "フォルダを削除",
-    "deleteConfirm": "フォルダを削除しますか？チームはフォルダから外れますが、削除されません。",
-    "folderName": "フォルダ名",
-    "folderColor": "フォルダカラー",
-    "uncategorized": "未分類",
-    "moveToFolder": "フォルダへ移動",
-    "removeFromFolder": "フォルダから外す",
-    "noFolders": "フォルダはまだありません",
+    "folders": "폴더",
+    "addFolder": "폴더 추가",
+    "editFolder": "폴더 편집",
+    "deleteFolder": "폴더 삭제",
+    "deleteConfirm": "이 폴더를 삭제하시겠습니까? 팀은 폴더에서 제거되지만 삭제되지는 않습니다.",
+    "folderName": "폴더명",
+    "folderColor": "폴더 색상",
+    "uncategorized": "미분류",
+    "moveToFolder": "폴더로 이동",
+    "removeFromFolder": "폴더에서 제거",
+    "noFolders": "아직 폴더가 없습니다",
     "emptyFolder": "이 폴더는 비어 있습니다",
-    "limitExceeded": "フォルダは最大20個まで作成できます",
-    "nameDuplicate": "同じ名前のフォルダが既に存在します",
+    "limitExceeded": "폴더는 최대 20개까지 만들 수 있습니다",
+    "nameDuplicate": "같은 이름의 폴더가 이미 존재합니다",
     "title": "내 폴더",
     "untagged": "미분류",
     "all": "전체",
@@ -1286,11 +1626,21 @@
       "feedback": "피드백",
       "reports": "리포트",
       "advertisers": "광고주 관리",
+      "adRateCards": "광고 요금 카드",
+      "adCreditLimitRequests": "광고 여신 한도 신청",
+      "affiliateSettings": "제휴 설정",
       "auditLogs": "감사 로그",
       "shiftBudget": "교대 예산",
       "betaRestriction": "베타 제한",
       "errorReports": "오류 보고서",
-      "gdprPurge": "GDPR 삭제 현황"
+      "gdprPurge": "GDPR 삭제 현황",
+      "feedbackInbox": "의견함 (전체)",
+      "billing": "결제 마스터 관리",
+      "betaPerks": "ベータ特典管理"
+    },
+    "impersonation": {
+      "banner": "관리자 위장 중: {label}",
+      "exit": "위장 종료"
     },
     "businessAlert": {
       "title": "업무 알림",
@@ -1351,7 +1701,78 @@
     "addRecord": "기록 추가",
     "participantCount": "참가자 {count}명",
     "noRecords": "활동 기록이 없습니다",
-    "loadError": "활동 기록을 불러오지 못했습니다"
+    "loadError": "활동 기록을 불러오지 못했습니다",
+    "create": {
+      "dialogTitle": "활동 기록 추가",
+      "templateLabel": "템플릿",
+      "templatePlaceholder": "템플릿 선택",
+      "noTemplatesTitle": "템플릿이 없습니다",
+      "noTemplatesBody": "활동 기록을 작성하려면 먼저 템플릿을 만들어 주세요.",
+      "goToTemplates": "템플릿 만들기",
+      "titleLabel": "제목",
+      "titlePlaceholder": "활동 제목",
+      "dateLabel": "활동일",
+      "descriptionLabel": "설명(선택)",
+      "visibilityLabel": "공개 범위",
+      "visibilityPublic": "공개",
+      "visibilityMembersOnly": "멤버 전용",
+      "requiredFieldError": "필수 항목을 입력해 주세요",
+      "saveSuccess": "활동 기록을 추가했습니다",
+      "saveError": "활동 기록 추가에 실패했습니다",
+      "submit": "추가",
+      "scopeResolveError": "대상을 확인하지 못했습니다",
+      "templatesLoadError": "템플릿을 불러오지 못했습니다",
+      "draftHint": "제목과 활동 날짜만 입력해도 임시 저장할 수 있습니다. 템플릿과 커스텀 항목은 나중에 추가할 수 있습니다.",
+      "saveDraft": "임시 저장",
+      "draftSaved": "임시 저장되었습니다",
+      "draftRestored": "이전 입력 내용을 복원했습니다",
+      "draftSuccess": "임시 저장으로 저장했습니다"
+    },
+    "statusLabel": {
+      "DRAFT": "임시저장",
+      "PUBLISHED": "공개됨"
+    },
+    "list": {
+      "filterAll": "전체",
+      "filterDraft": "임시저장",
+      "editDraft": "편집하여 공개"
+    },
+    "publish": {
+      "success": "활동 기록을 공개했습니다",
+      "error": "공개에 실패했습니다"
+    },
+    "guide": {
+      "title": "활동 기록 사용 방법",
+      "description": "팀이나 조직의 활동(연습, 경기, 이벤트 등)을 기록해 되돌아보거나 공유할 수 있습니다.",
+      "list": {
+        "title": "기록 보기",
+        "body": "활동은 최신순으로 카드 형태로 표시됩니다. 제목, 활동일, 장소, 참가 인원을 한눈에 확인할 수 있습니다. '공개'로 설정된 기록에는 공유 버튼이 표시되어 링크로 외부 공유가 가능합니다."
+      },
+      "add": {
+        "title": "기록 추가하기",
+        "body": "오른쪽 상단의 '기록 추가' 버튼을 눌러 새로운 활동 기록을 만들 수 있습니다.",
+        "steps": {
+          "step1": "오른쪽 상단의 '기록 추가'를 누릅니다",
+          "step2": "사용할 템플릿을 선택합니다",
+          "step3": "제목과 활동일을 입력합니다 (모두 필수)",
+          "step4": "공개 범위를 선택합니다 (멤버만 / 공개)",
+          "step5": "템플릿의 커스텀 항목이 있으면 입력합니다",
+          "step6": "'추가'를 누르면 목록에 등록됩니다"
+        }
+      },
+      "template": {
+        "title": "템플릿이 필요할 때",
+        "body": "기록을 작성하려면 템플릿이 필요합니다. 템플릿이 없으면 입력 폼 대신 안내 화면이 표시됩니다. 팀의 경우 '활동 템플릿' 페이지에서 먼저 템플릿을 하나 만든 후 기록을 추가하세요."
+      },
+      "visibility": {
+        "title": "공개 범위 (누가 볼 수 있는지)",
+        "members_only_label": "멤버만",
+        "members_only_desc": "팀이나 조직의 참여자만 기록을 볼 수 있습니다.",
+        "public_label": "공개",
+        "public_desc": "링크를 아는 누구나 볼 수 있습니다. 목록에 공유 버튼이 표시되어 외부 공유가 가능합니다.",
+        "note": "공개 범위의 기본값은 템플릿 설정을 따릅니다."
+      }
+    }
   },
   "dashboard": {
     "team_reservation_link": "예약 관리"
@@ -1377,21 +1798,21 @@
     "rateLimitExceeded": "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요"
   },
   "publicTeamDetail": {
-    "loginToSeeMembers": "メンバー一覧を見るにはログインしてください",
-    "loginToSeeAnnouncements": "お知らせを見るにはログインしてください",
-    "loginToSeeChat": "チャットを見るにはログインしてください",
-    "loginToSeeMore": "もっと見るにはログイン",
-    "loginCtaDescription": "メンバー一覧、お知らせ、チャット、詳細情報はログインしてご覧いただけます",
-    "loginButton": "ログイン",
-    "signupButton": "新規登録",
-    "mapTitle": "店舗の場所",
-    "noMap": "地図情報なし",
-    "philosophyTitle": "理念",
-    "establishedLabel": "設立",
-    "homepageLabel": "公式サイト",
-    "memberCountSuffix": "名のスタッフ",
-    "backToSearch": "店舗一覧に戻る",
-    "notFound": "店舗が見つかりません"
+    "loginToSeeMembers": "회원 목록을 보려면 로그인하세요",
+    "loginToSeeAnnouncements": "공지사항을 보려면 로그인하세요",
+    "loginToSeeChat": "채팅을 보려면 로그인하세요",
+    "loginToSeeMore": "더 보려면 로그인",
+    "loginCtaDescription": "회원 목록, 공지사항, 채팅, 상세 정보는 로그인 후 확인하실 수 있습니다",
+    "loginButton": "로그인",
+    "signupButton": "회원가입",
+    "mapTitle": "매장 위치",
+    "noMap": "지도 정보 없음",
+    "philosophyTitle": "이념",
+    "establishedLabel": "설립",
+    "homepageLabel": "공식 사이트",
+    "memberCountSuffix": "명의 직원",
+    "backToSearch": "매장 목록으로 돌아가기",
+    "notFound": "매장을 찾을 수 없습니다"
   },
   "favorites": {
     "title": "즐겨찾기",
@@ -1416,56 +1837,357 @@
     "saveError": "저장에 실패했습니다",
     "removeConfirm": "정말로 삭제하시겠습니까?",
     "dragHandle": "순서 변경",
+    "labelFavorited": "즐겨찾기됨",
     "entityType": {
       "TEAM": "팀",
       "ORGANIZATION": "조직",
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "작성자",
       "VILLAGE": "마을"
-    }
+    },
+    "restoredToast": "즐겨찾기로 복원했습니다",
+    "restoreFailed": "실행 취소할 수 없습니다"
   },
   "succession": {
     "legalFilings": {
-      "title": "法的手続き準備",
-      "create": "新規起票",
-      "filingType": "申立種別",
-      "absenteePropertyManager": "不在者財産管理人選任申立",
-      "inheritanceLiquidator": "相続財産清算人選任申立",
-      "buildEvidence": "証拠 ZIP 生成",
-      "downloadEvidence": "証拠 ZIP ダウンロード",
-      "evidenceNotReady": "証拠 ZIP 未生成",
-      "warningLegalCheck": "本機能は v1（弁護士監修なし）です。実際の提出前に弁護士へ確認してください。",
-      "residentRegistryId": "居住者台帳 ID",
-      "dwellingUnitId": "居室 ID",
-      "note": "備考",
-      "createdAt": "起票日時",
-      "evidenceBuiltAt": "証拠 ZIP 生成日時",
-      "externalCaseNumber": "外部受理番号",
-      "filedExternallyAt": "外部提出日時",
-      "action": "操作",
-      "cancel": "キャンセル",
-      "submit": "起票する",
-      "createSuccess": "法的手続きを起票しました",
-      "createError": "起票に失敗しました",
-      "evidenceBuildSuccess": "証拠 ZIP を生成しました",
-      "evidenceBuildError": "証拠 ZIP の生成に失敗しました",
-      "downloadError": "ダウンロード URL の取得に失敗しました",
-      "fetchError": "法的手続き一覧の取得に失敗しました",
-      "empty": "法的手続きはまだありません"
+      "title": "법적 절차 준비",
+      "create": "신규 신청",
+      "filingType": "신청 유형",
+      "absenteePropertyManager": "부재자 재산관리인 선임 신청",
+      "inheritanceLiquidator": "상속재산 청산인 선임 신청",
+      "buildEvidence": "증거 ZIP 생성",
+      "downloadEvidence": "증거 ZIP 다운로드",
+      "evidenceNotReady": "증거 ZIP 미생성",
+      "warningLegalCheck": "이 기능은 v1（변호사 감수 없음）입니다. 실제 제출 전에 변호사에게 확인해 주세요.",
+      "residentRegistryId": "주민 대장 ID",
+      "dwellingUnitId": "거실 ID",
+      "note": "비고",
+      "createdAt": "신청 일시",
+      "evidenceBuiltAt": "증거 ZIP 생성 일시",
+      "externalCaseNumber": "외부 접수 번호",
+      "filedExternallyAt": "외부 제출 일시",
+      "action": "작업",
+      "cancel": "취소",
+      "submit": "신청하기",
+      "createSuccess": "법적 절차가 신청되었습니다",
+      "createError": "신청에 실패했습니다",
+      "evidenceBuildSuccess": "증거 ZIP이 생성되었습니다",
+      "evidenceBuildError": "증거 ZIP 생성에 실패했습니다",
+      "downloadError": "다운로드 URL 취득 실패",
+      "fetchError": "법적 절차 목록을 불러오지 못했습니다",
+      "empty": "아직 법적 절차가 없습니다"
     }
   },
   "team": {
-    "mapEmbedUrlLabel": "店舗地図（Google Maps 埋め込み URL）",
+    "mapEmbedUrlLabel": "매장 지도（Google Maps 삽입 URL）",
     "mapEmbedUrlPlaceholder": "https://www.google.com/maps/embed?...",
-    "mapEmbedUrlWarning": "⚠️ この URL は未ログインユーザーにも公開されます",
-    "mapEmbedUrlHelp": "Google Maps で「共有 > 地図を埋め込む > HTML をコピー」して src= の URL を貼り付けてください",
-    "mapEmbedUrlInvalidFormat": "Google Maps 埋め込み URL（https://www.google.com/maps/embed?...）の形式である必要があります",
-    "mapEmbedUrlSaved": "店舗地図 URL を保存しました"
+    "mapEmbedUrlWarning": "⚠️ 이 URL은 비로그인 사용자에게도 공개됩니다",
+    "mapEmbedUrlHelp": "Google Maps에서 「공유 > 지도 삽입 > HTML 복사」하여 src= URL을 붙여넣기 해 주세요",
+    "mapEmbedUrlInvalidFormat": "Google Maps 삽입 URL（https://www.google.com/maps/embed?...）형식이어야 합니다",
+    "mapEmbedUrlSaved": "매장 지도 URL이 저장되었습니다",
+    "timezone": {
+      "label": "예약 시간대",
+      "help": "예약 시작 및 종료 시간을 해석하는 IANA 시간대입니다.",
+      "placeholder": "예: Asia/Tokyo",
+      "invalid": "유효한 IANA 시간대를 입력하세요",
+      "saved": "예약 시간대를 저장했습니다"
+    },
+    "regionCode": {
+      "label": "소재지(도도부현・시구정촌)",
+      "help": "도도부현과 시구정촌을 선택하면 지역 검색과 모집 게시의 초기값으로 사용됩니다.",
+      "prefecture": "도도부현",
+      "city": "시구정촌",
+      "prefecturePlaceholder": "도도부현 선택",
+      "cityPlaceholder": "시구정촌 선택",
+      "saved": "소재지를 저장했습니다"
+    }
   },
   "event": {
     "chatOpen": "채팅 열기"
   },
   "surveyPage": {
     "bulletinOpen": "게시판에서 토론하기"
+  },
+  "scopeDashboard": {
+    "storageSummary": { "title": "저장 공간", "personal": "개인", "team": "팀", "organization": "조직", "details": "상세 보기", "error": "저장 공간을 불러올 수 없습니다", "retry": "다시 시도", "unconfigured": "할당량이 설정되지 않음", "not_available": "저장 공간 데이터 없음", "meterLabel": "{scope} 저장 공간 사용량", "meterValue": "사용량 {percent}%", "warningTitle": "저장 공간 한도 임박", "warningMessage": "{scope} 사용량이 {percent}%입니다. 유료 요금제 업그레이드를 고려하세요.", "viewPlans": "요금제 보기", "checkStorage": "저장 공간 확인", "cancel": "취소" },
+    "tabs": {
+      "personal": "개인",
+      "team": "팀",
+      "organization": "조직"
+    },
+    "prevPanel": "이전 패널",
+    "nextPanel": "다음 패널",
+    "switchedTo": "{name} 패널로 전환했습니다",
+    "searchTeam": "팀 검색",
+    "searchOrganization": "조직 검색",
+    "tagBar": {
+      "filterAll": "전체",
+      "folderFilter": "폴더로 필터링",
+      "prevPage": "이전 페이지",
+      "nextPage": "다음 페이지",
+      "reorder": "표시 순서 변경",
+      "goToScopePage": "팀/조직 페이지로 이동",
+      "empty": "소속된 팀/조직이 없습니다",
+      "folderEmpty": "이 폴더에 범위가 없습니다",
+      "loadError": "태그 목록을 불러오지 못했습니다"
+    },
+    "orderDialog": {
+      "title": "태그 표시 순서",
+      "save": "저장",
+      "cancel": "취소",
+      "saveError": "표시 순서 저장에 실패했습니다"
+    }
+  },
+  "slug": {
+    "label": "URL（슬러그）",
+    "hint": "팀/조직의 공개 URL에 사용됩니다（예: my-team）. 비워두면 이름에서 자동 생성됩니다.",
+    "placeholder": "my-team",
+    "available": "사용 가능",
+    "unavailable": "이미 사용 중인 슬러그입니다",
+    "checking": "확인 중...",
+    "format": "영소문자, 숫자, 하이픈만 사용 가능（3~30자）",
+    "reason": {
+      "SLUG_REQUIRED": "슬러그를 입력해 주세요",
+      "SLUG_INVALID_FORMAT": "형식이 올바르지 않습니다 (영소문자, 숫자, 하이픈, 3~30자, 앞뒤 및 연속 하이픈 불가)",
+      "SLUG_RESERVED": "예약어이므로 사용할 수 없는 슬러그입니다",
+      "SLUG_ALREADY_TAKEN": "이미 사용 중인 슬러그입니다",
+      "SLUG_RETIRED": "이 슬러그는 과거에 사용되어 재사용할 수 없습니다（리디렉션을 위해 예약됨）"
+    },
+    "rename": {
+      "title": "URL（슬러그）변경",
+      "help": "공개 URL의 슬러그를 변경합니다. 기존 URL은 자동으로 새 URL로 리디렉션됩니다.",
+      "save": "변경",
+      "saved": "URL（슬러그）을 변경했습니다",
+      "saveError": "URL（슬러그）변경에 실패했습니다",
+      "unchanged": "현재 슬러그와 동일합니다（변경 없음）"
+    }
+  },
+  "team_visibility": {
+    "PUBLIC": "공개",
+    "GUESTS_AND_ABOVE": "게스트 이상",
+    "SUPPORTERS_AND_ABOVE": "서포터 이상",
+    "MEMBERS_AND_ABOVE": "멤버 이상"
+  },
+  "module_settings": {
+    "enabled_count": "有効な機能: {count} / {limit}",
+    "fetch_error": "機能一覧の取得に失敗しました",
+    "empty": "現在このスコープで利用できる追加機能はありません",
+    "toggle_success_on": "{name} を有効にしました",
+    "toggle_success_off": "{name} を無効にしました",
+    "badge": {
+      "level_unavailable": "このレベルでは利用できません",
+      "paid_plan": "有料プラン",
+      "limit_reached": "上限（{limit}）に達しています"
+    },
+    "error": {
+      "paid_required": "この機能は有料プランが必要です",
+      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
+      "level_unavailable": "このレベルではこの機能を利用できません",
+      "generic": "機能の切替に失敗しました"
+    }
+  },
+  "module_settings_guide": {
+    "title": "機能設定の使い方",
+    "help_button": "使い方",
+    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "what": {
+      "title": "機能設定とは",
+      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+    },
+    "toggle": {
+      "title": "機能を ON / OFF する",
+      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "steps": {
+        "step1": "一覧から使いたい機能のカードを探す",
+        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
+        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
+        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+      }
+    },
+    "count": {
+      "title": "今いくつ使えるかを確認する",
+      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+    },
+    "restrictions": {
+      "title": "使えないスイッチがあるとき",
+      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "items": {
+        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
+        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
+        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+      }
+    },
+    "empty": {
+      "title": "機能が表示されないとき",
+      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+    },
+    "permission": {
+      "title": "設定できる人",
+      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "대시보드",
+      "info": "기본 정보",
+      "members": "멤버",
+      "invites": "초대",
+      "supporters": "서포터 관리",
+      "modules": "기능 설정"
+    },
+    "action": {
+      "leave_confirm_title": "팀에서 나가기",
+      "leave_confirm_body": "정말 이 팀에서 나가시겠습니까? 이 작업은 취소할 수 없습니다.",
+      "left": "팀에서 나갔습니다"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "대시보드",
+      "info": "기본 정보",
+      "members": "멤버",
+      "member_teams": "소속 팀",
+      "invites": "초대",
+      "permission_groups": "권한 그룹",
+      "supporters": "서포터 관리",
+      "modules": "기능 설정"
+    },
+    "action": {
+      "leave_confirm_title": "조직에서 나가기",
+      "leave_confirm_body": "정말 이 조직에서 나가시겠습니까? 이 작업은 취소할 수 없습니다.",
+      "left": "조직에서 나갔습니다"
+    }
+  },
+  "blog_guide": {
+    "title": "내 블로그 사용법",
+    "description": "기사를 작성하고 팀과 조직 구성원에게 공유할 수 있습니다. 초안으로 저장한 후 준비가 되면 게시하세요.",
+    "what": {
+      "title": "블로그란?",
+      "body": "자신의 생각과 학습을 기사로 작성하여 팀과 조직 구성원에게 공유할 수 있는 곳입니다. 기사는 초안, 게시됨, 예약 게시, 보관됨 상태로 관리할 수 있습니다."
+    },
+    "create": {
+      "title": "기사 작성",
+      "body": "「＋ 새 기사」를 클릭하면 초안 상태의 기사가 생성됩니다. 제목은 나중에 변경할 수 있습니다.",
+      "steps": {
+        "step1": "오른쪽 상단의 「＋ 새 기사」를 클릭",
+        "step2": "기사 제목을 입력（나중에 변경 가능）",
+        "step3": "게시 대상（개인・팀・조직）을 선택",
+        "step4": "「만들고 편집으로」를 클릭하여 편집기로 이동"
+      }
+    },
+    "publish": {
+      "title": "기사 게시",
+      "body": "「내 게시물」의 각 카드에 있는 눈 아이콘을 클릭하면 공개/비공개를 전환할 수 있습니다.",
+      "steps": {
+        "step1": "초안 상태의 기사 카드의 눈 아이콘을 클릭",
+        "step2": "「게시됨」으로 전환되어 팀과 조직 구성원이 열람할 수 있게 됨",
+        "step3": "다시 클릭하면 비공개（초안）로 돌아감"
+      }
+    },
+    "manage": {
+      "title": "기사 관리",
+      "body": "「내 게시물」에는 최신 5개가 가로 스크롤로 표시됩니다. 각 카드의 아이콘으로 편집・삭제할 수 있습니다.",
+      "item_edit": "연필 아이콘 → 기사 내용 편집",
+      "item_delete": "휴지통 아이콘 → 기사 삭제（취소 불가）",
+      "item_count": "오른쪽 상단의 게시물 수 확인",
+      "item_all": "전체 게시물은 「모두의 게시물」 섹션에서 목록으로 표시"
+    },
+    "settings": {
+      "title": "블로그 설정",
+      "body": "블로그 제목, 설명, 자기 검토 시간대를 설정할 수 있습니다.",
+      "steps": {
+        "step1": "오른쪽 상단의 「⚙ 블로그 설정」을 클릭",
+        "step2": "블로그 제목・설명을 입력",
+        "step3": "자기 검토 시간대（게시 전 검토 기간）를 설정",
+        "step4": "「설정 저장」을 클릭"
+      }
+    }
+  },
+  "analytics": {
+    "title": "접속 분석",
+    "loadError": "접속 분석 데이터를 불러오는 데 실패했습니다",
+    "empty": "아직 접속 데이터가 없습니다",
+    "summary": {
+      "totalViews": "총 PV",
+      "uniqueVisitors": "순 방문자",
+      "memberViews": "멤버 열람",
+      "guestViews": "게스트 열람"
+    },
+    "export": "데이터 내보내기",
+    "topContent": {
+      "title": "인기 콘텐츠",
+      "empty": "데이터가 없습니다"
+    },
+    "chart": {
+      "views": "페이지뷰",
+      "daily": "일별",
+      "monthly": "월별",
+      "toggle": "표시 전환",
+      "recentDays": "최근 30일간 접속 통계",
+      "monthlyTrend": "월간 접속 추이 통계"
+    },
+    "period": {
+      "allTime": "전체 기간"
+    },
+    "guide": {
+      "page_title": "접속 분석 사용 방법",
+      "what": {
+        "title": "접속 분석이란?",
+        "body": "접속 분석에서는 팀 또는 조직 페이지가 얼마나 조회되고 있는지 확인할 수 있습니다. 멤버와 게스트의 방문 현황을 파악하여 콘텐츠 개선에 활용하세요."
+      },
+      "metrics": {
+        "title": "측정되는 데이터",
+        "total_views": "총 PV: 페이지가 표시된 총 횟수",
+        "unique_visitors": "유니크 방문자: 중복을 제외한 방문자 수",
+        "member_views": "멤버 조회: 멤버에 의한 페이지 뷰 수",
+        "guest_views": "게스트 조회: 게스트(비멤버)에 의한 페이지 뷰 수"
+      },
+      "timing": {
+        "title": "데이터 갱신 타이밍",
+        "body": "접속 데이터는 매일 일괄 처리로 집계됩니다. 당일 데이터는 다음 날 아침에 반영됩니다. 실시간 집계가 아니므로 최근 몇 시간의 접속은 다음 날 이후에 표시됩니다."
+      },
+      "chart": {
+        "title": "그래프 보는 방법",
+        "body": "그래프는 「일별」과 「월별」로 전환하여 표시할 수 있습니다.",
+        "daily_title": "일별 그래프",
+        "daily_desc": "최근 30일간의 일별 페이지 뷰 추이를 표시합니다.",
+        "monthly_title": "월별 그래프",
+        "monthly_desc": "월별 집계 값을 표시합니다. 장기적인 트렌드 파악에 유용합니다."
+      },
+      "top_content": {
+        "title": "인기 콘텐츠",
+        "body": "조회 수가 많은 콘텐츠를 순위 형식으로 표시합니다. 아직 접속 데이터가 없는 경우 \"데이터가 없습니다\"라고 표시되며, 조회가 기록되는 대로 자동으로 순위가 표시됩니다."
+      }
+    }
+  },
+  "comingSoon": {
+    "title": "준비 중",
+    "description": "이 기능은 현재 개발 중입니다. 잠시 후 다시 확인해 주세요."
+  },
+  "transferOwnership": {
+    "sectionTitle": "소유자 이전",
+    "sectionDescription": "관리자(소유자) 권한을 다른 멤버에게 넘깁니다. 이전 후에는 부관리자가 되며 관리자 전용 작업을 할 수 없습니다.",
+    "openButton": "소유자 이전",
+    "dialogTitle": "소유자 이전",
+    "warning": "이 작업은 취소할 수 없습니다. 관리자 권한이 새 소유자에게 이전되며, 되돌리려면 새 소유자의 조작이 필요합니다.",
+    "targetLabel": "새 소유자",
+    "targetPlaceholder": "멤버 선택",
+    "noCandidates": "이전할 수 있는 멤버가 없습니다.",
+    "confirmLabel": "확인을 위해 “{name}” 을(를) 입력하세요",
+    "confirmMismatch": "이름이 일치하지 않습니다.",
+    "cancel": "취소",
+    "submit": "이전",
+    "successTitle": "소유자를 이전했습니다",
+    "successDetail": "관리자 권한이 새 소유자에게 이전되었습니다."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "비공개 기능입니다",
+      "body": "이 기능은 현재 사용할 수 없습니다. 대시보드로 돌아갑니다."
+    },
+    "error": {
+      "fetchFailedTitle": "기능 공개 상태를 확인할 수 없습니다",
+      "fetchFailedBody": "네트워크 오류로 기능의 공개 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요."
+    }
   }
 }

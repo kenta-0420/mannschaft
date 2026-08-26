@@ -2,7 +2,7 @@
 import type { CheckinLocation } from '~/types/member-card'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
 }>()
 
 const memberCardApi = useMemberCardApi()

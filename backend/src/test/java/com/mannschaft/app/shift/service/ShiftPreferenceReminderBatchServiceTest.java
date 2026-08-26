@@ -1,7 +1,9 @@
 package com.mannschaft.app.shift.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.support.ResourceBundleMessageSource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -29,7 +32,9 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,8 +57,15 @@ class ShiftPreferenceReminderBatchServiceTest {
     // Phase 11 事後検分 fixup（2026-05-19）: triggerManualReminder の Valkey 連打防止ロック用 Mock。
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private ValueOperations<String, String> valueOps;
+    @Mock private AccessControlService accessControlService;
 
-    @InjectMocks
+    /**
+     * Issue #2715 CMP-055 ロットC-4: 実物の MessageSource を使う（モックが引数をそのまま返す形だと
+     * 鍵の欠落もフォーマット崩れも検出できないため）。@InjectMocks は @Mock フィールドのみを見るため、
+     * 実物 MessageSource を渡すコンストラクタ手動組み立てへ切り替える。
+     */
+    private ResourceBundleMessageSource messageSource;
+
     private ShiftPreferenceReminderBatchService batchService;
 
     private static final Long SCHEDULE_ID = 1L;
@@ -61,6 +73,20 @@ class ShiftPreferenceReminderBatchServiceTest {
     private static final Long USER_A = 101L;
     private static final Long USER_B = 102L;
     private static final Long USER_C = 103L;
+    private static final Pattern JAPANESE_CHAR = Pattern.compile("[ぁ-ゖァ-ヶ一-龠]");
+
+    @BeforeEach
+    void setUpMessageSource() {
+        messageSource = new ResourceBundleMessageSource();
+        messageSource.setBasenames("messages");
+        messageSource.setDefaultEncoding("UTF-8");
+        messageSource.setUseCodeAsDefaultMessage(false);
+
+        batchService = new ShiftPreferenceReminderBatchService(
+                scheduleRepository, requestRepository, userRoleRepository,
+                notificationHelper, teamShiftSettingsRepository, auditLogService,
+                redisTemplate, accessControlService, messageSource);
+    }
 
     // =========================================================
     // 48h リマインド
@@ -85,14 +111,13 @@ class ShiftPreferenceReminderBatchServiceTest {
 
             batchService.processReminders();
 
-            // 未提出の USER_B・USER_C (2名) に notifyAll が1回呼ばれる
-            verify(notificationHelper).notifyAll(
+            // 未提出の USER_B・USER_C (2名) に notifyAllLocalized が1回呼ばれる
+            verify(notificationHelper).notifyAllLocalized(
                     eq(List.of(USER_B, USER_C)),
                     eq("SHIFT_REQUEST_REMINDER_48H"),
-                    anyString(), anyString(),
                     eq("SHIFT_SCHEDULE"), eq(SCHEDULE_ID),
                     eq(NotificationScopeType.TEAM), eq(TEAM_ID),
-                    anyString(), isNull());
+                    anyString(), isNull(), any());
             // フラグが更新される
             verify(scheduleRepository).save(schedule);
         }
@@ -111,7 +136,8 @@ class ShiftPreferenceReminderBatchServiceTest {
 
             batchService.processReminders();
 
-            verify(notificationHelper, never()).notifyAll(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(notificationHelper, never()).notifyAllLocalized(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any());
         }
 
         @Test
@@ -126,7 +152,7 @@ class ShiftPreferenceReminderBatchServiceTest {
             given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
                     .willReturn(List.of(USER_A));
             doThrow(new RuntimeException("通知エラー")).when(notificationHelper)
-                    .notifyAll(any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .notifyAllLocalized(any(), any(), any(), any(), any(), any(), any(), any(), any());
 
             batchService.processReminders();
 
@@ -158,13 +184,12 @@ class ShiftPreferenceReminderBatchServiceTest {
 
             batchService.processReminders();
 
-            verify(notificationHelper).notifyAll(
+            verify(notificationHelper).notifyAllLocalized(
                     eq(List.of(USER_A, USER_B)),
                     eq("SHIFT_REQUEST_REMINDER"),
-                    anyString(), anyString(),
                     eq("SHIFT_SCHEDULE"), eq(SCHEDULE_ID),
                     eq(NotificationScopeType.TEAM), eq(TEAM_ID),
-                    anyString(), isNull());
+                    anyString(), isNull(), any());
             verify(scheduleRepository).save(schedule);
         }
     }
@@ -207,13 +232,12 @@ class ShiftPreferenceReminderBatchServiceTest {
             assertThat(response.getRemindedCount()).isEqualTo(2);
             assertThat(response.getRemindedUserIds()).containsExactlyInAnyOrder(USER_B, USER_C);
 
-            verify(notificationHelper).notifyAll(
+            verify(notificationHelper).notifyAllLocalized(
                     eq(List.of(USER_B, USER_C)),
                     eq("SHIFT_REQUEST_REMINDER_MANUAL"),
-                    anyString(), anyString(),
                     eq("SHIFT_SCHEDULE"), eq(SCHEDULE_ID),
                     eq(NotificationScopeType.TEAM), eq(TEAM_ID),
-                    anyString(), isNull());
+                    anyString(), isNull(), any());
             verify(auditLogService).record(
                     eq("SHIFT_MANUAL_REMINDER_SENT"),
                     eq(OPERATOR_ID), isNull(), eq(TEAM_ID), isNull(),
@@ -273,6 +297,41 @@ class ShiftPreferenceReminderBatchServiceTest {
                     .extracting("errorCode")
                     .isEqualTo(ShiftErrorCode.INVALID_SCHEDULE_STATUS);
             verifyNoInteractions(notificationHelper, auditLogService);
+        }
+
+        @Test
+        @DisplayName("非権限者（当該チームの ADMIN でない）_COMMON_002 で遮断")
+        void 非権限者_COMMON_002() {
+            ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(accessControlService.isSystemAdmin(OPERATOR_ID)).willReturn(false);
+            doThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .when(accessControlService).checkAdminOrAbove(OPERATOR_ID, TEAM_ID, "TEAM");
+
+            assertThatThrownBy(() -> batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+            // 認可で弾かれるため通知・監査ログは発生しない
+            verifyNoInteractions(notificationHelper, auditLogService);
+        }
+
+        @Test
+        @DisplayName("SYSTEM_ADMIN_短絡でチーム ADMIN チェックを経ずに通過")
+        void SYSTEM_ADMIN_短絡で通過() {
+            ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(accessControlService.isSystemAdmin(OPERATOR_ID)).willReturn(true);
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID))
+                    .willReturn(List.of(buildRequest(SCHEDULE_ID, USER_A)));
+            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+                    .willReturn(List.of(USER_A, USER_B));
+
+            ManualRemindResponse response = batchService.triggerManualReminder(SCHEDULE_ID, OPERATOR_ID);
+
+            assertThat(response.getScheduleId()).isEqualTo(SCHEDULE_ID);
+            // SYSTEM_ADMIN はチーム ADMIN チェックを経由しない
+            verify(accessControlService, never()).checkAdminOrAbove(anyLong(), anyLong(), anyString());
         }
     }
 
@@ -342,5 +401,114 @@ class ShiftPreferenceReminderBatchServiceTest {
                 .userId(userId)
                 .slotDate(LocalDate.now())
                 .build();
+    }
+
+    // =========================================================
+    // Issue #2715 CMP-055 ロットC-4: 通知本文の i18n
+    // =========================================================
+
+    @Nested
+    @DisplayName("通知本文の i18n (Issue #2715 CMP-055 ロットC-4)")
+    class NotificationI18n {
+
+        @Test
+        @DisplayName("48h リマインド: en ロケールで件名・本文が英語になりプレースホルダが残らない")
+        void reminder48h_en() {
+            ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
+            given(scheduleRepository.findFor48hReminder(any(), any())).willReturn(List.of(schedule));
+            given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID)).willReturn(List.of());
+            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID)).willReturn(List.of(USER_A));
+
+            batchService.processReminders();
+
+            org.mockito.ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> captor =
+                    org.mockito.ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
+            verify(notificationHelper).notifyAllLocalized(
+                    any(), eq("SHIFT_REQUEST_REMINDER_48H"),
+                    any(), any(), any(), any(), any(), any(), captor.capture());
+
+            NotificationHelper.LocalizedMessage en = captor.getValue().build(USER_A, Locale.ENGLISH);
+            assertThat(JAPANESE_CHAR.matcher(en.title()).find()).isFalse();
+            // body 中の {0} はスケジュールタイトル（ユーザー入力の日本語）そのものなので、
+            // それを除いた「静的な文言部分」に日本語が残っていないことを検証する（AC-7）。
+            assertThat(JAPANESE_CHAR.matcher(en.body().replace(schedule.getTitle(), "")).find()).isFalse();
+            assertThat(en.title()).isEqualTo("Shift preference submission deadline in 48 hours");
+            assertThat(en.body()).contains("テストシフト").doesNotContain("{0}");
+
+            NotificationHelper.LocalizedMessage ja = captor.getValue().build(USER_A, Locale.JAPANESE);
+            assertThat(ja.title()).isEqualTo("シフト希望の提出期限 48 時間前です");
+            assertThat(ja.body()).contains("テストシフト");
+        }
+
+        @Test
+        @DisplayName("24h リマインド: en ロケールで件名・本文が英語になりプレースホルダが残らない")
+        void reminder24h_en() {
+            given(scheduleRepository.findFor48hReminder(any(), any())).willReturn(List.of());
+            ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
+            given(scheduleRepository.findFor24hReminder(any(), any())).willReturn(List.of(schedule));
+            given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID)).willReturn(List.of());
+            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID)).willReturn(List.of(USER_A));
+
+            batchService.processReminders();
+
+            org.mockito.ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> captor =
+                    org.mockito.ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
+            verify(notificationHelper).notifyAllLocalized(
+                    any(), eq("SHIFT_REQUEST_REMINDER"),
+                    any(), any(), any(), any(), any(), any(), captor.capture());
+
+            NotificationHelper.LocalizedMessage en = captor.getValue().build(USER_A, Locale.ENGLISH);
+            assertThat(JAPANESE_CHAR.matcher(en.title()).find()).isFalse();
+            assertThat(JAPANESE_CHAR.matcher(en.body().replace(schedule.getTitle(), "")).find()).isFalse();
+        }
+
+        @Test
+        @DisplayName("手動リマインド: en ロケールで件名・本文が英語になりプレースホルダが残らない")
+        void manualReminder_en() {
+            ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
+            given(scheduleRepository.findById(SCHEDULE_ID)).willReturn(Optional.of(schedule));
+            given(redisTemplate.opsForValue()).willReturn(valueOps);
+            given(valueOps.setIfAbsent(anyString(), anyString(), any(Duration.class)))
+                    .willReturn(Boolean.TRUE);
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID)).willReturn(List.of());
+            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID)).willReturn(List.of(USER_A));
+
+            batchService.triggerManualReminder(SCHEDULE_ID, 999L);
+
+            org.mockito.ArgumentCaptor<NotificationHelper.LocalizedMessageBuilder> captor =
+                    org.mockito.ArgumentCaptor.forClass(NotificationHelper.LocalizedMessageBuilder.class);
+            verify(notificationHelper).notifyAllLocalized(
+                    any(), eq("SHIFT_REQUEST_REMINDER_MANUAL"),
+                    any(), any(), any(), any(), any(), any(), captor.capture());
+
+            NotificationHelper.LocalizedMessage en = captor.getValue().build(USER_A, Locale.ENGLISH);
+            assertThat(JAPANESE_CHAR.matcher(en.title()).find()).isFalse();
+            assertThat(JAPANESE_CHAR.matcher(en.body().replace(schedule.getTitle(), "")).find()).isFalse();
+            assertThat(en.title()).isEqualTo("Reminder to submit your shift preference");
+        }
+
+        /**
+         * AC-3 番人: 一括通知経路 (notifyAllLocalized) を使う限り、複数受信者ループの外で
+         * バルク locale 解決される（内部の UserLocaleCache が担う）。本テストは、
+         * サービス側が受信者ごとに UserLocaleCache/MessageSource を直接呼ばないこと
+         * （= notifyAllLocalized 1回のみで済むこと）を確認する。
+         */
+        @Test
+        @DisplayName("複数受信者でも notifyAllLocalized は1回のみ呼ばれる（N+1防止）")
+        void 複数受信者でもnotifyAllLocalizedは1回() {
+            ShiftScheduleEntity schedule = buildSchedule(SCHEDULE_ID, TEAM_ID);
+            given(scheduleRepository.findFor48hReminder(any(), any())).willReturn(List.of(schedule));
+            given(teamShiftSettingsRepository.findByTeamId(TEAM_ID)).willReturn(Optional.empty());
+            given(requestRepository.findByScheduleIdOrderBySlotDateAsc(SCHEDULE_ID)).willReturn(List.of());
+            given(userRoleRepository.findUserIdsByScope("TEAM", TEAM_ID))
+                    .willReturn(List.of(USER_A, USER_B, USER_C));
+
+            batchService.processReminders();
+
+            verify(notificationHelper, org.mockito.Mockito.times(1)).notifyAllLocalized(
+                    any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
     }
 }

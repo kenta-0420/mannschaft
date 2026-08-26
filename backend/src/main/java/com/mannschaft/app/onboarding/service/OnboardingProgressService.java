@@ -2,8 +2,6 @@ package com.mannschaft.app.onboarding.service;
 
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.onboarding.OnboardingCompletionType;
 import com.mannschaft.app.onboarding.OnboardingErrorCode;
 import com.mannschaft.app.onboarding.OnboardingMapper;
@@ -16,6 +14,7 @@ import com.mannschaft.app.onboarding.entity.OnboardingStepCompletionEntity;
 import com.mannschaft.app.onboarding.entity.OnboardingTemplateEntity;
 import com.mannschaft.app.onboarding.entity.OnboardingTemplateStepEntity;
 import com.mannschaft.app.onboarding.event.OnboardingCompletedEvent;
+import com.mannschaft.app.onboarding.event.OnboardingReminderNotificationEvent;
 import com.mannschaft.app.onboarding.event.OnboardingStartedEvent;
 import com.mannschaft.app.onboarding.repository.OnboardingProgressRepository;
 import com.mannschaft.app.onboarding.repository.OnboardingStepCompletionRepository;
@@ -23,6 +22,7 @@ import com.mannschaft.app.onboarding.repository.OnboardingTemplateRepository;
 import com.mannschaft.app.onboarding.repository.OnboardingTemplateStepRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -51,8 +51,14 @@ public class OnboardingProgressService {
     private final OnboardingTemplateRepository templateRepository;
     private final OnboardingTemplateStepRepository stepRepository;
     private final OnboardingMapper mapper;
-    private final DomainEventPublisher eventPublisher;
-    private final NotificationHelper notificationHelper;
+    private final DomainEventPublisher domainEventPublisher;
+    /**
+     * Issue #2834 / CMP-056: 付随通知は業務トランザクションの外（AFTER_COMMIT）で発火させるため、
+     * 業務メソッドはイベントを publish するだけに留める（backend/.claudecode.md 原則5）。
+     * 既存の {@link DomainEventPublisher} は {@code DomainEvent} 実装のみを扱うため、
+     * 通知配送イベントは型確立PR #2910 と同じく Spring の {@link ApplicationEventPublisher} で publish する。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * オンボーディングを開始する。ACTIVEテンプレートで進捗を作成。
@@ -91,7 +97,7 @@ public class OnboardingProgressService {
         OnboardingProgressEntity progress = builder.build();
         OnboardingProgressEntity saved = progressRepository.save(progress);
 
-        eventPublisher.publish(new OnboardingStartedEvent(
+        domainEventPublisher.publish(new OnboardingStartedEvent(
                 saved.getId(), userId, scopeType, scopeId));
 
         log.info("オンボーディング開始: progressId={}, userId={}, templateId={}", saved.getId(), userId, template.getId());
@@ -100,6 +106,10 @@ public class OnboardingProgressService {
 
     /**
      * 進捗詳細を取得する（ステップ完了状況含む）。
+     *
+     * <p><b>認可は呼び出し元の責務</b>。{@code OnboardingProgressController}（ADMIN用）は
+     * 呼び出し前に {@code verifyProgressAccess} でスコープ ADMIN を検証する。
+     * メンバー本人向けの入口は {@link #getByIdForMember} を使うこと。</p>
      */
     public OnboardingProgressDetailResponse getById(Long progressId) {
         OnboardingProgressEntity progress = findProgressOrThrow(progressId);
@@ -108,6 +118,21 @@ public class OnboardingProgressService {
         List<OnboardingTemplateStepEntity> steps = stepRepository.findByTemplateIdOrderBySortOrder(template.getId());
         List<OnboardingStepCompletionEntity> completions = stepCompletionRepository.findByProgressId(progressId);
         return buildProgressDetail(progress, template, steps, completions);
+    }
+
+    /**
+     * メンバー本人向けに進捗詳細を取得する（本人所有チェック）。
+     *
+     * <p>認可根治戦役 Wave7: {@code progressId} から進捗エンティティを取得し、
+     * 所有者が操作者本人であることを要求する。本人以外は
+     * {@code ONBOARDING_003}（404・存在秘匿）とする。</p>
+     */
+    public OnboardingProgressDetailResponse getByIdForMember(Long progressId, Long userId) {
+        OnboardingProgressEntity progress = findProgressOrThrow(progressId);
+        if (!progress.getUserId().equals(userId)) {
+            throw new BusinessException(OnboardingErrorCode.ONBOARDING_003);
+        }
+        return getById(progressId);
     }
 
     /**
@@ -197,9 +222,18 @@ public class OnboardingProgressService {
 
     /**
      * メンバー自身の手動完了（MANUAL/URLステップのみ）。
+     *
+     * <p>認可根治戦役 Wave7: {@link #getByIdForMember} と同一の本人チェックを先に適用し、
+     * 進捗の所有者が操作者本人であることを要求する。他人の進捗は
+     * {@code ONBOARDING_003}（404・存在秘匿）とする。</p>
      */
     @Transactional
-    public StepCompletionResponse completeStepByMember(Long progressId, Long stepId) {
+    public StepCompletionResponse completeStepByMember(Long progressId, Long stepId, Long userId) {
+        OnboardingProgressEntity progress = findProgressOrThrow(progressId);
+        if (!progress.getUserId().equals(userId)) {
+            throw new BusinessException(OnboardingErrorCode.ONBOARDING_003);
+        }
+
         OnboardingTemplateStepEntity step = stepRepository.findById(stepId)
                 .orElseThrow(() -> new BusinessException(OnboardingErrorCode.ONBOARDING_002));
 
@@ -257,33 +291,37 @@ public class OnboardingProgressService {
     }
 
     /**
-     * 手動一括リマインダーを送信する。
+     * 手動一括リマインダーを送信する（Issue #2834 / CMP-056 第1群ロットA）。
+     *
+     * <p>{@code notificationHelper.notify} を直接呼ばず、{@link OnboardingReminderNotificationEvent}
+     * を publish するだけに留める。実際の通知生成・配信は
+     * {@code OnboardingReminderNotificationListener} が {@code AFTER_COMMIT} で受け取ってから、
+     * 受信者ごとに独立トランザクション（{@code REQUIRES_NEW}）で行う。</p>
+     *
+     * <p><b>戻り値の意味の変化</b>: 是正前の {@code remindedCount} は「同一トランザクション内で
+     * {@code notify} 呼び出しが例外を投げなかった件数」だったが、通知はもともと best-effort であり、
+     * かつ是正前は1件の DB 例外で rollback-only が残り<b>数えた通知ごと全て消えていた</b>ため、
+     * この数値は実際の到達件数を意味していなかった。是正後は<b>配送要求を発行した対象者数</b>を返す
+     * （{@code ShiftPreferenceReminderBatchService} / {@code SurveyRemindService} の既存の
+     * {@code remindedCount} と同じ意味）。実際の配送成否は配送リスナーの構造化ログで観測する。</p>
      */
     @Transactional
-    // TODO: OnboardingドメインとNotificationドメインをまたいでいる。将来はOnboardingReminderRequestedEventで分離予定
     public RemindResponse sendReminders(String scopeType, Long scopeId) {
         List<OnboardingProgressEntity> inProgress = progressRepository
                 .findByScopeTypeAndScopeIdAndStatus(scopeType, scopeId, OnboardingProgressStatus.IN_PROGRESS);
 
-        int remindedCount = 0;
-        for (OnboardingProgressEntity progress : inProgress) {
-            try {
-                NotificationScopeType notifScope = "TEAM".equals(scopeType) ?
-                        NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
-                notificationHelper.notify(
-                        progress.getUserId(), "ONBOARDING_REMINDER",
-                        "オンボーディングリマインド", "未完了のオンボーディングステップがあります。",
-                        "ONBOARDING", progress.getId(), notifScope, scopeId,
-                        "/onboarding/progress/" + progress.getId(), null);
-                remindedCount++;
-            } catch (Exception e) {
-                log.warn("リマインダー送信失敗: progressId={}, error={}", progress.getId(), e.getMessage());
-            }
+        if (!inProgress.isEmpty()) {
+            eventPublisher.publishEvent(new OnboardingReminderNotificationEvent(
+                    scopeType, scopeId,
+                    inProgress.stream()
+                            .map(p -> new OnboardingReminderNotificationEvent.Recipient(
+                                    p.getUserId(), p.getId()))
+                            .toList()));
         }
 
-        log.info("オンボーディングリマインダー送信: scope={}/{}, reminded={}/{}",
-                scopeType, scopeId, remindedCount, inProgress.size());
-        return new RemindResponse(remindedCount, inProgress.size());
+        log.info("オンボーディングリマインダー送信要求: scope={}/{}, targets={}",
+                scopeType, scopeId, inProgress.size());
+        return new RemindResponse(inProgress.size(), inProgress.size());
     }
 
     // ========================================
@@ -294,7 +332,7 @@ public class OnboardingProgressService {
         progress.markCompleted();
         progressRepository.save(progress);
 
-        eventPublisher.publish(new OnboardingCompletedEvent(
+        domainEventPublisher.publish(new OnboardingCompletedEvent(
                 progress.getId(), progress.getUserId(), progress.getScopeType(), progress.getScopeId()));
 
         log.info("オンボーディング完了: progressId={}, userId={}", progress.getId(), progress.getUserId());

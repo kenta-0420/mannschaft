@@ -8,8 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
@@ -24,8 +23,7 @@ import java.time.LocalDateTime;
 @SQLRestriction("deleted_at IS NULL")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class TimetableSlotUserNoteAttachmentEntity {
 
     @Id
@@ -38,7 +36,7 @@ public class TimetableSlotUserNoteAttachmentEntity {
     @Column(nullable = false)
     private Long userId;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "r2_object_key", nullable = false, length = 500)
     private String r2ObjectKey;
 
     @Column(nullable = false, length = 255)
@@ -50,6 +48,7 @@ public class TimetableSlotUserNoteAttachmentEntity {
     @Column(nullable = false)
     private Long sizeBytes;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     private LocalDateTime deletedAt;

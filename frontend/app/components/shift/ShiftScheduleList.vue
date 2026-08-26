@@ -2,7 +2,7 @@
 import type { ShiftScheduleResponse } from '~/types/shift'
 
 const props = defineProps<{
-  teamId: number
+  teamId: string
   canManage: boolean
 }>()
 
@@ -69,7 +69,6 @@ onMounted(load)
 
 <template>
   <div>
-    <ConfirmDialog />
     <div class="mb-4 flex items-center justify-between">
       <h3 class="text-lg font-semibold">シフト表</h3>
       <Button

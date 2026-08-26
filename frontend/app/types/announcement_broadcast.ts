@@ -15,7 +15,7 @@ export type BroadcastChannel =
 
 /** 告知対象ロール */
 export type BroadcastTargetRole =
-  | 'MEMBERS_ONLY'
+  | 'MEMBERS_AND_ABOVE'
   | 'SUPPORTERS_AND_ABOVE'
   | 'PUBLIC'
 
@@ -29,9 +29,9 @@ export interface BulletinThreadContent {
   body: string
 }
 
-/** チャネル別コンテンツ入力 — タイムライン */
+/** チャネル別コンテンツ入力 — タイムライン（BE アダプターは body を読む） */
 export interface TimelinePostContent {
-  content: string
+  body: string
 }
 
 /** チャネル別コンテンツ入力 — ブログ */
@@ -40,9 +40,10 @@ export interface BlogPostContent {
   body: string
 }
 
-/** チャネル別コンテンツ入力 — TODO */
+/** チャネル別コンテンツ入力 — TODO（body は BE で description として扱われる） */
 export interface TodoContent {
   title: string
+  body?: string
   description?: string
   dueDate?: string
   priority?: 'LOW' | 'MEDIUM' | 'HIGH'
@@ -68,7 +69,8 @@ export interface SurveyContent {
   title: string
   /** 説明（任意・最大5000文字） */
   description: string | null
-  questions: unknown[]
+  /** 設問（告知ウィザードでは未送信。作成後に編集画面で追加する前提のため任意） */
+  questions?: unknown[]
   /** 締切日時（任意・ISO 8601 形式） */
   closesAt: string | null
 }
@@ -86,7 +88,7 @@ export type BroadcastChannelContent =
 export interface BroadcastRequest {
   channel: BroadcastChannel
   targetRole: BroadcastTargetRole
-  targetTeamIds?: number[] | null
+  targetTeamIds?: string[] | null
   templateId?: number | null
   priority?: BroadcastPriority
   expiresAt?: string | null
@@ -100,7 +102,7 @@ export interface BroadcastResponse {
   contentId: number
   contentUrl: string
   targetRole: BroadcastTargetRole
-  targetTeamIds: number[] | null
+  targetTeamIds: string[] | null
   priority: BroadcastPriority
   createdAt: string
 }
@@ -116,7 +118,7 @@ export interface AnnouncementTemplate {
   id: number
   name: string
   targetRole: BroadcastTargetRole
-  targetTeamIds: number[] | null
+  targetTeamIds: string[] | null
   preferredChannel: BroadcastChannel | null
   isDefault: boolean
   createdBy: TemplateCreatedBy | null
@@ -127,7 +129,7 @@ export interface AnnouncementTemplate {
 export interface AnnouncementTemplateRequest {
   name: string
   targetRole: BroadcastTargetRole
-  targetTeamIds?: number[] | null
+  targetTeamIds?: string[] | null
   preferredChannel?: BroadcastChannel | null
   isDefault?: boolean
 }
@@ -139,7 +141,7 @@ export type WizardStep = 1 | 2 | 3
 export interface WizardFormState {
   step: WizardStep
   targetRole: BroadcastTargetRole
-  targetTeamIds: number[] | null
+  targetTeamIds: string[] | null
   selectedChannel: BroadcastChannel | null
   templateId: number | null
   priority: BroadcastPriority

@@ -1,0 +1,125 @@
+﻿{
+  "adminConsole": {
+    "comingSoon": "Coming soon",
+    "team": {
+      "title": "Team Admin Console",
+      "subtitle": "Manage reservations, budget, approvals, members and settings for your team in one place"
+    },
+    "organization": {
+      "title": "Organization Admin Console",
+      "subtitle": "Manage budget, payments, approvals, members and settings for your organization in one place"
+    },
+    "cards": {
+      "reservations": {
+        "title": "Reservations",
+        "desc": "Review pending reservations and confirm, cancel or complete them"
+      },
+      "budget": {
+        "title": "Budget",
+        "desc": "Review the budget and spending by fiscal year and category"
+      },
+      "approvals": {
+        "title": "Approvals",
+        "desc": "Review pending approvals across reservations, shifts and matching in one place"
+      },
+      "members": {
+        "title": "Members",
+        "desc": "Manage the member list, role changes, member cards and profiles"
+      },
+      "settings": {
+        "title": "Settings",
+        "desc": "Manage all settings in one place"
+      },
+      "payments": {
+        "title": "Payments",
+        "desc": "Review billing and payment status"
+      },
+      "pointCards": {
+        "title": "Point Cards",
+        "desc": "Manage point card issuance, history and stamping for merchants"
+      }
+    },
+    "middleware": {
+      "accessDeniedTitle": "Access denied",
+      "accessDeniedBody": "Administrator privileges are required"
+    },
+    "error": {
+      "fetchFailedTitle": "Failed to load permissions",
+      "fetchFailedBody": "A temporary problem occurred. Please wait a moment and try again"
+    },
+    "approvalsBadge": {
+      "degraded": "Some counts unavailable",
+      "fetchFailed": "Could not load counts"
+    },
+    "lens": {
+      "toggleAriaLabel": "Toggle admin view",
+      "tooltip": "Switch to admin view",
+      "onboardingHint": "You can switch to the admin view here",
+      "member": "Member",
+      "admin": "Admin",
+      "backToMember": "Back to member view",
+      "openConsole": "Open admin console",
+      "widgets": {
+        "approvals": "Approvals",
+        "console": "Admin console",
+        "reservations": "Reservations",
+        "budget": "Budget",
+        "members": "Member stats",
+        "alert": "Business alerts",
+        "reports": "Reports",
+        "modules": "Modules",
+        "payments": "Payments",
+        "pointCards": "Point cards"
+      },
+      "approvals": {
+        "empty": "No pending approvals",
+        "degraded": "Some counts unavailable",
+        "fetchFailed": "Could not load pending approvals",
+        "domain": {
+          "RESERVATION": "Reservations",
+          "SHIFT_REQUEST": "Shifts",
+          "MATCHING": "Matching",
+          "PAYMENT": "Payments"
+        }
+      },
+      "payments": {
+        "unsettled": "Unsettled",
+        "overdue": "Overdue",
+        "fetchFailed": "Could not load payment information"
+      },
+      "alert": {
+        "newReservations": "New reservations",
+        "unreadInquiries": "Unread inquiries",
+        "fetchFailed": "Could not load business alert information"
+      },
+      "reports": {
+        "pending": "Pending",
+        "reviewing": "Under review",
+        "fetchFailed": "Could not load report information"
+      },
+      "members": {
+        "total": "Total",
+        "active": "Active",
+        "newThisMonth": "New this month",
+        "fetchFailed": "Could not load member statistics"
+      },
+      "reservations": {
+        "pending": "Pending approval",
+        "today": "Today's reservations",
+        "fetchFailed": "Could not load reservation summary"
+      },
+      "budget": {
+        "allocation": "Allocated",
+        "actual": "Actual",
+        "remaining": "Remaining",
+        "overBudgetCount": "Over-budget categories",
+        "noFiscalYear": "No fiscal year set",
+        "fetchFailed": "Could not load budget summary"
+      },
+      "modules": {
+        "summary": "{enabled} enabled / {total} total",
+        "fetchFailed": "Could not load module information"
+      }
+    }
+  }
+}

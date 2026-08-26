@@ -22,10 +22,9 @@ const { t } = useI18n()
 const { success: showSuccess, error: showError } = useNotification()
 const { userTimezone } = useDatetime()
 
-const organizationId = computed<number>(() => {
+const organizationId = computed<string>(() => {
   const raw = route.query.organizationId
-  const n = Number(Array.isArray(raw) ? raw[0] : raw)
-  return Number.isFinite(n) && n > 0 ? n : 0
+  return raw ? String(Array.isArray(raw) ? raw[0] : raw) : ''
 })
 
 const api = computed(() => useDisclosureApi(organizationId.value))
@@ -40,7 +39,7 @@ const DRAFT_LIMIT = 50
 const DRAFT_LIMIT_WARN_THRESHOLD = 45
 
 async function load() {
-  if (organizationId.value === 0) return
+  if (!organizationId.value) return
   loading.value = true
   try {
     const res = await api.value.listDrafts({ page: page.value, size: size.value })
@@ -71,7 +70,7 @@ const newDraftTitle = ref('')
 const newTargetDwellingUnitId = ref<number | null>(null)
 
 function openTemplatePicker() {
-  if (organizationId.value === 0) return
+  if (!organizationId.value) return
   if (totalElements.value >= DRAFT_LIMIT) {
     showError(t('disclosure.limit.exceeded'))
     return
@@ -175,7 +174,7 @@ function statusSeverity(status: string): 'info' | 'success' | 'warn' | 'secondar
           severity="secondary"
           text
           data-testid="disclosure-exports-link"
-          :disabled="organizationId === 0"
+          :disabled="!organizationId"
           @click="gotoExports"
         />
         <Button
@@ -183,14 +182,14 @@ function statusSeverity(status: string): 'info' | 'success' | 'warn' | 'secondar
           :label="t('disclosure.newDraft')"
           severity="primary"
           data-testid="disclosure-new-draft-btn"
-          :disabled="organizationId === 0"
+          :disabled="!organizationId"
           @click="openTemplatePicker"
         />
       </div>
     </header>
 
     <p
-      v-if="organizationId === 0"
+      v-if="!organizationId"
       class="rounded-md border border-dashed border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-700 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-200"
     >
       ?organizationId=N
@@ -301,7 +300,7 @@ function statusSeverity(status: string): 'info' | 'success' | 'warn' | 'secondar
     <!-- 様式選択モーダル -->
     <DisclosureTemplatePicker
       v-model:visible="showTemplatePicker"
-      :organization-id="organizationId"
+      :organization-id="Number(organizationId)"
       @select="onTemplateSelected"
     />
 

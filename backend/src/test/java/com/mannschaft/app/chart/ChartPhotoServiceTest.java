@@ -5,6 +5,7 @@ import com.mannschaft.app.chart.entity.ChartRecordEntity;
 import com.mannschaft.app.chart.repository.ChartPhotoRepository;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chart.service.ChartPhotoService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.StorageService;
 import org.junit.jupiter.api.DisplayName;
@@ -34,6 +35,7 @@ class ChartPhotoServiceTest {
     @Mock private ChartMapper chartMapper;
     @Mock private ChartPhotoUrlProvider photoUrlProvider;
     @Mock private StorageService storageService;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ChartPhotoService service;
@@ -41,6 +43,7 @@ class ChartPhotoServiceTest {
     private static final Long TEAM_ID = 1L;
     private static final Long CHART_ID = 10L;
     private static final Long PHOTO_ID = 20L;
+    private static final Long USER_ID = 100L;
 
     @Nested
     @DisplayName("uploadPhoto")
@@ -51,7 +54,7 @@ class ChartPhotoServiceTest {
             given(recordRepository.findByIdAndTeamId(CHART_ID, TEAM_ID)).willReturn(Optional.empty());
             MultipartFile file = mock(MultipartFile.class);
 
-            assertThatThrownBy(() -> service.uploadPhoto(TEAM_ID, CHART_ID, file, "BEFORE", null, null))
+            assertThatThrownBy(() -> service.uploadPhoto(TEAM_ID, CHART_ID, USER_ID, file, "BEFORE", null, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_001"));
@@ -66,7 +69,7 @@ class ChartPhotoServiceTest {
             MultipartFile file = mock(MultipartFile.class);
             given(file.isEmpty()).willReturn(true);
 
-            assertThatThrownBy(() -> service.uploadPhoto(TEAM_ID, CHART_ID, file, "BEFORE", null, null))
+            assertThatThrownBy(() -> service.uploadPhoto(TEAM_ID, CHART_ID, USER_ID, file, "BEFORE", null, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_017"));
@@ -84,7 +87,7 @@ class ChartPhotoServiceTest {
             given(file.getSize()).willReturn(1024L);
             given(photoRepository.countByChartRecordId(CHART_ID)).willReturn(20L);
 
-            assertThatThrownBy(() -> service.uploadPhoto(TEAM_ID, CHART_ID, file, "BEFORE", null, null))
+            assertThatThrownBy(() -> service.uploadPhoto(TEAM_ID, CHART_ID, USER_ID, file, "BEFORE", null, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_009"));
@@ -98,7 +101,7 @@ class ChartPhotoServiceTest {
         @DisplayName("異常系: 写真不在でCHART_002例外")
         void 削除_不在_例外() {
             given(photoRepository.findById(PHOTO_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.deletePhoto(TEAM_ID, PHOTO_ID))
+            assertThatThrownBy(() -> service.deletePhoto(TEAM_ID, PHOTO_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_002"));
@@ -114,7 +117,7 @@ class ChartPhotoServiceTest {
                     .teamId(TEAM_ID).customerUserId(100L).visitDate(LocalDate.now()).build();
             given(recordRepository.findByIdAndTeamId(CHART_ID, TEAM_ID)).willReturn(Optional.of(record));
 
-            service.deletePhoto(TEAM_ID, PHOTO_ID);
+            service.deletePhoto(TEAM_ID, PHOTO_ID, USER_ID);
             verify(photoRepository).delete(photo);
         }
     }

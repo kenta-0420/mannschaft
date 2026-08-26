@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -32,6 +33,7 @@ public class MatchNotificationController {
     @GetMapping
     @Operation(summary = "推薦通知設定の取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<NotificationPreferenceResponse>> getPreference(
             @PathVariable Long teamId) {
         NotificationPreferenceResponse response = notificationService.getPreference(teamId);
@@ -44,6 +46,7 @@ public class MatchNotificationController {
     @PutMapping
     @Operation(summary = "推薦通知設定の更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     public ResponseEntity<ApiResponse<NotificationPreferenceResponse>> updatePreference(
             @PathVariable Long teamId,
             @RequestBody UpdateNotificationPreferenceRequest request) {

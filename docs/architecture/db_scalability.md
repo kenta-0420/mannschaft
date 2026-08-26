@@ -35,13 +35,36 @@ Mannschaft は将来 10万〜1000万ユーザー規模への拡大を見据え�
 
 ### 背景
 
-設計当初から「クロスドメイン FK は作らない」という原則があったが、実装の積み重ねにより **クロスドメイン FK が 112件**、**クロスドメイン CASCADE DELETE が 78件** まで蓄積していた。これらは将来のマイクロサービス分割の最大の障害となるため、物理的に除去した。
+設計当初から「クロスドメイン FK は作らない」という原則があったが、実装の積み重ねによりクロスドメイン FK が大量に蓄積していた。これらは将来のマイクロサービス分割の最大の障害となるため、段階的に除去を進めている。
+
+> **⚠️ 進行中（2026-06-17 偵察実測値）**
+>
+> V62.001〜V62.016 の撤廃波で **408件** のクロスドメイン FK を撤廃済み。
+> しかし撤廃は **未完了** であり、現在もクロスドメイン FK が **149件残存** している。
+>
+> | 残存 ON DELETE 種別 | 件数 |
+> |---|---|
+> | ON DELETE SET NULL | 77件 |
+> | ON DELETE CASCADE | 37件 |
+> | RESTRICT（明示） | 18件 |
+> | 未指定（≒RESTRICT） | 17件 |
+> | **合計** | **149件** |
+>
+> 参照先テーブル別では、`users` を参照するクロスドメイン FK が **80件**（残存全体の過半）を占める。
+> 次点: `organizations` 11件、`teams` 11件。
+>
+> **物理削除のある経路はユーザー1経路のみ**（`AccountPurgeService.purgeUser()`）。
+> チーム・組織は論理削除のみのため、それらを参照する CASCADE/SET NULL は現運用では
+> 発火しないデッドコードだが、DDL 上は残存しており引き続き撤廃対象。
+>
+> **残存 FK の約 50% は無名制約**（CONSTRAINT 名なし）であり、撤廃には
+> `INFORMATION_SCHEMA` または `SHOW CREATE TABLE` での実 DB 制約名特定が必要。
 
 ### 実施内容
 
-#### 1-1. クロスドメイン FK 112件の撤廃（V62.001〜V62.016）
+#### 1-1. クロスドメイン FK 撤廃第一波（V62.001〜V62.016）— 408件撤廃済み、149件残存
 
-異なるドメインのテーブル間の `FOREIGN KEY` 制約をすべて削除し、`INDEX` のみに置き換えた。
+異なるドメインのテーブル間の `FOREIGN KEY` 制約を削除し、`INDEX` のみに置き換えた。
 
 **変更前（NG）:**
 ```sql
@@ -217,9 +240,11 @@ ALTER TABLE audit_logs
 | 項目 | 内容 |
 |---|---|
 | 実行タイミング | 毎月1日 AM 2:00（Spring `@Scheduled`） |
-| 処理内容 | 保持期限超過パーティションを R2 に JSONL で一括アップロード後、`ALTER TABLE ... DROP PARTITION` で瞬時削除 |
+| 処理内容 | 保持期限（2年）を過ぎた月を1ヶ月ずつ走査し、月内をキーセットページング（`id > cursor`・1000件/回）で全件 R2 へアップロードした後、`ALTER TABLE ... DROP PARTITION` で瞬時削除 |
 | 削除方式 | `DROP PARTITION`（行レベルロックなし・瞬時完了） |
-| R2 保存パス | `audit-logs/{yyyy}/{MM}/audit_log_{yyyyMM}.jsonl.gz` |
+| R2 保存パス | `audit-archive/{yyyy}/{MM}/audit-{yyyy}-{MM}.json`（1ヶ月が複数ページに及ぶ場合は `...-{MM}.part{n}.json` に分割） |
+| 整合性の要件 | **アーカイブ内容と削除範囲を常に一致させる。** ある月の全ページを書き切った場合にのみ当該月のパーティションを DROP し、アップロードが1ページでも失敗したら DROP しない。基準日時を含む月は経過しきっていないため DROP せず翌月へ持ち越す |
+| ページングの要件 | 走査中に行を削除しないため、オフセットページング（先頭ページの取り直し）は**同一行を無限に取り直す**。カーソルを直前ページの最終 `id` まで必ず前進させること |
 
 #### 3-B. chat_messages_archive テーブル（V64.003〜V64.004）
 
@@ -252,23 +277,36 @@ CREATE TABLE chat_messages_archive (
 | 処理内容 | 論理削除から6ヶ月超のメッセージを `chat_messages_archive` に INSERT → 本テーブルから DELETE |
 | バッチサイズ | 1,000件ずつ処理（大量データ時のメモリ圧迫防止） |
 
-#### 3-C. notifications 夜間クリーンアップ（V64.005〜V64.006）
+#### 3-C. notifications 夜間保持バッチ（アーカイブ移送・索引 V173.20260730033807）
+
+> **移送型への是正（P2 Wave1/Wave2-A）**: 従来は物理削除のみで、移送先表・専用索引も存在せず
+> `is_read + created_at` の範囲を掃く走査は実質フルスキャン相当だった。P2 Wave1 で
+> `notifications_archive` 表と移送索引 `idx_notifications_read_created` を
+> `V173.20260730033807__create_notifications_archive_and_read_index.sql` で新設し、
+> Wave2-A で `NotificationCleanupBatchService` を物理削除から**アーカイブ移送型**へ是正した。
 
 ```sql
--- 90日超の既読通知を物理削除（インデックスを使った範囲削除）
+-- 保持期間超過の通知を notifications_archive へ移送してから本体を削除（索引を使った範囲移送）
+-- 既読90日超 OR 未読365日超が対象。id 単位の存在確認付き DELETE で欠落なし・重複なし。
+INSERT IGNORE INTO notifications_archive (...) SELECT ... FROM notifications
+WHERE (is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
+   OR (is_read = FALSE AND created_at < DATE_SUB(NOW(), INTERVAL 365 DAY))
+ORDER BY created_at ASC LIMIT ?;
+
 DELETE FROM notifications
-WHERE is_read = TRUE
-  AND created_at < DATE_SUB(NOW(), INTERVAL 90 DAY);
+WHERE ((is_read = TRUE  AND created_at < DATE_SUB(NOW(), INTERVAL 90  DAY))
+    OR (is_read = FALSE AND created_at < DATE_SUB(NOW(), INTERVAL 365 DAY)))
+  AND id IN (SELECT id FROM notifications_archive) LIMIT ?;
 ```
 
-**クリーンアップバッチ: `NotificationCleanupBatchService`**
+**保持バッチ: `NotificationCleanupBatchService`**
 
 | 項目 | 内容 |
 |---|---|
 | 実行タイミング | 毎日 AM 4:00（Spring `@Scheduled`） |
-| 処理内容 | 90日超の既読通知を物理削除 |
-| バッチサイズ | 500件ずつ処理 |
-| インデックス利用 | `idx_notifications_read_created` を利用した効率的な範囲削除 |
+| 処理内容 | 既読90日超・未読365日超を `notifications_archive` へアーカイブ移送し、archive 収録済みの id のみ本体から削除 |
+| バッチサイズ | 10,000件ずつ処理（チャンク単位で独立コミット＝at-least-once） |
+| インデックス利用 | `idx_notifications_read_created`（`is_read, created_at`・V173 新設）を利用した効率的な範囲移送 |
 
 ---
 
@@ -422,6 +460,28 @@ spring:
       cache-null-values: false
 ```
 
+#### 4-E-2. キャッシュ基盤障害時の fail-open（`LoggingCacheErrorHandler`）
+
+Spring 既定の `SimpleCacheErrorHandler` はキャッシュ操作の例外を**そのまま再送出**するため、
+Valkey 断のときに `@CacheEvict` を持つミューテーション（`RoleService.changeRole` 等）が
+`RedisConnectionFailureException` で 500 になる。すなわち
+**「キャッシュ基盤が落ちると降格・除名ができない」**状態だった。
+
+方針（マスター御裁可・可用性優先）: **Redis が落ちている間も権限の変更は成功させる。**
+緊急時に悪意あるユーザーを降格・除名できない方が、旧権限が最大 TTL ぶん残ることより危険なため。
+
+| クラス | 役割 |
+|---|---|
+| `LoggingCacheErrorHandler` | get / put / evict / clear の 4 フックで例外を握り潰し、`log.warn` ＋ Micrometer カウンタで可視化する |
+| `CacheErrorHandlingConfig` | `CachingConfigurer#errorHandler()` としてハンドラを配線する（素の `@Bean CacheErrorHandler` は Spring が拾わない） |
+
+- **安全性の根拠**: TTL 無しのキャッシュは 1 件も無く（既定 30 分・認可系は 5 分以下）、evict を取りこぼしても**自然収束**する。
+  番人テスト `CacheConfigurationGuardTest` が「TTL 無しキャッシュの混入」を機械的に拒否する
+- **「静かな無効化」にしない**: fail-open は必ず `mannschaft.cache.failopen`（tag: `operation` = get/put/evict/clear, `cache` = キャッシュ名）で観測できる。
+  `operation=evict` / `clear` は認可情報が腐りうるため、get/put より重い扱いとする
+- 既存の fail-open 実装（`ValkeyRateLimiter` / `MembershipChangedListener` / `EntitlementCacheEvictor`）と同方針であり、
+  本ハンドラはそれをアノテーション経由の `@Cacheable`/`@CacheEvict` にも水平展開したもの
+
 ---
 
 ## 今後の課題
@@ -430,6 +490,7 @@ spring:
 
 | 項目 | 優先度 | 概要 |
 |---|---|---|
+| **クロスドメイン FK 撤廃の継続（残 149件）** | **高** | 2026-06-17 実測。内訳: SET NULL 77件 / CASCADE 37件 / RESTRICT 18件 / 未指定 17件。撤廃方針: (1) team/org 参照の CASCADE/SET NULL（現運用で発火しないデッドFK）→機械一括撤廃、(2) user 参照で CASCADE の肩代わり実装が未整備のもの→アプリ層実装後に撤廃、(3) SET NULL→nullify 肩代わりをアプリ層に移植後に撤廃。**残存 FK の約 50% は無名制約のため `INFORMATION_SCHEMA`/`SHOW CREATE TABLE` で実 DB 制約名を特定してから撤廃すること（要追加調査）** |
 | `AbstractTenantAwareRepository` の全面適用 | 高 | `ScheduleRepository` のみ適用済み。他リポジトリへの順次適用が必要 |
 | イベント駆動アーキテクチャへの移行 | 中 | `@Transactional` クロスドメイン箇所（TODO コメント済み）をドメインイベントで分離 |
 | シャーディング本実装 | 低 | `organization_id` をシャーディングキーとした水平分割。UUIDv7 導入済みで基盤は整備済み |
@@ -445,6 +506,8 @@ spring:
 | 最大パーティションサイズ | 5GB 超でアラート | `audit_logs` の月次パーティションサイズ監視 |
 | `notifications` テーブル行数 | 5000万行超でアラート | クリーンアップバッチが正常動作しているかの確認 |
 | Valkey キャッシュヒット率 | 70% 未満でアラート | キャッシュ設定の見直しトリガー |
+| `mannschaft.cache.failopen`（`operation=evict`/`clear`） | 発生でアラート | キャッシュ無効化の失敗＝認可情報の反映遅延。Valkey 断の一次シグナル（§4-E-2） |
+| `mannschaft.cache.failopen`（`operation=get`/`put`） | 継続発生でアラート | キャッシュが機能せず DB に素通りしている状態（性能劣化の予兆） |
 | リードレプリカ遅延 | 5秒超でアラート | レプリカ遅延によるデータ不整合リスク |
 | `AuditLogArchiveBatchService` 実行時間 | 10分超でアラート | R2 アップロード・DROP PARTITION の異常検知 |
 

@@ -5,6 +5,7 @@ import com.mannschaft.app.filesharing.dto.CreateLinkRequest;
 import com.mannschaft.app.filesharing.dto.LinkResponse;
 import com.mannschaft.app.filesharing.entity.SharedFileLinkEntity;
 import com.mannschaft.app.filesharing.repository.SharedFileLinkRepository;
+import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileLinkService;
 import com.mannschaft.app.filesharing.service.SharedFileService;
 import org.junit.jupiter.api.DisplayName;
@@ -45,6 +46,13 @@ class SharedFileLinkServiceAdditionalTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private FolderScopeAccessGuard folderScopeAccessGuard;
+
+    // PR-D: createLink/listLinks/deleteLink の発行認可（ADMIN/DEPUTY 限定）と C: download_disabled 貫通防御を担う新依存。
+    @Mock
+    private com.mannschaft.app.filesharing.service.SharedFolderQueryService folderQueryService;
+
     @InjectMocks
     private SharedFileLinkService service;
 
@@ -53,8 +61,8 @@ class SharedFileLinkServiceAdditionalTest {
     private static final Long USER_ID = 10L;
 
     private LinkResponse mockLinkResponse(boolean hasPassword) {
-        // LinkResponse(id, fileId, token, expiresAt, hasPassword, accessCount, lastAccessedAt, createdBy, createdAt)
-        return new LinkResponse(LINK_ID, FILE_ID, "tok123", null, hasPassword, 0, null, USER_ID, null);
+        // LinkResponse(id, fileId, token, expiresAt, hasPassword, accessCount, lastAccessedAt, createdBy, createdAt, active, downloadAllowed)
+        return new LinkResponse(LINK_ID, FILE_ID, "tok123", null, hasPassword, 0, null, USER_ID, null, true, false);
     }
 
     // ========================================
@@ -93,7 +101,7 @@ class SharedFileLinkServiceAdditionalTest {
         @DisplayName("正常系: パスワードなしリンクが作成される")
         void リンク作成_パスワードなし_正常() {
             CreateLinkRequest request = new CreateLinkRequest(
-                    LocalDateTime.now().plusDays(7), null);
+                    LocalDateTime.now().plusDays(7), null, false);
             SharedFileLinkEntity saved = SharedFileLinkEntity.builder()
                     .fileId(FILE_ID).token("gen-token").accessCount(0).createdBy(USER_ID).build();
             given(linkRepository.save(any())).willReturn(saved);
@@ -109,7 +117,7 @@ class SharedFileLinkServiceAdditionalTest {
         @DisplayName("正常系: パスワードありリンクが作成される")
         void リンク作成_パスワードあり_正常() {
             CreateLinkRequest request = new CreateLinkRequest(
-                    LocalDateTime.now().plusDays(7), "secret");
+                    LocalDateTime.now().plusDays(7), "secret", false);
             given(passwordEncoder.encode("secret")).willReturn("$2a$hashed");
             SharedFileLinkEntity saved = SharedFileLinkEntity.builder()
                     .fileId(FILE_ID).token("gen-token").passwordHash("$2a$hashed")
@@ -126,7 +134,8 @@ class SharedFileLinkServiceAdditionalTest {
         @Test
         @DisplayName("正常系: 空白パスワードはハッシュ化されない")
         void リンク作成_空白パスワード_ハッシュなし() {
-            CreateLinkRequest request = new CreateLinkRequest(null, "   ");
+            // PR-D: expiresAt は必須（null は LINK_EXPIRY_INVALID）になったため有効な期限を指定する。
+            CreateLinkRequest request = new CreateLinkRequest(LocalDateTime.now().plusDays(7), "   ", false);
             SharedFileLinkEntity saved = SharedFileLinkEntity.builder()
                     .fileId(FILE_ID).token("gen-token").accessCount(0).createdBy(USER_ID).build();
             given(linkRepository.save(any())).willReturn(saved);
@@ -187,10 +196,10 @@ class SharedFileLinkServiceAdditionalTest {
             com.mannschaft.app.filesharing.dto.FileResponse fileResponse =
                     new com.mannschaft.app.filesharing.dto.FileResponse(
                             FILE_ID, 1L, "secure.pdf", "key", 2048L, "application/pdf",
-                            null, USER_ID, 1, null, null);
+                            null, USER_ID, 1, null, null, null, null);
             given(linkRepository.findByToken("pw-token")).willReturn(Optional.of(link));
             given(passwordEncoder.matches("correct", "$2a$hashed")).willReturn(true);
-            given(fileService.getFile(FILE_ID)).willReturn(fileResponse);
+            given(fileService.getFileForSharedLink(FILE_ID)).willReturn(fileResponse);
 
             com.mannschaft.app.filesharing.dto.FileResponse result =
                     service.accessLink("pw-token",

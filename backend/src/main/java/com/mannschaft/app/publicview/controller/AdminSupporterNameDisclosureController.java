@@ -50,7 +50,7 @@ public class AdminSupporterNameDisclosureController {
      * <p>{@code confirmed=false} の場合は 400 を返す。</p>
      */
     @PatchMapping("/teams/{teamId}/supporter-name-disclosure")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     @Operation(
             summary = "チーム投稿者識別モード切替",
             description = "ADMIN または SYSTEM_ADMIN が teams.supporter_name_disclosure を変更する。"
@@ -66,7 +66,7 @@ public class AdminSupporterNameDisclosureController {
      * 組織の投稿者識別モードを切り替える。
      */
     @PatchMapping("/organizations/{organizationId}/supporter-name-disclosure")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #organizationId, 'ORGANIZATION')")
     @Operation(
             summary = "組織投稿者識別モード切替",
             description = "ADMIN または SYSTEM_ADMIN が organizations.supporter_name_disclosure を変更する。"
@@ -84,25 +84,27 @@ public class AdminSupporterNameDisclosureController {
      * <p>設計書 §7.7「過去 1 年の切替履歴」に使用する。変更日時の降順で返す。</p>
      */
     @GetMapping("/teams/{teamId}/supporter-name-disclosure/history")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     @Operation(
             summary = "チーム投稿者識別モード変更履歴取得",
             description = "変更日時の降順でチームの supporter_name_disclosure 変更履歴を返す。")
     public ResponseEntity<List<NameDisclosureChangeLogResponse>> getTeamDisclosureHistory(
             @PathVariable Long teamId) {
-        return ResponseEntity.ok(service.getTeamChangeHistory(teamId));
+        Long operatorUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(service.getTeamChangeHistory(teamId, operatorUserId));
     }
 
     /**
      * 組織の投稿者識別モード変更履歴を取得する。
      */
     @GetMapping("/organizations/{organizationId}/supporter-name-disclosure/history")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #organizationId, 'ORGANIZATION')")
     @Operation(
             summary = "組織投稿者識別モード変更履歴取得",
             description = "変更日時の降順で組織の supporter_name_disclosure 変更履歴を返す。")
     public ResponseEntity<List<NameDisclosureChangeLogResponse>> getOrganizationDisclosureHistory(
             @PathVariable Long organizationId) {
-        return ResponseEntity.ok(service.getOrganizationChangeHistory(organizationId));
+        Long operatorUserId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(service.getOrganizationChangeHistory(organizationId, operatorUserId));
     }
 }

@@ -62,6 +62,12 @@ class RecruitmentListingVisibilityResolverTest {
     @Mock
     private RecruitmentListingRepository recruitmentListingRepository;
 
+    @Mock
+    private com.mannschaft.app.recruitment.service.MarketFriendTargetResolver marketFriendTargetResolver;
+
+    @Mock
+    private com.mannschaft.app.role.repository.UserRoleRepository userRoleRepository;
+
     private VisibilityMetrics visibilityMetrics;
     private RecruitmentListingVisibilityResolver resolver;
 
@@ -74,7 +80,9 @@ class RecruitmentListingVisibilityResolverTest {
                 templateEvaluator,
                 null,            // FollowBatchService 不要
                 auditLogService,
-                recruitmentListingRepository);
+                recruitmentListingRepository,
+                marketFriendTargetResolver,
+                userRoleRepository);
     }
 
     @Test

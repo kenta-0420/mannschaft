@@ -16,8 +16,8 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.experimental.SuperBuilder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -41,13 +41,36 @@ import java.time.LocalDateTime;
 @Table(name = "confirmable_notifications")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@AllArgsConstructor(access = AccessLevel.PRIVATE)
-@Builder(toBuilder = true)
+@SuperBuilder(toBuilder = true)
 public class ConfirmableNotificationEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /**
+     * 通知発生元種別（ポリモルフィック参照）。
+     *
+     * <p>DB 実体は {@code source_type VARCHAR(40) NOT NULL DEFAULT 'EMERGENCY_CLOSURE'}
+     * （Java enum ではなく自由文字列で管理。MySQL ENUM ではない）。
+     * 現状値: {@code EMERGENCY_CLOSURE} / {@code RECRUITMENT_LISTING} に加え、
+     * F22.1 市の最終認証で {@code MARKET_FINALIZE} を使用する。</p>
+     *
+     * <p><b>⚠ 未知の値を握り潰さず安全に無視すること</b>: バッチ/UI は未知 source_type を
+     * {@code IllegalArgumentException} で連鎖故障させない防御を持つこと（01_data_model §5 警告）。</p>
+     */
+    @Column(name = "source_type", nullable = false, length = 40)
+    @Builder.Default
+    private String sourceType = "EMERGENCY_CLOSURE";
+
+    /**
+     * 通知発生元のレコードID（ポリモルフィック参照・FK なし）。
+     *
+     * <p>{@code source_type='MARKET_FINALIZE'} のとき {@code recruitment_listings.id} を保持する。
+     * 発生元ドメインをまたぐためクロスドメイン FK は張らない（CLAUDE.md 原則 1）。</p>
+     */
+    @Column(name = "source_id")
+    private Long sourceId;
 
     /** スコープ種別（TEAM / ORGANIZATION） */
     @Enumerated(EnumType.STRING)

@@ -1,9 +1,9 @@
-import type { GanttResponse } from '~/types/todo'
+import type { GanttResponse, MyCalendarTodoResponse } from '~/types/todo'
 
 export function useTodoGantt() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team'
       ? `/api/v1/teams/${scopeId}`
       : `/api/v1/organizations/${scopeId}`
@@ -20,6 +20,13 @@ export function useTodoGantt() {
     return api<GanttResponse>(`/api/v1/todos/gantt?from=${fromDate}&to=${toDate}`)
   }
 
+  /** 自分に割り当てられた全スコープのTODOをカレンダー用に取得する。 */
+  async function getMyCalendarTodos(from: string, to: string): Promise<MyCalendarTodoResponse> {
+    const fromDate = from.slice(0, 10)
+    const toDate = to.slice(0, 10)
+    return api<MyCalendarTodoResponse>(`/api/v1/todos/my/calendar?from=${fromDate}&to=${toDate}`)
+  }
+
   /**
    * チーム/組織ガントビュー用 TODO 一覧を取得する
    * GET /api/v1/teams/{teamId}/todos/gantt?from=yyyy-MM-dd&to=yyyy-MM-dd
@@ -27,7 +34,7 @@ export function useTodoGantt() {
    */
   async function getGanttTodos(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     from: string,
     to: string,
   ): Promise<GanttResponse> {
@@ -40,6 +47,7 @@ export function useTodoGantt() {
 
   return {
     getPersonalGanttTodos,
+    getMyCalendarTodos,
     getGanttTodos,
   }
 }

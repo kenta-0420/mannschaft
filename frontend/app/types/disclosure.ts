@@ -78,7 +78,7 @@ export interface DisclosureFormTemplate {
   isStandard: boolean
   isSystemTemplate: boolean
   scopeType: DisclosureScopeType | null
-  scopeId: number | null
+  scopeId: string | null
   formSchema: FormSchema
   effectiveFrom: string | null
   effectiveUntil: string | null
@@ -91,7 +91,7 @@ export interface DisclosureFormTemplate {
 export interface DisclosureFormDraft {
   id: number
   scopeType: DisclosureScopeType
-  scopeId: number
+  scopeId: string
   templateId: number
   templateVersionSnapshot: string
   title: string
@@ -118,8 +118,16 @@ export interface DisclosureFormDraftRequest {
 
 /** 出力履歴。出力直後・ダウンロード時のみ downloadUrl が付与される。 */
 export interface DisclosureExport {
-  id: number
-  scopeId: number
+  /**
+   * 出力履歴 ID。
+   *
+   * BE の `DisclosureExportResponse` はこのフィールドを **`exportId`** で返す（`id` ではない）。
+   * かつて `id` と宣言していたため、一覧の全行で `data.id === undefined` となり
+   * ダウンロード・保管期限延長のどちらも壊れていた（URL に `undefined` が入る／
+   * `findIndex(e => e.id === updated.id)` が常に先頭行に一致する）。
+   */
+  exportId: number
+  scopeId: string
   draftId: number | null
   templateCodeSnapshot: string
   templateVersionSnapshot: string

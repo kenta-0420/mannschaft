@@ -5,7 +5,7 @@ const { userTimezone } = useDatetime()
 
 const props = defineProps<{
   scopeType: 'team' | 'organization'
-  scopeId: number
+  scopeId: string
   todoId: number
 }>()
 
@@ -13,12 +13,17 @@ const todoApi = useTodoApi()
 const authStore = useAuthStore()
 const notification = useNotification()
 
+interface CommentUser {
+  id: number
+  displayName: string
+  avatarUrl?: string | null
+}
+
+/** BE レスポンス構造: user フィールドにネスト */
 interface Comment {
   id: number
   todoId: number
-  userId: number
-  displayName: string
-  avatarUrl: string | null
+  user: CommentUser
   body: string
   createdAt: string
   updatedAt: string
@@ -97,14 +102,14 @@ onMounted(loadComments)
     <div v-else-if="comments.length > 0" class="space-y-3">
       <div v-for="comment in comments" :key="comment.id" class="flex gap-3">
         <Avatar
-          :image="comment.avatarUrl ?? undefined"
-          :label="comment.avatarUrl ? undefined : comment.displayName.charAt(0)"
+          :image="comment.user.avatarUrl ?? undefined"
+          :label="comment.user.avatarUrl ? undefined : (comment.user.displayName?.charAt(0) ?? '?')"
           shape="circle"
           size="normal"
         />
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
-            <span class="text-sm font-medium">{{ comment.displayName }}</span>
+            <span class="text-sm font-medium">{{ comment.user.displayName }}</span>
             <span class="text-xs text-surface-400">{{ formatDate(comment.createdAt) }}</span>
           </div>
           <!-- 編集モード -->
@@ -118,7 +123,7 @@ onMounted(loadComments)
           <!-- 表示モード -->
           <div v-else>
             <p class="mt-1 whitespace-pre-wrap text-sm text-surface-700 dark:text-surface-300">{{ comment.body }}</p>
-            <div v-if="comment.userId === authStore.currentUser?.id" class="mt-1 flex gap-1">
+            <div v-if="comment.user.id === authStore.currentUser?.id" class="mt-1 flex gap-1">
               <Button icon="pi pi-pencil" text rounded size="small" @click="startEdit(comment)" />
               <Button icon="pi pi-trash" text rounded size="small" severity="danger" @click="deleteComment(comment.id)" />
             </div>
@@ -130,8 +135,8 @@ onMounted(loadComments)
 
     <!-- 投稿フォーム -->
     <div class="mt-4 flex gap-2">
-      <Textarea v-model="newComment" rows="1" class="flex-1" placeholder="コメントを入力..." auto-resize />
-      <Button icon="pi pi-send" :loading="submitting" :disabled="!newComment.trim()" @click="submitComment" />
+      <Textarea v-model="newComment" rows="1" class="flex-1" placeholder="コメントを入力..." auto-resize data-testid="todo-comment-input" />
+      <Button icon="pi pi-send" :loading="submitting" :disabled="!newComment.trim()" data-testid="todo-comment-submit" @click="submitComment" />
     </div>
   </div>
 </template>

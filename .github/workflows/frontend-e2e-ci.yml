@@ -1,14 +1,22 @@
 # =============================================================================
 # Frontend E2E CI — pull_request to main
 # =============================================================================
-# F15.4 を含む smoke subset の Playwright E2E を毎 PR で実行する。
+# F15.4 / F22.1 を含む smoke subset の Playwright E2E を毎 PR で実行する。
 #
 # 設計方針:
 #   - 全 1809 spec を CI で走らせると約 7.5 時間と非現実的のため、
-#     smoke subset のみを実行（まずは F15.4-org-team-search、拡大予定）。
-#   - F15.4 spec は `page.route()` でモック化されているため、バックエンド非依存。
+#     smoke subset のみを実行（F15.4-org-team-search・f221-swipe-dashboard、拡大予定）。
+#   - これらの spec は `page.route()` で全 API をモック化しているため、バックエンド非依存。
 #   - dev サーバは playwright.config.ts の `webServer` 設定で自動起動。
 #   - Playwright Chromium ブラウザは package-lock.json ハッシュをキーにキャッシュ。
+#
+# F22.1（横スワイプ・スコープダッシュボード）の CI スモーク範囲（決定的なものに限定）:
+#   - カルーセルシェル描画 / 初期=個人パネル / セグメントトグル切替 / 左右矢印・キーボード循環
+#   - 個人パネルに検索・タグ無し / チーム・組織パネルに有り
+#   - チーム検索フォーム submit → /teams/search?keyword=... 遷移
+#   - localStorage(scope-dashboard) 保存・リロード復元
+#   ※ touch スワイプ慣性・多数シードのページ送り・要対応の実データ依存シナリオは
+#     フレーキー/重シードのため CI から意図的に除外（夜間ジョブ候補）。
 # =============================================================================
 
 name: Frontend — E2E (PR Check)
@@ -30,7 +38,7 @@ env:
 
 jobs:
   e2e:
-    name: Smoke E2E (F15.4 + 拡大予定)
+    name: Smoke E2E (F15.4 + F22.1 + 拡大予定)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -77,14 +85,16 @@ jobs:
             echo '{"cookies":[],"origins":[]}' > tests/e2e/.auth/user.json
           fi
 
-      - name: Run F15.4 smoke E2E
-        run: npx playwright test F15.4-org-team-search --project=chromium --workers=1 --timeout=120000
+      # F15.4 と F22.1 の smoke spec をまとめて 1 回の dev サーバ起動で実行する。
+      # 両 spec とも page.route() で全 API をモックするためバックエンド非依存。
+      - name: Run smoke E2E (F15.4 + F22.1)
+        run: npx playwright test F15.4-org-team-search f221-swipe-dashboard F15.4-slug-navigation --project=chromium --workers=1 --timeout=120000
 
       - name: Upload Playwright HTML report (on failure)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-f15.4
+          name: playwright-report-smoke
           path: frontend/playwright-report/
           retention-days: 14
 
@@ -92,6 +102,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-trace-f15.4
+          name: playwright-trace-smoke
           path: frontend/test-results/
           retention-days: 14

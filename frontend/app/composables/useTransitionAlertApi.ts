@@ -19,7 +19,7 @@ export function useTransitionAlertApi() {
    * @returns アラート一覧レスポンス
    */
   async function getAlerts(
-    teamId: number,
+    teamId: string,
     date: string,
     unresolvedOnly: boolean,
   ): Promise<TransitionAlertListResponse> {
@@ -38,7 +38,7 @@ export function useTransitionAlertApi() {
    * @returns 更新後のアラートレスポンス
    */
   async function resolveAlert(
-    teamId: number,
+    teamId: string,
     alertId: number,
     note: string,
   ): Promise<TransitionAlertResponse> {

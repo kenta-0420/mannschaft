@@ -6,7 +6,7 @@ export function useParkingApplicationsApi() {
 
   async function getApplications(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const q = new URLSearchParams()
@@ -22,7 +22,7 @@ export function useParkingApplicationsApi() {
 
   async function createApplication(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: ApplicationResponse }>(
@@ -33,7 +33,7 @@ export function useParkingApplicationsApi() {
 
   async function deleteApplication(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     applicationId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/applications/${applicationId}`, {
@@ -43,7 +43,7 @@ export function useParkingApplicationsApi() {
 
   async function approveApplication(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     applicationId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/applications/${applicationId}/approve`, {
@@ -53,7 +53,7 @@ export function useParkingApplicationsApi() {
 
   async function rejectApplication(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     applicationId: number,
     body?: Record<string, unknown>,
   ) {
@@ -65,7 +65,7 @@ export function useParkingApplicationsApi() {
 
   async function runApplicationLottery(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body?: Record<string, unknown>,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/parking/applications/lottery`, {

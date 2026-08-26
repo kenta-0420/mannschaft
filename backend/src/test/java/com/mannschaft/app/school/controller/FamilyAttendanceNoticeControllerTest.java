@@ -36,6 +36,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import com.mannschaft.app.common.security.AccessGuard;
 
 /**
  * F03.13: {@link FamilyAttendanceNoticeController} の MockMvc 結合テスト。
@@ -71,6 +72,10 @@ class FamilyAttendanceNoticeControllerTest {
     private ProxyInputConsentRepository proxyInputConsentRepository;
     @MockitoBean
     private ProxyInputContext proxyInputContext;
+
+    /** @WebMvcTest コンテキスト用: @EnableMethodSecurity 有効化後の SpEL ガード依存解決 */
+    @MockitoBean
+    private AccessGuard accessGuard;
 
     @BeforeEach
     void setUpSecurityContext() {
@@ -165,7 +170,7 @@ class FamilyAttendanceNoticeControllerTest {
                     .totalCount(1)
                     .unacknowledgedCount(1)
                     .build();
-            given(noticeService.getTeamNotices(eq(TEAM_ID), any())).willReturn(listResponse);
+            given(noticeService.getTeamNotices(eq(TEAM_ID), any(), eq(USER_ID))).willReturn(listResponse);
 
             mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/notices", TEAM_ID)
                             .param("date", "2026-05-01"))
@@ -187,7 +192,7 @@ class FamilyAttendanceNoticeControllerTest {
         @Test
         @DisplayName("正常系: 確認済みレスポンスを返す → 200 + data")
         void 正常系_200() throws Exception {
-            given(noticeService.acknowledgeNotice(eq(NOTICE_ID), eq(USER_ID)))
+            given(noticeService.acknowledgeNotice(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID)))
                     .willReturn(buildNoticeResponse("ACKNOWLEDGED"));
 
             mockMvc.perform(post("/api/v1/teams/{teamId}/attendance/notices/{noticeId}/acknowledge",
@@ -200,7 +205,7 @@ class FamilyAttendanceNoticeControllerTest {
         @DisplayName("異常系: 連絡が見つからない → 404")
         void 異常系_404() throws Exception {
             willThrow(new BusinessException(SchoolErrorCode.FAMILY_NOTICE_NOT_FOUND))
-                    .given(noticeService).acknowledgeNotice(eq(NOTICE_ID), eq(USER_ID));
+                    .given(noticeService).acknowledgeNotice(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID));
 
             mockMvc.perform(post("/api/v1/teams/{teamId}/attendance/notices/{noticeId}/acknowledge",
                             TEAM_ID, NOTICE_ID))
@@ -220,7 +225,7 @@ class FamilyAttendanceNoticeControllerTest {
         @Test
         @DisplayName("正常系: 反映済みレスポンスを返す → 200 + data")
         void 正常系_200() throws Exception {
-            given(noticeService.applyToAttendanceRecord(eq(NOTICE_ID), eq(USER_ID)))
+            given(noticeService.applyToAttendanceRecord(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID)))
                     .willReturn(buildNoticeResponse("APPLIED"));
 
             mockMvc.perform(post("/api/v1/teams/{teamId}/attendance/notices/{noticeId}/apply",
@@ -234,7 +239,7 @@ class FamilyAttendanceNoticeControllerTest {
         @DisplayName("異常系: 既反映 → 409 Conflict")
         void 既反映_409() throws Exception {
             willThrow(new BusinessException(SchoolErrorCode.FAMILY_NOTICE_ALREADY_APPLIED))
-                    .given(noticeService).applyToAttendanceRecord(eq(NOTICE_ID), eq(USER_ID));
+                    .given(noticeService).applyToAttendanceRecord(eq(TEAM_ID), eq(NOTICE_ID), eq(USER_ID));
 
             mockMvc.perform(post("/api/v1/teams/{teamId}/attendance/notices/{noticeId}/apply",
                             TEAM_ID, NOTICE_ID))
@@ -247,12 +252,13 @@ class FamilyAttendanceNoticeControllerTest {
     // GET /api/v1/me/attendance/notices
     // ════════════════════════════════════════════════
 
+    /** FamilyAttendanceNoticeController#getMyNotices の自己スコープ性を固定する契約テスト。 */
     @Nested
     @DisplayName("GET /api/v1/me/attendance/notices")
     class GetMyNotices {
 
         @Test
-        @DisplayName("正常系: 送信履歴を返す → 200 + data 配列")
+        @DisplayName("正常系: 送信履歴を返す → 200 + data 配列（submitterUserIdはSecurityUtils.getCurrentUserId()に束縛）")
         void 正常系_200() throws Exception {
             given(noticeService.getMyNotices(eq(USER_ID), any(), any()))
                     .willReturn(List.of(buildNoticeResponse("ACKNOWLEDGED")));

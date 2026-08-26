@@ -7,7 +7,41 @@
     "back_to_memo": "返回行动备忘",
     "closing_link": "结束今天",
     "weekly_link": "每周总结",
-    "tags_link": "标签管理"
+    "tags_link": "标签管理",
+    "date_picker_label": "选择日期",
+    "back_to_today": "返回今天",
+    "selected_date_memos": "{date} 的备忘"
+  },
+  "guide": {
+    "title": "行动备忘使用指南",
+    "description": "记录您正在做的事情，回顾每日行动。专为ADHD设计，摩擦最小化。",
+    "record": {
+      "title": "记录备忘",
+      "body": "简短一句话即可。稍后可以添加详情，还可以记录类别、时长等。",
+      "steps": {
+        "step1": "在输入框中输入刚才在做什么",
+        "step2": "按Enter或点击「记录」保存",
+        "step3": "使用高级字段添加时间、进度或团队分享"
+      }
+    },
+    "past": {
+      "title": "查看过去的备忘",
+      "body": "使用日期选择器查看过去的记录。「返回今天」可立即回到今日。",
+      "steps": {
+        "step1": "使用日期选择器选择日期",
+        "step2": "查看当天所有备忘",
+        "step3": "点击「返回今天」回到今日备忘"
+      }
+    },
+    "review": {
+      "title": "回顾与反思",
+      "body": "使用每周总结和每日结束回顾，检视行动、心情和待办事项。",
+      "steps": {
+        "step1": "打开「每周总结」查看过去7天的图表",
+        "step2": "使用「结束今天」进行反思并设置明天的待办",
+        "step3": "通过标签管理整理常用分类"
+      }
+    }
   },
   "mood": {
     "great": "极好",
@@ -187,25 +221,25 @@
   },
   "phase4": {
     "org_scope": {
-      "label": "組織に共有",
-      "select_org": "共有先組織を選択",
-      "visibility_label": "公開範囲",
-      "team_only": "チームメンバーのみ",
-      "org_wide": "組織全体に公開",
-      "no_orgs": "所属組織がありません",
-      "already_set": "組織スコープ設定済み",
-      "clear": "組織共有を解除"
+      "label": "共享至组织",
+      "select_org": "选择共享目标组织",
+      "visibility_label": "可见范围",
+      "team_only": "仅团队成员",
+      "org_wide": "公开给整个组织",
+      "no_orgs": "没有所属组织",
+      "already_set": "已设置组织范围",
+      "clear": "取消组织共享"
     },
     "audit": {
-      "toggle": "変更履歴",
-      "empty": "変更履歴はありません",
-      "loading": "読み込み中...",
-      "error": "履歴の取得に失敗しました",
-      "event_todo_completed": "関連TODO を完了にしました",
-      "event_created": "メモを作成しました",
-      "event_updated": "メモを更新しました",
-      "event_deleted": "メモを削除しました",
-      "event_todo_reverted": "TODOを差し戻しました"
+      "toggle": "变更历史",
+      "empty": "没有变更历史",
+      "loading": "加载中...",
+      "error": "历史记录获取失败",
+      "event_todo_completed": "将关联TODO标记为完成",
+      "event_created": "备忘录已创建",
+      "event_updated": "备忘录已更新",
+      "event_deleted": "备忘录已删除",
+      "event_todo_reverted": "TODO已撤回"
     }
   }
 }

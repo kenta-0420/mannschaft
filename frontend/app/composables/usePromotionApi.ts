@@ -3,7 +3,7 @@ import type { PromotionResponse, CouponResponse, SegmentPreset } from '~/types/p
 export function usePromotionApi() {
   const api = useApi()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
@@ -19,20 +19,20 @@ export function usePromotionApi() {
   // === Promotions ===
   async function getPromotions(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const qs = buildQuery(params)
     return api<{ data: PromotionResponse[] }>(`${buildBase(scopeType, scopeId)}/promotions?${qs}`)
   }
 
-  async function getPromotion(scopeType: 'team' | 'organization', scopeId: number, id: number) {
+  async function getPromotion(scopeType: 'team' | 'organization', scopeId: string, id: number) {
     return api<{ data: PromotionResponse }>(`${buildBase(scopeType, scopeId)}/promotions/${id}`)
   }
 
   async function createPromotion(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: PromotionResponse }>(`${buildBase(scopeType, scopeId)}/promotions`, {
@@ -43,32 +43,32 @@ export function usePromotionApi() {
 
   async function updatePromotion(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     id: number,
     body: Record<string, unknown>,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/promotions/${id}`, { method: 'PUT', body })
   }
 
-  async function deletePromotion(scopeType: 'team' | 'organization', scopeId: number, id: number) {
+  async function deletePromotion(scopeType: 'team' | 'organization', scopeId: string, id: number) {
     return api(`${buildBase(scopeType, scopeId)}/promotions/${id}`, { method: 'DELETE' })
   }
 
-  async function approvePromotion(scopeType: 'team' | 'organization', scopeId: number, id: number) {
+  async function approvePromotion(scopeType: 'team' | 'organization', scopeId: string, id: number) {
     return api(`${buildBase(scopeType, scopeId)}/promotions/${id}/approve`, { method: 'POST' })
   }
 
-  async function publishPromotion(scopeType: 'team' | 'organization', scopeId: number, id: number) {
+  async function publishPromotion(scopeType: 'team' | 'organization', scopeId: string, id: number) {
     return api(`${buildBase(scopeType, scopeId)}/promotions/${id}/publish`, { method: 'POST' })
   }
 
-  async function cancelPromotion(scopeType: 'team' | 'organization', scopeId: number, id: number) {
+  async function cancelPromotion(scopeType: 'team' | 'organization', scopeId: string, id: number) {
     return api(`${buildBase(scopeType, scopeId)}/promotions/${id}/cancel`, { method: 'POST' })
   }
 
   async function schedulePromotion(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     id: number,
     body: Record<string, unknown>,
   ) {
@@ -80,7 +80,7 @@ export function usePromotionApi() {
 
   async function getPromotionStats(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     id: number,
   ) {
     return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/promotions/${id}/stats`)
@@ -88,7 +88,7 @@ export function usePromotionApi() {
 
   async function estimateAudience(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/promotions/estimate-audience`, {
@@ -100,20 +100,20 @@ export function usePromotionApi() {
   // === Coupons ===
   async function getCoupons(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: Record<string, unknown>,
   ) {
     const qs = buildQuery(params)
     return api<{ data: CouponResponse[] }>(`${buildBase(scopeType, scopeId)}/coupons?${qs}`)
   }
 
-  async function getCoupon(scopeType: 'team' | 'organization', scopeId: number, id: number) {
+  async function getCoupon(scopeType: 'team' | 'organization', scopeId: string, id: number) {
     return api<{ data: CouponResponse }>(`${buildBase(scopeType, scopeId)}/coupons/${id}`)
   }
 
   async function createCoupon(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/coupons`, { method: 'POST', body })
@@ -121,29 +121,29 @@ export function usePromotionApi() {
 
   async function updateCoupon(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     id: number,
     body: Record<string, unknown>,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/coupons/${id}`, { method: 'PUT', body })
   }
 
-  async function deleteCoupon(scopeType: 'team' | 'organization', scopeId: number, id: number) {
+  async function deleteCoupon(scopeType: 'team' | 'organization', scopeId: string, id: number) {
     return api(`${buildBase(scopeType, scopeId)}/coupons/${id}`, { method: 'DELETE' })
   }
 
-  async function toggleCoupon(scopeType: 'team' | 'organization', scopeId: number, id: number) {
+  async function toggleCoupon(scopeType: 'team' | 'organization', scopeId: string, id: number) {
     return api(`${buildBase(scopeType, scopeId)}/coupons/${id}/toggle`, { method: 'PATCH' })
   }
 
   // === Segment Presets ===
-  async function getSegmentPresets(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getSegmentPresets(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: SegmentPreset[] }>(`${buildBase(scopeType, scopeId)}/segment-presets`)
   }
 
   async function createSegmentPreset(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: SegmentPreset }>(`${buildBase(scopeType, scopeId)}/segment-presets`, {
@@ -154,7 +154,7 @@ export function usePromotionApi() {
 
   async function updateSegmentPreset(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     id: number,
     body: Record<string, unknown>,
   ) {
@@ -163,7 +163,7 @@ export function usePromotionApi() {
 
   async function deleteSegmentPreset(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     id: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/segment-presets/${id}`, { method: 'DELETE' })

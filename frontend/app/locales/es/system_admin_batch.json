@@ -1,64 +1,65 @@
 {
   "systemAdmin": {
     "batches": {
-      "title": "バッチ管理",
-      "description": "登録済みのバッチを起動・監視します",
+      "title": "Gestión de lotes",
+      "description": "Inicie y monitoree lotes registrados",
       "summary": {
-        "title": "バッチ実行サマリー（直近24時間）",
-        "success": "成功",
-        "failed": "失敗",
-        "viewAll": "詳細を見る"
+        "title": "Resumen de ejecución de lotes (últimas 24 horas)",
+        "success": "Éxito",
+        "failed": "Fallido",
+        "viewAll": "Ver detalles"
       },
       "filter": {
-        "search": "バッチ名で検索",
-        "status": "ステータスで絞り込み",
-        "statusAll": "すべて"
+        "search": "Buscar por nombre de lote",
+        "status": "Filtrar por estado",
+        "statusAll": "Todos"
       },
       "column": {
-        "name": "バッチ名",
-        "description": "説明",
-        "lastStatus": "直近ステータス",
-        "lastRun": "直近実行",
-        "actions": "操作"
+        "name": "Nombre del lote",
+        "description": "Descripción",
+        "lastStatus": "Último estado",
+        "lastRun": "Última ejecución",
+        "actions": "Acciones"
       },
       "button": {
-        "run": "実行",
-        "runSync": "同期実行",
-        "viewDetail": "詳細",
-        "close": "閉じる",
-        "refresh": "再読み込み"
+        "run": "Ejecutar",
+        "runSync": "Ejecutar sincrónicamente",
+        "viewDetail": "Detalles",
+        "close": "Cerrar",
+        "refresh": "Actualizar"
       },
       "status": {
-        "success": "成功",
-        "failed": "失敗",
-        "running": "実行中",
-        "skipped": "スキップ",
-        "locked": "ロック中",
-        "accepted": "受付済",
-        "completed": "完了",
-        "unknown": "未実行"
+        "success": "Éxito",
+        "failed": "Fallido",
+        "running": "En ejecución",
+        "skipped": "Omitido",
+        "resumed": "Reanudado",
+        "locked": "Bloqueado",
+        "accepted": "Aceptado",
+        "completed": "Completado",
+        "unknown": "No ejecutado"
       },
       "toast": {
-        "runStarted": "バッチ起動を受け付けました: {name}",
-        "runStartedDetail": "非同期で実行中です。完了後にお知らせします。",
-        "runCompleted": "バッチ実行が完了しました: {name}",
-        "runFailed": "バッチ実行に失敗しました: {name}",
-        "locked": "他インスタンスがロック中です: {name}",
-        "loadFailed": "バッチ一覧の取得に失敗しました",
-        "statusFailed": "ステータスの取得に失敗しました"
+        "runStarted": "Inicio de lote aceptado: {name}",
+        "runStartedDetail": "Ejecutando de forma asincrónica. Se le notificará cuando termine.",
+        "runCompleted": "Ejecución de lote completada: {name}",
+        "runFailed": "Error en la ejecución del lote: {name}",
+        "locked": "Otro proceso tiene el bloqueo: {name}",
+        "loadFailed": "Error al cargar la lista de lotes",
+        "statusFailed": "Error al obtener el estado"
       },
       "detail": {
-        "title": "バッチ詳細",
-        "noHistory": "実行履歴がありません",
-        "jobName": "ジョブ名",
-        "status": "ステータス",
-        "startedAt": "開始時刻",
-        "finishedAt": "終了時刻",
-        "processedCount": "処理件数",
-        "errorMessage": "エラーメッセージ"
+        "title": "Detalles del lote",
+        "noHistory": "Sin historial de ejecución",
+        "jobName": "Nombre del trabajo",
+        "status": "Estado",
+        "startedAt": "Inicio",
+        "finishedAt": "Fin",
+        "processedCount": "Registros procesados",
+        "errorMessage": "Mensaje de error"
       },
-      "empty": "登録されているバッチがありません",
-      "noResults": "条件に一致するバッチがありません"
+      "empty": "No hay lotes registrados",
+      "noResults": "No hay lotes que coincidan con los criterios"
     }
   }
 }

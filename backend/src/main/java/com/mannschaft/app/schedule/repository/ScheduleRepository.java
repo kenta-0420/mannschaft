@@ -23,6 +23,30 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
             Long teamId, LocalDateTime from, LocalDateTime to);
 
     /**
+     * 複数チームスコープのスケジュールを期間指定で一括取得する（N+1 解消用）。
+     *
+     * <p>ダッシュボードのカレンダー集計は所属チーム数 N に対して
+     * {@link #findByTeamIdAndStartAtBetweenOrderByStartAtAsc} を期間×N 回呼び出していたため、
+     * teamId 集合の IN 句で 1 クエリにまとめる。複合インデックス
+     * {@code idx_sch_team_start(team_id, start_at)} がそのまま効く。</p>
+     *
+     * <p>呼び出し側は {@code teamIds} が空の場合に本メソッドを呼ばないこと
+     * （{@code IN ()} の発行を避けるため）。</p>
+     *
+     * @param teamIds 取得対象のチーム ID 集合（空集合で呼ばないこと）
+     * @param from    期間開始
+     * @param to      期間終了
+     * @return 期間内のチームスケジュール（start_at 昇順）
+     */
+    @Query("SELECT s FROM ScheduleEntity s "
+            + "WHERE s.teamId IN (:teamIds) AND s.startAt BETWEEN :from AND :to "
+            + "ORDER BY s.startAt ASC")
+    List<ScheduleEntity> findByTeamIdInAndStartAtBetween(
+            @Param("teamIds") Collection<Long> teamIds,
+            @Param("from") LocalDateTime from,
+            @Param("to") LocalDateTime to);
+
+    /**
      * 組織スコープのスケジュールを期間指定で取得する。
      */
     List<ScheduleEntity> findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(
@@ -100,8 +124,45 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
             nativeQuery = true)
     List<ScheduleEntity> findUnsyncedPersonalSchedules(@Param("userId") Long userId);
 
-    @Query("SELECT s FROM ScheduleEntity s WHERE s.title LIKE %:keyword% OR s.description LIKE %:keyword% OR s.location LIKE %:keyword%")
-    List<ScheduleEntity> searchByKeyword(@Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
+    /**
+     * 横断検索（グローバル検索）用のキーワード検索。閲覧者の可視スコープに限定する。
+     *
+     * <p>本メソッドが SQL 述語で絞り込むのは「所属チームのスケジュール」「所属組織のスケジュール」
+     * 「自分の個人スケジュール」の和集合という<strong>所属軸</strong>のみである。閲覧閾値軸
+     * （{@code min_view_role}）はスコープごとに閲覧者の実効ロールを見る必要があり SQL 1 行の
+     * predicate に落とせないため、ここでは評価しない。呼び出し側（{@code GlobalSearchService}）が
+     * 取得結果を {@code ContentVisibilityChecker#filterAccessible} に通し、閾値を満たさない
+     * スケジュール（例: SUPPORTER に対する {@code min_view_role=MEMBER_PLUS}）を除外して初めて
+     * 横断検索の可視性判定が完成する（CMP-017b 第五隊）。</p>
+     *
+     * <p>{@code CUSTOM_TEMPLATE}（F01.7 カスタム公開範囲テンプレート）は、テンプレート評価が
+     * SQL 述語に落とせずクエリ段階で判定できないため、本検索の対象から除外する（fail-closed）。
+     * 当該スケジュールは各ドメインの詳細取得 API（{@code ContentVisibilityChecker} 経由）で参照する。</p>
+     *
+     * <p>呼び出し側は {@code teamIds} / {@code orgIds} が空の場合、{@code IN ()} の発行を避けるため
+     * ダミー値（{@code -1L}）で埋めること。</p>
+     *
+     * @param keyword  検索キーワード
+     * @param teamIds  閲覧者が所属するチーム ID 集合（非空・空ならダミー値）
+     * @param orgIds   閲覧者が所属する組織 ID 集合（非空・空ならダミー値）
+     * @param userId   閲覧者ユーザー ID（個人スケジュール一致判定用）
+     * @param pageable 取得件数
+     * @return 可視スコープ内の検索結果
+     */
+    @Query("""
+            SELECT s FROM ScheduleEntity s
+            WHERE (s.title LIKE %:keyword% OR s.description LIKE %:keyword% OR s.location LIKE %:keyword%)
+              AND s.deletedAt IS NULL
+              AND s.visibility <> com.mannschaft.app.schedule.ScheduleVisibility.CUSTOM_TEMPLATE
+              AND (s.teamId IN :teamIds
+                OR s.organizationId IN :orgIds
+                OR s.userId = :userId)
+            """)
+    List<ScheduleEntity> searchByKeyword(@Param("keyword") String keyword,
+                                         @Param("teamIds") Collection<Long> teamIds,
+                                         @Param("orgIds") Collection<Long> orgIds,
+                                         @Param("userId") Long userId,
+                                         org.springframework.data.domain.Pageable pageable);
 
     /**
      * チームの最頻利用施設（venue_id）を取得する（広告セグメント用）。
@@ -141,7 +202,7 @@ public interface ScheduleRepository extends AbstractTenantAwareRepository<Schedu
      */
     @Query("SELECT new com.mannschaft.app.schedule.visibility.ScheduleVisibilityProjection("
             + "s.id, s.teamId, s.organizationId, s.userId, s.createdBy, "
-            + "s.visibility, s.visibilityTemplateId, s.status) "
+            + "s.visibility, s.visibilityTemplateId, s.status, s.minViewRole) "
             + "FROM ScheduleEntity s WHERE s.id IN :ids")
     List<ScheduleVisibilityProjection> findVisibilityProjectionsByIdIn(@Param("ids") Collection<Long> ids);
 }

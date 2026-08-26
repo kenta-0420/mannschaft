@@ -5,22 +5,29 @@
  * - CRUD:       listSchedules / getSchedule / createSchedule / updateSchedule / deleteSchedule / cancelSchedule / duplicateSchedule
  * - カテゴリ:   getCategories / createCategory
  * - 招待:       getScheduleInvitations / acceptScheduleInvitation / rejectScheduleInvitation / confirmScheduleInvitation
- * - カレンダー: getCalendarMonth
- * - グローバル: remindSchedule / respondToSchedule
+ * - カレンダー: getCalendarMonth / getCalendarRange
+ * - グローバル: remindSchedule
+ *
+ * 出欠回答（respondToSchedule）は useScheduleAttendance.respondAttendance に一本化済み
+ * （PATCH /api/v1/schedules/{id}/responses への重複実装だったため削除）。
  */
 import type { ScheduleInvitationResponse } from '~/types/schedule'
+import type { components } from '~/types/generated'
+
+type CalendarLayerResponse = components['schemas']['CalendarLayerResponse']
 
 export function useScheduleCrud() {
   const api = useApi()
+  const { buildDayStartStr, buildDayEndStr } = useDatetime()
 
-  function buildBase(scopeType: 'team' | 'organization', scopeId: number) {
+  function buildBase(scopeType: 'team' | 'organization', scopeId: string) {
     return scopeType === 'team' ? `/api/v1/teams/${scopeId}` : `/api/v1/organizations/${scopeId}`
   }
 
   // === Shared Schedule CRUD ===
   async function listSchedules(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     params?: {
       from?: string
       to?: string
@@ -45,7 +52,7 @@ export function useScheduleCrud() {
 
   async function getSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
   ) {
     return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}`)
@@ -53,7 +60,7 @@ export function useScheduleCrud() {
 
   async function createSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: Record<string, unknown>,
   ) {
     return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/schedules`, {
@@ -64,7 +71,7 @@ export function useScheduleCrud() {
 
   async function updateSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
     body: Record<string, unknown>,
   ) {
@@ -76,7 +83,7 @@ export function useScheduleCrud() {
 
   async function deleteSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
     editScope?: string,
   ) {
@@ -88,7 +95,7 @@ export function useScheduleCrud() {
 
   async function cancelSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/schedules/${scheduleId}/cancel`, {
@@ -96,10 +103,23 @@ export function useScheduleCrud() {
     })
   }
 
+  // === 機能55: 予約タスク取消（PENDING のみ・204/404/409） ===
+  async function cancelScheduledTask(
+    scopeType: 'team' | 'organization',
+    scopeId: string,
+    scheduleId: number,
+    taskId: string,
+  ) {
+    return api(
+      `${buildBase(scopeType, scopeId)}/schedules/${scheduleId}/scheduled-tasks/${taskId}`,
+      { method: 'DELETE' },
+    )
+  }
+
   // === Duplicate ===
   async function duplicateSchedule(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     scheduleId: number,
   ) {
     return api<{ data: unknown }>(
@@ -117,8 +137,11 @@ export function useScheduleCrud() {
   ) {
     const pad = (n: number) => String(n).padStart(2, '0')
     const lastDay = new Date(year, month, 0).getDate()
-    const from = `${year}-${pad(month)}-01T00:00:00`
-    const to = `${year}-${pad(month)}-${pad(lastDay)}T23:59:59`
+    // 暦日の月境界をユーザーTZの 00:00:00 / 23:59:59 として送る（Issue #2508 Phase 2）。
+    // ナイーブ連結は America/Santiago 等の「深夜0時にTZが切り替わる地域」で非存在時刻となり、
+    // 範囲の下端が1時間欠ける。
+    const from = buildDayStartStr(`${year}-${pad(month)}-01`)
+    const to = buildDayEndStr(`${year}-${pad(month)}-${pad(lastDay)}`)
     if (scopeType === 'TEAM' && scopeId) {
       const query = new URLSearchParams()
       query.set('from', from)
@@ -131,14 +154,29 @@ export function useScheduleCrud() {
     return api<{ data: unknown }>(`/api/v1/my/calendar?${query}`)
   }
 
+  async function getCalendarRange(from: string, to: string) {
+    const query = new URLSearchParams()
+    query.set('from', from)
+    query.set('to', to)
+    return api<{ data: unknown }>(`/api/v1/my/calendar?${query}`)
+  }
+
+  /**
+   * 統合カレンダーのレイヤー一覧（所属スコープ＋解決済み色＋表示可否）。
+   * 予定の有無に依存せず全所属を返す（F03.19 §4.3・AC-01/AC-02）。月移動での再取得は不要（AC-03）。
+   */
+  async function getMyCalendarLayers() {
+    return api<{ data: CalendarLayerResponse[] }>('/api/v1/me/calendar-layers')
+  }
+
   // === Event Categories ===
-  async function getCategories(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getCategories(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: unknown[] }>(`${buildBase(scopeType, scopeId)}/event-categories`)
   }
 
   async function createCategory(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     body: { name: string; color: string },
   ) {
     return api<{ data: unknown }>(`${buildBase(scopeType, scopeId)}/event-categories`, {
@@ -152,12 +190,8 @@ export function useScheduleCrud() {
     return api(`/api/v1/schedules/${scheduleId}/remind`, { method: 'POST' })
   }
 
-  async function respondToSchedule(scheduleId: number, body: { status: string; comment?: string }) {
-    return api(`/api/v1/schedules/${scheduleId}/responses`, { method: 'PATCH', body })
-  }
-
   // === Schedule Invitations ===
-  async function getScheduleInvitations(scopeType: 'team' | 'organization', scopeId: number) {
+  async function getScheduleInvitations(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: ScheduleInvitationResponse[] }>(
       `${buildBase(scopeType, scopeId)}/schedule-invitations`,
     )
@@ -165,7 +199,7 @@ export function useScheduleCrud() {
 
   async function acceptScheduleInvitation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     invitationId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/schedule-invitations/${invitationId}/accept`, {
@@ -175,7 +209,7 @@ export function useScheduleCrud() {
 
   async function rejectScheduleInvitation(
     scopeType: 'team' | 'organization',
-    scopeId: number,
+    scopeId: string,
     invitationId: number,
   ) {
     return api(`${buildBase(scopeType, scopeId)}/schedule-invitations/${invitationId}/reject`, {
@@ -183,7 +217,7 @@ export function useScheduleCrud() {
     })
   }
 
-  async function confirmScheduleInvitation(teamId: number, invitationId: number) {
+  async function confirmScheduleInvitation(teamId: string, invitationId: number) {
     return api(`/api/v1/teams/${teamId}/schedule-invitations/${invitationId}/confirm`, {
       method: 'POST',
     })
@@ -196,12 +230,14 @@ export function useScheduleCrud() {
     updateSchedule,
     deleteSchedule,
     cancelSchedule,
+    cancelScheduledTask,
     duplicateSchedule,
     getCalendarMonth,
+    getCalendarRange,
+    getMyCalendarLayers,
     getCategories,
     createCategory,
     remindSchedule,
-    respondToSchedule,
     getScheduleInvitations,
     acceptScheduleInvitation,
     rejectScheduleInvitation,
