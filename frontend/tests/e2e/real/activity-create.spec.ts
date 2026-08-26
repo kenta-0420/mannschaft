@@ -41,7 +41,8 @@ const MEMBERS_TITLE = `E2E限定記録-${RUN}`
 async function gotoActivities(page: Page): Promise<void> {
   await page.goto(ACTIVITIES_URL, { waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
-  await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+  await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 })
+    .catch((e: unknown) => { console.warn('[待機] ローディング消滅を待てなかったまま続行:', e) })
 }
 
 // PrimeVue InputText/Textarea は fill() だと v-model に反映されない場合があるため
