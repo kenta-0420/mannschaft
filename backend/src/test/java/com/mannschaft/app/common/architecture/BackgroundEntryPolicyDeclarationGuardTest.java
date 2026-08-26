@@ -162,7 +162,31 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             }
             return null;
         }
+
+        /** この種別の注釈の単純名。 */
+        String annotationSimpleName() {
+            return annotationSimpleName;
+        }
     }
+
+    /**
+     * {@code @Repeatable} なアノテーションのコンテナ（単純名）→ 中身の種別。
+     *
+     * <p><b>取り逃しの罠</b>: {@code @Scheduled} は {@code @Repeatable(Schedules.class)} であり、
+     * 1 メソッドに 2 つ以上書くと javac は {@code @Scheduled} を直接付けず
+     * {@code @Schedules({@Scheduled(...), @Scheduled(...)})} コンテナに包む。
+     * 単純名で {@code Scheduled} だけを見る番人は<b>複数スケジュール指定のバッチを丸ごと取り逃す</b>。
+     * 取り逃した入口は台帳を1件も動かさないため、<b>未宣言のまま完全に素通りする</b>
+     * （{@code TEST_CONVENTION.md} §9「番人自体のテスト（@Repeatable の罠）」が明示的に禁じている）。</p>
+     *
+     * <p>実測（javap、2026-08-26）で {@code @Repeatable} なのは {@code @Scheduled} のみであり、
+     * {@code @EventListener} / {@code @TransactionalEventListener} / {@code @SqsListener} は違う。
+     * 将来 Spring 側で repeatable 化された場合に黙って取り逃さないよう、
+     * {@link 判定ロジック自己検証#repeatable_なコンテナが全て登録されていること()} が
+     * 実クラスをリフレクションで見て登録漏れを落とす。</p>
+     */
+    private static final Map<String, EntryKind> REPEATABLE_CONTAINERS =
+            Map.of("Schedules", EntryKind.SCHEDULED);
 
     /** 検出した 1 入口。 */
     record Entry(String relPath, int line, String fqcn, EntryKind kind, boolean declared, String mode) {
@@ -240,21 +264,27 @@ class BackgroundEntryPolicyDeclarationGuardTest {
     @Test
     @DisplayName("(AC-3〜AC-6) 未宣言のバックグラウンド入口が凍結台帳と件数一致していること（増加・減少・新規クラス・陳腐化を検知）")
     void ac3to6_未宣言入口が凍結台帳と一致していること() throws IOException {
-        Map<String, Integer> actual = undeclaredCountsByKey(scan().entries());
-        Map<String, Integer> frozen = readFreeze();
+        List<Entry> entries = scan().entries();
+        Map<String, Integer> actualUndeclared = undeclaredCountsByKey(entries);
+        Map<String, Integer> actualTotals = totalCountsByKey(entries);
+        Freeze frozen = readFreeze();
 
-        List<String> mismatches = mismatches(actual, frozen);
+        List<String> mismatches = allMismatches(actualUndeclared, actualTotals, frozen);
 
         assertThat(mismatches)
-                .as("未宣言のバックグラウンド入口の件数が凍結台帳と一致しません。\n\n"
+                .as("バックグラウンド入口の件数が凍結台帳と一致しません。\n\n"
+                        + "【未宣言件数】\n"
                         + "・増加／新規クラス → 新しく足した入口に @BackgroundFeaturePolicy を付けること。\n"
                         + "  台帳へ追記して通すことは禁止（台帳は「残債」であり免罪符ではない）。\n"
                         + "・減少 → 付与が進んだ証拠。台帳の該当行を実測値へ更新すること（chip-away）。\n"
                         + "・陳腐化 → 実コードに1件も無い行。台帳から削除すること。\n\n"
+                        + "【総数】入口そのものを増減させたときだけ動く。宣言を付けただけなら総数は変わらない。\n"
+                        + "・増加 → 入口を新設した。その入口に宣言を付けたうえで台帳の総数を更新すること。\n"
+                        + "  （この列があるおかげで「1件に宣言を付けつつ未宣言を1件足す」相殺が検出できる）\n\n"
                         + "台帳: " + FREEZE_FILE + "\n"
                         + "不一致:\n" + String.join("\n", mismatches)
                         + "\n\n--- 実測値そのままの台帳本文（是正済みならこれで置き換えてよい） ---\n"
-                        + renderFreeze(actual))
+                        + renderFreeze(actualUndeclared, actualTotals))
                 .isEmpty();
     }
 
@@ -319,12 +349,55 @@ class BackgroundEntryPolicyDeclarationGuardTest {
         return violations;
     }
 
-    /** 未宣言入口を {@code <種別>|<FQCN>} 単位で数える。 */
+    /** コンテナ単純名に対応する入口種別（未登録なら null）。自己検証テスト用。 */
+    static EntryKind repeatableContainerFor(String containerSimpleName) {
+        return REPEATABLE_CONTAINERS.get(containerSimpleName);
+    }
+
+    /** 台帳のキー。{@code <種別>|<FQCN>}。 */
+    private static String keyOf(Entry e) {
+        return e.kind().name() + "|" + e.fqcn();
+    }
+
+    /**
+     * 入口の総数（宣言済み＋未宣言）を {@code <種別>|<FQCN>} 単位で数える。
+     *
+     * <p><b>なぜ総数まで凍結するのか</b>: 未宣言件数だけを凍結すると、
+     * 同一クラス内で「既存の1件に宣言を付ける」と「新しい未宣言の入口を1件足す」を
+     * 同時に行ったとき、未宣言件数が<b>相殺されて台帳と一致したまま</b>になり、
+     * 新しく足した入口が宣言なしで素通りする。第二〜四陣はまさに
+     * 「宣言を付けていく」作業なので、この経路は現実に踏まれる。</p>
+     *
+     * <p>メソッド名を台帳へ載せれば個別に追えるが、それは PR #2725 の事故
+     * （本件と無関係なメソッド名変更だけで CI が赤くなる）を再来させるため採らない。
+     * 代わりに総数を併せて凍結する。宣言を付けるだけなら
+     * 「未宣言 −1・総数 ±0」で chip-away として通り、入口を足せば
+     * 「総数 +1」となって<b>相殺されようがなく検出</b>できる。</p>
+     */
+    static Map<String, Integer> totalCountsByKey(List<Entry> entries) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (Entry e : entries) {
+            counts.merge(keyOf(e), 1, Integer::sum);
+        }
+        return counts;
+    }
+
+    /**
+     * 未宣言入口を {@code <種別>|<FQCN>} 単位で数える。
+     *
+     * <p>キー集合は {@link #totalCountsByKey} と<b>必ず一致</b>させる
+     * （入口が1件でもあるクラスは、全件宣言済みでも 0 件として載せる）。
+     * 揃えないと、全件宣言済みになったクラスが「陳腐化」と判定され、
+     * まだ意味のある総数の凍結行まで消せと迫られてしまう。</p>
+     */
     static Map<String, Integer> undeclaredCountsByKey(List<Entry> entries) {
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (Entry e : entries) {
+            counts.putIfAbsent(keyOf(e), 0);
+        }
+        for (Entry e : entries) {
             if (!e.declared()) {
-                counts.merge(e.kind().name() + "|" + e.fqcn(), 1, Integer::sum);
+                counts.merge(keyOf(e), 1, Integer::sum);
             }
         }
         return counts;
@@ -341,12 +414,35 @@ class BackgroundEntryPolicyDeclarationGuardTest {
         return classCountMismatches(actual, frozen);
     }
 
+    /**
+     * 未宣言件数と総数の<b>両方</b>を台帳と突き合わせる（AC-3〜AC-6 の判定本体）。
+     *
+     * <p>総数の比較があることで、同一クラス内での「宣言を1件付ける＋未宣言を1件足す」という
+     * 相殺（未宣言件数だけ見ていると台帳と一致したまま素通りする）を検出できる。
+     * 実証は {@code 判定ロジック自己検証.同一クラス内の入れ替えを総数で検出する()}。</p>
+     */
+    static List<String> allMismatches(Map<String, Integer> actualUndeclared,
+                                      Map<String, Integer> actualTotals,
+                                      Freeze frozen) {
+        List<String> out = new ArrayList<>();
+        for (String m : mismatches(actualUndeclared, frozen.undeclared())) {
+            out.add("[未宣言] " + m);
+        }
+        for (String m : mismatches(actualTotals, frozen.totals())) {
+            out.add("[総数] " + m);
+        }
+        return out;
+    }
+
     /** 実測を台帳の行形式へ整形する（失敗メッセージに載せて手作業の写経を不要にする）。 */
-    static String renderFreeze(Map<String, Integer> counts) {
+    static String renderFreeze(Map<String, Integer> undeclared, Map<String, Integer> totals) {
         StringBuilder sb = new StringBuilder();
-        counts.entrySet().stream()
+        totals.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
-                .forEach(e -> sb.append(e.getKey()).append('|').append(e.getValue()).append('\n'));
+                .forEach(e -> sb.append(e.getKey())
+                        .append('|').append(undeclared.getOrDefault(e.getKey(), 0))
+                        .append('|').append(e.getValue())
+                        .append('\n'));
         return sb.toString();
     }
 
@@ -477,9 +573,24 @@ class BackgroundEntryPolicyDeclarationGuardTest {
                 String mode = declared ? modeOf(masked, args.get(policyIdx)) : null;
 
                 for (int idx = 0; idx < names.size(); idx++) {
-                    EntryKind kind = EntryKind.byAnnotation(names.get(idx));
+                    String name = names.get(idx);
+                    int line = lineOf(content, at.get(idx));
+
+                    EntryKind kind = EntryKind.byAnnotation(name);
                     if (kind != null) {
-                        out.add(new Entry(src.relPath(), lineOf(content, at.get(idx)), fqcn, kind, declared, mode));
+                        out.add(new Entry(src.relPath(), line, fqcn, kind, declared, mode));
+                        continue;
+                    }
+
+                    // @Repeatable のコンテナ（@Schedules 等）は中身を展開して1件ずつ数える。
+                    // ここを飛ばすと複数指定のバッチが台帳を動かさず素通りする
+                    // （REPEATABLE_CONTAINERS の Javadoc 参照）。
+                    EntryKind contained = REPEATABLE_CONTAINERS.get(name);
+                    if (contained != null) {
+                        int nested = countNestedAnnotations(masked, args.get(idx), contained.annotationSimpleName());
+                        for (int c = 0; c < nested; c++) {
+                            out.add(new Entry(src.relPath(), line, fqcn, contained, declared, mode));
+                        }
                     }
                 }
             }
@@ -506,6 +617,41 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             }
         }
         return null;
+    }
+
+    /**
+     * {@code @Repeatable} コンテナの引数の中に、包まれた注釈が何個あるかを数える。
+     *
+     * <p>マスク済み本文を見るため、文字列リテラルの中に現れる同名トークンには反応しない。</p>
+     *
+     * @param masked    マスク済みソース
+     * @param range     コンテナの引数範囲（{@code [開始, 終了)}。引数が無ければ {@code range[0] < 0}）
+     * @param innerName 包まれた注釈の単純名（例 {@code Scheduled}）
+     * @return 出現数（引数が無ければ 0）
+     */
+    private static int countNestedAnnotations(String masked, int[] range, String innerName) {
+        if (range[0] < 0) {
+            return 0;
+        }
+        String body = masked.substring(range[0], range[1]);
+        int count = 0;
+        int from = 0;
+        while (true) {
+            int at = body.indexOf('@', from);
+            if (at < 0) {
+                return count;
+            }
+            int ns = at + 1;
+            int ne = ns;
+            while (ne < body.length()
+                    && (Character.isJavaIdentifierPart(body.charAt(ne)) || body.charAt(ne) == '.')) {
+                ne++;
+            }
+            if (simpleName(body.substring(ns, ne)).equals(innerName)) {
+                count++;
+            }
+            from = Math.max(ne, at + 1);
+        }
     }
 
     /** {@code cursor} 以降の宣言がメソッドか（{@code (} に先に到達するか）。 */
@@ -638,7 +784,18 @@ class BackgroundEntryPolicyDeclarationGuardTest {
         throw new IllegalStateException("src/main/java が見つからない（cwd=" + Paths.get("").toAbsolutePath() + "）");
     }
 
-    private static Map<String, Integer> readFreeze() throws IOException {
+    /** 凍結台帳の内容（未宣言件数と総数の2次元）。 */
+    record Freeze(Map<String, Integer> undeclared, Map<String, Integer> totals) {
+    }
+
+    /**
+     * 凍結台帳を読む。行形式は {@code <種別>|<FQCN>|<未宣言件数>|<総数>}。
+     *
+     * <p>総数を併せて凍結する理由は {@link #totalCountsByKey} の Javadoc を参照。
+     * 3列だった旧形式は<b>受理しない</b>（黙って総数0として読むと、
+     * 総数による相殺検出が全クラスで無効化されたまま緑になるため）。</p>
+     */
+    private static Freeze readFreeze() throws IOException {
         Path path = null;
         for (Path candidate : new Path[]{FREEZE_FILE, Paths.get("backend").resolve(FREEZE_FILE)}) {
             if (Files.isRegularFile(candidate)) {
@@ -650,20 +807,29 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             throw new IllegalStateException(
                     "凍結台帳が見つからない: " + FREEZE_FILE + "（cwd=" + Paths.get("").toAbsolutePath() + "）");
         }
-        Map<String, Integer> counts = new LinkedHashMap<>();
+        Map<String, Integer> undeclared = new LinkedHashMap<>();
+        Map<String, Integer> totals = new LinkedHashMap<>();
         for (String line : Files.readAllLines(path, StandardCharsets.UTF_8)) {
             String trimmed = line.strip();
             if (trimmed.isEmpty() || trimmed.startsWith("#")) {
                 continue;
             }
-            String[] parts = trimmed.split("\\|", 3);
-            if (parts.length != 3 || EntryKind.byLedgerName(parts[0]) == null) {
+            String[] parts = trimmed.split("\\|", 4);
+            if (parts.length != 4 || EntryKind.byLedgerName(parts[0]) == null) {
                 throw new IllegalStateException("凍結台帳の行形式が不正: " + path + " の行 \"" + trimmed
-                        + "\"。期待形式: <種別>|<FQCN>|<件数>");
+                        + "\"。期待形式: <種別>|<FQCN>|<未宣言件数>|<総数>");
             }
-            counts.merge(parts[0] + "|" + parts[1], Integer.parseInt(parts[2]), Integer::sum);
+            String key = parts[0] + "|" + parts[1];
+            int u = Integer.parseInt(parts[2]);
+            int t = Integer.parseInt(parts[3]);
+            if (u > t) {
+                throw new IllegalStateException("凍結台帳の行が矛盾している（未宣言件数が総数を超える）: "
+                        + path + " の行 \"" + trimmed + "\"");
+            }
+            undeclared.merge(key, u, Integer::sum);
+            totals.merge(key, t, Integer::sum);
         }
-        return counts;
+        return new Freeze(undeclared, totals);
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -681,6 +847,9 @@ class BackgroundEntryPolicyDeclarationGuardTest {
         /** 禁止域に属さないクラスのパス。 */
         private static final String FREE_PATH =
                 "src/main/java/com/mannschaft/app/sample/SampleBatchService.java";
+
+        /** {@link #FREE_PATH} に対応する完全修飾クラス名。 */
+        private static final String FREE_FQCN = "com.mannschaft.app.sample.SampleBatchService";
 
         private List<Entry> entries(String path, String body) {
             return analyze(new Source(path, "class Synthetic {\n" + body + "\n}\n"));
@@ -857,6 +1026,171 @@ class BackgroundEntryPolicyDeclarationGuardTest {
         void 種別はキーの一部である() {
             assertThat(mismatches(Map.of("SCHEDULED|a.B", 1), Map.of("EVENT_LISTENER|a.B", 1)))
                     .hasSize(2);
+        }
+
+        // ── @Repeatable コンテナの取り逃し（TEST_CONVENTION.md §9） ──────────
+
+        @Test
+        @DisplayName("@Schedules コンテナに包まれた複数の @Scheduled を取り逃さない（素通り防止）")
+        void repeatable_コンテナの中身を展開して数える() {
+            List<Entry> es = entries(FREE_PATH, """
+                    @Schedules({
+                        @Scheduled(cron = "0 0 3 * * *"),
+                        @Scheduled(cron = "0 0 15 * * *")
+                    })
+                    public void run() {}
+                    """);
+
+            assertThat(es)
+                    .as("@Scheduled は @Repeatable(Schedules.class) であり、2つ以上書くと javac は "
+                            + "@Schedules コンテナに包む。コンテナを展開しないと、この未宣言バッチは "
+                            + "台帳を1件も動かさずに完全に素通りする")
+                    .hasSize(2);
+            assertThat(es).allSatisfy(e -> {
+                assertThat(e.kind()).isEqualTo(EntryKind.SCHEDULED);
+                assertThat(e.declared()).isFalse();
+            });
+        }
+
+        @Test
+        @DisplayName("@Schedules コンテナに宣言が付いていれば、展開後の全件が宣言済みになる")
+        void repeatable_コンテナへの宣言は展開後の全件に効く() {
+            List<Entry> es = entries(FREE_PATH, """
+                    @Schedules({
+                        @Scheduled(cron = "0 0 3 * * *"),
+                        @Scheduled(cron = "0 0 15 * * *")
+                    })
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+                            reason = "止めると既存データの整合性が壊れるため必ず実行する")
+                    public void run() {}
+                    """);
+
+            assertThat(es).hasSize(2);
+            assertThat(es).allSatisfy(e -> assertThat(e.declared()).isTrue());
+        }
+
+        @Test
+        @DisplayName("(AC-1) 禁止域の @Schedules に SKIP_WHEN_DISABLED を付けると展開後の全件が違反になる")
+        void repeatable_禁止域のコンテナも検出される() {
+            List<Entry> es = entries(FORBIDDEN_PATH, """
+                    @Schedules({
+                        @Scheduled(cron = "0 0 3 * * *"),
+                        @Scheduled(cron = "0 0 15 * * *")
+                    })
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+                            reason = "この宣言は番人に拒否されねばならない")
+                    public void run() {}
+                    """);
+
+            assertThat(forbiddenStopViolations(es)).hasSize(2);
+        }
+
+        @Test
+        @DisplayName("コンテナの中身は外側の走査で二重計上されない")
+        void repeatable_二重計上されない() {
+            List<Entry> es = entries(FREE_PATH, """
+                    @Schedules({@Scheduled(cron = "0 0 3 * * *")})
+                    public void run() {}
+                    """);
+
+            assertThat(es).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("@Repeatable なコンテナが全て登録されていること（将来 Spring 側で repeatable 化されたら落ちる）")
+        void repeatable_なコンテナが全て登録されていること() {
+            Map<EntryKind, Class<? extends java.lang.annotation.Annotation>> annotations = Map.of(
+                    EntryKind.SCHEDULED, org.springframework.scheduling.annotation.Scheduled.class,
+                    EntryKind.EVENT_LISTENER, org.springframework.context.event.EventListener.class,
+                    EntryKind.TRANSACTIONAL_EVENT_LISTENER,
+                    org.springframework.transaction.event.TransactionalEventListener.class,
+                    EntryKind.SQS_LISTENER, io.awspring.cloud.sqs.annotation.SqsListener.class);
+
+            assertThat(annotations.keySet())
+                    .as("入口種別を1つでも取りこぼすと、その種別の repeatable 化に気づけない")
+                    .containsExactlyInAnyOrder(EntryKind.values());
+
+            List<String> unregistered = new ArrayList<>();
+            annotations.forEach((kind, type) -> {
+                java.lang.annotation.Repeatable r =
+                        type.getAnnotation(java.lang.annotation.Repeatable.class);
+                if (r == null) {
+                    return;
+                }
+                String container = r.value().getSimpleName();
+                if (!kind.equals(repeatableContainerFor(container))) {
+                    unregistered.add(type.getSimpleName() + " は @Repeatable(" + container
+                            + ") だが REPEATABLE_CONTAINERS に " + kind + " として登録されていない");
+                }
+            });
+
+            assertThat(unregistered)
+                    .as("コンテナを登録しないと、その注釈を1メソッドに2つ書いたバッチが番人を素通りする")
+                    .isEmpty();
+        }
+
+        // ── 同一クラス内の入れ替え（件数相殺）の検出 ────────────────────
+
+        @Test
+        @DisplayName("同一クラス内で「宣言を1件付ける＋未宣言を1件足す」入れ替えを総数で検出する")
+        void 同一クラス内の入れ替えを総数で検出する() {
+            // 台帳: 入口2件のうち1件が未宣言。
+            Freeze frozen = new Freeze(Map.of("SCHEDULED|a.C", 1), Map.of("SCHEDULED|a.C", 2));
+
+            // 実測: 既存の未宣言1件に宣言を付け、同時に新しい未宣言入口を1件足した。
+            // 未宣言は 1 のまま（相殺）だが、入口の総数は 2 → 3 に増えている。
+            Map<String, Integer> actualUndeclared = Map.of("SCHEDULED|a.C", 1);
+            Map<String, Integer> actualTotals = Map.of("SCHEDULED|a.C", 3);
+
+            // 未宣言件数だけを見ていると素通りする（この番人が塞いだ穴そのもの）。
+            assertThat(mismatches(actualUndeclared, frozen.undeclared()))
+                    .as("未宣言件数だけの比較では相殺して一致してしまう。これが塞ぐべき穴である")
+                    .isEmpty();
+
+            // 総数を併せて見ると検出できる。
+            assertThat(allMismatches(actualUndeclared, actualTotals, frozen))
+                    .anySatisfy(m -> assertThat(m).contains("[総数]").contains("増加"));
+        }
+
+        @Test
+        @DisplayName("宣言を付けただけ（入口を増やしていない）なら総数は動かず、chip-away の案内だけが出る")
+        void 宣言を付けただけなら総数は動かない() {
+            Freeze frozen = new Freeze(Map.of("SCHEDULED|a.C", 1), Map.of("SCHEDULED|a.C", 2));
+
+            Map<String, Integer> actualUndeclared = Map.of("SCHEDULED|a.C", 0);
+            Map<String, Integer> actualTotals = Map.of("SCHEDULED|a.C", 2);
+
+            List<String> ms = allMismatches(actualUndeclared, actualTotals, frozen);
+
+            assertThat(ms).anySatisfy(m -> assertThat(m).contains("[未宣言]").contains("減少"));
+            assertThat(ms).noneSatisfy(m -> assertThat(m).contains("[総数]"));
+        }
+
+        @Test
+        @DisplayName("宣言済み・未宣言が揃って台帳と一致していれば pass（偽陽性が無い）")
+        void 両次元が一致すれば通る() {
+            Freeze frozen = new Freeze(Map.of("SCHEDULED|a.C", 1), Map.of("SCHEDULED|a.C", 2));
+
+            assertThat(allMismatches(Map.of("SCHEDULED|a.C", 1), Map.of("SCHEDULED|a.C", 2), frozen))
+                    .isEmpty();
+        }
+
+        @Test
+        @DisplayName("全件宣言済みのクラスも未宣言0件として台帳キーに残る（陳腐化と誤判定しない）")
+        void 全件宣言済みでもキーは残る() {
+            List<Entry> es = entries(FREE_PATH, """
+                    @Scheduled(cron = "0 0 3 * * *")
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+                            reason = "止めると既存データの整合性が壊れるため必ず実行する")
+                    public void run() {}
+                    """);
+
+            Map<String, Integer> undeclared = undeclaredCountsByKey(es);
+            Map<String, Integer> totals = totalCountsByKey(es);
+
+            assertThat(undeclared).containsEntry("SCHEDULED|" + FREE_FQCN, 0);
+            assertThat(totals).containsEntry("SCHEDULED|" + FREE_FQCN, 1);
+            assertThat(undeclared.keySet()).isEqualTo(totals.keySet());
         }
 
         @Test
