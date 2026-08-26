@@ -1,5 +1,6 @@
 package com.mannschaft.app.property.event;
 
+import org.springframework.cache.CacheManager;
 import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.incident.entity.IncidentEntity;
@@ -56,6 +57,10 @@ class PropertyWorkPackageEventListenerIntegrationTest extends AbstractMySqlInteg
     @Autowired
     private FeatureFlagRepository backgroundGateFeatureFlagRepository;
 
+    /** フラグキャッシュ退避用（行を入れるだけでは isEnabled が false を返し続ける）。 */
+    @Autowired
+    private CacheManager backgroundGateCacheManager;
+
     /**
      * ゲート対象のバックグラウンド入口を open にしてから各テストを走らせる。
      *
@@ -66,7 +71,10 @@ class PropertyWorkPackageEventListenerIntegrationTest extends AbstractMySqlInteg
      */
     @BeforeEach
     void openBackgroundFeatureGate() {
-        FeatureFlagTestSupport.enable(backgroundGateFeatureFlagRepository, "FEATURE_PROPERTY_REPAIRPLAN_ENABLED");
+        FeatureFlagTestSupport.enable(
+                backgroundGateFeatureFlagRepository,
+                backgroundGateCacheManager,
+                "FEATURE_PROPERTY_REPAIRPLAN_ENABLED");
     }
 
     @Autowired

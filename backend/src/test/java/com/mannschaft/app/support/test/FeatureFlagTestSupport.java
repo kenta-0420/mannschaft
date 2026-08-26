@@ -2,6 +2,8 @@ package com.mannschaft.app.support.test;
 
 import com.mannschaft.app.admin.entity.FeatureFlagEntity;
 import com.mannschaft.app.admin.repository.FeatureFlagRepository;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 
 /**
  * ゲート対象のバックグラウンド入口を扱うテストが、必要な feature flag を明示的に開けるための補助。
@@ -43,10 +45,28 @@ public final class FeatureFlagTestSupport {
      * <p>seed 済みの実キーと衝突しても一意制約違反にならないよう upsert にしている
      * （{@code FeatureGateAspectIT} が実測で踏んだ Duplicate entry の轍を踏まないため）。</p>
      *
-     * @param repository feature flag のリポジトリ
-     * @param flagKeys   有効化するフラグキー（{@code feature_flags.flag_key}）
+     * <h2>行を入れるだけでは足りない — キャッシュを必ず落とす</h2>
+     * <p>{@code FeatureFlagService#isEnabled} は
+     * {@code @Cacheable(value = "featureFlags", key = "#flagKey")} である。
+     * テストプロファイルは {@code spring.cache.type: none} を指定しているが、
+     * {@code RedisConfig} が {@code CacheManager} を Bean として明示定義しているため
+     * Spring Boot のキャッシュ自動設定は後退し、<b>キャッシュは実際には有効なまま</b>である。
+     * その結果、同一コンテキストで先に走った別のテストが
+     * 行の無い状態の {@code false} をキャッシュしていると、
+     * 行を入れ直しても {@code isEnabled} は<b>キャッシュ済みの false を返し続ける</b>。</p>
+     *
+     * <p>これは実測で踏んだ罠である（CI shard 1 で
+     * {@code AdBannerReservationExpiryIT#ac3_8_freqcap} が、行を入れたにも関わらず
+     * ゲートに閉じられ {@code expireStaleReservations()} が null を返して落ちた）。
+     * よって行の upsert とキャッシュ退避は<b>必ず対で行う</b>。</p>
+     *
+     * @param repository   feature flag のリポジトリ
+     * @param cacheManager フラグキャッシュを落とすための CacheManager
+     * @param flagKeys     有効化するフラグキー（{@code feature_flags.flag_key}）
      */
-    public static void enable(FeatureFlagRepository repository, String... flagKeys) {
+    public static void enable(FeatureFlagRepository repository,
+                              CacheManager cacheManager,
+                              String... flagKeys) {
         for (String flagKey : flagKeys) {
             FeatureFlagEntity entity = repository.findByFlagKey(flagKey)
                     .orElseGet(() -> FeatureFlagEntity.builder()
@@ -55,6 +75,24 @@ public final class FeatureFlagTestSupport {
                             .build());
             entity.updateFlag(true, null);
             repository.save(entity);
+        }
+        clearFlagCaches(cacheManager);
+    }
+
+    /**
+     * フラグ関連キャッシュを落とす。
+     *
+     * <p>{@code FeatureGateAspectIT} が落としているのと同じ 2 つを対象にする。</p>
+     */
+    public static void clearFlagCaches(CacheManager cacheManager) {
+        if (cacheManager == null) {
+            return;
+        }
+        for (String cacheName : new String[]{"featureFlags", "featureFlagsPublicList"}) {
+            Cache cache = cacheManager.getCache(cacheName);
+            if (cache != null) {
+                cache.clear();
+            }
         }
     }
 }

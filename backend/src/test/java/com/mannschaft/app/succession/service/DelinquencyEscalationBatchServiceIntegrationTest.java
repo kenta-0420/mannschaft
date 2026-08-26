@@ -1,5 +1,6 @@
 package com.mannschaft.app.succession.service;
 
+import org.springframework.cache.CacheManager;
 import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,10 @@ class DelinquencyEscalationBatchServiceIntegrationTest extends AbstractMySqlInte
     @Autowired
     private FeatureFlagRepository backgroundGateFeatureFlagRepository;
 
+    /** フラグキャッシュ退避用（行を入れるだけでは isEnabled が false を返し続ける）。 */
+    @Autowired
+    private CacheManager backgroundGateCacheManager;
+
     /**
      * ゲート対象のバックグラウンド入口を open にしてから各テストを走らせる。
      *
@@ -51,7 +56,10 @@ class DelinquencyEscalationBatchServiceIntegrationTest extends AbstractMySqlInte
      */
     @BeforeEach
     void openBackgroundFeatureGate() {
-        FeatureFlagTestSupport.enable(backgroundGateFeatureFlagRepository, "FEATURE_SUCCESSION_PROXY_ENABLED");
+        FeatureFlagTestSupport.enable(
+                backgroundGateFeatureFlagRepository,
+                backgroundGateCacheManager,
+                "FEATURE_SUCCESSION_PROXY_ENABLED");
     }
 
     @Autowired

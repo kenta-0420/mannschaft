@@ -1,5 +1,6 @@
 package com.mannschaft.app.billing.beta;
 
+import org.springframework.cache.CacheManager;
 import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.auth.entity.UserEntity;
@@ -74,6 +75,10 @@ class BetaPerkAutoGrantBatchIT extends AbstractMySqlIntegrationTest {
     @Autowired
     private FeatureFlagRepository backgroundGateFeatureFlagRepository;
 
+    /** フラグキャッシュ退避用（行を入れるだけでは isEnabled が false を返し続ける）。 */
+    @Autowired
+    private CacheManager backgroundGateCacheManager;
+
     /**
      * ゲート対象のバックグラウンド入口を open にしてから各テストを走らせる。
      *
@@ -84,7 +89,10 @@ class BetaPerkAutoGrantBatchIT extends AbstractMySqlIntegrationTest {
      */
     @BeforeEach
     void openBackgroundFeatureGate() {
-        FeatureFlagTestSupport.enable(backgroundGateFeatureFlagRepository, "FEATURE_BILLING_PAYMENT_ENABLED");
+        FeatureFlagTestSupport.enable(
+                backgroundGateFeatureFlagRepository,
+                backgroundGateCacheManager,
+                "FEATURE_BILLING_PAYMENT_ENABLED");
     }
 
     private static final int PHASE = 1;

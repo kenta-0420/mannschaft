@@ -1,5 +1,6 @@
 package com.mannschaft.app.advertising.spotlight;
 
+import org.springframework.cache.CacheManager;
 import com.mannschaft.app.admin.repository.FeatureFlagRepository;
 import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.advertising.campaign.service.AdCampaignStateTransitionScheduler;
@@ -34,6 +35,10 @@ class AdBannerReservationExpiryIT extends AbstractSpotlightIT {
     @Autowired
     private FeatureFlagRepository backgroundGateFeatureFlagRepository;
 
+    /** フラグキャッシュ退避用（行を入れるだけでは isEnabled が false を返し続ける）。 */
+    @Autowired
+    private CacheManager backgroundGateCacheManager;
+
     /**
      * ゲート対象のバックグラウンド入口を open にしてから各テストを走らせる。
      *
@@ -44,7 +49,10 @@ class AdBannerReservationExpiryIT extends AbstractSpotlightIT {
      */
     @BeforeEach
     void openBackgroundFeatureGate() {
-        FeatureFlagTestSupport.enable(backgroundGateFeatureFlagRepository, "FEATURE_PROMOTION_ENABLED");
+        FeatureFlagTestSupport.enable(
+                backgroundGateFeatureFlagRepository,
+                backgroundGateCacheManager,
+                "FEATURE_PROMOTION_ENABLED");
     }
 
     private static final String TILE = "DASHBOARD_TILE";
