@@ -24,6 +24,17 @@ export type RecallAttemptResponse = components['schemas']['RecallAttemptResponse
 export type ReflectionSettingsResponse = components['schemas']['ReflectionSettingsResponse']
 export type MaskedHint = components['schemas']['MaskedHint']
 
+// Phase 4: 暗記カード・単語帳（EP #23・§13）
+export type RecallDirection = components['schemas']['RecallDirection']
+export type ReflectionMaskedCardQuiz = components['schemas']['ReflectionMaskedCardQuiz']
+export type ReflectionMaskedCardPrompt = components['schemas']['ReflectionMaskedCardPrompt']
+export type ReflectionVocabCardsResponse = components['schemas']['ReflectionVocabCardsResponse']
+export type ReflectionVocabCardItem = components['schemas']['ReflectionVocabCardItem']
+
+// Phase 5: OUTLINE 段階式マスク（足場ラダー・AC-91〜93）
+export type ReflectionMaskedOutlineScaffold = components['schemas']['ReflectionMaskedOutlineScaffold']
+export type ReflectionMaskedOutlineSection = components['schemas']['ReflectionMaskedOutlineSection']
+
 /** テーマ作成リクエスト（Phase 3: academicYear / termLabel / parentThemeId を含む）。 */
 export type CreateReflectionThemeRequest = components['schemas']['CreateReflectionThemeRequest']
 /** テーマ更新リクエスト（Phase 3: academicYear / termLabel / parentThemeId / clearParent を含む）。 */
@@ -111,10 +122,23 @@ export interface ReflectionSubsection {
   supplement: string
 }
 
+/** 暗記カード 1 枚（TERM_CARD section の cards[] の要素）。 */
+export interface ReflectionCard {
+  term: string
+  meaning: string
+}
+
+/** 単語帳フリップクイズの方向。SHUFFLE はクライアント側でランダム化。 */
+export type VocabQuizDirection = 'MEANING_TO_TERM' | 'TERM_TO_MEANING' | 'SHUFFLE'
+
 /** 中見出し（section）。 */
 export interface ReflectionSection {
   heading: string
   subsections: ReflectionSubsection[]
+  /** セクションの型（既定 OUTLINE）。 */
+  type?: 'OUTLINE' | 'TERM_CARD'
+  /** TERM_CARD 時の暗記カード一覧（OUTLINE では空配列）。 */
+  cards?: ReflectionCard[]
 }
 
 /**
@@ -141,5 +165,29 @@ export function emptySubsection(): ReflectionSubsection {
 
 /** 空の section（subsection 1 つ付き）を生成する。 */
 export function emptySection(heading = ''): ReflectionSection {
-  return { heading, subsections: [emptySubsection()] }
+  return { heading, subsections: [emptySubsection()], type: 'OUTLINE', cards: [] }
+}
+
+/** 空の暗記カードを生成する。 */
+export function emptyCard(): ReflectionCard {
+  return { term: '', meaning: '' }
+}
+
+/** 期間横断単語帳検索パラメータ（EP #23）。 */
+export interface VocabCardsParams {
+  from: string
+  to: string
+  themeId?: string
+  /** 後方互換: 単一教科フィルタ（subjects[] が優先）。 */
+  subject?: string
+  /** 複数教科 OR フィルタ（AC-62）。 */
+  subjects?: string[]
+  /** 後方互換: 単一 sourceType フィルタ（sourceTypes[] が優先）。 */
+  sourceType?: string
+  /** 複数 sourceType OR フィルタ（AC-65）。 */
+  sourceTypes?: string[]
+  /** シャッフル全件返却（AC-63）。true の場合は page/size 不要。 */
+  shuffle?: boolean
+  page?: number
+  size?: number
 }

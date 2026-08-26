@@ -48,7 +48,8 @@
     "inbox": "收件箱",
     "market": "市集",
     "jobs": "招聘",
-    "matching": "配对"
+    "matching": "配对",
+    "myFiles": "我的文件"
   },
   "settings": {
     "navigation": {
@@ -59,7 +60,8 @@
       "saveSuccess": "设置已保存",
       "saveError": "保存失败",
       "reorderHint": "拖动手柄即可调整导航项的显示顺序",
-      "dragHandleLabel": "拖动手柄"
+      "dragHandleLabel": "拖动手柄",
+      "pinnedBottom": "固定在底部"
     },
     "account": {
       "page_title": "账户设置",
@@ -165,6 +167,16 @@
       "backup_codes_description": "请将以下备用代码保存在安全的地方。每个代码只能使用一次。",
       "rename_dialog_title": "重命名设备",
       "device_name_label": "设备名称",
+      "webauthn": {
+        "register_button": "注册通行密钥",
+        "register_dialog_title": "注册通行密钥",
+        "device_name_label": "设备名称（可选）",
+        "device_name_placeholder": "例：iPhone 的 Touch ID",
+        "register_confirm": "注册",
+        "register_cancel": "取消",
+        "register_success": "通行密钥注册成功",
+        "register_error": "通行密钥注册失败"
+      },
       "session": {
         "device_label": "{os} 上的 {browser}",
         "unknown_device": "未知设备"
@@ -184,10 +196,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "关联账户",
       "oauth_section_title": "OAuth 连接",
       "no_oauth": "暂无关联账户",
       "connected_at": "关联日期: {date}",
       "unlink_button": "解除",
+      "google_link_button": "与 Google 关联",
+      "google_link_loading": "关联中...",
       "line_section_title": "LINE 连接",
       "line_icon_alt": "LINE 图标",
       "line_default_user": "LINE 用户",
@@ -196,10 +211,27 @@
       "line_not_linked": "未关联 LINE 账户",
       "line_link_instruction": "请通过 LINE 应用进行关联",
       "toast": {
+        "load_error": "获取关联信息失败",
         "unlink_success": "已解除 {provider} 连接",
         "unlink_error": "解除连接失败",
         "line_unlink_success": "已解除 LINE 连接",
-        "line_unlink_error": "解除 LINE 连接失败"
+        "line_unlink_error": "解除 LINE 连接失败",
+        "link_success": "已与 {provider} 关联",
+        "link_error": "获取关联 URL 失败",
+        "already_linked": "此账户已与 {provider} 关联",
+        "taken_by_other": "此 Google 账户已被其他用户使用",
+        "oauth_denied": "Google 认证已取消",
+        "link_with_calendar_success": "Google 账号和日历已关联"
+      },
+      "calendar_sync_toggle": "同时设置 Google 日历同步",
+      "guide": {
+        "title": "关于账户关联",
+        "google_title": "使用 Google 登录",
+        "google_desc": "无需密码，即可使用 Google 账户轻松登录。",
+        "apple_title": "使用 Apple 登录（即将推出）",
+        "apple_desc": "为 iPhone 用户提供的便捷登录方式，即将推出。",
+        "line_title": "LINE 通知",
+        "line_desc": "将机器人添加到 LINE 群组后，即可通过 LINE 接收日程和出勤通知。请从 LINE 应用进行关联。"
       }
     },
     "member_card": {
@@ -236,6 +268,47 @@
         "delete_error": "删除失败"
       }
     },
+    "seal_guide": {
+      "title": "电子印章使用方法",
+      "description": "使用电子印章在文件上盖章和管理。",
+      "preview": {
+        "title": "印章预览",
+        "body": "查看根据您注册姓名自动生成的3种电子印章（姓氏·全名·名字）。",
+        "steps": {
+          "step1": "打开「印章预览」标签",
+          "step2": "在网格中确认显示的3个印章（姓氏·全名·名字）"
+        }
+      },
+      "regenerate": {
+        "title": "重新生成印章",
+        "body": "可以将当前印章重新生成为新设计。当姓名变更或想更新设计时使用。",
+        "note": "每小时最多可执行3次。达到上限后，请等待一段时间后再重试。",
+        "steps": {
+          "step1": "打开「印章预览」标签",
+          "step2": "点击「重新生成印章」按钮",
+          "step3": "完成后，新印章将显示在网格中"
+        }
+      },
+      "defaults": {
+        "title": "默认设置",
+        "body": "设置在文件盖章时自动使用的变体（姓氏·全名·名字）。省去每次重新选择的麻烦。",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
+        "steps": {
+          "step1": "打开「默认设置」标签",
+          "step2": "从下拉菜单中选择要使用的变体（姓氏·全名·名字）",
+          "step3": "点击「保存」按钮保存设置"
+        }
+      },
+      "history": {
+        "title": "盖章历史",
+        "body": "可以查看过去盖章记录的列表。显示盖章日期时间·使用的变体·对象·状态（有效／已取消）。",
+        "steps": {
+          "step1": "打开「盖章历史」标签",
+          "step2": "滚动列表查看",
+          "step3": "通过「加载更多」按钮加载更早的历史记录"
+        }
+      }
+    },
     "seal": {
       "section_title": "电子印章",
       "tab_preview": "印章预览",
@@ -248,6 +321,27 @@
         "regenerate_error": "重新生成失败（每小时最多3次）",
         "save_defaults_success": "默认设置已保存",
         "save_defaults_error": "保存设置失败"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
       }
     },
     "login_history": {
@@ -263,26 +357,35 @@
     },
     "gcal": {
       "section_title": "Google 日历集成",
+      "connection_status_title": "连接状态",
       "connected_label": "已连接",
       "last_synced": "最后同步: {date}",
+      "last_sync_error": "同步错误: {message}",
       "manual_sync_button": "手动同步",
       "disconnect_button": "解除连接",
+      "disconnect_confirm": "确定要解除 Google 日历连接吗？",
       "sync_settings_title": "同步设置",
       "personal_calendar_label": "个人日历",
       "personal_calendar_description": "将个人日程同步到 Google 日历",
       "team_calendars_label": "团队日历",
       "org_calendars_label": "组织日历",
-      "save_settings_button": "保存设置",
+      "no_team_calendars": "您尚未加入任何团队",
+      "no_org_calendars": "您尚未加入任何组织",
       "not_connected_description": "连接您的 Google 账户以同步日历",
       "connect_button": "连接 Google 账户",
+      "detail_link_button": "前往详细设置",
       "toast": {
         "connect_error": "连接失败",
+        "oauth_connected": "已与 Google 日历连接",
+        "oauth_connect_failed": "Google 日历连接失败",
         "disconnect_success": "已解除连接",
         "disconnect_error": "解除连接失败",
-        "save_success": "同步设置已保存",
-        "save_error": "保存失败",
         "sync_success": "同步已执行",
-        "sync_error": "同步失败"
+        "sync_error": "同步失败",
+        "load_error": "读取失败",
+        "toggle_on_success": "已开启{name}的同步",
+        "toggle_off_success": "已关闭{name}的同步",
+        "backfill_info": "已将{count}项日程加入同步队列"
       }
     },
     "delete_account": {
@@ -322,6 +425,25 @@
       "channel_push": "推送",
       "locked_tag": "紧急",
       "locked_desc": "此通知无法关闭"
+    },
+    "storage": {
+      "page_title": "存储",
+      "group_personal": "个人",
+      "group_team": "团队",
+      "group_org": "组织",
+      "scope_personal": "个人存储",
+      "file_count": "{count}个文件",
+      "limit": "上限",
+      "unlimited": "无限制",
+      "error_fetch": "获取存储使用量失败",
+      "empty": "没有可显示的存储信息"
+    },
+    "fileBrowser": {
+      "upload_button": "上传文件",
+      "upload_need_folder": "请先打开文件夹后再上传",
+      "upload_success": "「{name}」上传成功",
+      "upload_error": "「{name}」上传失败",
+      "uploading": "上传中..."
     }
   }
 }

@@ -176,6 +176,33 @@ class AgeRangeSegmentEvaluatorTest {
         assertThat(result).containsExactly(100L);
     }
 
+    @Test
+    @DisplayName("countUserIds: min=20, max=39 → COUNT クエリで件数を返す")
+    void countUserIds_minMax_returnsCount() {
+        int currentYear = Year.now().getValue();
+        int expectedMinBirthYear = currentYear - 39;
+        int expectedMaxBirthYear = currentYear - 20;
+        when(userRepository.countUserIdsByBirthYearBetween(expectedMinBirthYear, expectedMaxBirthYear))
+                .thenReturn(3L);
+
+        AdAudienceSegment seg = segment("{\"min\":20,\"max\":39}");
+        long count = evaluator.countUserIds(seg);
+
+        assertThat(count).isEqualTo(3L);
+        verify(userRepository).countUserIdsByBirthYearBetween(expectedMinBirthYear, expectedMaxBirthYear);
+        verify(userRepository, org.mockito.Mockito.never()).findUserIdsByBirthYearBetween(anyInt(), anyInt());
+    }
+
+    @Test
+    @DisplayName("countUserIds: min/max 両方欠落 → resolveUserIds と同じ AD_AUDIENCE_INVALID")
+    void countUserIds_bothMissing_sameValidationAsResolve() {
+        AdAudienceSegment seg = segment("{}");
+        assertThatThrownBy(() -> evaluator.countUserIds(seg))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(AdCampaignErrorCode.AD_AUDIENCE_INVALID);
+    }
+
     private static AdAudienceSegment segment(String json) {
         AdAudienceSegment s = AdAudienceSegment.builder()
                 .campaignId(UUID.randomUUID())

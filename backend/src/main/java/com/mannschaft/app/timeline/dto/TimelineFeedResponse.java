@@ -76,4 +76,46 @@ public class TimelineFeedResponse {
         FeedMeta feedMeta = new FeedMeta(null, limit, hasNext);
         return new TimelineFeedResponse(feedData, feedMeta);
     }
+
+    /**
+     * 個人ダッシュボード集約タイムライン（マイフィード）用のレスポンスを組み立てる。
+     *
+     * <p>{@code GET /api/v1/timeline/my} 専用。{@code /feed} のスタブ挙動（{@link #of} の
+     * {@code nextCursor=null}）とは異なり、id キーセットページネーションの実カーソルを埋める:</p>
+     * <ul>
+     *   <li>{@code pinned} は常に空（殿の確定仕様 c: /my では pinned を出さない）</li>
+     *   <li>{@code hasNext = posts.size() >= limit}</li>
+     *   <li>{@code nextCursor = hasNext ? 最後の post.id : null}（id 降順なので末尾が最小 id）</li>
+     * </ul>
+     *
+     * @param posts マイフィード投稿リスト（id 降順・最大 limit 件）
+     * @param limit リクエスト件数
+     * @return タイムラインフィードレスポンス（pinned 空・実カーソル付き）
+     */
+    public static TimelineFeedResponse ofMyFeed(List<PostResponse> posts, int limit) {
+        boolean hasNext = posts.size() >= limit;
+        Long nextCursor = (hasNext && !posts.isEmpty())
+                ? posts.get(posts.size() - 1).getId()
+                : null;
+        FeedData feedData = new FeedData(List.of(), posts);
+        FeedMeta feedMeta = new FeedMeta(nextCursor, limit, hasNext);
+        return new TimelineFeedResponse(feedData, feedMeta);
+    }
+
+    /**
+     * リプライ一覧（{@code GET /timeline/posts/{id}/replies}）用のレスポンスを組み立てる。
+     *
+     * <p>FE の {@code getReplies} は {@code TimelineFeedResponse}（{@code res.data.posts} /
+     * {@code res.meta.nextCursor}）を期待するため、マイフィードと同形式で返す。
+     * リプライに pinned の概念は無いため {@code data.pinned} は常に空。
+     * ページネーション（{@code hasNext}/{@code nextCursor}）は {@link #ofMyFeed} と同じ
+     * ID キーセット方式（ID 昇順の末尾 = 最大 ID を次カーソルとする）。</p>
+     *
+     * @param replies enrich 済みリプライ一覧（ID 昇順・最大 limit 件）
+     * @param limit   リクエスト件数
+     * @return タイムラインフィードレスポンス（pinned 空・実カーソル付き）
+     */
+    public static TimelineFeedResponse ofReplies(List<PostResponse> replies, int limit) {
+        return ofMyFeed(replies, limit);
+    }
 }

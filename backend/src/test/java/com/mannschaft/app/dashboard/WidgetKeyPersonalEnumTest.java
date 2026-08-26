@@ -23,7 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * <ul>
  *   <li>WidgetFamilyHub (v-if hasFamilyTeam) → 条件付き固定パネル（案A固定2種）</li>
  *   <li>WidgetAdminBusinessAlert (v-if hasAdminOrDeputyRole) → 条件付き固定パネル（案A固定2種）</li>
- *   <li>WidgetAmazonAd / WidgetRakutenAd → 広告（固定・非表示不可）</li>
+ *   <li>WidgetSpotlightPrimary / WidgetSpotlightSecondary → 広告掲載面（F09.19.4 Spotlight・固定・非表示不可）</li>
  * </ul>
  * </p>
  */
@@ -194,15 +194,16 @@ class WidgetKeyPersonalEnumTest {
     class PersonalScopeCount {
 
         @Test
-        @DisplayName("PERSONAL スコープのキーが 25 件（既存 15 件 + 新規 10 件）")
-        void personal_scope_total_25件() {
+        @DisplayName("PERSONAL スコープのキーが 27 件（F02.11を含む）")
+        void personal_scope_total_27件() {
             List<WidgetKey> personalKeys = Arrays.stream(WidgetKey.values())
                     .filter(wk -> wk.getScopeType() == ScopeType.PERSONAL)
                     .collect(Collectors.toList());
 
             assertThat(personalKeys)
-                    .as("PERSONAL スコープのキーが 25 件あること（既存 15 件 + 新規 10 件）")
-                    .hasSize(25);
+                    .as("PERSONAL スコープのキーが 27 件あること（F02.11 RETURN_STAY_PLAN 追加）")
+                    .hasSize(27)
+                    .contains(WidgetKey.RETURN_STAY_PLAN);
         }
 
         @Test
@@ -234,7 +235,7 @@ class WidgetKeyPersonalEnumTest {
     class ForScopePersonal {
 
         @Test
-        @DisplayName("forScope(PERSONAL) に新規追加キー 10 件が含まれる")
+        @DisplayName("forScope(PERSONAL) に新規追加キーと帰省・滞在予定が含まれる")
         void forScope_personal_新規キー含む() {
             List<WidgetKey> personalKeys = WidgetKey.forScope(ScopeType.PERSONAL);
 
@@ -248,7 +249,8 @@ class WidgetKeyPersonalEnumTest {
                     WidgetKey.valueOf("PERSONAL_BLOG"),
                     WidgetKey.valueOf("PERSONAL_MY_TEAMS"),
                     WidgetKey.valueOf("PERSONAL_MY_ORGANIZATIONS"),
-                    WidgetKey.valueOf("PERSONAL_FAVORITES")
+                    WidgetKey.valueOf("PERSONAL_FAVORITES"),
+                    WidgetKey.RETURN_STAY_PLAN
             );
         }
     }
@@ -262,7 +264,7 @@ class WidgetKeyPersonalEnumTest {
     class DefaultSortOrder {
 
         @Test
-        @DisplayName("新規追加キー 10 件の defaultSortOrder が既存の最大値（14）より大きい")
+        @DisplayName("新規追加キー 12 件の defaultSortOrder が既存の最大値（14）より大きい")
         void new_keys_sort_order_gt_14() {
             // MY_CORKBOARD が defaultSortOrder=14 で最後の既存キー
             List<WidgetKey> newKeys = Arrays.stream(WidgetKey.values())
@@ -270,8 +272,8 @@ class WidgetKeyPersonalEnumTest {
                     .filter(wk -> wk.getDefaultSortOrder() > 14)
                     .collect(Collectors.toList());
 
-            // 新規追加した 10 件全てが order > 14（連番 15〜24）であること
-            assertThat(newKeys).hasSize(10);
+            // 新規追加した 12 件全てが order > 14（連番 15〜26・RETURN_STAY_PLAN=26）であること
+            assertThat(newKeys).hasSize(12);
         }
     }
 }

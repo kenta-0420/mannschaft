@@ -40,7 +40,24 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
 
     boolean existsByName(String name);
 
-    @Query("SELECT o FROM OrganizationEntity o WHERE o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%")
+    /**
+     * 組織をキーワード検索する（公開検索）。
+     *
+     * <p>認可根治 Wave6: 結果は <b>PUBLIC かつ未アーカイブ</b>の組織のみに限定する。
+     * 未認証でも到達しうる公開検索であり、閲覧者ごとの可視性解決を行わないため、
+     * {@code TeamRepository#searchPublicTeams} と同じ「公開スコープのみ返す」流儀に揃える。
+     * 論理削除済みは Entity の {@code @SQLRestriction("deleted_at IS NULL")} が除外する。</p>
+     *
+     * @param keyword  組織名 / カナに対する部分一致キーワード（空文字は全件相当）
+     * @param pageable ページング情報
+     * @return PUBLIC かつ未アーカイブな組織のページ
+     */
+    @Query("""
+            SELECT o FROM OrganizationEntity o
+            WHERE o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+              AND o.archivedAt IS NULL
+              AND (o.name LIKE %:keyword% OR o.nameKana LIKE %:keyword%)
+            """)
     Page<OrganizationEntity> searchByKeyword(@Param("keyword") String keyword, Pageable pageable);
 
     /**
@@ -131,9 +148,53 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
     Optional<Long> findParentOrganizationIdById(@Param("id") Long id);
 
     /**
-     * 直近の子組織を取得する（{@code parent_organization_id = :parentId} かつ未削除）。
+     * F01.2 子組織一覧カーソルページング用: 直近の子組織を「カーソル・可視性・ID 昇順」を
+     * すべて SQL 側で解決した上でページ取得する。
+     *
+     * <p>旧 {@code findByParentOrganizationIdAndDeletedAtIsNull(parentId, pageable)} は
+     * カーソル条件を持たず {@code PageRequest.of(0, n)} で常に先頭ページを返すため、
+     * 呼び出し側でカーソルをメモリ上フィルタしても DB は毎回同じ行を返し続け
+     * 2 ページ目以降が実質空になる欠陥（根治対象）があった。本メソッドはその根治として
+     * 以下をすべて SQL に含める:</p>
+     * <ul>
+     *   <li>{@code cursorId}（{@code o.id > :cursorId}）— カーソルを SQL へ降ろす</li>
+     *   <li>可視性（{@code visibility = PUBLIC OR o.id IN :memberOrgIds}）—
+     *       呼び出し者が直接所属する組織 ID 集合は
+     *       {@link com.mannschaft.app.role.repository.UserRoleRepository#findOrganizationIdsByUserId}
+     *       で事前取得して渡す</li>
+     *   <li>{@code ORDER BY o.id ASC} — 明示的な順序保証（カーソルの前提）</li>
+     * </ul>
+     *
+     * <p><b>空コレクションの罠</b>: {@code memberOrgIds} が空だと JPQL の {@code IN ()} は
+     * 構文エラーになる。呼び出し側（{@code OrganizationHierarchyService}）は所属組織 0 件の
+     * 場合、実在しない組織 ID を持たないセンチネル値（{@code -1L}）1件のみを含むリストに
+     * 差し替えて渡すこと（PUBLIC 判定はこの条件と OR で独立しているため、所属 0 件でも
+     * PUBLIC な子は正しく見える）。</p>
+     *
+     * <p>呼び出し側は {@code Pageable} で {@code pageSize + 1} 件を要求し、
+     * 「戻り件数が {@code pageSize + 1} を満たすか」で {@code hasNext} を判定する
+     * （可視性フィルタ後件数ではなく DB 取得件数で判定することで、非公開の子が混じって
+     * 可視件数が pageSize 未満になっても偽陰性で打ち切られない）。</p>
+     *
+     * @param parentId    親組織 ID
+     * @param cursorId    カーソル（このID より大きい行のみ取得。null の場合は先頭から）
+     * @param memberOrgIds 呼び出し者が直接所属する組織 ID 集合（空不可。0件時はセンチネル必須）
+     * @param pageable    ページング情報（{@code pageSize + 1} 件を要求すること）
+     * @return カーソル・可視性・ID 昇順をすべて満たす子組織一覧
      */
-    List<OrganizationEntity> findByParentOrganizationIdAndDeletedAtIsNull(Long parentId, Pageable pageable);
+    @Query("""
+            SELECT o FROM OrganizationEntity o
+            WHERE o.parentOrganizationId = :parentId
+              AND (:cursorId IS NULL OR o.id > :cursorId)
+              AND (o.visibility = com.mannschaft.app.organization.entity.OrganizationEntity.Visibility.PUBLIC
+                   OR o.id IN :memberOrgIds)
+            ORDER BY o.id ASC
+            """)
+    List<OrganizationEntity> findChildrenPage(
+            @Param("parentId") Long parentId,
+            @Param("cursorId") Long cursorId,
+            @Param("memberOrgIds") Collection<Long> memberOrgIds,
+            Pageable pageable);
 
     /**
      * 複数IDを一括取得（祖先チェーンを1回の SQL でまとめて取得する用途）。
@@ -285,4 +346,27 @@ public interface OrganizationRepository extends JpaRepository<OrganizationEntity
               AND o.deletedAt IS NULL
             """)
     long countPublicOrganizations();
+
+    /**
+     * 指定組織の作成日時（{@code created_at}）を返す。
+     *
+     * <p>F20.3 ベータ特典の TEAM_ORG {@code membershipTenureDays} メトリクス（スコープ自体の
+     * 作成日からの経過日数・設計書 F20.3 02 §2）。scalar（{@code LocalDateTime}）を返すため、
+     * 呼び出し側（{@code billing.beta.MembershipQueryService}）は {@code OrganizationEntity} に
+     * 依存しない（クロスドメイン Entity 参照 D-1 を回避）。</p>
+     */
+    @Query("SELECT o.createdAt FROM OrganizationEntity o WHERE o.id = :orgId AND o.deletedAt IS NULL")
+    Optional<java.time.LocalDateTime> findCreatedAtById(@Param("orgId") Long orgId);
+
+    /**
+     * F20.3 ベータ特典 付与候補 dry-run（設計書 02 §4.5）用: アクティブ（未削除・未アーカイブ）な
+     * 組織 ID をページで返す。
+     *
+     * <p>{@code @SQLRestriction("deleted_at IS NULL")} により論理削除済みは自動除外される。scalar
+     * （{@code Long}）を返すため、呼び出し側（{@code billing.beta.BetaPerkCandidateService}）は
+     * {@code OrganizationEntity} に依存しない（クロスドメイン Entity 参照 D-1 を回避）。表示名は
+     * {@link #findNameMapByIdIn(Collection)} で一括解決する。</p>
+     */
+    @Query("SELECT o.id FROM OrganizationEntity o WHERE o.archivedAt IS NULL ORDER BY o.id ASC")
+    Page<Long> findActiveOrgIdsForBeta(Pageable pageable);
 }

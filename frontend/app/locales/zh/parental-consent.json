@@ -3,7 +3,7 @@
     "pending_title": "需要监护人同意",
     "pending_description": "由于未满18岁，需要监护人同意。请输入监护人的邮箱地址并发送邀请。",
     "invite_email_label": "监护人的邮箱地址",
-    "invite_email_placeholder": "parent@example.com",
+    "invite_email_placeholder": "parent{'@'}example.com",
     "send_invite": "发送邀请",
     "cancel_invite": "取消邀请",
     "invite_sent": "已发送邀请邮件",

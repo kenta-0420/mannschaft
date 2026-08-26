@@ -1,324 +1,35 @@
 {
-  "ad_label": "Ad",
-  "status": {
-    "draft": "Draft",
-    "review": "In review",
-    "approved": "Approved",
-    "scheduled": "Scheduled",
-    "delivering": "Delivering",
-    "paused": "Paused",
-    "completed": "Completed",
-    "blocked": "Blocked",
-    "cancelled": "Cancelled"
-  },
-  "moderation_status": {
-    "pending": "Pending",
-    "auto_passed": "Auto-passed",
-    "auto_flagged": "Needs review",
-    "approved": "Approved",
-    "blocked": "Blocked"
-  },
-  "moderation_action": {
-    "approved": "Approved",
-    "blocked": "Blocked",
-    "unblocked": "Unblocked",
-    "auto_flagged": "Auto-flagged",
-    "auto_passed": "Auto-passed"
-  },
-  "segment_type": {
-    "age_range": "Age range",
-    "gender": "Gender",
-    "region_prefecture": "Prefecture",
-    "region_city": "City",
-    "interest_tag": "Interest tag",
-    "org_type": "Organization type",
-    "locale": "Language",
-    "device": "Device"
-  },
-  "inclusion_mode": {
-    "include": "Include",
-    "exclude": "Exclude"
-  },
-  "report_reason": {
-    "offensive": "Offensive content",
-    "misleading": "Misleading information",
-    "spam": "Spam",
-    "irrelevant": "Not relevant to me",
-    "other": "Other"
-  },
-  "channel": {
-    "announcement": "Announcement",
-    "email": "Email",
-    "push": "Push",
-    "banner": "Banner"
-  },
-  "reach_range": {
-    "under_100": "Too few matching users",
-    "range_100_500": "Approx. 100–500 users",
-    "range_500_1k": "Approx. 500–1,000 users",
-    "range_1k_5k": "Approx. 1,000–5,000 users",
-    "range_5k_10k": "Approx. 5,000–10,000 users",
-    "range_10k_50k": "Approx. 10,000–50,000 users",
-    "range_50k_100k": "Approx. 50,000–100,000 users",
-    "over_100k": "Approx. 100,000+ users"
-  },
-  "actions": {
-    "submit": "Submit for review",
-    "launch": "Launch",
-    "pause": "Pause",
-    "resume": "Resume",
-    "cancel": "Cancel",
-    "approve": "Approve",
-    "block": "Block",
-    "save_draft": "Save draft",
-    "preview": "Preview",
-    "delete": "Delete",
-    "edit": "Edit",
-    "create": "Create",
-    "add_channel": "Add channel",
-    "remove_channel": "Remove channel",
-    "add_segment": "Add segment",
-    "remove_segment": "Remove segment",
-    "report": "Report",
-    "unsubscribe": "Unsubscribe",
-    "block_advertiser": "Block this advertiser",
-    "stop_ads": "Stop receiving ads",
-    "unblock_advertiser": "Unblock",
-    "export_csv": "Export CSV",
-    "view_detail": "View details",
-    "back_to_queue": "Back to review queue",
-    "reload": "Reload"
-  },
-  "pages": {
-    "advertiser_campaign_list": {
-      "title": "Messaging campaigns",
-      "description": "Manage targeted messaging campaigns to specific audiences.",
-      "empty": "No campaigns yet.",
-      "filter_status": "Filter by status",
-      "column_name": "Campaign name",
-      "column_status": "Status",
-      "column_budget": "Budget (JPY)",
-      "column_consumed": "Consumed (JPY)",
-      "column_period": "Period",
-      "column_updated": "Updated"
+  "advertising": {
+    "ad_label": "Ad",
+    "account_settings": {
+      "title": "Account Settings",
+      "company_name": "Company / Organization Name",
+      "contact_email": "Contact Email",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saved": "Account settings saved.",
+      "save_failed": "Failed to save."
     },
-    "advertiser_campaign_create": {
-      "title": "Create a campaign",
-      "description": "Configure channels and audience targeting. Drafts can be edited freely.",
-      "field_name": "Campaign name",
-      "field_budget": "Total budget (JPY)",
-      "field_starts_at": "Start date/time",
-      "field_ends_at": "End date/time",
-      "field_timezone": "Time zone",
-      "field_frequency_cap": "Max messages per week (default 3)",
-      "step_basic": "Basics",
-      "step_channels": "Channels",
-      "step_audience": "Audience",
-      "step_review": "Review & submit",
-      "submitted": "Campaign submitted for review.",
-      "saved": "Draft saved."
+    "spotlight": {
+      "hide_advertiser": "Hide this advertiser",
+      "hide_advertiser_done": "Ads from this advertiser are now hidden",
+      "report": "Report",
+      "upgrade_cta": "Go ad-free →",
+      "affiliate_default": {
+        "amazon": {
+          "title": "Team supplies on Amazon",
+          "description": "Get everything your team needs at great prices.",
+          "cta": "Shop now"
+        },
+        "rakuten": {
+          "title": "Team supplies on Rakuten",
+          "description": "Stock up on essentials and earn points as you shop.",
+          "cta": "Shop on Rakuten"
+        }
+      }
     },
-    "advertiser_campaign_detail": {
-      "title": "Campaign detail",
-      "section_summary": "Summary",
-      "section_channels": "Channels",
-      "section_audience": "Audience",
-      "section_moderation": "Moderation",
-      "section_report": "Performance",
-      "blocked_reason": "Reason for block",
-      "preview_reach": "Estimated reach",
-      "no_channels": "No channels configured.",
-      "no_segments": "No audience segments configured."
-    },
-    "system_admin_moderation": {
-      "title": "Ad campaign review",
-      "description": "Review pending campaigns and approve or block them.",
-      "empty": "No campaigns pending review.",
-      "approve_dialog_title": "Approve this campaign?",
-      "approve_dialog_message": "Once approved the advertiser can launch delivery.",
-      "block_dialog_title": "Block this campaign?",
-      "block_dialog_message": "Enter the reason for blocking (it will be sent to the advertiser).",
-      "block_reason_label": "Reason",
-      "block_reason_placeholder": "e.g. Inappropriate wording",
-      "user_reports_section": "User reports",
-      "queue_title": "Review queue",
-      "queue_description": "Campaigns that currently need review.",
-      "filter_submitted_period": "Filter by submitted time",
-      "filter_auto_flag": "Filter by auto flag",
-      "filter_auto_flag_all": "All",
-      "filter_auto_flag_only": "Auto-flagged only",
-      "filter_auto_flag_passed": "Auto-passed only",
-      "card_advertiser": "Advertiser account ID",
-      "card_submitted_at": "Submitted at"
-    },
-    "settings_ad_preferences": {
-      "title": "Advertising preferences",
-      "description": "Choose which channels you accept ads from and block specific advertisers.",
-      "channel_section": "Accepted channels",
-      "channel_section_description": "Turning off a channel will stop ads from that channel.",
-      "blocked_section": "Blocked advertisers",
-      "blocked_section_description": "Blocked advertisers will not be able to deliver ads to you (max 100).",
-      "blocked_empty": "No advertisers are currently blocked.",
-      "blocked_limit_exceeded": "You have reached the block limit (100). Please unblock some entries first.",
-      "add_block_label": "Add by advertiser ID",
-      "add_block_placeholder": "e.g., 12",
-      "add_block_button": "Add to block list",
-      "rotate_tokens": "Revoke previously sent unsubscribe links",
-      "rotate_tokens_help": "Invalidates any unsubscribe links sent in past emails.",
-      "rotate_tokens_section": "Security",
-      "rotate_tokens_confirm": "Are you sure you want to invalidate all unsubscribe links? This action cannot be undone.",
-      "rotate_tokens_success": "Email links have been invalidated.",
-      "consent_required": "You need to consent before receiving ads.",
-      "consented_at": "Initial consent date",
-      "not_consented": "Not consented",
-      "save_button": "Save",
-      "saved": "Preferences saved.",
-      "save_rate_limited": "You have reached the preference update limit (10 per hour). Please wait and try again.",
-      "channel_announcement": "Ads in announcement feed",
-      "channel_email": "Email ads",
-      "channel_push": "Push notification ads",
-      "channel_banner": "In-site banner ads"
-    },
-    "me_ad_deliveries": {
-      "title": "Ads you received",
-      "description": "History of advertising messages delivered to you.",
-      "empty": "You have not received any ads yet.",
-      "delivered_at": "Delivered at",
-      "opened": "Opened",
-      "clicked": "Clicked",
-      "filter_all": "All",
-      "filter_announcement": "Announcement",
-      "filter_email": "Email",
-      "filter_push": "Push",
-      "filter_banner": "Banner",
-      "column_campaign": "Campaign",
-      "column_advertiser": "Advertiser",
-      "column_channel": "Channel",
-      "column_engagement": "Action",
-      "column_actions": "Operations",
-      "engagement_read": "Read",
-      "engagement_clicked": "Clicked",
-      "engagement_none": "Unread",
-      "load_more": "Load more",
-      "delete_all_section": "Data deletion (GDPR Right to Erasure)",
-      "delete_all_description": "Delete all ad delivery history. Advertiser billing records and aggregate statistics will be retained, but their association with you will be removed.",
-      "delete_all_button": "Delete all history",
-      "delete_all_confirm": "Are you sure you want to delete all ad history? This action cannot be undone.",
-      "delete_all_success": "Ad history has been deleted."
-    },
-    "system_admin_dashboard": {
-      "title": "Ad moderation dashboard",
-      "description": "Overview of pending reviews, user reports and recent blocks.",
-      "kpi_review_pending": "Pending review",
-      "kpi_auto_flagged": "Auto-flagged",
-      "kpi_user_reports": "User reports",
-      "kpi_recent_blocks": "Blocked (last 7 days)",
-      "auto_suspend_warning": "{count} campaigns have a burst of user reports",
-      "shortcut_review_queue": "Open review queue",
-      "shortcut_user_reports": "Open user reports",
-      "load_failed": "Failed to load ad moderation data",
-      "quick_link_label": "Ad moderation"
-    },
-    "system_admin_user_reports": {
-      "title": "Ad user reports",
-      "description": "Review user reports and suspend offending campaigns if needed.",
-      "empty": "No reports to handle.",
-      "filter_reason": "Filter by reason",
-      "filter_status": "Filter by status",
-      "column_reported_at": "Reported at",
-      "column_campaign": "Campaign",
-      "column_reporter": "Reporter",
-      "column_reason": "Reason",
-      "column_status": "Status",
-      "auto_suspend_candidate": "Reports burst",
-      "auto_suspend_candidate_tooltip": "Multiple reports received in a short period — auto-suspend candidate.",
-      "go_campaign": "Open campaign"
-    },
-    "advertiser_campaign_report": {
-      "title": "Campaign performance report",
-      "description": "Aggregated delivery metrics and daily trends. Filter by period to narrow down.",
-      "field_from": "From",
-      "field_to": "To",
-      "kpi_delivered": "Delivered",
-      "kpi_opened": "Opened",
-      "kpi_clicked": "Clicked",
-      "kpi_consumed": "Consumed (JPY)",
-      "chart_title": "Daily trend",
-      "chart_delivered": "Delivered",
-      "chart_open_rate": "Open rate",
-      "chart_click_rate": "Click rate",
-      "channel_breakdown_title": "Per-channel breakdown",
-      "channel_breakdown_delivered": "Delivered",
-      "channel_breakdown_opened": "Opened",
-      "channel_breakdown_clicked": "Clicked",
-      "no_data": "No data for the selected period.",
-      "export_started": "CSV export started."
-    },
-    "unsubscribe_spa": {
-      "title": "Unsubscribe from ad emails",
-      "description": "Select the channels you would like to stop. Unchecked channels will continue to be delivered.",
-      "submit_button": "Stop selected channels",
-      "note": "This page is shown when you arrive from the unsubscribe link in an ad email. You can change these settings later from your ad preferences after logging in.",
-      "success_message": "You have unsubscribed from the selected ad channels.",
-      "done_title": "Unsubscribed",
-      "done_description": "You will no longer receive ads on the selected channels.",
-      "done_disabled_label": "Disabled channels:",
-      "done_remaining_label": "Still active channels:",
-      "done_login_hint": "You can change these settings any time from your ad preferences after logging in.",
-      "error_title": "Could not unsubscribe",
-      "error_invalid_or_expired": "This link has expired or is no longer valid. Please sign in and use the ad preferences screen instead.",
-      "error_rate_limited": "Too many requests in a short time. Please wait a moment and try again.",
-      "error_unknown": "An unexpected error occurred. Please try again shortly.",
-      "error_login_hint": "You can unsubscribe per channel from your ad preferences after logging in."
-    },
-    "system_admin_moderation_detail": {
-      "title": "Campaign review detail",
-      "section_channels": "Channel content",
-      "section_audience": "Audience segments",
-      "section_ng_words": "Detected NG words",
-      "section_logs": "Moderation log",
-      "no_ng_words": "No NG words detected.",
-      "preview_locale": "Preview locale",
-      "approve_confirm": "Approve this campaign?",
-      "block_confirm": "Block this campaign?",
-      "approved_toast": "Campaign approved.",
-      "blocked_toast": "Campaign blocked."
-    }
-  },
-  "report_dialog": {
-    "title": "Report this ad",
-    "description": "Reports are reviewed by SYSTEM_ADMIN.",
-    "reason_label": "Reason",
-    "detail_label": "Details (optional)",
-    "detail_placeholder": "Please describe specifically what concerned you",
-    "submit": "Submit report",
-    "cancel": "Cancel",
-    "submitted": "Thank you. Your report has been received.",
-    "rate_limited": "You have reached the daily reporting limit (20 per day). Please try again tomorrow."
-  },
-  "consent_dialog": {
-    "title": "Accept ad delivery?",
-    "description": "Mannschaft delivers limited advertising messages from advertisers. You can change your preferences at any time.",
-    "accept": "Accept and continue",
-    "decline": "Not now",
-    "stop_all": "Stop all ads",
-    "stopped_message": "All ad delivery has been stopped. You can change this anytime in settings."
-  },
-  "error_codes": {
-    "AD_CAMPAIGN_NOT_FOUND": "Campaign not found.",
-    "AD_CAMPAIGN_NOT_EDITABLE": "This campaign cannot be edited in its current state.",
-    "AD_CAMPAIGN_INVALID_TRANSITION": "This state transition is not allowed.",
-    "AD_CAMPAIGN_BUDGET_INSUFFICIENT": "Insufficient budget remaining.",
-    "AD_CAMPAIGN_CREDIT_LIMIT_EXCEEDED": "Credit limit exceeded.",
-    "AD_CAMPAIGN_MODERATION_BLOCKED": "This campaign was blocked during moderation.",
-    "AD_CAMPAIGN_NO_CHANNEL": "Please configure at least one channel.",
-    "AD_PREFERENCES_BLOCKED_LIMIT": "You can block up to 100 advertisers.",
-    "AD_REPORT_DUPLICATE": "You have already reported this campaign.",
-    "AD_RATE_LIMIT_EXCEEDED": "Too many requests. Please try again later."
-  },
-  "advertiser_crud": {
-    "list_tab": {
-      "all": "All",
+    "status": {
       "draft": "Draft",
       "review": "In review",
       "approved": "Approved",
@@ -329,163 +40,795 @@
       "blocked": "Blocked",
       "cancelled": "Cancelled"
     },
-    "list_action": {
-      "create_button": "Create"
+    "moderation_status": {
+      "pending": "Pending",
+      "auto_passed": "Auto-passed",
+      "auto_flagged": "Needs review",
+      "approved": "Approved",
+      "blocked": "Blocked"
     },
-    "list_table": {
-      "name": "Name",
-      "status": "Status",
-      "period": "Period",
-      "total_budget": "Total budget",
-      "consumed_budget": "Consumed",
-      "actions": "Actions"
+    "moderation_action": {
+      "approved": "Approved",
+      "blocked": "Blocked",
+      "unblocked": "Unblocked",
+      "auto_flagged": "Auto-flagged",
+      "auto_passed": "Auto-passed"
     },
-    "create_step": {
-      "basic": "Basic info",
-      "channels": "Channels",
-      "audience": "Audience",
-      "preview": "Preview / Confirm"
+    "segment_type": {
+      "age_range": "Age range",
+      "gender": "Gender",
+      "region_prefecture": "Prefecture",
+      "region_city": "City",
+      "interest_tag": "Interest tag",
+      "org_type": "Organization type",
+      "locale": "Language",
+      "device": "Device"
     },
-    "create_nav": {
-      "next": "Next",
-      "back": "Back",
-      "submit": "Create as draft"
+    "inclusion_mode": {
+      "include": "Include",
+      "exclude": "Exclude"
     },
-    "detail_tab": {
-      "overview": "Overview",
-      "channels": "Channels",
-      "audience": "Audience",
-      "moderation": "Moderation history"
+    "report_reason": {
+      "offensive": "Offensive content",
+      "misleading": "Misleading information",
+      "spam": "Spam",
+      "irrelevant": "Not relevant to me",
+      "other": "Other"
     },
-    "detail_empty": {
-      "moderation_logs": "No moderation history."
+    "channel": {
+      "announcement": "Announcement",
+      "email": "Email",
+      "push": "Push",
+      "banner": "Banner"
     },
-    "form": {
-      "name": "Campaign name",
-      "name_placeholder": "e.g. Spring campaign",
-      "total_budget": "Total budget (JPY)",
-      "starts_at": "Start at",
-      "ends_at": "End at",
-      "scheduled_timezone": "Timezone",
-      "frequency_cap_override": "Frequency cap override (per week)",
-      "frequency_cap_help": "Defaults to 3 per week if left blank."
+    "reach_range": {
+      "under_100": "Too few matching users",
+      "range_100_500": "Approx. 100–500 users",
+      "range_500_1k": "Approx. 500–1,000 users",
+      "range_1k_5k": "Approx. 1,000–5,000 users",
+      "range_5k_10k": "Approx. 5,000–10,000 users",
+      "range_10k_50k": "Approx. 10,000–50,000 users",
+      "range_50k_100k": "Approx. 50,000–100,000 users",
+      "over_100k": "Approx. 100,000+ users"
     },
-    "channel_form": {
-      "subject": "Subject",
-      "body_markdown": "Body (Markdown)",
-      "image_url": "Image URL",
-      "cta_label": "CTA label",
-      "cta_url": "CTA URL",
-      "banner_creative_id": "Banner creative ID",
-      "select_channel": "Select channel type",
-      "select_locale": "Select locale"
+    "actions": {
+      "submit": "Submit for review",
+      "launch": "Launch",
+      "pause": "Pause",
+      "resume": "Resume",
+      "cancel": "Cancel",
+      "approve": "Approve",
+      "block": "Block",
+      "save_draft": "Save draft",
+      "preview": "Preview",
+      "delete": "Delete",
+      "edit": "Edit",
+      "create": "Create",
+      "add_channel": "Add channel",
+      "remove_channel": "Remove channel",
+      "add_segment": "Add segment",
+      "remove_segment": "Remove segment",
+      "report": "Report",
+      "unsubscribe": "Unsubscribe",
+      "block_advertiser": "Block this advertiser",
+      "stop_ads": "Stop receiving ads",
+      "unblock_advertiser": "Unblock",
+      "export_csv": "Export CSV",
+      "view_detail": "View details",
+      "back_to_queue": "Back to review queue",
+      "reload": "Reload"
     },
-    "segment_form": {
-      "select_type": "Select segment type",
-      "inclusion_mode": "Inclusion mode",
-      "age_min": "Min age",
-      "age_max": "Max age",
-      "genders": "Genders",
-      "prefecture_codes": "Prefecture codes (comma separated)",
-      "city_codes": "City codes (comma separated)",
-      "interest_tags": "Interest tags (comma separated)",
-      "org_types": "Organization types (comma separated)",
-      "locales": "Locales",
-      "devices": "Devices",
-      "remove": "Remove"
+    "pages": {
+      "advertiser_campaign_list": {
+        "title": "Messaging campaigns",
+        "description": "Manage targeted messaging campaigns to specific audiences.",
+        "empty": "No campaigns yet.",
+        "filter_status": "Filter by status",
+        "column_name": "Campaign name",
+        "column_status": "Status",
+        "column_budget": "Budget (JPY)",
+        "column_consumed": "Consumed (JPY)",
+        "column_period": "Period",
+        "column_updated": "Updated"
+      },
+      "advertiser_campaign_create": {
+        "title": "Create a campaign",
+        "description": "Configure channels and audience targeting. Drafts can be edited freely.",
+        "field_name": "Campaign name",
+        "field_budget": "Total budget (JPY)",
+        "field_starts_at": "Start date/time",
+        "field_ends_at": "End date/time",
+        "field_timezone": "Time zone",
+        "field_frequency_cap": "Max messages per week (default 3)",
+        "step_basic": "Basics",
+        "step_channels": "Channels",
+        "step_audience": "Audience",
+        "step_review": "Review & submit",
+        "submitted": "Campaign submitted for review.",
+        "saved": "Draft saved.",
+        "draft_saved": "Saved as draft."
+      },
+      "advertiser_campaign_detail": {
+        "title": "Campaign detail",
+        "section_summary": "Summary",
+        "section_channels": "Channels",
+        "section_audience": "Audience",
+        "section_moderation": "Moderation",
+        "section_report": "Performance",
+        "blocked_reason": "Reason for block",
+        "preview_reach": "Estimated reach",
+        "no_channels": "No channels configured.",
+        "no_segments": "No audience segments configured."
+      },
+      "system_admin_moderation": {
+        "title": "Ad campaign review",
+        "description": "Review pending campaigns and approve or block them.",
+        "empty": "No campaigns pending review.",
+        "approve_dialog_title": "Approve this campaign?",
+        "approve_dialog_message": "Once approved the advertiser can launch delivery.",
+        "block_dialog_title": "Block this campaign?",
+        "block_dialog_message": "Enter the reason for blocking (it will be sent to the advertiser).",
+        "block_reason_label": "Reason",
+        "block_reason_placeholder": "e.g. Inappropriate wording",
+        "user_reports_section": "User reports",
+        "queue_title": "Review queue",
+        "queue_description": "Campaigns that currently need review.",
+        "filter_submitted_period": "Filter by submitted time",
+        "filter_auto_flag": "Filter by auto flag",
+        "filter_auto_flag_all": "All",
+        "filter_auto_flag_only": "Auto-flagged only",
+        "filter_auto_flag_passed": "Auto-passed only",
+        "card_advertiser": "Advertiser account ID",
+        "card_submitted_at": "Submitted at"
+      },
+      "settings_ad_preferences": {
+        "title": "Advertising preferences",
+        "description": "Choose which channels you accept ads from and block specific advertisers.",
+        "channel_section": "Accepted channels",
+        "channel_section_description": "Turning off a channel will stop ads from that channel.",
+        "blocked_section": "Blocked advertisers",
+        "blocked_section_description": "Blocked advertisers will not be able to deliver ads to you (max 100).",
+        "blocked_empty": "No advertisers are currently blocked.",
+        "blocked_limit_exceeded": "You have reached the block limit (100). Please unblock some entries first.",
+        "add_block_label": "Add by advertiser ID",
+        "add_block_placeholder": "e.g., 12",
+        "add_block_button": "Add to block list",
+        "rotate_tokens": "Revoke previously sent unsubscribe links",
+        "rotate_tokens_help": "Invalidates any unsubscribe links sent in past emails.",
+        "rotate_tokens_section": "Security",
+        "rotate_tokens_confirm": "Are you sure you want to invalidate all unsubscribe links? This action cannot be undone.",
+        "rotate_tokens_success": "Email links have been invalidated.",
+        "consent_required": "You need to consent before receiving ads.",
+        "consented_at": "Initial consent date",
+        "not_consented": "Not consented",
+        "save_button": "Save",
+        "saved": "Preferences saved.",
+        "save_rate_limited": "You have reached the preference update limit (10 per hour). Please wait and try again.",
+        "channel_announcement": "Ads in announcement feed",
+        "channel_email": "Email ads",
+        "channel_push": "Push notification ads",
+        "channel_banner": "In-site banner ads"
+      },
+      "me_ad_deliveries": {
+        "title": "Ads you received",
+        "description": "History of advertising messages delivered to you.",
+        "empty": "You have not received any ads yet.",
+        "delivered_at": "Delivered at",
+        "opened": "Opened",
+        "clicked": "Clicked",
+        "filter_all": "All",
+        "filter_announcement": "Announcement",
+        "filter_email": "Email",
+        "filter_push": "Push",
+        "filter_banner": "Banner",
+        "column_campaign": "Campaign",
+        "column_advertiser": "Advertiser",
+        "column_channel": "Channel",
+        "column_engagement": "Action",
+        "column_actions": "Operations",
+        "engagement_read": "Read",
+        "engagement_clicked": "Clicked",
+        "engagement_none": "Unread",
+        "load_more": "Load more",
+        "delete_all_section": "Data deletion (GDPR Right to Erasure)",
+        "delete_all_description": "Delete all ad delivery history. Advertiser billing records and aggregate statistics will be retained, but their association with you will be removed.",
+        "delete_all_button": "Delete all history",
+        "delete_all_confirm": "Are you sure you want to delete all ad history? This action cannot be undone.",
+        "delete_all_success": "Ad history has been deleted."
+      },
+      "system_admin_dashboard": {
+        "title": "Ad moderation dashboard",
+        "description": "Overview of pending reviews, user reports and recent blocks.",
+        "kpi_review_pending": "Pending review",
+        "kpi_auto_flagged": "Auto-flagged",
+        "kpi_user_reports": "User reports",
+        "kpi_recent_blocks": "Blocked (last 7 days)",
+        "auto_suspend_warning": "{count} campaigns have a burst of user reports",
+        "shortcut_review_queue": "Open review queue",
+        "shortcut_user_reports": "Open user reports",
+        "load_failed": "Failed to load ad moderation data",
+        "quick_link_label": "Ad moderation"
+      },
+      "system_admin_user_reports": {
+        "title": "Ad user reports",
+        "description": "Review user reports and suspend offending campaigns if needed.",
+        "empty": "No reports to handle.",
+        "filter_reason": "Filter by reason",
+        "filter_status": "Filter by status",
+        "column_reported_at": "Reported at",
+        "column_campaign": "Campaign",
+        "column_reporter": "Reporter",
+        "column_reason": "Reason",
+        "column_status": "Status",
+        "auto_suspend_candidate": "Reports burst",
+        "auto_suspend_candidate_tooltip": "Multiple reports received in a short period — auto-suspend candidate.",
+        "go_campaign": "Open campaign",
+        "type_messaging": "Messaging",
+        "type_operational": "Operational",
+        "status_update_failed": "Failed to update status",
+        "mark_reviewing": "Mark reviewing",
+        "mark_resolved": "Mark resolved",
+        "mark_dismissed": "Dismiss"
+      },
+      "advertiser_campaign_report": {
+        "title": "Campaign performance report",
+        "description": "Aggregated delivery metrics and daily trends. Filter by period to narrow down.",
+        "field_from": "From",
+        "field_to": "To",
+        "kpi_delivered": "Delivered",
+        "kpi_opened": "Opened",
+        "kpi_clicked": "Clicked",
+        "kpi_consumed": "Consumed (JPY)",
+        "chart_title": "Daily trend",
+        "chart_delivered": "Delivered",
+        "chart_open_rate": "Open rate",
+        "chart_click_rate": "Click rate",
+        "channel_breakdown_title": "Per-channel breakdown",
+        "channel_breakdown_delivered": "Delivered",
+        "channel_breakdown_opened": "Opened",
+        "channel_breakdown_clicked": "Clicked",
+        "no_data": "No data for the selected period.",
+        "export_started": "CSV export started."
+      },
+      "unsubscribe_spa": {
+        "title": "Unsubscribe from ad emails",
+        "description": "Select the channels you would like to stop. Unchecked channels will continue to be delivered.",
+        "submit_button": "Stop selected channels",
+        "note": "This page is shown when you arrive from the unsubscribe link in an ad email. You can change these settings later from your ad preferences after logging in.",
+        "success_message": "You have unsubscribed from the selected ad channels.",
+        "done_title": "Unsubscribed",
+        "done_description": "You will no longer receive ads on the selected channels.",
+        "done_disabled_label": "Disabled channels:",
+        "done_remaining_label": "Still active channels:",
+        "done_login_hint": "You can change these settings any time from your ad preferences after logging in.",
+        "error_title": "Could not unsubscribe",
+        "error_invalid_or_expired": "This link has expired or is no longer valid. Please sign in and use the ad preferences screen instead.",
+        "error_rate_limited": "Too many requests in a short time. Please wait a moment and try again.",
+        "error_unknown": "An unexpected error occurred. Please try again shortly.",
+        "error_login_hint": "You can unsubscribe per channel from your ad preferences after logging in."
+      },
+      "system_admin_moderation_detail": {
+        "title": "Campaign review detail",
+        "section_channels": "Channel content",
+        "section_audience": "Audience segments",
+        "section_ng_words": "Detected NG words",
+        "section_logs": "Moderation log",
+        "no_ng_words": "No NG words detected.",
+        "preview_locale": "Preview locale",
+        "approve_confirm": "Approve this campaign?",
+        "block_confirm": "Block this campaign?",
+        "approved_toast": "Campaign approved.",
+        "blocked_toast": "Campaign blocked."
+      }
     },
-    "preview": {
-      "title": "Estimated reach",
-      "estimated_range": "Estimated reach range",
-      "channel_breakdown": "Channel breakdown",
-      "fetch": "Fetch preview",
-      "loading": "Estimating...",
-      "under_100_warning": "Estimated reach is under 100. The audience may be too narrow.",
-      "no_data": "No preview yet. Click 'Fetch preview' to estimate."
+    "report_dialog": {
+      "title": "Report this ad",
+      "description": "Reports are reviewed by SYSTEM_ADMIN.",
+      "reason_label": "Reason",
+      "detail_label": "Details (optional)",
+      "detail_placeholder": "Please describe specifically what concerned you",
+      "submit": "Submit report",
+      "cancel": "Cancel",
+      "submitted": "Thank you. Your report has been received.",
+      "rate_limited": "You have reached the daily reporting limit (20 per day). Please try again tomorrow."
     },
-    "errors": {
-      "load_failed": "Failed to load data.",
-      "save_failed": "Failed to save.",
-      "transition_failed": "State transition failed.",
-      "preview_failed": "Failed to fetch preview."
+    "consent_dialog": {
+      "title": "Accept ad delivery?",
+      "description": "Mannschaft delivers limited advertising messages from advertisers. You can change your preferences at any time.",
+      "accept": "Accept and continue",
+      "decline": "Not now",
+      "stop_all": "Stop all ads",
+      "stopped_message": "All ad delivery has been stopped. You can change this anytime in settings."
     },
-    "confirm": {
-      "submit": "Submit this campaign for review?",
-      "cancel": "Cancel this campaign? This cannot be undone.",
-      "launch": "Launch this campaign?",
-      "pause": "Pause this campaign?",
-      "resume": "Resume this campaign?",
-      "delete": "Delete this draft?"
+    "error_codes": {
+      "AD_CAMPAIGN_NOT_FOUND": "Campaign not found.",
+      "AD_CAMPAIGN_NOT_EDITABLE": "This campaign cannot be edited in its current state.",
+      "AD_CAMPAIGN_INVALID_TRANSITION": "This state transition is not allowed.",
+      "AD_CAMPAIGN_BUDGET_INSUFFICIENT": "Insufficient budget remaining.",
+      "AD_CAMPAIGN_CREDIT_LIMIT_EXCEEDED": "Credit limit exceeded.",
+      "AD_CAMPAIGN_MODERATION_BLOCKED": "This campaign was blocked during moderation.",
+      "AD_CAMPAIGN_NO_CHANNEL": "Please configure at least one channel.",
+      "AD_PREFERENCES_BLOCKED_LIMIT": "You can block up to 100 advertisers.",
+      "AD_REPORT_DUPLICATE": "You have already reported this campaign.",
+      "AD_RATE_LIMIT_EXCEEDED": "Too many requests. Please try again later."
     },
-    "validation": {
-      "name_required": "Campaign name is required.",
-      "name_max": "Campaign name must be at most 120 characters.",
-      "total_budget_min": "Total budget must be at least 1,000.",
-      "total_budget_max": "Total budget must be at most 100,000,000.",
-      "starts_at_required": "Start time is required.",
-      "ends_at_required": "End time is required.",
-      "starts_before_ends": "Start time must be before end time.",
-      "frequency_cap_range": "Frequency cap must be between 1 and 30.",
-      "at_least_one_channel": "Configure at least one channel.",
-      "at_least_one_segment": "Configure at least one audience segment."
+    "advertiser_crud": {
+      "list_tab": {
+        "all": "All",
+        "draft": "Draft",
+        "review": "In review",
+        "approved": "Approved",
+        "scheduled": "Scheduled",
+        "delivering": "Delivering",
+        "paused": "Paused",
+        "completed": "Completed",
+        "blocked": "Blocked",
+        "cancelled": "Cancelled"
+      },
+      "list_action": {
+        "create_button": "Create"
+      },
+      "list_table": {
+        "name": "Name",
+        "status": "Status",
+        "period": "Period",
+        "total_budget": "Total budget",
+        "consumed_budget": "Consumed",
+        "actions": "Actions"
+      },
+      "create_step": {
+        "basic": "Basic info",
+        "channels": "Channels",
+        "audience": "Audience",
+        "preview": "Preview / Confirm"
+      },
+      "create_nav": {
+        "next": "Next",
+        "back": "Back",
+        "submit": "Create as draft"
+      },
+      "detail_tab": {
+        "overview": "Overview",
+        "channels": "Channels",
+        "audience": "Audience",
+        "moderation": "Moderation history"
+      },
+      "detail_empty": {
+        "moderation_logs": "No moderation history."
+      },
+      "form": {
+        "name": "Campaign name",
+        "name_placeholder": "e.g. Spring campaign",
+        "total_budget": "Total budget (JPY)",
+        "starts_at": "Start at",
+        "ends_at": "End at",
+        "scheduled_timezone": "Timezone",
+        "frequency_cap_override": "Frequency cap override (per week)",
+        "frequency_cap_help": "Defaults to 3 per week if left blank."
+      },
+      "channel_form": {
+        "subject": "Subject",
+        "body_markdown": "Body (Markdown)",
+        "image_url": "Image URL",
+        "cta_label": "CTA label",
+        "cta_url": "CTA URL",
+        "banner_creative_id": "Banner creative ID",
+        "select_channel": "Select channel type",
+        "select_locale": "Select locale"
+      },
+      "segment_form": {
+        "select_type": "Select segment type",
+        "inclusion_mode": "Inclusion mode",
+        "age_min": "Min age",
+        "age_max": "Max age",
+        "genders": "Genders",
+        "prefecture_codes": "Prefecture codes (comma separated)",
+        "city_codes": "City codes (comma separated)",
+        "interest_tags": "Interest tags (comma separated)",
+        "org_types": "Organization types (comma separated)",
+        "locales": "Locales",
+        "devices": "Devices",
+        "remove": "Remove"
+      },
+      "preview": {
+        "title": "Estimated reach",
+        "estimated_range": "Estimated reach range",
+        "channel_breakdown": "Channel breakdown",
+        "fetch": "Fetch preview",
+        "loading": "Estimating...",
+        "under_100_warning": "Estimated reach is under 100. The audience may be too narrow.",
+        "no_data": "No preview yet. Click 'Fetch preview' to estimate."
+      },
+      "errors": {
+        "load_failed": "Failed to load data.",
+        "save_failed": "Failed to save.",
+        "transition_failed": "State transition failed.",
+        "preview_failed": "Failed to fetch preview."
+      },
+      "confirm": {
+        "submit": "Submit this campaign for review?",
+        "cancel": "Cancel this campaign? This cannot be undone.",
+        "launch": "Launch this campaign?",
+        "pause": "Pause this campaign?",
+        "resume": "Resume this campaign?",
+        "delete": "Delete this draft?"
+      },
+      "validation": {
+        "name_required": "Campaign name is required.",
+        "name_max": "Campaign name must be at most 120 characters.",
+        "total_budget_min": "Total budget must be at least 1,000.",
+        "total_budget_max": "Total budget must be at most 100,000,000.",
+        "starts_at_required": "Start time is required.",
+        "ends_at_required": "End time is required.",
+        "starts_before_ends": "Start time must be before end time.",
+        "frequency_cap_range": "Frequency cap must be between 1 and 30.",
+        "at_least_one_channel": "Configure at least one channel.",
+        "at_least_one_segment": "Configure at least one audience segment."
+      },
+      "nav": {
+        "messaging_campaigns": "Messaging campaigns"
+      }
     },
-    "nav": {
-      "messaging_campaigns": "Messaging campaigns"
-    }
-  },
-  "creative": {
-    "title": "Ad Creatives",
-    "description": "Manage ad creatives linked to your campaign.",
-    "empty": "No creatives yet.",
-    "create_button": "Create New",
-    "status": {
-      "DRAFT": "Draft",
-      "ACTIVE": "Active",
-      "PAUSED": "Paused",
-      "ENDED": "Ended"
+    "creative": {
+      "title": "Ad Creatives",
+      "description": "Manage ad creatives linked to your campaign.",
+      "empty": "No creatives yet.",
+      "create_button": "Create New",
+      "status": {
+        "DRAFT": "Draft",
+        "ACTIVE": "Active",
+        "PAUSED": "Paused",
+        "ENDED": "Ended"
+      },
+      "column_title": "Title",
+      "column_status": "Status",
+      "column_destination": "Destination URL",
+      "column_created_at": "Created At",
+      "column_actions": "Actions",
+      "form": {
+        "title_label": "Title",
+        "title_placeholder": "e.g. Spring Sale Ad",
+        "image_url_label": "Image URL (optional)",
+        "image_url_placeholder": "https://example.com/image.png",
+        "destination_url_label": "Destination URL",
+        "destination_url_placeholder": "https://example.com/landing"
+      },
+      "dialog_create_title": "Create Creative",
+      "dialog_edit_title": "Edit Creative",
+      "delete_confirm": "This creative will be marked as ENDED. Continue?",
+      "created_toast": "Creative created.",
+      "updated_toast": "Creative updated.",
+      "deleted_toast": "Creative deleted.",
+      "error_load": "Failed to load creatives.",
+      "error_save": "Failed to save.",
+      "error_delete": "Failed to delete.",
+      "back_to_advertiser": "Back to Advertiser Dashboard"
     },
-    "column_title": "Title",
-    "column_status": "Status",
-    "column_destination": "Destination URL",
-    "column_created_at": "Created At",
-    "column_actions": "Actions",
-    "form": {
-      "title_label": "Title",
-      "title_placeholder": "e.g. Spring Sale Ad",
-      "image_url_label": "Image URL (optional)",
-      "image_url_placeholder": "https://example.com/image.png",
-      "destination_url_label": "Destination URL",
-      "destination_url_placeholder": "https://example.com/landing"
+    "teams_page": {
+      "title": "Team advertiser management",
+      "description": "Create and deliver messaging-type ad campaigns at the team level.",
+      "nav": {
+        "messaging_campaigns_description": "Create messaging-type ad campaigns targeted to team members."
+      },
+      "dashboard": {
+        "not_registered_title": "Advertiser dashboard",
+        "not_registered_description": "Register as an advertiser to start running ads.",
+        "register_button": "Advertiser registration",
+        "rate_simulator_button": "Rate simulator",
+        "pending_notice": "This account is under review. You can start delivering ads once approved.",
+        "suspended_notice": "This account has been suspended. Please contact an administrator.",
+        "kpi_campaigns": "Campaigns",
+        "kpi_impressions": "Impressions",
+        "kpi_clicks_ctr": "Clicks / CTR",
+        "kpi_cost": "Ad cost (excl. tax)",
+        "budget_used_label": "{pct}% of budget used",
+        "campaigns_section_title": "Campaigns",
+        "column_campaign_name": "Campaign name",
+        "column_status": "Status",
+        "column_impressions": "Imp",
+        "column_clicks": "Click",
+        "column_ctr": "CTR",
+        "column_cost": "Cost",
+        "nav_invoices": "Invoices",
+        "nav_rate_simulator": "Rate simulator",
+        "nav_report_schedules": "Recurring reports",
+        "nav_credit_limit_requests": "Credit limit requests"
+      },
+      "invoices": {
+        "title": "Invoices",
+        "status_all": "All",
+        "status_draft": "Draft",
+        "status_issued": "Issued",
+        "status_paid": "Paid",
+        "status_overdue": "Overdue",
+        "status_filter_placeholder": "Status",
+        "column_invoice_number": "Invoice #",
+        "column_invoice_month": "Billing month",
+        "column_total_with_tax": "Total (incl. tax)",
+        "column_status": "Status",
+        "column_due_date": "Due date",
+        "detail_title": "Invoice details",
+        "detail_invoice_number": "Invoice #:",
+        "detail_invoice_month": "Billing month:",
+        "detail_status": "Status:",
+        "detail_due_date": "Due date:",
+        "detail_column_campaign": "Campaign",
+        "detail_column_pricing_model": "Pricing",
+        "detail_column_impressions": "Imp",
+        "detail_column_clicks": "Click",
+        "detail_column_subtotal": "Subtotal",
+        "subtotal_label": "Subtotal:",
+        "tax_label": "Tax ({rate}%):",
+        "total_label": "Total:"
+      },
+      "credit_limit_requests": {
+        "title": "Credit limit increase requests",
+        "create_button": "New request",
+        "column_requested_limit": "Requested amount",
+        "column_current_limit": "Limit at request time",
+        "column_reason": "Reason",
+        "column_status": "Status",
+        "column_review_note": "Review note",
+        "column_created_at": "Requested on",
+        "dialog_title": "Credit limit increase request",
+        "form_requested_limit_label": "Requested amount (JPY)",
+        "form_reason_label": "Reason",
+        "form_reason_placeholder": "Describe why the increase is needed",
+        "submit_button": "Submit",
+        "created_toast": "Increase request submitted",
+        "create_failed_toast": "Failed to submit the request"
+      },
+      "report_schedules": {
+        "title": "Recurring reports",
+        "create_button": "New schedule",
+        "empty": "No recurring reports have been set up yet.",
+        "frequency_weekly": "Weekly (every Monday)",
+        "frequency_monthly": "Monthly (1st of the month)",
+        "last_sent_label": "Last sent: {date}",
+        "dialog_title": "Create report schedule",
+        "form_frequency_label": "Frequency",
+        "form_recipients_label": "Recipient emails (comma-separated)",
+        "form_recipients_placeholder": "ads{'@'}example.com, manager{'@'}example.com",
+        "submit_button": "Create",
+        "created_toast": "Report schedule created",
+        "create_failed_toast": "Failed to create the schedule",
+        "deleted_toast": "Deleted",
+        "delete_failed_toast": "Failed to delete"
+      },
+      "rate_simulator": {
+        "title": "Rate simulator",
+        "pricing_model_label": "Pricing model",
+        "pricing_model_cpm": "CPM (per impression)",
+        "pricing_model_cpc": "CPC (per click)",
+        "days_label": "Duration (days)",
+        "impressions_label": "Impressions",
+        "clicks_label": "Clicks",
+        "prefecture_label": "Prefecture (optional)",
+        "prefecture_placeholder": "e.g. Tokyo",
+        "template_label": "Template (optional)",
+        "template_placeholder": "e.g. SPORTS",
+        "run_button": "Run simulation",
+        "result_title": "Estimate",
+        "unit_price_label": "Unit price",
+        "total_cost_label": "Total (excl. tax)",
+        "total_with_tax_label": "Total (incl. tax)",
+        "tax_amount_label": "Tax",
+        "daily_cost_label": "Daily cost",
+        "min_daily_budget_label": "Minimum daily budget",
+        "comparison_title": "Comparison with other rates",
+        "comparison_column_label": "Condition",
+        "comparison_column_unit_price": "Unit price",
+        "comparison_column_total_cost": "Total cost"
+      },
+      "campaign_detail": {
+        "default_title": "Campaign details",
+        "csv_button": "CSV",
+        "date_from_placeholder": "From",
+        "date_to_placeholder": "To",
+        "load_failed": "Failed to load campaign data.",
+        "back_to_dashboard": "Back to dashboard"
+      },
+      "register": {
+        "title": "Advertiser registration",
+        "submit": "Submit application",
+        "company_name_label": "Company / advertiser name",
+        "company_name_placeholder": "Sample Corp.",
+        "contact_email_label": "Contact email address",
+        "billing_method_label": "Payment method",
+        "billing_stripe": "Credit card (Stripe)",
+        "billing_invoice": "Invoice",
+        "success_message": "Your application has been submitted. You can start using the service after review.",
+        "error_message": "Registration failed"
+      }
     },
-    "dialog_create_title": "Create Creative",
-    "dialog_edit_title": "Edit Creative",
-    "delete_confirm": "This creative will be marked as ENDED. Continue?",
-    "created_toast": "Creative created.",
-    "updated_toast": "Creative updated.",
-    "deleted_toast": "Creative deleted.",
-    "error_load": "Failed to load creatives.",
-    "error_save": "Failed to save.",
-    "error_delete": "Failed to delete.",
-    "back_to_advertiser": "Back to Advertiser Dashboard"
-  },
-  "teams_page": {
-    "title": "Team advertiser management",
-    "description": "Create and deliver messaging-type ad campaigns at the team level.",
-    "nav": {
-      "messaging_campaigns_description": "Create messaging-type ad campaigns targeted to team members."
+    "settings_ad_preferences_guide": {
+      "page_title": "広告の受信設定 — 使い方ガイド",
+      "description": "広告の受信設定ページの機能と使い方をご案内します。",
+      "channels": {
+        "title": "チャネル別の受信トグル",
+        "body": "お知らせフィード・メール・プッシュ通知・サイト内バナーの4チャネルごとに広告の受信をオン／オフできます。初回同意日時もこのセクションで確認できます。",
+        "steps": {
+          "step1": "受信したいチャネルのスイッチをオンにする",
+          "step2": "受信したくないチャネルのスイッチをオフにする",
+          "step3": "ページ右下の「保存」ボタンをクリックして設定を確定する"
+        }
+      },
+      "blocklist": {
+        "title": "ブロック済み広告主リスト",
+        "body": "特定の広告主からの広告を一切受け取りたくない場合は、広告主IDを入力してブロックできます（最大100件）。ブロック済みリストの各行の×ボタンでいつでも解除できます。",
+        "steps": {
+          "step1": "ブロックしたい広告主のIDを入力欄に入力する（例: 12）",
+          "step2": "「ブロックに追加」ボタンをクリックする",
+          "step3": "ページ右下の「保存」ボタンをクリックして設定を確定する",
+          "step4": "解除するには、一覧の×ボタンをクリックして再度「保存」する"
+        }
+      },
+      "rotate_tokens": {
+        "title": "配信停止リンクの無効化（セキュリティ）",
+        "body": "過去に受け取ったメール内の配信停止リンクを一括で無効化できます。不正利用が心配なときやメールアドレスを変更したときに使用してください。この操作は元に戻せません。",
+        "steps": {
+          "step1": "「配信停止リンクを無効化する」ボタンをクリックする",
+          "step2": "確認ダイアログが表示されるので内容を確認して承認する",
+          "step3": "成功メッセージが表示されれば完了（新しいリンクは次回配信から有効）"
+        }
+      },
+      "save": {
+        "title": "設定の保存",
+        "body": "チャネルのオン／オフやブロックリストへの変更は、「保存」ボタンを押すまで確定されません。なお設定変更には1時間あたり10件のレート制限があります。",
+        "steps": {
+          "step1": "チャネルやブロックリストの設定を変更する",
+          "step2": "ページ右下の「保存」ボタンをクリックする",
+          "step3": "「設定を保存しました」のメッセージが表示されれば完了"
+        }
+      }
     },
-    "future_features_notice": "Invoices, credit limit requests, and recurring reports will be supported in a future phase.",
-    "register": {
-      "title": "Advertiser registration",
-      "submit": "Submit application",
-      "company_name_label": "Company / advertiser name",
-      "company_name_placeholder": "Sample Corp.",
-      "contact_email_label": "Contact email address",
-      "billing_method_label": "Payment method",
-      "billing_stripe": "Credit card (Stripe)",
-      "billing_invoice": "Invoice",
-      "success_message": "Your application has been submitted. You can start using the service after review.",
-      "error_message": "Registration failed"
+    "operational_campaigns": {
+      "title": "Banner Ad Campaigns",
+      "entry_tile": {
+        "title": "Banner Ad Campaigns",
+        "description": "Create and manage operational campaigns that deliver image banners to ad placements."
+      },
+      "list": {
+        "description": "Create image banner delivery campaigns and manage review, delivery, and pausing. Daily budget is a soft cap.",
+        "create_button": "Create",
+        "empty": "No operational campaigns yet. Let's create your first campaign.",
+        "no_end_date": "No end date",
+        "report_suspended_badge": "Suspended by report",
+        "reject_reason_label": "Rejection reason",
+        "link_creatives": "Creatives",
+        "link_report": "Report",
+        "tab": {
+          "all": "All",
+          "draft": "Draft",
+          "pending_review": "In review",
+          "active": "Active",
+          "paused": "Paused",
+          "ended": "Ended"
+        },
+        "col": {
+          "name": "Campaign name",
+          "status": "Status",
+          "pricing_model": "Pricing model",
+          "daily_budget": "Daily budget",
+          "period": "Period",
+          "unit_price": "Unit price",
+          "actions": "Actions"
+        }
+      },
+      "status": {
+        "draft": "Draft",
+        "pending_review": "In review",
+        "active": "Active",
+        "paused": "Paused",
+        "ended": "Ended"
+      },
+      "actions": {
+        "submit": "Submit for review",
+        "pause": "Pause",
+        "resume": "Resume",
+        "end": "End",
+        "edit": "Edit"
+      },
+      "confirm": {
+        "submit": "Submit this campaign for review?",
+        "pause": "Pause delivery of this campaign?",
+        "resume": "Resume delivery of this campaign?",
+        "end": "End this campaign? It cannot be resumed once ended (irreversible)."
+      },
+      "toast": {
+        "submit": "Submitted for review",
+        "pause": "Delivery paused",
+        "resume": "Delivery resumed",
+        "end": "Campaign ended",
+        "created": "Campaign created",
+        "updated": "Campaign updated"
+      },
+      "form": {
+        "create_title": "Create banner ad campaign",
+        "edit_title": "Edit banner ad campaign",
+        "name": "Campaign name",
+        "pricing_model": "Pricing model",
+        "rate_card": "Rate card",
+        "rate_card_placeholder": "Select a rate card",
+        "no_rate_cards": "No rate cards available for the selected pricing model.",
+        "daily_budget": "Daily budget",
+        "min_daily_budget": "Minimum daily budget",
+        "start_date": "Start date",
+        "end_date": "End date",
+        "end_date_hint": "Leave blank to run indefinitely.",
+        "unit_cpm": "CPM",
+        "unit_cpc": "CPC",
+        "locked_when_paused": "Cannot be changed while paused.",
+        "daily_budget_notice": "The daily budget is a soft cap for pacing. It is not a strict guarantee; charges are based on actual measured delivery.",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "errors": {
+        "load_failed": "Failed to load campaign",
+        "save_failed": "Failed to save",
+        "transition_failed": "Operation failed",
+        "rate_cards_load_failed": "Failed to load rate cards",
+        "name_required": "Please enter a campaign name",
+        "name_max": "Campaign name must be 200 characters or fewer",
+        "rate_card_required": "Please select a rate card",
+        "daily_budget_required": "Please enter a daily budget",
+        "daily_budget_min": "Daily budget must be at least the minimum ({min})",
+        "start_date_required": "Please enter a start date",
+        "start_in_past": "Start date must be today or later",
+        "end_before_start": "End date must be on or after the start date"
+      },
+      "guide": {
+        "title": "How to use banner ad campaigns",
+        "what": {
+          "title": "What are banner ad campaigns?",
+          "body": "Operational ads that deliver image banners to placements such as dashboards and feeds. Choose a pricing model (CPM/CPC) and rate card, set a daily budget, and deliver after review."
+        },
+        "flow": {
+          "title": "Publishing flow",
+          "step1": "Create a campaign (draft) with a rate card and daily budget",
+          "step2": "Submit creatives (image banners)",
+          "step3": "Submit for review (both campaign and creatives must be approved to be eligible)",
+          "step4": "Delivery starts. Pause, resume, or end as needed"
+        },
+        "pricing": {
+          "title": "Pricing and daily budget",
+          "body": "The rate card determines the unit price (CPM = per 1000 impressions, CPC = per click). The unit price is frozen at creation, so later rate changes do not apply. The daily budget is a soft cap for pacing."
+        },
+        "status": {
+          "title": "Status and operations",
+          "body": "Transitions go Draft -> In review -> Active -> Paused. While paused, billing-related fields (pricing model, rate card, start date) cannot be changed. Ended campaigns cannot be resumed."
+        }
+      },
+      "review": {
+        "title": "Operational campaign review",
+        "description": "Review pending banner ad campaigns and approve or reject them.",
+        "card_title": "Operational campaign review",
+        "card_description": "Check banner ad campaigns awaiting review.",
+        "pending_count": "Pending",
+        "open_queue": "Open review queue",
+        "open_detail": "View detail",
+        "back_to_dashboard": "Back to review dashboard",
+        "empty": "No campaigns awaiting review.",
+        "load_failed": "Failed to load the review queue",
+        "detail_load_failed": "Failed to load review detail",
+        "detail_title": "Campaign review detail",
+        "advertiser": "Advertiser",
+        "scope": "Scope",
+        "scope_organization": "Organization",
+        "scope_team": "Team",
+        "unit_price": "Unit price",
+        "creatives": "Creatives",
+        "no_creatives": "No creatives have been submitted.",
+        "approve": "Approve",
+        "approve_confirm": "Approve this campaign and make it eligible for delivery?",
+        "approved_toast": "Campaign approved",
+        "reject": "Reject",
+        "reject_submit": "Reject",
+        "reject_reason_label": "Rejection reason",
+        "reject_reason_placeholder": "Enter the reason for rejection (1-500 characters)",
+        "rejected_toast": "Campaign rejected",
+        "action_failed": "Operation failed"
+      }
     }
   }
 }

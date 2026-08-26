@@ -5,12 +5,14 @@ import com.mannschaft.app.analytics.BackfillTarget;
 import com.mannschaft.app.analytics.dto.BackfillJobResponse;
 import com.mannschaft.app.analytics.dto.BackfillRequest;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,8 @@ import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -33,6 +37,8 @@ public class AnalyticsBackfillService {
     private final MonthlyCohortBatchService cohortBatch;
     private final NotificationService notificationService;
     private final UserRoleRepository userRoleRepository;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
     private static final long MAX_BACKFILL_DAYS = 183; // 6ヶ月
 
     private final AtomicBoolean running = new AtomicBoolean(false);
@@ -97,18 +103,41 @@ public class AnalyticsBackfillService {
             log.info("バックフィル完了: jobId={}", jobId);
 
             // SYSTEM_ADMIN へのプッシュ通知
-            String title = "バックフィル完了";
-            String body = String.format("バックフィルジョブ %s が完了しました（期間: %s 〜 %s）。",
-                    jobId, request.getFrom(), request.getTo());
             List<Long> systemAdmins = userRoleRepository.findSystemAdminUserIds();
+            // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+            // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+            Map<Long, String> locales;
+            try {
+                locales = userLocaleCache.getLocales(systemAdmins);
+            } catch (Exception e) {
+                log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+                locales = Map.of();
+            }
             for (Long adminUserId : systemAdmins) {
-                notificationService.createNotification(
-                        adminUserId, "BACKFILL_COMPLETED", NotificationPriority.LOW,
-                        title, body,
-                        "BACKFILL_JOB", null,
-                        NotificationScopeType.SYSTEM, null,
-                        "/system-admin/analytics", null
-                );
+                try {
+                    Locale locale = Locale.forLanguageTag(locales.getOrDefault(adminUserId, "ja"));
+                    String title = messageSource.getMessage(
+                            "notification.analytics.backfillCompleted.title", null,
+                            "バックフィル完了", locale);
+                    String body = messageSource.getMessage(
+                            "notification.analytics.backfillCompleted.body",
+                            new Object[]{jobId, request.getFrom(), request.getTo()},
+                            "バックフィルジョブ " + jobId + " が完了しました（期間: " + request.getFrom()
+                                    + " 〜 " + request.getTo() + "）。",
+                            locale);
+                    notificationService.createNotification(
+                            adminUserId, "BACKFILL_COMPLETED", NotificationPriority.LOW,
+                            title, body,
+                            "BACKFILL_JOB", null,
+                            NotificationScopeType.SYSTEM, null,
+                            "/system-admin/analytics", null
+                    );
+                } catch (Exception e) {
+                    // 通知失敗を隔離し、他の SYSTEM_ADMIN への配信を継続する
+                    // （非DB例外・MessageFormatエラー等を隔離するもので、本処理の巻き戻りは防がない）。
+                    log.warn("バックフィル完了通知送信失敗（継続）: userId={}, jobId={}, error={}",
+                            adminUserId, jobId, e.getMessage());
+                }
             }
         } finally {
             running.set(false);

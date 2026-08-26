@@ -4,6 +4,8 @@ import type {
   JobPagedMeta,
   JobPostingResponse,
 } from '~/types/jobmatching'
+
+definePageMeta({ layout: 'team' })
 // F13.1 Phase 13.1.2: ACCEPTED 応募について「QR を表示」ボタンを出すため、
 // 現在ログイン中ユーザーの契約一覧を引いて応募 ID → 契約 ID のマップを作る。
 
@@ -258,37 +260,19 @@ onMounted(async () => {
     </div>
 
     <div v-else>
-      <!-- 戻る -->
-      <div class="mb-3">
-        <Button
-          :label="t('jobmatching.detail.back')"
-          icon="pi pi-arrow-left"
-          severity="secondary"
-          text
-          @click="router.push(`/teams/${teamSlug}/jobs`)"
-        />
-      </div>
-
       <!-- ヘッダ -->
-      <header class="mb-4">
-        <div class="flex items-start justify-between gap-3">
-          <div class="min-w-0 flex-1">
-            <h1 class="text-2xl font-bold">
-              {{ job.title }}
-            </h1>
-            <p
-              v-if="job.category"
-              class="mt-1 text-sm text-surface-500"
-            >
-              {{ job.category }}
-            </p>
-          </div>
-          <JobStatusBadge
-            kind="posting"
-            :status="job.status"
-          />
-        </div>
-      </header>
+      <PageHeader :title="job.title" :back-to="`/teams/${teamSlug}/jobs`">
+        <JobStatusBadge
+          kind="posting"
+          :status="job.status"
+        />
+      </PageHeader>
+      <p
+        v-if="job.category"
+        class="mb-4 text-sm text-surface-500"
+      >
+        {{ job.category }}
+      </p>
 
       <!-- アクションバー -->
       <div

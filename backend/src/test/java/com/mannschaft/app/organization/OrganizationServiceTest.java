@@ -3,6 +3,7 @@ package com.mannschaft.app.organization;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
@@ -86,6 +87,9 @@ class OrganizationServiceTest {
 
     @Mock
     private MembershipService membershipService;
+
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private OrganizationService organizationService;
@@ -230,6 +234,43 @@ class OrganizationServiceTest {
 
             assertThat(response.getData().getBasicInfo().name()).isEqualTo("テスト組織");
             assertThat(response.getData().getMetadata().memberCount()).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("F09.19.10: numericIdに内部BIGINT IDが返される(Spotlight scopeId解決用)")
+        void numericIdに内部BIGINT_IDが返される() {
+            OrganizationEntity org = createOrganization();
+            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(org));
+            given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(0L);
+
+            ApiResponse<OrganizationResponse> response =
+                    organizationService.getOrganization(ORG_SLUG);
+
+            assertThat(response.getData().getNumericId()).isEqualTo(ORG_ID);
+            // id/slug は URL識別子のまま（正準はslug。numericIdはURLに使わない内部連携専用）
+            assertThat(response.getData().getId()).isEqualTo(response.getData().getSlug());
+        }
+
+        @Test
+        @DisplayName("画像URL根治Phase2_icon/bannerが署名付き表示URLへ解決される")
+        void icon_bannerが署名付き表示URLへ解決される() {
+            OrganizationEntity org = createOrganization();
+            ReflectionTestUtils.setField(org, "iconUrl", "org/10/icon/raw.png");
+            ReflectionTestUtils.setField(org, "bannerUrl", "org/10/banner/raw.png");
+            given(organizationRepository.findBySlugAndDeletedAtIsNull(ORG_SLUG)).willReturn(Optional.of(org));
+            given(userRoleRepository.countByOrganizationId(ORG_ID)).willReturn(0L);
+            given(mediaUrlResolver.resolve("org/10/icon/raw.png"))
+                    .willReturn("https://cdn.example.com/signed/icon.png");
+            given(mediaUrlResolver.resolve("org/10/banner/raw.png"))
+                    .willReturn("https://cdn.example.com/signed/banner.png");
+
+            ApiResponse<OrganizationResponse> response =
+                    organizationService.getOrganization(ORG_SLUG);
+
+            assertThat(response.getData().getMetadata().iconUrl())
+                    .isEqualTo("https://cdn.example.com/signed/icon.png");
+            assertThat(response.getData().getMetadata().bannerUrl())
+                    .isEqualTo("https://cdn.example.com/signed/banner.png");
         }
 
         @Test

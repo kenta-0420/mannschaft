@@ -48,7 +48,7 @@ public enum ReceiptErrorCode implements ErrorCode {
     BULK_LIMIT_EXCEEDED("RECEIPT_012", "一括操作は最大50件までです", Severity.WARN),
 
     /** 明細行の合計金額不一致 */
-    LINE_ITEMS_AMOUNT_MISMATCH("RECEIPT_013", "明細行の合計金額が領収書の金額と一致しません", Severity.ERROR),
+    LINE_ITEMS_AMOUNT_MISMATCH("RECEIPT_013", "明細行の合計金額が領収書の金額と一致しません", Severity.WARN),
 
     /** 明細行の上限超過 */
     LINE_ITEMS_LIMIT_EXCEEDED("RECEIPT_014", "明細行は最大10件までです", Severity.WARN),

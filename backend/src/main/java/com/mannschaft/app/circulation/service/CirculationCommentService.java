@@ -10,6 +10,9 @@ import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.repository.CirculationCommentRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -31,13 +34,34 @@ public class CirculationCommentService {
     private final CirculationMapper circulationMapper;
 
     /**
+     * コメント一覧・作成の読取 ACL ガード用。
+     * Bean 不在のテスト構成では {@code null} 注入され、ガードはスキップされる
+     * （{@link com.mannschaft.app.circulation.service.CirculationService} と同一パターン）。
+     */
+    private final ContentVisibilityChecker contentVisibilityChecker;
+
+    /**
+     * コメントの更新・削除の本人性判定に用いるガード。
+     *
+     * <p>対象コメントが<b>パスで指定された文書に属し、かつ操作者が投稿者本人</b>であることを
+     * {@link CirculationAccessGuard#requireCommentAuthor} で検証してから実行する。</p>
+     */
+    private final CirculationAccessGuard circulationAccessGuard;
+
+    /**
      * コメント一覧をページング取得する。
+     *
+     * <p>文書の読取 ACL（作成者 or 受信者 or SystemAdmin）で保護する。</p>
      *
      * @param documentId 文書ID
      * @param pageable   ページング情報
      * @return コメントレスポンスのページ
      */
     public Page<CommentResponse> listComments(Long documentId, Pageable pageable) {
+        if (contentVisibilityChecker != null) {
+            contentVisibilityChecker.assertCanView(
+                    ReferenceType.CIRCULATION_DOCUMENT, documentId, SecurityUtils.getCurrentUserIdOrNull());
+        }
         Page<CirculationCommentEntity> page =
                 commentRepository.findByDocumentIdOrderByCreatedAtAsc(documentId, pageable);
         return page.map(circulationMapper::toCommentResponse);
@@ -55,6 +79,12 @@ public class CirculationCommentService {
     public CommentResponse createComment(Long documentId, Long userId, CreateCommentRequest request) {
         CirculationDocumentEntity document = documentRepository.findById(documentId)
                 .orElseThrow(() -> new BusinessException(CirculationErrorCode.DOCUMENT_NOT_FOUND));
+
+        // コメント投稿は文書の読取 ACL と同じ（作成者 or 受信者 or SystemAdmin）。
+        // 受信者は読める文書にコメントできる、という設計方針（listComments と同一 ACL）。
+        if (contentVisibilityChecker != null) {
+            contentVisibilityChecker.assertCanView(ReferenceType.CIRCULATION_DOCUMENT, documentId, userId);
+        }
 
         CirculationCommentEntity comment = CirculationCommentEntity.builder()
                 .documentId(documentId)
@@ -83,10 +113,7 @@ public class CirculationCommentService {
     public CommentResponse updateComment(Long documentId, Long commentId, Long userId,
                                          UpdateCommentRequest request) {
         CirculationCommentEntity comment = findCommentOrThrow(documentId, commentId);
-
-        if (!comment.isOwnedBy(userId)) {
-            throw new BusinessException(CirculationErrorCode.COMMENT_NOT_OWNED);
-        }
+        circulationAccessGuard.requireCommentAuthor(comment, documentId, userId);
 
         comment.updateBody(request.getBody());
         CirculationCommentEntity saved = commentRepository.save(comment);
@@ -105,10 +132,7 @@ public class CirculationCommentService {
     @Transactional
     public void deleteComment(Long documentId, Long commentId, Long userId) {
         CirculationCommentEntity comment = findCommentOrThrow(documentId, commentId);
-
-        if (!comment.isOwnedBy(userId)) {
-            throw new BusinessException(CirculationErrorCode.COMMENT_NOT_OWNED);
-        }
+        circulationAccessGuard.requireCommentAuthor(comment, documentId, userId);
 
         comment.softDelete();
         commentRepository.save(comment);

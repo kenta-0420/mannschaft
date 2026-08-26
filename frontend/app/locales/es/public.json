@@ -158,6 +158,16 @@
     "events": {
       "title": "Eventos",
       "empty": "No hay eventos"
+    },
+    "tabs": {
+      "posts": "Publicaciones",
+      "timeline": "Línea de tiempo",
+      "events": "Eventos",
+      "activities": "Registros de actividad"
+    },
+    "activities": {
+      "sectionTitle": "Registros de actividad",
+      "empty": "Aún no hay registros de actividad públicos"
     }
   }
 }

@@ -261,6 +261,24 @@ public enum AuditEventType {
     VILLAGE_MEETUP_CANCELLED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — 寄合への投票（新規/変更）。 */
     VILLAGE_MEETUP_VOTED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 出欠の登録/変更（upsert・設計書 §16.2）。 */
+    VILLAGE_MEETUP_ATTENDANCE_SET(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の手挙げ（claim・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_CLAIMED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の完了（complete・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_COMPLETED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave1 ②寄合後半戦 — 宿題 TODO の手放し（release・設計書 §16.2）。 */
+    VILLAGE_MEETUP_TODO_RELEASED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ③祭の参加レイヤー — 参加表明（RSVP）の登録/変更（upsert・設計書 §16.2）。 */
+    VILLAGE_FESTIVAL_RSVP_SET(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ③祭の参加レイヤー — 参加表明（RSVP）の取消（設計書 §16.2）。 */
+    VILLAGE_FESTIVAL_RSVP_CANCELLED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ③祭の参加レイヤー — 実況投稿の紐付け（live-post タグ・設計書 §16.2）。 */
+    VILLAGE_FESTIVAL_LIVE_POST_TAGGED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ③祭の参加レイヤー — 祭 ENDED 時の村史（行事アーカイブ）自動編纂（設計書 §16.2）。 */
+    VILLAGE_FESTIVAL_ARCHIVED(AuditEventCategory.VILLAGE),
+    /** F17.2 Wave2 ①行事→村フィード還流 — 行事のシステム名義自動投稿を作成（設計書 §16.2）。 */
+    VILLAGE_EVENT_SYSTEM_POSTED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — 村史（月次ダイジェスト）を生成（バッチ）。 */
     VILLAGE_CHRONICLE_GENERATED(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β — ご縁スコア更新（日次バッチによる加算反映）。 */
@@ -271,6 +289,28 @@ public enum AuditEventType {
     VILLAGE_NEWSLETTER_SENT(AuditEventCategory.VILLAGE),
     /** F17.1 Phase 3-β-E — 村ニュースレター opt-out（ユーザー自身の操作）。 */
     VILLAGE_NEWSLETTER_OPT_OUT(AuditEventCategory.VILLAGE),
+    /** F17.1 ②-2 — 村ニュースレター号を集計・凍結（集計バッチによる snapshot 確定）。 */
+    VILLAGE_NEWSLETTER_ISSUE_FROZEN(AuditEventCategory.VILLAGE),
+    /** F17.2 ⑤ — 加入前相性クエリ（差分攻撃の事後検知用・§8.4 緩和3）。 */
+    VILLAGE_AFFINITY_QUERIED(AuditEventCategory.VILLAGE),
+    /** F17.2 ⑥ — 所属村一覧の公開トグルを切替（本人操作・§9.3）。 */
+    VILLAGE_MEMBERSHIP_PROFILE_VISIBILITY_CHANGED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 初回制定（最初の条追加で charter 自動生成・§4.5/§16.2）。 */
+    VILLAGE_CHARTER_ENACTED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条を追加（§16.2）。 */
+    VILLAGE_CHARTER_ARTICLE_ADDED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条の本文/付則を更新（§16.2）。 */
+    VILLAGE_CHARTER_ARTICLE_UPDATED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条を論理削除（§16.2）。 */
+    VILLAGE_CHARTER_ARTICLE_DELETED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 条の並び替え（PATCH order・§16.2）。 */
+    VILLAGE_CHARTER_REORDERED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 策定者を追加（§16.2）。 */
+    VILLAGE_CHARTER_DRAFTER_ADDED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 策定者を削除（§16.2）。 */
+    VILLAGE_CHARTER_DRAFTER_REMOVED(AuditEventCategory.VILLAGE),
+    /** F17.3 村憲章 — 「改正を確定」（last_revised_at 更新＋履歴追記・§8.2/§16.2）。 */
+    VILLAGE_CHARTER_REVISED(AuditEventCategory.VILLAGE),
 
     // ─── FORM (F05.7 書類テンプレート・フォームビルダー) ──────────
     /** F05.7 Phase 11 第四陣 4-B — フォーム提出 PDF を生成（Thymeleaf + Flying Saucer + R2 アップロード）。 */
@@ -372,6 +412,13 @@ public enum AuditEventType {
     FEE_POLICY_ASSIGNMENT_CREATED(AuditEventCategory.ADMIN_ACTION),
     /** SYSTEM_ADMIN が手数料パターン割当を解除した。 */
     FEE_POLICY_ASSIGNMENT_DELETED(AuditEventCategory.ADMIN_ACTION),
+
+    // ─── RECRUITMENT_CANCELLATION_FEE (F03.11.1 募集キャンセル料の徴収) ─────────────
+    /**
+     * F03.11.1 募集キャンセル料が免除された（受取先側の管理者または SYSTEM_ADMIN による）。
+     * 免除は金銭債権を消す操作であり、誰がいつ何円を消したかを後から追える記録が唯一の手がかりになる。
+     */
+    RECRUITMENT_CANCELLATION_FEE_WAIVED(AuditEventCategory.ADMIN_ACTION),
 
     // ─── GUARDIANSHIP_SWITCH (F08.9 P3c 後見切替セッション) ─────────────
     /**

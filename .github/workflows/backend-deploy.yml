@@ -31,6 +31,85 @@
 #
 #   4. Delete the AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY secrets.
 # =============================================================================
+#
+# 2026-08-09: main の Backend CI が一度も完走していなかった問題を根治。
+#
+#   [実測した症状]
+#   直近8回の実行中 7回が cancelled、1回のみ完走したがその結果は
+#   `BUILD FAILED in 4h 14m 3s`（21158 tests completed, 27 failed）。
+#   つまり main のどのコミットも「テストが最後まで通った」実績が存在しなかった。
+#
+#   [特定した原因（2つが複合）]
+#   (1) 旧来はワークフロー全体を単一の concurrency group
+#       `backend-deploy-${{ github.ref }}` + cancel-in-progress: true で
+#       束ねていた。main は頻繁にマージされるため、次の push が来るたびに
+#       「デプロイ中の古いコミットを打ち切る」つもりが「検証中の test job」も
+#       道連れで打ち切っていた（7/8 cancelled の主因）。
+#   (2) test job が backend-ci.yml（PR側）のような shard 分割をしておらず、
+#       単一ジョブで全テストを直列実行していた。PR側は 6 shard で 26〜46 分に
+#       収まっているのに対し、main 側は無分割のため実測 4h14m（timeout-minutes
+#       未指定＝デフォルト6時間の枠にギリギリ収まっていただけ）。実行時間が
+#       長いほど「次の push に打ち切られる」確率も上がる悪循環だった。
+#
+#   [採った設計判断]
+#   - デプロイの cancel-in-progress: true 自体は正しい振る舞い（古いコミットを
+#     デプロイする意味はない）ので維持する。ただし対象を build-and-deploy job
+#     専用の concurrency group `backend-deploy-${{ github.ref }}` に限定し、
+#     test job 側は cancel されない別グループ
+#     `backend-main-test-${{ github.ref }}`（cancel-in-progress: false）に分離。
+#     test は打ち切られず、同一 ref への連続 push があってもキューイングされて
+#     必ず最後まで完走する。
+#   - test job は backend-ci.yml と同じ 6-shard 構成（matrix.shard 0..5 /
+#     -Pshard.total / -Pshard.index）に揃え、壁時計を 4h14m → 実測 26〜46 分
+#     （PR側と同条件）まで短縮。timeout-minutes: 60 を明示。
+#   - PR 側で strict up-to-date required check が効いており、main への
+#     マージ前には必ず backend-ci.yml の 6-shard フルテストが緑になっている
+#     ことが保証されている。そのため main 側の test job は「別コミットの
+#     組み合わせで初めて壊れる」ケース（semantic conflict 等）を拾うための
+#     二重検証と位置付け、PR側と同じ厳密さ（全 shard 完走必須）で構わない
+#     —— 省略や間引きは行わない。
+#   - build-and-deploy は needs: test のまま。GitHub Actions は matrix job を
+#     needs に指定すると needs.test.result が全 shard の集約結果になる
+#     （1つでも failure/cancelled なら 'failure'/'cancelled'）ため、追加の
+#     集約 gate job は不要（backend-ci.yml と異なり docs-only skip 分岐が
+#     無いためこの単純な形で足りる）。
+#
+#   [捨てた案とその理由]
+#   - timeout-minutes を単純に伸ばす／test を skip する／continue-on-error で
+#     緑に見せる: 対処療法であり禁止（症状を隠すだけで「打ち切られる」構造は
+#     残る。CLAUDE.md 障害対応の原則）。
+#   - main 側の test job 自体を廃止し PR CI の結果のみを信用する案: 「マージ
+#     直前は緑だったが、そのコミットが実際に main に乗った状態」を誰も検証
+#     しないことになり、CMP でも指摘されている「穴が入った瞬間を特定できない」
+#     問題を再発させるため却下。
+#
+# 2026-08-09（追記）: 上記の是正で main の Backend CI が初めて完走した結果、
+#   これまで打ち切られ続けて誰も見たことのなかった別の欠陥が表面化した。
+#
+#   [実測した症状]（run 31292148013 / main 4675d4b5d）
+#   test（6 shard）は全て success。build-and-deploy のみ failure。ログ実体:
+#     Run if [ -z "$AWS_KEY" ]; then ... fi
+#     ##[error]An error occurred trying to start process '/usr/bin/bash' with
+#     working directory '/home/runner/work/mannschaft/mannschaft/./backend'.
+#     No such file or directory
+#
+#   [特定した原因]
+#   build-and-deploy job には defaults.run.working-directory: ./backend が
+#   ジョブ全体に効いている。先頭の「Check AWS credentials」step は
+#   checkout より前に実行される設計（AWS 未設定環境では checkout 以降の
+#   全 step を丸ごと skip するため、この判定自体はリポジトリの中身を必要と
+#   しない）。しかし working-directory の job 既定を上書きしていなかったため、
+#   checkout 前に存在しない ./backend で bash を起動しようとして失敗していた。
+#
+#   [採った処置]
+#   「Check AWS credentials」step にのみ working-directory: . を追加し、
+#   job 既定の作用を外した。checkout の順序自体は変えていない —
+#   「AWS 未設定なら checkout すら不要」という元の設計意図（skip 時に
+#   余計な処理を一切行わない）は正しく、崩す理由が無いため。
+#   AWS_KEY が空のときは skip=true を出力して以降の全 step が
+#   if: steps.aws-check.outputs.skip != 'true' で skip されるだけなので、
+#   job 全体としては失敗なく success で終わる。
+# =============================================================================
 
 name: Backend — Build, Test & Deploy
 
@@ -42,26 +121,135 @@ on:
       - "backend/**"
       - ".github/workflows/backend-deploy.yml"
 
-# Prevent concurrent deploys; cancel in-progress runs on the same branch
-concurrency:
-  group: backend-deploy-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   AWS_REGION: ap-northeast-1
   JAVA_VERSION: "21"
+  # PR側 backend-ci.yml と同じ shard 数に揃える（詳細な選定根拠は backend-ci.yml 末尾を参照）。
+  SHARD_TOTAL: "6"
 
 jobs:
   # ---------------------------------------------------------------------------
+  # Job 0 — Flyway マイグレーション再生テスト（65クラス・実測で全テスト正味の
+  # 81.6%）の実行要否を判定する。
+  #
+  # 【なぜ「直前の push との差分」ではなく「最後に成功したデプロイの main SHA」
+  #   を基点にするのか（連続マージの穴）】
+  #   PR側 backend-ci.yml は「PRの base...head」で判定すれば十分だが、本
+  #   ワークフロー（main への push で毎回起動）で同じ発想の「1つ前の push
+  #   との差分」を基点にすると、以下の穴が生まれる:
+  #     コミットA（migration を追加）が push → A の deploy 実行中に
+  #     コミットB（通常コードのみ）が push → 実行中の A の run が
+  #     concurrency（cancel-in-progress）等で打ち切られる → 次に見る
+  #     「1つ前の push（=A）との差分」は B の変更（migration 無し）のみ →
+  #     A が追加した migration は一度も Flyway 再生テストにかけられないまま
+  #     デプロイされてしまう。
+  #   これを防ぐため、基点は「このワークフロー自身の、main ブランチ・
+  #   status=success の直近 run の head_sha」とする。ここを起点にすれば、
+  #   打ち切られた A の変更は「まだデプロイに成功していない差分」として
+  #   B のコミットの diff にも必ず含まれ続け、成功するまでフル実行対象から
+  #   漏れない。
+  #
+  # 【判定不能は必ずフル実行へ倒す（fail-open）】
+  #   直近の成功 run が無い（初回 / 過去ログ消失）・base が取得できない・
+  #   base が現在の SHA の祖先でない（history 書き換え等）・fetch や
+  #   git diff が失敗した — これらはすべて migrations_changed=true とし、
+  #   Flyway 再生テストを含むフル実行に倒す。「判定に失敗したので除外する」
+  #   は絶対に行わない（CLAUDE.md 障害対応の原則＝対処療法禁止）。
+  # ---------------------------------------------------------------------------
+  detect:
+    name: Detect migration changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read  # 直近の成功 run を gh api で読むために必要
+    outputs:
+      migrations_changed: ${{ steps.decide.outputs.migrations_changed }}
+    steps:
+      # base/head 双方の祖先関係検証・2点差分を取れるよう全履歴を取得する。
+      - name: Checkout source（全履歴）
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 判定
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -uo pipefail
+
+          fail_open() {
+            echo "[INFO] $1 → migrations_changed=true（フル実行へ倒す）"
+            echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          # ---- 1. このワークフロー（backend-deploy.yml）の main ブランチ・
+          #         直近の成功 run の head_sha を取得する ----
+          BASE_SHA=$(gh api "repos/${REPO}/actions/workflows/backend-deploy.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0].head_sha' 2>&1)
+          API_STATUS=$?
+
+          if [ "${API_STATUS}" -ne 0 ]; then
+            fail_open "直近の成功 run 取得に失敗（gh api exit=${API_STATUS}: ${BASE_SHA}）"
+          fi
+          if [ -z "${BASE_SHA}" ] || [ "${BASE_SHA}" = "null" ]; then
+            fail_open "直近の成功 run が存在しない（初回デプロイ等）"
+          fi
+          echo "[INFO] base_sha=${BASE_SHA}（最後に成功した backend-deploy.yml run の head_sha）"
+
+          # ---- 2. base が現在の HEAD_SHA の祖先であることを確認する ----
+          #         Checkout ステップで fetch-depth: 0（全履歴）を取得済みのため、
+          #         個別に git fetch origin <sha> は行わない（GitHub は任意の
+          #         到達可能 SHA を want として fetch することを既定で許可して
+          #         おらず、"couldn't find remote ref" で失敗するため実際には使えない
+          #         ——実地確認済み）。
+          #         base_sha オブジェクトが存在しない場合・force-push や履歴書き換え
+          #         等で祖先関係が崩れている場合は、この merge-base 自体が非0で
+          #         終了し fail_open へ倒れる（2点比較が誤った差分を返す事態を防ぐ）。
+          if ! git merge-base --is-ancestor "${BASE_SHA}" "${HEAD_SHA}"; then
+            fail_open "base_sha（${BASE_SHA}）が HEAD_SHA（${HEAD_SHA}）の祖先ではない、または base_sha が存在しない"
+          fi
+
+          # ---- 3. 二点比較で差分を取り、migration-sensitive パターンと照合する ----
+          #         （正規表現の実体は .github/scripts/migration-sensitive-paths.regex
+          #          に一本化。backend-ci.yml と共有し、ドリフトを防ぐ）
+          RESULT=$(bash .github/scripts/detect-migration-changes.sh "${BASE_SHA}" "${HEAD_SHA}")
+          SCRIPT_STATUS=$?
+
+          if [ "${SCRIPT_STATUS}" -ne 0 ]; then
+            fail_open "差分判定スクリプトが失敗（exit=${SCRIPT_STATUS}）"
+          fi
+
+          echo "[INFO] migrations_changed=${RESULT}"
+          echo "migrations_changed=${RESULT}" >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------------------
   # Job 1 — Run all tests (Testcontainers requires Docker)
+  #
+  # PR側 backend-ci.yml と同じ 6-shard 構成。concurrency group をデプロイと
+  # 分離し cancel-in-progress: false とすることで、後続 push があっても
+  # 打ち切られず必ず完走する（同一 ref への push はキューイングされる）。
   # ---------------------------------------------------------------------------
   test:
-    name: Test
+    name: Test (shard ${{ matrix.shard }})
+    needs: detect
     runs-on: ubuntu-latest
+    # PR CI と同じテスト量を実行するため、後処理を含む実測 60m21s に余裕を持たせる。
+    timeout-minutes: 75
+    concurrency:
+      group: backend-main-test-${{ github.ref }}-shard-${{ matrix.shard }}
+      cancel-in-progress: false
     # Docker is available by default on ubuntu-latest — required for Testcontainers
     defaults:
       run:
         working-directory: ./backend
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5]
 
     steps:
       - name: Checkout source
@@ -78,10 +266,21 @@ jobs:
       - name: Grant Gradle wrapper execute permission
         run: chmod +x gradlew
 
+      # このシャードに割り当てられたテストクラスのみ実行する（backend-ci.yml と同じ方式）。
       # Testcontainers pulls docker images on first run; the Docker daemon is
       # already running on ubuntu-latest so no additional setup is needed.
-      - name: Run tests
-        run: ./gradlew test --no-daemon --continue
+      #
+      # -PexcludeMigrationTests: detect ジョブの判定結果をそのまま渡す。
+      # migration-sensitive な変更が無ければ Flyway 再生テスト（65クラス・
+      # 全テスト正味の81.6%）を除外し、壁時計を 45分 → 20〜33分（PR側と同等）
+      # まで短縮する。判定不能時は detect 側が既に true（フル実行）に倒して
+      # いるため、ここでは受け取った値をそのまま使うだけでよい。
+      - name: Run tests (shard ${{ matrix.shard }} / ${{ env.SHARD_TOTAL }})
+        run: >-
+          ./gradlew test --no-daemon --continue
+          -Pshard.total=${{ env.SHARD_TOTAL }}
+          -Pshard.index=${{ matrix.shard }}
+          -PexcludeMigrationTests=${{ needs.detect.outputs.migrations_changed == 'true' && 'false' || 'true' }}
         env:
           # Testcontainers host resolution inside GitHub Actions
           TESTCONTAINERS_RYUK_DISABLED: "false"
@@ -90,17 +289,24 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports
+          name: test-reports-shard-${{ matrix.shard }}
           path: build/reports/tests/
           retention-days: 7
 
   # ---------------------------------------------------------------------------
   # Job 2 — Build Docker image, push to ECR, deploy to ECS
+  #
+  # concurrency group をデプロイ専用に限定。古いコミットのデプロイを新しい
+  # push が打ち切るのは正しい振る舞いなのでここだけ cancel-in-progress: true
+  # を維持する（test job は打ち切り対象から外れている）。
   # ---------------------------------------------------------------------------
   build-and-deploy:
     name: Build & Deploy
     runs-on: ubuntu-latest
-    needs: test  # only runs when test job succeeds
+    needs: test  # only runs when all test shards succeed（matrix needs は全 shard の集約結果）
+    concurrency:
+      group: backend-deploy-${{ github.ref }}
+      cancel-in-progress: true
     defaults:
       run:
         working-directory: ./backend
@@ -108,6 +314,12 @@ jobs:
     steps:
       - name: Check AWS credentials
         id: aws-check
+        # job 既定の working-directory: ./backend を上書きする。
+        # このジョブは checkout より前にこの判定を行う設計（AWS 未設定環境では
+        # checkout 以降の全 step を丸ごと skip する）なので、checkout 前の
+        # ./backend は存在しない。job 既定に従うと bash の起動自体が
+        # 「No such file or directory」で失敗する（2026-08-09 実測）。
+        working-directory: .
         run: |
           if [ -z "$AWS_KEY" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
@@ -154,7 +366,25 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag, and push Docker image to ECR
+      # ECS Fargate は Graviton(ARM64) 化済み（コスト約2割減）。
+      # GitHub runner は amd64 のため QEMU + buildx で linux/arm64 イメージを作るが、
+      # QEMU 下で gradle をフルビルドすると 15〜40 分かかり SIGSEGV/OOM の懸念があるため、
+      # JAR（アーキ非依存）は上の「Build JAR」ステップ（host amd64）で事前ビルドし、
+      # Dockerfile.deploy（runtime-only）で COPY するだけにする。
+      # arm64 側の処理はベースイメージ pull と COPY のみ（QEMU 負荷ほぼゼロ）。
+      # ローカル開発用のマルチステージ Dockerfile は docker-compose（profile:
+      # dev-docker）が使用するため変更しない。
+      - name: Set up QEMU (arm64 emulation)
+        if: steps.aws-check.outputs.skip != 'true'
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        if: steps.aws-check.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build, tag, and push Docker image to ECR (linux/arm64, runtime-only)
         if: steps.aws-check.outputs.skip != 'true'
         id: build-image
         env:
@@ -163,14 +393,17 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-          docker build \
+          # Dockerfile.deploy: 事前ビルド済み JAR を COPY する runtime-only 構成
+          docker buildx build \
+            --platform linux/arm64 \
+            --file Dockerfile.deploy \
             --tag "${IMAGE_URI}" \
             --tag "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest" \
             --label "git-commit=${GITHUB_SHA}" \
             --label "build-date=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --provenance=false \
+            --push \
             .
-          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
-          docker push "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
           echo "image=${IMAGE_URI}" >> "$GITHUB_OUTPUT"
 
       - name: Download current ECS task definition

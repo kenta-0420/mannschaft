@@ -15,23 +15,13 @@
  * 注意:
  *   - 型は FE1 完成版 (frontend/app/types/village.ts) を必ず使う。
  *   - 通報ダイアログ表示は FE5 担当のため、本コンポは `report-click` を emit するのみ。
- *   - 画像は `*R2Key` から R2 公開 URL を組み立てて表示する。
- *     (設計書 §4.1.2 では iconUrl/coverUrl を返す案が記されているが、
- *      FE1 型では r2Key 採用のため、ここでは r2Key → URL の組立を行う)
+ *   - 画像は BE が署名付き表示 URL（iconUrl/coverUrl/monshoUrl）に解決して返す（#2355）。
+ *     FE は公開ベース URL の前置をせず、そのまま <img src> に渡す。
  */
 import type { VillageResponse } from '~/types/village'
 
-/**
- * Phase 2 拡張: 村紋 (`villages.monsho_r2_key`) は VillageResponse の正式
- * メンバーではないが、Backend Phase 2 で追加予定のため optional として扱う。
- *
- * 既存 VillageResponse 型を変更せず、Header 内部だけで拡張プロパティを
- * 受け取れるよう交差型で表現する。
- */
-type VillageWithMonsho = VillageResponse & { monshoR2Key?: string | null }
-
 const props = defineProps<{
-  village: VillageWithMonsho
+  village: VillageResponse
   activeTab:
     | 'bulletin'
     | 'timeline'
@@ -42,6 +32,7 @@ const props = defineProps<{
     | 'matchRecruit'
     | 'meetup'
     | 'chronicle'
+    | 'charter'
 }>()
 
 const emit = defineEmits<{
@@ -64,26 +55,13 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
-const config = useRuntimeConfig()
 
 // =============================================================================
-// R2 公開 URL 組立
+// 表示用 URL — BE が署名付きで解決済み（#2355）。前置なしでそのまま <img src> に渡す。
 // =============================================================================
-/** R2 Public ベース URL（末尾スラッシュなし） */
-const r2PublicBase = computed<string>(() => {
-  const url = config.public.r2PublicUrl as string | undefined
-  return url ? url.replace(/\/$/, '') : ''
-})
-
-function buildR2Url(r2Key: string | null): string | null {
-  if (!r2Key) return null
-  if (!r2PublicBase.value) return null
-  return `${r2PublicBase.value}/${r2Key}`
-}
-
-const iconUrl = computed<string | null>(() => buildR2Url(props.village.iconR2Key))
-const coverUrl = computed<string | null>(() => buildR2Url(props.village.coverR2Key))
-const monshoUrl = computed<string | null>(() => buildR2Url(props.village.monshoR2Key ?? null))
+const iconUrl = computed<string | null>(() => props.village.iconUrl)
+const coverUrl = computed<string | null>(() => props.village.coverUrl)
+const monshoUrl = computed<string | null>(() => props.village.monshoUrl)
 
 // Phase 2: 村紋プレビュー表示制御
 const monshoPreviewVisible = ref(false)
@@ -116,6 +94,13 @@ const isPinned = computed(() => props.village.isPinned)
 const isOfficial = computed(() => props.village.isOfficial)
 const canEdit = computed(() => props.village.myRole === 'HEADMAN')
 const isFree = computed(() => props.village.joinPolicy === 'FREE')
+/**
+ * F17.1 P3（村長コンソール）— 「村の運営」ボタンの表示条件。
+ * HEADMAN or ELDER（`useVillageContext().perms.isAdmin` と同じ意味論）。
+ * VillageHeader は `village` プロパティしか受け取らないため、ここで直接 myRole から導出する
+ * （canEdit と同じ作法）。
+ */
+const isAdmin = computed(() => props.village.myRole === 'HEADMAN' || props.village.myRole === 'ELDER')
 
 // =============================================================================
 // タブナビ — PrimeVue Tabs (v-model:value)
@@ -131,6 +116,7 @@ interface TabDef {
     | 'matchRecruit'
     | 'meetup'
     | 'chronicle'
+    | 'charter'
   to: string
   icon: string
   i18nKey: string
@@ -195,6 +181,14 @@ const tabs = computed<TabDef[]>(() => [
     to: `/villages/${props.village.id}/chronicles`,
     icon: 'pi pi-book',
     i18nKey: 'village.tab.chronicle',
+  },
+  // F17.3: 村憲章（非メンバーにも表示・PUBLIC 村は未参加者にも公開・§3.2/§9.1）
+  {
+    key: 'charter',
+    to: `/villages/${props.village.id}/charter`,
+    // chronicle が pi-book 使用中のため重複回避。憲章＝条文文書らしいアイコン（設計書§9.1 🟡F）。
+    icon: 'pi pi-file-edit',
+    i18nKey: 'village.tab.charter',
   },
 ])
 
@@ -370,6 +364,25 @@ function onPinToggle() {
             outlined
             @click="emit('edit')"
           />
+
+          <!--
+            村の運営ボタン（HEADMAN or ELDER。F17.1 P3 村長コンソール §3.3）。
+            単なる画面遷移のため親への emit は不要（NuxtLink で直接遷移）。
+          -->
+          <NuxtLink
+            v-if="isAdmin"
+            :to="`/villages/${village.id}/admin`"
+          >
+            <Button
+              :label="t('village.admin.title')"
+              :aria-label="t('village.admin.title')"
+              icon="pi pi-cog"
+              severity="secondary"
+              size="small"
+              outlined
+              data-testid="village-admin-console-link"
+            />
+          </NuxtLink>
 
           <!-- 退村ボタン（メンバーのみ） -->
           <Button

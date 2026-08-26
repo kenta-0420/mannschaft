@@ -1,5 +1,6 @@
 package com.mannschaft.app.resident;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.EncryptionService;
 import com.mannschaft.app.resident.dto.CreateResidentRequest;
@@ -35,6 +36,7 @@ class ResidentRegistryServiceTest {
     @Mock private DwellingUnitRepository dwellingUnitRepository;
     @Mock private ResidentMapper residentMapper;
     @Mock private EncryptionService encryptionService;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private ResidentRegistryService service;
 
     @Nested
@@ -60,7 +62,7 @@ class ResidentRegistryServiceTest {
                     LocalDate.now(), null, false, null);
 
             // When
-            ResidentResponse result = service.create(1L, req);
+            ResidentResponse result = service.create(100L, 1L, req);
 
             // Then
             assertThat(result.getLastName()).isEqualTo("田中");
@@ -74,7 +76,7 @@ class ResidentRegistryServiceTest {
             given(dwellingUnitRepository.findById(1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.create(1L, new CreateResidentRequest(
+            assertThatThrownBy(() -> service.create(100L, 1L, new CreateResidentRequest(
                     null, "OWNER", "田中", "太郎", null, null, null, null, null,
                     LocalDate.now(), null, false, null)))
                     .isInstanceOf(BusinessException.class)
@@ -100,6 +102,9 @@ class ResidentRegistryServiceTest {
                 field.set(entity, true);
             } catch (Exception ignored) {}
             given(residentRepository.findById(1L)).willReturn(Optional.of(entity));
+            DwellingUnitEntity unit = DwellingUnitEntity.builder()
+                    .scopeType("TEAM").teamId(1L).unitNumber("101").build();
+            given(dwellingUnitRepository.findById(1L)).willReturn(Optional.of(unit));
 
             // When / Then
             assertThatThrownBy(() -> service.verify(1L, 100L))
@@ -125,12 +130,78 @@ class ResidentRegistryServiceTest {
                 field.set(entity, LocalDate.now());
             } catch (Exception ignored) {}
             given(residentRepository.findById(1L)).willReturn(Optional.of(entity));
+            DwellingUnitEntity unit = DwellingUnitEntity.builder()
+                    .scopeType("TEAM").teamId(1L).unitNumber("101").build();
+            given(dwellingUnitRepository.findById(1L)).willReturn(Optional.of(unit));
 
             // When / Then
-            assertThatThrownBy(() -> service.moveOut(1L, null))
+            assertThatThrownBy(() -> service.moveOut(100L, 1L, null))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("RESIDENT_008"));
+        }
+    }
+
+    /**
+     * 認可根治戦役 Wave6 ロットC: residencestatus ドメインからの越境呼び出しの受け口。
+     * モジュラーモノリス原則（ドメイン間は ID 参照＋Service 経由のみ）に従い、
+     * Entity を境界の外へ返さず boolean のみを返すことを固定する。
+     */
+    @Nested
+    @DisplayName("isActiveResidentOfOrganization")
+    class IsActiveResidentOfOrganization {
+
+        @Test
+        @DisplayName("正常系: 当該組織の現役居住者であれば true")
+        void 現役居住者はtrueを返す() {
+            ResidentRegistryEntity entity = ResidentRegistryEntity.builder()
+                    .dwellingUnitId(1L).userId(100L).lastName("田中").firstName("太郎").build();
+            given(residentRepository.findActiveByUserIdAndOrganizationId(100L, 10L))
+                    .willReturn(Optional.of(entity));
+
+            assertThat(service.isActiveResidentOfOrganization(100L, 10L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("異常系: 当該組織の居住者台帳が無ければ false")
+        void 非居住者はfalseを返す() {
+            given(residentRepository.findActiveByUserIdAndOrganizationId(999L, 10L))
+                    .willReturn(Optional.empty());
+
+            assertThat(service.isActiveResidentOfOrganization(999L, 10L)).isFalse();
+        }
+    }
+
+    @Nested
+    @DisplayName("isResidentRegistryOwnedBy")
+    class IsResidentRegistryOwnedBy {
+
+        @Test
+        @DisplayName("正常系: 台帳の所有者と一致すれば true")
+        void 所有者一致はtrueを返す() {
+            ResidentRegistryEntity entity = ResidentRegistryEntity.builder()
+                    .dwellingUnitId(1L).userId(100L).lastName("田中").firstName("太郎").build();
+            given(residentRepository.findById(3001L)).willReturn(Optional.of(entity));
+
+            assertThat(service.isResidentRegistryOwnedBy(3001L, 100L)).isTrue();
+        }
+
+        @Test
+        @DisplayName("異常系: 台帳の所有者が別ユーザーであれば false（BOLA対策）")
+        void 所有者不一致はfalseを返す() {
+            ResidentRegistryEntity entity = ResidentRegistryEntity.builder()
+                    .dwellingUnitId(1L).userId(100L).lastName("田中").firstName("太郎").build();
+            given(residentRepository.findById(3001L)).willReturn(Optional.of(entity));
+
+            assertThat(service.isResidentRegistryOwnedBy(3001L, 999L)).isFalse();
+        }
+
+        @Test
+        @DisplayName("異常系: 台帳が存在しなければ false（存在秘匿は呼び出し側の責務）")
+        void 台帳不在はfalseを返す() {
+            given(residentRepository.findById(9999L)).willReturn(Optional.empty());
+
+            assertThat(service.isResidentRegistryOwnedBy(9999L, 100L)).isFalse();
         }
     }
 }

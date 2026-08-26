@@ -42,6 +42,31 @@
       }
     }
   },
+  "contact_request_blocks_help": {
+    "title": "So verwenden Sie die Kontaktanfragen-Sperrliste",
+    "description": "Mit dieser Einstellung können Sie Kontaktanfragen von bestimmten Personen von Anfang an automatisch ignorieren.",
+    "what": {
+      "title": "Was ist die Kontaktanfragen-Sperrliste?",
+      "body": "Wenn jemand auf dieser Liste versucht, Sie als Kontakt hinzuzufügen, wird seine Anfrage automatisch ignoriert. Sie erhalten keine Benachrichtigung und erfahren nichts von dem Versuch.",
+      "note": "Die andere Person wird nie darüber informiert, dass sie gesperrt wurde. Sie können Anfragen bestimmter Personen still und leise stoppen, ohne Unannehmlichkeiten zu verursachen."
+    },
+    "list": {
+      "title": "So lesen Sie die Liste",
+      "body": "Alle gesperrten Benutzer werden in einer Liste angezeigt. Jede Zeile enthält die folgenden Informationen.",
+      "item_name": "Symbol und Name — wen Sie sperren",
+      "item_handle": "Kontakt-Handle beginnend mit {'@'} — die eindeutige ID der Person",
+      "item_date": "«Eingestellt am» — das Datum, an dem die Sperre registriert wurde"
+    },
+    "unblock": {
+      "title": "So entfernen Sie eine Sperre",
+      "body": "Sie können eine Sperre jederzeit entfernen. Nach der Entfernung kann diese Person Ihnen wieder eine Kontaktanfrage senden.",
+      "steps": {
+        "step1": "Suchen Sie die Zeile der Person, die Sie entsperren möchten.",
+        "step2": "Drücken Sie die Schaltfläche «Entsperren» auf der rechten Seite der Zeile.",
+        "step3": "Wenn die Person aus der Liste verschwindet, wurde die Sperre erfolgreich entfernt."
+      }
+    }
+  },
   "qa": {
     "title": "Haeufig gestellte Fragen (Q&A)",
     "description": "Antworten auf haeufige Fragen zur Nutzung von Mannschaft, zur Installation der PWA und mehr.",
@@ -125,6 +150,29 @@
           "answer": "Leeren Sie zunaechst den Browser-Cache. Falls das nicht hilft, deinstallieren Sie die PWA und installieren Sie sie erneut. Wenn das Problem weiterhin besteht, kontaktieren Sie bitte den Support."
         }
       }
+    }
+  },
+  "calendar_sync_help": {
+    "title": "So funktioniert die Google Calendar Integration",
+    "description": "Synchronisiert Ihre Termine automatisch mit Google Calendar, damit Sie sie auch auf dem Smartphone oder in anderen Apps einsehen koennen.",
+    "what": {
+      "title": "Was ist die Google Calendar Integration?",
+      "body": "Termine aus Mannschaft (persoenlich, Team und Organisation) werden automatisch in Google Calendar uebernommen. Nach der Verbindung koennen Sie Ihre Termine jederzeit auf jedem Geraet oder in jeder App abrufen, die Google Calendar unterstuetzt."
+    },
+    "connect": {
+      "title": "Konto verbinden",
+      "body": "Klicken Sie auf \"Google-Konto verbinden\", um zur Google-Anmeldeseite zu gelangen. Sobald Sie den Kalenderzugriff erlauben, ist die Verbindung hergestellt. Sie koennen die Verbindung jederzeit ueber die Schaltflaeche \"Verbindung trennen\" wieder loesen."
+    },
+    "toggles": {
+      "title": "Synchronisation einzeln ein-/ausschalten",
+      "body": "Sie koennen die Synchronisation fuer \"Persoenlicher Kalender\", \"Team-Kalender\" und \"Organisations-Kalender\" jeweils einzeln ein- oder ausschalten. Aenderungen werden sofort uebernommen, ein Speichern-Button ist nicht noetig.",
+      "item_personal": "Persoenlicher Kalender: synchronisiert Ihre eigenen persoenlichen Termine",
+      "item_team": "Team-Kalender: synchronisiert Termine der Teams, denen Sie angehoeren",
+      "item_org": "Organisations-Kalender: synchronisiert Termine der Organisationen, denen Sie angehoeren"
+    },
+    "sync_behavior": {
+      "title": "Wann synchronisiert wird",
+      "body": "Wenn Sie die Synchronisation aktivieren, werden alle bisher nicht synchronisierten Termine auf einmal nachtraeglich synchronisiert (Backfill). Bei vielen Terminen kann dies einige Minuten dauern. Nutzen Sie den Button \"Manuell synchronisieren\", wenn Sie den aktuellen Stand sofort uebernehmen moechten."
     }
   }
 }

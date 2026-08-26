@@ -38,6 +38,7 @@ class AdCampaignDeliveryDispatcherTest {
 
     @Mock private UserAdPreferenceService userAdPreferenceService;
     @Mock private AdFrequencyCapService frequencyCapService;
+    @Mock private AdCampaignDeliveryClaimService claimService;
     @Mock private AdMessagingCampaignChannelRepository channelRepository;
     @Mock private UserRepository userRepository;
     @Mock private AdAnnouncementChannelService announcementChannelService;
@@ -103,6 +104,8 @@ class AdCampaignDeliveryDispatcherTest {
                 .willReturn(List.of());
         given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
                 .willReturn(true);
+        given(frequencyCapService.resolveUserZone(42L)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
+        given(claimService.tryClaim(eq(campaign.getId()), eq(42L), any())).willReturn(true);
         given(channelRepository.findByCampaignId(campaign.getId()))
                 .willReturn(List.of(ann, email, push, banner));
         given(userRepository.findLocaleById(42L)).willReturn(Optional.of("ja"));
@@ -110,9 +113,9 @@ class AdCampaignDeliveryDispatcherTest {
         given(pushChannelService.deliver(eq(campaign), eq(push), eq(42L))).willReturn(true);
         given(bannerChannelService.deliver(eq(campaign), eq(banner), eq(42L))).willReturn(true);
 
-        boolean result = dispatcher.deliverForUser(campaign, 42L);
+        AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
 
-        assertThat(result).isTrue();
+        assertThat(result).isEqualTo(AdDeliveryOutcome.DELIVERED);
         verify(announcementChannelService, times(1)).deliver(campaign, ann, 42L);
         verify(emailChannelService, times(1)).deliver(campaign, email, 42L);
         verify(pushChannelService, times(1)).deliver(campaign, push, 42L);
@@ -127,9 +130,9 @@ class AdCampaignDeliveryDispatcherTest {
         given(userAdPreferenceService.decodeBlockedAdvertiserIds(any()))
                 .willReturn(List.of(100L)); // ブロック中
 
-        boolean result = dispatcher.deliverForUser(campaign, 42L);
+        AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
 
-        assertThat(result).isFalse();
+        assertThat(result).isEqualTo(AdDeliveryOutcome.SKIPPED);
         verify(frequencyCapService, never()).tryConsume(anyLong(), anyLong(), any());
         verify(announcementChannelService, never()).deliver(any(), any(), anyLong());
     }
@@ -143,9 +146,10 @@ class AdCampaignDeliveryDispatcherTest {
         given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
                 .willReturn(false);
 
-        boolean result = dispatcher.deliverForUser(campaign, 42L);
+        AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
 
-        assertThat(result).isFalse();
+        assertThat(result).isEqualTo(AdDeliveryOutcome.SKIPPED);
+        verify(claimService, never()).tryClaim(any(), anyLong(), any());
         verify(channelRepository, never()).findByCampaignId(any());
         verify(announcementChannelService, never()).deliver(any(), any(), anyLong());
     }
@@ -164,16 +168,123 @@ class AdCampaignDeliveryDispatcherTest {
         given(userAdPreferenceService.decodeBlockedAdvertiserIds(any())).willReturn(List.of());
         given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
                 .willReturn(true);
+        given(frequencyCapService.resolveUserZone(42L)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
+        given(claimService.tryClaim(eq(campaign.getId()), eq(42L), any())).willReturn(true);
         given(channelRepository.findByCampaignId(campaign.getId()))
                 .willReturn(List.of(ann, email));
         given(userRepository.findLocaleById(42L)).willReturn(Optional.of("ja"));
         given(emailChannelService.deliver(eq(campaign), eq(email), eq(42L))).willReturn(true);
 
-        boolean result = dispatcher.deliverForUser(campaign, 42L);
+        AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
 
-        assertThat(result).isTrue();
+        assertThat(result).isEqualTo(AdDeliveryOutcome.DELIVERED);
         verify(announcementChannelService, never()).deliver(any(), any(), anyLong());
         verify(emailChannelService, times(1)).deliver(campaign, email, 42L);
+    }
+
+    @Test
+    @DisplayName("F09.19.7 AC-7.4: channel 未登録（0 件配信）で releaseSlot が消費週で呼ばれ FreqCap を返却する")
+    void deliverForUser_no_channels_releasesFreqCap() {
+        AdMessagingCampaign campaign = buildCampaign();
+        given(userAdPreferenceService.getOrCreateEntityForUser(42L)).willReturn(prefAllAccept());
+        given(userAdPreferenceService.decodeBlockedAdvertiserIds(any())).willReturn(List.of());
+        given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
+                .willReturn(true);
+        given(frequencyCapService.resolveUserZone(42L)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
+        given(claimService.tryClaim(eq(campaign.getId()), eq(42L), any())).willReturn(true);
+        // channel 未登録 → 全チャネル skip → rollbackFreqCapAndClaim 経路
+        given(channelRepository.findByCampaignId(campaign.getId())).willReturn(List.of());
+
+        AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
+
+        assertThat(result).isEqualTo(AdDeliveryOutcome.SKIPPED);
+        java.time.LocalDate expectedWeek = AdFrequencyCapService
+                .currentWeekStart(java.time.ZoneId.of("Asia/Tokyo"));
+        verify(frequencyCapService, times(1)).releaseSlot(42L, 100L, expectedWeek);
+        verify(claimService, times(1)).releaseClaim(campaign.getId(), 42L, expectedWeek);
+    }
+
+    @Test
+    @DisplayName("F09.19.7 AC-7.4: 全チャネル opt-out（0 件配信）でも releaseSlot が呼ばれる")
+    void deliverForUser_all_opt_out_releasesFreqCap() {
+        AdMessagingCampaign campaign = buildCampaign();
+        AdMessagingCampaignChannel email = buildChannel(campaign.getId(), AdChannelType.EMAIL, "ja");
+
+        UserAdPreference pref = prefAllAccept();
+        pref.setAcceptAnnouncementAds(Boolean.FALSE);
+        pref.setAcceptEmailAds(Boolean.FALSE);
+        pref.setAcceptPushAds(Boolean.FALSE);
+        pref.setAcceptBannerAds(Boolean.FALSE);
+
+        given(userAdPreferenceService.getOrCreateEntityForUser(42L)).willReturn(pref);
+        given(userAdPreferenceService.decodeBlockedAdvertiserIds(any())).willReturn(List.of());
+        given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
+                .willReturn(true);
+        given(frequencyCapService.resolveUserZone(42L)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
+        given(claimService.tryClaim(eq(campaign.getId()), eq(42L), any())).willReturn(true);
+        given(channelRepository.findByCampaignId(campaign.getId())).willReturn(List.of(email));
+        given(userRepository.findLocaleById(42L)).willReturn(Optional.of("ja"));
+
+        AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
+
+        assertThat(result).isEqualTo(AdDeliveryOutcome.SKIPPED);
+        verify(frequencyCapService, times(1)).releaseSlot(eq(42L), eq(100L), any());
+        verify(claimService, times(1)).releaseClaim(eq(campaign.getId()), eq(42L), any());
+    }
+
+    @Test
+    @DisplayName("claim-then-act: DB claim が既に確保済みなら SKIPPED_ALREADY_CLAIMED を返し FreqCap を返却する")
+    void deliverForUser_claim_conflict_releasesFreqCapAndSkips() {
+        AdMessagingCampaign campaign = buildCampaign();
+        given(userAdPreferenceService.getOrCreateEntityForUser(42L)).willReturn(prefAllAccept());
+        given(userAdPreferenceService.decodeBlockedAdvertiserIds(any())).willReturn(List.of());
+        given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
+                .willReturn(true);
+        given(frequencyCapService.resolveUserZone(42L)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
+        given(claimService.tryClaim(eq(campaign.getId()), eq(42L), any())).willReturn(false);
+
+        AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
+
+        assertThat(result).isEqualTo(AdDeliveryOutcome.SKIPPED_ALREADY_CLAIMED);
+        verify(frequencyCapService, times(1)).releaseSlot(eq(42L), eq(100L), any());
+        verify(channelRepository, never()).findByCampaignId(any());
+    }
+
+    @Test
+    @DisplayName("claim確保後（channel一覧取得）で例外が起きても claim/FreqCap を返却してから SKIPPED を返す（配信対象が痩せる欠陥の再発防止）")
+    void deliverForUser_exceptionAfterClaim_releasesClaimAndFreqCap() {
+        AdMessagingCampaign campaign = buildCampaign();
+        given(userAdPreferenceService.getOrCreateEntityForUser(42L)).willReturn(prefAllAccept());
+        given(userAdPreferenceService.decodeBlockedAdvertiserIds(any())).willReturn(List.of());
+        given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
+                .willReturn(true);
+        given(frequencyCapService.resolveUserZone(42L)).willReturn(java.time.ZoneId.of("Asia/Tokyo"));
+        given(claimService.tryClaim(eq(campaign.getId()), eq(42L), any())).willReturn(true);
+        // claim 確保後（channel 一覧取得）で DB 接続断等を想定した例外を発生させる
+        given(channelRepository.findByCampaignId(campaign.getId()))
+                .willThrow(new org.springframework.dao.DataAccessResourceFailureException("DB接続断"));
+
+        AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
+
+        assertThat(result).isEqualTo(AdDeliveryOutcome.SKIPPED);
+        verify(claimService, times(1)).releaseClaim(eq(campaign.getId()), eq(42L), any());
+        verify(frequencyCapService, times(1)).releaseSlot(eq(42L), eq(100L), any());
+    }
+
+    @Test
+    @DisplayName("fail-closed: FreqCap 判定で例外（Valkey 接続異常等）が起きたら配信せず SKIPPED_FREQ_CAP_UNAVAILABLE を返す")
+    void deliverForUser_freqcap_error_failsClosed() {
+        AdMessagingCampaign campaign = buildCampaign();
+        given(userAdPreferenceService.getOrCreateEntityForUser(42L)).willReturn(prefAllAccept());
+        given(userAdPreferenceService.decodeBlockedAdvertiserIds(any())).willReturn(List.of());
+        given(frequencyCapService.tryConsume(eq(42L), eq(100L), eq(campaign.getId())))
+                .willThrow(new org.springframework.data.redis.RedisConnectionFailureException("接続不可"));
+
+        AdDeliveryOutcome result = dispatcher.deliverForUser(campaign, 42L);
+
+        assertThat(result).isEqualTo(AdDeliveryOutcome.SKIPPED_FREQ_CAP_UNAVAILABLE);
+        verify(claimService, never()).tryClaim(any(), anyLong(), any());
+        verify(channelRepository, never()).findByCampaignId(any());
     }
 
     @Test

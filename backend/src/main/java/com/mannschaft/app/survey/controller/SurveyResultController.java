@@ -6,6 +6,7 @@ import com.mannschaft.app.survey.dto.AddTargetsRequest;
 import com.mannschaft.app.survey.dto.RemindResponse;
 import com.mannschaft.app.survey.dto.SurveyResultResponse;
 import com.mannschaft.app.survey.dto.SurveyTeamBreakdownResponse;
+import com.mannschaft.app.survey.service.SurveyAccessGuard;
 import com.mannschaft.app.survey.service.SurveyRemindService;
 import com.mannschaft.app.survey.service.SurveyResultService;
 import com.mannschaft.app.survey.service.SurveyService;
@@ -35,6 +36,7 @@ public class SurveyResultController {
     private final SurveyResultService resultService;
     private final SurveyService surveyService;
     private final SurveyRemindService remindService;
+    private final SurveyAccessGuard surveyAccessGuard;
 
 
     /**
@@ -74,6 +76,11 @@ public class SurveyResultController {
 
     /**
      * 配信対象を追加する。
+     *
+     * <p><b>認可</b>: 作成者または当該アンケート実体スコープの ADMIN+
+     * （{@link SurveyAccessGuard#checkCanManage(Long, Long)}）。認可スコープは
+     * アンケート実体（{@code surveys.scope_type} / {@code scope_id}）由来で確定する。
+     * 対象アンケートが存在しない場合は 404（存在秘匿）、権限不足は 403。</p>
      */
     @PostMapping("/targets")
     @Operation(summary = "配信対象追加")
@@ -81,12 +88,19 @@ public class SurveyResultController {
     public ResponseEntity<Void> addTargets(
             @PathVariable Long surveyId,
             @Valid @RequestBody AddTargetsRequest request) {
+        surveyAccessGuard.checkCanManage(SecurityUtils.getCurrentUserId(), surveyId);
         surveyService.addTargets(surveyId, request.getUserIds());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     /**
      * 結果閲覧者を追加する。
+     *
+     * <p><b>認可</b>: 作成者または当該アンケート実体スコープの ADMIN+
+     * （{@link SurveyAccessGuard#checkCanManage(Long, Long)}）。
+     * {@code survey_result_viewers} への登録は結果集計・個別回答・CSV エクスポート・回答者一覧の
+     * 閲覧権を与えるため、閲覧権の付与自体を管理権限者に限定する。
+     * 対象アンケートが存在しない場合は 404（存在秘匿）、権限不足は 403。</p>
      */
     @PostMapping("/result-viewers")
     @Operation(summary = "結果閲覧者追加")
@@ -94,6 +108,7 @@ public class SurveyResultController {
     public ResponseEntity<Void> addResultViewers(
             @PathVariable Long surveyId,
             @Valid @RequestBody AddResultViewersRequest request) {
+        surveyAccessGuard.checkCanManage(SecurityUtils.getCurrentUserId(), surveyId);
         surveyService.addResultViewers(surveyId, request.getUserIds());
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }

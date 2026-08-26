@@ -4,6 +4,7 @@ import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.residencestatus.service.AnnualReviewService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -22,6 +23,8 @@ public class AnnualReviewDeadlineCloseBatch {
 
     @BatchEndpoint(name = "residencestatus-annual-review-close-daily", description = "期限超過の年次見直しキャンペーンを毎日 04:00 に自動クローズする")
     @Scheduled(cron = "0 0 4 * * *")
+    // 起動間隔は日次 04:00。期限超過キャンペーンのクローズのみで対象は少数。余裕を取り 30 分を上限とする。
+    @SchedulerLock(name = "residenceAnnualReviewCloseDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
     public void autoClose() {
         log.info("[AnnualReviewDeadlineCloseBatch] 開始");
         try {

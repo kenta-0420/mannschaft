@@ -14,6 +14,9 @@
 # |                                    |                                            | put-secret-value で手動。手順は bootstrap/README §7） |
 # | AWS 認証（CI）                     | なし（GitHub OIDC で短期クレデンシャル）   | bootstrap 層の IAM ロール 3 種                           |
 # | SES SMTP/API 認証                  | ECS タスクロール（IAM ロール）             | 鍵不要。タスクロールに ses:SendEmail を付与             |
+# | Cloudflare Tunnel シークレット     | Terraform state（random_id 自動生成）      | edge module が生成しトンネルに設定。人手管理不要        |
+# | cloudflared run トークン           | AWS Secrets Manager（箱は Terraform 作成） | apply 後に tunnel_token 出力を手動投入 → ECS サイドカー |
+# |                                    |                                            | が TUNNEL_TOKEN として参照（手順は bootstrap/README §7-5）|
 #
 # 非秘密の実行時 env（APP_BASE_URL 等）は本ファイル下部 + main.tf の locals で管理する。
 # =============================================================================
@@ -85,6 +88,13 @@ variable "task_memory" {
   default     = 1024
 }
 
+variable "cloudflared_image" {
+  description = "cloudflared サイドカーのイメージ（固定タグ必須。:latest を prod に適用しない）。更新時は Docker Hub cloudflare/cloudflared で linux/arm64 対応の最新安定タグを確認してから上げる"
+  type        = string
+  # 2026-07-10 時点の最新安定タグ（linux/arm64 対応を Docker Hub で確認済み）
+  default = "cloudflare/cloudflared:2026.7.1"
+}
+
 # -----------------------------------------------------------------------------
 # 非秘密の実行時 env（上書き・追加用）
 # -----------------------------------------------------------------------------
@@ -112,4 +122,19 @@ variable "pages_env_extra" {
   description = "Cloudflare Pages（Nuxt）に渡す追加・上書きの非秘密 env。秘密は入れないこと"
   type        = map(string)
   default     = {}
+}
+
+# -----------------------------------------------------------------------------
+# WebSocket 外部ブローカー化（Valkey Pub/Sub relay）
+# -----------------------------------------------------------------------------
+# 設計: docs/architecture/websocket_external_broker_valkey.md §1.3・§8.6
+# 段階 1（desired_count=1 のまま relay ON で本番相当検証）で true に切替、
+# 段階 2（desired_count を 2 以上へ）でも true を維持する。
+# 適用前提（隊3ゲート）: ElastiCache 転送時暗号化（transit_encryption_enabled）が
+# 有効化済みであること（本モジュールでは常時 true・data module 参照）。
+
+variable "websocket_relay_enabled" {
+  description = "WebSocket 外部ブローカー化 relay の feature flag。既定 false（段階 1 着手時に tfvars で true に切替）"
+  type        = bool
+  default     = false
 }

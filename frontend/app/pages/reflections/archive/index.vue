@@ -17,6 +17,7 @@ import type {
 definePageMeta({ middleware: 'auth' })
 
 const { t } = useI18n()
+const { formatDate } = useDatetime()
 const notification = useNotification()
 const reflectionApi = useReflectionApi()
 const router = useRouter()
@@ -347,7 +348,7 @@ const hasFilter = computed(() =>
           </div>
           <p v-if="theme.description" class="mt-0.5 truncate text-xs text-surface-500">{{ theme.description }}</p>
           <p v-if="theme.archivedAt" class="mt-0.5 text-xs text-surface-400">
-            <i class="pi pi-inbox mr-1" />{{ theme.archivedAt ? new Date(theme.archivedAt).toLocaleDateString() : '' }}
+            <i class="pi pi-inbox mr-1" />{{ theme.archivedAt ? formatDate(theme.archivedAt) : '' }}
           </p>
         </div>
         <div class="flex flex-shrink-0 items-center gap-1">
@@ -384,7 +385,5 @@ const hasFilter = computed(() =>
         />
       </div>
     </div>
-
-    <ConfirmDialog />
   </div>
 </template>

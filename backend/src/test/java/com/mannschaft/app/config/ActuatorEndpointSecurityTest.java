@@ -1,6 +1,7 @@
 package com.mannschaft.app.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.filter.AdminImpersonationFilter;
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -107,6 +108,15 @@ class ActuatorEndpointSecurityTest {
         }
 
         /**
+         * F10.1: AdminImpersonationFilter の本物インスタンス。ObjectMapper のみに依存。
+         * X-Admin-Impersonate-User-Id ヘッダーが無いリクエストでは何もせず chain に通す。
+         */
+        @Bean
+        AdminImpersonationFilter adminImpersonationFilter() {
+            return new AdminImpersonationFilter(mock(ObjectMapper.class));
+        }
+
+        /**
          * ProxyInputContextFilter の本物インスタンス。内部依存はモック化。
          * X-Proxy-For-User-Id ヘッダーが無いリクエストでは何もせず chain に通す。
          */
@@ -168,6 +178,18 @@ class ActuatorEndpointSecurityTest {
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             return new AdPublicEndpointRateLimitFilter(rateLimiterProvider);
         }
+        /**
+         * F10.8: SecurityConfig が要求する {@link com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter} の
+         * 本物インスタンス（判定に使う ValkeyRateLimiter は mock 供給）。既存 AdPublicEndpointRateLimitFilter と同型。
+         */
+        @Bean
+        @SuppressWarnings("unchecked")
+        com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter pageViewBeaconRateLimitFilter() {
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter(rateLimiterProvider);
+        }
+
 
         /**
          * Valkey 化第二陣B: ScheduleDelegationRateLimitFilter の本物インスタンス。
@@ -206,6 +228,14 @@ class ActuatorEndpointSecurityTest {
             org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             return new com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter(rateLimiterProvider);
+        }
+
+        @Bean
+        @SuppressWarnings("unchecked")
+        com.mannschaft.app.village.VillageAffinityRateLimitFilter villageAffinityRateLimitFilter() {
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.village.VillageAffinityRateLimitFilter(rateLimiterProvider);
         }
     }
 

@@ -39,6 +39,7 @@ public class ReflectionThemeService {
     private final ReflectionEntryRepository reflectionEntryRepository;
     private final ReflectionSpacedReminderRepository reflectionSpacedReminderRepository;
     private final ReflectionSpacedReminderService reflectionSpacedReminderService;
+    private final ReflectionAccessGuard reflectionAccessGuard;
 
     /**
      * 自分のテーマ一覧（§7 #1）。
@@ -75,6 +76,11 @@ public class ReflectionThemeService {
                 .termLabel(request.termLabel())
                 // visibility / recallIntervalDays は MVP 固定（@Builder.Default の PRIVATE / '1,3,7,14'）。
                 .build();
+        // Phase 4.1: 自由入力カテゴリ（linkedSlotId=null）の場合 linkedSlotKind を強制 NULL 化（AC-64）。
+        // 今日ビューの三分岐条件で freeThemes に正しく落ちるよう、スロット未紐づけ時は kind も消去する。
+        if (request.linkedSubjectName() != null && request.linkedSlotId() == null) {
+            entity.clearLinkedSlotKind();
+        }
         // Phase 3: 親テーマ指定のバリデーション＆セット
         if (request.parentThemeId() != null) {
             UUID parentId = UUID.fromString(request.parentThemeId());
@@ -163,10 +169,9 @@ public class ReflectionThemeService {
 
     // ─── 内部ヘルパ ───────────────────────────────────────────────
 
-    /** 本人所有のテーマを取得（他人所有・不在は IDOR 対策で 404）。 */
+    /** 本人所有のテーマを取得（認可は {@link ReflectionAccessGuard} に一元化・他者所有／不在は 404 秘匿）。 */
     private ReflectionThemeEntity requireOwnedTheme(Long userId, UUID themeId) {
-        return reflectionThemeRepository.findByIdAndUserId(themeId, userId)
-                .orElseThrow(() -> new BusinessException(ReflectionErrorCode.REFLECTION_NOT_FOUND));
+        return reflectionAccessGuard.requireOwnedTheme(userId, themeId);
     }
 
     /**
@@ -213,9 +218,8 @@ public class ReflectionThemeService {
         if (theme.getId() != null && theme.getId().equals(parentId)) {
             throw new BusinessException(ReflectionErrorCode.REFLECTION_PARENT_SELF_REFERENCE);
         }
-        // 親テーマの取得（他人テーマは 404）
-        ReflectionThemeEntity parent = reflectionThemeRepository.findByIdAndUserId(parentId, userId)
-                .orElseThrow(() -> new BusinessException(ReflectionErrorCode.REFLECTION_NOT_FOUND));
+        // 親テーマの取得（認可ゲート経由・他者所有／不在は 404 秘匿）
+        ReflectionThemeEntity parent = reflectionAccessGuard.requireOwnedTheme(userId, parentId);
         // アーカイブ済み/削除済みチェック（@SQLRestriction で削除済みは取得されないが明示チェック）
         if (parent.getArchivedAt() != null) {
             throw new BusinessException(ReflectionErrorCode.REFLECTION_PARENT_INVALID_STATE);

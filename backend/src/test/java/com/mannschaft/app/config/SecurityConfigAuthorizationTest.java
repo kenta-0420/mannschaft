@@ -1,6 +1,7 @@
 package com.mannschaft.app.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.filter.AdminImpersonationFilter;
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.proxy.ProxyInputContext;
@@ -32,6 +33,7 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 /**
@@ -86,6 +88,16 @@ class SecurityConfigAuthorizationTest {
             return new JwtAuthenticationFilter(mock(AuthTokenService.class));
         }
 
+        /**
+         * F10.1: AdminImpersonationFilter は ObjectMapper のみに依存するため、
+         * モック ObjectMapper を渡して本物インスタンスを供給する。
+         * ヘッダーなしリクエストは即 chain.doFilter するため副作用なし。
+         */
+        @Bean
+        AdminImpersonationFilter adminImpersonationFilter() {
+            return new AdminImpersonationFilter(mock(ObjectMapper.class));
+        }
+
         @Bean
         ProxyInputContextFilter proxyInputContextFilter() {
             return new ProxyInputContextFilter(
@@ -127,6 +139,18 @@ class SecurityConfigAuthorizationTest {
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             return new AdPublicEndpointRateLimitFilter(rateLimiterProvider);
         }
+        /**
+         * F10.8: SecurityConfig が要求する {@link com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter} の
+         * 本物インスタンス（判定に使う ValkeyRateLimiter は mock 供給）。既存 AdPublicEndpointRateLimitFilter と同型。
+         */
+        @Bean
+        @SuppressWarnings("unchecked")
+        com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter pageViewBeaconRateLimitFilter() {
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter(rateLimiterProvider);
+        }
+
 
         /**
          * F03.10 第三陣 / Valkey 化第二陣B: SecurityConfig が依存する ScheduleDelegationRateLimitFilter の
@@ -168,6 +192,14 @@ class SecurityConfigAuthorizationTest {
             org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             return new com.mannschaft.app.dashboard.DashboardScopeTabRateLimitFilter(rateLimiterProvider);
+        }
+
+        @Bean
+        @SuppressWarnings("unchecked")
+        com.mannschaft.app.village.VillageAffinityRateLimitFilter villageAffinityRateLimitFilter() {
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.village.VillageAffinityRateLimitFilter(rateLimiterProvider);
         }
     }
 
@@ -373,6 +405,19 @@ class SecurityConfigAuthorizationTest {
                 "POST /api/v1/auth/login");
     }
 
+    // ---- 早馬: ランディングページ公開統計 API（GET /api/v1/public/stats）が permitAll であること ----
+    // PublicStatsController は「認証不要エンドポイント」と明記されているが、SecurityConfig の
+    // permitAll 一覧に登録漏れがあり未認証 401 になっていた（未ログイン訪問者がトップページ / で
+    // 401 → useApi.ts の 401 ハンドラにより /login へ強制遷移させられる致命的バグ）。
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("匿名: GET /api/v1/public/stats は認証で弾かれない（ランディングページ公開統計）")
+    void anonymous_public_stats_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(mockMvc.perform(get("/api/v1/public/stats")),
+                "GET /api/v1/public/stats");
+    }
+
     // ---- F08.7 項目① 公開大会参照 API（PublicTournamentController）が permitAll であること ----
 
     @Test
@@ -510,5 +555,343 @@ class SecurityConfigAuthorizationTest {
                 mockMvc.perform(get(
                         "/api/v1/public/organizations/1/tournaments/100/divisions/2/standings/extra")),
                 "GET 公開順位表 + 余分階層");
+    }
+
+    // ============================================================================
+    // 認可根治戦役 束A（Wave 0）: /api/v1/admin/** の SYSTEM_ADMIN 予約
+    //   docs/security/01 §4。SecurityConfig の requestMatcher 登録漏れにより
+    //   stripe/reports/moderation/warning-re-reviews/users/onboarding-presets 系が
+    //   認証済みであれば誰でも到達できていた（deny-by-default は「未認証」しか弾かない）。
+    //   6 系統を hasRole("SYSTEM_ADMIN") に格上げし、非 SYSTEM_ADMIN は 403 とする。
+    // ============================================================================
+
+    /** 認可通過（403 でない）を確認する共通ヘルパ。ハンドラ不在で 404 等になるのは想定内。 */
+    private void expectNotForbidden(ResultActions actions, String label) throws Exception {
+        actions.andExpect(result -> {
+            int status = result.getResponse().getStatus();
+            if (status == 403) {
+                throw new AssertionError(label + " は認可通過のはずだが 403 になった");
+            }
+        });
+    }
+
+    /** ロール不足で 403 になることを確認する共通ヘルパ。 */
+    private void expectForbidden(ResultActions actions, String label) throws Exception {
+        actions.andExpect(result -> {
+            int status = result.getResponse().getStatus();
+            if (status != 403) {
+                throw new AssertionError(label + " は SYSTEM_ADMIN 限定のはずだが 403 にならなかった (status=" + status + ")");
+            }
+        });
+    }
+
+    // ---- AC-0-1: 非 SYSTEM_ADMIN（MEMBER）が admin 系を叩くと 403 ----
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-1 一般ユーザー: POST /api/v1/admin/stripe/reconcile/{id} は 403")
+    void member_admin_stripe_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(post("/api/v1/admin/stripe/reconcile/1")),
+                "POST /api/v1/admin/stripe/reconcile/{id}");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-1 一般ユーザー: PATCH /api/v1/admin/reports/{id}/review は 403")
+    void member_admin_reports_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(patch("/api/v1/admin/reports/1/review")),
+                "PATCH /api/v1/admin/reports/{id}/review");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-1 一般ユーザー: GET /api/v1/admin/moderation/templates は 403")
+    void member_admin_moderation_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/moderation/templates")),
+                "GET /api/v1/admin/moderation/templates");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-1 一般ユーザー: GET /api/v1/admin/warning-re-reviews は 403")
+    void member_admin_warning_re_reviews_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/warning-re-reviews")),
+                "GET /api/v1/admin/warning-re-reviews");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-1 一般ユーザー: GET /api/v1/admin/users/{id}/violations は 403")
+    void member_admin_users_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/users/1/violations")),
+                "GET /api/v1/admin/users/{id}/violations");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-1 一般ユーザー: GET /api/v1/admin/onboarding/presets は 403")
+    void member_admin_onboarding_presets_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/onboarding/presets")),
+                "GET /api/v1/admin/onboarding/presets");
+    }
+
+    // 認可根治戦役 Wave3 トランシェB4: F05.7 forms の SYSTEM_ADMIN 専用プリセット管理も
+    // Wave0 と同じ requestMatcher 登録漏れだったため追加格上げ（SecurityConfig 参照）。
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-1 一般ユーザー: GET /api/v1/admin/form-presets は 403")
+    void member_admin_form_presets_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/form-presets")),
+                "GET /api/v1/admin/form-presets");
+    }
+
+    // ---- AC-0-1: SYSTEM_ADMIN は 403 にならない（過剰ロックでない証左） ----
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DisplayName("AC-0-1 SYSTEM_ADMIN: admin 系 7 パスは 403 にならない")
+    void systemAdmin_admin_paths_not_forbidden() throws Exception {
+        expectNotForbidden(mockMvc.perform(post("/api/v1/admin/stripe/reconcile/1")),
+                "POST /api/v1/admin/stripe/reconcile/{id}");
+        expectNotForbidden(mockMvc.perform(patch("/api/v1/admin/reports/1/review")),
+                "PATCH /api/v1/admin/reports/{id}/review");
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/moderation/templates")),
+                "GET /api/v1/admin/moderation/templates");
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/warning-re-reviews")),
+                "GET /api/v1/admin/warning-re-reviews");
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/users/1/violations")),
+                "GET /api/v1/admin/users/{id}/violations");
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/onboarding/presets")),
+                "GET /api/v1/admin/onboarding/presets");
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/form-presets")),
+                "GET /api/v1/admin/form-presets");
+    }
+
+    // ---- AC-0-2（回帰防止）: per-scope admin 配下は一律 SYSTEM_ADMIN 化しない ----
+    // dashboard / permission-groups / business-alerts はスコープ内 ADMIN が使うため
+    // フィルタ層では authenticated() を維持し、認可は Controller/Service 層（Wave1）で行う。
+    // 認証済み MEMBER がフィルタ層で 403 にならない（＝一律 SYSTEM_ADMIN 化していない）ことを担保する。
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-2 認証ユーザー: GET /api/v1/admin/dashboard はフィルタ層で 403 にならない")
+    void member_admin_dashboard_not_forbidden_at_filter() throws Exception {
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/dashboard?scopeType=TEAM&scopeId=1")),
+                "GET /api/v1/admin/dashboard");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-2 認証ユーザー: GET /api/v1/admin/permission-groups はフィルタ層で 403 にならない")
+    void member_admin_permission_groups_not_forbidden_at_filter() throws Exception {
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/permission-groups?scopeType=TEAM&scopeId=1")),
+                "GET /api/v1/admin/permission-groups");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("AC-0-2 認証ユーザー: GET /api/v1/admin/business-alerts はフィルタ層で 403 にならない")
+    void member_admin_business_alerts_not_forbidden_at_filter() throws Exception {
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/business-alerts?scopeType=TEAM&scopeId=1")),
+                "GET /api/v1/admin/business-alerts");
+    }
+
+    // ---- AC-0-3（part1）: facility / ticket / my-tickets は未認証で 401/403（deny-by-default） ----
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("AC-0-3 匿名: GET チーム施設予約は 401/403")
+    void anonymous_facility_booking_is_auth_rejected() throws Exception {
+        expectAuthRejected(mockMvc.perform(get("/api/v1/teams/1/facilities/bookings")),
+                "GET /api/v1/teams/{teamId}/facilities/bookings");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("AC-0-3 匿名: GET 回数券管理は 401/403")
+    void anonymous_ticket_books_is_auth_rejected() throws Exception {
+        expectAuthRejected(mockMvc.perform(get("/api/v1/teams/1/ticket-books")),
+                "GET /api/v1/teams/{teamId}/ticket-books");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("AC-0-3 匿名: GET マイチケットは 401/403")
+    void anonymous_my_tickets_is_auth_rejected() throws Exception {
+        expectAuthRejected(mockMvc.perform(get("/api/v1/teams/1/my-tickets")),
+                "GET /api/v1/teams/{teamId}/my-tickets");
+    }
+
+    // ============================================================================
+    // 認可根治戦役 Wave5 追込: PR #2373 で格上げした 3 系統の SecurityConfig 側検証
+    //
+    //   SecurityConfig.java:390-392 で以下を hasRole("SYSTEM_ADMIN") に格上げした:
+    //     - /api/v1/admin/seals/**            全ユーザーの電子印鑑の一覧・一括再生成
+    //     - /api/v1/admin/action-templates/** 全体共通のモデレーション用アクションテンプレート CRUD
+    //     - /api/v1/admin/notifications/**    全テナント横断の通知配信
+    //
+    //   #2373 の契約 IT は @AutoConfigureMockMvc(addFilters = false) で動くため
+    //   フィルタチェーンを通らず、二重防御の片翼（SecurityConfig 側）が未検証だった。
+    //   本クラスは addFilters 既定（= true）でフィルタチェーンを実際に通すため、
+    //   格上げが「フィルタ層で効いていること」をここで担保する。
+    //
+    //   判定基準は本クラス既定の方針を踏襲する（対象 Controller を最小コンテキストに
+    //   載せないため、認可通過後はハンドラ不在で 404 等になる。よって
+    //   「非 SYSTEM_ADMIN は 403」「SYSTEM_ADMIN は 403 でない」を基準とする）。
+    // ============================================================================
+
+    // ---- 非 SYSTEM_ADMIN（認証済み MEMBER）は 403 ----
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("Wave5 一般ユーザー: GET /api/v1/admin/seals は 403（#2373 格上げ）")
+    void member_admin_seals_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/seals")),
+                "GET /api/v1/admin/seals");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("Wave5 一般ユーザー: GET /api/v1/admin/action-templates は 403（#2373 格上げ）")
+    void member_admin_action_templates_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/action-templates")),
+                "GET /api/v1/admin/action-templates");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("Wave5 一般ユーザー: GET /api/v1/admin/notifications は 403（#2373 格上げ）")
+    void member_admin_notifications_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(get("/api/v1/admin/notifications")),
+                "GET /api/v1/admin/notifications");
+    }
+
+    // ---- 書込系も同様に 403（GET だけの格上げになっていない証左） ----
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("Wave5 一般ユーザー: POST /api/v1/admin/seals/regenerate は 403（書込面も格上げ済み）")
+    void member_admin_seals_write_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(post("/api/v1/admin/seals/regenerate")),
+                "POST /api/v1/admin/seals/regenerate");
+    }
+
+    @Test
+    @WithMockUser(roles = "MEMBER")
+    @DisplayName("Wave5 一般ユーザー: POST /api/v1/admin/action-templates は 403（書込面も格上げ済み）")
+    void member_admin_action_templates_write_is_forbidden() throws Exception {
+        expectForbidden(mockMvc.perform(post("/api/v1/admin/action-templates")),
+                "POST /api/v1/admin/action-templates");
+    }
+
+    // ---- SYSTEM_ADMIN は 403 にならない（過剰ロックでない証左＝到達する） ----
+
+    @Test
+    @WithMockUser(roles = "SYSTEM_ADMIN")
+    @DisplayName("Wave5 SYSTEM_ADMIN: 格上げ 3 系統は 403 にならない（#2373）")
+    void systemAdmin_wave5_upgraded_paths_not_forbidden() throws Exception {
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/seals")),
+                "GET /api/v1/admin/seals");
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/action-templates")),
+                "GET /api/v1/admin/action-templates");
+        expectNotForbidden(mockMvc.perform(get("/api/v1/admin/notifications")),
+                "GET /api/v1/admin/notifications");
+        expectNotForbidden(mockMvc.perform(post("/api/v1/admin/seals/regenerate")),
+                "POST /api/v1/admin/seals/regenerate");
+        expectNotForbidden(mockMvc.perform(post("/api/v1/admin/action-templates")),
+                "POST /api/v1/admin/action-templates");
+    }
+
+    // ---- 未認証は 401/403（deny-by-default。error.code を持たないため jsonPath は使わない） ----
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("Wave5 匿名: 格上げ 3 系統は 401/403（未認証で到達しない）")
+    void anonymous_wave5_upgraded_paths_are_auth_rejected() throws Exception {
+        expectAuthRejected(mockMvc.perform(get("/api/v1/admin/seals")),
+                "GET /api/v1/admin/seals");
+        expectAuthRejected(mockMvc.perform(get("/api/v1/admin/action-templates")),
+                "GET /api/v1/admin/action-templates");
+        expectAuthRejected(mockMvc.perform(get("/api/v1/admin/notifications")),
+                "GET /api/v1/admin/notifications");
+    }
+
+    // ============================================================================
+    // 試練（公開活動記録 permitAll 到達性）: 公開活動記録 API 5 本が SecurityConfig の
+    // permitAll 一覧に未登録で未認証 401 になっている（PublicStatsController の登録漏れと
+    // 同型の事故。408-419行のコメント参照）。実装（permitAll 追加）はこれから行うため、
+    // 本節のテストは実装前は red で正常。対象 5 エンドポイント:
+    //   GET /api/v1/public/activities/{id}
+    //   GET /api/v1/public/teams/{teamId}/activities
+    //   GET /api/v1/public/teams/{teamId}/activities/{id}
+    //   GET /api/v1/public/organizations/{orgId}/activities
+    //   GET /api/v1/public/organizations/{orgId}/activities/{id}
+    // 書込（POST）は permitAll 対象外（AC-6）、`*` 1 階層厳格の担保（AC-7）も併せて検証する。
+    // ============================================================================
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-1) 未認証 GET /api/v1/public/activities/{id} は認証で弾かれない")
+    void anonymous_public_activity_detail_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/activities/1")),
+                "GET /api/v1/public/activities/{id}");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-2) 未認証 GET /api/v1/public/teams/{teamId}/activities は認証で弾かれない")
+    void anonymous_public_activity_team_list_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/teams/1/activities")),
+                "GET /api/v1/public/teams/{teamId}/activities");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-3) 未認証 GET /api/v1/public/teams/{teamId}/activities/{id} は認証で弾かれない")
+    void anonymous_public_activity_team_detail_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/teams/1/activities/100")),
+                "GET /api/v1/public/teams/{teamId}/activities/{id}");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-4) 未認証 GET /api/v1/public/organizations/{orgId}/activities は認証で弾かれない")
+    void anonymous_public_activity_org_list_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/organizations/1/activities")),
+                "GET /api/v1/public/organizations/{orgId}/activities");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-5) 未認証 GET /api/v1/public/organizations/{orgId}/activities/{id} は認証で弾かれない")
+    void anonymous_public_activity_org_detail_not_auth_rejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(get("/api/v1/public/organizations/1/activities/100")),
+                "GET /api/v1/public/organizations/{orgId}/activities/{id}");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-6) 未認証 POST /api/v1/public/teams/{id}/activities は認証必須（書込は permitAll しない）")
+    void anonymous_public_activity_post_is_auth_rejected() throws Exception {
+        // 公開 GET と同じ前置詞でも POST は permitAll の HttpMethod.GET に含まれないため
+        // deny-by-default で 401/403 になること（書込面を開いていない証左）。
+        expectAuthRejected(
+                mockMvc.perform(post("/api/v1/public/teams/1/activities")),
+                "POST /api/v1/public/teams/{id}/activities");
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("(AC-7) 未認証 GET /api/v1/public/activities/{id}/foo（余分階層）は permitAll されず 401/403")
+    void anonymous_public_activity_extra_segment_is_auth_rejected() throws Exception {
+        // `*` は 1 階層厳格のため、想定外の深いパスは permitAll にマッチせず deny-by-default。
+        expectAuthRejected(
+                mockMvc.perform(get("/api/v1/public/activities/1/foo")),
+                "GET /api/v1/public/activities/{id}/foo");
     }
 }

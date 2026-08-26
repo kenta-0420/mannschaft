@@ -6,6 +6,8 @@
       "match": "試合",
       "member": "メンバー",
       "ops": "業務運営",
+      "ops_work": "タスク・進行",
+      "ops_admin": "運営・予算",
       "facility": "施設管理",
       "data": "データ",
       "settings": "設定"
@@ -39,6 +41,7 @@
       "audit_logs": "監査ログ",
       "settings": "設定",
       "faqSettings": "FAQ設定",
+      "billing": "課金・プラン管理",
       "leagueTransfers": "リーグ移籍",
       "adminConsole": "管理コンソール"
     }

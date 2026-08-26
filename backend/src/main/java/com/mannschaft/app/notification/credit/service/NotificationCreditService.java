@@ -21,6 +21,7 @@ import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -69,6 +70,8 @@ public class NotificationCreditService {
     @Lazy
     @Autowired
     private NotificationHelper notificationHelper;
+    /** Issue #2715 CMP-055 ロットC-1: 通知本文の i18n。locale 解決自体は notifyAllLocalized 内部の UserLocaleCache が担う。 */
+    private final MessageSource messageSource;
 
 
     // ─────────────────────────────────────────────────────────
@@ -331,17 +334,22 @@ public class NotificationCreditService {
             if (adminUserIds.isEmpty()) {
                 return;
             }
-            notificationHelper.notifyAll(
+            notificationHelper.notifyAllLocalized(
                     adminUserIds,
                     "NOTIFICATION_CREDIT_ALERT",
-                    "無料通知枠が残りわずかです",
-                    "今月の無料通知枠（10,000通）の90%を使用しました。超過分はクレジットから消費されます。",
                     "NOTIFICATION_CREDIT",
                     organizationId,
                     NotificationScopeType.ORGANIZATION,
                     organizationId,
                     "/organizations/" + organizationId + "/settings/notification-credits",
-                    null
+                    null,
+                    (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                            messageSource.getMessage(
+                                    "notification.credit.freeQuotaAlert.title", null,
+                                    "無料通知枠が残りわずかです", locale),
+                            messageSource.getMessage(
+                                    "notification.credit.freeQuotaAlert.body", null,
+                                    "今月の無料通知枠（10,000通）の90%を使用しました。超過分はクレジットから消費されます。", locale))
             );
             log.info("無料枠アラート送信: organizationId={}", organizationId);
         } catch (Exception e) {

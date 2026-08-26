@@ -85,6 +85,7 @@ class DashboardPersonalParallelEquivalenceTest {
     @Mock private com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+    @Mock private com.mannschaft.app.common.visibility.ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -119,8 +120,8 @@ class DashboardPersonalParallelEquivalenceTest {
     @DisplayName("AC-B1/B2: 全第2段階ウィジェットが並列化後も期待値どおり充填され破壊されない")
     void 並列化後も全ウィジェット同値() {
         // チーム所属（掲示板・カレンダー集計に使う）。
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B)));
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                .willReturn(List.of(TEAM_A, TEAM_B));
 
         // 投稿 2 件。
         given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any()))
@@ -142,11 +143,11 @@ class DashboardPersonalParallelEquivalenceTest {
 
         // アクティビティ 2 件。
         ActivityFeedResponse a1 = new ActivityFeedResponse(
-                1L, "POST", null, "TEAM", TEAM_A, "チームA", null, null, "投稿しました", null);
+                1L, "POST", null, "TEAM", TEAM_A, "チームA", null, null, "投稿しました", null, null);
         ActivityFeedResponse a2 = new ActivityFeedResponse(
-                2L, "EVENT", null, "TEAM", TEAM_B, "チームB", null, null, "予定を追加", null);
-        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                .willReturn(List.of(a1, a2));
+                2L, "EVENT", null, "TEAM", TEAM_B, "チームB", null, null, "予定を追加", null, null);
+        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(a1, a2), null));
 
         PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");
 
@@ -167,7 +168,7 @@ class DashboardPersonalParallelEquivalenceTest {
     @Test
     @DisplayName("CRITICAL 優先度では第2段階を実行しない（並列化対象外）")
     void CRITICAL優先度_第2段階なし() {
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
         PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "CRITICAL");
 
@@ -191,7 +192,7 @@ class DashboardPersonalParallelEquivalenceTest {
                 .willReturn(List.of());
         given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any()))
@@ -204,7 +205,7 @@ class DashboardPersonalParallelEquivalenceTest {
                 .willReturn(List.of());
         given(bulletinReadStatusRepository.findReadThreadIds(anyCollection(), anyLong()))
                 .willReturn(List.of());
-        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                .willReturn(List.of());
+        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
     }
 }

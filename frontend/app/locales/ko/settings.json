@@ -48,7 +48,8 @@
     "inbox": "받은 편지함",
     "market": "마켓",
     "jobs": "채용",
-    "matching": "매칭"
+    "matching": "매칭",
+    "myFiles": "내 파일"
   },
   "settings": {
     "navigation": {
@@ -59,7 +60,8 @@
       "saveSuccess": "설정이 저장되었습니다",
       "saveError": "설정 저장에 실패했습니다",
       "reorderHint": "핸들을 드래그하여 표시 순서를 변경할 수 있습니다",
-      "dragHandleLabel": "정렬 핸들"
+      "dragHandleLabel": "정렬 핸들",
+      "pinnedBottom": "하단 고정"
     },
     "account": {
       "page_title": "계정 설정",
@@ -165,6 +167,16 @@
       "backup_codes_description": "아래 백업 코드를 안전한 곳에 보관하세요. 각 코드는 한 번만 사용할 수 있습니다.",
       "rename_dialog_title": "기기 이름 변경",
       "device_name_label": "기기 이름",
+      "webauthn": {
+        "register_button": "패스키 등록",
+        "register_dialog_title": "패스키 등록",
+        "device_name_label": "기기 이름 (선택)",
+        "device_name_placeholder": "예: iPhone의 Touch ID",
+        "register_confirm": "등록",
+        "register_cancel": "취소",
+        "register_success": "패스키가 등록되었습니다",
+        "register_error": "패스키 등록에 실패했습니다"
+      },
       "session": {
         "device_label": "{os}의 {browser}",
         "unknown_device": "알 수 없는 기기"
@@ -184,10 +196,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "계정 연동",
       "oauth_section_title": "OAuth 연동",
       "no_oauth": "연동된 계정이 없습니다",
       "connected_at": "연동일: {date}",
       "unlink_button": "해제",
+      "google_link_button": "Google과 연동",
+      "google_link_loading": "연동 중...",
       "line_section_title": "LINE 연동",
       "line_icon_alt": "LINE 아이콘",
       "line_default_user": "LINE 사용자",
@@ -196,10 +211,27 @@
       "line_not_linked": "LINE 계정이 연동되지 않았습니다",
       "line_link_instruction": "LINE 앱에서 연동을 진행해 주세요",
       "toast": {
+        "load_error": "연동 정보를 불러오지 못했습니다",
         "unlink_success": "{provider} 연동이 해제되었습니다",
         "unlink_error": "연동 해제에 실패했습니다",
         "line_unlink_success": "LINE 연동이 해제되었습니다",
-        "line_unlink_error": "LINE 연동 해제에 실패했습니다"
+        "line_unlink_error": "LINE 연동 해제에 실패했습니다",
+        "link_success": "{provider}와(과) 연동되었습니다",
+        "link_error": "연동 URL을 가져오지 못했습니다",
+        "already_linked": "이 계정은 이미 {provider}와(과) 연동되어 있습니다",
+        "taken_by_other": "이 Google 계정은 다른 사용자가 사용 중입니다",
+        "oauth_denied": "Google 인증이 취소되었습니다",
+        "link_with_calendar_success": "Google 계정과 캘린더가 연결되었습니다"
+      },
+      "calendar_sync_toggle": "Google 캘린더 동기화도 동시에 설정",
+      "guide": {
+        "title": "계정 연동에 대해",
+        "google_title": "Google로 로그인",
+        "google_desc": "비밀번호 없이 Google 계정으로 간편하게 로그인할 수 있습니다.",
+        "apple_title": "Apple로 로그인（준비 중）",
+        "apple_desc": "iPhone 사용자를 위한 편리한 로그인 방법입니다. 현재 준비 중입니다.",
+        "line_title": "LINE 알림",
+        "line_desc": "LINE 그룹에 봇을 추가하면 일정 및 출석 알림을 LINE으로 받을 수 있습니다. LINE 앱에서 연동해 주세요."
       }
     },
     "member_card": {
@@ -236,6 +268,47 @@
         "delete_error": "삭제에 실패했습니다"
       }
     },
+    "seal_guide": {
+      "title": "전자 도장 사용 방법",
+      "description": "전자 도장을 사용하여 문서에 날인하고 관리할 수 있습니다.",
+      "preview": {
+        "title": "도장 미리보기",
+        "body": "등록된 이름으로 자동 생성된 3종류의 전자 도장（성·성명·이름）을 확인할 수 있습니다.",
+        "steps": {
+          "step1": "「도장 미리보기」탭을 열기",
+          "step2": "그리드에 표시된 3개의 도장（성·성명·이름）을 확인"
+        }
+      },
+      "regenerate": {
+        "title": "도장 재생성",
+        "body": "현재 도장을 새 디자인으로 다시 만들 수 있습니다. 이름이 바뀌었거나 디자인을 업데이트하고 싶을 때 사용합니다.",
+        "note": "1시간에 최대 3회까지 실행할 수 있습니다. 한도에 도달한 경우 잠시 후에 다시 시도해 주세요.",
+        "steps": {
+          "step1": "「도장 미리보기」탭을 열기",
+          "step2": "「도장 재생성」버튼 클릭",
+          "step3": "완료 후 새 도장이 그리드에 표시됨"
+        }
+      },
+      "defaults": {
+        "title": "기본 설정",
+        "body": "문서에 날인할 때 자동으로 사용할 변형（성·성명·이름）을 설정할 수 있습니다. 매번 다시 선택하는 번거로움을 줄입니다.",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
+        "steps": {
+          "step1": "「기본 설정」탭을 열기",
+          "step2": "드롭다운에서 사용할 변형（성·성명·이름）을 선택",
+          "step3": "「저장」버튼을 클릭하여 설정 저장"
+        }
+      },
+      "history": {
+        "title": "날인 내역",
+        "body": "과거 날인한 기록을 목록으로 확인할 수 있습니다. 날인 일시·사용한 변형·대상·상태（유효／취소됨）가 표시됩니다.",
+        "steps": {
+          "step1": "「날인 내역」탭을 열기",
+          "step2": "목록을 스크롤하여 확인",
+          "step3": "더 오래된 내역은 「더 보기」버튼으로 추가 로드"
+        }
+      }
+    },
     "seal": {
       "section_title": "전자 도장",
       "tab_preview": "도장 미리보기",
@@ -248,6 +321,27 @@
         "regenerate_error": "재생성에 실패했습니다（1시간에 최대 3회）",
         "save_defaults_success": "기본 설정이 저장되었습니다",
         "save_defaults_error": "설정 저장에 실패했습니다"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
       }
     },
     "login_history": {
@@ -263,26 +357,35 @@
     },
     "gcal": {
       "section_title": "Google 캘린더 연동",
+      "connection_status_title": "연결 상태",
       "connected_label": "연결됨",
       "last_synced": "마지막 동기화: {date}",
+      "last_sync_error": "동기화 오류: {message}",
       "manual_sync_button": "수동 동기화",
       "disconnect_button": "연동 해제",
+      "disconnect_confirm": "Google 캘린더 연동을 해제하시겠습니까?",
       "sync_settings_title": "동기화 설정",
       "personal_calendar_label": "개인 캘린더",
       "personal_calendar_description": "개인 일정을 Google 캘린더에 동기화",
       "team_calendars_label": "팀 캘린더",
       "org_calendars_label": "조직 캘린더",
-      "save_settings_button": "설정 저장",
+      "no_team_calendars": "소속된 팀이 없습니다",
+      "no_org_calendars": "소속된 조직이 없습니다",
       "not_connected_description": "Google 계정을 연결하여 캘린더를 동기화할 수 있습니다",
       "connect_button": "Google 계정 연결",
+      "detail_link_button": "상세 설정으로 이동",
       "toast": {
         "connect_error": "연결에 실패했습니다",
+        "oauth_connected": "Google 캘린더와 연동되었습니다",
+        "oauth_connect_failed": "Google 캘린더 연동에 실패했습니다",
         "disconnect_success": "연동이 해제되었습니다",
         "disconnect_error": "해제에 실패했습니다",
-        "save_success": "동기화 설정이 저장되었습니다",
-        "save_error": "저장에 실패했습니다",
         "sync_success": "동기화가 실행되었습니다",
-        "sync_error": "동기화에 실패했습니다"
+        "sync_error": "동기화에 실패했습니다",
+        "load_error": "불러오기에 실패했습니다",
+        "toggle_on_success": "{name} 동기화를 켰습니다",
+        "toggle_off_success": "{name} 동기화를 껐습니다",
+        "backfill_info": "{count}건의 일정을 동기화 대상에 추가했습니다"
       }
     },
     "delete_account": {
@@ -322,6 +425,25 @@
       "channel_push": "푸시",
       "locked_tag": "긴급",
       "locked_desc": "이 알림은 비활성화할 수 없습니다"
+    },
+    "storage": {
+      "page_title": "스토리지",
+      "group_personal": "개인",
+      "group_team": "팀",
+      "group_org": "조직",
+      "scope_personal": "개인 스토리지",
+      "file_count": "{count}개 파일",
+      "limit": "상한",
+      "unlimited": "무제한",
+      "error_fetch": "스토리지 사용량 불러오기 실패",
+      "empty": "표시할 스토리지 정보가 없습니다"
+    },
+    "fileBrowser": {
+      "upload_button": "파일 업로드",
+      "upload_need_folder": "폴더를 열고 나서 업로드해 주세요",
+      "upload_success": "「{name}」을(를) 업로드했습니다",
+      "upload_error": "「{name}」 업로드에 실패했습니다",
+      "uploading": "업로드 중..."
     }
   }
 }

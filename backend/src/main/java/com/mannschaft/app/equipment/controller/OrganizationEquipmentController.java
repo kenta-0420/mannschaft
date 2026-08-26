@@ -73,7 +73,8 @@ public class OrganizationEquipmentController {
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "name,asc") String sort) {
         Sort sortObj = parseSortParam(sort);
-        Page<EquipmentItemResponse> result = itemService.listByOrganization(orgId, category, status, nameLike,
+        Page<EquipmentItemResponse> result = itemService.listByOrganization(orgId, SecurityUtils.getCurrentUserId(),
+                category, status, nameLike,
                 PageRequest.of(page, Math.min(size, 100), sortObj));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -89,7 +90,7 @@ public class OrganizationEquipmentController {
     public ResponseEntity<ApiResponse<EquipmentItemResponse>> getEquipment(
             @PathVariable Long orgId,
             @PathVariable Long id) {
-        EquipmentItemResponse response = itemService.getByOrganization(orgId, id);
+        EquipmentItemResponse response = itemService.getByOrganization(orgId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -102,7 +103,7 @@ public class OrganizationEquipmentController {
     public ResponseEntity<ApiResponse<EquipmentItemResponse>> createEquipment(
             @PathVariable Long orgId,
             @Valid @RequestBody CreateEquipmentItemRequest request) {
-        EquipmentItemResponse response = itemService.createForOrganization(orgId, request);
+        EquipmentItemResponse response = itemService.createForOrganization(orgId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -116,7 +117,7 @@ public class OrganizationEquipmentController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateEquipmentItemRequest request) {
-        EquipmentItemResponse response = itemService.updateForOrganization(orgId, id, request);
+        EquipmentItemResponse response = itemService.updateForOrganization(orgId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -129,7 +130,7 @@ public class OrganizationEquipmentController {
     public ResponseEntity<Void> deleteEquipment(
             @PathVariable Long orgId,
             @PathVariable Long id) {
-        itemService.deleteForOrganization(orgId, id);
+        itemService.deleteForOrganization(orgId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -176,7 +177,7 @@ public class OrganizationEquipmentController {
             @PathVariable Long id,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<AssignmentResponse> result = assignmentService.getHistoryForOrganization(orgId, id, PageRequest.of(page, size));
+        Page<AssignmentResponse> result = assignmentService.getHistoryForOrganization(orgId, id, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -192,7 +193,7 @@ public class OrganizationEquipmentController {
             @PathVariable Long orgId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<AssignmentResponse> result = assignmentService.getOverdueForOrganization(orgId, PageRequest.of(page, size));
+        Page<AssignmentResponse> result = assignmentService.getOverdueForOrganization(orgId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -208,7 +209,7 @@ public class OrganizationEquipmentController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<String>>> getCategories(
             @PathVariable Long orgId) {
-        List<String> categories = itemService.getCategoriesByOrganization(orgId);
+        List<String> categories = itemService.getCategoriesByOrganization(orgId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(categories));
     }
 
@@ -240,7 +241,7 @@ public class OrganizationEquipmentController {
             @PathVariable Long orgId,
             @PathVariable Long id,
             @Valid @RequestBody PresignedUrlRequest request) {
-        PresignedUrlResponse response = itemService.getPresignedUrlForOrganization(orgId, id, request);
+        PresignedUrlResponse response = itemService.getPresignedUrlForOrganization(orgId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -253,7 +254,7 @@ public class OrganizationEquipmentController {
     public ResponseEntity<Void> deleteImage(
             @PathVariable Long orgId,
             @PathVariable Long id) {
-        itemService.deleteImageForOrganization(orgId, id);
+        itemService.deleteImageForOrganization(orgId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -301,7 +302,7 @@ public class OrganizationEquipmentController {
             @RequestParam(required = false) String category,
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String nameLike) {
-        List<QrCodeResponse> response = itemService.getQrCodesByOrganization(orgId, ids, category, status, nameLike);
+        List<QrCodeResponse> response = itemService.getQrCodesByOrganization(orgId, SecurityUtils.getCurrentUserId(), ids, category, status, nameLike);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

@@ -37,57 +37,56 @@ const { t } = useI18n()
 
 <template>
   <section class="card-detail__section">
-    <p class="card-detail__hint">{{ t('wallet.detail.barcode_locked_hint') }}</p>
+    <p class="card-detail__hint bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-300">{{ t('wallet.detail.barcode_locked_hint') }}</p>
 
     <div class="card-detail__field">
       <label for="edit-name" class="card-detail__label">{{ t('wallet.add.display_name') }}</label>
-      <input
+      <InputText
         id="edit-name"
         v-model="draft.displayName"
-        type="text"
-        class="card-detail__input"
-        maxlength="100"
-      >
+        class="w-full"
+        :maxlength="100"
+      />
     </div>
 
     <div class="card-detail__field">
       <label for="edit-nickname" class="card-detail__label">{{ t('wallet.detail.nickname') }}</label>
-      <input
+      <InputText
         id="edit-nickname"
         v-model="draft.nickname"
-        type="text"
-        class="card-detail__input"
+        class="w-full"
         :placeholder="t('wallet.add.nickname_placeholder')"
-        maxlength="50"
-      >
+        :maxlength="50"
+      />
     </div>
 
     <div class="card-detail__field">
       <label for="edit-memo" class="card-detail__label">{{ t('wallet.detail.memo') }}</label>
-      <textarea
+      <Textarea
         id="edit-memo"
         v-model="draft.memo"
-        class="card-detail__input card-detail__textarea"
+        class="w-full"
         :placeholder="t('wallet.add.memo_placeholder')"
-        maxlength="500"
-        rows="3"
+        :maxlength="500"
+        :rows="3"
+        autoResize
       />
     </div>
 
     <div class="card-detail__field">
       <label for="edit-order" class="card-detail__label">{{ t('wallet.detail.display_order') }}</label>
-      <input
+      <InputNumber
         id="edit-order"
-        v-model.number="draft.displayOrder"
-        type="number"
-        class="card-detail__input"
-        min="0"
-        max="9999"
-      >
+        v-model="draft.displayOrder"
+        class="w-full"
+        :min="0"
+        :max="9999"
+        :use-grouping="false"
+      />
     </div>
 
     <label class="card-detail__checkbox">
-      <input v-model="draft.favorite" type="checkbox">
+      <Checkbox v-model="draft.favorite" binary input-id="edit-favorite" />
       <span>{{ t('wallet.card.favorite') }}</span>
     </label>
 
@@ -96,17 +95,20 @@ const { t } = useI18n()
     </p>
 
     <div class="card-detail__edit-footer">
-      <button type="button" class="card-detail__btn" :disabled="saving" @click="emit('cancel')">
-        {{ t('wallet.detail.cancel') }}
-      </button>
-      <button
-        type="button"
-        class="card-detail__btn card-detail__btn--primary"
+      <Button
+        :label="t('wallet.detail.cancel')"
+        severity="secondary"
+        :disabled="saving"
+        class="flex-1"
+        @click="emit('cancel')"
+      />
+      <Button
+        :label="saving ? '…' : t('wallet.detail.save')"
         :disabled="saving || !draft.displayName.trim()"
+        :loading="saving"
+        class="flex-1"
         @click="emit('save')"
-      >
-        {{ saving ? '…' : t('wallet.detail.save') }}
-      </button>
+      />
     </div>
   </section>
 </template>
@@ -126,17 +128,6 @@ const { t } = useI18n()
   font-size: 0.8125rem;
   font-weight: 600;
 }
-.card-detail__input {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  border-radius: 0.5rem;
-  background: var(--p-surface-0, #fff);
-  font-size: 0.9375rem;
-}
-.card-detail__textarea {
-  resize: vertical;
-  font-family: inherit;
-}
 .card-detail__checkbox {
   display: inline-flex;
   align-items: center;
@@ -146,10 +137,9 @@ const { t } = useI18n()
 }
 .card-detail__hint {
   font-size: 0.8125rem;
-  color: var(--p-text-muted-color, #6b7280);
+  /* 背景・文字色は Tailwind dark: クラス（bg-surface-50 dark:bg-surface-800 text-surface-600 dark:text-surface-300）で追従 */
   margin: 0 0 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: var(--p-surface-50, #f9fafb);
   border-radius: 0.5rem;
 }
 .card-detail__error {
@@ -157,30 +147,9 @@ const { t } = useI18n()
   font-size: 0.875rem;
   margin: 0;
 }
-.card-detail__btn {
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
-  font-weight: 600;
-  cursor: pointer;
-}
-.card-detail__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.card-detail__btn--primary {
-  background: var(--p-primary-color, #3b82f6);
-  color: #fff;
-  border-color: transparent;
-}
 .card-detail__edit-footer {
   display: flex;
   gap: 0.5rem;
   margin-top: 0.5rem;
-}
-.card-detail__edit-footer .card-detail__btn {
-  flex: 1;
 }
 </style>

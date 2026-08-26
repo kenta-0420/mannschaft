@@ -58,6 +58,15 @@ import java.util.UUID;
 @EqualsAndHashCode(callSuper = true)
 public class MembershipSubscriptionEntity extends UuidV7Entity {
 
+    /**
+     * 手数料モデル世代 1: 旧モデル（recurring Price が額面のみ＝支払側の折半上乗せが invoice に乗らない）。
+     * この世代の契約は受取側が毎月「額面の折半分」を余分に負担しているためバックフィル対象（別 PR）。
+     */
+    public static final short FEE_MODEL_VERSION_LEGACY = 1;
+
+    /** 手数料モデル世代 2: 案C（会費 Price＋手数料 Price の 2 明細）で折半が正しく効く世代。 */
+    public static final short FEE_MODEL_VERSION_SPLIT = 2;
+
     /** テナント（シャードキー候補）。論理参照・FK なし。 */
     @Column(name = "organization_id")
     private Long organizationId;
@@ -94,6 +103,31 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
     /** Stripe Subscription ID (sub_xxx)。退避策（自前バッチ）採用時は NULL。UNIQUE。 */
     @Column(name = "stripe_subscription_id", length = 64)
     private String stripeSubscriptionId;
+
+    /**
+     * 会費分の Stripe recurring Price ID (price_xxx)。
+     *
+     * <p>案C（2明細サブスク）で契約側に保持する。以前は {@code payment_items.stripe_price_id} へ焼き付けていたが、
+     * 同カラムは一回払い Price（額面のみ）にも使われており金額の異なる Price で汚染していたため契約側へ移した。</p>
+     */
+    @Column(name = "stripe_price_id", length = 64)
+    private String stripePriceId;
+
+    /**
+     * 支払側の折半手数料分の Stripe recurring Price ID (price_xxx)。
+     *
+     * <p>{@code FeeBreakdown.payerFee} を単価とする明細。{@code payerFee == 0} の契約では明細自体を作らないため NULL。</p>
+     */
+    @Column(name = "stripe_surcharge_price_id", length = 64)
+    private String stripeSurchargePriceId;
+
+    /**
+     * 手数料モデルの世代。1 = 旧（額面のみ請求＝折半が効いていない既存契約・バックフィル対象）、
+     * 2 = 新（額面＋支払側折半を 2 明細で請求）。新規 subscribe は必ず 2 で起票する。
+     */
+    @Column(name = "fee_model_version", nullable = false)
+    @Builder.Default
+    private Short feeModelVersion = FEE_MODEL_VERSION_LEGACY;
 
     /** 払い手の platform Customer ID (cus_xxx)。 */
     @Column(name = "stripe_customer_id", length = 64)
@@ -331,5 +365,23 @@ public class MembershipSubscriptionEntity extends UuidV7Entity {
     public void linkStripeIds(String stripeSubscriptionId, String stripeCustomerId) {
         this.stripeSubscriptionId = stripeSubscriptionId;
         this.stripeCustomerId = stripeCustomerId;
+    }
+
+    /**
+     * 継続課金の recurring Price（会費／支払側手数料）を焼き付け、手数料モデル世代を「案C（折半上乗せ済）」にする。
+     *
+     * <p>案C では Subscription を「会費 Price＝額面」＋「手数料 Price＝{@code FeeBreakdown.payerFee}」の 2 明細で
+     * 構成し、invoice 合計を初回サイクルの PaymentIntent 金額と一致させる。{@code payerFee == 0} の契約では
+     * 手数料明細を作らないため {@code surchargePriceId} は null になる。</p>
+     *
+     * <p>{@code toBuilder()} は {@link UuidV7Entity} の id を引き継がないため使わない（既存注記と同じ理由）。</p>
+     *
+     * @param priceId          会費分の recurring Price ID（非 null）
+     * @param surchargePriceId 支払側手数料分の recurring Price ID（payerFee=0 なら null）
+     */
+    public void linkRecurringPrices(String priceId, String surchargePriceId) {
+        this.stripePriceId = priceId;
+        this.stripeSurchargePriceId = surchargePriceId;
+        this.feeModelVersion = FEE_MODEL_VERSION_SPLIT;
     }
 }

@@ -42,6 +42,31 @@
       }
     }
   },
+  "contact_request_blocks_help": {
+    "title": "How to Use the Contact Request Block List",
+    "description": "This setting lets you automatically ignore contact-add requests from specific people before they reach you.",
+    "what": {
+      "title": "What is the Contact Request Block List?",
+      "body": "If someone on this list tries to add you as a contact, their request is automatically ignored. You won't receive any notification and won't even know they tried.",
+      "note": "The other person is never told they were blocked. You can quietly stop requests from specific people without any awkwardness."
+    },
+    "list": {
+      "title": "Reading the List",
+      "body": "All blocked users are shown in a list. Each row contains the following information.",
+      "item_name": "Icon and name — who you are blocking",
+      "item_handle": "Contact handle starting with {'@'} — the person's unique ID",
+      "item_date": "\"Set on\" — the date the block was registered"
+    },
+    "unblock": {
+      "title": "How to Remove a Block",
+      "body": "You can remove a block at any time. Once removed, that person can send you a contact-add request again.",
+      "steps": {
+        "step1": "Find the row of the person you want to unblock.",
+        "step2": "Press the \"Unblock\" button on the right side of the row.",
+        "step3": "When the person disappears from the list, the block has been successfully removed."
+      }
+    }
+  },
   "qa": {
     "title": "Frequently Asked Questions (Q&A)",
     "description": "Answers to common questions about using Mannschaft, installing the PWA, and more.",
@@ -125,6 +150,29 @@
           "answer": "First, clear your browser cache. If the issue persists, try uninstalling and reinstalling the PWA. If it still doesn't work, please contact support."
         }
       }
+    }
+  },
+  "calendar_sync_help": {
+    "title": "How to use Google Calendar Integration",
+    "description": "Automatically sync your schedules with Google Calendar so you can check them from your phone or other apps.",
+    "what": {
+      "title": "What is Google Calendar Integration?",
+      "body": "Mannschaft schedules (personal, team, and organization) are automatically reflected in Google Calendar. Once connected, you can always check your schedules from any device or app that supports Google Calendar."
+    },
+    "connect": {
+      "title": "Connecting your account",
+      "body": "Click \"Connect Google Account\" to go to Google's sign-in screen. Granting calendar access completes the connection. You can disconnect at any time using the \"Disconnect\" button."
+    },
+    "toggles": {
+      "title": "Turning sync on/off individually",
+      "body": "You can toggle sync on or off separately for \"Personal Calendar\", \"Team Calendars\", and \"Organization Calendars\". Changes apply immediately — there is no save button.",
+      "item_personal": "Personal Calendar: syncs your own personal schedules",
+      "item_team": "Team Calendars: syncs schedules of teams you belong to",
+      "item_org": "Organization Calendars: syncs schedules of organizations you belong to"
+    },
+    "sync_behavior": {
+      "title": "When sync happens",
+      "body": "Turning sync on backfills all previously unsynced schedules at once. This may take a few minutes if there are many. Use the \"Manual Sync\" button whenever you want to reflect the latest state immediately."
     }
   }
 }

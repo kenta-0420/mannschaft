@@ -8,7 +8,11 @@
 
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/mannschaft?serverTimezone=Asia/Tokyo
+    # serverTimezone=UTC（Issue #2486）: docker-compose.yml の MySQL が
+    # --default-time-zone=+00:00 で起動するため、それと必ず一致させること。
+    # 既に application-local.yml を作成済みの場合は手元のファイルも UTC へ書き換えること
+    # （食い違うと java.sql.Timestamp の変換がローカルだけ静かにずれる）。
+    url: jdbc:mysql://localhost:3306/mannschaft?serverTimezone=UTC
     username: mannschaft
     password: mannschaft
     driver-class-name: com.mysql.cj.jdbc.Driver

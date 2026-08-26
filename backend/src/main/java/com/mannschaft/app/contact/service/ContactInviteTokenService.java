@@ -1,36 +1,29 @@
 package com.mannschaft.app.contact.service;
 
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.client.j2se.MatrixToImageWriter;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.contact.ContactErrorCode;
 import com.mannschaft.app.contact.dto.ContactInvitePreviewResponse;
 import com.mannschaft.app.contact.dto.ContactInviteTokenResponse;
 import com.mannschaft.app.contact.dto.CreateInviteTokenBody;
 import com.mannschaft.app.contact.dto.SendContactRequestResponse;
 import com.mannschaft.app.contact.entity.ContactInviteTokenEntity;
+import com.mannschaft.app.contact.event.ContactInviteUsedNotificationEvent;
 import com.mannschaft.app.contact.repository.ContactInviteTokenRepository;
 import com.mannschaft.app.contact.repository.ContactRequestBlockRepository;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.common.qr.BrandedQrImageWriter;
 import com.mannschaft.app.user.repository.UserBlockRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -50,7 +43,13 @@ public class ContactInviteTokenService {
     private final UserBlockRepository userBlockRepository;
     private final ContactRequestBlockRepository contactRequestBlockRepository;
     private final ContactService contactService;
-    private final NotificationService notificationService;
+    private final BrandedQrImageWriter brandedQrImageWriter;
+    private final NameResolverService nameResolverService;
+    /**
+     * Issue #2834 / CMP-056: 付随通知は業務トランザクションの外（AFTER_COMMIT）で発火させるため、
+     * 業務メソッドはイベントを publish するだけに留める（backend/.claudecode.md 原則5）。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 招待トークンを発行する。
@@ -104,7 +103,7 @@ public class ContactInviteTokenService {
         return ContactInvitePreviewResponse.builder()
                 .isValid(true)
                 .issuer(issuer != null ? ContactInvitePreviewResponse.IssuerInfo.builder()
-                        .fullName(issuer.getLastName() + " " + issuer.getFirstName())
+                        .fullName(nameResolverService.resolveUserDisplayName(issuer.getId()))
                         .contactHandle(issuer.getContactHandle())
                         .build() : null)
                 .expiresAt(entity.getExpiresAt())
@@ -168,6 +167,7 @@ public class ContactInviteTokenService {
     /**
      * QRコード画像を生成する（PNG バイト配列）。
      * URLはサーバー側で組み立て、ユーザー入力値は含めない。
+     * {@link BrandedQrImageWriter} で中央ブランドバッジ入りQR（ECL=H固定）として生成する。
      */
     public byte[] generateQrCode(Long userId, String token, int size) {
         // オーナーチェック
@@ -179,15 +179,7 @@ public class ContactInviteTokenService {
         String inviteUrl = baseUrl + "/contact-invite/" + token;
 
         try {
-            QRCodeWriter writer = new QRCodeWriter();
-            Map<EncodeHintType, Object> hints = Map.of(
-                    EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M,
-                    EncodeHintType.CHARACTER_SET, "UTF-8"
-            );
-            BitMatrix matrix = writer.encode(inviteUrl, BarcodeFormat.QR_CODE, size, size, hints);
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            MatrixToImageWriter.writeToStream(matrix, "PNG", out);
-            return out.toByteArray();
+            return brandedQrImageWriter.writePng(inviteUrl, size);
         } catch (Exception e) {
             log.error("QRコード生成失敗: token={}", token, e);
             throw new RuntimeException("QRコードの生成に失敗しました", e);
@@ -222,21 +214,16 @@ public class ContactInviteTokenService {
         };
     }
 
+    /**
+     * 招待リンク使用通知を発火する（Issue #2834 / CMP-056 第1群ロットA）。
+     *
+     * <p>{@code createNotification} を直接呼ばず、{@link ContactInviteUsedNotificationEvent} を publish
+     * するだけに留める。本メソッド自体は {@link #acceptInvite} の業務トランザクションの<b>内側</b>で
+     * 呼ばれるが、実際の通知生成は {@code ContactInviteUsedNotificationListener} が
+     * {@code AFTER_COMMIT} で受け取ってから行う。これにより通知側の DB 例外が
+     * 招待受諾の永続化（利用回数インクリメント・双方向連絡先追加）を巻き戻さない。</p>
+     */
     private void sendInviteUsedNotification(Long actorId, Long issuerId, Long tokenId) {
-        UserEntity actor = userRepository.findById(actorId).orElse(null);
-        String actorName = actor != null ? actor.getLastName() + " " + actor.getFirstName() : "ユーザー";
-        notificationService.createNotification(
-                issuerId,
-                "CONTACT_INVITE_USED",
-                NotificationPriority.NORMAL,
-                "招待リンクが使用されました",
-                actorName + " さんが招待リンクを使用しました",
-                "CONTACT_INVITE_TOKEN",
-                tokenId,
-                NotificationScopeType.PERSONAL,
-                issuerId,
-                "/settings/contact-invite-tokens",
-                actorId
-        );
+        eventPublisher.publishEvent(new ContactInviteUsedNotificationEvent(actorId, issuerId, tokenId));
     }
 }

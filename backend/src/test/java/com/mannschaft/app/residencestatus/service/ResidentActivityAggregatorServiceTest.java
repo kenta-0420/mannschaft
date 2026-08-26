@@ -54,6 +54,8 @@ class ResidentActivityAggregatorServiceTest {
     private AccessControlService accessControlService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private ResidentActivitySnapshotBatchDeleter batchDeleter;
 
     @InjectMocks
     private ResidentActivityAggregatorService service;
@@ -184,33 +186,29 @@ class ResidentActivityAggregatorServiceTest {
     class DeleteOldSnapshots {
 
         @Test
-        @DisplayName("正常系: 30日以前のレコードが論理削除される")
-        void deleteOldSnapshots_logically_deletes_old_records() {
-            LocalDate oldDate = LocalDate.now().minusDays(31);
-            ResidentActivitySnapshot old = buildSnapshot(REGISTRY_ID, SUBJECT_USER, oldDate, 10);
-
-            when(snapshotRepo.findBySnapshotDateLessThanAndDeletedAtIsNull(any(LocalDate.class)))
-                    .thenReturn(List.of(old));
-            when(snapshotRepo.save(any(ResidentActivitySnapshot.class)))
-                    .thenAnswer(inv -> inv.getArgument(0));
+        @DisplayName("正常系: 削除対象なし → バッチ削除は1回だけ呼ばれ0件で終了する")
+        void deleteOldSnapshots_no_target_stops_after_one_batch() {
+            when(batchDeleter.deleteBatch(any(LocalDate.class), eq(ResidentActivityAggregatorService.SNAPSHOT_DELETE_BATCH_SIZE)))
+                    .thenReturn(0);
 
             service.deleteOldSnapshots();
 
-            ArgumentCaptor<ResidentActivitySnapshot> captor =
-                    ArgumentCaptor.forClass(ResidentActivitySnapshot.class);
-            verify(snapshotRepo).save(captor.capture());
-            assertThat(captor.getValue().getDeletedAt()).isNotNull();
+            verify(batchDeleter, org.mockito.Mockito.times(1))
+                    .deleteBatch(any(LocalDate.class), eq(ResidentActivityAggregatorService.SNAPSHOT_DELETE_BATCH_SIZE));
         }
 
         @Test
-        @DisplayName("正常系: 削除対象なし → save が呼ばれない")
-        void deleteOldSnapshots_no_target_no_save() {
-            when(snapshotRepo.findBySnapshotDateLessThanAndDeletedAtIsNull(any(LocalDate.class)))
-                    .thenReturn(List.of());
+        @DisplayName("正常系: バッチサイズちょうどの返り値が続く間はループし、端数で終了する")
+        void deleteOldSnapshots_loops_until_partial_batch() {
+            int batchSize = ResidentActivityAggregatorService.SNAPSHOT_DELETE_BATCH_SIZE;
+            // 1回目・2回目はバッチサイズ満杯 → ループ継続、3回目は端数 → 終了
+            when(batchDeleter.deleteBatch(any(LocalDate.class), eq(batchSize)))
+                    .thenReturn(batchSize, batchSize, 50);
 
             service.deleteOldSnapshots();
 
-            verify(snapshotRepo, never()).save(any());
+            verify(batchDeleter, org.mockito.Mockito.times(3))
+                    .deleteBatch(any(LocalDate.class), eq(batchSize));
         }
     }
 

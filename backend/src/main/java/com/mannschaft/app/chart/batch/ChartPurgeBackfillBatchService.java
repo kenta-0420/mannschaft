@@ -1,5 +1,7 @@
 package com.mannschaft.app.chart.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import lombok.RequiredArgsConstructor;
@@ -62,6 +64,8 @@ public class ChartPurgeBackfillBatchService {
      * <p>{@code AccountPurgedEvent} 処理漏れの {@code chart_records.customer_user_id} を一括補正する。
      * 孤児が 0 件の場合は正常完了としてログを記録する。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると論理削除済みチャートの物理削除 backfill が進まず、消したはずの個人データが残り続けて削除要求との整合が壊れる")
     @BatchEndpoint(
             name = "chart-purge-backfill-daily",
             description = "AccountPurgedEvent 処理漏れの chart_records.customer_user_id を毎日 03:00 に補正する"

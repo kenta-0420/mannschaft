@@ -32,6 +32,9 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.EncryptionService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
+import com.mannschaft.app.common.timezone.UserTimezoneCache;
 import com.mannschaft.app.postal.CountryResolver;
 import com.mannschaft.app.postal.PostalCodePolicyRegistry;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -40,6 +43,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -73,11 +78,45 @@ public class UserService {
     private final AccessControlService accessControlService;
     private final CountryResolver countryResolver;
     private final PostalCodePolicyRegistry postalCodePolicyRegistry;
+    private final MediaUrlResolver mediaUrlResolver;
+    private final UserTimezoneCache userTimezoneCache;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * ISO 3166-1 alpha-2 国コード: アルファベット大文字2文字
      */
     private static final Pattern COUNTRY_CODE_PATTERN = Pattern.compile("^[A-Z]{2}$");
+
+    /**
+     * 表示名を取得する（Issue #2834 / CMP-056: 他ドメインの通知配送リスナーからの
+     * 越境アクセス用）。
+     *
+     * <p>D-5（クロスドメイン Repository 依存禁止）に従い、他ドメインは {@code UserRepository}
+     * を直接 DI せず本メソッド（Service 経由）を使うこと。ユーザーが存在しない場合は空文字列。</p>
+     *
+     * @param userId ユーザーID
+     * @return 表示名（存在しない場合は空文字列）
+     */
+    public String getDisplayName(Long userId) {
+        return userRepository.findById(userId)
+                .map(UserEntity::getDisplayName)
+                .orElse("");
+    }
+
+    /**
+     * 姓名（{@code lastName + " " + firstName}）を取得する（Issue #2834 / CMP-056: 他ドメインの
+     * 通知配送リスナーからの越境アクセス用）。
+     *
+     * <p>D-5 に従い、他ドメインは {@code UserRepository} を直接 DI せず本メソッド（Service 経由）
+     * を使うこと。</p>
+     *
+     * @param userId ユーザーID
+     * @return 姓名。ユーザーが存在しない場合は {@link java.util.Optional#empty()}
+     */
+    public java.util.Optional<String> getFullName(Long userId) {
+        return userRepository.findById(userId)
+                .map(u -> u.getLastName() + " " + u.getFirstName());
+    }
 
     /**
      * ユーザープロフィールを取得する。
@@ -112,7 +151,7 @@ public class UserService {
                 user.getDisplayName(),
                 user.getNickname2(),
                 user.getIsSearchable(),
-                user.getAvatarUrl(),
+                mediaUrlResolver.resolve(user.getAvatarUrl()),
                 user.getPhoneNumber(),
                 user.getPostalCode(),
                 user.getLocale(),
@@ -175,6 +214,10 @@ public class UserService {
         // F02.10: postalCode / countryCode の変更前の値を記録
         String oldPostalCode = user.getPostalCode();
         String oldCountryCode = user.getCountryCode();
+        // Issue #2487: timezone / locale はインメモリキャッシュ（TTL 5分）に載るため、変更前の値を控えて
+        // 実際に変わった場合のみ evict する（下の「キャッシュ即時無効化」参照）。
+        String oldTimezone = user.getTimezone();
+        String oldLocale = user.getLocale();
 
         // 直接ミューテートで更新（toBuilder().build() は継承フィールド id を欠落させ INSERT 化→email 一意制約500。PR #1643 と同型の根治）
         String newLastName = req.getLastName() != null ? req.getLastName() : user.getLastName();
@@ -201,6 +244,17 @@ public class UserService {
                 newDmReceiveFrom);
         userRepository.save(user);
 
+        // キャッシュ無効化（Issue #2487 項目 4 の消費箇所監査で判明した積み残し）:
+        // UserTimezoneCache / UserLocaleCache は「値の更新後に evict すること」と定めながら、
+        // リポジトリ全体で evict の呼び出し元が 1 箇所も無かった。そのため timezone / locale を変更しても
+        // 最大 5 分間は旧値が返り続け、日付境界（日次バッチ・ダッシュボードの当日判定）や通知の言語が
+        // 旧設定のまま振る舞っていた。TTL 待ちで「そのうち直る」のは症状の先送りなので、変更を検出して捨てる。
+        // ただし evict は【コミット確定後】に行う（理由は evictUserCachesAfterCommit の Javadoc）。
+        evictUserCachesAfterCommit(
+                userId,
+                !Objects.equals(oldTimezone, user.getTimezone()),
+                !Objects.equals(oldLocale, user.getLocale()));
+
         // F02.10: postalCode または countryCode が変化した場合に WeatherLocationEventListener を起動
         if (!Objects.equals(oldPostalCode, user.getPostalCode())
                 || !Objects.equals(oldCountryCode, user.getCountryCode())) {
@@ -209,6 +263,55 @@ public class UserService {
         }
 
         return getUserProfile(userId);
+    }
+
+    /**
+     * timezone / locale のインメモリキャッシュ evict を <b>トランザクションのコミット確定後</b>に予約する。
+     *
+     * <p><b>なぜコミット前に呼んではいけないか</b>: {@code updateProfile} は {@code @Transactional} である。
+     * まだコミットしていない時点で evict すると、evict とコミットの隙に別スレッドの
+     * {@code UserTimezoneFilter} / {@code UserLocaleFilter} がキャッシュミスを起こし、READ_COMMITTED 下で
+     * <b>未コミットの更新が見えない DB</b> を読んで<b>旧値を TTL 5 分ぶん再ポピュレート</b>してしまう。
+     * その結果、「設定を変えたのに最大 5 分間 旧設定で振る舞う」という、evict で直そうとしたまさにその症状が
+     * タイミング依存の再現しにくい形で残る。よって<b>コミット確定後にのみ evict</b> する
+     * （ロールバック時は {@code afterCommit} が呼ばれないため evict もされない＝キャッシュと DB が乖離しない）。</p>
+     *
+     * <p>実装方式は F20.1 の {@code BillingContractService#evictAfterCommit} と同型
+     * （{@link TransactionSynchronizationManager} への {@code afterCommit} 登録）。
+     * ドメインイベント＋{@code @TransactionalEventListener(AFTER_COMMIT)} も候補だったが、
+     * (1) 同一ドメイン内で完結し他ドメインが購読する必要が無い、(2) 既存の同種実装が本方式であり作法を揃えられる、
+     * (3) evict は DB を触らないインメモリ操作のため、{@code AFTER_COMMIT} リスナで新規トランザクションが必要になる
+     * 既知の罠（memory {@code feedback_transactional_event_listener_requires_new}）を考慮する必要がそもそも無い、
+     * の 3 点から本方式を採った。</p>
+     *
+     * <p>トランザクション同期が無い文脈（単体テスト等）では即時 evict にフォールバックする。</p>
+     *
+     * @param userId          対象ユーザーID
+     * @param timezoneChanged timezone が実際に変化したか
+     * @param localeChanged   locale が実際に変化したか
+     */
+    private void evictUserCachesAfterCommit(Long userId, boolean timezoneChanged, boolean localeChanged) {
+        if (!timezoneChanged && !localeChanged) {
+            return;
+        }
+        Runnable evict = () -> {
+            if (timezoneChanged) {
+                userTimezoneCache.evict(userId);
+            }
+            if (localeChanged) {
+                userLocaleCache.evict(userId);
+            }
+        };
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    evict.run();
+                }
+            });
+        } else {
+            evict.run();
+        }
     }
 
     /**

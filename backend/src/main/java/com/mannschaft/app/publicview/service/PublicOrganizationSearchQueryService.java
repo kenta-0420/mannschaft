@@ -1,6 +1,7 @@
 package com.mannschaft.app.publicview.service;
 
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.publicview.dto.PublicOrganizationSearchResultResponse;
@@ -38,6 +39,7 @@ public class PublicOrganizationSearchQueryService {
 
     private final OrganizationRepository organizationRepository;
     private final BlogPostRepository blogPostRepository;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 公開組織を keyword / prefecture で検索する。
@@ -74,7 +76,8 @@ public class PublicOrganizationSearchQueryService {
                         org.getId(),
                         org.getSlug(),
                         org.getName(),
-                        org.getIconUrl(),
+                        // 画像 URL 根治 Phase 2: 生 R2 キーを署名付き表示 URL へ解決
+                        mediaUrlResolver.resolve(org.getIconUrl()),
                         0, // 組織はmember_count集計カラムを持たないため、メンバー数は0として返す
                         lastPostDateMap.get(org.getId())
                 ))

@@ -154,8 +154,8 @@ public class DisclosureService {
      * 出席開示操作に対する per-scope 認可を強制する（認可根治 Phase 3-a / 論点 A 決定 = A-1）。
      *
      * <p>Controller の {@code @PreAuthorize("hasRole('TEACHER') or hasRole('ADMIN')")} は
-     * 幻ロール TEACHER 参照かつ {@code @EnableMethodSecurity} 未有効ゆえ実機 no-op のため、
-     * Service 層で明示的に認可する。設計書 §7.1 の決定（A-1）に基づき、
+     * 幻ロール TEACHER を参照しており、Service 層で明示的に per-scope 認可する。
+     * 設計書 §7.1 の決定（A-1）に基づき、
      * 「学校チーム（クラス）の ADMIN/DEPUTY_ADMIN ＝教員相当」として扱う。
      * SYSTEM_ADMIN は短絡的に許可し、それ以外は当該チームの ADMIN/DEPUTY_ADMIN
      * でなければ {@code COMMON_002}（403）をスローする。</p>

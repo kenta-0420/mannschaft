@@ -26,6 +26,11 @@ public interface DataExportRepository extends JpaRepository<DataExportEntity, Lo
     List<DataExportEntity> findByExpiresAtBeforeAndS3KeyIsNotNull(LocalDateTime threshold);
 
     /**
+     * 指定ユーザーの、S3キーが存在するエクスポートを取得する（物理削除バッチの絞り込み用）。
+     */
+    List<DataExportEntity> findByUserIdAndS3KeyIsNotNull(Long userId);
+
+    /**
      * スタックしたPROCESSINGをFAILEDにリセットする。
      */
     @Modifying

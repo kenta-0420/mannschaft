@@ -9,7 +9,9 @@ import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import com.mannschaft.app.todo.service.TodoGanttService;
+import com.mannschaft.app.todo.service.TodoCalendarService;
 import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
@@ -37,8 +39,12 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.todo.TodoErrorCode;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -66,10 +72,16 @@ class PersonalTodoControllerTest {
     private TodoGanttService ganttService;
 
     @Mock
+    private TodoCalendarService calendarService;
+
+    @Mock
     private TodoScheduleLinkService scheduleLinkService;
 
     @Mock
     private TodoPersonalMemoService personalMemoService;
+
+    @Mock
+    private TodoAccessGuard todoAccessGuard;
 
     @Mock
     private MessageSource messageSource;
@@ -173,6 +185,75 @@ class PersonalTodoControllerTest {
                                 .content(json))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.status").value("IN_PROGRESS"));
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/v1/todos/my/calendar — マイカレンダー用TODO")
+    class MyCalendarTodos {
+
+        @Test
+        @DisplayName("PersonalTodoController#getMyCalendarTodos: 自己スコープのカレンダーTODOを200で返す")
+        void 自己スコープのカレンダーTODOを返す() throws Exception {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(calendarService.getMyCalendarTodos(eq(USER_ID), any(), any())).willReturn(List.of());
+
+                mockMvc.perform(get("/api/v1/todos/my/calendar")
+                                .param("from", "2030-01-01")
+                                .param("to", "2030-01-31"))
+                        .andExpect(status().isOk());
+
+                verify(calendarService).getMyCalendarTodos(eq(USER_ID), any(), any());
+            }
+        }
+    }
+
+    // ============================================================
+    // POST /api/v1/todos/{id}/restore（AC-5 / AC-6）
+    // ============================================================
+
+    @Nested
+    @DisplayName("POST /api/v1/todos/{id}/restore — TODO復元")
+    class RestorePersonalTodo {
+
+        @Test
+        @DisplayName("AC-5 正常系: restoreで200と復元後のTODOが返る")
+        void POST_restore_正常系_200で復元後TODOが返る() throws Exception {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+
+                // restorePersonalTodo は void（正常系は例外なし）。
+                // 認可は restorePersonalTodo 内の existsByTodoIdAndUserId で担保するため、
+                // コントローラーは assertDeletedTodoScope を呼ばない（本PRの根治対象。
+                // 個人TODOのscopeIdはuserIdで保存されるため、assertDeletedTodoScope(id, PERSONAL, null)は
+                // Objects.equals(userId, null)=false で常にTODO_NOT_FOUNDとなる誤りだった）。
+                given(todoService.getTodo(TODO_ID)).willReturn(ApiResponse.of(sampleTodo()));
+
+                mockMvc.perform(post("/api/v1/todos/{id}/restore", TODO_ID))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.data.id").value(TODO_ID));
+
+                verify(todoService).restorePersonalTodo(TODO_ID, USER_ID);
+                verify(todoService, org.mockito.Mockito.never())
+                        .assertDeletedTodoScope(eq(TODO_ID), eq(TodoScopeType.PERSONAL), eq(null));
+            }
+        }
+
+        @Test
+        @DisplayName("AC-6 異常系: 他人（担当者でない）のrestoreはTODO_NOT_FOUNDで拒否（削除EPと同一認可境界）")
+        void POST_restore_非担当者_TODO_NOT_FOUNDで拒否() throws Exception {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+
+                // 削除EPと同じ認可境界: 担当者でなければ TODO_NOT_FOUND
+                doThrow(new BusinessException(TodoErrorCode.TODO_NOT_FOUND))
+                        .when(todoService).restorePersonalTodo(TODO_ID, USER_ID);
+
+                mockMvc.perform(post("/api/v1/todos/{id}/restore", TODO_ID))
+                        .andExpect(status().is4xxClientError())
+                        .andExpect(jsonPath("$.error.code").value("TODO_010"));
             }
         }
     }

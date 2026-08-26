@@ -2,9 +2,11 @@ package com.mannschaft.app.forms.service;
 
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.forms.FormErrorCode;
 import com.mannschaft.app.forms.FormFieldType;
+import com.mannschaft.app.forms.FormScopes;
 import com.mannschaft.app.forms.entity.FormSubmissionEntity;
 import com.mannschaft.app.forms.entity.FormSubmissionValueEntity;
 import com.mannschaft.app.forms.entity.FormTemplateEntity;
@@ -56,6 +58,7 @@ public class FormCsvExportService {
     private final FormSubmissionRepository submissionRepository;
     private final FormSubmissionValueRepository valueRepository;
     private final AuditLogService auditLogService;
+    private final AccessControlService accessControlService;
 
     /**
      * テンプレート単位の提出を CSV 文字列に変換する。
@@ -82,6 +85,8 @@ public class FormCsvExportService {
         FormTemplateEntity template = templateRepository
                 .findByIdAndScopeTypeAndScopeId(templateId, scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(FormErrorCode.TEMPLATE_NOT_FOUND));
+        // 認可根治戦役 Wave3-B4: CSV エクスポートは ADMIN/DEPUTY_ADMIN 以上のみ許可する
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, FormScopes.canonical(scopeType));
 
         List<FormTemplateFieldEntity> fields =
                 fieldRepository.findByTemplateIdOrderBySortOrderAsc(templateId);

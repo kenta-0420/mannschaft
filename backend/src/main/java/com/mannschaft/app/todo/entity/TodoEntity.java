@@ -222,6 +222,13 @@ public class TodoEntity {
     }
 
     /**
+     * 論理削除を取り消して復元する（deleted_at をクリアする）。
+     */
+    public void restore() {
+        this.deletedAt = null;
+    }
+
+    /**
      * 開始日を変更する。
      *
      * @param startDate 新しい開始日（nullで開始日なしに変更）

@@ -34,7 +34,9 @@
           />
         </NuxtLink>
 
+        <!-- 自動割当は管理者専用（BE が per-scope 認可で 403 を返す） -->
         <Button
+          v-if="isScopeAdmin"
           :label="$t('shift.autoAssign.history')"
           icon="pi pi-history"
           severity="secondary"
@@ -43,6 +45,7 @@
           @click="historyVisible = true"
         />
         <Button
+          v-if="isScopeAdmin"
           :label="$t('shift.autoAssign.button')"
           icon="pi pi-bolt"
           size="small"
@@ -140,9 +143,15 @@ const scheduleId = computed(() => Number(route.params.scheduleId))
 // 新実装: /api/v1/teams/{id}/me/permissions から取得した roleName で判定する。
 const { roleName, loadPermissions } = useRoleAccess('team', teamSlug)
 const isSupporter = computed(() => roleName.value === 'SUPPORTER')
+// 認可根治 Wave7: 自動割当（実行・確定・破棄・履歴）は BE 側で当該チームの ADMIN/DEPUTY_ADMIN 限定に
+// なった。一般メンバーには導線を出さない（出すと必ず 403 になる死んだボタンになる）。
+const isScopeAdmin = computed(() => roleName.value === 'ADMIN' || roleName.value === 'DEPUTY_ADMIN')
 
 const shiftApi = useShiftApi()
 const teamApi = useTeamApi()
+const { t } = useI18n()
+const { handleApiError } = useErrorHandler()
+const { showError } = useNotification()
 const { localAssignments, initSlot, moveUser, addUser, removeUser } = useShiftBoard(scheduleId)
 const { runs, isRunning, runAutoAssign, confirmAutoAssign, revokeAutoAssign, fetchRuns } =
   useAutoAssign(scheduleId)
@@ -198,7 +207,13 @@ const unassignedMembers = computed(() =>
 
 // 初期データ取得
 onMounted(async () => {
-  await Promise.all([loadSchedule(), loadSlots(), loadPositions(), loadMembers(), fetchRuns(), loadPermissions()])
+  await Promise.all([loadSchedule(), loadSlots(), loadPositions(), loadMembers(), loadPermissions()])
+  // 認可根治 Wave7: 実行履歴 API は管理者専用になったため、権限解決後に管理者のときだけ取得する。
+  // 従来どおり Promise.all に混ぜたままだと、一般メンバーでは 403 で Promise.all ごと失敗し
+  // ボード画面全体が描画されなくなる（エラーを握りつぶさず、そもそも呼ばない形で解消する）。
+  if (isScopeAdmin.value) {
+    await fetchRuns()
+  }
 })
 
 async function loadSchedule(): Promise<void> {
@@ -235,6 +250,25 @@ async function loadMembers(): Promise<void> {
   }
 }
 
+/**
+ * 割当 API の失敗を利用者に伝える。
+ *
+ * BE のエラーコード（例: SHIFT_017「シフト枠の必要人数を超過しています」）があれば
+ * その文言を優先表示し、無ければシフト共通の汎用文言にフォールバックする
+ * （金型: components/survey/SurveyCreateDialog.vue）。
+ *
+ * catch せず放置すると unhandledrejection になり、localAssignments が静かに
+ * ロールバックされるだけで画面には何も出ない（errorReport には載るが UI 表示は無い）。
+ */
+function notifyAssignmentError(e: unknown, context: string): void {
+  const apiError = e as { data?: { error?: { code?: string } } }
+  if (apiError?.data?.error?.code) {
+    handleApiError(e, context)
+  } else {
+    showError(t('shift.notification.errorUpdate'))
+  }
+}
+
 // D&D でドロップ
 async function onDropUser(payload: {
   fromSlotId: number | null
@@ -245,22 +279,35 @@ async function onDropUser(payload: {
   const toSlot = slots.value.find((s) => s.id === toSlotId)
   const toVersion = toSlot ? 0 : 0 // バックエンドの楽観ロックバージョン（実際はAPIレスポンスで更新）
 
-  if (fromSlotId !== null) {
-    await moveUser(fromSlotId, toSlotId, userId, toVersion)
-  } else {
-    await addUser(toSlotId, userId, toVersion)
+  try {
+    if (fromSlotId !== null) {
+      await moveUser(fromSlotId, toSlotId, userId, toVersion)
+    } else {
+      await addUser(toSlotId, userId, toVersion)
+    }
+  } catch (e) {
+    notifyAssignmentError(e, 'shift-board:drop')
   }
 }
 
 // メンバー削除
 async function onRemoveUser(payload: { slotId: number; userId: number }): Promise<void> {
-  await removeUser(payload.slotId, payload.userId, 0)
+  try {
+    await removeUser(payload.slotId, payload.userId, 0)
+  } catch (e) {
+    notifyAssignmentError(e, 'shift-board:remove')
+  }
 }
 
 // ダイアログからメンバー追加
 async function onAddUserFromDialog(userId: number): Promise<void> {
   if (addUserSlotId.value !== null) {
-    await addUser(addUserSlotId.value, userId, 0)
+    try {
+      await addUser(addUserSlotId.value, userId, 0)
+    } catch (e) {
+      notifyAssignmentError(e, 'shift-board:add')
+      return
+    }
     poolVisible.value = false
   }
 }

@@ -24,6 +24,8 @@ interface Props {
   isAdmin: boolean
   // F15.4 Phase 5-β: Google Maps 埋め込み URL
   mapEmbedUrl: string | null
+  /** 予約枠の基準タイムゾーン（IANA）。 */
+  timezone: string
 }
 
 const props = defineProps<Props>()
@@ -32,6 +34,7 @@ const emit = defineEmits<{
   (e: 'updated:mapEmbedUrl', value: string | null): void
   // F22.1 Phase2 足場C 第三陣: 地域コード保存後に親へ反映通知
   (e: 'updated:regionCodes', prefectureCode: string | null, cityCode: string | null): void
+  (e: 'updated:timezone', value: string): void
 }>()
 
 const { t } = useI18n()
@@ -143,11 +146,87 @@ async function saveMapEmbedUrl() {
     mapEmbedUrlSaving.value = false
   }
 }
+
+// 予約枠の基準タイムゾーン編集
+const timezoneInput = ref(props.timezone || 'Asia/Tokyo')
+const timezoneSaving = ref(false)
+const timezoneError = ref<string | null>(null)
+watch(() => props.timezone, (value) => {
+  timezoneInput.value = value || 'Asia/Tokyo'
+})
+
+function validateTimezone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: value }).format()
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function saveTimezone() {
+  const value = timezoneInput.value.trim() || 'Asia/Tokyo'
+  if (!validateTimezone(value)) {
+    timezoneError.value = t('team.timezone.invalid')
+    return
+  }
+  timezoneError.value = null
+  timezoneSaving.value = true
+  try {
+    const res = await teamApi.updateTeam(props.teamId, { timezone: value })
+    const saved = res.data?.timezone ?? value
+    timezoneInput.value = saved
+    emit('updated:timezone', saved)
+    notification.success(t('team.timezone.saved'))
+  } catch (error) {
+    handleApiError(error, t('team.timezone.label'))
+  } finally {
+    timezoneSaving.value = false
+  }
+}
 </script>
 
 <template>
   <div class="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
     <div class="space-y-4">
+      <div v-if="isAdmin" class="rounded-lg border border-surface-200 p-4 dark:border-surface-700">
+        <label for="team-timezone" class="text-sm font-medium text-gray-500">
+          {{ $t('team.timezone.label') }}
+        </label>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          {{ $t('team.timezone.help') }}
+        </p>
+        <InputText
+          id="team-timezone"
+          v-model="timezoneInput"
+          list="team-timezone-options"
+          class="mt-2 w-full"
+          :placeholder="$t('team.timezone.placeholder')"
+          :invalid="!!timezoneError"
+          data-testid="team-timezone-input"
+        />
+        <datalist id="team-timezone-options">
+          <option value="Asia/Tokyo" />
+          <option value="Asia/Seoul" />
+          <option value="Asia/Shanghai" />
+          <option value="America/Los_Angeles" />
+          <option value="America/New_York" />
+          <option value="Europe/London" />
+          <option value="UTC" />
+        </datalist>
+        <p v-if="timezoneError" class="mt-1 text-sm text-red-600 dark:text-red-400">
+          {{ timezoneError }}
+        </p>
+        <Button
+          class="mt-2"
+          size="small"
+          :label="$t('common.save')"
+          :loading="timezoneSaving"
+          :disabled="timezoneSaving"
+          data-testid="team-timezone-save"
+          @click="saveTimezone"
+        />
+      </div>
       <div>
         <label class="text-sm font-medium text-gray-500">チーム名</label>
         <p class="mt-1">

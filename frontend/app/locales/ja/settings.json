@@ -48,7 +48,8 @@
     "inbox": "インボックス",
     "market": "市",
     "jobs": "求人",
-    "matching": "マッチング"
+    "matching": "マッチング",
+    "myFiles": "マイファイル"
   },
   "settings": {
     "navigation": {
@@ -59,7 +60,8 @@
       "saveSuccess": "設定を保存しました",
       "saveError": "設定の保存に失敗しました",
       "reorderHint": "ハンドルをドラッグして表示順を並び替えできます",
-      "dragHandleLabel": "並び替えハンドル"
+      "dragHandleLabel": "並び替えハンドル",
+      "pinnedBottom": "最下部固定"
     },
     "account": {
       "page_title": "アカウント設定",
@@ -165,6 +167,16 @@
       "backup_codes_description": "以下のバックアップコードを安全な場所に保管してください。各コードは一度だけ使用できます。",
       "rename_dialog_title": "デバイス名の変更",
       "device_name_label": "デバイス名",
+      "webauthn": {
+        "register_button": "パスキーを登録",
+        "register_dialog_title": "パスキーを登録",
+        "device_name_label": "デバイス名（任意）",
+        "device_name_placeholder": "例: iPhone の Touch ID",
+        "register_confirm": "登録する",
+        "register_cancel": "キャンセル",
+        "register_success": "パスキーを登録しました",
+        "register_error": "パスキーの登録に失敗しました"
+      },
       "session": {
         "device_label": "{os} の {browser}",
         "unknown_device": "不明なデバイス"
@@ -184,10 +196,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "アカウント連携",
       "oauth_section_title": "OAuth連携",
       "no_oauth": "連携されたアカウントはありません",
       "connected_at": "連携日: {date}",
       "unlink_button": "解除",
+      "google_link_button": "Googleと連携",
+      "google_link_loading": "連携中...",
       "line_section_title": "LINE連携",
       "line_icon_alt": "LINEアイコン",
       "line_default_user": "LINE ユーザー",
@@ -196,10 +211,27 @@
       "line_not_linked": "LINEアカウントは連携されていません",
       "line_link_instruction": "LINE連携はLINEアプリから行ってください",
       "toast": {
+        "load_error": "連携情報の取得に失敗しました",
         "unlink_success": "{provider}の連携を解除しました",
         "unlink_error": "連携解除に失敗しました",
         "line_unlink_success": "LINE連携を解除しました",
-        "line_unlink_error": "LINE連携の解除に失敗しました"
+        "line_unlink_error": "LINE連携の解除に失敗しました",
+        "link_success": "{provider}と連携しました",
+        "link_error": "連携URLの取得に失敗しました",
+        "already_linked": "このアカウントはすでに{provider}と連携されています",
+        "taken_by_other": "このGoogleアカウントは別のユーザーが使用中です",
+        "oauth_denied": "Googleの認証がキャンセルされました",
+        "link_with_calendar_success": "Googleアカウントとカレンダーを連携しました"
+      },
+      "calendar_sync_toggle": "Googleカレンダーの同期も同時に設定する",
+      "guide": {
+        "title": "アカウント連携について",
+        "google_title": "Googleでログイン",
+        "google_desc": "パスワードを使わずに、Googleアカウントでかんたんにログインできるようになります。",
+        "apple_title": "Appleでログイン（準備中）",
+        "apple_desc": "iPhoneをお使いの方向けのログイン方法です。現在は準備中です。",
+        "line_title": "LINE通知",
+        "line_desc": "LINEグループにボットを追加すると、スケジュールや出欠の通知をLINEで受け取れます。連携はLINEアプリから行ってください。"
       }
     },
     "member_card": {
@@ -236,6 +268,47 @@
         "delete_error": "削除に失敗しました"
       }
     },
+    "seal_guide": {
+      "title": "電子印鑑の使い方",
+      "description": "電子印鑑を使って書類に押印・管理ができます。",
+      "preview": {
+        "title": "印鑑プレビュー",
+        "body": "登録された姓名から自動生成された3種類の電子印鑑（姓・フルネーム・名）を確認できます。",
+        "steps": {
+          "step1": "「印鑑プレビュー」タブを開く",
+          "step2": "グリッドに表示された3つの印鑑（姓・フルネーム・名）を確認する"
+        }
+      },
+      "regenerate": {
+        "title": "印鑑の再生成",
+        "body": "現在の印鑑を新しいデザインに作り直せます。姓名が変わった場合や、デザインを更新したい場合に使います。",
+        "note": "1時間に最大3回まで実行できます。上限に達した場合は、時間をおいてから再試行してください。",
+        "steps": {
+          "step1": "「印鑑プレビュー」タブを開く",
+          "step2": "「印鑑を再生成」ボタンをクリックする",
+          "step3": "完了後、新しい印鑑がグリッドに表示される"
+        }
+      },
+      "defaults": {
+        "title": "デフォルト設定",
+        "body": "書類への押印時に自動的に使用するバリアント（姓・フルネーム・名）を設定できます。毎回選び直す手間が省けます。",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
+        "steps": {
+          "step1": "「デフォルト設定」タブを開く",
+          "step2": "ドロップダウンで使用したいバリアント（姓・フルネーム・名）を選択する",
+          "step3": "「保存」ボタンをクリックして設定を保存する"
+        }
+      },
+      "history": {
+        "title": "押印履歴",
+        "body": "過去に押印した記録を一覧で確認できます。押印日時・使用したバリアント・対象・状態（有効／取消済）が表示されます。",
+        "steps": {
+          "step1": "「押印履歴」タブを開く",
+          "step2": "一覧をスクロールして確認する",
+          "step3": "さらに古い履歴は「もっと見る」ボタンで追加読み込みする"
+        }
+      }
+    },
     "seal": {
       "section_title": "電子印鑑",
       "tab_preview": "印鑑プレビュー",
@@ -248,6 +321,27 @@
         "regenerate_error": "再生成に失敗しました（1時間に3回まで）",
         "save_defaults_success": "デフォルト設定を保存しました",
         "save_defaults_error": "設定の保存に失敗しました"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
       }
     },
     "login_history": {
@@ -263,26 +357,35 @@
     },
     "gcal": {
       "section_title": "Google Calendar 連携",
+      "connection_status_title": "接続状態",
       "connected_label": "接続中",
       "last_synced": "最終同期: {date}",
+      "last_sync_error": "同期エラー: {message}",
       "manual_sync_button": "手動同期",
       "disconnect_button": "連携解除",
+      "disconnect_confirm": "Google Calendar連携を解除しますか？",
       "sync_settings_title": "同期設定",
       "personal_calendar_label": "個人カレンダー",
       "personal_calendar_description": "個人の予定をGoogleカレンダーに同期",
       "team_calendars_label": "チームカレンダー",
       "org_calendars_label": "組織カレンダー",
-      "save_settings_button": "設定を保存",
+      "no_team_calendars": "所属しているチームがありません",
+      "no_org_calendars": "所属している組織がありません",
       "not_connected_description": "Googleアカウントと連携して、カレンダーを同期できます",
       "connect_button": "Googleアカウントに接続",
+      "detail_link_button": "詳細設定へ",
       "toast": {
         "connect_error": "接続に失敗しました",
+        "oauth_connected": "Google Calendarと連携しました",
+        "oauth_connect_failed": "Google Calendar連携に失敗しました",
         "disconnect_success": "連携を解除しました",
         "disconnect_error": "解除に失敗しました",
-        "save_success": "同期設定を保存しました",
-        "save_error": "保存に失敗しました",
         "sync_success": "同期を実行しました",
-        "sync_error": "同期に失敗しました"
+        "sync_error": "同期に失敗しました",
+        "load_error": "読み込みに失敗しました",
+        "toggle_on_success": "{name}の同期をONにしました",
+        "toggle_off_success": "{name}の同期をOFFにしました",
+        "backfill_info": "{count}件の予定を同期対象に追加しました"
       }
     },
     "delete_account": {
@@ -298,6 +401,18 @@
       "retention_note": "※ 一部のデータは法的要件により {days} 日間保持された後に削除されます。",
       "delete_success": "アカウントを削除しました。ご利用ありがとうございました。",
       "delete_error": "アカウントの削除に失敗しました"
+    },
+    "storage": {
+      "page_title": "ストレージ",
+      "group_personal": "個人",
+      "group_team": "チーム",
+      "group_org": "組織",
+      "scope_personal": "個人ストレージ",
+      "file_count": "{count}ファイル",
+      "limit": "上限",
+      "unlimited": "無制限",
+      "error_fetch": "ストレージ使用量の取得に失敗しました",
+      "empty": "表示できるストレージ情報がありません"
     },
     "notification": {
       "load_error": "設定の取得に失敗しました",
@@ -322,6 +437,13 @@
       "channel_push": "プッシュ",
       "locked_tag": "緊急",
       "locked_desc": "この通知は無効化できません"
+    },
+    "fileBrowser": {
+      "upload_button": "ファイルをアップロード",
+      "upload_need_folder": "フォルダを開いてからアップロードしてください",
+      "upload_success": "「{name}」をアップロードしました",
+      "upload_error": "「{name}」のアップロードに失敗しました",
+      "uploading": "アップロード中..."
     }
   }
 }

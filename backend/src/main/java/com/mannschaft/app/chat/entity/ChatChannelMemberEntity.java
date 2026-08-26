@@ -66,13 +66,6 @@ public class ChatChannelMemberEntity extends BaseEntity {
     }
 
     /**
-     * 未読数をインクリメントする。
-     */
-    public void incrementUnreadCount() {
-        this.unreadCount++;
-    }
-
-    /**
      * ロールを変更する。
      *
      * @param newRole 新しいロール

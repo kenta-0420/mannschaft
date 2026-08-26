@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.visibility;
 
 import com.mannschaft.app.common.visibility.VisibilityProjection;
+import com.mannschaft.app.schedule.MinViewRole;
 import com.mannschaft.app.schedule.ScheduleStatus;
 import com.mannschaft.app.schedule.ScheduleVisibility;
 
@@ -34,6 +35,12 @@ import com.mannschaft.app.schedule.ScheduleVisibility;
  * @param scheduleVisibility   schedule.visibility（{@link ScheduleVisibility}）
  * @param visibilityTemplateId schedule.visibility_template_id（CUSTOM_TEMPLATE のみ非 null）
  * @param scheduleStatus       schedule.status（{@link ScheduleStatus}）
+ * @param minViewRole          schedule.min_view_role（{@link MinViewRole}）。
+ *                             visibility（scope 軸）とは独立した<strong>閲覧閾値軸</strong>で、
+ *                             {@link ScheduleVisibilityResolver} が
+ *                             {@link MinViewRoleThreshold} を通して合成する（CMP-017b）。
+ *                             本列が射影に無かったために閾値が閲覧判定でどこからも読まれず、
+ *                             応援者に MEMBER_PLUS 予定が見えていた。
  */
 public record ScheduleVisibilityProjection(
         Long id,
@@ -43,7 +50,8 @@ public record ScheduleVisibilityProjection(
         Long createdBy,
         ScheduleVisibility scheduleVisibility,
         Long visibilityTemplateId,
-        ScheduleStatus scheduleStatus
+        ScheduleStatus scheduleStatus,
+        MinViewRole minViewRole
 ) implements VisibilityProjection {
 
     /**

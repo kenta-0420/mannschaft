@@ -184,12 +184,21 @@ async function saveEdit() {
 const currentStep = computed(() => (schedule.value ? statusToStep(schedule.value.status) : 1))
 
 // タブナビゲーション
-const tabs = computed(() => [
-  { label: t('shift.detail.tabOverview'), icon: 'pi pi-calendar', to: `/shift/${scheduleId.value}` },
-  { label: t('shift.detail.tabEdit'), icon: 'pi pi-pencil', to: `/shift/${scheduleId.value}/edit` },
-  { label: t('shift.detail.tabRequests'), icon: 'pi pi-list', to: `/shift/${scheduleId.value}/requests` },
-  { label: t('shift.detail.tabConstraints'), icon: 'pi pi-shield', to: `/shift/${scheduleId.value}/work-constraints` },
-])
+// 「希望一覧」「勤務制約」タブは BE 側が ADMIN/DEPUTY_ADMIN 限定のため、
+// 一般メンバーには表示しない（見えるのに踏むと壊れる事故を防ぐ）。
+const tabs = computed(() => {
+  const list = [
+    { label: t('shift.detail.tabOverview'), icon: 'pi pi-calendar', to: `/shift/${scheduleId.value}` },
+    { label: t('shift.detail.tabEdit'), icon: 'pi pi-pencil', to: `/shift/${scheduleId.value}/edit` },
+  ]
+  if (canManage.value) {
+    list.push(
+      { label: t('shift.detail.tabRequests'), icon: 'pi pi-list', to: `/shift/${scheduleId.value}/requests` },
+      { label: t('shift.detail.tabConstraints'), icon: 'pi pi-shield', to: `/shift/${scheduleId.value}/work-constraints` },
+    )
+  }
+  return list
+})
 </script>
 
 <template>
@@ -198,19 +207,13 @@ const tabs = computed(() => [
 
     <template v-else-if="schedule">
       <!-- ヘッダー -->
-      <div class="mb-4 flex flex-wrap items-start gap-3">
-        <BackButton :to="`/shift`" />
-        <div class="min-w-0 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <h1 class="text-2xl font-bold text-surface-800 dark:text-surface-100">
-              {{ schedule.title }}
-            </h1>
-            <ShiftStatusBadge :status="schedule.status" />
-          </div>
-          <p class="mt-1 text-sm text-surface-500">
-            {{ schedule.startDate }} 〜 {{ schedule.endDate }}
-          </p>
-        </div>
+      <div class="mb-4">
+        <PageHeader :title="schedule.title" back-to="/shift">
+          <ShiftStatusBadge :status="schedule.status" />
+        </PageHeader>
+        <p class="mb-3 text-sm text-surface-500">
+          {{ schedule.startDate }} 〜 {{ schedule.endDate }}
+        </p>
         <div v-if="canManage" class="flex items-center gap-2">
           <Button
             icon="pi pi-pencil"

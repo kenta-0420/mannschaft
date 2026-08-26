@@ -1,279 +1,571 @@
 <script setup lang="ts">
-/**
- * F15.4 Phase 5-γ/δ 未ログイン公開店舗詳細ページ
- *
- * 設計書: docs/features/F15.4_phase5_team_public_detail.md §5.2 / §6
- *
- * - middleware なし（未ログインで閲覧可能）。
- * - バックエンド `GET /api/v1/public/teams/{id}` を呼ぶ（permitAll + レート制限 60/min/IP）。
- * - 404 は createError({ statusCode: 404 }) でハンドリング。
- * - 表示要素: ヘッダー / 基本情報 / 理念 / 地図 (Google Maps iframe) / ログイン誘導 CTA。
- * - メンバー一覧・連絡先・告知・チャット等は一切表示しない（抑制 DTO のため取得もしない）。
- *
- * Phase 5-δ: CSP (`frame-src https://www.google.com`) をページ単位の `<meta http-equiv>` で付与する。
- *   フロント全体には現状 CSP ヘッダが未導入のため、Google Maps iframe を許容する本ページに限定して
- *   ページ内 meta 形式で宣言する。将来全体に CSP ヘッダ（nuxt-security 等）を導入する際は、
- *   `frame-src 'self' https://www.google.com` をホワイトリストへ移行すること。
- */
-import type { TeamPublicDetailResponse } from '~/types/team'
+import type { FetchError } from 'ofetch'
+import type { PublicFaqItem } from '~/types/faq'
+import type { PublicActivitySummaryResponse } from '~/types/activity'
+import type {
+  PublicEventResponse,
+  PublicPostSummary,
+  PublicTeamResponse,
+  PublicTimelinePostResponse,
+  SpringPage,
+} from '~/types/public'
 
+/**
+ * F19.1 公開チーム詳細ページ。
+ *
+ * - 未ログインアクセス可（layout: public / auth.global なし）
+ * - SSR 有効（OGP / SEO 用に基本情報を SSR レスポンスに反映）
+ * - PRIVATE / archived / 不在は 404
+ * - 2026-08-06 マスター御裁可（第三陣）: 投稿／タイムライン／イベント／活動記録を
+ *   **横並びの実タブ**で切り替える構成に作り替えた（旧: <section> 縦積み）。
+ *   活動記録タブの詳細遷移は公開ページ専用ページを新設せず既存 `/activity/{id}`
+ *   （PR #2551 で SSR 化済み）を共用する。
+ *
+ * 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §8.1 / §4.1 / §4.2 / §5.2.1
+ *         docs/features/F06.4_activity_records.md「画面」章
+ */
 definePageMeta({
-  layout: 'default',
+  layout: 'public',
 })
 
 const route = useRoute()
-const router = useRouter()
-const teamApi = useTeamApi()
-const { templateLabel } = useScopeLabels()
 const { t } = useI18n()
+const {
+  fetchPublicTeam,
+  fetchPublicTeamPosts,
+  fetchPublicTeamTimelinePosts,
+  fetchPublicTeamEvents,
+} = usePublicApi()
+const { fetchPublicTeamActivities } = useActivityPublicApi()
 
-const teamSlug = computed(() => {
-  const raw = route.params.slug
-  const idStr = Array.isArray(raw) ? raw[0] : raw
-  if (!idStr) {
-    throw createError({ statusCode: 404, statusMessage: 'Team not found' })
-  }
-  return String(idStr)
-})
+const rawId = Array.isArray(route.params.slug) ? route.params.slug[0] : route.params.slug
+const teamSlug = String(rawId)
 
-const team = ref<TeamPublicDetailResponse | null>(null)
-const loading = ref(true)
-
-async function load() {
-  loading.value = true
-  try {
-    const res = await teamApi.getPublicTeam(teamSlug.value)
-    team.value = res.data
-  } catch (error) {
-    // 404 / archived / PRIVATE / 削除済みはすべてバックエンドで 404 となる
-    const status =
-      typeof error === 'object' && error !== null && 'response' in error
-        ? (error as { response?: { status?: number } }).response?.status
-        : undefined
-    if (status === 404) {
-      throw createError({ statusCode: 404, statusMessage: 'Team not found' })
-    }
-    // それ以外（ネットワーク / 429 / 5xx）はそのまま投げる
-    throw error
-  } finally {
-    loading.value = false
-  }
+// パスパラメータが空の場合は 404
+if (!teamSlug) {
+  throw createError({
+    statusCode: 404,
+    statusMessage: t('public.error.notFound'),
+    fatal: true,
+  })
 }
 
-await load()
-
-// === 表示用 computed ===
-const displayName = computed(() => team.value?.name ?? '')
-const templateText = computed(() => {
-  const tpl = team.value?.template
-  if (!tpl) return null
-  return templateLabel[tpl] ?? tpl
-})
-const locationText = computed(() => {
-  const pref = team.value?.prefecture ?? ''
-  const city = team.value?.city ?? ''
-  return [pref, city].filter(Boolean).join(' ')
-})
-const hasLocation = computed(() => locationText.value.length > 0)
-const hasMap = computed(() => Boolean(team.value?.mapEmbedUrl))
-const hasPhilosophy = computed(() => Boolean(team.value?.philosophy))
-const hasHomepage = computed(() => Boolean(team.value?.homepageUrl))
-const hasMemberCount = computed(
-  () => team.value?.memberCount !== null && team.value?.memberCount !== undefined,
+// チーム本体（SSR 必須）
+const { data: team, error: teamError } = await useAsyncData<PublicTeamResponse>(
+  `public-team-${teamSlug}`,
+  () => fetchPublicTeam(teamSlug),
 )
 
-function formatEstablishedDate(): string {
-  const t2 = team.value
-  if (!t2 || !t2.establishedDate) return ''
-  const precision = t2.establishedDatePrecision ?? 'FULL'
-  const d = new Date(t2.establishedDate)
-  if (Number.isNaN(d.getTime())) return t2.establishedDate
-  const y = d.getFullYear()
-  const m = d.getMonth() + 1
-  const day = d.getDate()
-  if (precision === 'YEAR') return `${y}`
-  if (precision === 'YEAR_MONTH') return `${y}-${String(m).padStart(2, '0')}`
-  return `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+if (teamError.value || !team.value) {
+  const status = (teamError.value as FetchError | null)?.response?.status ?? 404
+  throw createError({
+    statusCode: status === 429 ? 429 : 404,
+    statusMessage: status === 429 ? t('public.error.rateLimit') : t('public.error.notFound'),
+    fatal: true,
+  })
 }
 
-// === SEO / OGP / CSP ===
-// CSP: 本ページ限定で Google Maps iframe を許容（設計書 §5.2）。
-// frame-src と child-src を両方指定し旧 UA 互換を確保する。
-// 既定の self / data: / https: のオリジンを含めつつ、frame だけは厳格に絞り込む。
-const PUBLIC_TEAM_CSP =
-  "default-src 'self' https: data: blob:; " +
-  "img-src 'self' https: data: blob:; " +
-  "style-src 'self' 'unsafe-inline' https:; " +
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; " +
-  "frame-src 'self' https://www.google.com; " +
-  "child-src 'self' https://www.google.com"
+// 投稿一覧（ページング）
+const currentPage = ref(0)
+const pageSize = 20
 
-useHead(() => ({
-  title: team.value?.name ?? t('publicTeamDetail.notFound'),
-  meta: [
-    { name: 'robots', content: 'index,follow' },
-    { property: 'og:title', content: team.value?.name ?? '' },
-    {
-      property: 'og:image',
-      content: team.value?.bannerUrl ?? team.value?.iconUrl ?? '',
-    },
-    { property: 'og:type', content: 'website' },
-    { 'http-equiv': 'Content-Security-Policy', content: PUBLIC_TEAM_CSP },
-  ],
-}))
+const { data: postsPage, refresh: refreshPosts } = await useAsyncData<SpringPage<PublicPostSummary>>(
+  `public-team-${teamSlug}-posts`,
+  () => fetchPublicTeamPosts(teamSlug, currentPage.value, pageSize),
+  { watch: [currentPage] },
+)
 
-function onBackToSearch() {
-  // 同組織の他店舗一覧へ戻る経路は本 DTO に orgSlug を含まないため、
-  // 戻る操作は前ページ（検索ページなど）への履歴 back に委ねる。
-  router.back()
+const posts = computed(() => postsPage.value?.content ?? [])
+const totalPages = computed(() => postsPage.value?.totalPages ?? 1)
+const totalElements = computed(() => postsPage.value?.totalElements ?? 0)
+
+async function goPage(next: number) {
+  if (next < 0 || next >= totalPages.value) return
+  currentPage.value = next
+  await refreshPosts()
 }
+
+// F19.1 Phase 7: タイムライン投稿一覧（timelinePostsPublic = true の場合のみ表示）
+const timelineCurrentPage = ref(0)
+const { data: timelinePage, refresh: refreshTimeline } = await useAsyncData<SpringPage<PublicTimelinePostResponse>>(
+  `public-team-${teamSlug}-timeline`,
+  () => team.value?.timelinePostsPublic
+    ? fetchPublicTeamTimelinePosts(teamSlug, timelineCurrentPage.value, pageSize)
+    : Promise.resolve({ content: [], totalElements: 0, totalPages: 0, number: 0, size: pageSize, first: true, last: true, empty: true, numberOfElements: 0 }),
+  { watch: [timelineCurrentPage] },
+)
+
+const timelinePosts = computed(() => timelinePage.value?.content ?? [])
+const timelineTotalPages = computed(() => timelinePage.value?.totalPages ?? 1)
+const timelineTotalElements = computed(() => timelinePage.value?.totalElements ?? 0)
+
+async function goTimelinePage(next: number) {
+  if (next < 0 || next >= timelineTotalPages.value) return
+  timelineCurrentPage.value = next
+  await refreshTimeline()
+}
+
+// F19.1 Phase 7: イベント一覧（チームは timelinePostsPublic が true の場合にイベントも表示）
+const eventCurrentPage = ref(0)
+const { data: eventsPage, refresh: refreshEvents } = await useAsyncData<SpringPage<PublicEventResponse>>(
+  `public-team-${teamSlug}-events`,
+  () => team.value?.timelinePostsPublic
+    ? fetchPublicTeamEvents(teamSlug, eventCurrentPage.value, pageSize)
+    : Promise.resolve({ content: [], totalElements: 0, totalPages: 0, number: 0, size: pageSize, first: true, last: true, empty: true, numberOfElements: 0 }),
+  { watch: [eventCurrentPage] },
+)
+
+const events = computed(() => eventsPage.value?.content ?? [])
+const eventsTotalPages = computed(() => eventsPage.value?.totalPages ?? 1)
+const eventsTotalElements = computed(() => eventsPage.value?.totalElements ?? 0)
+
+async function goEventsPage(next: number) {
+  if (next < 0 || next >= eventsTotalPages.value) return
+  eventCurrentPage.value = next
+  await refreshEvents()
+}
+
+// F06.4 第三陣: 公開活動記録タブ。
+// BE は List のみを返し SpringPage ではないため（PublicActivityQueryService 参照）、
+// 総ページ数は分からない。返却件数が pageSize と一致する間は「次ページがあるかもしれない」
+// とみなすヒューリスティックでページ送りする（usePublicApi.ts / useActivityApi.ts のどちらにも
+// 活動記録の公開系が無かったため useActivityPublicApi.ts に寄せた。判断理由は PR 本文参照）。
+const activityCurrentPage = ref(0)
+const { data: activitiesData, refresh: refreshActivities } = await useAsyncData<PublicActivitySummaryResponse[]>(
+  `public-team-${teamSlug}-activities`,
+  () => fetchPublicTeamActivities(teamSlug, activityCurrentPage.value, pageSize).then(res => res ?? []),
+  { watch: [activityCurrentPage], default: () => [] },
+)
+
+const activities = computed(() => activitiesData.value ?? [])
+const activityHasNext = computed(() => activities.value.length >= pageSize)
+
+async function goActivityPage(next: number) {
+  if (next < 0) return
+  if (next > activityCurrentPage.value && !activityHasNext.value) return
+  activityCurrentPage.value = next
+  await refreshActivities()
+}
+
+function activityDetailHref(activityId: number): string {
+  return `/activity/${activityId}`
+}
+
+// F21.1 §5.5 FAQ駆動GEO: 公開 FAQ 一覧（認証不要・回答済みのみ・固定→自由順で BE が返す）。
+// 公開チームでも FAQ 0 件は正常状態（セクション非表示）なので 404/空は握りつぶさず空配列扱いとする。
+const { fetchPublicTeamFaqs } = useFaqApi()
+const { data: faqsData } = await useAsyncData<PublicFaqItem[]>(
+  `public-team-${teamSlug}-faqs`,
+  () => fetchPublicTeamFaqs(teamSlug),
+  { default: () => [] },
+)
+const faqs = computed((): PublicFaqItem[] => faqsData.value ?? [])
+
+/**
+ * 公開 FAQ 1 件の表示用質問文を解決する。
+ * 固定質問（questionKey 非 null）は i18n `faq.fixed.{key小文字}` で描画し、
+ * 自由質問（questionKey null）は保存値 questionText をそのまま用いる。
+ */
+function faqQuestion(item: PublicFaqItem): string {
+  return item.questionKey
+    ? t(`faq.fixed.${item.questionKey.toLowerCase()}`)
+    : (item.questionText ?? '')
+}
+
+// F21.1 GEO: 引用されやすい定義文。philosophy があればそれを、無ければ
+// 地理情報入りの定義文を i18n で動的生成する。meta / og / twitter / JSON-LD で共有する。
+const seoDescription = computed((): string => {
+  const philosophy = team.value?.philosophy?.trim()
+  if (philosophy) return philosophy
+  const name = team.value?.name ?? ''
+  const prefecture = team.value?.prefecture ?? ''
+  const city = team.value?.city ?? ''
+  // 地理情報が一切無い場合は名前のみの自然な定義文にフォールバックする。
+  if (!prefecture && !city) {
+    return t('public.team.geoDescriptionNoLocation', { name })
+  }
+  return t('public.team.geoDescription', { prefecture, city, name })
+})
+
+// F19.1 Phase 3 / F21.1: hreflang 6言語 + canonical + JSON-LD（@graph 化）。
+// F21.1: canonical / baseUrl は useSeoPublicPage が単一ソースとして算出する。
+// 先に呼び出して戻り値（canonicalUrl / baseUrl）を後続の useSeoMeta に流用する。
+const { canonicalUrl } = useSeoPublicPage({
+  canonicalPath: `/public/teams/${teamSlug}`,
+  title: () => t('public.team.title', { name: team.value?.name ?? '' }),
+  description: () => seoDescription.value,
+  imageUrl: () => team.value?.bannerUrl ?? team.value?.iconUrl ?? undefined,
+  // F21.1 GEO: Organization（@id + address=PostalAddress + sameAs + description）と
+  // BreadcrumbList（@id）を @graph 配列にまとめて注入する。canonical / baseUrl は
+  // ctx 経由で受け取り単一ソース化する。undefined フィールドは
+  // JSON.stringify が自動的に省くため出力はクリーンになる。
+  jsonLd: (ctx) => {
+    if (!team.value) return undefined
+    const graph: Record<string, unknown>[] = [
+      {
+        '@type': 'Organization',
+        '@id': `${ctx?.canonicalUrl ?? ''}#organization`,
+        name: team.value.name,
+        url: ctx?.canonicalUrl,
+        logo: team.value.iconUrl ?? undefined,
+        description: seoDescription.value,
+        address: (team.value.prefecture || team.value.city) ? {
+          '@type': 'PostalAddress',
+          addressCountry: 'JP',
+          addressRegion: team.value.prefecture ?? undefined,
+          addressLocality: team.value.city ?? undefined,
+        } : undefined,
+        sameAs: team.value.homepageUrl ? [team.value.homepageUrl] : undefined,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        '@id': `${ctx?.canonicalUrl ?? ''}#breadcrumb`,
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: t('public.breadcrumb.home'),
+            item: ctx?.baseUrl,
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: t('public.breadcrumb.discoverTeams'),
+            item: `${ctx?.baseUrl ?? ''}/discover/teams`,
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: team.value.name,
+          },
+        ],
+      },
+    ]
+    // F21.1 §5.5 FAQ駆動GEO: 回答済み FAQ が 1 件以上のときのみ FAQPage ノードを追加する。
+    // mainEntity は可視アコーディオン（faqQuestion / answer）と完全一致させる
+    // （Google の「構造化データと可視内容の一致」要件）。
+    if (faqs.value.length > 0) {
+      graph.push({
+        '@type': 'FAQPage',
+        '@id': `${ctx?.canonicalUrl ?? ''}#faq`,
+        mainEntity: faqs.value.map(f => ({
+          '@type': 'Question',
+          name: faqQuestion(f),
+          acceptedAnswer: { '@type': 'Answer', text: f.answer },
+        })),
+      })
+    }
+    return { '@context': 'https://schema.org', '@graph': graph }
+  },
+})
+
+// OGP / SEO メタタグ（§9.1 Phase 1 最小タグ）。ogUrl は単一ソースの canonicalUrl を使う。
+useSeoMeta({
+  title: () => t('public.team.title', { name: team.value?.name ?? '' }),
+  description: () => seoDescription.value,
+  ogTitle: () => t('public.team.title', { name: team.value?.name ?? '' }),
+  ogDescription: () => seoDescription.value,
+  ogImage: () => team.value?.bannerUrl ?? team.value?.iconUrl ?? '',
+  ogType: 'website',
+  ogUrl: () => canonicalUrl.value,
+  twitterCard: 'summary_large_image',
+  twitterTitle: () => t('public.team.title', { name: team.value?.name ?? '' }),
+  twitterDescription: () => seoDescription.value,
+  twitterImage: () => team.value?.bannerUrl ?? team.value?.iconUrl ?? '',
+})
+
+function detailHref(postId: number): string {
+  return `/public/teams/${teamSlug}/posts/${postId}`
+}
+
+// PrimeVue Tabs は value（単方向）+ update:value であり、v-model:value で
+// 受けないとタブクリックが選択状態に反映されない（ChatCreateDialog.vue 等の作法に倣う）。
+const activeTab = ref('posts')
 </script>
 
 <template>
-  <div class="mx-auto max-w-4xl p-4 sm:p-6">
-    <!-- ローディング（実質 await load() で待っているため通常は描画されない） -->
-    <div v-if="loading" class="space-y-4" data-testid="public-team-loading">
-      <Skeleton width="100%" height="200px" />
-      <Skeleton width="60%" height="2rem" />
-      <Skeleton width="100%" height="1rem" />
-      <Skeleton width="100%" height="1rem" />
-    </div>
+  <div v-if="team" class="space-y-10">
+    <PublicTeamHeader :team="team" />
 
-    <template v-else-if="team">
-      <!-- 戻るリンク -->
-      <div class="mb-4">
-        <Button
-          :label="$t('publicTeamDetail.backToSearch')"
-          icon="pi pi-arrow-left"
-          severity="secondary"
-          text
-          data-testid="public-team-back-button"
-          @click="onBackToSearch"
-        />
-      </div>
-
-      <!-- ヘッダー -->
-      <div
-        class="relative mb-6 overflow-hidden rounded-lg border border-surface-200 bg-surface-0"
-        data-testid="public-team-header"
-      >
-        <div
-          v-if="team.bannerUrl"
-          class="h-40 bg-cover bg-center sm:h-56"
-          :style="{ backgroundImage: `url(${team.bannerUrl})` }"
-          aria-hidden="true"
-        />
-        <div v-else class="h-32 bg-gradient-to-r from-primary/20 to-primary/5 sm:h-40" />
-
-        <div class="flex items-center gap-4 p-4 sm:p-6">
-          <Avatar
-            :image="team.iconUrl ?? undefined"
-            :label="team.iconUrl ? undefined : displayName.charAt(0)"
-            shape="circle"
-            size="xlarge"
-            class="border-2 border-surface-0 shadow"
-          />
-          <div class="min-w-0 flex-1">
-            <h1 class="truncate text-2xl font-bold">{{ displayName }}</h1>
-            <div class="mt-2 flex flex-wrap items-center gap-2">
-              <Tag
-                v-if="templateText"
-                :value="templateText"
-                severity="info"
-              />
-              <span
-                v-if="hasMemberCount && team.memberCount !== null"
-                class="text-sm text-gray-600"
-                data-testid="public-team-member-count"
-              >
-                <i class="pi pi-users mr-1" aria-hidden="true" />
-                {{ team.memberCount }}{{ $t('publicTeamDetail.memberCountSuffix') }}
+    <!-- 2026-08-06 マスター御裁可（第三陣）: 投稿／タイムライン／イベント／活動記録を横並びの実タブで切り替える -->
+    <Tabs v-model:value="activeTab">
+      <TabList>
+        <Tab value="posts">{{ t('public.tabs.posts') }}</Tab>
+        <Tab v-if="team.timelinePostsPublic" value="timeline">{{ t('public.tabs.timeline') }}</Tab>
+        <Tab v-if="team.timelinePostsPublic" value="events">{{ t('public.tabs.events') }}</Tab>
+        <Tab value="activities">{{ t('public.tabs.activities') }}</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel value="posts">
+          <section aria-labelledby="public-posts-heading" class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 id="public-posts-heading" class="sr-only">
+                {{ t('public.posts.sectionTitle') }}
+              </h2>
+              <span v-if="totalElements > 0" class="text-sm text-surface-500">
+                {{ t('public.posts.totalCount', { n: totalElements }) }}
               </span>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- 基本情報 -->
-      <section
-        class="mb-6 rounded-lg border border-surface-200 bg-surface-0 p-4 sm:p-6"
-        data-testid="public-team-basic-info"
-      >
-        <dl class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <div v-if="hasLocation">
-            <dt class="text-xs font-medium text-gray-500">
-              <i class="pi pi-map-marker mr-1" aria-hidden="true" />
-              {{ $t('organizationTeamSearch.prefectureLabel') }}
-            </dt>
-            <dd class="mt-1 text-base">{{ locationText }}</dd>
-          </div>
+            <p v-if="posts.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
+              {{ t('public.posts.empty') }}
+            </p>
 
-          <div v-if="team.establishedDate">
-            <dt class="text-xs font-medium text-gray-500">
-              {{ $t('publicTeamDetail.establishedLabel') }}
-            </dt>
-            <dd class="mt-1 text-base">{{ formatEstablishedDate() }}</dd>
-          </div>
+            <div v-else class="grid gap-4 sm:grid-cols-2">
+              <PublicPostCard
+                v-for="post in posts"
+                :key="`${post.sourceType}-${post.sourceId}`"
+                :post="post"
+                :detail-href="detailHref(post.sourceId)"
+              />
+            </div>
 
-          <div v-if="hasHomepage" class="sm:col-span-2">
-            <dt class="text-xs font-medium text-gray-500">
-              {{ $t('publicTeamDetail.homepageLabel') }}
-            </dt>
-            <dd class="mt-1">
-              <a
-                :href="team.homepageUrl ?? '#'"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="break-all text-primary hover:underline"
+            <nav v-if="totalPages > 1" class="flex items-center justify-between pt-2" aria-label="pagination">
+              <Button
+                :disabled="currentPage <= 0"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.prev')"
+                @click="goPage(currentPage - 1)"
+              />
+              <span class="text-sm text-surface-500">
+                {{ t('public.posts.page', { page: currentPage + 1, total: totalPages }) }}
+              </span>
+              <Button
+                :disabled="currentPage >= totalPages - 1"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.next')"
+                @click="goPage(currentPage + 1)"
+              />
+            </nav>
+          </section>
+        </TabPanel>
+
+        <!-- F19.1 Phase 7: タイムライン投稿タブ（timelinePostsPublic = true の場合のみ表示） -->
+        <TabPanel v-if="team.timelinePostsPublic" value="timeline">
+          <section
+            data-testid="timeline-posts-section"
+            aria-labelledby="public-timeline-heading"
+            class="space-y-4"
+          >
+            <div class="flex items-center justify-between">
+              <h2 id="public-timeline-heading" class="sr-only">
+                {{ t('public.timeline.title') }}
+              </h2>
+              <span v-if="timelineTotalElements > 0" class="text-sm text-surface-500">
+                {{ t('public.posts.totalCount', { n: timelineTotalElements }) }}
+              </span>
+            </div>
+
+            <p v-if="timelinePosts.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
+              {{ t('public.timeline.empty') }}
+            </p>
+
+            <div v-else class="flex flex-col gap-4">
+              <div
+                v-for="post in timelinePosts"
+                :key="post.id"
+                data-testid="timeline-post-item"
+                class="rounded-lg border border-surface-200 p-4 dark:border-surface-700"
               >
-                <i class="pi pi-external-link mr-1" aria-hidden="true" />
-                {{ team.homepageUrl }}
-              </a>
-            </dd>
-          </div>
-        </dl>
-      </section>
+                <div class="mb-2 flex items-center gap-2">
+                  <img
+                    v-if="post.authorIconUrl"
+                    :src="post.authorIconUrl"
+                    :alt="post.authorDisplayName"
+                    class="size-8 rounded-full object-cover"
+                  >
+                  <span class="text-sm font-medium">{{ post.authorDisplayName }}</span>
+                  <span class="ml-auto text-xs text-surface-400">{{ post.createdAt }}</span>
+                </div>
+                <p class="text-sm">{{ post.content }}</p>
+              </div>
+            </div>
 
-      <!-- 理念 -->
-      <section
-        v-if="hasPhilosophy"
-        class="mb-6 rounded-lg border border-surface-200 bg-surface-0 p-4 sm:p-6"
-        data-testid="public-team-philosophy"
-      >
-        <h2 class="mb-3 text-lg font-semibold">
-          {{ $t('publicTeamDetail.philosophyTitle') }}
-        </h2>
-        <p class="whitespace-pre-line text-sm leading-relaxed text-gray-700">
-          {{ team.philosophy }}
-        </p>
-      </section>
+            <nav v-if="timelineTotalPages > 1" class="flex items-center justify-between pt-2" aria-label="timeline-pagination">
+              <Button
+                :disabled="timelineCurrentPage <= 0"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.prev')"
+                @click="goTimelinePage(timelineCurrentPage - 1)"
+              />
+              <span class="text-sm text-surface-500">
+                {{ t('public.posts.page', { page: timelineCurrentPage + 1, total: timelineTotalPages }) }}
+              </span>
+              <Button
+                :disabled="timelineCurrentPage >= timelineTotalPages - 1"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.next')"
+                @click="goTimelinePage(timelineCurrentPage + 1)"
+              />
+            </nav>
+          </section>
+        </TabPanel>
 
-      <!-- 地図 -->
-      <section
-        v-if="hasMap"
-        class="mb-6 rounded-lg border border-surface-200 bg-surface-0 p-4 sm:p-6"
-        data-testid="public-team-map"
-      >
-        <h2 class="mb-3 text-lg font-semibold">
-          {{ $t('publicTeamDetail.mapTitle') }}
-        </h2>
-        <div class="overflow-hidden rounded-md border border-surface-200">
-          <iframe
-            v-if="team.mapEmbedUrl"
-            :src="team.mapEmbedUrl"
-            width="100%"
-            height="400"
-            style="border: 0"
-            loading="lazy"
-            referrerpolicy="no-referrer-when-downgrade"
-            :title="$t('publicTeamDetail.mapTitle')"
-            data-testid="public-team-map-iframe"
-          />
-        </div>
-      </section>
+        <!-- F19.1 Phase 7: イベントタブ（timelinePostsPublic = true の場合のみ表示） -->
+        <TabPanel v-if="team.timelinePostsPublic" value="events">
+          <section
+            data-testid="public-events-section"
+            aria-labelledby="public-events-heading"
+            class="space-y-4"
+          >
+            <div class="flex items-center justify-between">
+              <h2 id="public-events-heading" class="sr-only">
+                {{ t('public.events.title') }}
+              </h2>
+              <span v-if="eventsTotalElements > 0" class="text-sm text-surface-500">
+                {{ t('public.posts.totalCount', { n: eventsTotalElements }) }}
+              </span>
+            </div>
 
-      <!-- ログイン誘導 CTA -->
-      <PublicTeamLoginCta :team-id="team.slug" />
-    </template>
+            <p v-if="events.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
+              {{ t('public.events.empty') }}
+            </p>
+
+            <div v-else class="flex flex-col gap-4">
+              <div
+                v-for="event in events"
+                :key="event.id"
+                data-testid="public-event-item"
+                class="rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+              >
+                <h3 class="mb-1 text-base font-semibold">{{ event.title }}</h3>
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-surface-500">
+                  <span>{{ event.startDate }}</span>
+                  <span v-if="event.endDate">〜 {{ event.endDate }}</span>
+                  <span v-if="event.location">{{ event.location }}</span>
+                </div>
+                <p v-if="event.description" class="mt-2 text-sm">{{ event.description }}</p>
+              </div>
+            </div>
+
+            <nav v-if="eventsTotalPages > 1" class="flex items-center justify-between pt-2" aria-label="events-pagination">
+              <Button
+                :disabled="eventCurrentPage <= 0"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.prev')"
+                @click="goEventsPage(eventCurrentPage - 1)"
+              />
+              <span class="text-sm text-surface-500">
+                {{ t('public.posts.page', { page: eventCurrentPage + 1, total: eventsTotalPages }) }}
+              </span>
+              <Button
+                :disabled="eventCurrentPage >= eventsTotalPages - 1"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.next')"
+                @click="goEventsPage(eventCurrentPage + 1)"
+              />
+            </nav>
+          </section>
+        </TabPanel>
+
+        <!-- F06.4 第三陣: 活動記録タブ。詳細遷移は既存の /activity/{id}（PR #2551 SSR化済み）を共用する -->
+        <TabPanel value="activities">
+          <section
+            data-testid="public-activities-section"
+            aria-labelledby="public-activities-heading"
+            class="space-y-4"
+          >
+            <h2 id="public-activities-heading" class="sr-only">
+              {{ t('public.activities.sectionTitle') }}
+            </h2>
+
+            <p v-if="activities.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
+              {{ t('public.activities.empty') }}
+            </p>
+
+            <div v-else class="flex flex-col gap-3">
+              <NuxtLink
+                v-for="activity in activities"
+                :key="activity.id"
+                :to="activityDetailHref(activity.id)"
+                data-testid="public-activity-item"
+                class="block rounded-lg border border-surface-200 p-4 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800"
+              >
+                <h3 class="mb-1 text-base font-semibold">{{ activity.title }}</h3>
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-surface-500">
+                  <span>{{ activity.activityDate }}</span>
+                </div>
+                <p v-if="activity.description" class="mt-2 line-clamp-2 text-sm text-surface-600 dark:text-surface-300">
+                  {{ activity.description }}
+                </p>
+              </NuxtLink>
+            </div>
+
+            <nav
+              v-if="activityCurrentPage > 0 || activityHasNext"
+              class="flex items-center justify-between pt-2"
+              aria-label="activities-pagination"
+            >
+              <Button
+                :disabled="activityCurrentPage <= 0"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.prev')"
+                @click="goActivityPage(activityCurrentPage - 1)"
+              />
+              <span class="text-sm text-surface-500">
+                {{ t('public.posts.page', { page: activityCurrentPage + 1, total: activityCurrentPage + (activityHasNext ? 2 : 1) }) }}
+              </span>
+              <Button
+                :disabled="!activityHasNext"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.next')"
+                @click="goActivityPage(activityCurrentPage + 1)"
+              />
+            </nav>
+          </section>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
+
+    <!-- F21.1 §5.5 FAQ駆動GEO: よくあるご質問（回答済み FAQ が 1 件以上のときのみ表示）。
+         可視内容は FAQPage JSON-LD の mainEntity と完全一致させる。 -->
+    <section
+      v-if="faqs.length > 0"
+      data-testid="public-faq-section"
+      aria-labelledby="public-faq-heading"
+      class="space-y-4"
+    >
+      <h2 id="public-faq-heading" class="text-xl font-bold">
+        {{ t('faq.public.title') }}
+      </h2>
+
+      <Accordion multiple>
+        <AccordionPanel
+          v-for="(item, index) in faqs"
+          :key="index"
+          :value="String(index)"
+          data-testid="public-faq-item"
+        >
+          <AccordionHeader>
+            <span class="text-sm font-medium" data-testid="public-faq-question">
+              {{ faqQuestion(item) }}
+            </span>
+          </AccordionHeader>
+          <AccordionContent>
+            <p class="whitespace-pre-line text-sm text-surface-700 dark:text-surface-200" data-testid="public-faq-answer">
+              {{ item.answer }}
+            </p>
+          </AccordionContent>
+        </AccordionPanel>
+      </Accordion>
+    </section>
+
+    <LoginCtaCard scope-kind="TEAM" :scope-id="teamSlug" />
   </div>
 </template>

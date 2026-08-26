@@ -12,18 +12,14 @@ import com.mannschaft.app.scopefolder.entity.AssignedVia;
 import com.mannschaft.app.scopefolder.entity.MyScopeFolderEntity;
 import com.mannschaft.app.scopefolder.repository.MyScopeFolderRepository;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.service.MembershipService;
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.WriterException;
-import com.google.zxing.client.j2se.MatrixToImageWriter;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.QRCodeWriter;
+import com.mannschaft.app.common.qr.BrandedQrImageWriter;
 import org.springframework.beans.factory.annotation.Value;
 import com.mannschaft.app.organization.entity.OrganizationEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
@@ -43,13 +39,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Base64;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -79,6 +71,8 @@ public class InviteService {
     private final MyScopeFolderService myScopeFolderService;
     private final MyScopeFolderRepository myScopeFolderRepository;
     private final MembershipService membershipService;
+    private final BrandedQrImageWriter brandedQrImageWriter;
+    private final AccessControlService accessControlService;
 
     /**
      * 招待トークンを作成する。
@@ -86,6 +80,9 @@ public class InviteService {
     @Transactional
     public ApiResponse<InviteTokenResponse> createInviteToken(Long scopeId, String scopeType,
                                                                CreateInviteTokenRequest req, Long createdBy) {
+        // 束1 権限昇格根治: 当該スコープの ADMIN/DEPUTY_ADMIN のみ招待トークンを発行できる。
+        accessControlService.checkAdminOrAbove(createdBy, scopeId, scopeType);
+
         RoleEntity role = roleRepository.findById(req.getRoleId())
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_001));
 
@@ -121,7 +118,10 @@ public class InviteService {
     /**
      * スコープ内の有効な招待トークン一覧を取得する。
      */
-    public List<InviteTokenResponse> getInviteTokens(Long scopeId, String scopeType) {
+    public List<InviteTokenResponse> getInviteTokens(Long scopeId, String scopeType, Long actorUserId) {
+        // 束1 権限昇格根治: 招待トークン一覧は当該スコープの ADMIN/DEPUTY_ADMIN のみ閲覧できる。
+        accessControlService.checkAdminOrAbove(actorUserId, scopeId, scopeType);
+
         List<InviteTokenEntity> tokens;
         if ("TEAM".equals(scopeType)) {
             tokens = inviteTokenRepository.findByTeamIdAndRevokedAtIsNull(scopeId);
@@ -141,9 +141,14 @@ public class InviteService {
      * 招待トークンを失効させる。
      */
     @Transactional
-    public void revokeInviteToken(Long tokenId) {
+    public void revokeInviteToken(Long tokenId, Long actorUserId) {
         InviteTokenEntity token = inviteTokenRepository.findById(tokenId)
                 .orElseThrow(() -> new BusinessException(RoleErrorCode.ROLE_002));
+
+        // 束1 BOLA 根治: トークンが属するスコープ（team/org）を entity から導出し、
+        // そのスコープの ADMIN/DEPUTY_ADMIN のみ失効できる（別スコープ ADMIN の tokenId 越境失効を遮断）。
+        accessControlService.checkAdminOrAbove(actorUserId, resolveScopeId(token), resolveScopeType(token));
+
         token.revoke();
         log.info("招待トークン失効完了: tokenId={}", tokenId);
     }
@@ -207,10 +212,11 @@ public class InviteService {
         // ブロックチェック
         checkNotBlocked(userId, scopeId, scopeType);
 
-        // 重複参加チェック
+        // 重複参加チェック（CMP-027: user_roles ∪ memberships の在籍で判定。
+        // ORG 側も exists 版へ揃え、memberships 専属の素メンバーの再参加を正しく検出する）
         boolean alreadyJoined = "TEAM".equals(scopeType)
                 ? userRoleRepository.existsByUserIdAndTeamId(userId, scopeId)
-                : userRoleRepository.findByUserIdAndOrganizationId(userId, scopeId).isPresent();
+                : userRoleRepository.existsByUserIdAndOrganizationId(userId, scopeId);
         if (alreadyJoined) {
             throw new BusinessException(TeamErrorCode.TEAM_003);
         }
@@ -268,9 +274,9 @@ public class InviteService {
      * フォルダの scope_type が招待 scope と不一致なら {@code SCOPE_FOLDER_TYPE_MISMATCH} を投げる。</p>
      */
     private void assignToFolder(Long userId, String scopeType, Long scopeId, Long folderId) {
-        com.mannschaft.app.scopefolder.entity.ScopeType folderScope = "TEAM".equals(scopeType)
-                ? com.mannschaft.app.scopefolder.entity.ScopeType.TEAM
-                : com.mannschaft.app.scopefolder.entity.ScopeType.ORGANIZATION;
+        com.mannschaft.app.scopefolder.entity.enums.ScopeType folderScope = "TEAM".equals(scopeType)
+                ? com.mannschaft.app.scopefolder.entity.enums.ScopeType.TEAM
+                : com.mannschaft.app.scopefolder.entity.enums.ScopeType.ORGANIZATION;
 
         if (folderId != null) {
             // フォルダの存在と scope_type 整合チェック（IDOR 含む）
@@ -363,7 +369,7 @@ public class InviteService {
 
     /**
      * 招待QRコード画像（PNG）を生成して返す。
-     * ZXingを使用してフロントエンドの招待URLをエンコードする。
+     * {@link BrandedQrImageWriter} で中央ブランドバッジ入りQR（ECL=H）としてフロントエンドの招待URLをエンコードする。
      *
      * @param tokenStr トークン文字列
      * @param size     QR画像サイズ（px）。null の場合はデフォルト300
@@ -380,20 +386,7 @@ public class InviteService {
 
         String inviteUrl = baseUrl + "/invite/" + tokenStr;
 
-        try {
-            Map<EncodeHintType, Object> hints = new EnumMap<>(EncodeHintType.class);
-            hints.put(EncodeHintType.CHARACTER_SET, "UTF-8");
-            hints.put(EncodeHintType.MARGIN, 1);
-
-            QRCodeWriter writer = new QRCodeWriter();
-            BitMatrix matrix = writer.encode(inviteUrl, BarcodeFormat.QR_CODE, qrSize, qrSize, hints);
-
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            MatrixToImageWriter.writeToStream(matrix, "PNG", out);
-            return out.toByteArray();
-        } catch (WriterException | IOException e) {
-            throw new IllegalStateException("QRコードの生成に失敗しました: " + tokenStr, e);
-        }
+        return brandedQrImageWriter.writePng(inviteUrl, qrSize);
     }
 
     /**

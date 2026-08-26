@@ -31,7 +31,11 @@ public class ReservationPolicyService {
      * 未永続エンティティを返す。
      *
      * <p>本メソッドは DB を書き込まない。永続化が必要な場合は
-     * {@link #updatePolicy(Long, ApprovalMode, Integer, String)} を使うこと。</p>
+     * {@link #updatePolicy(Long, ApprovalMode, Integer, String, Integer, Boolean)} を使うこと。</p>
+     *
+     * <p>F03.4.5 §6.3: 未永続の既定エンティティは {@code pendingExpireHours = 24}
+     * （{@link ReservationPolicyEntity#DEFAULT_PENDING_EXPIRE_HOURS}）を持つ。失効バッチも
+     * ポリシー行が無いチームを 24 時間として扱うため、GET 応答と実挙動が一致する。</p>
      *
      * @param teamId チームID
      * @return 該当チームの予約ポリシー（存在しなければ既定値の未永続エンティティ）
@@ -66,18 +70,26 @@ public class ReservationPolicyService {
      * レコードが存在しなければ新規作成し、存在すれば値を更新する。
      * null を渡したフィールドは更新しない（部分更新）。
      *
-     * @param teamId              チームID
-     * @param approvalMode        承認モード（null の場合は据え置き / 新規時は既定 AUTO）
-     * @param cancelDeadlineHours キャンセル締切時間（null の場合は据え置き / 新規時は既定 24）
-     * @param remindBeforeHours   リマインド CSV（null の場合は据え置き / 新規時は既定 "24,1"）
+     * <p>F03.4.5 §6.3: {@code pendingExpireHours} のみ「値の設定」と「無効化（NULL 化）」を
+     * 区別する必要があるため、{@code clearPendingExpireHours} フラグを併用する
+     * （{@code UpdateSlotRequest.clearApprovalMode} と同形）。<b>両方指定時は clear を優先</b>する。</p>
+     *
+     * @param teamId                  チームID
+     * @param approvalMode            承認モード（null の場合は据え置き / 新規時は既定 AUTO）
+     * @param cancelDeadlineHours     キャンセル締切時間（null の場合は据え置き / 新規時は既定 24）
+     * @param remindBeforeHours       リマインド CSV（null の場合は据え置き / 新規時は既定 "24,1"）
+     * @param pendingExpireHours      仮押さえ自動失効の時間数（null の場合は据え置き / 新規時は既定 24）
+     * @param clearPendingExpireHours true で自動失効を無効化（NULL 化）。{@code pendingExpireHours} より優先
      * @return 更新後の予約ポリシーエンティティ
      */
     @Transactional
     public ReservationPolicyEntity updatePolicy(
-            Long teamId, ApprovalMode approvalMode, Integer cancelDeadlineHours, String remindBeforeHours) {
+            Long teamId, ApprovalMode approvalMode, Integer cancelDeadlineHours, String remindBeforeHours,
+            Integer pendingExpireHours, Boolean clearPendingExpireHours) {
         ReservationPolicyEntity entity = policyRepository.findByTeamId(teamId)
                 .map(existing -> {
-                    existing.updatePolicy(approvalMode, cancelDeadlineHours, remindBeforeHours);
+                    existing.updatePolicy(approvalMode, cancelDeadlineHours, remindBeforeHours,
+                            pendingExpireHours, clearPendingExpireHours);
                     return existing;
                 })
                 .orElseGet(() -> {
@@ -92,11 +104,19 @@ public class ReservationPolicyService {
                     if (remindBeforeHours != null) {
                         builder.remindBeforeHours(remindBeforeHours);
                     }
+                    // 新規行でも clear 優先（clear=true なら値指定を無視して NULL で作る）。
+                    if (Boolean.TRUE.equals(clearPendingExpireHours)) {
+                        builder.pendingExpireHours(null);
+                    } else if (pendingExpireHours != null) {
+                        builder.pendingExpireHours(pendingExpireHours);
+                    }
                     return builder.build();
                 });
         ReservationPolicyEntity saved = policyRepository.save(entity);
-        log.info("予約ポリシー更新: teamId={}, approvalMode={}, cancelDeadlineHours={}, remindBeforeHours={}",
-                teamId, saved.getApprovalMode(), saved.getCancelDeadlineHours(), saved.getRemindBeforeHours());
+        log.info("予約ポリシー更新: teamId={}, approvalMode={}, cancelDeadlineHours={}, remindBeforeHours={},"
+                        + " pendingExpireHours={}",
+                teamId, saved.getApprovalMode(), saved.getCancelDeadlineHours(), saved.getRemindBeforeHours(),
+                saved.getPendingExpireHours());
         return saved;
     }
 }

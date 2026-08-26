@@ -14,10 +14,15 @@ useHead(() => ({
     <NuxtPage />
   </NuxtLayout>
   <NavigationLoading />
-  <Toast />
+  <Toast>
+    <template #message="{ message }">
+      <AppToastMessage :message="message" />
+    </template>
+  </Toast>
   <ConfirmDialog />
   <DynamicDialog />
   <ErrorReportModal />
+  <PaywallModal />
 </template>
 
 <style>

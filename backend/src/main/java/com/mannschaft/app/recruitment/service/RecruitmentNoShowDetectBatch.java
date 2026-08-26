@@ -46,7 +46,7 @@ public class RecruitmentNoShowDetectBatch {
      */
     @BatchEndpoint(name = "recruitment-no-show-detect-hourly", description = "終了 24h 経過した CONFIRMED 参加者を毎時 30 分に NO_SHOW 仮マークする")
     @Scheduled(cron = "0 30 * * * *")
-    @SchedulerLock(name = "recruitment-no-show-detect-batch", lockAtMostFor = "55m", lockAtLeastFor = "5m")
+    @SchedulerLock(name = "recruitment-no-show-detect-batch", lockAtMostFor = "2h", lockAtLeastFor = "5m")
     @Transactional
     public void detectNoShows() {
         final int CHUNK_SIZE = 500;

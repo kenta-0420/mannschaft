@@ -52,6 +52,14 @@
 - **同じコードが2箇所以上に出現したら共通化する**。コピペで済ませない。
 - 共通コンポーネントが要件に合わない場合は、直書きせずコンポーネント自体を拡張する（props を追加するなど）。
 
+## 3b. レスポンシブ / モバイル **【必須】**
+
+- **タップターゲットは最小 44x44px**: `<button>` 等のインタラクティブ要素はヒット領域を 44x44px 以上確保する。アイコンの視覚サイズ（`text-xs` / `pi` のフォントサイズ等）はそのままでよく、`min-h-11 min-w-11`（`2.75rem` = 44px）＋ `flex items-center justify-center` でパディング側だけ拡大する。密集したアイコン列（通知の既読/スヌーズ、投稿カードのアクションバー等）はこのパターンで統一する。
+  - デスクトップの視覚密度を崩さない範囲であればブレークポイント指定なしで適用してよい。タブバーの「＋」ボタンのようにチュラム（chrome）自体の高さが変わり密度が崩れる場合のみ `max-md:` を付けてモバイル限定にする。
+- **横スクロール（横パン）禁止**: 390px 幅（iPhone SE 相当）でページ全体が横に伸びてはならない。flex の子要素には `min-w-0` を付けて縮小可能にし、本来横に伸びる要素（テーブル・タブ列・コード表示等）は自コンテナ内に `overflow-x-auto` を付けて横スクロールを閉じ込める。
+- **ブレークポイント境界**: `md`（768px）を FE のモバイル/デスクトップの正の境界とする。レイアウト切り替え（サイドバーの折りたたみ等）の判定はこれに揃える。
+- **入力要素のフォントサイズは 16px 以上**: `<input>` / `<textarea>` 等の `font-size` が 16px 未満だと iOS Safari がフォーカス時に自動ズームする。Tailwind の `text-sm`（デフォルト14px）を入力欄に直接使わず、`text-base` 以上を使うか、`tailwind.config.ts` の `fontSize.xs` のように明示的に上書きされたスケールを使うこと。
+
 ## 4. ディレクトリ構成と責務 (Directory Structure)
 | ディレクトリ | 役割・責務 |
 | :--- | :--- |
@@ -93,12 +101,28 @@ Access Token の期限切れで 401 が返った場合、即座にログイン�
 ```
 1. 401 受信
 2. Refresh Token で POST /api/v1/auth/refresh を呼ぶ
-   ├── 成功 → 新しい Access Token + Refresh Token を localStorage に保存
-   │         → 元のリクエストを新トークンで自動リトライ
-   └── 失敗（Refresh Token も期限切れ等）
-             → AuthStore をクリア + ログイン画面へリダイレクト
+   ├── 'refreshed'（成功）→ 新しい Access Token + Refresh Token を保存（Cookie / in-memory）
+   │                        → 元のリクエストを新トークンで自動リトライ + 先回りタイマーを再武装
+   ├── 'auth_failed'（401/403。Refresh Token が無効・失効済み）
+   │                        → AuthStore をクリア + /login?reason=session_expired へリダイレクト
+   └── 'transient'（timeout / ネットワーク断 / 5xx）
+                            → ログアウトしない（回線が遅いだけのユーザーを落とさない）
 ```
+- **返り値は 3 状態**: `performTokenRefresh` は boolean ではなく `'refreshed' | 'auth_failed' | 'transient'` を返す。boolean だと「本物の認証失敗」と「一時的な失敗」が区別できず、回線が遅いだけのユーザーを誤ってログアウトさせてしまう
+- **`auth_failed` の判定は 401/403**: バックエンドは無効な refresh_token に対し `AUTH_007` を **401** で返す（`GlobalExceptionHandler.ERROR_CODE_STATUS_MAP`。`docs/security/06` §7.5）。`400` も認証失敗として受理するが、これは旧 BE・旧モバイルクライアント互換の後方互換措置であり、新規実装が 400 に依存してはならない
 - **二重リフレッシュ防止**: 複数リクエストが同時に 401 を受けた場合、リフレッシュ処理は1回だけ実行し、他のリクエストはその結果を待つ（Promise の共有パターン）
+- **二重ログアウト防止**: `auth_failed` は「先回りリフレッシュ経路」と「401 interceptor 経路」の双方から同時に観測され得るため、ログアウトは `handleAuthFailureLogout()` の single-flight ガードを必ず経由する（`navigateTo` の二重発火を防ぐ）
+
+### 先回り（proactive）リフレッシュ
+`armProactiveRefresh()` が access_token 失効の 60 秒前にリフレッシュを発火し、背景ポーラーが 401 ノイズを出す前にトークンを新鮮に保つ。発火結果による分岐は上記 3 状態と対応する:
+
+| 結果 | 挙動 |
+|---|---|
+| `refreshed` | 新しい失効時刻でタイマーを再武装する |
+| `transient` | 30 秒後に再武装してリトライする（ログアウトしない）|
+| `auth_failed` | **再武装せず**ログアウトする。リトライしても永久に回復しないため、再武装すると確実に失敗するリクエストを 30 秒おきに投げ続けるゾンビセッションになる |
+
+タイマーは常に 1 本のみ武装し、SSR では張らない（`import.meta.client` ガード）。ログアウト時は `disarmProactiveRefresh()` で解除する。
 
 ### 型安全な API 呼び出し
 OpenAPI Generator で自動生成された型を活用し、API レスポンスに型パラメータを付与する:
@@ -144,6 +168,7 @@ const created = await api<ApiResponse<TeamDetailResponse>>(
 - **送信方法**: APIリクエストごとに `Authorization: Bearer <token>` ヘッダーをプログラムで付与する。
 - **Cookie 使用禁止**: 認証トークンを Cookie に格納しないこと。Cookie を利用しないことで CSRF 攻撃を構造的に排除する。
 - **XSS対策との併用**: トークン漏洩（XSS）リスクに対しては、Access Token の有効期限を短く（15分）設定し、Refresh Token Rotation を併用することで軽減する。
+- **⚠️ 開発環境の罠（Refresh 用 Cookie は `SameSite=Strict`）**: `Authorization: Bearer` の他に、Refresh Token ローテーション用の `access_token` / `refresh_token` は BE から `SameSite=Strict` の Cookie としても発行される。SameSite の同一サイト判定はホスト名の文字列一致で行われるため、開発時にアプリを `http://127.0.0.1:3000` で開くと `http://localhost:8080` からの `Set-Cookie` が保存されない。ログイン直後は body のトークンが in-memory に載るため正常に見えるが、15分後の先回りリフレッシュ（`armProactiveRefresh`）が Cookie 送信できず 401 となり強制ログアウトされる。**dev サーバーの URL は必ず `http://localhost:3000` を使うこと（`127.0.0.1` は使わない）**。`nuxt.config.ts` の `devServer.host` を `'::'`（デュアルスタック bind）にしてあるため、`localhost` / `127.0.0.1` / `[::1]` のいずれで叩いても正常に 200 が返る。再発防止テスト: `frontend/tests/e2e/real/auth-cookie-origin.spec.ts`。
 
 ### フロント・バック間のバリデーション同期
 - **方針**: バックエンドが提供する OpenAPI (Swagger) 仕様書を正（Single Source of Truth）とする。

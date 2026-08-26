@@ -62,9 +62,10 @@ function onSaved() {
       />
     </template>
 
-    <!-- ご縁ランキング (Phase 3) — 村人のみ表示 -->
-    <section v-if="village.isMember && !selectedThread" class="mt-6 rounded-lg border border-surface-200 p-4 dark:border-surface-700">
-      <VillageSerendipityRankingWidget :village-id="village.id" />
+    <!-- 加入前相性表示 (F17.2 Wave3 ⑤) — 未参加者のみ表示（AC-24c）。
+         ご縁スコアランキング (Phase 3) は廃止済み（AC-23・§8.2）。 -->
+    <section v-if="!village.isMember && !selectedThread" class="mt-6 rounded-lg border border-surface-200 p-4 dark:border-surface-700">
+      <VillageAffinityCard :village-id="village.id" />
     </section>
 
     <!-- スレッド作成ダイアログ -->

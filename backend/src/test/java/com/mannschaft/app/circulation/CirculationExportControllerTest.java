@@ -59,7 +59,7 @@ class CirculationExportControllerTest {
     void requestExport_pending_returns202() {
         ExportRequestResponse stub = new ExportRequestResponse(
                 DOCUMENT_ID, "GENERATING", "/api/v1/circulations/100/export/status", 10);
-        given(exportService.requestExport(eq(DOCUMENT_ID), eq(USER_ID), eq(false))).willReturn(stub);
+        given(exportService.requestExport(eq(DOCUMENT_ID), eq(USER_ID))).willReturn(stub);
 
         ResponseEntity<?> response = controller.requestExport(DOCUMENT_ID);
 
@@ -74,7 +74,7 @@ class CirculationExportControllerTest {
                 DOCUMENT_ID, "COMPLETED",
                 LocalDateTime.now().minusMinutes(5), LocalDateTime.now().minusMinutes(1),
                 null, "https://r2.example.com/signed");
-        given(exportService.requestExport(eq(DOCUMENT_ID), eq(USER_ID), eq(false))).willReturn(stub);
+        given(exportService.requestExport(eq(DOCUMENT_ID), eq(USER_ID))).willReturn(stub);
 
         ResponseEntity<?> response = controller.requestExport(DOCUMENT_ID);
 
@@ -90,7 +90,7 @@ class CirculationExportControllerTest {
                 DOCUMENT_ID, "COMPLETED",
                 LocalDateTime.now().minusMinutes(5), LocalDateTime.now().minusMinutes(1),
                 null, "https://r2.example.com/signed");
-        given(exportService.getExportStatus(eq(DOCUMENT_ID), eq(USER_ID), eq(false))).willReturn(stub);
+        given(exportService.getExportStatus(eq(DOCUMENT_ID), eq(USER_ID))).willReturn(stub);
 
         ResponseEntity<ApiResponse<ExportStatusResponse>> response = controller.getStatus(DOCUMENT_ID);
 
@@ -101,8 +101,9 @@ class CirculationExportControllerTest {
     }
 
     @Test
-    @DisplayName("ROLE_ADMIN を持つユーザーは isAdmin=true で Service に渡る")
-    void requestExport_adminUser_passesAdminFlag() {
+    @DisplayName("認可根治 Wave4: ROLE_ADMIN 権限を持っていても Controller はグローバル admin 判定を行わず"
+            + "actorId のみを Service に渡す（per-scope 判定は Service 側の責務）")
+    void requestExport_adminUser_doesNotComputeGlobalAdminFlag() {
         SecurityContextHolder.clearContext();
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(
@@ -110,11 +111,11 @@ class CirculationExportControllerTest {
                         List.of(new SimpleGrantedAuthority("ROLE_ADMIN"))));
         ExportRequestResponse stub = new ExportRequestResponse(
                 DOCUMENT_ID, "GENERATING", "/api/v1/circulations/100/export/status", 10);
-        given(exportService.requestExport(eq(DOCUMENT_ID), eq(USER_ID), eq(true))).willReturn(stub);
+        given(exportService.requestExport(eq(DOCUMENT_ID), eq(USER_ID))).willReturn(stub);
 
         ResponseEntity<?> response = controller.requestExport(DOCUMENT_ID);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.ACCEPTED);
-        verify(exportService).requestExport(eq(DOCUMENT_ID), eq(USER_ID), eq(true));
+        verify(exportService).requestExport(eq(DOCUMENT_ID), eq(USER_ID));
     }
 }

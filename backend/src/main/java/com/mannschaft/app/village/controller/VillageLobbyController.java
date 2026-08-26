@@ -2,6 +2,7 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.dto.DailyThreadListResponse;
 import com.mannschaft.app.village.dto.DailyThreadResponse;
 import com.mannschaft.app.village.dto.LobbyChannelResponse;
@@ -29,13 +30,19 @@ import java.util.UUID;
  *   <li>{@code GET /api/v1/villages/{villageId}/lobby/daily/{date}} — 特定日のスレッド要約</li>
  * </ul>
  *
- * <p>呼び出しユーザーが村のメンバーでない場合は {@code 404 VILLAGE_007}（IDOR 対策）。
- * メッセージ送信は既存 {@code /api/v1/chat/channels/{channelId}/messages} を使う（§4.10.4）。</p>
+ * <p>メッセージ送信は既存 {@code /api/v1/chat/channels/{channelId}/messages} を使う（§4.10.4）。</p>
+ *
+ * <h2>認可</h2>
+ * <p>全 EP の認可は {@link VillageLobbyService} 内で完結する。各メソッドは
+ * {@code loadActiveVillage} で村の存在（削除・凍結を除外）を確認したのち、
+ * {@code isUserVillageMember}（在籍かつ BAN 済みでないこと）を検証し、
+ * 満たさない場合は {@code VILLAGE_007 NOT_MEMBER}（404）で村の存在ごと秘匿する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/villages/{villageId}/lobby")
 @Tag(name = "村ロビー (F17.1)", description = "Phase 1: 井戸端会議チャネル + 日次スレッド")
 @RequiredArgsConstructor
+@AuthorizedInService
 public class VillageLobbyController {
 
     private final VillageLobbyService lobbyService;

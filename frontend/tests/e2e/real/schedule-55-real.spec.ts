@@ -24,8 +24,7 @@
  *   - リマインダー追加ボタン: label=$t('schedule.reminder.add') = 「リマインダーを追加」
  *   - リマインダーラベル: $t('schedule.reminder.label') = 「リマインダー」
  *   - リマインダー種別Select: aria-label=$t('schedule.reminder.kind_label') = 「種別」
- *   - 相対リマインダー 値InputNumber: aria-label=$t('schedule.reminder.relative_value_label') = 「値」
- *   - 相対リマインダー 単位Select: aria-label=$t('schedule.reminder.unit_label') = 「単位」
+ *   - 相対リマインダー プリセットSelect: aria-label=$t('schedule.reminder.relative_value_label') = 「値」（例: 既定「30分前」。5/10/15/30分・1/3時間・1/2日・1週間前から選択）
  *   - リマインダー削除: icon="pi pi-trash", aria-label=$t('schedule.common_delete') = 「削除」
  *   - アンケート予約ラベル: $t('schedule.scheduled_survey.label') = 「アンケートを予約作成」+ ToggleSwitch
  *   - 出欠募集予約ラベル: $t('schedule.scheduled_attendance.label') = 「出欠募集を予約作成」+ ToggleSwitch
@@ -197,8 +196,10 @@ test.describe('SCHED55-REAL UI: スケジュールフォームのリマインダ
     const kindSelect = dialog.locator('[aria-label="種別"]')
     await expect(kindSelect.first()).toBeVisible({ timeout: 3_000 })
 
-    // 「前」テキストが表示されること（相対リマインダーのデフォルト: $t('schedule.reminder.before')）
-    await expect(dialog.getByText('前').first()).toBeVisible({ timeout: 3_000 })
+    // 相対リマインダーのプリセット選択（aria-label="値"）が表示され、既定の「30分前」が選ばれていること
+    const relativePresetSelect = dialog.locator('[aria-label="値"]')
+    await expect(relativePresetSelect.first()).toBeVisible({ timeout: 3_000 })
+    await expect(relativePresetSelect.first()).toContainText('30分前', { timeout: 3_000 })
 
     // カウンター表示「1 / 5」が表示されること
     await expect(dialog.getByText('1 / 5')).toBeVisible({ timeout: 3_000 })

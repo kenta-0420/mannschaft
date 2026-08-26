@@ -1,49 +1,56 @@
 package com.mannschaft.app.village.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
-import com.mannschaft.app.auth.AuditEventType;
-import com.mannschaft.app.auth.service.AuditLogService;
-import com.mannschaft.app.village.entity.VillageNewsletterEntity;
+import com.mannschaft.app.notification.NotificationPriority;
+import com.mannschaft.app.notification.NotificationScopeType;
+import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.village.entity.VillageNewsletterIssueEntity;
 import com.mannschaft.app.village.entity.VillageNewsletterOptOutEntity;
-import com.mannschaft.app.village.entity.VillageNewsletterSendLogEntity;
-import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
+import com.mannschaft.app.village.entity.enums.VillageNewsletterIssueStatus;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
+import com.mannschaft.app.village.repository.VillageNewsletterIssueRepository;
 import com.mannschaft.app.village.repository.VillageNewsletterOptOutRepository;
-import com.mannschaft.app.village.repository.VillageNewsletterRepository;
-import com.mannschaft.app.village.repository.VillageNewsletterSendLogRepository;
+import com.mannschaft.app.village.service.VillageNewsletterBodyComposer;
+import com.mannschaft.app.village.service.VillageNewsletterPublishService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
 /**
- * F17.1 Phase 3-β-E — 村ニュースレター配信バッチ。
+ * F17.1 ②-3 — 村ニュースレター配信バッチ（設計書 §6.2 / §7）。
  *
- * <p>スケジュール:</p>
+ * <p>「集計 → 凍結 → ラグ → 配信」の最終段。②-2 の集計・凍結バッチが作った <b>FROZEN 号</b> のうち、
+ * <b>配信予定（{@code scheduled_publish_at}）が到来したもの</b>を号単位で配信し、PUBLISHED 化する。
+ * 従来の「頻度（frequency）を毎回走査する」方式から <b>号（issue）駆動</b> へ改めた（設計書 §6.2）。</p>
+ *
+ * <h2>手間ゼロ既定（要件③・マスター御裁可）</h2>
+ * <p>コメントの有無で分岐せず、<b>FROZEN 号は配信日に必ず飛ぶ</b>。コメントがあれば本文に連結、無ければ
+ * ダイジェスト単体。活動ゼロの号でも定型文で配信する（規則性）。村長の操作は不要。</p>
+ *
+ * <h2>配線（型の壁の回避・設計書 §7.2）</h2>
+ * <p>{@link NotificationHelper#notifyPreAuthorized}（受信者ごとの事前認可済み通知）を用いる。受信者は
+ * 「村メンバー − opt-out」で呼び出し側で確定済みのため可視性フィルタ（canView）を通さない版が適切。
+ * 村 ID・号 ID は {@code UUID} だが通知の {@code sourceId}/{@code scopeId} は {@code Long} のため、
+ * これらは {@code null} とし、号への導線は {@code actionUrl} に載せる。{@code scopeType} は VILLAGE が
+ * enum に無いため {@link NotificationScopeType#SYSTEM} を用いる。</p>
+ *
+ * <h2>fault isolation・トランザクション（設計書 §7.5・原則5）</h2>
  * <ul>
- *   <li>週次: 毎週金曜 18:00（cron = "0 0 18 * * FRI"）</li>
- *   <li>月次: 28〜31 日の 18:00 に発火し、月末日のみ実行（cron = "0 0 18 28-31 * *"）</li>
- * </ul>
- *
- * <h2>マスター裁可（2026-05-14）</h2>
- * <p>デフォルト <b>opt-in</b>。村人全員が受信対象で、opt-out 済みユーザーのみ除外する。</p>
- *
- * <h2>原則準拠</h2>
- * <ul>
- *   <li>原則1: 受信者 user_id は他ドメイン参照だが FK は張らない。</li>
- *   <li>原則5: 本バッチは village ドメイン内に閉じる。実際の通知配信
- *       （NotificationDispatchService 呼び出し）はクロスドメインになるため、
- *       現時点では TODO コメント付きの log.info プレースホルダーに留める。
- *       将来は NotificationDispatch 経由でメール/Push に展開する予定。</li>
+ *   <li>受信者ごとに {@code notifyPreAuthorized} を呼び、try/catch で成否を数える（AC-13: 1 件失敗しても継続）。
+ *       通知は best-effort で <b>トランザクション外</b>。</li>
+ *   <li>号の PUBLISHED 化・送信ログ・監査は {@link VillageNewsletterPublishService}（村ドメインの
+ *       {@code @Transactional}・別 Bean）へプロキシ経由で委譲し、通知失敗が村トランザクションを巻き込まない
+ *       ようにする。</li>
+ *   <li>号 1 件の配信が失敗しても次の号は続行する（error-continue）。</li>
  *   <li>ShedLock で複数インスタンス起動時の二重実行を防ぐ。</li>
  * </ul>
  */
@@ -52,84 +59,75 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VillageNewsletterDispatchBatchService {
 
-    private final VillageNewsletterRepository newsletterRepository;
+    private final VillageNewsletterIssueRepository issueRepository;
     private final VillageNewsletterOptOutRepository optOutRepository;
-    private final VillageNewsletterSendLogRepository sendLogRepository;
     private final VillageMembershipRepository membershipRepository;
-    private final AuditLogService auditLogService;
+    private final NotificationHelper notificationHelper;
+    private final VillageNewsletterBodyComposer bodyComposer;
+    private final VillageNewsletterPublishService publishService;
 
     /**
-     * 週次配信: 金曜 18:00（UTC）。
+     * 毎日 18:00 UTC に、配信予定が到来した凍結号を配信・公開する。
      */
-    @BatchEndpoint(name = "village-newsletter-weekly-dispatch", description = "村ニュースレター週次配信を毎週金曜 18:00 UTC に実行する")
-    @Scheduled(cron = "0 0 18 * * FRI", zone = "UTC")
+    @BatchEndpoint(name = "village-newsletter-dispatch-daily",
+            description = "配信予定が到来した凍結済み村ニュースレター号を配信・公開する（毎日 18:00 UTC）")
+    @Scheduled(cron = "0 0 18 * * *", zone = "UTC")
     @SchedulerLock(
-            name = "villageNewsletterWeeklyDispatch",
+            name = "villageNewsletterDispatch",
             lockAtLeastFor = "PT1M",
             lockAtMostFor = "PT30M")
-    public void runWeeklyBatch() {
-        log.info("ニュースレター週次配信バッチ開始");
-        int total = dispatchByFrequency(VillageNewsletterFrequency.WEEKLY);
-        log.info("ニュースレター週次配信バッチ完了: 配信村数={}", total);
+    public void runDailyDispatch() {
+        int published = dispatchForDate(LocalDateTime.now(ZoneOffset.UTC));
+        log.info("ニュースレター配信バッチ完了: 配信号数={}", published);
     }
 
     /**
-     * 月次配信: 月末日 18:00（UTC）。
+     * 指定時刻を「今」として配信を実行する（テスト・再実行用に時刻を注入可能にした委譲先）。
      *
-     * <p>cron 自体は 28〜31 日の 18:00 で発火し、当日が月末でない場合はスキップする。</p>
+     * <p>配信予定が {@code now} 以前の FROZEN 号を号単位で配信・公開する。1 件失敗しても次へ進む。</p>
+     *
+     * @param now 配信基準時刻
+     * @return 配信・公開した号数
      */
-    @BatchEndpoint(name = "village-newsletter-monthly-dispatch", description = "村ニュースレター月次配信を毎月末日 18:00 UTC に実行する")
-    @Scheduled(cron = "0 0 18 28-31 * *", zone = "UTC")
-    @SchedulerLock(
-            name = "villageNewsletterMonthlyDispatch",
-            lockAtLeastFor = "PT1M",
-            lockAtMostFor = "PT30M")
-    public void runMonthlyBatch() {
-        LocalDate today = LocalDate.now();
-        if (today.getDayOfMonth() != today.lengthOfMonth()) {
-            log.debug("ニュースレター月次配信: 月末でないためスキップ: today={}", today);
-            return;
-        }
-        log.info("ニュースレター月次配信バッチ開始: today={}", today);
-        int total = dispatchByFrequency(VillageNewsletterFrequency.MONTHLY);
-        log.info("ニュースレター月次配信バッチ完了: 配信村数={}", total);
-    }
-
-    /**
-     * 指定頻度の有効なニュースレターを走査し、村ごとに配信を実行する。
-     * 1 件失敗しても次の村は続行する。
-     */
-    private int dispatchByFrequency(VillageNewsletterFrequency frequency) {
-        List<VillageNewsletterEntity> targets =
-                newsletterRepository.findByFrequencyAndIsEnabledTrueAndDeletedAtIsNull(frequency);
-        int dispatched = 0;
-        for (VillageNewsletterEntity nl : targets) {
+    public int dispatchForDate(LocalDateTime now) {
+        List<VillageNewsletterIssueEntity> due = issueRepository
+                .findByStatusAndScheduledPublishAtLessThanEqualAndDeletedAtIsNull(
+                        VillageNewsletterIssueStatus.FROZEN, now);
+        log.info("ニュースレター配信バッチ開始: 対象号数={} now={}", due.size(), now);
+        int published = 0;
+        for (VillageNewsletterIssueEntity issue : due) {
             try {
-                dispatchSingleNewsletter(nl);
-                dispatched++;
+                dispatchIssue(issue);
+                published++;
             } catch (Exception e) {
-                log.error("ニュースレター配信失敗: newsletterId={} villageId={}",
-                        nl.getId(), nl.getVillageId(), e);
+                log.error("ニュースレター号配信失敗: issueId={} villageId={}",
+                        issue.getId(), issue.getVillageId(), e);
             }
         }
-        return dispatched;
+        return published;
     }
 
     /**
-     * 1 件のニュースレター配信処理。受信者抽出 → opt-out 除外 → 配信 → 履歴保存。
+     * 1 号の配信処理。受信者抽出 → opt-out 除外 → 受信者ごと通知（best-effort）→ 号の PUBLISHED 化。
      */
-    @Transactional
-    public void dispatchSingleNewsletter(VillageNewsletterEntity newsletter) {
-        UUID villageId = newsletter.getVillageId();
-        // 1. 村の現役ユーザーメンバーを取得（受信者母集団）
+    private void dispatchIssue(VillageNewsletterIssueEntity issue) {
+        UUID villageId = issue.getVillageId();
+
+        // 1. 受信者母集団（村の現役ユーザーメンバー）
         List<Long> activeUserIds = membershipRepository.findActiveUserSubjectIdsByVillageId(villageId);
 
-        // 2. opt-out しているユーザーを除外
+        // 2. opt-out 除外（既存ロジック流用・AC-12）
         Set<Long> optedOut = new HashSet<>();
         for (VillageNewsletterOptOutEntity o : optOutRepository.findByVillageId(villageId)) {
             optedOut.add(o.getUserId());
         }
 
+        // 3. 通知の本文・タイトル・導線（型の壁回避: 村UUID・号UUIDは actionUrl に載せる）
+        String title = bodyComposer.composeTitle(issue);
+        String body = bodyComposer.composeBody(issue);
+        String actionUrl = "/villages/" + villageId + "/newsletter/issues/" + issue.getId();
+
+        // 4. 受信者ごとに配信（best-effort・トランザクション外。1 件失敗しても継続し failure を数える＝AC-13）
         int recipientCount = 0;
         int successCount = 0;
         int failureCount = 0;
@@ -139,56 +137,24 @@ public class VillageNewsletterDispatchBatchService {
             }
             recipientCount++;
             try {
-                deliverToUser(newsletter, userId);
+                notificationHelper.notifyPreAuthorized(
+                        userId, "VILLAGE_NEWSLETTER", NotificationPriority.NORMAL,
+                        title, body,
+                        "VILLAGE_NEWSLETTER", null,
+                        NotificationScopeType.SYSTEM, null,
+                        actionUrl, null);
                 successCount++;
             } catch (Exception e) {
                 failureCount++;
-                log.warn("ニュースレター個別配信失敗: villageId={} userId={}", villageId, userId, e);
+                log.warn("ニュースレター個別配信失敗（継続）: villageId={} userId={}", villageId, userId, e);
             }
         }
 
-        // 3. last_sent_at 更新
-        LocalDateTime now = LocalDateTime.now();
-        newsletter.setLastSentAt(now);
-        newsletterRepository.save(newsletter);
+        // 5. 号の PUBLISHED 化・送信ログ・監査は村ドメインの @Transactional（別 Bean）へプロキシ経由で委譲。
+        //    通知（4）は best-effort でこのトランザクションの外なので、通知失敗は号の確定を巻き込まない（§7.5）。
+        publishService.publishIssue(issue, recipientCount, successCount, failureCount);
 
-        // 4. 配信履歴保存
-        sendLogRepository.save(VillageNewsletterSendLogEntity.builder()
-                .newsletterId(newsletter.getId())
-                .sentAt(now)
-                .recipientCount(recipientCount)
-                .successCount(successCount)
-                .failureCount(failureCount)
-                .build());
-
-        // 5. 監査ログ
-        auditLogService.record(
-                AuditEventType.VILLAGE_NEWSLETTER_SENT.name(),
-                null, null, null, null,
-                null, null, null,
-                "{\"villageId\":\"" + villageId
-                        + "\",\"newsletterId\":\"" + newsletter.getId()
-                        + "\",\"frequency\":\"" + newsletter.getFrequency()
-                        + "\",\"recipientCount\":" + recipientCount
-                        + ",\"successCount\":" + successCount
-                        + ",\"failureCount\":" + failureCount + "}"
-        );
-        log.info("ニュースレター配信: villageId={} freq={} recipients={} success={} failure={}",
-                villageId, newsletter.getFrequency(), recipientCount, successCount, failureCount);
-    }
-
-    /**
-     * 個別ユーザーへの配信実装。
-     *
-     * <p>TODO(F17.1 Phase 3-β-E 後続): {@code NotificationDispatchService} 経由で
-     * 実際にメール/PWA Push を送信する。Notification ドメインを呼び出すため、
-     * 本サービスから直接呼ぶとクロスドメイン依存が発生する（原則5）。
-     * 推奨は {@code VillageNewsletterSendRequestedEvent} を発行し、
-     * notification ドメイン側のイベントリスナで配信するイベント駆動方式。
-     * 現段階ではプレースホルダーとして log.info に留め、配信履歴のみ正確に残す。</p>
-     */
-    private void deliverToUser(VillageNewsletterEntity newsletter, Long userId) {
-        log.debug("[NEWSLETTER PLACEHOLDER] villageId={} userId={} freq={} (実配信は後続フェーズで NotificationDispatch 連携予定)",
-                newsletter.getVillageId(), userId, newsletter.getFrequency());
+        log.info("ニュースレター号を配信: villageId={} issueId={} recipients={} success={} failure={}",
+                villageId, issue.getId(), recipientCount, successCount, failureCount);
     }
 }

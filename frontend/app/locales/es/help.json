@@ -42,6 +42,31 @@
       }
     }
   },
+  "contact_request_blocks_help": {
+    "title": "Cómo usar la lista de bloqueo de solicitudes de contacto",
+    "description": "Esta configuración te permite ignorar automáticamente las solicitudes de «agregar como contacto» de personas específicas desde el principio.",
+    "what": {
+      "title": "¿Qué es la lista de bloqueo de solicitudes de contacto?",
+      "body": "Si alguien en esta lista intenta agregarte como contacto, su solicitud se ignora automáticamente. No recibirás ninguna notificación ni sabrás que lo intentaron.",
+      "note": "La otra persona nunca es informada de que fue bloqueada. Puedes detener silenciosamente las solicitudes de personas específicas sin crear ninguna incomodidad."
+    },
+    "list": {
+      "title": "Cómo leer la lista",
+      "body": "Todos los usuarios bloqueados se muestran en una lista. Cada fila contiene la siguiente información.",
+      "item_name": "Icono y nombre — quién estás bloqueando",
+      "item_handle": "Identificador de contacto que comienza con {'@'} — el ID único de esa persona",
+      "item_date": "«Establecido el» — la fecha en que se registró el bloqueo"
+    },
+    "unblock": {
+      "title": "Cómo eliminar un bloqueo",
+      "body": "Puedes eliminar un bloqueo en cualquier momento. Una vez eliminado, esa persona podrá enviarte solicitudes de contacto nuevamente.",
+      "steps": {
+        "step1": "Encuentra la fila de la persona que quieres desbloquear.",
+        "step2": "Pulsa el botón «Desbloquear» en el lado derecho de la fila.",
+        "step3": "Cuando la persona desaparezca de la lista, el bloqueo habrá sido eliminado correctamente."
+      }
+    }
+  },
   "qa": {
     "title": "Preguntas frecuentes (Q&A)",
     "description": "Respuestas a preguntas comunes sobre el uso de Mannschaft, la instalacion de la PWA y mas.",
@@ -125,6 +150,29 @@
           "answer": "Primero borra la cache del navegador. Si no mejora, prueba a desinstalar y reinstalar la PWA. Si aun asi no se soluciona, contacta con soporte."
         }
       }
+    }
+  },
+  "calendar_sync_help": {
+    "title": "Como usar la integracion con Google Calendar",
+    "description": "Sincroniza automaticamente tus horarios con Google Calendar para poder consultarlos desde tu telefono u otras aplicaciones.",
+    "what": {
+      "title": "Que es la integracion con Google Calendar",
+      "body": "Los horarios de Mannschaft (personal, de equipo y de organizacion) se reflejan automaticamente en Google Calendar. Una vez conectado, siempre puedes consultar tus horarios desde cualquier dispositivo o app compatible con Google Calendar."
+    },
+    "connect": {
+      "title": "Conectar tu cuenta",
+      "body": "Pulsa \"Conectar cuenta de Google\" para ir a la pantalla de inicio de sesion de Google. Al conceder acceso al calendario se completa la conexion. Puedes desconectarte en cualquier momento con el boton \"Desconectar\"."
+    },
+    "toggles": {
+      "title": "Activar/desactivar la sincronizacion de forma individual",
+      "body": "Puedes activar o desactivar la sincronizacion por separado para el \"Calendario personal\", los \"Calendarios de equipo\" y los \"Calendarios de organizacion\". Los cambios se aplican de inmediato, no hay boton de guardar.",
+      "item_personal": "Calendario personal: sincroniza tus propios horarios personales",
+      "item_team": "Calendarios de equipo: sincroniza los horarios de los equipos a los que perteneces",
+      "item_org": "Calendarios de organizacion: sincroniza los horarios de las organizaciones a las que perteneces"
+    },
+    "sync_behavior": {
+      "title": "Cuando ocurre la sincronizacion",
+      "body": "Al activar la sincronizacion se sincronizan de una vez todos los horarios que aun no estaban sincronizados (backfill). Si son muchos, puede tardar unos minutos. Usa el boton \"Sincronizacion manual\" siempre que quieras reflejar el estado mas reciente de inmediato."
     }
   }
 }

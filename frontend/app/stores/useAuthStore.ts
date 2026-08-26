@@ -62,6 +62,20 @@ export const useAuthStore = defineStore('auth', {
           // tokenExpiresAt が無ければプラグイン側は「期限不明＝失効扱い」で先回りリフレッシュする。
         }
       }
+
+      // 先回り（proactive）リフレッシュタイマーの武装は、ここ（setTokens）では行わない。
+      //
+      // 【理由】setTokens はタイマー起点のリフレッシュ経路（armProactiveRefresh の fire →
+      // performTokenRefresh → 内部で setTokens）からも呼ばれる。その経路では setTokens は
+      // setTimeout の非同期コンテキスト（await 後）で実行されるため、ここで useRuntimeConfig() /
+      // useAuthStore() を呼ぶのは「composable は同期 Nuxt コンテキストでのみ呼ぶ」不変条件に反する
+      // （memory feedback_nuxt_plugin_no_setup_composables）。実機検証では現状 Nuxt3 の client
+      // フォールバックで例外は出なかったが、Nuxt 内部実装の変更で将来落ちうる潜在リスクであり、
+      // かつ fire 側が成功時に captured config で再武装するため setTokens 内の arm は冗長な二重武装
+      // だった。よって arm は「必ず同期コンテキストである呼び出し元」に寄せる:
+      //   - ログイン成功各所（login.vue / 2fa-verify.vue / 2fa-recovery.vue / OAuth コールバック）
+      //   - auth.client プラグイン起動時（認証済みなら）
+      // リフレッシュ成功後の再武装は useApi.ts の fire コールバックが captured config で担う。
     },
 
     /**
@@ -105,6 +119,33 @@ export const useAuthStore = defineStore('auth', {
       } catch {
         // DB 削除失敗は処理継続
       }
+    },
+
+    /**
+     * ログイン直後にアカウント設定（外観・ナビ）をサーバーから同期する。
+     *
+     * 【呼び出しタイミング】
+     * 実ログイン成立後（login.vue・2fa-verify.vue・OAuth コールバック）にのみ呼ぶこと。
+     * プロフィール更新（locale/avatar 変更等）での setUser 呼び出し時には呼ばない。
+     *
+     * 【設計方針】
+     * 外観・ナビ設定の同期失敗でログイン遷移をブロックしない（fire-and-forget）。
+     * BEに保存済み設定が新ブラウザ（シークレット等）でも反映されるよう、
+     * ログイン直後に localStorage/cookie へ永続化し DOM に適用する。
+     *
+     * loadFromServer() は成功時に localStorage/cookie へ永続化・DOM 適用まで完了するため、
+     * 呼び出し元で追加処理は不要。
+     */
+    syncAccountSettings() {
+      if (!import.meta.client) return
+      // ログイン遷移をブロックしないよう void で fire-and-forget する。
+      // 失敗は握りつぶす（表示設定の同期失敗でログインを止めない設計判断）。
+      void Promise.all([
+        useAppearanceStore().loadFromServer(),
+        useNavSettingsStore().loadFromServer(),
+      ]).catch((err) => {
+        console.error('[syncAccountSettings] 設定同期失敗:', err)
+      })
     },
 
     async setUser(user: AuthUser) {
@@ -176,6 +217,8 @@ export const useAuthStore = defineStore('auth', {
       this.accessToken = null
       this.refreshToken = null
       this.user = null
+      // 武装中の先回りリフレッシュタイマーを解除する（AC-3）。以後リフレッシュは発火しない。
+      disarmProactiveRefresh()
       if (import.meta.client) {
         // accessToken・refreshToken の localStorage エントリは廃止済みだが、
         // 移行前の古いデータが残っている場合のクリーンアップとして削除する。
@@ -209,8 +252,17 @@ export const useAuthStore = defineStore('auth', {
         : Promise.resolve()
 
       // ③ 遷移を即時実行（クリーンアップ完了を待たない）。
+      //
+      // 既に遷移先と同一の URL にいる場合は navigateTo を撃たない。
+      // ログイン画面に留まったまま失効を検知した場合や、複数経路から logout が呼ばれた場合に、
+      // 同じ /login?reason=... へ繰り返し遷移してちらつき・ループを起こすのを防ぐ。
+      // state / localStorage のクリア（①）は上で済んでいるため、遷移を省いても失効処理は完結する。
       const loginPath = options?.reason ? `/login?reason=${options.reason}` : '/login'
-      navigateTo(loginPath)
+      const alreadyOnLoginPath = import.meta.client
+        && `${window.location.pathname}${window.location.search}` === loginPath
+      if (!alreadyOnLoginPath) {
+        navigateTo(loginPath)
+      }
 
       // ④ 遷移後もクリーンアップ Promise が完了するまで呼び出し元が await できるよう返す。
       //   通常の呼び出し元は await logout() で完了を待てるが、遷移は ③ で先行済みのため

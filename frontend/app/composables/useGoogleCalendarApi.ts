@@ -1,13 +1,45 @@
 import type { components } from '~/types/generated'
 
 type PersonalSyncStatusResponse = components['schemas']['PersonalSyncStatusResponse']
+type PersonalSyncToggleResponse = components['schemas']['PersonalSyncToggleResponse']
+type CalendarSyncToggleRequest = components['schemas']['CalendarSyncToggleRequest']
+type CalendarSyncToggleResponse = components['schemas']['CalendarSyncToggleResponse']
+type CalendarSyncSettingsResponse = components['schemas']['CalendarSyncSettingsResponse']
 
 export function useGoogleCalendarApi() {
   const api = useApi()
 
+  // Google カレンダー連携状態（コンポーネント側で fetchPersonalSyncStatus() を呼んでから参照する）
+  const personalSyncStatus = ref<PersonalSyncStatusResponse | null>(null)
+
+  // active === true かつ personalSyncEnabled === true のとき true
+  const googleSyncEnabled = computed(
+    () =>
+      personalSyncStatus.value?.active === true &&
+      personalSyncStatus.value?.personalSyncEnabled === true,
+  )
+
+  async function fetchPersonalSyncStatus(): Promise<void> {
+    try {
+      const res = await api<{ data: PersonalSyncStatusResponse }>(
+        '/api/v1/me/google-calendar/personal-sync',
+      )
+      personalSyncStatus.value = (res as { data: PersonalSyncStatusResponse }).data ?? null
+    } catch {
+      personalSyncStatus.value = null
+    }
+  }
+
   async function getConnectionStatus() {
     return api<{
-      data: { isConnected: boolean; email: string | null; lastSyncedAt: string | null }
+      data: {
+        connected: boolean
+        googleAccountEmail: string | null
+        googleCalendarId: string | null
+        active: boolean
+        personalSyncEnabled: boolean
+        lastSyncError: { type: string; message: string; occurredAt: string } | null
+      }
     }>('/api/v1/me/google-calendar/status')
   }
 
@@ -26,8 +58,11 @@ export function useGoogleCalendarApi() {
     return api<{ data: PersonalSyncStatusResponse }>('/api/v1/me/google-calendar/personal-sync')
   }
 
-  async function updatePersonalSync(body: Record<string, unknown>) {
-    return api('/api/v1/me/google-calendar/personal-sync', { method: 'PUT', body })
+  async function updatePersonalSync(body: CalendarSyncToggleRequest) {
+    return api<{ data: PersonalSyncToggleResponse }>('/api/v1/me/google-calendar/personal-sync', {
+      method: 'PUT',
+      body,
+    })
   }
 
   async function manualSync() {
@@ -35,16 +70,22 @@ export function useGoogleCalendarApi() {
   }
 
   // === Team / Org Sync ===
-  async function toggleTeamSync(teamId: string, body: Record<string, unknown>) {
-    return api(`/api/v1/me/teams/${teamId}/calendar-sync`, { method: 'PUT', body })
+  async function toggleTeamSync(teamId: string, body: CalendarSyncToggleRequest) {
+    return api<{ data: CalendarSyncToggleResponse }>(`/api/v1/me/teams/${teamId}/calendar-sync`, {
+      method: 'PUT',
+      body,
+    })
   }
 
-  async function toggleOrgSync(orgId: string, body: Record<string, unknown>) {
-    return api(`/api/v1/me/organizations/${orgId}/calendar-sync`, { method: 'PUT', body })
+  async function toggleOrgSync(orgId: string, body: CalendarSyncToggleRequest) {
+    return api<{ data: CalendarSyncToggleResponse }>(`/api/v1/me/organizations/${orgId}/calendar-sync`, {
+      method: 'PUT',
+      body,
+    })
   }
 
   async function getSyncSettings() {
-    return api<{ data: unknown }>('/api/v1/me/calendar-sync-settings')
+    return api<{ data: CalendarSyncSettingsResponse }>('/api/v1/me/calendar-sync-settings')
   }
 
   // === iCal ===
@@ -65,6 +106,9 @@ export function useGoogleCalendarApi() {
   }
 
   return {
+    personalSyncStatus,
+    googleSyncEnabled,
+    fetchPersonalSyncStatus,
     getConnectionStatus,
     connect,
     disconnect,

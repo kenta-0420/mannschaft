@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const { t } = useI18n()
+const { t, tm, rt } = useI18n()
 const route = useRoute()
 
 const slugs = ['team', 'calendar', 'chat', 'shift', 'forms', 'gallery', 'billing', 'matching']
@@ -21,22 +21,24 @@ if (featureKey === -1) {
   throw createError({ statusCode: 404, statusMessage: 'Feature not found' })
 }
 
+// 公開情報ページのため middleware は付けない
+// （guest だと認証済みユーザーが /dashboard に飛ばされ、LPからの段階開示導線が壊れる）
 definePageMeta({
   layout: 'landing',
-  middleware: 'guest',
 })
 
 const title = computed(() => t(`landing.features.items.${featureKey}.title`))
 const desc = computed(() => t(`landing.features.items.${featureKey}.desc`))
 const detail = computed(() => t(`landing.features.items.${featureKey}.detail`))
+// 配列ロケールは tm() で取得し各要素を rt() で解決する（t() は常に文字列を返すため Array.isArray が成立しない）
 const featuresList = computed(() => {
-  const raw = t(`landing.features.items.${featureKey}.features`)
-  if (Array.isArray(raw)) return raw
+  const raw: unknown = tm(`landing.features.items.${featureKey}.features`)
+  if (Array.isArray(raw)) return raw.map((item) => rt(item as Parameters<typeof rt>[0]))
   return []
 })
 const useCases = computed(() => {
-  const raw = t(`landing.features.items.${featureKey}.useCases`)
-  if (Array.isArray(raw)) return raw
+  const raw: unknown = tm(`landing.features.items.${featureKey}.useCases`)
+  if (Array.isArray(raw)) return raw.map((item) => rt(item as Parameters<typeof rt>[0]))
   return []
 })
 

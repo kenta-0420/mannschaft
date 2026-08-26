@@ -6,6 +6,8 @@
       "match": "Matches",
       "member": "Members",
       "ops": "Operations",
+      "ops_work": "Tasks & Progress",
+      "ops_admin": "Admin & Budget",
       "facility": "Facility",
       "data": "Data",
       "settings": "Settings"
@@ -39,6 +41,7 @@
       "audit_logs": "Audit Logs",
       "settings": "Settings",
       "faqSettings": "FAQ Settings",
+      "billing": "Billing & plan management",
       "leagueTransfers": "League Transfers",
       "adminConsole": "Admin Console"
     }

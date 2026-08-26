@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "참석",
+      "no": "불참",
+      "maybe": "미정",
+      "respondSuccess": "출결을 응답했습니다",
+      "respondError": "출결 응답에 실패했습니다"
+    },
+    "list": {
+      "allDay": "종일",
+      "empty": "이 기간의 일정이 없습니다",
+      "prevMonth": "이전 달",
+      "nextMonth": "다음 달"
+    },
     "common_delete": "삭제",
     "description_label": "설명",
     "error_title_required": "제목은 필수입니다",
@@ -11,19 +24,18 @@
     "reminder": {
       "label": "리마인더",
       "add": "리마인더 추가",
-      "before": "전",
       "max_reached": "리마인더는 최대 5개까지 설정할 수 있습니다",
       "kind_label": "유형",
-      "kind_relative": "상대",
-      "kind_absolute": "절대",
-      "unit_label": "단위",
-      "unit_minutes": "분",
-      "unit_hours": "시간",
-      "unit_days": "일",
+      "kind_relative": "시작 전",
+      "kind_absolute": "날짜/시간 지정",
       "relative_value_label": "값",
       "absolute_at_label": "알림 일시",
       "error_absolute_required": "절대 리마인더의 일시를 입력해 주세요",
-      "error_past": "과거 일시는 지정할 수 없습니다"
+      "error_past": "과거 일시는 지정할 수 없습니다",
+      "preset_minutes_before": "{n}분 전",
+      "preset_hours_before": "{n}시간 전",
+      "preset_days_before": "{n}일 전",
+      "preset_weeks_before": "{n}주 전"
     },
     "scheduled_survey": {
       "label": "설문 예약 생성",
@@ -87,6 +99,237 @@
       "fetchFailed": "팀별 출결 내역을 불러오지 못했습니다.",
       "forbidden": "이 내역을 볼 권한이 없습니다.",
       "empty": "팀별 출결 내역 데이터가 없습니다."
+    },
+    "recurrence": {
+      "label": "반복",
+      "interval": {
+        "DAILY": "매일",
+        "WEEKLY": "매주",
+        "MONTHLY": "매월",
+        "YEARLY": "매년"
+      },
+      "days": {
+        "SUNDAY": "일",
+        "MONDAY": "월",
+        "TUESDAY": "화",
+        "WEDNESDAY": "수",
+        "THURSDAY": "목",
+        "FRIDAY": "금",
+        "SATURDAY": "토"
+      },
+      "end_label": "종료",
+      "end_never": "지정 안 함",
+      "end_date": "날짜",
+      "end_count": "횟수",
+      "end_count_suffix": "회"
+    },
+    "event_add": "일정 추가",
+    "calendar_guide": {
+      "page_title": "내 캘린더",
+      "description": "내 캘린더는 개인 일정과 소속 팀·조직의 일정을 한 화면에서 확인할 수 있는 기능입니다.",
+      "what": {
+        "title": "내 캘린더란?",
+        "body": "소속된 모든 팀·조직의 일정과 개인 일정을 하나의 캘린더로 표시합니다. 캘린더 뷰와 간트 뷰(TODO 목록) 사이를 전환하며 사용할 수 있습니다."
+      },
+      "add": {
+        "title": "일정 추가하기",
+        "body": "「일정 추가」버튼 또는 캘린더의 날짜를 클릭하여 일정을 만들 수 있습니다. 개인 일정 외에도 팀이나 조직의 일정도 추가할 수 있습니다.",
+        "step1": "오른쪽 상단의 「일정 추가」또는 날짜 셀 클릭",
+        "step2": "제목·일시·장소 입력",
+        "step3": "「스코프」에서 개인·팀·조직 선택",
+        "step4": "「저장」으로 완료"
+      },
+      "filter": {
+        "title": "표시 필터링",
+        "body": "캘린더 하단의 버튼으로 표시할 스코프(개인·팀·조직)를 개별로 전환할 수 있습니다. 6개 이상이면 드롭다운에서 선택할 수 있습니다.",
+        "personal": "초록 점: 개인 일정",
+        "team_org": "남색 점: 팀·조직 일정"
+      },
+      "gantt": {
+        "title": "간트 뷰（TODO 목록）",
+        "body": "「간트」탭을 누르면 기한이 있는 TODO를 간트 차트 형식으로 표시합니다. 오른쪽 상단의 스코프 전환과 연동하여 개인·팀·조직의 TODO를 전환할 수 있습니다."
+      },
+      "detail": {
+        "title": "일정 상세·출결 답변",
+        "body": "캘린더의 일정을 클릭하면 오른쪽에 상세 패널이 표시됩니다.",
+        "item_edit": "연필 아이콘으로 편집, 휴지통 아이콘으로 삭제할 수 있습니다",
+        "item_attendance": "출결 확인이 있는 일정은 「출석」「결석」「미정」으로 답변할 수 있습니다",
+        "item_match": "팀 일정에서 「이 경기 기록하기」버튼으로 경기 기록을 시작할 수 있습니다"
+      },
+      "google_sync": {
+        "title": "Google 캘린더 연동",
+        "body": "Google 계정을 연동하면 개인 일정을 Google 캘린더와 양방향으로 동기화할 수 있습니다. Mannschaft에서 추가·편집한 일정은 Google 캘린더에 반영되고, Google 캘린더에서 변경한 내용도 가져옵니다.",
+        "step1": "「설정」→「Google Calendar 연동」 열기",
+        "step2": "「Google 계정에 연결」을 눌러 연동 허용",
+        "step3": "「개인 캘린더」를 켜서 동기화 활성화",
+        "step4": "즉시 반영하려면 「수동 동기화」 실행"
+      }
+    },
+    "google_sync_notice": "Google 캘린더와 연동 중입니다. Google에서 변경한 내용은 다음에 여기서 저장할 때 Mannschaft의 데이터로 교체됩니다.",
+    "comment": {
+      "title": "댓글",
+      "placeholder": "이 일정에 댓글 달기…",
+      "submit": "게시",
+      "cancel": "취소",
+      "save": "저장",
+      "reply": "답글",
+      "replyTo": "{name}님에게 답글",
+      "showReplies": "답글 {count}개 더 보기",
+      "empty": "아직 댓글이 없습니다",
+      "loadMore": "더 보기",
+      "edit": "수정",
+      "edited": "(수정됨)",
+      "delete": "삭제",
+      "deleteConfirm": "이 댓글을 삭제할까요?",
+      "deleted": "이 댓글은 삭제되었습니다",
+      "deletedAuthor": "탈퇴한 사용자",
+      "closed": "이 일정의 댓글은 마감되었습니다",
+      "cancelled": "취소된 일정에는 댓글을 달 수 없습니다",
+      "updateSuccess": "댓글이 수정되었습니다",
+      "deleteSuccess": "댓글이 삭제되었습니다",
+      "postSuccess": "댓글이 게시되었습니다",
+      "settings": {
+        "enable": "댓글 허용",
+        "disable": "댓글 마감",
+        "updateSuccess": "댓글 설정이 수정되었습니다"
+      },
+      "mention": {
+        "hint": "멤버를 멘션할 수 있습니다",
+        "empty": "일치하는 멤버가 없습니다"
+      },
+      "count": "댓글 {count}개",
+      "error": {
+        "bodyRequired": "댓글을 입력해 주세요",
+        "bodyTooLong": "댓글은 2000자 이내로 입력해 주세요",
+        "maxDepth": "이 답글에는 더 이상 답글을 달 수 없습니다",
+        "closed": "댓글이 마감되었습니다",
+        "forbidden": "이 작업을 수행할 권한이 없습니다",
+        "tooManyMentions": "멘션은 최대 20명까지 가능합니다",
+        "rateLimited": "게시가 너무 많습니다. 잠시 후 다시 시도해 주세요",
+        "generic": "작업에 실패했습니다",
+        "notFound": "댓글을 찾을 수 없습니다"
+      }
+    },
+    "targetAudience": {
+      "label": "일정 대상",
+      "allMembers": "전체",
+      "selectMembers": "구성원 선택",
+      "memberPlaceholder": "대상 구성원 선택",
+      "more": "외 {count}명",
+      "selectedCount": "대상 {count}명",
+      "invalidSelection": "대상 구성원을 1~500명 선택하세요"
+    },
+    "memberColor": {
+      "column": "일정 색상",
+      "auto": "자동",
+      "reset": "자동 색상으로 재설정",
+      "updated": "구성원 일정 색상을 업데이트했습니다",
+      "resetDone": "구성원 일정 색상을 자동으로 되돌렸습니다",
+      "updateFailed": "구성원 일정 색상을 업데이트할 수 없습니다",
+      "colorLabel": "{name}의 일정 색상"
+    },
+    "todo_load_error": {
+      "summary": "TODO 불러오기에 실패했습니다",
+      "detail": "TODO를 캘린더에 표시할 수 없습니다. 일정은 표시되어 있습니다. 잠시 후 다시 불러오세요."
+    }
+  },
+  "scheduleKeep": {
+    "title": "キープ",
+    "subtitle": "日付が決まっていない予定を置いておく場所",
+    "empty": "まだ何もありません。思いついたことを書いてみましょう",
+    "form": {
+      "titleLabel": "やりたいこと",
+      "titlePlaceholder": "例: 夏合宿",
+      "memoLabel": "メモ（任意）",
+      "candidateDatesLabel": "候補日（任意）",
+      "submit": "キープする"
+    },
+    "action": {
+      "convert": "予定にする",
+      "convertFromCandidate": "この日に決める",
+      "pickDate": "日付を選ぶ",
+      "specifyTime": "時刻を指定する",
+      "archive": "見送る",
+      "restore": "もどす",
+      "revert": "予定を取り消す",
+      "reorder": "並び替え"
+    },
+    "status": {
+      "kept": "キープ中",
+      "scheduled": "予定になりました",
+      "archived": "見送り"
+    },
+    "filter": {
+      "kept": "キープ中",
+      "scheduled": "予定済み",
+      "archived": "見送り",
+      "all": "すべて"
+    },
+    "badge": {
+      "candidateCount": "候補日 {count} 件"
+    },
+    "origin": {
+      "label": "このキープから作られました",
+      "cancelled": "予定は中止になりました",
+      "deleted": "元の予定は削除されました"
+    },
+    "lockedHint": {
+      "scheduled": "予定になったので、内容の変更は予定側で行ってください",
+      "archived": "見送り中は編集できません。「もどす」と編集できます"
+    },
+    "notification": {
+      "converted": "「{title}」の日程が決まりました",
+      "created": "「{title}」がキープされました"
+    },
+    "confirm": {
+      "archive": "見送りにしますか？あとで戻せます"
+    },
+    "limit": {
+      "hint": "見送りにすると枠が空きます"
+    },
+    "help": {
+      "title": "キープの使い方",
+      "body": "日付が決まっていない予定をひとまず置いておける場所です。タイトルだけで作成でき、あとから候補日やメモを足せます。候補日が決まったらタップひとつでカレンダーの予定に変換できます。",
+      "create": {
+        "title": "キープする",
+        "body": "タイトルだけ入力すれば作成できます。候補日やメモは後からでも構いません。",
+        "steps": {
+          "step1": "やりたいことをタイトルに入力",
+          "step2": "必要なら候補日・メモを追加",
+          "step3": "「キープする」を押す"
+        }
+      },
+      "convert": {
+        "title": "予定に変換する",
+        "body": "候補日があれば1タップ、無くても日付を選ぶだけの2タップ以内で予定になります。",
+        "steps": {
+          "step1": "候補日バッジ、または「予定にする」を押す",
+          "step2": "候補日が無ければ日付を選ぶ",
+          "step3": "カレンダーに予定として反映される"
+        }
+      },
+      "organize": {
+        "title": "整理する",
+        "body": "見送ったキープは一覧から消えますが、いつでも「もどす」で復帰できます。並び替えもできます。",
+        "steps": {
+          "step1": "不要になったら「見送る」",
+          "step2": "「見送り」フィルタから「もどす」で復帰",
+          "step3": "ドラッグで並び替え"
+        }
+      }
+    },
+    "error": {
+      "notFound": "キープが見つかりません",
+      "titleRequired": "タイトルを入力してください",
+      "tooManyCandidateDates": "候補日は最大10件です",
+      "invalidCandidateDate": "候補日の形式が正しくありません",
+      "forbidden": "このキープを操作する権限がありません",
+      "notConvertible": "このキープは予定に変換できません",
+      "notEditable": "この状態では編集できません",
+      "revertBlockedByAttendance": "出欠の回答があるため変換を取り消せません",
+      "invalidStateTransition": "この操作はできません",
+      "limitExceeded": "キープの上限に達しました",
+      "invalidReorder": "並び替えの指定が正しくありません"
     }
   }
 }

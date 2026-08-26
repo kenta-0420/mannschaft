@@ -13,17 +13,13 @@ import com.mannschaft.app.event.dto.LateNoticeRequest;
 import com.mannschaft.app.event.entity.EventAttendanceMode;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.entity.EventRsvpResponseEntity;
+import com.mannschaft.app.event.event.EventAdvanceNoticeNotificationEvent;
 import com.mannschaft.app.event.repository.EventRsvpResponseRepository;
-import com.mannschaft.app.family.EventCareNotificationType;
 import com.mannschaft.app.family.service.CareEventNotificationService;
-import com.mannschaft.app.family.service.CareLinkService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.entity.NotificationEntity;
-import com.mannschaft.app.notification.service.NotificationDispatchService;
-import com.mannschaft.app.notification.service.NotificationService;
+import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,9 +43,11 @@ public class EventRsvpService {
     private final UserRepository userRepository;
     private final EventService eventService;
     private final CareEventNotificationService careEventNotificationService;
-    private final CareLinkService careLinkService;
-    private final NotificationService notificationService;
-    private final NotificationDispatchService notificationDispatchService;
+
+    /** Issue #2834 / CMP-056: 通知は業務コミット後に発火する（業務サービスから Runner を直接呼ばない）。
+     * 見守り者解決（{@code CareLinkService}）・ロケール解決・件名/本文組み立ては
+     * {@code EventAdvanceNoticeNotificationListener}（AFTER_COMMIT）側の責務（Codex検分[P2]是正）。 */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * RSVP回答を送信する（初回）。
@@ -211,17 +209,15 @@ public class EventRsvpService {
         rsvp.recordLateNotice(req.getExpectedArrivalMinutesLate());
         rsvpResponseRepository.save(rsvp);
 
-        // 主催者へ通知を送信する
-        EventEntity event = eventService.findEventOrThrow(eventId);
         String displayName = getUserDisplayName(targetUserId);
-        String body = displayName + " が " + req.getExpectedArrivalMinutesLate() + "分遅刻予定です";
-        notifyOrganizer(event, teamId, EventCareNotificationType.EVENT_LATE_ARRIVAL_NOTICE,
-                "遅刻連絡", body, operatorUserId);
 
-        // 見守り者が代理送信した場合、同じケア対象者の他の見守り者にも通知する
-        notifyOtherWatchers(targetUserId, operatorUserId, eventId, teamId,
-                EventCareNotificationType.EVENT_LATE_ARRIVAL_NOTICE,
-                "遅刻連絡", body);
+        // Issue #2834 / CMP-056: 通知は AFTER_COMMIT + REQUIRES_NEW + Async のリスナーへ委譲する。
+        // 本メソッドは ID・数値のみを publish するだけに留め、createNotification は直接呼ばず、
+        // 文面組み立て（DB読み取り・MessageFormat）も業務トランザクションの内側では行わない
+        // （Codex検分[P2]是正: 組み立てもリスナー側=AFTER_COMMIT後に完全に移した）。
+        publishAdvanceNoticeNotification(eventId, teamId, operatorUserId, targetUserId,
+                EventAdvanceNoticeNotificationEvent.Kind.LATE,
+                req.getExpectedArrivalMinutesLate(), null);
 
         log.info("遅刻連絡送信: eventId={}, targetUserId={}, minutes={}, operatorUserId={}",
                 eventId, targetUserId, req.getExpectedArrivalMinutesLate(), operatorUserId);
@@ -264,17 +260,12 @@ public class EventRsvpService {
         rsvp.recordAbsenceNotice(req.getAbsenceReason());
         rsvpResponseRepository.save(rsvp);
 
-        // 主催者へ通知を送信する
-        EventEntity event = eventService.findEventOrThrow(eventId);
         String displayName = getUserDisplayName(targetUserId);
-        String body = displayName + " が事前欠席連絡を送りました（理由: " + req.getAbsenceReason() + "）";
-        notifyOrganizer(event, teamId, EventCareNotificationType.EVENT_ABSENCE_NOTICE,
-                "欠席連絡", body, operatorUserId);
 
-        // 見守り者が代理送信した場合、同じケア対象者の他の見守り者にも通知する
-        notifyOtherWatchers(targetUserId, operatorUserId, eventId, teamId,
-                EventCareNotificationType.EVENT_ABSENCE_NOTICE,
-                "欠席連絡", body);
+        // Issue #2834 / CMP-056: 通知は AFTER_COMMIT + REQUIRES_NEW + Async のリスナーへ委譲する。
+        publishAdvanceNoticeNotification(eventId, teamId, operatorUserId, targetUserId,
+                EventAdvanceNoticeNotificationEvent.Kind.ABSENCE,
+                null, req.getAbsenceReason());
 
         log.info("欠席連絡送信: eventId={}, targetUserId={}, reason={}, operatorUserId={}",
                 eventId, targetUserId, req.getAbsenceReason(), operatorUserId);
@@ -327,68 +318,30 @@ public class EventRsvpService {
     // =========================================================
 
     /**
-     * イベントの主催者（createdBy）へ通知を送信する。
+     * 事前遅刻・欠席連絡の通知イベントを publish する（Issue #2834 / CMP-056）。
      *
-     * @param event           イベントエンティティ
-     * @param teamId          チームID（スコープID）
-     * @param type            通知種別
-     * @param title           通知タイトル
-     * @param body            通知本文
-     * @param operatorUserId  操作者のユーザーID（本人または見守り者の userId）
+     * <p><b>Codex 独立検分 [P2]（2026-08-21）是正</b>: 以前は主催者・見守り者の解決やロケール解決・
+     * 件名/本文組み立てまで本メソッド（＝業務トランザクションの内側）で行い、組み立て済みの
+     * {@link NotificationDeliveryRequest} 一覧をイベントに積んでいた。組み立て中の DB 例外や
+     * {@code MessageFormat} 例外が {@code rsvp} の save を巻き戻す退行を生んでいたため、
+     * 現在は ID と数値のみを {@link EventAdvanceNoticeNotificationEvent} に積んで publish するだけに
+     * 留め、組み立ては {@code EventAdvanceNoticeNotificationListener}（AFTER_COMMIT）へ完全に移した。</p>
+     *
+     * @param eventId                    イベントID
+     * @param teamId                     チームID
+     * @param operatorUserId             操作者ユーザーID（本人または見守り者の userId）
+     * @param targetUserId               ケア対象者（＝連絡対象）のユーザーID
+     * @param kind                       事前連絡種別（遅刻／欠席）
+     * @param expectedArrivalMinutesLate 遅刻予定分数（欠席時は {@code null}）
+     * @param absenceReason              欠席理由（遅刻時は {@code null}）
      */
-    private void notifyOrganizer(EventEntity event, Long teamId,
-                                  EventCareNotificationType type,
-                                  String title, String body, Long operatorUserId) {
-        Long organizerUserId = event.getCreatedBy();
-        if (organizerUserId == null) return;
-
-        NotificationEntity notification = notificationService.createNotification(
-                organizerUserId,
-                type.name(),
-                NotificationPriority.NORMAL,
-                title, body,
-                "EVENT", event.getId(),
-                NotificationScopeType.TEAM, teamId,
-                "/teams/" + teamId + "/events/" + event.getId(), operatorUserId);
-        notificationDispatchService.dispatch(notification);
-    }
-
-    /**
-     * 操作者が見守り者である場合に、同じケア対象者の他の見守り者へも通知を送信する。
-     *
-     * <p>操作者（operatorUserId）がケア対象者（targetUserId）のアクティブな見守り者である場合、
-     * 他の見守り者にも同じ通知を送る（代理申告の共有）。</p>
-     *
-     * @param targetUserId   ケア対象者のユーザーID
-     * @param operatorUserId 操作者ユーザーID
-     * @param eventId        イベントID
-     * @param teamId         チームID（スコープID）
-     * @param type           通知種別
-     * @param title          通知タイトル
-     * @param body           通知本文
-     */
-    private void notifyOtherWatchers(Long targetUserId, Long operatorUserId,
-                                      Long eventId, Long teamId,
-                                      EventCareNotificationType type,
-                                      String title, String body) {
-        // 操作者がケア対象者の見守り者かどうかを確認する
-        List<Long> allWatcherIds = careLinkService.getActiveWatchers(targetUserId, "RSVP");
-        if (!allWatcherIds.contains(operatorUserId)) return;
-
-        // 操作者自身を除いた他の見守り者へ通知を送る
-        for (Long watcherId : allWatcherIds) {
-            if (watcherId.equals(operatorUserId)) continue;
-
-            NotificationEntity notification = notificationService.createNotification(
-                    watcherId,
-                    type.name(),
-                    NotificationPriority.NORMAL,
-                    title, body,
-                    "EVENT", eventId,
-                    NotificationScopeType.PERSONAL, watcherId,
-                    "/teams/" + teamId + "/events/" + eventId, operatorUserId);
-            notificationDispatchService.dispatch(notification);
-        }
+    private void publishAdvanceNoticeNotification(Long eventId, Long teamId, Long operatorUserId,
+                                                   Long targetUserId,
+                                                   EventAdvanceNoticeNotificationEvent.Kind kind,
+                                                   Integer expectedArrivalMinutesLate, String absenceReason) {
+        eventPublisher.publishEvent(new EventAdvanceNoticeNotificationEvent(
+                eventId, teamId, operatorUserId, targetUserId, kind,
+                expectedArrivalMinutesLate, absenceReason));
     }
 
     private void validateRsvpMode(EventEntity event) {

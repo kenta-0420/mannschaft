@@ -16,6 +16,7 @@
 import dayjs from 'dayjs'
 import type {
   VillageCalendarEventCreateRequest,
+  VillageCalendarEventLogResponse,
   VillageCalendarEventResponse,
   VillageCalendarEventUpdateRequest,
 } from '~/types/village'
@@ -34,7 +35,7 @@ const { confirmAction } = useConfirmDialog()
 const { userTimezone } = useDatetime()
 
 // 権限は親シェルから inject
-const { perms } = useVillageContext()
+const { perms, currentUserId } = useVillageContext()
 
 // =====================================================================
 // State — カレンダー
@@ -48,6 +49,7 @@ const events = ref<VillageCalendarEventResponse[]>([])
 const eventsLoading = ref(false)
 
 const canManage = computed(() => perms.value.isAdmin)
+const isVillager = computed(() => perms.value.isMember)
 
 // =====================================================================
 // 月別フィルタ＋API 呼び出し
@@ -58,20 +60,15 @@ function formatYmd(y: number, m: number, d: number): string {
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
 }
 
-function lastDayOfMonth(y: number, m: number): number {
-  return new Date(y, m, 0).getDate()
-}
-
 async function loadEvents() {
   eventsLoading.value = true
   try {
-    const from = formatYmd(currentYear.value, currentMonth.value, 1)
-    const to = formatYmd(
-      currentYear.value,
-      currentMonth.value,
-      lastDayOfMonth(currentYear.value, currentMonth.value),
-    )
-    events.value = await villageApi.listCalendarEvents(villageId.value, { from, to })
+    // BE の @RequestParam は year/month のみ（from/to は存在しない。年中行事は月のみで判定するため）
+    const result = await villageApi.listCalendarEvents(villageId.value, {
+      year: currentYear.value,
+      month: currentMonth.value,
+    })
+    events.value = result.items
   }
   catch (error) {
     events.value = []
@@ -169,6 +166,95 @@ function openCreateDialog() {
 function openDetailDialog(ev: VillageCalendarEventResponse) {
   detailEvent.value = ev
   showDetailDialog.value = true
+  void loadEventLogs(ev.id)
+}
+
+// =====================================================================
+// F17.2 Wave1 ④歳時記×村史の年輪（去年の様子）
+// 設計書: docs/features/F17.2_village_events_activation.md §6
+// =====================================================================
+
+const eventLogs = ref<VillageCalendarEventLogResponse[]>([])
+const eventLogsLoading = ref(false)
+const showAddLogForm = ref(false)
+const addLogSubmitting = ref(false)
+
+interface LogFormState {
+  year: number | null
+  note: string
+  photoR2Key: string
+}
+
+function emptyLogForm(): LogFormState {
+  return {
+    year: dayjs().tz(userTimezone.value).year(),
+    note: '',
+    photoR2Key: '',
+  }
+}
+
+const logForm = ref<LogFormState>(emptyLogForm())
+
+async function loadEventLogs(eventId: string) {
+  eventLogsLoading.value = true
+  try {
+    eventLogs.value = await villageApi.listCalendarEventLogs(villageId.value, eventId, { size: 50 })
+  }
+  catch (error) {
+    eventLogs.value = []
+    handleApiError(error, t('village.calendar.log.loadFailed'))
+  }
+  finally {
+    eventLogsLoading.value = false
+  }
+}
+
+function openAddLogForm() {
+  logForm.value = emptyLogForm()
+  showAddLogForm.value = true
+}
+
+async function submitAddLog() {
+  if (!detailEvent.value || !logForm.value.year) return
+  addLogSubmitting.value = true
+  try {
+    await villageApi.addCalendarEventLog(villageId.value, detailEvent.value.id, {
+      year: logForm.value.year,
+      note: logForm.value.note || null,
+      photoR2Key: logForm.value.photoR2Key || null,
+    })
+    showAddLogForm.value = false
+    success(t('village.calendar.log.addSuccess'))
+    await loadEventLogs(detailEvent.value.id)
+  }
+  catch (error) {
+    handleApiError(error, t('village.calendar.log.addFailed'))
+  }
+  finally {
+    addLogSubmitting.value = false
+  }
+}
+
+function canDeleteLog(log: VillageCalendarEventLogResponse): boolean {
+  return canManage.value || (currentUserId.value !== null && log.createdByUserId === currentUserId.value)
+}
+
+function deleteLog(log: VillageCalendarEventLogResponse) {
+  if (!detailEvent.value) return
+  const eventId = detailEvent.value.id
+  confirmAction({
+    message: t('village.calendar.log.deleteConfirm'),
+    onAccept: async () => {
+      try {
+        await villageApi.deleteCalendarEventLog(villageId.value, eventId, log.id)
+        eventLogs.value = eventLogs.value.filter(l => l.id !== log.id)
+        success(t('village.calendar.log.deleteSuccess'))
+      }
+      catch (error) {
+        handleApiError(error, t('village.calendar.log.deleteFailed'))
+      }
+    },
+  })
 }
 
 function openEditDialog(ev: VillageCalendarEventResponse) {
@@ -407,10 +493,10 @@ onMounted(() => {
       modal
       :draggable="false"
       :header="detailEvent?.title ?? ''"
-      :style="{ width: '28rem' }"
+      :style="{ width: '34rem', maxHeight: '90vh' }"
       :breakpoints="{ '640px': '92vw' }"
     >
-      <div v-if="detailEvent" class="flex flex-col gap-3">
+      <div v-if="detailEvent" class="flex flex-col gap-3 max-h-[70vh] overflow-y-auto pr-1">
         <div class="flex items-center gap-2 text-sm">
           <span class="text-2xl">{{ detailEvent.iconEmoji || '🗓' }}</span>
           <span>
@@ -422,6 +508,106 @@ onMounted(() => {
         </div>
         <div v-if="detailEvent.isAnnualRecurring" class="text-xs text-surface-500">
           <i class="pi pi-replay" /> {{ t('village.calendar.annualRecurring') }}
+        </div>
+
+        <!-- F17.2 Wave1 ④歳時記×村史の年輪（去年の様子） -->
+        <hr class="border-surface-200 dark:border-surface-700">
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <h3 class="font-semibold">
+              {{ t('village.calendar.log.title') }}
+            </h3>
+            <Button
+              v-if="isVillager && !showAddLogForm"
+              :label="t('village.calendar.log.addLog')"
+              icon="pi pi-plus"
+              size="small"
+              text
+              @click="openAddLogForm"
+            />
+          </div>
+
+          <div v-if="showAddLogForm" class="flex flex-col gap-2 rounded border border-surface-200 p-3 dark:border-surface-700">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-medium mb-1">{{ t('village.calendar.log.year') }}</label>
+                <InputNumber
+                  v-model="logForm.year"
+                  :use-grouping="false"
+                  :min="1900"
+                  :max="3000"
+                  class="w-full"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-medium mb-1">{{ t('village.calendar.log.photoKey') }}</label>
+                <InputText v-model="logForm.photoR2Key" class="w-full" :placeholder="t('village.calendar.log.photoKeyHint')" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-medium mb-1">{{ t('village.calendar.log.note') }}</label>
+              <Textarea v-model="logForm.note" class="w-full" rows="2" :placeholder="t('village.calendar.log.notePlaceholder')" />
+            </div>
+            <div class="flex items-center justify-end gap-2">
+              <Button
+                :label="t('village.action.cancel')"
+                severity="secondary"
+                text
+                size="small"
+                @click="showAddLogForm = false"
+              />
+              <Button
+                :label="t('village.calendar.log.submit')"
+                icon="pi pi-check"
+                severity="primary"
+                size="small"
+                :loading="addLogSubmitting"
+                :disabled="!logForm.year"
+                @click="submitAddLog"
+              />
+            </div>
+          </div>
+
+          <div v-if="eventLogsLoading" class="text-center py-3 text-surface-500">
+            <i class="pi pi-spin pi-spinner" />
+          </div>
+          <div v-else-if="eventLogs.length === 0" class="text-xs text-surface-500">
+            {{ t('village.calendar.log.empty') }}
+          </div>
+          <div v-else class="flex flex-col gap-2">
+            <div
+              v-for="log in eventLogs"
+              :key="log.id"
+              class="rounded border border-surface-200 p-2 text-sm dark:border-surface-700"
+            >
+              <div class="flex items-center justify-between gap-2">
+                <span class="font-medium">
+                  {{ t('village.calendar.log.lastYear', { year: log.year }) }}
+                </span>
+                <Button
+                  v-if="canDeleteLog(log)"
+                  icon="pi pi-trash"
+                  severity="danger"
+                  text
+                  size="small"
+                  :aria-label="t('village.calendar.log.delete')"
+                  @click="deleteLog(log)"
+                />
+              </div>
+              <img
+                v-if="log.photoUrl"
+                :src="log.photoUrl"
+                :alt="t('village.calendar.log.title')"
+                class="mt-2 max-h-40 w-full rounded object-cover"
+              >
+              <p v-if="log.note" class="whitespace-pre-wrap mt-1">
+                {{ log.note }}
+              </p>
+              <p class="text-xs text-surface-500 mt-1">
+                {{ log.createdByDisplayName }}
+              </p>
+            </div>
+          </div>
         </div>
       </div>
       <template #footer>

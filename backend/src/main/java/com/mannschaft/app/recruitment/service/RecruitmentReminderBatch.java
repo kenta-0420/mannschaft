@@ -1,6 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.notification.entity.NotificationEntity;
@@ -14,12 +15,14 @@ import com.mannschaft.app.recruitment.repository.RecruitmentReminderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * F03.11 募集型予約: リマインド通知バッチ (Phase 2)。
@@ -38,6 +41,10 @@ public class RecruitmentReminderBatch {
     private final RecruitmentListingRepository listingRepository;
     private final RecruitmentParticipantRepository participantRepository;
     private final NotificationHelper notificationHelper;
+    // Issue #2715 ロットA: 通知本文の i18n 化。auth の UserRepository を直接呼ばず、
+    // common.i18n 配下の共有サービス経由で受信者 locale を解決する（ArchUnit D-5 対応）。
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
 
     /**
      * 未送信リマインダーを処理する。
@@ -103,8 +110,13 @@ public class RecruitmentReminderBatch {
         NotificationScopeType scopeType = listing.getScopeType() == RecruitmentScopeType.TEAM
                 ? NotificationScopeType.TEAM : NotificationScopeType.ORGANIZATION;
 
-        String title = "リマインド: " + listing.getTitle();
-        String body = listing.getTitle() + " が24時間後に開催されます。";
+        Locale locale = Locale.forLanguageTag(userLocaleCache.getLocale(participant.getUserId()));
+        String title = messageSource.getMessage(
+                "notification.recruitment.reminder.title", new Object[]{listing.getTitle()},
+                "リマインド: " + listing.getTitle(), locale);
+        String body = messageSource.getMessage(
+                "notification.recruitment.reminder.body", new Object[]{listing.getTitle()},
+                listing.getTitle() + " が24時間後に開催されます。", locale);
         String actionUrl = "/recruitment-listings/" + listing.getId();
 
         // 通知作成・配信

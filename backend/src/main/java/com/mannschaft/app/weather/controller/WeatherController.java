@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -88,6 +89,8 @@ public class WeatherController {
      *   <li>WeatherForecastResponse に変換して返却</li>
      * </ol>
      */
+    @SelfScopedEndpoint("userId=SecurityUtils.getCurrentUserId() のみを対象にし、"
+            + "UserWeatherLocationRepository#findByUserIdAndLabel が常に呼び出し元自身の地点情報のみを引く")
     @GetMapping("/dashboard/weather")
     public ResponseEntity<ApiResponse<WeatherForecastResponse>> getWeatherForecast() {
         Long userId = SecurityUtils.getCurrentUserId();
@@ -147,6 +150,8 @@ public class WeatherController {
      *   <li>WeatherLocationRefreshResponse を構築して返却</li>
      * </ol>
      */
+    @SelfScopedEndpoint("userId=SecurityUtils.getCurrentUserId() のみを対象にし、"
+            + "WeatherLocationDeriver#deriveAndPersist が常に呼び出し元自身の地点情報のみを upsert する")
     @PostMapping("/users/me/weather-location/refresh")
     public ResponseEntity<ApiResponse<WeatherLocationRefreshResponse>> refreshWeatherLocation() {
         Long userId = SecurityUtils.getCurrentUserId();

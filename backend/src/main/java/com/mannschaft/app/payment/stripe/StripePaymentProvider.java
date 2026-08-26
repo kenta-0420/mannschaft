@@ -263,6 +263,29 @@ public interface StripePaymentProvider {
     PaymentIntentInfo captureManualPaymentIntent(String paymentIntentId, String idempotencyKey);
 
     /**
+     * manual-capture の PaymentIntent を<b>部分額</b>で確定（capture）する
+     * （F03.11.1 募集キャンセル料の徴収・設計書 §4.2 / §4.3 / §3.5.3）。
+     *
+     * <p>与信額のうち {@code amountToCaptureMinor} だけを確定し、残額は Stripe が自動的に解放する
+     * （部分キャプチャの残額自動解放・§4.1-1）。解放のための API を別途呼ぶ必要はない。
+     * 部分キャプチャ後に差額を追加キャプチャすることはできないため、キャプチャは 1 回で決め切る（§4.1-2）。</p>
+     *
+     * <p>{@code applicationFeeAmountMinor} を渡すと Capture 時に運営手数料を明示的に上書きする
+     * （{@code A_eff = min(A, F)}・§3.5.3）。{@code null} を渡した場合は PaymentIntent 作成時の額のまま。</p>
+     *
+     * <p>既存の 2 引数版（全額キャプチャ）はシグネチャを変えずに残す（呼び出し元を壊さない・§4.2）。</p>
+     *
+     * @param paymentIntentId           対象 PaymentIntent ID（{@code pi_xxx}・{@code requires_capture}）
+     * @param amountToCaptureMinor      確定する額（最小通貨単位・与信額以下であること・§4.1-3）
+     * @param applicationFeeAmountMinor 上書きする運営手数料（最小通貨単位・{@code null} なら上書きしない）
+     * @param idempotencyKey            冪等性キー（{@code canfee-{cancellationRecordId}}・§7.1）
+     * @return capture 後の PaymentIntent 情報（id / clientSecret / status）
+     */
+    PaymentIntentInfo captureManualPaymentIntent(
+            String paymentIntentId, long amountToCaptureMinor,
+            Long applicationFeeAmountMinor, String idempotencyKey);
+
+    /**
      * 既存 PaymentIntent を retrieve し、支払者本人へ返すための {@code clientSecret} を取得する
      * （F22.1 第二陣・札主の決済確認 EP・設計書 02 §1 行#8 / 03 §1）。
      *
@@ -425,8 +448,13 @@ public interface StripePaymentProvider {
      * 第四波 webhook が {@code fee_policy_key} で固定額へ上書き）。{@code payment_behavior=ALLOW_INCOMPLETE} で
      * 初回 invoice なしの作成を許容する。</p>
      *
+     * <p><b>複数明細（案C・手数料折半の根治）:</b> {@code priceIds} には「会費 Price（額面）」と
+     * 「支払側手数料 Price（{@code FeeBreakdown.payerFee}）」を渡し、invoice 合計を初回サイクルの
+     * PaymentIntent 金額（{@code chargeAmount}）と一致させる。{@code payerFee == 0} の契約では
+     * 会費 Price のみの 1 要素になる。</p>
+     *
      * @param customerId               払い手の Stripe Customer ID（{@code cus_xxx}）
-     * @param priceId                  継続課金の Stripe Price ID（{@code price_xxx}）
+     * @param priceIds                 継続課金の Stripe Price ID 群（{@code price_xxx}・会費＋任意で手数料・1 要素以上）
      * @param defaultPaymentMethodId   off_session 課金に使う PaymentMethod ID（{@code pm_xxx}）
      * @param destinationAccountId     受領者 Connect アカウント ID（{@code acct_xxx}）
      * @param applicationFeePercent    application_fee の率（安全側既定・invoice 上書きが正）
@@ -434,7 +462,8 @@ public interface StripePaymentProvider {
      * @param idempotencyKey           冪等性キー（設計書 02 §9）
      * @return Subscription 情報（id / status / currentPeriodEnd）
      */
-    SubscriptionInfo createSubscription(String customerId, String priceId, String defaultPaymentMethodId,
+    SubscriptionInfo createSubscription(String customerId, java.util.List<String> priceIds,
+                                        String defaultPaymentMethodId,
                                         String destinationAccountId, java.math.BigDecimal applicationFeePercent,
                                         long billingCycleAnchorEpochSec, String idempotencyKey);
 
@@ -657,4 +686,79 @@ public interface StripePaymentProvider {
                             BigDecimal amountReceived, String receiptUrl, String refundId,
                             BigDecimal refundAmount, BigDecimal paymentIntentAmount,
                             Long notificationCreditPurchaseId) {}
+
+    // ========================================
+    // F20.1 実決済（自社受取×月額サブスク・D-1〜D-4・2026-07-10 御裁可。既存メソッドは破壊しない追加）
+    // ========================================
+
+    /**
+     * 月額サブスクの Stripe Checkout Session を作成する（{@code Mode.SUBSCRIPTION}・<b>Connect 不使用</b>・設計書 02）。
+     *
+     * <p>F08.9 会費（Connect destination charge）と異なり、{@code transfer_data}/{@code on_behalf_of}/
+     * {@code application_fee} を<b>一切含めない</b>（自社受取・D-2）。Price は毎月の recurring をインライン
+     * {@code price_data}（{@code product_data.name}＝表示名・{@code unit_amount}＝円額・{@code recurring.interval=month}）で
+     * 生成する（F09.13 の Product/Price 遅延生成の思想を Checkout インライン化）。{@code metadata.billingContractId} に
+     * 契約 ID を焼き付け、{@code checkout.session.completed} webhook で PENDING→ACTIVE を突合する。</p>
+     *
+     * @param stripeCustomerId 決済者の Stripe Customer ID（{@code cus_xxx}・get-or-create 済み）
+     * @param priceJpy         月額（円・ゼロ decimal 通貨のため乗算不要）
+     * @param productName      Stripe Product 表示名（プラン/機能の表示名）
+     * @param billingContractId {@code billing_contracts.id}（{@code metadata.billingContractId}）
+     * @param successUrl       決済成功時の遷移先
+     * @param cancelUrl        決済中断時の遷移先
+     * @return Checkout Session 情報（sessionId / checkoutUrl / expiresAt）
+     */
+    CheckoutSessionInfo createBillingSubscriptionCheckoutSession(
+            String stripeCustomerId, long priceJpy, String productName, String billingContractId,
+            String successUrl, String cancelUrl);
+
+    /**
+     * Stripe Subscription を<b>即時解約</b>する（F20.1 実決済・退会 purge 連動 AC-45）。
+     *
+     * <p>{@link #cancelSubscriptionAtPeriodEnd} の期末解約と異なり、その場で subscription を cancel する
+     * （退会確定＝purge 後のユーザーへの課金継続を止める・日割り返金なし）。失敗は
+     * {@code STRIPE_API_ERROR} で上申し、呼び出し側（purge リスナー）が ERROR ログで手動照合に委ねる
+     * （症状を隠さない）。</p>
+     *
+     * @param subscriptionId 対象 Stripe Subscription ID（{@code sub_xxx}）
+     * @param idempotencyKey 冪等性キー（{@code billing-purge-{subscriptionId}}）
+     */
+    void cancelBillingSubscriptionImmediately(String subscriptionId, String idempotencyKey);
+
+    /**
+     * F20.1 実決済の Webhook イベントを検証・パースする（{@code checkout.session.completed}/{@code .expired}・
+     * {@code invoice.paid}/{@code invoice.payment_failed}・{@code customer.subscription.deleted}）。
+     *
+     * <p>platform 署名シークレット（{@link #constructEvent} と同一）で検証する。billing 固有の突合に必要な
+     * {@code billingContractId}（session.metadata）・{@code subscriptionId}（逆引きキー）・{@code customerId}・
+     * {@code currentPeriodEndEpochSec}（valid_until 延長/失効時刻）を抽出した専用 record を返す。既存の
+     * {@code WebhookEventInfo}/{@code InvoiceWebhookEventInfo} は billing 固有フィールドを持たないため専用パースを設ける。</p>
+     *
+     * @param payload   生リクエストボディ
+     * @param sigHeader {@code Stripe-Signature} ヘッダー
+     * @return billing 決済イベント情報
+     */
+    BillingSubscriptionWebhookEventInfo constructBillingSubscriptionEvent(String payload, String sigHeader);
+
+    /**
+     * F20.1 実決済 Webhook イベント情報（設計書 02）。
+     *
+     * <p>{@code eventId} は冪等キー（{@code evt_xxx}）。{@code checkout.session.*} では {@code sessionId}/
+     * {@code billingContractId}（metadata）/{@code subscriptionId}/{@code customerId} を、{@code invoice.*} /
+     * {@code customer.subscription.deleted} では {@code subscriptionId}/{@code currentPeriodEndEpochSec} を格納する
+     * （非該当フィールドは null）。</p>
+     *
+     * @param eventId                  Stripe イベント ID（{@code evt_xxx}・冪等キー）
+     * @param type                     イベント種別
+     * @param livemode                 本番/テスト区分
+     * @param sessionId                Checkout Session ID（{@code cs_xxx}・{@code checkout.session.*} のみ）
+     * @param billingContractId        {@code session.metadata.billingContractId}（billing 所有判定・{@code checkout.session.*} のみ）
+     * @param subscriptionId           Stripe Subscription ID（{@code sub_xxx}・逆引きキー）
+     * @param customerId               Stripe Customer ID（{@code cus_xxx}・焼付用・{@code checkout.session.completed} のみ）
+     * @param currentPeriodEndEpochSec 現サイクル終了の unix 秒（valid_until 延長/失効時刻・null 可）
+     */
+    record BillingSubscriptionWebhookEventInfo(
+            String eventId, String type, boolean livemode,
+            String sessionId, String billingContractId, String subscriptionId, String customerId,
+            Long currentPeriodEndEpochSec) {}
 }

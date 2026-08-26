@@ -95,6 +95,7 @@ export function useTodoGanttView() {
       if (!ganttCache.has(ganttCacheKey(y, m))) {
         // 隣接月の先読み（prefetch）。失敗してもユーザーがその月へ移動した際に
         // 再取得されるため、ここでのエラーは非クリティカルとして握りつぶす。
+        // eslint-disable-next-line no-restricted-syntax -- 隣接月の先読み。失敗は移動時に再取得されるため握りつぶすのが正しい（ベストエフォート）
         fetchGanttMonth(y, m).catch(() => {})
       }
     }

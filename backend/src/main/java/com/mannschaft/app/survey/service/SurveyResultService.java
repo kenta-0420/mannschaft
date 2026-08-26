@@ -4,8 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
-import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.service.OrganizationMembershipService;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.survey.DistributionMode;
@@ -66,8 +65,10 @@ public class SurveyResultService {
     private final AccessControlService accessControlService;
     private final UserRepository userRepository;
     private final UserRoleRepository userRoleRepository;
-    private final ContentVisibilityChecker contentVisibilityChecker;
+    /** 結果閲覧可否の唯一の判定点（詳細応答の viewerCanViewResults と共用）。 */
+    private final SurveyResultAccessGuard resultAccessGuard;
     private final OrganizationMembershipService organizationMembershipService;
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * アンケート結果を取得する。閲覧権限チェックを行う。
@@ -87,28 +88,22 @@ public class SurveyResultService {
     /**
      * 結果閲覧権限を検証する。
      *
-     * <p>F00 Phase C (2026-05-04): {@link ContentVisibilityChecker} 経由の判定に切り替えた。
+     * <p>F00 Phase C (2026-05-04): {@code ContentVisibilityChecker} 経由の判定に切り替えた。
      * Resolver ({@link com.mannschaft.app.survey.visibility.SurveyVisibilityResolver}) が
      * status × {@code ResultsVisibility} 合成を一元処理する。</p>
      *
-     * <p>ただし「作成者本人は常に結果を閲覧可能」という既存挙動を維持するため、Resolver の
-     * 判定 (CUSTOM 経路では純粋に AFTER_RESPONSE / AFTER_CLOSE / VIEWERS_ONLY のみ評価) より
-     * 前段で「作成者高速パス」を Service 側に残す。これにより:</p>
-     * <ul>
-     *   <li>Resolver は §5.1.4「CUSTOM の意味論を厳密に」の規約を保てる</li>
-     *   <li>Service は既存挙動（作成者は常に可視）を担保できる</li>
-     * </ul>
+     * <p>Issue #2779: その 2 段（作成者高速パス → 可視性基盤への委譲）を
+     * {@link SurveyResultAccessGuard} へ抽出した。アンケート詳細応答の
+     * {@code viewerCanViewResults} も同じメソッドを呼ぶため、
+     * <b>「見られる」と応答したのに 403</b>（またはその逆）が構造的に起こらない。</p>
      */
     private void validateResultAccess(SurveyEntity survey, Long userId) {
-        // 作成者本人の高速パス（Resolver には含めない既存挙動の維持）。
-        if (userId != null && survey.getCreatedBy() != null
-                && survey.getCreatedBy().equals(userId)) {
-            return;
-        }
-        // それ以外は ContentVisibilityChecker に委譲。
+        // Issue #2779: 「作成者高速パス → ContentVisibilityChecker 委譲」の 2 段は
+        // SurveyResultAccessGuard に抽出済み。詳細応答の viewerCanViewResults も
+        // 同じメソッドを呼ぶため、応答と実際の 403 が構造的に食い違わない。
         // canView=false の場合は既存と同じ SurveyErrorCode.RESULT_ACCESS_DENIED で返す
         // （根治治療: 既存挙動と同じ ErrorCode を投げ、上位 API 契約を保つ）。
-        if (!contentVisibilityChecker.canView(ReferenceType.SURVEY, survey.getId(), userId)) {
+        if (!resultAccessGuard.canViewResults(survey, userId)) {
             throw new BusinessException(SurveyErrorCode.RESULT_ACCESS_DENIED);
         }
     }
@@ -179,12 +174,12 @@ public class SurveyResultService {
                 if (hasResponded) {
                     continue;
                 }
-                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), u.getAvatarUrl(), false, null));
+                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), mediaUrlResolver.resolve(u.getAvatarUrl()), false, null));
             } else {
                 java.time.LocalDateTime respondedAt = hasResponded
                         ? firstResponseByUser.get(uid).getCreatedAt()
                         : null;
-                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), u.getAvatarUrl(),
+                result.add(new RespondentResponse(u.getId(), u.getLastName() + " " + u.getFirstName(), mediaUrlResolver.resolve(u.getAvatarUrl()),
                         hasResponded, respondedAt));
             }
         }

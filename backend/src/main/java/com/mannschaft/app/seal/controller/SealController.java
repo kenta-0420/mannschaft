@@ -7,6 +7,7 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.seal.dto.CreateSealRequest;
 import com.mannschaft.app.seal.dto.ScopeDefaultResponse;
 import com.mannschaft.app.seal.dto.SealResponse;
+import com.mannschaft.app.seal.dto.UpdateScopeDefaultsRequest;
 import com.mannschaft.app.seal.dto.UpdateSealRequest;
 import com.mannschaft.app.seal.service.SealService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -86,6 +87,20 @@ public class SealController {
     }
 
     /**
+     * ユーザーのスコープデフォルトを一括更新する。
+     */
+    @PutMapping("/scope-defaults")
+    @Operation(summary = "スコープデフォルト一括更新")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
+    public ResponseEntity<ApiResponse<List<ScopeDefaultResponse>>> updateScopeDefaults(
+            @PathVariable Long userId,
+            @Valid @RequestBody UpdateScopeDefaultsRequest request) {
+        checkOwner(userId);
+        List<ScopeDefaultResponse> defaults = sealService.updateScopeDefaults(userId, request);
+        return ResponseEntity.ok(ApiResponse.of(defaults));
+    }
+
+    /**
      * 印鑑詳細を取得する。
      */
     @GetMapping("/{sealId}")
@@ -140,5 +155,18 @@ public class SealController {
         checkOwner(userId);
         sealService.deleteSeal(userId, sealId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * ユーザーの全印鑑を再生成する。
+     */
+    @PostMapping("/regenerate")
+    @Operation(summary = "印鑑一括再生成")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "再生成成功")
+    public ResponseEntity<ApiResponse<List<SealResponse>>> regenerateSeals(
+            @PathVariable Long userId) {
+        checkOwner(userId);
+        List<SealResponse> seals = sealService.regenerateSeals(userId);
+        return ResponseEntity.ok(ApiResponse.of(seals));
     }
 }

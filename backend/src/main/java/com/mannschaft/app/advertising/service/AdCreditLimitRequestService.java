@@ -38,7 +38,15 @@ public class AdCreditLimitRequestService {
      */
     @Transactional
     public CreditLimitRequestResponse create(Long organizationId, CreateCreditLimitRequest request) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
+        return create(ScopeType.ORGANIZATION, organizationId, request);
+    }
+
+    /**
+     * 増額申請を作成する（scope 化。F09.19.5b: org/team 両対応）。
+     */
+    @Transactional
+    public CreditLimitRequestResponse create(ScopeType scopeType, Long scopeId, CreateCreditLimitRequest request) {
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
 
         if (request.requestedLimit().compareTo(account.getCreditLimit()) <= 0) {
@@ -65,7 +73,14 @@ public class AdCreditLimitRequestService {
      * 自組織の増額申請履歴を取得する。
      */
     public List<CreditLimitRequestResponse> findByOrganizationId(Long organizationId) {
-        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(ScopeType.ORGANIZATION, organizationId)
+        return findByScope(ScopeType.ORGANIZATION, organizationId);
+    }
+
+    /**
+     * 増額申請履歴を取得する（scope 化。F09.19.5: org/team 両対応）。
+     */
+    public List<CreditLimitRequestResponse> findByScope(ScopeType scopeType, Long scopeId) {
+        AdvertiserAccountEntity account = advertiserAccountRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
         return adCreditLimitRequestRepository.findByAdvertiserAccountId(account.getId()).stream()
                 .map(advertisingMapper::toCreditLimitRequestResponse)

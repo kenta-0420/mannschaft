@@ -30,7 +30,7 @@
 
 /** 数値 orgId ＋ 数値 teamId の解決結果。 */
 export interface MatchOrgContext {
-  orgId: number
+  orgId: number | null
   teamId: number
 }
 
@@ -69,8 +69,13 @@ export function useMatchOrgContext() {
 
     try {
       const res = await api<{ data: MyTeamItem[] }>('/api/v1/me/teams')
-      const myTeam = (res.data ?? []).find((tm) => tm.slug === teamSlug)
-      if (!myTeam || typeof myTeam.organizationId !== 'number') {
+      // Bug A 修正: BE の CalendarScopeDto.scopeId は Long（数値）を返すため、
+      // カレンダーから開いた場合は teamSlug が "12345" のような数値文字列になりうる。
+      // slug 一致だけでは永遠に null が返るため、数値 ID での一致も許容する。
+      const myTeam = (res.data ?? []).find(
+        (tm) => tm.slug === teamSlug || String(tm.id) === String(teamSlug),
+      )
+      if (!myTeam) {
         // 「当該チームが /me/teams に無い」「親組織が無い（organizationId が数値でない）」は
         // 単独チーム（＝親組織を持たないチーム）では想定内の正常状態（DB 上 88% が単独チーム）。
         // チームダッシュボードを開くたびに警告トーストが出る不具合の根治のため、
@@ -108,7 +113,7 @@ export function useMatchOrgContext() {
     try {
       const res = await api<{ data: MyTeamItem[] }>('/api/v1/me/teams')
       const myTeam = (res.data ?? []).find((tm) => tm.id === teamId)
-      if (!myTeam || typeof myTeam.organizationId !== 'number') {
+      if (!myTeam) {
         // resolveContext と同様、チーム未所属／親組織なし（単独チーム）は想定内のため
         // 警告トーストを出さず静かに null を返す（DB 上 88% が単独チーム）。
         // 真のエラー（/me/teams 取得失敗）は下の catch で従来どおり警告する。

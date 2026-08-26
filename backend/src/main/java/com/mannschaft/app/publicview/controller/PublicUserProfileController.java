@@ -1,5 +1,6 @@
 package com.mannschaft.app.publicview.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicUserPostSummaryResponse;
 import com.mannschaft.app.publicview.dto.PublicUserProfileResponse;
 import com.mannschaft.app.publicview.service.PublicUserProfileQueryService;
@@ -28,7 +29,30 @@ import org.springframework.web.bind.annotation.RestController;
  * <p><strong>IDOR / エニュメレーション対策</strong>: 存在しない・非公開・削除済み
  * ユーザーはすべて {@link com.mannschaft.app.publicview.error.PublicViewErrorCode#PUBLIC_007}
  * (404) を返し状態を区別しない。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 2 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/users/*"
+ * / "/api/v1/public/users/&#42;/posts").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F19.1 Phase 6 公開ユーザープロフィール。<b>本人が {@code public_profile_enabled=true}
+ * を明示設定したユーザーのみ</b> 200 を返し、投稿は {@code visibility=PUBLIC} かつ{@code
+ * status=PUBLISHED} かつ {@code public_visible=true} のものに限る。不在／非公開／削除済みは一律
+ * 404 で状態を区別しない（IDOR・エニュメレーション対策）。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/users/*",
+        "/api/v1/public/users/*/posts"
+})
 @RestController
 @RequestMapping("/api/v1/public/users")
 @Tag(name = "公開ユーザープロフィール API (F19.1 Phase 6)")

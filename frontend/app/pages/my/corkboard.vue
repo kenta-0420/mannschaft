@@ -56,6 +56,9 @@ const editDialogVisible = computed({
   },
 })
 
+// 使い方モーダルの開閉
+const showGuide = ref(false)
+
 const PAGE_LIMIT = 50
 
 // ----- API 呼び出し -----
@@ -322,30 +325,19 @@ onMounted(() => load(false))
 
 <template>
   <div class="mx-auto max-w-[960px] px-4">
-    <!-- ヘッダー: < 戻る | 📌 マイコルクボード | + 新規ピン -->
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <div class="flex items-center gap-3">
-        <NuxtLink
-          to="/my"
-          class="inline-flex items-center gap-1 text-sm text-surface-500 hover:text-primary"
-        >
-          <i class="pi pi-arrow-left text-xs" />
-          {{ t('corkboard.back') }}
+    <!-- ヘッダー: 共通 PageHeader（戻る=/my・使い方・新規ピンを actions へ） -->
+    <PageHeader :title="t('corkboard.pageTitle')" back-to="/my" help @help="showGuide = true">
+      <template #actions>
+        <NuxtLink to="/corkboard">
+          <Button
+            :label="t('corkboard.addNewPin')"
+            icon="pi pi-plus"
+            size="small"
+            severity="secondary"
+          />
         </NuxtLink>
-        <h1 class="flex items-center gap-2 text-xl font-bold">
-          <span aria-hidden="true">📌</span>
-          {{ t('corkboard.pageTitle') }}
-        </h1>
-      </div>
-      <NuxtLink to="/corkboard">
-        <Button
-          :label="t('corkboard.addNewPin')"
-          icon="pi pi-plus"
-          size="small"
-          severity="secondary"
-        />
-      </NuxtLink>
-    </div>
+      </template>
+    </PageHeader>
 
     <!-- ツールバー: 全件数 / 並び順 / 絞り込み -->
     <div
@@ -598,7 +590,7 @@ onMounted(() => load(false))
       </template>
     </Dialog>
 
-    <!-- 確認ダイアログ（削除用、useConfirmDialog 経由） -->
-    <ConfirmDialog />
+    <!-- 使い方モーダル -->
+    <CorkboardGuideModal v-model:visible="showGuide" />
   </div>
 </template>

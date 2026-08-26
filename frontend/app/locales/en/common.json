@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Connection lost. Attempting to reconnect…"
+    },
+    "mobile": {
+      "backToList": "Back to channel list",
+      "noChannels": "No channels yet",
+      "createChannel": "Create channel"
     }
   },
   "button": {
@@ -82,7 +87,10 @@
     "loading": "Loading...",
     "confirm": "Confirm",
     "logout": "Logout",
-    "update": "Update"
+    "update": "Update",
+    "see_more": "See more",
+    "view_all": "View all",
+    "undo": "Undo"
   },
   "label": {
     "required": "Required",
@@ -218,8 +226,12 @@
   "error": {
     "server": "A server error occurred",
     "server_retry": "Please try again later.",
+    "rate_limited": "Too many requests",
+    "rate_limited_detail": "You made too many requests in a short time. Please wait a moment and try again.",
+    "rate_limited_retry_after": "You made too many requests in a short time. Please try again in about {seconds} seconds.",
     "network": "A network error occurred",
     "unauthorized": "Please log in",
+    "section_load_failed": "Failed to load this section. Please reload.",
     "unknown": "An error occurred",
     "COMMON_001": "There are errors in the input",
     "COMMON_002": "You do not have permission to perform this action",
@@ -236,7 +248,19 @@
     "AUTH_010": "Your current password is incorrect",
     "AUTH_011": "No password has been set yet",
     "AUTH_044": "Too many requests. Please wait a moment and try again",
-    "SURVEY_023": "Team breakdown cannot be enabled for anonymous surveys"
+    "SURVEY_023": "Team breakdown cannot be enabled for anonymous surveys",
+    "SCHEDULE_KEEP_001": "Keep not found",
+    "SCHEDULE_KEEP_002": "Please enter a title",
+    "SCHEDULE_KEEP_003": "Up to 10 candidate dates",
+    "SCHEDULE_KEEP_004": "Invalid date format",
+    "SCHEDULE_KEEP_005": "You don't have permission for this keep",
+    "SCHEDULE_KEEP_006": "This keep can't be converted",
+    "SCHEDULE_KEEP_007": "Can't edit in this state",
+    "SCHEDULE_KEEP_008": "Can't undo -- attendance replies exist",
+    "SCHEDULE_KEEP_009": "This transition isn't allowed",
+    "SCHEDULE_KEEP_010": "Keep limit reached",
+    "SCHEDULE_KEEP_012": "Invalid reorder request",
+    "TIMELINE_017": "You have reached the mute limit of 200. Please unhide something you no longer need."
   },
   "annual_plan": {
     "title": "Annual Event Plan",
@@ -455,7 +479,51 @@
     "imageUploadError": "Failed to upload image",
     "postSuccess": "Posted successfully",
     "postError": "Failed to post",
-    "announcementRegisterError": "Failed to register as announcement. Please register manually later."
+    "announcementRegisterError": "Failed to register as announcement. Please register manually later.",
+    "postSource": "Posted in",
+    "writeReply": "Write a reply",
+    "replySubmit": "Reply",
+    "noReplies": "No replies yet",
+    "loadMoreReplies": "Show more",
+    "composerPlaceholder": {
+      "TEAM": "Post to your team...",
+      "VILLAGE": "Post to your village...",
+      "ORGANIZATION": "Post to your organization...",
+      "PUBLIC": "What's happening?"
+    },
+    "submitLabel": "Post",
+    "pollOptionsCount": "{count} options",
+    "deliveryScope": {
+      "label": "Delivery range",
+      "options": {
+        "DIRECT": "Members of this organization only",
+        "CHILDREN": "Include direct child organizations",
+        "DESCENDANTS": "All organizations below this one"
+      },
+      "hints": {
+        "DIRECT": "Shown only on the timelines of members of this organization.",
+        "CHILDREN": "Also shown to members of the organizations directly below this one.",
+        "DESCENDANTS": "Shown to members of every organization below this one."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Hide posts from this team",
+        "ORGANIZATION": "Hide posts from this organization"
+      },
+      "targetType": {
+        "TEAM": "Team",
+        "ORGANIZATION": "Organization"
+      },
+      "muted": "Posts from {name} are now hidden",
+      "undo": "Undo",
+      "unmuted": "Posts are shown again",
+      "chip": "Hidden: {count}",
+      "dialogTitle": "Hidden sources",
+      "emptyList": "You have not hidden anyone.",
+      "unmuteAction": "Show again",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Gallery",
@@ -508,7 +576,8 @@
       "selfReviewEnd": "Self-review end time",
       "selfReviewHelp": "The configured time period is treated as a review window before publishing",
       "saveSettings": "Save Settings",
-      "loadFailed": "Failed to load the post"
+      "loadFailed": "Failed to load the post",
+      "scheduledPublishUnavailable": "Scheduled publishing is currently unavailable. Publishing makes the post live immediately."
     },
     "autoSave": {
       "label": "Auto-save",
@@ -534,7 +603,14 @@
       "viewModeKanban": "Kanban view",
       "deleteButton": "Delete",
       "deleteAriaLabel": "Delete this TODO",
-      "deleteConfirm": "Delete this TODO? This cannot be undone."
+      "deleteConfirm": "Delete this TODO? This cannot be undone.",
+      "sortLabel": "Sort by",
+      "sortRecent": "Newest",
+      "sortPriority": "Priority",
+      "deletedToast": "TODO deleted",
+      "restoredToast": "TODO restored",
+      "deleteFailed": "Failed to delete",
+      "restoreFailed": "Could not undo"
     },
     "field": {
       "status": "Status",
@@ -645,6 +721,24 @@
         "saving": "Saving...",
         "saved": "Saved"
       }
+    },
+    "create": {
+      "dialog_title": "Create TODO",
+      "title_label": "Title",
+      "title_placeholder": "TODO title",
+      "details_toggle": "Set details (optional)",
+      "description_label": "Description (optional)",
+      "description_placeholder": "Details or notes",
+      "scope_label": "Share with",
+      "scope_personal": "Personal",
+      "priority_label": "Priority",
+      "start_date_label": "Start date (optional)",
+      "due_date_label": "Due date (optional)",
+      "submit_button": "Create",
+      "cancel_button": "Cancel",
+      "draft_restored": "Draft restored",
+      "create_success": "TODO created",
+      "create_failed": "Failed to create TODO"
     }
   },
   "extended_profile": {
@@ -684,6 +778,62 @@
     "custom_field_added": "Custom field added",
     "custom_field_updated": "Custom field updated",
     "custom_field_deleted": "Custom field deleted"
+  },
+  "notification": {
+    "todoHandedOff": {
+      "title": "A TODO was passed to you",
+      "body": "{from} passed \"{title}\" to you (status: {label})"
+    },
+    "pageTitle": "通知",
+    "guide": {
+      "title": "通知の使い方",
+      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "read": {
+        "title": "通知を読む",
+        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "steps": {
+          "step1": "気になる通知の行をタップします",
+          "step2": "自動で既読になり、関連する画面へ移動します",
+          "step3": "未読の通知は左端の青いドットで見分けられます"
+        }
+      },
+      "filter": {
+        "title": "絞り込み",
+        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "steps": {
+          "step1": "画面上部の「すべて／未読」ボタンを押します",
+          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
+          "step3": "「すべて」に戻すと全ての通知が表示されます"
+        }
+      },
+      "snooze": {
+        "title": "スヌーズ",
+        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "steps": {
+          "step1": "通知の右側にある時計アイコンを押します",
+          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
+          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+        }
+      },
+      "confirm": {
+        "title": "確認通知",
+        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "steps": {
+          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step2": "「確認する」ボタンを押して確認済みにします",
+          "step3": "確認後は「確認済み」ラベルに変わります"
+        }
+      },
+      "urgent": {
+        "title": "緊急休業・一括既読",
+        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "steps": {
+          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
+          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
+          "step3": "既読にするとベルのバッジも0になります"
+        }
+      }
+    }
   },
   "project": {
     "milestones": "Milestones",
@@ -1127,12 +1277,72 @@
       "event": "Enter the numeric ID from an event detail URL (e.g. /events/77).",
       "document": "Enter the numeric ID from a document detail URL (e.g. /documents/55).",
       "url": "To create a URL card, change the card type above to URL."
+    },
+    "guide": {
+      "title": "How to use My Corkboard",
+      "description": "See all cards you have pinned across your corkboards in one place.",
+      "what": {
+        "title": "What is My Corkboard",
+        "body": "Cards you have 📌 pinned on each board are gathered here, sorted newest first."
+      },
+      "open": {
+        "title": "Open a card",
+        "body": "Tap a card to jump to its reference.",
+        "steps": {
+          "step1": "Tap a card to move to the original post, file, event, etc.",
+          "step2": "URL cards open in a new tab.",
+          "step3": "Cards you no longer have access to cannot be opened (shown as “No access”)."
+        }
+      },
+      "editNote": {
+        "title": "Edit a note",
+        "body": "You can attach a sticky note to a card.",
+        "steps": {
+          "step1": "Press the pencil button at the top right of the card.",
+          "step2": "Enter your note and save.",
+          "step3": "The saved note is shown on the card as a sticky note."
+        }
+      },
+      "unpinDelete": {
+        "title": "Unpin / Delete",
+        "body": "Remove cards you no longer need from the list or delete them.",
+        "steps": {
+          "step1": "Use the 📌 button to unpin; the card leaves this list (the original board card stays).",
+          "step2": "Use the 🗑 button to delete a card. Deletion cannot be undone."
+        }
+      },
+      "filterAndPin": {
+        "title": "Filter / New pin",
+        "body": "Narrow down the cards shown, or pin new ones.",
+        "steps": {
+          "step1": "Use the board selector in the toolbar to show only a specific board's cards.",
+          "step2": "Use “Load more” to show additional cards.",
+          "step3": "Use the “New pin” button to go to a corkboard and 📌 pin a card."
+        }
+      }
     }
   },
   "schedule": {
     "filter": {
       "allTeamsOrgs": "Teams & Orgs (All)",
       "selectScope": "Select destination"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Personal",
+        "unknown": "Other events",
+        "loadError": {
+          "summary": "Failed to load layers",
+          "detail": "Team/organization filters are temporarily unavailable. Events are still shown. Please reload later."
+        },
+        "hiddenNotice": "The layer you created it in is hidden",
+        "showIt": "Show it"
+      },
+      "more": "+{count} more",
+      "today": "Today",
+      "dayDetail": {
+        "title": "Events on {date}"
+      }
     }
   },
   "handoff": {
@@ -1175,12 +1385,6 @@
       "title": "Handoff history",
       "empty": "No history yet",
       "deletedLabel": "(deleted)"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "A TODO was passed to you",
-      "body": "{from} passed \"{title}\" to you (status: {label})"
     }
   },
   "common": {
@@ -1293,6 +1497,25 @@
       "skillsSummaryHint": "Describe your experience, knowledge, and skills freely (add structured skills in the skills section below)",
       "excelPreviewUnavailable": "Excel file preview is not available in the browser",
       "downloadLabel": "Download {format} ({type})"
+    },
+    "menu": "Menu",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "Stop supporting?",
+      "supporter_cancel_confirm_body": "Stop supporting {name}. Are you sure?",
+      "supporter_cancel_action": "Stop",
+      "supporter_registered": "Registered as a supporter",
+      "supporter_applied": "Supporter application sent",
+      "supporter_canceled": "Stopped supporting",
+      "leave_action": "Leave",
+      "load_error_title": "Could not load information",
+      "load_error_body": "Please try again later. It may be hidden if you do not have permission.",
+      "back_to_dashboard": "Back to dashboard",
+      "retry": "Retry",
+      "slow_loading": "Loading is taking longer than expected"
+    },
+    "unsavedChanges": {
+      "title": "Unsaved changes",
+      "confirmLeave": "You have unsaved changes. If you leave this page, your input will be lost. Continue?"
     }
   },
   "teamHub": {
@@ -1410,11 +1633,21 @@
       "feedback": "Feedback",
       "reports": "Reports",
       "advertisers": "Advertiser Management",
+      "adRateCards": "Ad Rate Cards",
+      "adCreditLimitRequests": "Ad Credit Limit Requests",
+      "affiliateSettings": "Affiliate Settings",
       "auditLogs": "Audit Logs",
       "shiftBudget": "Shift Budget",
       "betaRestriction": "Beta Restriction",
       "errorReports": "Error Reports",
-      "gdprPurge": "GDPR Purge Status"
+      "gdprPurge": "GDPR Purge Status",
+      "feedbackInbox": "Feedback Inbox (Global)",
+      "billing": "Billing master data",
+      "betaPerks": "Beta perk management"
+    },
+    "impersonation": {
+      "banner": "Impersonating: {label}",
+      "exit": "Exit"
     },
     "businessAlert": {
       "title": "Business Alerts",
@@ -1475,7 +1708,78 @@
     "addRecord": "Add Record",
     "participantCount": "{count} participants",
     "noRecords": "No activity records",
-    "loadError": "Failed to load activity records"
+    "loadError": "Failed to load activity records",
+    "create": {
+      "dialogTitle": "Add Activity Record",
+      "templateLabel": "Template",
+      "templatePlaceholder": "Select a template",
+      "noTemplatesTitle": "No templates yet",
+      "noTemplatesBody": "To create an activity record, please create a template first.",
+      "goToTemplates": "Create Template",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Activity title",
+      "dateLabel": "Activity Date",
+      "descriptionLabel": "Description (optional)",
+      "visibilityLabel": "Visibility",
+      "visibilityPublic": "Public",
+      "visibilityMembersOnly": "Members only",
+      "requiredFieldError": "Please fill in the required fields",
+      "saveSuccess": "Activity record added",
+      "saveError": "Failed to add activity record",
+      "submit": "Add",
+      "scopeResolveError": "Failed to identify the target",
+      "templatesLoadError": "Failed to load templates",
+      "draftHint": "You can save a draft with just a title and activity date. Templates and custom fields can be added later.",
+      "saveDraft": "Save Draft",
+      "draftSaved": "Draft saved",
+      "draftRestored": "Previous input restored",
+      "draftSuccess": "Saved as draft"
+    },
+    "statusLabel": {
+      "DRAFT": "Draft",
+      "PUBLISHED": "Published"
+    },
+    "list": {
+      "filterAll": "All",
+      "filterDraft": "Draft",
+      "editDraft": "Edit & Publish"
+    },
+    "publish": {
+      "success": "Activity record published",
+      "error": "Failed to publish"
+    },
+    "guide": {
+      "title": "How to Use Activity Records",
+      "description": "Record your team or organization's activities (practice, matches, events, etc.) to review and share them.",
+      "list": {
+        "title": "Viewing Records",
+        "body": "Activities are displayed as cards in reverse chronological order. You can quickly see the title, date, location, and participant count. Records set to \"Public\" show a share button, letting you share the link externally."
+      },
+      "add": {
+        "title": "Adding a Record",
+        "body": "Tap \"Add Record\" in the top right to create a new activity record.",
+        "steps": {
+          "step1": "Tap \"Add Record\" in the top right",
+          "step2": "Choose a template",
+          "step3": "Enter a title and activity date (both required)",
+          "step4": "Select the visibility (Members Only / Public)",
+          "step5": "Fill in any custom fields defined by the template",
+          "step6": "Tap \"Add\" to save the record to the list"
+        }
+      },
+      "template": {
+        "title": "When a Template Is Needed",
+        "body": "A template is required to create a record. If no templates exist yet, a guidance screen appears instead of the input form. For teams, go to the \"Activity Templates\" page to create a template first, then add your record."
+      },
+      "visibility": {
+        "title": "Visibility (Who Can See It)",
+        "members_only_label": "Members Only",
+        "members_only_desc": "Only members of the team or organization can view this record.",
+        "public_label": "Public",
+        "public_desc": "Anyone with the link can view it. A share button appears in the list for easy external sharing.",
+        "note": "The default visibility is determined by the template's settings."
+      }
+    }
   },
   "dashboard": {
     "team_reservation_link": "Reservations"
@@ -1547,7 +1851,9 @@
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "Author",
       "VILLAGE": "Village"
-    }
+    },
+    "restoredToast": "Restored to favorites",
+    "restoreFailed": "Could not undo"
   },
   "succession": {
     "legalFilings": {
@@ -1586,6 +1892,13 @@
     "mapEmbedUrlHelp": "In Google Maps, click \"Share > Embed a map > Copy HTML\" and paste the src= URL here",
     "mapEmbedUrlInvalidFormat": "Must be a Google Maps embed URL (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "Store map URL saved",
+    "timezone": {
+      "label": "Reservation time zone",
+      "help": "IANA time zone used to interpret reservation start and end times.",
+      "placeholder": "e.g. Asia/Tokyo",
+      "invalid": "Enter a valid IANA time zone",
+      "saved": "Reservation time zone saved"
+    },
     "regionCode": {
       "label": "Location (prefecture / city)",
       "help": "Selecting a prefecture and city sets the defaults for regional search and listings.",
@@ -1603,6 +1916,24 @@
     "bulletinOpen": "Discuss on bulletin board"
   },
   "scopeDashboard": {
+    "storageSummary": {
+      "title": "Storage",
+      "personal": "Personal",
+      "team": "Team",
+      "organization": "Organization",
+      "details": "View details",
+      "error": "Could not load storage",
+      "retry": "Retry",
+      "unconfigured": "Quota not configured",
+      "not_available": "No storage data",
+      "meterLabel": "{scope} storage usage",
+      "meterValue": "Usage {percent}%",
+      "warningTitle": "Storage limit approaching",
+      "warningMessage": "{scope} is using {percent}%. Consider upgrading to a paid plan.",
+      "viewPlans": "View plans",
+      "checkStorage": "Check storage",
+      "cancel": "Cancel"
+    },
     "tabs": {
       "personal": "Personal",
       "team": "Team",
@@ -1660,5 +1991,227 @@
     "GUESTS_AND_ABOVE": "Guests and above",
     "SUPPORTERS_AND_ABOVE": "Supporters and above",
     "MEMBERS_AND_ABOVE": "Members and above"
+  },
+  "module_settings": {
+    "enabled_count": "有効な機能: {count} / {limit}",
+    "fetch_error": "機能一覧の取得に失敗しました",
+    "empty": "現在このスコープで利用できる追加機能はありません",
+    "toggle_success_on": "{name} を有効にしました",
+    "toggle_success_off": "{name} を無効にしました",
+    "badge": {
+      "level_unavailable": "このレベルでは利用できません",
+      "paid_plan": "有料プラン",
+      "limit_reached": "上限（{limit}）に達しています"
+    },
+    "error": {
+      "paid_required": "この機能は有料プランが必要です",
+      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
+      "level_unavailable": "このレベルではこの機能を利用できません",
+      "generic": "機能の切替に失敗しました"
+    }
+  },
+  "module_settings_guide": {
+    "title": "機能設定の使い方",
+    "help_button": "使い方",
+    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "what": {
+      "title": "機能設定とは",
+      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+    },
+    "toggle": {
+      "title": "機能を ON / OFF する",
+      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "steps": {
+        "step1": "一覧から使いたい機能のカードを探す",
+        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
+        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
+        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+      }
+    },
+    "count": {
+      "title": "今いくつ使えるかを確認する",
+      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+    },
+    "restrictions": {
+      "title": "使えないスイッチがあるとき",
+      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "items": {
+        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
+        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
+        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+      }
+    },
+    "empty": {
+      "title": "機能が表示されないとき",
+      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+    },
+    "permission": {
+      "title": "設定できる人",
+      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basic Info",
+      "members": "Members",
+      "invites": "Invites",
+      "supporters": "Supporter Management",
+      "modules": "Features"
+    },
+    "action": {
+      "leave_confirm_title": "Leave team",
+      "leave_confirm_body": "Are you sure you want to leave this team? This cannot be undone.",
+      "left": "Left the team"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basic Info",
+      "members": "Members",
+      "member_teams": "Teams",
+      "invites": "Invites",
+      "permission_groups": "Permission Groups",
+      "supporters": "Supporter Management",
+      "modules": "Features"
+    },
+    "action": {
+      "leave_confirm_title": "Leave organization",
+      "leave_confirm_body": "Are you sure you want to leave this organization? This cannot be undone.",
+      "left": "Left the organization"
+    }
+  },
+  "blog_guide": {
+    "title": "How to Use My Blog",
+    "description": "Write articles and share them with your team and organization members. Save as a draft first, then publish when ready.",
+    "what": {
+      "title": "What is a Blog?",
+      "body": "A place to write your thoughts and learnings as articles and share them with your team and organization members. Articles can be managed in draft, published, scheduled, or archived states."
+    },
+    "create": {
+      "title": "Writing an Article",
+      "body": "Just click '+ New Article' to create a draft article. You can change the title later.",
+      "steps": {
+        "step1": "Click '+ New Article' in the top right",
+        "step2": "Enter the article title (can be changed later)",
+        "step3": "Select the posting destination (personal, team, or organization)",
+        "step4": "Click 'Create and Edit' to proceed to the editor"
+      }
+    },
+    "publish": {
+      "title": "Publishing an Article",
+      "body": "Click the eye icon on each card in 'My Posts' to toggle between public and private.",
+      "steps": {
+        "step1": "Click the eye icon on a draft article card",
+        "step2": "It switches to 'Published' and becomes visible to team and organization members",
+        "step3": "Click again to make it private (draft) again"
+      }
+    },
+    "manage": {
+      "title": "Managing Articles",
+      "body": "'My Posts' shows the latest 5 articles in a horizontal scroll. Use the icons on each card to edit or delete.",
+      "item_edit": "Pencil icon → Edit article content",
+      "item_delete": "Trash icon → Delete article (cannot be undone)",
+      "item_count": "Check the article count in the top right",
+      "item_all": "All articles are listed in the 'Everyone's Posts' section"
+    },
+    "settings": {
+      "title": "Blog Settings",
+      "body": "You can set your blog title, description, and self-review time period.",
+      "steps": {
+        "step1": "Click '⚙ Blog Settings' in the top right",
+        "step2": "Enter your blog title and description",
+        "step3": "Set the self-review time period (review period before posting)",
+        "step4": "Click 'Save Settings'"
+      }
+    }
+  },
+  "analytics": {
+    "title": "Access Analytics",
+    "loadError": "Failed to load access analytics data",
+    "empty": "No access data yet",
+    "summary": {
+      "totalViews": "Total PV",
+      "uniqueVisitors": "Unique Visitors",
+      "memberViews": "Member Views",
+      "guestViews": "Guest Views"
+    },
+    "export": "Export Data",
+    "topContent": {
+      "title": "Popular Content",
+      "empty": "No data available"
+    },
+    "chart": {
+      "views": "Page Views",
+      "daily": "Daily",
+      "monthly": "Monthly",
+      "toggle": "Toggle View",
+      "recentDays": "Access statistics for the last 30 days",
+      "monthlyTrend": "Monthly access trend statistics"
+    },
+    "period": {
+      "allTime": "All Time"
+    },
+    "guide": {
+      "page_title": "How to Use Analytics",
+      "what": {
+        "title": "What is Analytics?",
+        "body": "Analytics lets you see how often your team or organization pages are being viewed. Use it to understand member and guest visit patterns and improve your content."
+      },
+      "metrics": {
+        "title": "Measured Data",
+        "total_views": "Total PV: Total number of times pages were displayed",
+        "unique_visitors": "Unique Visitors: Number of visitors excluding duplicates",
+        "member_views": "Member Views: Page views by members",
+        "guest_views": "Guest Views: Page views by guests (non-members)"
+      },
+      "timing": {
+        "title": "Data Update Timing",
+        "body": "Access data is aggregated in a daily batch. Same-day data is reflected the next morning. Since this is not real-time, access from the past few hours will appear the following day."
+      },
+      "chart": {
+        "title": "Reading the Chart",
+        "body": "You can switch the chart between \"Daily\" and \"Monthly\" views.",
+        "daily_title": "Daily Chart",
+        "daily_desc": "Shows daily page view trends for the past 30 days.",
+        "monthly_title": "Monthly Chart",
+        "monthly_desc": "Shows monthly aggregated values. Useful for understanding long-term trends."
+      },
+      "top_content": {
+        "title": "Popular Content",
+        "body": "Shows a ranking of content by number of views. If no access data is available yet, \"No data available\" is shown, and the ranking appears automatically once views are recorded."
+      }
+    }
+  },
+  "comingSoon": {
+    "title": "Coming Soon",
+    "description": "This feature is currently under development. Please check back later."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Transfer ownership",
+    "sectionDescription": "Hand over the owner (admin) role to another member. After the transfer you become a deputy admin and can no longer perform admin-only actions.",
+    "openButton": "Transfer ownership",
+    "dialogTitle": "Transfer ownership",
+    "warning": "This action cannot be undone. Admin rights move to the new owner, and only the new owner can hand them back.",
+    "targetLabel": "New owner",
+    "targetPlaceholder": "Select a member",
+    "noCandidates": "There is no member you can transfer ownership to.",
+    "confirmLabel": "Type “{name}” to confirm",
+    "confirmMismatch": "The name does not match.",
+    "cancel": "Cancel",
+    "submit": "Transfer",
+    "successTitle": "Ownership transferred",
+    "successDetail": "Admin rights have moved to the new owner."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Feature not available",
+      "body": "This feature is not available yet. Returning to your dashboard."
+    },
+    "error": {
+      "fetchFailedTitle": "Could not check feature availability",
+      "fetchFailedBody": "We could not check whether this feature is available because of a network error. Please try again later."
+    }
   }
 }

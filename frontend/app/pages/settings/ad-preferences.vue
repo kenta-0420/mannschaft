@@ -25,6 +25,7 @@ const preferences = ref<UserAdPreferences | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const rotating = ref(false)
+const showGuide = ref(false)
 
 const newBlockId = ref<string>('')
 
@@ -158,9 +159,8 @@ onMounted(loadPreferences)
 
 <template>
   <div>
-    <PageHeader :title="t('advertising.pages.settings_ad_preferences.title')" back-to="/settings" />
-
-    <div class="mx-auto max-w-2xl">
+    <div class="mx-auto max-w-2xl p-6">
+      <PageHeader :title="t('advertising.pages.settings_ad_preferences.title')" help @help="showGuide = true" />
       <p class="mb-6 text-sm text-surface-500 dark:text-surface-300">
         {{ t('advertising.pages.settings_ad_preferences.description') }}
       </p>
@@ -315,6 +315,6 @@ onMounted(loadPreferences)
       </div>
     </div>
 
-    <ConfirmDialog />
+    <AdPreferencesGuideModal v-model:visible="showGuide" />
   </div>
 </template>

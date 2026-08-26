@@ -39,4 +39,16 @@ public interface AdSegmentEvaluator {
      * @return 該当 user_id 集合
      */
     Set<Long> resolveUserIds(AdAudienceSegment segment);
+
+    /**
+     * セグメント条件に該当する user_id の件数のみを返す。
+     *
+     * <p>{@link #resolveUserIds} と同じ論理条件・同じ segment_value バリデーションで評価するが、
+     * user_id 集合をアプリ層に展開せず COUNT クエリで件数のみ取得する（メモリ展開回避）。
+     * segment_value が不正な場合の例外挙動は {@link #resolveUserIds} と完全に一致させること。</p>
+     *
+     * @param segment 評価対象セグメント
+     * @return 該当 user_id の件数
+     */
+    long countUserIds(AdAudienceSegment segment);
 }

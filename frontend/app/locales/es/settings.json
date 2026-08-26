@@ -48,7 +48,8 @@
     "inbox": "Bandeja de entrada",
     "market": "Mercado",
     "jobs": "Empleos",
-    "matching": "Matching"
+    "matching": "Matching",
+    "myFiles": "Mis Archivos"
   },
   "settings": {
     "navigation": {
@@ -59,7 +60,8 @@
       "saveSuccess": "Configuración guardada",
       "saveError": "Error al guardar la configuración",
       "reorderHint": "Arrastra el controlador para reordenar los elementos de navegación",
-      "dragHandleLabel": "Controlador de arrastre"
+      "dragHandleLabel": "Controlador de arrastre",
+      "pinnedBottom": "Fijado al final"
     },
     "account": {
       "page_title": "Configuración de cuenta",
@@ -165,6 +167,16 @@
       "backup_codes_description": "Guarde los siguientes códigos de respaldo en un lugar seguro. Cada código solo se puede usar una vez.",
       "rename_dialog_title": "Renombrar dispositivo",
       "device_name_label": "Nombre del dispositivo",
+      "webauthn": {
+        "register_button": "Registrar una clave de acceso",
+        "register_dialog_title": "Registrar una clave de acceso",
+        "device_name_label": "Nombre del dispositivo (opcional)",
+        "device_name_placeholder": "ej. Touch ID en iPhone",
+        "register_confirm": "Registrar",
+        "register_cancel": "Cancelar",
+        "register_success": "Clave de acceso registrada correctamente",
+        "register_error": "Error al registrar la clave de acceso"
+      },
       "session": {
         "device_label": "{browser} en {os}",
         "unknown_device": "Dispositivo desconocido"
@@ -184,10 +196,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "Cuentas vinculadas",
       "oauth_section_title": "Conexiones OAuth",
       "no_oauth": "No hay cuentas conectadas",
       "connected_at": "Conectado: {date}",
       "unlink_button": "Desconectar",
+      "google_link_button": "Vincular con Google",
+      "google_link_loading": "Vinculando...",
       "line_section_title": "Conexión LINE",
       "line_icon_alt": "Icono de LINE",
       "line_default_user": "Usuario de LINE",
@@ -196,10 +211,27 @@
       "line_not_linked": "No hay cuenta LINE conectada",
       "line_link_instruction": "Conecte LINE desde la aplicación LINE",
       "toast": {
+        "load_error": "Error al cargar las cuentas vinculadas",
         "unlink_success": "{provider} desconectado",
         "unlink_error": "Error al desconectar",
         "line_unlink_success": "LINE desconectado",
-        "line_unlink_error": "Error al desconectar LINE"
+        "line_unlink_error": "Error al desconectar LINE",
+        "link_success": "Vinculado con {provider}",
+        "link_error": "Error al obtener URL de vinculación",
+        "already_linked": "Esta cuenta ya está vinculada a {provider}",
+        "taken_by_other": "Esta cuenta de Google ya es utilizada por otro usuario",
+        "oauth_denied": "La autenticación de Google fue cancelada",
+        "link_with_calendar_success": "Cuenta de Google y Calendario vinculados"
+      },
+      "calendar_sync_toggle": "Configurar también la sincronización de Google Calendar",
+      "guide": {
+        "title": "Acerca de la vinculación de cuentas",
+        "google_title": "Iniciar sesión con Google",
+        "google_desc": "Puede iniciar sesión fácilmente con su cuenta de Google sin contraseña.",
+        "apple_title": "Iniciar sesión con Apple (próximamente)",
+        "apple_desc": "Un método de inicio de sesión conveniente para usuarios de iPhone. Próximamente.",
+        "line_title": "Notificaciones de LINE",
+        "line_desc": "Agregue el bot a su grupo de LINE para recibir notificaciones de horarios y asistencia en LINE. Vincule desde la aplicación LINE."
       }
     },
     "member_card": {
@@ -236,6 +268,47 @@
         "delete_error": "Error al eliminar"
       }
     },
+    "seal_guide": {
+      "title": "Cómo usar los sellos electrónicos",
+      "description": "Use sellos electrónicos para estampar y gestionar documentos.",
+      "preview": {
+        "title": "Vista previa del sello",
+        "body": "Vea los 3 tipos de sellos electrónicos (apellido, nombre completo, nombre) generados automáticamente a partir de su nombre registrado.",
+        "steps": {
+          "step1": "Abra la pestaña «Vista previa del sello»",
+          "step2": "Revise los 3 sellos (apellido, nombre completo, nombre) mostrados en la cuadrícula"
+        }
+      },
+      "regenerate": {
+        "title": "Regenerar sello",
+        "body": "Recree su sello actual con un nuevo diseño. Úselo cuando cambie su nombre o desee actualizar el diseño.",
+        "note": "Puede ejecutar esto hasta 3 veces por hora. Si alcanza el límite, espere antes de intentarlo de nuevo.",
+        "steps": {
+          "step1": "Abra la pestaña «Vista previa del sello»",
+          "step2": "Haga clic en el botón «Regenerar sello»",
+          "step3": "Tras completarse, el nuevo sello aparecerá en la cuadrícula"
+        }
+      },
+      "defaults": {
+        "title": "Configuración predeterminada",
+        "body": "Configure qué variante (apellido, nombre completo, nombre) se usa automáticamente al sellar documentos. Evita tener que seleccionarla cada vez.",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
+        "steps": {
+          "step1": "Abra la pestaña «Configuración predeterminada»",
+          "step2": "Seleccione la variante preferida (apellido, nombre completo, nombre) en el menú desplegable",
+          "step3": "Haga clic en «Guardar» para guardar la configuración"
+        }
+      },
+      "history": {
+        "title": "Historial de sellos",
+        "body": "Vea una lista de sus sellos anteriores. Se muestran la fecha, la variante usada, el destino y el estado (válido / cancelado).",
+        "steps": {
+          "step1": "Abra la pestaña «Historial de sellos»",
+          "step2": "Desplácese por la lista para revisar",
+          "step3": "Cargue historial más antiguo con el botón «Cargar más»"
+        }
+      }
+    },
     "seal": {
       "section_title": "Sello electrónico",
       "tab_preview": "Vista previa del sello",
@@ -248,6 +321,27 @@
         "regenerate_error": "Error al regenerar (hasta 3 veces por hora)",
         "save_defaults_success": "Configuración predeterminada guardada",
         "save_defaults_error": "Error al guardar la configuración"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
       }
     },
     "login_history": {
@@ -263,26 +357,35 @@
     },
     "gcal": {
       "section_title": "Integración con Google Calendar",
+      "connection_status_title": "Estado de la conexión",
       "connected_label": "Conectado",
       "last_synced": "Última sincronización: {date}",
+      "last_sync_error": "Error de sincronización: {message}",
       "manual_sync_button": "Sincronización manual",
       "disconnect_button": "Desconectar",
+      "disconnect_confirm": "¿Desconectar la integración con Google Calendar?",
       "sync_settings_title": "Configuración de sincronización",
       "personal_calendar_label": "Calendario personal",
       "personal_calendar_description": "Sincronizar eventos personales con Google Calendar",
       "team_calendars_label": "Calendarios de equipo",
       "org_calendars_label": "Calendarios de organización",
-      "save_settings_button": "Guardar configuración",
+      "no_team_calendars": "No perteneces a ningún equipo",
+      "no_org_calendars": "No perteneces a ninguna organización",
       "not_connected_description": "Conecte su cuenta de Google para sincronizar calendarios",
       "connect_button": "Conectar cuenta de Google",
+      "detail_link_button": "Ir a la configuración detallada",
       "toast": {
         "connect_error": "Error al conectar",
+        "oauth_connected": "Conectado con Google Calendar",
+        "oauth_connect_failed": "Error al conectar con Google Calendar",
         "disconnect_success": "Desconectado",
         "disconnect_error": "Error al desconectar",
-        "save_success": "Configuración de sincronización guardada",
-        "save_error": "Error al guardar",
         "sync_success": "Sincronización completada",
-        "sync_error": "Error al sincronizar"
+        "sync_error": "Error al sincronizar",
+        "load_error": "Error al cargar",
+        "toggle_on_success": "Sincronización activada para {name}",
+        "toggle_off_success": "Sincronización desactivada para {name}",
+        "backfill_info": "{count} eventos añadidos a la cola de sincronización"
       }
     },
     "delete_account": {
@@ -322,6 +425,25 @@
       "channel_push": "Push",
       "locked_tag": "Urgente",
       "locked_desc": "Esta notificación no se puede desactivar"
+    },
+    "storage": {
+      "page_title": "Almacenamiento",
+      "group_personal": "Personal",
+      "group_team": "Equipos",
+      "group_org": "Organizaciones",
+      "scope_personal": "Almacenamiento personal",
+      "file_count": "{count} archivos",
+      "limit": "Límite",
+      "unlimited": "Sin límite",
+      "error_fetch": "No se pudo cargar el uso de almacenamiento",
+      "empty": "No hay información de almacenamiento para mostrar"
+    },
+    "fileBrowser": {
+      "upload_button": "Subir archivo",
+      "upload_need_folder": "Abre una carpeta antes de subir archivos",
+      "upload_success": "«{name}» subido correctamente",
+      "upload_error": "Error al subir «{name}»",
+      "uploading": "Subiendo..."
     }
   }
 }

@@ -1,0 +1,97 @@
+{
+  "circulation": {
+    "status": {
+      "DRAFT": "Draft",
+      "ACTIVE": "In circulation",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled"
+    },
+    "recipient_status": {
+      "PENDING": "Pending",
+      "STAMPED": "Stamped",
+      "SKIPPED": "Skipped",
+      "REJECTED": "Rejected"
+    },
+    "detail": {
+      "title": "Circulation details",
+      "close": "Close",
+      "cancel": "Cancel",
+      "forbidden": "You do not have permission to view this circulation (you are not a recipient).",
+      "load_failed": "Failed to load the circulation",
+      "unknown_user": "Unknown user",
+      "created_by": "{name}",
+      "due": "Due {date}",
+      "progress": "stamped",
+      "recipients": "Recipients",
+      "no_recipients": "No recipients",
+      "attachments": "Attachments",
+      "comments": "Comments",
+      "no_comments": "No comments yet",
+      "stamp": {
+        "open": "Stamp",
+        "choose_seal": "Choose a seal to stamp with",
+        "no_seal": "No seal available. Please create a seal in settings.",
+        "select_seal": "Please select a seal",
+        "comment_placeholder": "Stamp comment (optional)",
+        "submit": "Stamp",
+        "success": "Stamped",
+        "failed": "Failed to stamp"
+      },
+      "comment": {
+        "placeholder": "Enter a comment",
+        "submit": "Post comment",
+        "failed": "Failed to post the comment"
+      }
+    },
+    "create": {
+      "title": "Create circulation",
+      "cancel": "Cancel",
+      "submit": "Create and start",
+      "success": "Circulation created and started",
+      "failed": "Failed to create the circulation",
+      "no_members": "No members available to add as recipients",
+      "recipients_selected": "{count} selected",
+      "order_title": "Circulation order (top to bottom)",
+      "move_up": "Move up",
+      "move_down": "Move down",
+      "field": {
+        "title": "Title",
+        "title_placeholder": "Enter the circulation title",
+        "body": "Body",
+        "body_placeholder": "Enter the content to circulate",
+        "mode": "Circulation method",
+        "recipients": "Recipients",
+        "priority": "Priority",
+        "due_date": "Due date (optional)",
+        "sequential_count": "Number of sequential recipients (first N)",
+        "sequential_count_placeholder": "Enter count"
+      },
+      "mode": {
+        "SIMULTANEOUS": "Simultaneous",
+        "SEQUENTIAL": "Sequential",
+        "HYBRID": "Hybrid"
+      },
+      "mode_hint": {
+        "SIMULTANEOUS": "Circulate to all recipients at the same time",
+        "SEQUENTIAL": "Circulate one by one in order from the top",
+        "HYBRID": "First N recipients receive it sequentially, the rest simultaneously"
+      },
+      "hybrid_boundary": "↓ Simultaneous from here",
+      "hybrid_seq_count_hint": "Enter a value between 1 and {max}",
+      "hybrid_seq_count_needs_two": "Select 2 or more recipients to specify N",
+      "priority": {
+        "NORMAL": "Normal",
+        "URGENT": "Urgent"
+      },
+      "error": {
+        "title_required": "Please enter a title",
+        "title_too_long": "The title must be 200 characters or fewer",
+        "body_required": "Please enter the body",
+        "recipients_required": "Please select at least one recipient",
+        "members_load_failed": "Failed to load the member list",
+        "hybrid_needs_two_or_more": "Hybrid mode requires at least 2 recipients",
+        "sequential_count_range": "Sequential count must be at least 1 and less than the recipient count (max {max})"
+      }
+    }
+  }
+}

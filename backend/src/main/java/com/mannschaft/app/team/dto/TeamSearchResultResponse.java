@@ -51,8 +51,17 @@ public record TeamSearchResultResponse(
      *
      * <p>F22.1 市 Phase 2 足場C: 構造化キー {@code prefectureCode}/{@code cityCode} を追加で返す
      * （名称 {@code prefecture}/{@code city} も併存）。フィールド名は Jackson 既定の camelCase。</p>
+     *
+     * <p>画像 URL 根治 Phase 1: {@code iconUrl}/{@code bannerUrl} は DB の生 R2 キーをそのまま返さず、
+     * 呼び出し側で {@code MediaUrlResolver} を通して解決した署名付き表示 URL（絶対 URL）を受け取る。
+     * 解決不能（null/失敗）の場合は null を渡す。</p>
+     *
+     * @param team             チームエンティティ
+     * @param resolvedIconUrl  解決済みアイコン表示 URL（署名付き絶対 URL。未解決時は null）
+     * @param resolvedBannerUrl 解決済みバナー表示 URL（署名付き絶対 URL。未解決時は null）
      */
-    public static TeamSearchResultResponse from(TeamEntity team) {
+    public static TeamSearchResultResponse from(
+            TeamEntity team, String resolvedIconUrl, String resolvedBannerUrl) {
         return new TeamSearchResultResponse(
                 team.getSlug(),
                 team.getSlug(),
@@ -61,9 +70,9 @@ public record TeamSearchResultResponse(
                 team.getPrefecture(),
                 team.getCity(),
                 team.getTemplate(),
-                team.getIconUrl(),
+                resolvedIconUrl,
                 team.getVisibility() != null ? team.getVisibility().name() : null,
-                team.getBannerUrl(),
+                resolvedBannerUrl,
                 team.getSupporterEnabled(),
                 team.getMemberCount() != null ? team.getMemberCount() : 0L,
                 team.getPrefectureCode(),

@@ -9,6 +9,7 @@ import com.mannschaft.app.auth.dto.LoginHistoryResponse;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.RequestEmailChangeRequest;
 import com.mannschaft.app.auth.dto.RequestWithdrawalRequest;
+import com.mannschaft.app.auth.dto.OAuthProviderResponse;
 import com.mannschaft.app.auth.dto.UpdateProfileRequest;
 import com.mannschaft.app.auth.dto.UpdatePublicProfileRequest;
 import com.mannschaft.app.auth.dto.UserProfileResponse;
@@ -36,6 +37,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -99,7 +101,7 @@ class UserControllerTest {
     // ──────────────────────────────────────────────
 
     @Test
-    @DisplayName("GET /me — 正常系: 200 でプロフィールを返却する")
+    @DisplayName("GET /me — 正常系: 200 でプロフィールを返却する（UserController#getMyProfile）")
     void getMe_success_returns200() throws Exception {
         var profile = new UserProfileResponse(
                 1L, "test@example.com", "田中", "太郎",
@@ -125,7 +127,7 @@ class UserControllerTest {
     // ──────────────────────────────────────────────
 
     @Test
-    @DisplayName("PUT /me — 正常系: 200 で更新後プロフィールを返却する")
+    @DisplayName("PUT /me — 正常系: 200 で更新後プロフィールを返却する（UserController#updateMyProfile）")
     void updateMe_success_returns200() throws Exception {
         var updatedProfile = new UserProfileResponse(
                 1L, "test@example.com", "佐藤", "花子",
@@ -242,7 +244,7 @@ class UserControllerTest {
         var meta = new CursorPagedResponse.CursorMeta(null, false, 20);
         CursorPagedResponse<LoginHistoryResponse> pagedResp =
                 CursorPagedResponse.of(List.of(history), meta);
-        given(authService.getLoginHistory(anyLong(), any(), anyInt()))
+        given(authService.getLoginHistory(anyLong(), any(), anyInt(), any(), any()))
                 .willReturn(pagedResp);
 
         mockMvc.perform(get("/api/v1/users/me/login-history")
@@ -259,7 +261,8 @@ class UserControllerTest {
     // ──────────────────────────────────────────────
 
     @Test
-    @DisplayName("VIS-001: PATCH /me/public-profile — enabled=true で 204 を返す")
+    @DisplayName("VIS-001: PATCH /me/public-profile — enabled=true で 204 を返す"
+            + "（UserController#updatePublicProfile）")
     void updatePublicProfile_enableTrue_returns204() throws Exception {
         doNothing().when(userService).updatePublicProfileEnabled(anyLong(), any(Boolean.class));
 
@@ -453,5 +456,78 @@ class UserControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.data.message").value("退会リクエストを取り消しました"));
+    }
+
+    @Test
+    @DisplayName("POST /me/withdrawal/cancel — 退会申請が存在しない場合は409（ErrorCodeステータス写像是正ロットA: AUTH_032）")
+    void cancelWithdrawal_notRequested_returns409() throws Exception {
+        given(userService.cancelWithdrawal(anyLong()))
+                .willThrow(new com.mannschaft.app.common.BusinessException(
+                        com.mannschaft.app.auth.AuthErrorCode.AUTH_032));
+        given(proxyInputContext.isProxy()).willReturn(false);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/users/me/withdrawal/cancel"))
+                .andExpect(status().isConflict());
+    }
+
+    // ──────────────────────────────────────────────
+    // 認可根治戦役 Wave5 ロットB — 自己スコープ契約テスト
+    // UserController#setupPassword / UserController#getConnectedProviders /
+    // UserController#disconnectProvider
+    //
+    // SecurityContextHolder に userId=1 を設定済み（クラス @BeforeEach）。
+    // Service への引数を厳密一致（eq）でスタブし、他ユーザーの識別子が紛れ込む余地が
+    // 無いこと（＝リクエストからではなく認証主体からのみ userId が決まること）を固定する。
+    // ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("POST /me/password/setup — 対象は認証主体の userId のみ（UserController#setupPassword）")
+    void setupPassword_targetsOnlyAuthenticatedUser() throws Exception {
+        var msgResp = MessageResponse.of("パスワードを設定しました");
+        given(userService.setupPassword(eq(1L), anyString()))
+                .willReturn(ApiResponse.of(msgResp));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .post("/api/v1/users/me/password/setup")
+                        .param("password", "NewPassw0rd!"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.message").value("パスワードを設定しました"));
+    }
+
+    @Test
+    @DisplayName("GET /me/oauth — 返るのは認証主体自身の連携一覧のみ（UserController#getConnectedProviders）")
+    void getConnectedProviders_returnsOnlyAuthenticatedUsersProviders() throws Exception {
+        var provider = new OAuthProviderResponse("GOOGLE", "self@example.com",
+                LocalDateTime.of(2026, 1, 1, 0, 0));
+        given(authOAuthService.getConnectedProviders(eq(1L)))
+                .willReturn(ApiResponse.of(List.of(provider)));
+
+        mockMvc.perform(get("/api/v1/users/me/oauth"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].provider").value("GOOGLE"))
+                .andExpect(jsonPath("$.data[0].providerEmail").value("self@example.com"));
+    }
+
+    @Test
+    @DisplayName("DELETE /me/oauth/{provider} — 解除対象は認証主体の userId のみ"
+            + "（UserController#disconnectProvider — provider はプロバイダ種別に過ぎない）")
+    void disconnectProvider_targetsOnlyAuthenticatedUser() throws Exception {
+        doNothing().when(authOAuthService).disconnectProvider(eq(1L), eq("GOOGLE"));
+
+        mockMvc.perform(delete("/api/v1/users/me/oauth/GOOGLE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.message").value("OAuth連携を解除しました"));
+    }
+
+    @Test
+    @DisplayName("DELETE /me/oauth/{provider} — 未連携プロバイダの解除は404（ErrorCodeステータス写像是正ロットA: AUTH_029）")
+    void disconnectProvider_notLinked_returns404() throws Exception {
+        org.mockito.Mockito.doThrow(new com.mannschaft.app.common.BusinessException(
+                        com.mannschaft.app.auth.AuthErrorCode.AUTH_029))
+                .when(authOAuthService).disconnectProvider(eq(1L), eq("GOOGLE"));
+
+        mockMvc.perform(delete("/api/v1/users/me/oauth/GOOGLE"))
+                .andExpect(status().isNotFound());
     }
 }

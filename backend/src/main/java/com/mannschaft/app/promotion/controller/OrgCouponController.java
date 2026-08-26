@@ -40,7 +40,8 @@ public class OrgCouponController {
             @PathVariable Long orgId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<CouponResponse> result = couponService.list("ORGANIZATION", orgId, PageRequest.of(page, Math.min(size, 50)));
+        Page<CouponResponse> result = couponService.list("ORGANIZATION", orgId,
+                PageRequest.of(page, Math.min(size, 50)), SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -59,7 +60,7 @@ public class OrgCouponController {
     @Operation(summary = "クーポン詳細")
     public ResponseEntity<ApiResponse<CouponResponse>> get(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(couponService.get("ORGANIZATION", orgId, id)));
+        return ResponseEntity.ok(ApiResponse.of(couponService.get("ORGANIZATION", orgId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @PutMapping("/api/v1/organizations/{orgId}/coupons/{id}")
@@ -67,13 +68,13 @@ public class OrgCouponController {
     public ResponseEntity<ApiResponse<CouponResponse>> update(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody CreateCouponRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(couponService.update("ORGANIZATION", orgId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(couponService.update("ORGANIZATION", orgId, id, request, SecurityUtils.getCurrentUserId())));
     }
 
     @DeleteMapping("/api/v1/organizations/{orgId}/coupons/{id}")
     @Operation(summary = "クーポン削除")
     public ResponseEntity<Void> delete(@PathVariable Long orgId, @PathVariable Long id) {
-        couponService.delete("ORGANIZATION", orgId, id);
+        couponService.delete("ORGANIZATION", orgId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -81,6 +82,6 @@ public class OrgCouponController {
     @Operation(summary = "クーポン有効/無効切替")
     public ResponseEntity<ApiResponse<CouponResponse>> toggle(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(couponService.toggle("ORGANIZATION", orgId, id)));
+        return ResponseEntity.ok(ApiResponse.of(couponService.toggle("ORGANIZATION", orgId, id, SecurityUtils.getCurrentUserId())));
     }
 }

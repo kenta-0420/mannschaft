@@ -1,5 +1,6 @@
 package com.mannschaft.app.promotion.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.promotion.PromotionErrorCode;
 import com.mannschaft.app.promotion.dto.CouponResponse;
@@ -37,20 +38,25 @@ public class CouponService {
     private final CouponDistributionRepository distributionRepository;
     private final CouponRedemptionRepository redemptionRepository;
     private final PromotionMapper promotionMapper;
+    private final AccessControlService accessControlService;
 
     /**
      * クーポン一覧を取得する。
+     * 認可根治戦役 Wave2-2B: スコープメンバーであることを要求する（非メンバーは403）。
      */
-    public Page<CouponResponse> list(String scopeType, Long scopeId, Pageable pageable) {
+    public Page<CouponResponse> list(String scopeType, Long scopeId, Pageable pageable, Long actorUserId) {
+        accessControlService.checkMembership(actorUserId, scopeId, scopeType);
         return couponRepository.findByScopeTypeAndScopeId(scopeType, scopeId, pageable)
                 .map(promotionMapper::toCouponResponse);
     }
 
     /**
      * クーポンを作成する。
+     * 認可根治戦役 Wave2-2B: 作成先スコープのADMIN/DEPUTY_ADMINであることを要求する。
      */
     @Transactional
     public CouponResponse create(String scopeType, Long scopeId, Long userId, CreateCouponRequest request) {
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
         CouponEntity entity = CouponEntity.builder()
                 .scopeType(scopeType)
                 .scopeId(scopeId)
@@ -72,18 +78,24 @@ public class CouponService {
 
     /**
      * クーポン詳細を取得する。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでメンバーシップを検証する（BOLA対策）。
      */
-    public CouponResponse get(String scopeType, Long scopeId, Long id) {
+    public CouponResponse get(String scopeType, Long scopeId, Long id, Long actorUserId) {
         CouponEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkMembership(actorUserId, entity.getScopeId(), entity.getScopeType());
         return promotionMapper.toCouponResponse(entity);
     }
 
     /**
      * クーポンを更新する。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでADMIN/DEPUTY_ADMINを検証する（BOLA対策）。
+     * 他組織クーポンの改ざん（不正値引き）を封鎖する。
      */
     @Transactional
-    public CouponResponse update(String scopeType, Long scopeId, Long id, CreateCouponRequest request) {
+    public CouponResponse update(String scopeType, Long scopeId, Long id, CreateCouponRequest request,
+                                  Long actorUserId) {
         CouponEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
         entity.update(request.getTitle(), request.getDescription(), request.getCouponType(),
                 request.getDiscountValue(), request.getMinPurchaseAmount(),
                 request.getMaxIssues(),
@@ -96,10 +108,12 @@ public class CouponService {
 
     /**
      * クーポンを削除する。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでADMIN/DEPUTY_ADMINを検証する（BOLA対策）。
      */
     @Transactional
-    public void delete(String scopeType, Long scopeId, Long id) {
+    public void delete(String scopeType, Long scopeId, Long id, Long actorUserId) {
         CouponEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
         entity.softDelete();
         couponRepository.save(entity);
         log.info("クーポン削除: id={}", id);
@@ -107,10 +121,13 @@ public class CouponService {
 
     /**
      * クーポンの有効/無効を切り替える。
+     * 認可根治戦役 Wave2-2B: entity由来のscopeでADMIN/DEPUTY_ADMINを検証する（BOLA対策）。
+     * 他組織クーポンの無効化（営業妨害）を封鎖する。
      */
     @Transactional
-    public CouponResponse toggle(String scopeType, Long scopeId, Long id) {
+    public CouponResponse toggle(String scopeType, Long scopeId, Long id, Long actorUserId) {
         CouponEntity entity = findOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(actorUserId, entity.getScopeId(), entity.getScopeType());
         entity.toggleActive();
         CouponEntity saved = couponRepository.save(entity);
         log.info("クーポン切替: id={}, isActive={}", id, saved.getIsActive());

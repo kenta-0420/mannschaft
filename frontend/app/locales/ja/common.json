@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "接続が切れています。再接続を試みています…"
+    },
+    "mobile": {
+      "backToList": "チャンネル一覧に戻る",
+      "noChannels": "まだチャンネルがありません",
+      "createChannel": "チャンネルを作成"
     }
   },
   "button": {
@@ -82,7 +87,10 @@
     "loading": "読み込み中...",
     "confirm": "確認",
     "logout": "ログアウト",
-    "update": "更新"
+    "update": "更新",
+    "see_more": "もっと見る",
+    "view_all": "すべて見る",
+    "undo": "元に戻す"
   },
   "label": {
     "required": "必須",
@@ -218,8 +226,12 @@
   "error": {
     "server": "サーバーエラーが発生しました",
     "server_retry": "しばらく時間をおいて再度お試しください。",
+    "rate_limited": "操作が集中しています",
+    "rate_limited_detail": "短時間に操作が集中しました。しばらく待ってから再度お試しください。",
+    "rate_limited_retry_after": "短時間に操作が集中しました。約 {seconds} 秒後に再度お試しください。",
     "network": "通信エラーが発生しました",
     "unauthorized": "ログインが必要です",
+    "section_load_failed": "この項目の取得に失敗しました（再読み込みしてください）",
     "unknown": "エラーが発生しました",
     "COMMON_001": "入力内容に不備があります",
     "COMMON_002": "この操作を行う権限がありません",
@@ -236,7 +248,19 @@
     "AUTH_010": "現在のパスワードが正しくありません",
     "AUTH_011": "パスワードがまだ設定されていません",
     "AUTH_044": "リクエストが集中しています。しばらく時間をおいて再試行してください",
-    "SURVEY_023": "匿名アンケートではチーム別内訳を有効化できません"
+    "SURVEY_023": "匿名アンケートではチーム別内訳を有効化できません",
+    "SCHEDULE_KEEP_001": "キープが見つかりません",
+    "SCHEDULE_KEEP_002": "タイトルを入力してください",
+    "SCHEDULE_KEEP_003": "候補日は最大10件です",
+    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
+    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
+    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
+    "SCHEDULE_KEEP_007": "この状態では編集できません",
+    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
+    "SCHEDULE_KEEP_009": "この操作はできません",
+    "SCHEDULE_KEEP_010": "キープの上限に達しました",
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "ミュートの上限（200件）に達しています。「非表示にしている相手」から不要な設定を解除してください。"
   },
   "annual_plan": {
     "title": "年間行事計画",
@@ -455,7 +479,51 @@
     "imageUploadError": "画像のアップロードに失敗しました",
     "postSuccess": "投稿しました",
     "postError": "投稿に失敗しました",
-    "announcementRegisterError": "お知らせへの登録に失敗しました。後から手動で登録してください。"
+    "announcementRegisterError": "お知らせへの登録に失敗しました。後から手動で登録してください。",
+    "postSource": "投稿元",
+    "writeReply": "返信を書く",
+    "replySubmit": "返信する",
+    "noReplies": "返信はまだありません",
+    "loadMoreReplies": "もっと見る",
+    "composerPlaceholder": {
+      "TEAM": "チームに投稿...",
+      "VILLAGE": "村に投稿...",
+      "ORGANIZATION": "組織に投稿...",
+      "PUBLIC": "今どうしてる？"
+    },
+    "submitLabel": "投稿",
+    "pollOptionsCount": "{count}択",
+    "deliveryScope": {
+      "label": "配信範囲",
+      "options": {
+        "DIRECT": "この団体のメンバーだけ",
+        "CHILDREN": "直下の子団体まで",
+        "DESCENDANTS": "配下のすべての団体"
+      },
+      "hints": {
+        "DIRECT": "この団体に所属している人のタイムラインにだけ表示されます。",
+        "CHILDREN": "この団体と、そのすぐ下の子団体のメンバーにも表示されます。",
+        "DESCENDANTS": "この団体の配下にあるすべての団体のメンバーに表示されます。"
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "このチームの投稿を非表示にする",
+        "ORGANIZATION": "この団体の投稿を非表示にする"
+      },
+      "targetType": {
+        "TEAM": "チーム",
+        "ORGANIZATION": "団体"
+      },
+      "muted": "{name} の投稿を非表示にしました",
+      "undo": "元に戻す",
+      "unmuted": "再び表示するようにしました",
+      "chip": "非表示中: {count}件",
+      "dialogTitle": "非表示にしている相手",
+      "emptyList": "非表示にしている相手はいません。",
+      "unmuteAction": "表示に戻す",
+      "unknownTarget": "{type}（ID: {id}）"
+    }
   },
   "gallery": {
     "title": "ギャラリー",
@@ -508,7 +576,8 @@
       "selfReviewEnd": "セルフレビュー終了時刻",
       "selfReviewHelp": "設定した時間帯は投稿前の見直し期間として扱われます",
       "saveSettings": "設定を保存",
-      "loadFailed": "記事を読み込めませんでした"
+      "loadFailed": "記事を読み込めませんでした",
+      "scheduledPublishUnavailable": "予約公開は現在ご利用いただけません。公開すると記事はすぐに公開されます。"
     },
     "autoSave": {
       "label": "自動保存",
@@ -534,7 +603,14 @@
       "viewModeKanban": "カンバン表示",
       "deleteButton": "削除",
       "deleteAriaLabel": "このTODOを削除",
-      "deleteConfirm": "このTODOを削除しますか？削除後は元に戻せません。"
+      "deleteConfirm": "このTODOを削除しますか？削除後は元に戻せません。",
+      "sortLabel": "並び順",
+      "sortRecent": "新着順",
+      "sortPriority": "優先度順",
+      "deletedToast": "TODOを削除しました",
+      "restoredToast": "TODOを元に戻しました",
+      "deleteFailed": "削除に失敗しました",
+      "restoreFailed": "元に戻せませんでした"
     },
     "field": {
       "status": "ステータス",
@@ -645,6 +721,24 @@
         "saving": "保存中...",
         "saved": "保存しました"
       }
+    },
+    "create": {
+      "dialog_title": "TODOを作成",
+      "title_label": "タイトル",
+      "title_placeholder": "TODOのタイトル",
+      "details_toggle": "詳細を設定（任意）",
+      "description_label": "説明（任意）",
+      "description_placeholder": "詳細や補足",
+      "scope_label": "共有先",
+      "scope_personal": "個人",
+      "priority_label": "優先度",
+      "start_date_label": "開始日（任意）",
+      "due_date_label": "期限（任意）",
+      "submit_button": "作成",
+      "cancel_button": "キャンセル",
+      "draft_restored": "下書きを復元しました",
+      "create_success": "TODOを作成しました",
+      "create_failed": "作成に失敗しました"
     }
   },
   "extended_profile": {
@@ -684,6 +778,62 @@
     "custom_field_added": "カスタムフィールドを追加しました",
     "custom_field_updated": "カスタムフィールドを更新しました",
     "custom_field_deleted": "カスタムフィールドを削除しました"
+  },
+  "notification": {
+    "todoHandedOff": {
+      "title": "TODOが渡されました",
+      "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
+    },
+    "pageTitle": "通知",
+    "guide": {
+      "title": "通知の使い方",
+      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "read": {
+        "title": "通知を読む",
+        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "steps": {
+          "step1": "気になる通知の行をタップします",
+          "step2": "自動で既読になり、関連する画面へ移動します",
+          "step3": "未読の通知は左端の青いドットで見分けられます"
+        }
+      },
+      "filter": {
+        "title": "絞り込み",
+        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "steps": {
+          "step1": "画面上部の「すべて／未読」ボタンを押します",
+          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
+          "step3": "「すべて」に戻すと全ての通知が表示されます"
+        }
+      },
+      "snooze": {
+        "title": "スヌーズ",
+        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "steps": {
+          "step1": "通知の右側にある時計アイコンを押します",
+          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
+          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+        }
+      },
+      "confirm": {
+        "title": "確認通知",
+        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "steps": {
+          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step2": "「確認する」ボタンを押して確認済みにします",
+          "step3": "確認後は「確認済み」ラベルに変わります"
+        }
+      },
+      "urgent": {
+        "title": "緊急休業・一括既読",
+        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "steps": {
+          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
+          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
+          "step3": "既読にするとベルのバッジも0になります"
+        }
+      }
+    }
   },
   "project": {
     "milestones": "マイルストーン",
@@ -757,8 +907,8 @@
         "title": "プロジェクトの作り方",
         "body": "「プロジェクト作成」ボタンをクリックし、以下の情報を入力して作成します。",
         "item_title": "タイトル（必須）: プロジェクトの名前",
-        "item_emoji": "絵文字: プロジェクトを表すアイコン（プリセットから選択）",
-        "item_color": "カラー: カードの識別色（プリセットから選択）",
+        "item_emoji": "絵文字: プロジェクトを表すアイコン（ひな形から選択）",
+        "item_color": "カラー: カードの識別色（ひな形から選択）",
         "item_due_date": "期限: 完了目標日（任意）"
       },
       "milestone": {
@@ -830,7 +980,7 @@
   },
   "visibilityTemplate": {
     "title": "公開範囲テンプレート",
-    "systemPresets": "システムプリセット",
+    "systemPresets": "既定のひな形",
     "userTemplates": "マイテンプレート",
     "createNew": "テンプレートを作成",
     "noUserTemplates": "まだテンプレートがありません",
@@ -1127,12 +1277,72 @@
       "event": "イベント詳細ページの URL（例: /events/77）から数値 ID を入力してください。",
       "document": "ドキュメント詳細ページの URL（例: /documents/55）から数値 ID を入力してください。",
       "url": "URL カードを使う場合は上の「カード種別」を URL に変更してください。"
+    },
+    "guide": {
+      "title": "マイコルクボードの使い方",
+      "description": "各コルクボードでピン止めしたカードを1か所に集約して確認できます。",
+      "what": {
+        "title": "マイコルクボードとは",
+        "body": "各ボードで📌ピン止めしたカードが、この画面にまとめて表示されます。新しくピン止めしたものから順に並びます。"
+      },
+      "open": {
+        "title": "カードを開く",
+        "body": "カードをタップすると参照先に移動します。",
+        "steps": {
+          "step1": "カードをタップすると、元の投稿・ファイル・イベントなどの参照先へ移動します。",
+          "step2": "URL カードは新しいタブで開きます。",
+          "step3": "閲覧権限を失ったカードは開けません（「閲覧権限なし」と表示されます）。"
+        }
+      },
+      "editNote": {
+        "title": "メモを編集",
+        "body": "カードに付箋メモを付けられます。",
+        "steps": {
+          "step1": "カード右上の鉛筆ボタンを押します。",
+          "step2": "メモを入力して保存します。",
+          "step3": "保存したメモは付箋としてカードに表示されます。"
+        }
+      },
+      "unpinDelete": {
+        "title": "ピン解除・削除",
+        "body": "不要になったカードを一覧から外したり削除したりできます。",
+        "steps": {
+          "step1": "📌ボタンでピン止めを解除すると、この一覧から外れます（元のボードのカードは残ります）。",
+          "step2": "🗑ボタンでカードを削除します。削除は取り消せません。"
+        }
+      },
+      "filterAndPin": {
+        "title": "絞り込み・新規ピン",
+        "body": "表示するカードを絞り込んだり、新しくピン止めしたりできます。",
+        "steps": {
+          "step1": "ツールバーのボード選択で、特定のボードのカードだけに絞り込めます。",
+          "step2": "「もっと読み込む」で続きのカードを追加表示します。",
+          "step3": "「新規ピン」ボタンからコルクボードへ移動し、カードを📌ピン止めできます。"
+        }
+      }
     }
   },
   "schedule": {
     "filter": {
       "allTeamsOrgs": "チーム・組織 (全て)",
       "selectScope": "作成先を選択"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "個人",
+        "unknown": "その他の予定",
+        "loadError": {
+          "summary": "レイヤー一覧の読み込みに失敗しました",
+          "detail": "チーム・組織の表示切り替えが一時的に使えません。予定は表示されています。時間をおいて再読み込みしてください。"
+        },
+        "hiddenNotice": "作成先のレイヤーが非表示です",
+        "showIt": "表示する"
+      },
+      "more": "他{count}件",
+      "today": "今日",
+      "dayDetail": {
+        "title": "{date} の予定"
+      }
     }
   },
   "handoff": {
@@ -1175,12 +1385,6 @@
       "title": "キャッチボール履歴",
       "empty": "まだ履歴はありません",
       "deletedLabel": "（削除済み）"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "TODOが渡されました",
-      "body": "{from}さんから「{title}」を渡されました（ステータス: {label}）"
     }
   },
   "common": {
@@ -1293,6 +1497,25 @@
       "skillsSummaryHint": "活かせる経験・知識・技術を自由に記述してください（構造化スキルは下のスキルセクションに入力）",
       "excelPreviewUnavailable": "Excel ファイルのプレビューはブラウザで表示できません",
       "downloadLabel": "{format}ダウンロード（{type}）"
+    },
+    "menu": "メニュー",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "サポーターをやめますか？",
+      "supporter_cancel_confirm_body": "{name}のサポーターをやめます。よろしいですか？",
+      "supporter_cancel_action": "やめる",
+      "supporter_registered": "サポーターとして登録しました",
+      "supporter_applied": "サポーター申請を送信しました",
+      "supporter_canceled": "サポーターをやめました",
+      "leave_action": "退出する",
+      "load_error_title": "情報を取得できませんでした",
+      "load_error_body": "時間をおいて再度お試しください。権限がない場合は表示できないことがあります。",
+      "back_to_dashboard": "ダッシュボードへ戻る",
+      "retry": "再試行",
+      "slow_loading": "読み込みに時間がかかっています"
+    },
+    "unsavedChanges": {
+      "title": "未保存の変更",
+      "confirmLeave": "保存されていない変更があります。このページを離れると入力内容は失われます。よろしいですか？"
     }
   },
   "teamHub": {
@@ -1410,11 +1633,21 @@
       "feedback": "フィードバック",
       "reports": "レポート",
       "advertisers": "広告主管理",
+      "adRateCards": "広告料金カード",
+      "adCreditLimitRequests": "広告与信枠申請",
+      "affiliateSettings": "アフィリエイト設定",
       "auditLogs": "監査ログ",
       "shiftBudget": "シフト予算",
       "betaRestriction": "ベータ制限",
       "errorReports": "エラーレポート",
-      "gdprPurge": "GDPR パージ状況"
+      "gdprPurge": "GDPR パージ状況",
+      "feedbackInbox": "目安箱（全体）",
+      "billing": "課金マスタ管理",
+      "betaPerks": "ベータ特典管理"
+    },
+    "impersonation": {
+      "banner": "管理者変身中: {label} のアカウントで操作しています",
+      "exit": "変身を終了"
     },
     "businessAlert": {
       "title": "業務アラート",
@@ -1475,7 +1708,78 @@
     "addRecord": "記録を追加",
     "participantCount": "参加者 {count}名",
     "noRecords": "活動記録がありません",
-    "loadError": "活動記録の取得に失敗しました"
+    "loadError": "活動記録の取得に失敗しました",
+    "create": {
+      "dialogTitle": "活動記録を追加",
+      "templateLabel": "テンプレート",
+      "templatePlaceholder": "テンプレートを選択",
+      "noTemplatesTitle": "テンプレートがありません",
+      "noTemplatesBody": "活動記録を作成するには、先にテンプレートを作成してください。",
+      "goToTemplates": "テンプレートを作成",
+      "titleLabel": "タイトル",
+      "titlePlaceholder": "活動のタイトル",
+      "dateLabel": "活動日",
+      "descriptionLabel": "説明（任意）",
+      "visibilityLabel": "公開範囲",
+      "visibilityPublic": "公開",
+      "visibilityMembersOnly": "メンバーのみ",
+      "requiredFieldError": "必須項目を入力してください",
+      "saveSuccess": "活動記録を追加しました",
+      "saveError": "活動記録の追加に失敗しました",
+      "submit": "追加",
+      "scopeResolveError": "対象の特定に失敗しました",
+      "templatesLoadError": "テンプレートの取得に失敗しました",
+      "draftHint": "タイトルと活動日だけで下書き保存できます。テンプレートやカスタム項目は後で追加できます。",
+      "saveDraft": "下書き保存",
+      "draftSaved": "下書きを保存しました",
+      "draftRestored": "前回の入力を復元しました",
+      "draftSuccess": "下書きとして保存しました"
+    },
+    "statusLabel": {
+      "DRAFT": "下書き",
+      "PUBLISHED": "公開済み"
+    },
+    "list": {
+      "filterAll": "すべて",
+      "filterDraft": "下書き",
+      "editDraft": "編集して公開"
+    },
+    "publish": {
+      "success": "活動記録を公開しました",
+      "error": "公開に失敗しました"
+    },
+    "guide": {
+      "title": "活動記録の使い方",
+      "description": "チームや組織の活動（練習・試合・イベントなど）を記録して、ふり返りや共有に活かせます。",
+      "list": {
+        "title": "記録を見る",
+        "body": "活動は新しい順にカードで一覧表示されます。タイトル・活動日・場所・参加人数が一目で確認できます。「公開」に設定された記録にはシェアボタンが表示され、リンクで外部に共有できます。"
+      },
+      "add": {
+        "title": "記録を追加する",
+        "body": "右上の「記録を追加」ボタンから新しい活動記録を作成できます。",
+        "steps": {
+          "step1": "右上の「記録を追加」を押す",
+          "step2": "使うテンプレートを選ぶ",
+          "step3": "タイトルと活動日を入力する（どちらも必須）",
+          "step4": "公開範囲を選ぶ（メンバーのみ／公開）",
+          "step5": "テンプレートのカスタム項目があれば入力する",
+          "step6": "「追加」を押すと一覧に追加される"
+        }
+      },
+      "template": {
+        "title": "テンプレートが必要なとき",
+        "body": "記録の作成にはテンプレートが必要です。テンプレートがまだ無いと、作成画面の代わりに案内が表示されます。チームの場合は「活動テンプレート」ページで先にテンプレートを1つ作成してから記録を追加してください。"
+      },
+      "visibility": {
+        "title": "公開範囲（だれに見せるか）",
+        "members_only_label": "メンバーのみ",
+        "members_only_desc": "チームや組織の参加者だけが記録を見られます。",
+        "public_label": "公開",
+        "public_desc": "リンクを知っていれば誰でも閲覧できます。一覧にシェアボタンが表示され、外部への共有が可能です。",
+        "note": "公開範囲の初期値はテンプレートの設定に従います。"
+      }
+    }
   },
   "dashboard": {
     "team_reservation_link": "予約管理"
@@ -1547,7 +1851,9 @@
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "著者",
       "VILLAGE": "村"
-    }
+    },
+    "restoredToast": "お気に入りに戻しました",
+    "restoreFailed": "元に戻せませんでした"
   },
   "succession": {
     "legalFilings": {
@@ -1586,6 +1892,13 @@
     "mapEmbedUrlHelp": "Google Maps で「共有 > 地図を埋め込む > HTML をコピー」して src= の URL を貼り付けてください",
     "mapEmbedUrlInvalidFormat": "Google Maps 埋め込み URL（https://www.google.com/maps/embed?...）の形式である必要があります",
     "mapEmbedUrlSaved": "店舗地図 URL を保存しました",
+    "timezone": {
+      "label": "予約タイムゾーン",
+      "help": "予約枠の開始・終了時刻を解釈する IANA タイムゾーンです。",
+      "placeholder": "例: Asia/Tokyo",
+      "invalid": "有効な IANA タイムゾーンを入力してください",
+      "saved": "予約タイムゾーンを保存しました"
+    },
     "regionCode": {
       "label": "所在地（都道府県・市区町村）",
       "help": "都道府県・市区町村を選択すると、地域検索や札立ての初期値に使われます。",
@@ -1603,6 +1916,24 @@
     "bulletinOpen": "掲示板で議論する"
   },
   "scopeDashboard": {
+    "storageSummary": {
+      "title": "容量",
+      "personal": "個人",
+      "team": "チーム",
+      "organization": "組織",
+      "details": "詳細を見る",
+      "error": "容量を取得できませんでした",
+      "retry": "再試行",
+      "unconfigured": "容量枠未設定",
+      "not_available": "容量データなし",
+      "meterLabel": "{scope}の容量使用率",
+      "meterValue": "使用率 {percent}%",
+      "warningTitle": "容量上限に近づいています",
+      "warningMessage": "{scope}の使用率は{percent}%です。有料プランへの変更をご検討ください。",
+      "viewPlans": "プランを見る",
+      "checkStorage": "ストレージを確認",
+      "cancel": "キャンセル"
+    },
     "tabs": {
       "personal": "個人",
       "team": "チーム",
@@ -1660,5 +1991,227 @@
     "GUESTS_AND_ABOVE": "ゲスト以上",
     "SUPPORTERS_AND_ABOVE": "サポーター以上",
     "MEMBERS_AND_ABOVE": "メンバー以上"
+  },
+  "module_settings": {
+    "enabled_count": "有効な機能: {count} / {limit}",
+    "fetch_error": "機能一覧の取得に失敗しました",
+    "empty": "現在このスコープで利用できる追加機能はありません",
+    "toggle_success_on": "{name} を有効にしました",
+    "toggle_success_off": "{name} を無効にしました",
+    "badge": {
+      "level_unavailable": "このレベルでは利用できません",
+      "paid_plan": "有料プラン",
+      "limit_reached": "上限（{limit}）に達しています"
+    },
+    "error": {
+      "paid_required": "この機能は有料プランが必要です",
+      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
+      "level_unavailable": "このレベルではこの機能を利用できません",
+      "generic": "機能の切替に失敗しました"
+    }
+  },
+  "module_settings_guide": {
+    "title": "機能設定の使い方",
+    "help_button": "使い方",
+    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "what": {
+      "title": "機能設定とは",
+      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+    },
+    "toggle": {
+      "title": "機能を ON / OFF する",
+      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "steps": {
+        "step1": "一覧から使いたい機能のカードを探す",
+        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
+        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
+        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+      }
+    },
+    "count": {
+      "title": "今いくつ使えるかを確認する",
+      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+    },
+    "restrictions": {
+      "title": "使えないスイッチがあるとき",
+      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "items": {
+        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
+        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
+        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+      }
+    },
+    "empty": {
+      "title": "機能が表示されないとき",
+      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+    },
+    "permission": {
+      "title": "設定できる人",
+      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "ダッシュボード",
+      "info": "基本情報",
+      "members": "メンバー",
+      "invites": "招待",
+      "supporters": "サポーター管理",
+      "modules": "機能設定"
+    },
+    "action": {
+      "leave_confirm_title": "チームから退出",
+      "leave_confirm_body": "本当にこのチームから退出しますか？この操作は取り消せません。",
+      "left": "チームから退出しました"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "ダッシュボード",
+      "info": "基本情報",
+      "members": "メンバー",
+      "member_teams": "所属チーム",
+      "invites": "招待",
+      "permission_groups": "権限グループ",
+      "supporters": "サポーター管理",
+      "modules": "機能設定"
+    },
+    "action": {
+      "leave_confirm_title": "組織から退出",
+      "leave_confirm_body": "本当にこの組織から退出しますか？この操作は取り消せません。",
+      "left": "組織から退出しました"
+    }
+  },
+  "blog_guide": {
+    "title": "マイブログの使い方",
+    "description": "自分の記事を書いて、チームや組織のメンバーに発信できます。下書きで保存してから、準備ができたら公開しましょう。",
+    "what": {
+      "title": "ブログとは",
+      "body": "自分の考えや学びを記事として書き、チームや組織のメンバーに発信できる場所です。記事は下書き・公開・予約公開・アーカイブの状態で管理できます。"
+    },
+    "create": {
+      "title": "記事を書く",
+      "body": "「＋ 新規記事」をクリックするだけで、下書き状態の記事が作成されます。タイトルは後から変更できます。",
+      "steps": {
+        "step1": "右上の「＋ 新規記事」をクリック",
+        "step2": "記事のタイトルを入力（後から変更できます）",
+        "step3": "投稿先（個人・チーム・組織）を選択",
+        "step4": "「作成して編集へ」をクリックしてエディタへ進む"
+      }
+    },
+    "publish": {
+      "title": "記事を公開する",
+      "body": "「自分の投稿」の各カードにある目玉アイコンをクリックすると、公開・非公開を切り替えられます。",
+      "steps": {
+        "step1": "下書き状態の記事カードの目玉アイコンをクリック",
+        "step2": "「公開済み」に切り替わり、チームや組織のメンバーが閲覧できるようになる",
+        "step3": "もう一度クリックすると非公開（下書き）に戻る"
+      }
+    },
+    "manage": {
+      "title": "記事を管理する",
+      "body": "「自分の投稿」には最新5件が横スクロールで表示されます。各カードのアイコンで編集・削除ができます。",
+      "item_edit": "鉛筆アイコン → 記事の内容を編集",
+      "item_delete": "ごみ箱アイコン → 記事を削除（取り消し不可）",
+      "item_count": "右上の件数表示で投稿数を確認",
+      "item_all": "全件は「みんなの投稿」セクションで一覧表示"
+    },
+    "settings": {
+      "title": "ブログ設定",
+      "body": "ブログのタイトルや説明文、セルフレビューの時間帯を設定できます。",
+      "steps": {
+        "step1": "右上の「⚙ ブログ設定」をクリック",
+        "step2": "ブログタイトル・説明文を入力",
+        "step3": "セルフレビュー時間帯（投稿前の見直し期間）を設定",
+        "step4": "「設定を保存」をクリック"
+      }
+    }
+  },
+  "analytics": {
+    "title": "アクセス解析",
+    "loadError": "アクセス解析データの取得に失敗しました",
+    "empty": "まだアクセスデータがありません",
+    "summary": {
+      "totalViews": "総 PV",
+      "uniqueVisitors": "ユニーク訪問者",
+      "memberViews": "メンバー閲覧",
+      "guestViews": "ゲスト閲覧"
+    },
+    "export": "データエクスポート",
+    "topContent": {
+      "title": "人気コンテンツ",
+      "empty": "データがありません"
+    },
+    "chart": {
+      "views": "ページビュー",
+      "daily": "日別",
+      "monthly": "月別",
+      "toggle": "表示切替",
+      "recentDays": "直近30日間のアクセス統計",
+      "monthlyTrend": "月間推移のアクセス統計"
+    },
+    "period": {
+      "allTime": "全期間"
+    },
+    "guide": {
+      "page_title": "アクセス解析の使い方",
+      "what": {
+        "title": "アクセス解析とは",
+        "body": "アクセス解析では、チーム・組織のページがどれだけ閲覧されているかを確認できます。メンバーやゲストの訪問状況を把握し、コンテンツ改善に役立てましょう。"
+      },
+      "metrics": {
+        "title": "計測されるデータ",
+        "total_views": "総 PV: ページが表示された回数の合計",
+        "unique_visitors": "ユニーク訪問者: 重複を除いた訪問者数",
+        "member_views": "メンバー閲覧: メンバーによるページビュー数",
+        "guest_views": "ゲスト閲覧: ゲスト（非メンバー）によるページビュー数"
+      },
+      "timing": {
+        "title": "データの更新タイミング",
+        "body": "アクセスデータは日次バッチで集計されます。当日分は翌朝に反映されます。リアルタイムの集計ではないため、直近数時間のアクセスは翌日以降に表示されます。"
+      },
+      "chart": {
+        "title": "グラフの見方",
+        "body": "グラフは「日別」と「月別」を切り替えて表示できます。",
+        "daily_title": "日別グラフ",
+        "daily_desc": "直近30日間の日ごとのページビュー推移を表示します。",
+        "monthly_title": "月別グラフ",
+        "monthly_desc": "月ごとの集計値を表示します。長期的なトレンドの把握に役立ちます。"
+      },
+      "top_content": {
+        "title": "人気コンテンツ",
+        "body": "閲覧数の多いコンテンツをランキング形式で表示します。まだアクセスデータがない場合は「データがありません」と表示され、閲覧が記録され次第、自動的にランキングが表示されます。"
+      }
+    }
+  },
+  "comingSoon": {
+    "title": "準備中",
+    "description": "この機能は現在準備中です。もうしばらくお待ちください。"
+  },
+  "transferOwnership": {
+    "sectionTitle": "オーナー譲渡",
+    "sectionDescription": "管理者（オーナー）権限を他のメンバーへ引き継ぎます。譲渡後、あなたは副管理者になり、管理者専用の操作は行えなくなります。",
+    "openButton": "オーナーを譲渡",
+    "dialogTitle": "オーナーを譲渡する",
+    "warning": "この操作は取り消せません。譲渡すると管理者権限は新しいオーナーへ移り、元に戻すには新しいオーナーの操作が必要になります。",
+    "targetLabel": "譲渡先メンバー",
+    "targetPlaceholder": "メンバーを選択",
+    "noCandidates": "譲渡できるメンバーがいません。",
+    "confirmLabel": "確認のため「{name}」と入力してください",
+    "confirmMismatch": "名称が一致しません。",
+    "cancel": "キャンセル",
+    "submit": "譲渡する",
+    "successTitle": "オーナーを譲渡しました",
+    "successDetail": "管理者権限が新しいオーナーへ移りました。"
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "非公開の機能です",
+      "body": "この機能は現在ご利用いただけません。ダッシュボードに戻ります。"
+    },
+    "error": {
+      "fetchFailedTitle": "機能の公開状態を確認できませんでした",
+      "fetchFailedBody": "通信エラーのため機能の公開状態を確認できませんでした。しばらくしてから再度お試しください。"
+    }
   }
 }

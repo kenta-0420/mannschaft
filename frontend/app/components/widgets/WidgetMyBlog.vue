@@ -24,7 +24,7 @@ const statusSeverity: Record<string, string> = {
 async function load() {
   loading.value = true
   try {
-    const res = await getMyPosts({ size: 5 })
+    const res = await getMyPosts({ size: 20 })
     posts.value = res.data
   } catch (error) {
     captureQuiet(error, { context: 'WidgetMyBlog: ブログ記事取得' })
@@ -70,6 +70,11 @@ onMounted(load)
             :severity="statusSeverity[post.meta?.status ?? ''] ?? 'secondary'"
             rounded
           />
+        </div>
+        <div class="flex justify-end pt-1">
+          <NuxtLink to="/blog" class="text-sm text-primary hover:underline">
+            {{ $t('button.view_all') }}
+          </NuxtLink>
         </div>
       </div>
       <DashboardEmptyState v-else icon="pi pi-book" message="まだ記事がありません" />

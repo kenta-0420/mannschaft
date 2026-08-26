@@ -14,6 +14,7 @@ import com.mannschaft.app.chart.repository.ChartRecordRepository;
 import com.mannschaft.app.chart.repository.ChartRecordTemplateRepository;
 import com.mannschaft.app.chart.repository.ChartSectionSettingRepository;
 import com.mannschaft.app.chart.service.ChartRecordService;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.storage.StorageService;
@@ -53,6 +54,7 @@ class ChartRecordServiceTest {
     @Mock private ChartPhotoUrlProvider photoUrlProvider;
     @Mock private NameResolverService nameResolverService;
     @Mock private StorageService storageService;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private ChartRecordService service;
@@ -68,7 +70,7 @@ class ChartRecordServiceTest {
         @DisplayName("異常系: カルテ不在でCHART_001例外")
         void 取得_不在_例外() {
             given(recordRepository.findByIdAndTeamId(CHART_ID, TEAM_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.getChart(TEAM_ID, CHART_ID))
+            assertThatThrownBy(() -> service.getChart(TEAM_ID, CHART_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_001"));
@@ -98,7 +100,7 @@ class ChartRecordServiceTest {
             given(chartMapper.toChartRecordResponse(any(), any(), any(), any(), any(), any(), any(), any()))
                     .willReturn(new ChartRecordResponse(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null));
 
-            ChartRecordResponse result = service.createChart(TEAM_ID, request);
+            ChartRecordResponse result = service.createChart(TEAM_ID, USER_ID, request);
             assertThat(result).isNotNull();
         }
     }
@@ -112,7 +114,7 @@ class ChartRecordServiceTest {
             ChartRecordEntity entity = ChartRecordEntity.builder()
                     .teamId(TEAM_ID).customerUserId(USER_ID).visitDate(LocalDate.now()).build();
             given(recordRepository.findByIdAndTeamId(CHART_ID, TEAM_ID)).willReturn(Optional.of(entity));
-            service.deleteChart(TEAM_ID, CHART_ID);
+            service.deleteChart(TEAM_ID, CHART_ID, USER_ID);
             verify(recordRepository).save(entity);
         }
     }
@@ -183,7 +185,7 @@ class ChartRecordServiceTest {
             given(recordRepository.findByIdAndTeamId(CHART_ID, TEAM_ID)).willReturn(Optional.of(entity));
             given(recordRepository.countByTeamIdAndCustomerUserIdAndIsPinnedTrue(TEAM_ID, USER_ID)).willReturn(5L);
 
-            assertThatThrownBy(() -> service.updatePinStatus(TEAM_ID, CHART_ID, true))
+            assertThatThrownBy(() -> service.updatePinStatus(TEAM_ID, CHART_ID, USER_ID, true))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("CHART_016"));

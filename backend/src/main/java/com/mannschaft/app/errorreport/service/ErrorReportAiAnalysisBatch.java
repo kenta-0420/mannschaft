@@ -43,7 +43,7 @@ public class ErrorReportAiAnalysisBatch {
     @Scheduled(fixedDelay = 300_000)
     @SchedulerLock(
             name = "errorReportAiAnalysisBatch",
-            lockAtMostFor = "PT4M",
+            lockAtMostFor = "PT15M",
             lockAtLeastFor = "PT30S")
     public void execute() {
         executeAt(LocalDateTime.now());

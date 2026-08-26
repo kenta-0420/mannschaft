@@ -3,7 +3,7 @@
     "pending_title": "Se requiere consentimiento de los padres",
     "pending_description": "Debido a que eres menor de 18 años, se requiere el consentimiento de tus padres. Ingresa el correo electrónico de tus padres para enviarles una invitación.",
     "invite_email_label": "Correo electrónico del padre/madre",
-    "invite_email_placeholder": "parent@example.com",
+    "invite_email_placeholder": "parent{'@'}example.com",
     "send_invite": "Enviar invitación",
     "cancel_invite": "Cancelar invitación",
     "invite_sent": "Correo de invitación enviado",

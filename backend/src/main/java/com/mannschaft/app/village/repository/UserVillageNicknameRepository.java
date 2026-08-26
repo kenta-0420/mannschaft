@@ -25,6 +25,17 @@ public interface UserVillageNicknameRepository extends JpaRepository<UserVillage
     /** Phase 2: ユーザーの特定村上書きニックネームを取得。 */
     Optional<UserVillageNicknameEntity> findByUserIdAndVillageId(Long userId, UUID villageId);
 
+    /**
+     * F17.2 Wave1: 指定ユーザー集合の特定村上書きニックネームを一括取得する（一覧の N+1 回避）。
+     * 表示名バッチ解決（{@code resolveDisplayNames}）専用。
+     */
+    List<UserVillageNicknameEntity> findByUserIdInAndVillageId(Collection<Long> userIds, UUID villageId);
+
+    /**
+     * F17.2 Wave1: 指定ユーザー集合の全村共通ニックネーム（villageId IS NULL）を一括取得する（一覧の N+1 回避）。
+     */
+    List<UserVillageNicknameEntity> findByUserIdInAndVillageIdIsNull(Collection<Long> userIds);
+
     /** ニックネームのプラットフォーム全体ユニーク制約（先着優先）の検証用。 */
     boolean existsByNickname(String nickname);
 

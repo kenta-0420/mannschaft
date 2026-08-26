@@ -1,12 +1,8 @@
 package com.mannschaft.app.tournament.controller;
 
 import com.mannschaft.app.common.ApiResponse;
-import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
-import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
-import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.tournament.FixtureStatus;
-import com.mannschaft.app.tournament.TournamentErrorCode;
 import com.mannschaft.app.tournament.dto.BatchScoreRequest;
 import com.mannschaft.app.tournament.dto.CreateMatchdayRequest;
 import com.mannschaft.app.tournament.dto.CreateRosterRequest;
@@ -72,6 +68,12 @@ import java.util.List;
  * F00 共通可視性ガード（{@code contentVisibilityChecker.canView(TOURNAMENT, tId, currentUserId)}・
  * 不可視は IDOR 防止のため 404）を付与した。{@link StandingsController#verifyTournamentVisible} と同流儀。
  * 本コントローラーの全 EP は class 階層パスに親 {@code tId} を持つため、可視性は常にその親 tournament で判定する。</p>
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2C: {@code @PreAuthorize} は path の {@code orgId} のみで
+ * 判定するため、他組織 ADMIN が自組織 URL に他組織の {@code tId}/{@code divId}/{@code matchId} を
+ * 埋め込む BOLA を単独では防げない（例: orgB ADMIN が {@code /organizations/{orgB}/tournaments/{tPubA}}
+ * のように orgA の大会 ID を指定）。{@link FixtureService} 側で {@code tId→orgId}・{@code divId→tId}・
+ * {@code matchId→tId}・{@code rosterId→matchId} の実体束縛を必ず検証し、不一致は 404（存在秘匿）で遮断する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/organizations/{orgId}/tournaments/{tId}")
@@ -80,21 +82,6 @@ import java.util.List;
 public class FixtureController {
 
     private final FixtureService matchService;
-    private final ContentVisibilityChecker contentVisibilityChecker;
-
-    /**
-     * 大会 visibility ガード（GET 参照系）。認証ユーザー（未認証なら null）が当該 tournament を
-     * 閲覧できるか F00 共通可視性 Resolver で判定し、不可視なら 404 を投げる。
-     * 可視性は常に親 tournament（class パスの {@code tId}）で判定する。
-     *
-     * @param tournamentId 大会 ID（class 階層パスの tId）
-     */
-    private void verifyTournamentVisible(Long tournamentId) {
-        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
-        if (!contentVisibilityChecker.canView(ReferenceType.TOURNAMENT, tournamentId, viewerUserId)) {
-            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
-        }
-    }
 
     // ===== Matchday =====
 
@@ -102,8 +89,8 @@ public class FixtureController {
     @Operation(summary = "節一覧")
     public ResponseEntity<ApiResponse<List<MatchdayResponse>>> listMatchdays(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
-        verifyTournamentVisible(tId);
-        return ResponseEntity.ok(ApiResponse.of(matchService.listMatchdays(divId)));
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        return ResponseEntity.ok(ApiResponse.of(matchService.listMatchdays(tId, divId, viewerUserId)));
     }
 
     @PostMapping("/divisions/{divId}/matchdays")
@@ -113,7 +100,8 @@ public class FixtureController {
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId,
             @Valid @RequestBody CreateMatchdayRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(matchService.createMatchday(divId, request)));
+                .body(ApiResponse.of(matchService.createMatchday(
+                        orgId, tId, divId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @PostMapping("/divisions/{divId}/matchdays/generate")
@@ -122,7 +110,8 @@ public class FixtureController {
     public ResponseEntity<ApiResponse<List<MatchdayResponse>>> generateMatchdays(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long divId) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(matchService.generateMatchdays(tId, divId)));
+                .body(ApiResponse.of(matchService.generateMatchdays(
+                        orgId, tId, divId, SecurityUtils.getCurrentUserId())));
     }
 
     // ===== Match =====
@@ -131,8 +120,8 @@ public class FixtureController {
     @Operation(summary = "試合詳細")
     public ResponseEntity<ApiResponse<FixtureResponse>> getMatch(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId) {
-        verifyTournamentVisible(tId);
-        return ResponseEntity.ok(ApiResponse.of(matchService.getMatch(matchId)));
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        return ResponseEntity.ok(ApiResponse.of(matchService.getMatch(tId, matchId, viewerUserId)));
     }
 
     @PatchMapping("/matches/{matchId}/score")
@@ -159,7 +148,7 @@ public class FixtureController {
     public ResponseEntity<Void> changeMatchStatus(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody StatusChangeRequest request) {
-        matchService.changeMatchStatus(matchId, FixtureStatus.valueOf(request.getStatus()));
+        matchService.changeMatchStatus(tId, matchId, FixtureStatus.valueOf(request.getStatus()));
         return ResponseEntity.noContent().build();
     }
 
@@ -229,8 +218,8 @@ public class FixtureController {
     @Operation(summary = "出場メンバー一覧")
     public ResponseEntity<ApiResponse<List<RosterResponse>>> listRosters(
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId) {
-        verifyTournamentVisible(tId);
-        return ResponseEntity.ok(ApiResponse.of(matchService.listRosters(matchId)));
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        return ResponseEntity.ok(ApiResponse.of(matchService.listRosters(tId, matchId, viewerUserId)));
     }
 
     @PostMapping("/matches/{matchId}/rosters")
@@ -240,7 +229,8 @@ public class FixtureController {
             @PathVariable Long orgId, @PathVariable Long tId, @PathVariable Long matchId,
             @Valid @RequestBody CreateRosterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(matchService.createRosters(matchId, request)));
+                .body(ApiResponse.of(matchService.createRosters(
+                        orgId, tId, matchId, SecurityUtils.getCurrentUserId(), request)));
     }
 
     @DeleteMapping("/matches/{matchId}/rosters/{rosterId}")
@@ -249,7 +239,7 @@ public class FixtureController {
     public ResponseEntity<Void> deleteRoster(
             @PathVariable Long orgId, @PathVariable Long tId,
             @PathVariable Long matchId, @PathVariable Long rosterId) {
-        matchService.deleteRoster(rosterId);
+        matchService.deleteRoster(orgId, tId, matchId, rosterId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

@@ -2,6 +2,7 @@ package com.mannschaft.app.membership.query;
 
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.membership.domain.MembershipBasisErrorCode;
 import com.mannschaft.app.membership.domain.RoleKind;
 import com.mannschaft.app.membership.domain.ScopeType;
@@ -57,6 +58,9 @@ class MemberQueryDispatcherTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
+
     @InjectMocks
     private MemberQueryDispatcher dispatcher;
 
@@ -84,6 +88,30 @@ class MemberQueryDispatcherTest {
         assertThat(result).hasSize(1);
         assertThat(result.get(0).userId()).isEqualTo(99L);
         assertThat(result.get(0).roleName()).isEqualTo("ADMIN");
+    }
+
+    @Test
+    @DisplayName("画像URL根治Phase2_avatarが署名付き表示URLへ解決されMemberDtoに乗る")
+    void avatarが署名付き表示URLへ解決される() {
+        RoleEntity admin = role(2L, "ADMIN");
+        given(roleRepository.findByName("ADMIN")).willReturn(Optional.of(admin));
+        UserRoleEntity ur = UserRoleEntity.builder()
+                .userId(99L).teamId(100L).roleId(2L).build();
+        given(userRoleRepository.findByTeamIdAndRoleId(100L, 2L)).willReturn(List.of(ur));
+
+        UserRepository.MemberSummary summary = org.mockito.Mockito.mock(UserRepository.MemberSummary.class);
+        given(summary.getDisplayName()).willReturn("yamada");
+        given(summary.getAvatarUrl()).willReturn("user/99/avatar/raw.png");
+        given(userRepository.findMemberSummaryById(99L)).willReturn(Optional.of(summary));
+
+        given(mediaUrlResolver.resolve("user/99/avatar/raw.png"))
+                .willReturn("https://cdn.example.com/signed/avatar.png");
+
+        List<MemberDto> result = dispatcher.queryMembers(100L, ScopeType.TEAM, "ADMIN");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).avatarUrl())
+                .isEqualTo("https://cdn.example.com/signed/avatar.png");
     }
 
     @Test

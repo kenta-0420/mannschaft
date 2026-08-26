@@ -104,7 +104,7 @@ const isManageView = computed(() => currentFolderId.value === 'manage')
   <div class="mx-auto max-w-6xl p-6">
     <!-- ヘッダー -->
     <div class="mb-6 flex flex-wrap items-center gap-3">
-      <PageHeader :title="$t('teamHub.pageTitle')" class="flex-1" :back="false" />
+      <PageHeader :title="$t('teamHub.pageTitle')" class="flex-1" />
       <div class="flex items-center gap-2">
         <Button
           :label="$t('teamHub.createTeam')"

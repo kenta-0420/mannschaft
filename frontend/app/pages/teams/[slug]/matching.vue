@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import type { MatchActivityType, MatchCategory, MatchLevel, MatchVisibility } from '~/types/matching'
 
-definePageMeta({ middleware: 'auth' })
+const { t } = useI18n()
+definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const { createRequest } = useMatchingApi()
@@ -66,9 +67,7 @@ async function handleCreate() {
 
 <template>
   <div>
-    <div class="mb-4">
-      <h1 class="text-2xl font-bold">マッチング</h1>
-    </div>
+    <PageHeader :title="t('matching.teamPageTitle')" />
     <MatchRequestList
       ref="listRef"
       :team-id="teamSlug"

@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -45,6 +46,7 @@ class StorageQuotaServiceTest {
     @Mock private StoragePlanRepository planRepository;
     @Mock private StorageSubscriptionRepository subscriptionRepository;
     @Mock private StorageUsageLogRepository usageLogRepository;
+    @Mock private StorageSubscriptionProvisioningService subscriptionProvisioningService;
 
     @InjectMocks private StorageQuotaService service;
 
@@ -85,19 +87,23 @@ class StorageQuotaServiceTest {
         }
 
         @Test
-        @DisplayName("正常系: subscription 未存在ならデフォルトプランで自動作成して許可")
-        void 正常系_未存在で自動作成() {
+        @DisplayName("正常系: subscription 未存在なら provisioning（REQUIRES_NEW）へ委譲し、自身では INSERT しない")
+        void 正常系_未存在で自動作成を委譲() {
             given(subscriptionRepository.findByScopeTypeAndScopeId("PERSONAL", USER_ID))
                     .willReturn(Optional.empty());
-            given(planRepository.findFirstByScopeLevelAndIsDefaultTrueAndDeletedAtIsNull("PERSONAL"))
-                    .willReturn(Optional.of(hardBlockPersonalPlan));
-            given(subscriptionRepository.save(any(StorageSubscriptionEntity.class)))
-                    .willAnswer(inv -> inv.getArgument(0));
+            StorageSubscriptionEntity created = StorageSubscriptionEntity.builder()
+                    .id(SUBSCRIPTION_ID).scopeType("PERSONAL").scopeId(USER_ID)
+                    .planId(PLAN_ID).usedBytes(0L).fileCount(0).build();
+            given(subscriptionProvisioningService.getOrCreateDefault(StorageScopeType.PERSONAL, USER_ID))
+                    .willReturn(created);
             given(planRepository.findById(PLAN_ID)).willReturn(Optional.of(hardBlockPersonalPlan));
 
             service.checkQuota(StorageScopeType.PERSONAL, USER_ID, 1L);
 
-            verify(subscriptionRepository).save(any(StorageSubscriptionEntity.class));
+            // 作成は別 Bean の REQUIRES_NEW トランザクションへ委譲される（read-only コネクション INSERT の根治）
+            verify(subscriptionProvisioningService).getOrCreateDefault(StorageScopeType.PERSONAL, USER_ID);
+            // StorageQuotaService 自身は subscription を保存しない
+            verify(subscriptionRepository, never()).save(any());
         }
 
         @Test
@@ -156,12 +162,12 @@ class StorageQuotaServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: デフォルトプラン未登録 → SUBSCRIPTION_NOT_FOUND")
-        void 異常系_デフォルトプラン未登録() {
+        @DisplayName("異常系: provisioning が SUBSCRIPTION_NOT_FOUND を投げたら伝播する")
+        void 異常系_プロビジョニング失敗を伝播() {
             given(subscriptionRepository.findByScopeTypeAndScopeId("PERSONAL", USER_ID))
                     .willReturn(Optional.empty());
-            given(planRepository.findFirstByScopeLevelAndIsDefaultTrueAndDeletedAtIsNull("PERSONAL"))
-                    .willReturn(Optional.empty());
+            given(subscriptionProvisioningService.getOrCreateDefault(StorageScopeType.PERSONAL, USER_ID))
+                    .willThrow(new BusinessException(StorageQuotaErrorCode.SUBSCRIPTION_NOT_FOUND));
 
             assertThatThrownBy(() ->
                     service.checkQuota(StorageScopeType.PERSONAL, USER_ID, 1L))

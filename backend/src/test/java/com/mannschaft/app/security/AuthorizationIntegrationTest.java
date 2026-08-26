@@ -1,6 +1,7 @@
 package com.mannschaft.app.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.admin.filter.AdminImpersonationFilter;
 import com.mannschaft.app.advertising.campaign.filter.AdPublicEndpointRateLimitFilter;
 import com.mannschaft.app.auth.service.AuthTokenService;
 import com.mannschaft.app.config.JwtAuthenticationFilter;
@@ -100,6 +101,12 @@ class AuthorizationIntegrationTest {
             return new JwtAuthenticationFilter(mock(AuthTokenService.class));
         }
 
+        /** F10.1: AdminImpersonationFilter。ObjectMapper のみ依存。ヘッダー無しは即 chain.doFilter。 */
+        @Bean
+        AdminImpersonationFilter adminImpersonationFilter() {
+            return new AdminImpersonationFilter(mock(ObjectMapper.class));
+        }
+
         @Bean
         ProxyInputContextFilter proxyInputContextFilter() {
             return new ProxyInputContextFilter(
@@ -141,6 +148,18 @@ class AuthorizationIntegrationTest {
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             return new AdPublicEndpointRateLimitFilter(rateLimiterProvider);
         }
+        /**
+         * F10.8: SecurityConfig が要求する {@link com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter} の
+         * 本物インスタンス（判定に使う ValkeyRateLimiter は mock 供給）。既存 AdPublicEndpointRateLimitFilter と同型。
+         */
+        @Bean
+        @SuppressWarnings("unchecked")
+        com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter pageViewBeaconRateLimitFilter() {
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.analytics.filter.PageViewBeaconRateLimitFilter(rateLimiterProvider);
+        }
+
 
         /** Valkey 化第二陣B: ValkeyRateLimiter は空 Provider（素通し）。addFilterAfter 登録方式は不変。 */
         @Bean
@@ -167,6 +186,14 @@ class AuthorizationIntegrationTest {
             org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
                     mock(org.springframework.beans.factory.ObjectProvider.class);
             return new DashboardScopeTabRateLimitFilter(rateLimiterProvider);
+        }
+
+        @Bean
+        @SuppressWarnings("unchecked")
+        com.mannschaft.app.village.VillageAffinityRateLimitFilter villageAffinityRateLimitFilter() {
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.village.VillageAffinityRateLimitFilter(rateLimiterProvider);
         }
     }
 
@@ -373,5 +400,37 @@ class AuthorizationIntegrationTest {
         expectNotAuthRejected(
                 mockMvc.perform(post("/api/v1/webhooks/stripe")),
                 "POST /api/v1/webhooks/stripe [匿名]");
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // シナリオ 12: 未認証で POST /api/v1/auth/verify-email → 401 にならない
+    // （email-verification/verify-email 未整合是正。verify-email はメール送信時に払い出した
+    // ワンタイム capability トークンのみで検証するため、登録直後の未ログインユーザーが叩ける必要がある）
+    // ───────────────────────────────────────────────────────────────────
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("シナリオ 12: 未認証で POST /api/v1/auth/verify-email → 401/403 にならない（permitAll）")
+    void unauthenticated_verifyEmailEndpoint_notAuthRejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(post("/api/v1/auth/verify-email")
+                        .contentType("application/json")
+                        .content("{}")),
+                "POST /api/v1/auth/verify-email [匿名]");
+    }
+
+    // ───────────────────────────────────────────────────────────────────
+    // シナリオ 13: 未認証で POST /api/v1/auth/verify-email/resend → 401 にならない
+    // ───────────────────────────────────────────────────────────────────
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("シナリオ 13: 未認証で POST /api/v1/auth/verify-email/resend → 401/403 にならない（permitAll）")
+    void unauthenticated_resendVerificationEmailEndpoint_notAuthRejected() throws Exception {
+        expectNotAuthRejected(
+                mockMvc.perform(post("/api/v1/auth/verify-email/resend")
+                        .contentType("application/json")
+                        .content("{}")),
+                "POST /api/v1/auth/verify-email/resend [匿名]");
     }
 }

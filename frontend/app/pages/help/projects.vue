@@ -28,7 +28,7 @@ useSeoMeta({
         icon="pi pi-arrow-left"
         text
         rounded
-        :aria-label="t('common.button.back')"
+        :aria-label="t('button.back')"
         @click="router.back()"
       />
       <h1 class="text-2xl font-bold text-surface-900 dark:text-white">

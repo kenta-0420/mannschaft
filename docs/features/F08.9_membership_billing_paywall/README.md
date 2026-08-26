@@ -159,7 +159,9 @@ member_payments
 Stripe に**期日決済・再試行(dunning)・カード更新・SCA**を背負わせ、唯一の難点「Connectサブスクは手数料が率(`application_fee_percent`)でしか取れず固定額不可」を **invoice 上書き**で回避する。
 
 **フロー**
-1. 初回：払い手のカードを **SetupIntent** で platform 側 Customer に保存（off_session）。**Stripe Subscription** を作成：`price`＝会費、`transfer_data[destination]`＝受領者 Connect 口座、`on_behalf_of`＝同、`billing_cycle_anchor`＝ユーザ指定決済日。
+1. 初回：払い手のカードを **SetupIntent** で platform 側 Customer に保存（off_session）。**Stripe Subscription** を作成：**明細は 2 本**（`price`＝会費＝額面 ¥10,000 ／ `price`＝支払側手数料＝`FeeBreakdown.payerFee`＝¥250。`payerFee=0` のときは手数料明細を作らない）、`transfer_data[destination]`＝受領者 Connect 口座、`on_behalf_of`＝同、`billing_cycle_anchor`＝ユーザ指定決済日。
+
+   > ⚠️ **明細を「会費のみ（額面）」にしてはならない。** invoice 合計が ¥10,000 のままだと、`application_fee_amount` を ¥500 に上書きしても受取側の着金が ¥9,750 ではなく **¥9,500** になり、受取側が毎サイクル「額面の 2.5%」を余分に負担する（下表と食い違う）。支払側の上乗せ分は **invoice の明細として加算**しなければ折半は成立しない。2 明細にすることで invoice 合計 ¥10,250 ＝ 初回サイクルの単発 charge 金額（`chargeAmount`）と一致する。
 2. 各サイクル：Stripe が invoice を自動生成 → **`invoice.created`** webhook で、その invoice の **`application_fee_amount` を固定円（加入時に焼き付けた `fee_policy_key` で解決した `total_fee`・DEFAULT なら `round(face_amount×0.05)`）に上書き**。料率改定は新規加入のみ反映・既存サブスクは加入時 policy で固定（遡及防止）。
 3. Stripe が保存カードで自動決済 → **`invoice.paid`** webhook で `escrow_transaction(source_kind=MEMBERSHIP, status=CAPTURED)` ＋ `ledger_entries` を起票し、受益者の `valid_until` を1サイクル延長。
 4. 失敗：Stripe smart retries → `past_due` に落ちれば状態反映・払い手へ督促通知（§6 配信基盤）・猶予(`grace_period_days`)後にペイウォール失効。
@@ -200,7 +202,7 @@ Stripe Subscription（スケジュールの主）と escrow 台帳（金の記�
 
 - **PoC 成立**：「invoice の固定 `application_fee_amount` 上書き × `transfer_data[destination]` × `on_behalf_of`」が期待どおり噛み合うことを **Stripe テスト環境で実証済**（`run_20260605_213236`）。更新サイクル invoice の draft 窓で `application_fee_amount=53` 固定上書き → finalize→pay 後の charge へ `53` が伝播（subscription の `application_fee_percent=5` 自動計算 50 を完全上書き）。検証スクリプト・結果詳細＝`scripts/poc/README_f089_p5_poc.md` §0。
 - **成立条件（実装時に必ず順守）**：
-  1. **API バージョン `2025-02-24.acacia` 固定**（stripe-java 28.2.0 の固定版）。最新版（basil = 2025-03-31 以降）では invoice の `application_fee_amount` / `transfer_data` / `charge` が存在せず HTTP 200 で黙殺される。**stripe-java を 29.x（basil）以降へ上げる際は invoice 上書き機構の作り直し（新 Invoice Payments 構造への移行）が必要** — 依存更新時の必須チェック項目。
+  1. **API バージョン `2025-02-24.acacia` 固定**（stripe-java 28.2.0 の固定版）。最新版（basil = 2025-03-31 以降）では invoice の `application_fee_amount` / `transfer_data` / `charge` が存在せず HTTP 200 で黙殺される。**stripe-java を 29.x（basil）以降へ上げる際は invoice 上書き機構の作り直し（新 Invoice Payments 構造への移行）が必要** — 依存更新時の必須チェック項目。Dependabot 等の一括更新事故を機械的に防ぐため、`build.gradle.kts` の stripe-java メジャーバージョンが 28 以外になるとビルドを fail させる番人テスト `StripeJavaVersionGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）を設置済み。
   2. **初回 invoice は上書き不可（即 finalize で窓なし）→ 案 b 採用**：初回会費は P1 同型の単発 destination charge で徴収し、Subscription は `billing_cycle_anchor`/trial で次サイクルから起動する（全 invoice が更新型 = 全サイクルで `fee_policy` 固定値が正確に通る）。案 a（percent 併設）は初回のみ flat/丸め誤差が出るため不採用。
   3. **transfer 額の帳簿表現**：destination charge では transfer=額面**全額**・app fee は受取側残高から別途回収（純着金=額面−fee）。escrow/ledger の複式記帳はこの 2 段（transfer 全額＋fee 回収）を意識して起票する。
 - **退避策（自前バッチ）は不要に**：PoC 成立のため Subscription 連携を本線とする。ただし設計（01/02）は引き続き `MembershipSubscriptionService` の差し替え可能な実装として閉じ込め、将来 SDK メジャー更新で機構再設計が必要になった場合の退避余地（@Scheduled＋ShedLock＋off_session PaymentIntent＋固定 application_fee_amount）は温存する。

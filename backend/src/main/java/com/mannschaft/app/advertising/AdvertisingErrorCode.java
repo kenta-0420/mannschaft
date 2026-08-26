@@ -87,7 +87,44 @@ public enum AdvertisingErrorCode implements ErrorCode {
     AD_025("AD_025", "削除済みの広告クリエイティブは更新できません", Severity.WARN),
 
     /** キャンペーンとクリエイティブの不一致 */
-    AD_026("AD_026", "指定されたキャンペーンに属するクリエイティブが見つかりません", Severity.WARN);
+    AD_026("AD_026", "指定されたキャンペーンに属するクリエイティブが見つかりません", Severity.WARN),
+
+    // ─── F09.19 運用型キャンペーン CRUD（§15。仮採番 — マージ時に origin/main の最大値を再確認して確定） ───
+
+    /** 状態遷移違反・編集不可状態・編集不可フィールドの変更（HTTP 409） */
+    AD_027("AD_027", "キャンペーンの状態がこの操作に適合しません", Severity.WARN),
+
+    /** 日予算が料金カードの最低日予算未満（HTTP 400） */
+    AD_028("AD_028", "日予算が料金カードの最低日予算を下回っています", Severity.WARN),
+
+    /** visit / click の IP レート制限（HTTP 429） */
+    AD_029("AD_029", "リクエストが集中しています。しばらくしてからお試しください", Severity.WARN),
+
+    /** startDate / endDate 検証違反（HTTP 400） */
+    AD_030("AD_030", "掲載期間の指定が不正です", Severity.WARN),
+
+    /** rateCardId 不一致・期間外（HTTP 400） */
+    AD_031("AD_031", "適用可能な料金カードが見つかりません", Severity.WARN),
+
+    /** 通報対象の XOR 違反（F09.19.9。HTTP 400） */
+    AD_032("AD_032", "通報対象の指定が不正です", Severity.WARN),
+
+    /** 通報自動停止中の resume 拒否（F09.19.9。HTTP 403） */
+    AD_033("AD_033", "通報により停止中のため、この操作は実行できません", Severity.WARN),
+
+    /** 運用型キャンペーンから参照中の料金カード削除拒否（HTTP 409。FK violation 500 回帰防御） */
+    AD_034("AD_034", "この料金カードは運用型キャンペーンから参照されているため削除できません", Severity.WARN),
+
+    /**
+     * サービング計測の証跡不整合（HTTP 404）。F09.19.2 §6.3/§6.4/§11。
+     *
+     * <p>serve 証跡（{@code mannschaft:ad:serve-token}）が存在しない creative への view/visit、
+     * および他ユーザーの {@code ad_banner_deliveries} を指定した帰属不一致のいずれも、対象不在として
+     * 404 で隠蔽する（存在有無を晒さない）。正本 §15 は専用コードを与えていないため本弾で新規採番した。
+     * <b>マージ時は origin/main の {@code AdvertisingErrorCode} 最大値（本実装時点 AD_034）を再確認し、
+     * 衝突があれば繰り上げること。</b></p>
+     */
+    AD_035("AD_035", "対象の広告が見つかりません", Severity.WARN);
 
     private final String code;
     private final String message;

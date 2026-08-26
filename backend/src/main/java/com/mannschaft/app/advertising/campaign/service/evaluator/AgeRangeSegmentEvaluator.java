@@ -55,6 +55,24 @@ public class AgeRangeSegmentEvaluator implements AdSegmentEvaluator {
 
     @Override
     public Set<Long> resolveUserIds(AdAudienceSegment segment) {
+        int[] birthYearRange = validateAndResolveBirthYearRange(segment);
+        List<Long> userIds = userRepository.findUserIdsByBirthYearBetween(birthYearRange[0], birthYearRange[1]);
+        log.debug("AGE_RANGE segment 評価完了: minBirthYear={}, maxBirthYear={}, matchedUserCount={}, campaignId={}",
+                birthYearRange[0], birthYearRange[1], userIds.size(), segment.getCampaignId());
+        return new HashSet<>(userIds);
+    }
+
+    @Override
+    public long countUserIds(AdAudienceSegment segment) {
+        int[] birthYearRange = validateAndResolveBirthYearRange(segment);
+        return userRepository.countUserIdsByBirthYearBetween(birthYearRange[0], birthYearRange[1]);
+    }
+
+    /**
+     * segment_value をバリデーションし、生年範囲 [minBirthYear, maxBirthYear] を返す。
+     * {@link #resolveUserIds} / {@link #countUserIds} 共通のバリデーション・変換ロジック。
+     */
+    private int[] validateAndResolveBirthYearRange(AdAudienceSegment segment) {
         // 構造バリデーション（不正 segment_value は早期に 400 で返したい）
         Map<String, Object> value = deserialize(segment.getSegmentValue());
         Integer min = parseAge(value.get("min"));
@@ -82,11 +100,7 @@ public class AgeRangeSegmentEvaluator implements AdSegmentEvaluator {
         int resolvedMax = (max != null) ? max : MAX_PLAUSIBLE_AGE;
         int minBirthYear = currentYear - resolvedMax;  // 39歳以下 → currentYear-39 以降生まれ
         int maxBirthYear = currentYear - resolvedMin;  // 20歳以上 → currentYear-20 以前生まれ
-
-        List<Long> userIds = userRepository.findUserIdsByBirthYearBetween(minBirthYear, maxBirthYear);
-        log.debug("AGE_RANGE segment 評価完了: min={}, max={}, minBirthYear={}, maxBirthYear={}, matchedUserCount={}, campaignId={}",
-                resolvedMin, resolvedMax, minBirthYear, maxBirthYear, userIds.size(), segment.getCampaignId());
-        return new HashSet<>(userIds);
+        return new int[] {minBirthYear, maxBirthYear};
     }
 
     private Integer parseAge(Object raw) {

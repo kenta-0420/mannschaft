@@ -1,6 +1,7 @@
 package com.mannschaft.app.disclosure.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.disclosure.DisclosureErrorCode;
 import com.mannschaft.app.disclosure.entity.DisclosureFormTemplateEntity;
@@ -33,13 +34,16 @@ class DisclosureFormTemplateServiceTest {
     @Mock
     private DisclosureFormTemplateRepository repository;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private DisclosureFormTemplateService service;
 
     @BeforeEach
     void setUp() {
-        service = new DisclosureFormTemplateService(repository, objectMapper);
+        service = new DisclosureFormTemplateService(repository, objectMapper, accessControlService);
     }
 
     @Test
@@ -47,7 +51,7 @@ class DisclosureFormTemplateServiceTest {
     void get_notFound() {
         when(repository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.get("ORGANIZATION", 1L, 99L))
+        assertThatThrownBy(() -> service.get("ORGANIZATION", 1L, 1L, 99L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_001);
@@ -69,7 +73,7 @@ class DisclosureFormTemplateServiceTest {
                 .build();
         when(repository.findByIdAndDeletedAtIsNull(10L)).thenReturn(Optional.of(entity));
 
-        assertThatThrownBy(() -> service.get("ORGANIZATION", 1L, 10L))
+        assertThatThrownBy(() -> service.get("ORGANIZATION", 1L, 1L, 10L))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_002);
@@ -89,8 +93,8 @@ class DisclosureFormTemplateServiceTest {
                 .build();
         when(repository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(entity));
 
-        assertThat(service.get("ORGANIZATION", 1L, 1L).code()).isEqualTo("MLIT_STANDARD_2024");
-        assertThat(service.get(null, null, 1L).code()).isEqualTo("MLIT_STANDARD_2024");
+        assertThat(service.get("ORGANIZATION", 1L, 1L, 1L).code()).isEqualTo("MLIT_STANDARD_2024");
+        assertThat(service.get(null, null, 1L, 1L).code()).isEqualTo("MLIT_STANDARD_2024");
     }
 
     @Test
@@ -113,7 +117,7 @@ class DisclosureFormTemplateServiceTest {
                 anyString(), any(), any())).thenReturn(
                 new org.springframework.data.domain.PageImpl<>(List.of(orgCustom)));
 
-        var result = service.listAvailable("ORGANIZATION", 1L, null);
+        var result = service.listAvailable("ORGANIZATION", 1L, 1L, null);
         assertThat(result).hasSize(2)
                 .extracting("code")
                 .containsExactlyInAnyOrder("MLIT_STANDARD_2024", "ORG_CUSTOM");
@@ -130,7 +134,7 @@ class DisclosureFormTemplateServiceTest {
     @Test
     @DisplayName("listAvailable(): 不正な scopeType は DISCLOSURE_004")
     void listAvailable_invalidScope() {
-        assertThatThrownBy(() -> service.listAvailable("TEAM", 1L, null))
+        assertThatThrownBy(() -> service.listAvailable("TEAM", 1L, 1L, null))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(DisclosureErrorCode.DISCLOSURE_004);

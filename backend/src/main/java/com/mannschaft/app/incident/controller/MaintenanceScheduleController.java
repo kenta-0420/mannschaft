@@ -55,8 +55,9 @@ public class MaintenanceScheduleController {
     public ApiResponse<List<MaintenanceScheduleResponse>> listSchedules(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
+        Long userId = SecurityUtils.getCurrentUserId();
         List<MaintenanceScheduleResponse> response =
-                maintenanceScheduleService.listSchedules(scopeType, scopeId);
+                maintenanceScheduleService.listSchedules(scopeType, scopeId, userId);
         return ApiResponse.of(response);
     }
 
@@ -68,8 +69,9 @@ public class MaintenanceScheduleController {
     public ApiResponse<MaintenanceScheduleResponse> updateSchedule(
             @PathVariable Long id,
             @Validated @RequestBody UpdateMaintenanceScheduleRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         MaintenanceScheduleResponse response =
-                maintenanceScheduleService.updateSchedule(id, request);
+                maintenanceScheduleService.updateSchedule(id, request, userId);
         return ApiResponse.of(response);
     }
 
@@ -79,7 +81,8 @@ public class MaintenanceScheduleController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSchedule(@PathVariable Long id) {
-        maintenanceScheduleService.deleteSchedule(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        maintenanceScheduleService.deleteSchedule(id, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -89,7 +92,8 @@ public class MaintenanceScheduleController {
      */
     @PostMapping("/{id}/trigger")
     public ApiResponse<IncidentResponse> triggerManually(@PathVariable Long id) {
-        IncidentResponse response = maintenanceScheduleService.triggerManually(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        IncidentResponse response = maintenanceScheduleService.triggerManually(id, userId);
         return ApiResponse.of(response);
     }
 }

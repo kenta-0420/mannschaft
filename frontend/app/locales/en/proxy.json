@@ -31,7 +31,9 @@
       "shift_request": "Shift Request",
       "announcement_read": "Announcements",
       "parking_application": "Parking Application",
-      "circular": "Circular"
+      "circular": "Circular",
+      "supporter_view": "Watch View",
+      "payment": "Proxy Payment"
     },
     "desk": {
       "pinSubject": "Pin Resident",
@@ -42,7 +44,8 @@
         "label": "Input Source",
         "paper_form": "Paper Form",
         "phone_interview": "Phone Interview",
-        "in_person": "In-person"
+        "in_person": "In-person",
+        "guardianship_switch": "Guardianship Switch"
       },
       "originalStorage": {
         "label": "Original Storage Location",
@@ -106,6 +109,75 @@
         "junior_high": "Junior high school",
         "high_school": "High school",
         "adult": "Adult"
+      },
+      "watch": {
+        "title": "Watch",
+        "linkLabel": "Watch",
+        "linkTooltip": "Open the watch screen (view only)",
+        "readonlyNotice": "This screen is view-only. You cannot take actions or respond here.",
+        "loadError": "Failed to load watch data",
+        "retryButton": "Retry",
+        "sections": {
+          "schedules": {
+            "title": "Upcoming schedules",
+            "empty": "No upcoming schedules"
+          },
+          "attendance": {
+            "title": "Attendance",
+            "attended": "Attended",
+            "partial": "Partial",
+            "absent": "Absent",
+            "total": "Total",
+            "rate": "Attendance rate",
+            "empty": "No attendance data"
+          },
+          "memberships": {
+            "title": "Teams / Organizations",
+            "teams": "Teams",
+            "organizations": "Organizations",
+            "empty": "Not a member of any team or organization"
+          },
+          "announcements": {
+            "title": "Announcements",
+            "empty": "No announcements"
+          }
+        },
+        "attendanceStatus": {
+          "ATTENDING": "Attending",
+          "PARTIAL": "Partial",
+          "ABSENT": "Absent",
+          "UNDECIDED": "Undecided"
+        },
+        "proxyActions": {
+          "title": "Proxy action history",
+          "badge": "Proxy (Guardian)",
+          "empty": "No proxy action records"
+        },
+        "forbidden": {
+          "ageLocked": {
+            "title": "This child is not eligible for watch",
+            "body": "Children aged 12 or older have reached the independence stage and are not eligible for view-only watch."
+          },
+          "linkNotFound": {
+            "title": "Cannot watch this child",
+            "body": "Your guardian link could not be confirmed. Please check your linkage settings."
+          }
+        },
+        "guide": {
+          "title": "How to use Watch",
+          "readonly": {
+            "title": "This is view-only",
+            "body": "This screen only lets you view the child's schedules, attendance, memberships, and announcements — you cannot take actions or respond. Use \"Guardianship Switch\" if you need to act on the child's behalf."
+          },
+          "ageLimit": {
+            "title": "Only for children under 12",
+            "body": "Children aged 12 or older have reached the independence stage and are excluded from watch (to protect their privacy)."
+          },
+          "proxyBadge": {
+            "title": "What the \"Proxy\" mark means",
+            "body": "Actions taken on the child's behalf by the guardian (e.g. via guardianship switch) are marked \"Proxy (Guardian)\". The proxy action history section shows when and for which feature a proxy action took place."
+          }
+        }
       }
     },
     "delegation": {

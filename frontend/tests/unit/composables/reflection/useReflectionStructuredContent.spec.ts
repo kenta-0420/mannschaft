@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { useReflectionStructuredContent, type JsonNode } from '~/composables/useReflectionStructuredContent'
-import { emptyStructuredContent } from '~/types/reflection'
+import { emptyStructuredContent, type ReflectionStructuredContent } from '~/types/reflection'
 
 /**
  * F06.5 structured_content ↔ JsonNode 境界変換 UT。
@@ -57,7 +57,9 @@ describe('useReflectionStructuredContent', () => {
   })
 
   it('SC-004: toJsonNode → toStructured のラウンドトリップで保たれる', () => {
-    const original = {
+    // Phase 4 で section に type / cards が追加されたため、ラウンドトリップの原本も
+    // 正規化後と同じ完全形（type / cards を含む）で持つ。
+    const original: ReflectionStructuredContent = {
       main_theme: 'KPT 振り返り',
       sections: [
         {
@@ -65,6 +67,14 @@ describe('useReflectionStructuredContent', () => {
           subsections: [
             { sub_heading: '良かった点', detail: 'レビューが早い', supplement: '' },
           ],
+          type: 'OUTLINE',
+          cards: [],
+        },
+        {
+          heading: '用語カード',
+          subsections: [],
+          type: 'TERM_CARD',
+          cards: [{ term: 'KPT', meaning: 'Keep/Problem/Try' }],
         },
       ],
       free_note: '来週も継続',

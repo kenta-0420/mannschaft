@@ -71,6 +71,17 @@
         "thunderstorm": "雷暴"
       }
     },
+    "upcoming_events": {
+      "today_title": "今日の予定",
+      "week_title": "今週の予定",
+      "toggle_today": "今日",
+      "toggle_week": "今週",
+      "empty_today": "今日の予定はありません",
+      "empty_week": "今週の予定はありません",
+      "kind_event": "予定",
+      "kind_shift": "シフト",
+      "kind_reservation": "予約"
+    },
     "personal": {
       "find_team_title": "寻找新的团队或组织",
       "find_team_description": "搜索您想加入的团队或组织，以支持者身份申请。\n以成员身份加入需要邀请链接。",
@@ -100,13 +111,10 @@
       "my-organizations": "所属組織",
       "favorites": "お気に入り",
       "recent-activity": "最近のアクティビティ",
-      "family-hub": "家族",
-      "notifications": "通知",
       "recruitment-feed": "新着募集",
       "my-recruitments": "参加予定",
       "my-corkboard": "マイコルクボード",
       "village-lobby-digest": "井戸端ダイジェスト",
-      "inbox": "インボックス",
       "todos": "TODO",
       "timeline": "タイムライン",
       "bulletin": "掲示板",
@@ -125,7 +133,8 @@
       "team-division-standings": "順位表",
       "org-tournament-summary": "主催大会サマリ",
       "team-match-summary": "試合サマリ",
-      "projects": "プロジェクト"
+      "projects": "プロジェクト",
+      "my-timeline": "集約タイムライン"
     },
     "widget_descriptions": {
       "event-dismissal-reminder": "解散通知が未送信のイベントへのリマインダー",
@@ -146,13 +155,10 @@
       "my-organizations": "参加中の組織一覧",
       "favorites": "お気に入りに登録したコンテンツ",
       "recent-activity": "最近の活動履歴",
-      "family-hub": "家族チームのお知らせ・TODO",
-      "notifications": "未読の通知",
       "recruitment-feed": "フォロー先・サポーター先の新着募集",
       "my-recruitments": "自分の確定・キャンセル待ち参加予定",
       "my-corkboard": "ピン止めしたカードの横断一覧",
       "village-lobby-digest": "ピン留め村の本日の井戸端在席状況",
-      "inbox": "通知を一箇所で仕分け",
       "todos": "未完了のTODO",
       "timeline": "最新の投稿",
       "bulletin": "最新のスレッド",
@@ -171,7 +177,33 @@
       "team-division-standings": "現在参加中のディビジョンの順位表",
       "org-tournament-summary": "主催する各大会×各部の首位・参加数・状態",
       "team-match-summary": "直近の試合成績と進行中試合の記録再開",
-      "projects": "プロジェクトの進捗状況と一覧"
+      "projects": "プロジェクトの進捗状況と一覧",
+      "my-timeline": "所属チーム・組織の投稿を横断表示"
+    },
+    "notices": {
+      "actionRequiredTab": "需要处理",
+      "actionRequiredEmpty": "没有需要处理的项目",
+      "widget_notices_tab_platform": "平台公告",
+      "widget_notices_platform_empty": "暂无公告"
+    },
+    "commandCenter": {
+      "title": "现在要做的事",
+      "unresolvedCount": "未处理 {count} 项",
+      "chipCirculation": "传阅板",
+      "chipSurvey": "问卷",
+      "chipAttendance": "出席确认",
+      "chipOverdueTodo": "逾期待办",
+      "deadlineOverdue": "已逾期",
+      "deadlineToday": "今天",
+      "emptyTitle": "没有遗漏 🎉",
+      "emptyMessage": "没有需要处理的项目",
+      "partialLoadError": "部分数据加载失败",
+      "todoCompleteAria": "标记为完成",
+      "todoCompleteSuccess": "待办事项已完成",
+      "todoCompleteError": "完成待办事项失败",
+      "adminSectionTitle": "待审批",
+      "adminUnresolvedCount": "待审批 {count} 件",
+      "adminLoadError": "获取待审批事项失败"
     },
     "myCorkboard": {
       "widgetTitle": "我的软木板",
@@ -186,6 +218,27 @@
       "unpinAction": "取消固定此卡片",
       "navigationFailed": "无法访问此卡片的引用对象",
       "colorLabelAria": "{color}标签"
+    },
+    "activity_feed": {
+      "post_created": "が投稿しました",
+      "event_created": "がイベントを作成しました",
+      "member_joined": "が参加しました",
+      "todo_completed": "がTODOを完了しました",
+      "bulletin_created": "がお知らせを投稿しました",
+      "poll_created": "がアンケートを作成しました",
+      "file_uploaded": "がファイルを共有しました",
+      "schedule_created": "が予定を作成しました",
+      "schedule_updated": "が予定を更新しました",
+      "schedule_cancelled": "が予定をキャンセルしました",
+      "schedule_rescheduled": "が予定の日程を変更しました",
+      "detail_start_at": "開始日時",
+      "detail_end_at": "終了日時",
+      "detail_is_all_day": "終日設定",
+      "detail_title": "タイトル",
+      "detail_location": "場所",
+      "detail_status": "ステータス",
+      "detail_description_changed": "詳細が更新されました",
+      "unknown": "アクションしました"
     }
   },
   "swipeWidgets": {
@@ -204,8 +257,43 @@
       "unconfirmed": "{count}件未确认",
       "unanswered": "{count}件未回答",
       "empty": "没有需要处理的项目",
-      "loadError": "获取待处理项目失败"
+      "loadError": "获取待处理项目失败",
+      "circulationModal": {
+        "title": "确认传阅",
+        "circulatedAt": "传阅日期",
+        "deadline": "截止日期",
+        "confirm": "已确认",
+        "noSealMessage": "未设置印章。请先设置印章再进行盖章。",
+        "goToSealSettings": "前往印章设置",
+        "stampSuccess": "盖章成功",
+        "stampError": "盖章失败"
+      },
+      "surveyModal": {
+        "loadError": "问卷加载失败"
+      },
+      "attendanceModal": {
+        "title": "出席确认",
+        "attending": "出席",
+        "absent": "缺席",
+        "undecided": "未定",
+        "success": "出席回答已提交",
+        "error": "出席回答提交失败"
+      }
     },
-    "emptyState": "还没有投稿"
+    "emptyState": "还没有投稿",
+    "list": {
+      "allDay": "全天",
+      "overdue": "已逾期",
+      "nextEvent": "下一个日程",
+      "noNextEvent": "暂无日程",
+      "eventsThisWeek": "本周 {count} 个",
+      "upcomingEmpty": "暂无即将到来的日程",
+      "blogEmpty": "暂无博客文章",
+      "chatEmpty": "暂无聊天",
+      "todoEmpty": "暂无待办事项",
+      "calendarEmpty": "暂无日程",
+      "bulletinEmpty": "暂无公告栏话题",
+      "unread": "未读"
+    }
   }
 }

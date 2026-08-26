@@ -1,6 +1,9 @@
 package com.mannschaft.app.reflection.service;
 
+import com.mannschaft.app.reflection.RecallDirection;
 import com.mannschaft.app.reflection.RecallSelfRating;
+import com.mannschaft.app.reflection.ReflectionConstants;
+import com.mannschaft.app.reflection.ReflectionOutlineRevealLevel;
 import com.mannschaft.app.reflection.entity.RecallAttemptEntity;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
 import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
@@ -47,14 +50,8 @@ public class ReflectionMaskEvaluator {
             if (intervals.isEmpty()) {
                 return true; // interval パース不能 → fail-closed
             }
-            // step1-2: 到来済み想起予定日 R_due。
-            List<LocalDate> dueDates = new ArrayList<>();
-            for (int i : intervals) {
-                LocalDate d = entry.getTargetDate().plusDays(i);
-                if (!d.isAfter(today)) {
-                    dueDates.add(d);
-                }
-            }
+            // step1-2: 到来済み想起予定日 R_due（≤ today 絞り込み・§13-B-1 と同一真実源）。
+            List<LocalDate> dueDates = arrivedDueDates(entry, theme, today);
             // step3: R_due 空 → 非マスク（AC-5）。
             if (dueDates.isEmpty()) {
                 return false;
@@ -94,6 +91,98 @@ public class ReflectionMaskEvaluator {
             result.add(entry.getTargetDate().plusDays(i));
         }
         return result;
+    }
+
+    /**
+     * 到来済み想起予定日（{@code ≤ today} に絞った集合）を返す（§13-B-1・マスク判定と方向算出の単一真実源）。
+     *
+     * <p>{@link #dueRecallDates} は全予定日を返す（maskedHint 表示用）が、こちらは {@code today} 以下のみに
+     * 絞る。出題方向（§13-B）の {@code k} はこの集合の個数で決まる（決定論・{@code recall_attempts} 非依存）。
+     * パース不能・データ欠落時は空リスト。</p>
+     *
+     * @param entry 対象エントリ
+     * @param theme 親テーマ（recall_interval_days 取得元）
+     * @param today ユーザー TZ の今日
+     * @return {@code target_date + interval} のうち {@code ≤ today} のもの（昇順・重複排除済み intervals 由来）
+     */
+    public List<LocalDate> arrivedDueDates(ReflectionEntryEntity entry, ReflectionThemeEntity theme,
+                                           LocalDate today) {
+        List<LocalDate> result = new ArrayList<>();
+        if (entry == null || theme == null || entry.getTargetDate() == null || today == null) {
+            return result;
+        }
+        for (int i : parseIntervals(theme.getRecallIntervalDays())) {
+            LocalDate d = entry.getTargetDate().plusDays(i);
+            if (!d.isAfter(today)) {
+                result.add(d);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 暗記カードの出題方向を決定論的に算出する（§13-B・AC-52）。
+     *
+     * <p>{@code k = |arrivedDueDates|}・{@code n = k - 1} とし、{@code n} が偶数なら
+     * {@link RecallDirection#MEANING_TO_TERM}、奇数なら {@link RecallDirection#TERM_TO_MEANING}。
+     * {@code recall_attempts} 件数には依存しない（同じ today・同じ theme intervals なら常に同じ向き）。</p>
+     *
+     * <p><b>fail-closed</b>: {@code k == 0}（マスク対象外）・{@code today == null}・データ欠落時は
+     * {@code null} を返す（方向を出さない）。呼び出し側はこれを受けて cue を出さない（§13-C-1）。</p>
+     *
+     * @param entry 対象エントリ
+     * @param theme 親テーマ
+     * @param today ユーザー TZ の今日（null なら算出不能）
+     * @return 出題方向。算出不能・マスク対象外のとき null
+     */
+    public RecallDirection resolveDirection(ReflectionEntryEntity entry, ReflectionThemeEntity theme,
+                                            LocalDate today) {
+        if (today == null) {
+            return null;
+        }
+        int k = arrivedDueDates(entry, theme, today).size();
+        if (k <= 0) {
+            return null;
+        }
+        int n = k - 1;
+        return (n % 2 == 0) ? RecallDirection.MEANING_TO_TERM : RecallDirection.TERM_TO_MEANING;
+    }
+
+    /**
+     * OUTLINE 段階式マスク（足場ラダー）の開示レベルを決定論的に算出する（§13-C 増分・AC-80〜85）。
+     *
+     * <p>{@code k = |arrivedDueDates|}（{@code resolveDirection} と同一真実源）で次のとおり決まる:</p>
+     * <ul>
+     *   <li>{@code k ≤ 2} → {@link ReflectionOutlineRevealLevel#FULL}</li>
+     *   <li>{@code k == 3} → {@link ReflectionOutlineRevealLevel#PARTIAL}</li>
+     *   <li>{@code k ≥ 4} → {@link ReflectionOutlineRevealLevel#HIDDEN}</li>
+     * </ul>
+     *
+     * <p><b>fail-closed</b>: {@code today == null}・{@code k ≤ 0}（マスク対象外・データ欠落）は
+     * {@link ReflectionOutlineRevealLevel#HIDDEN}（足場ゼロ）。{@code recall_attempts} には非依存。</p>
+     *
+     * @param entry 対象エントリ
+     * @param theme 親テーマ
+     * @param today ユーザー TZ の今日（null なら算出不能→HIDDEN）
+     * @return 開示レベル（算出不能・マスク対象外は HIDDEN）
+     */
+    public ReflectionOutlineRevealLevel resolveOutlineRevealLevel(ReflectionEntryEntity entry,
+                                                                  ReflectionThemeEntity theme,
+                                                                  LocalDate today) {
+        if (today == null) {
+            return ReflectionOutlineRevealLevel.HIDDEN; // fail-closed（算出不能）
+        }
+        int k = arrivedDueDates(entry, theme, today).size();
+        if (k <= 0) {
+            return ReflectionOutlineRevealLevel.HIDDEN; // マスク対象外・データ欠落（fail-closed）
+        }
+        if (k <= ReflectionConstants.OUTLINE_SCAFFOLD_FULL_MAX_K) {
+            return ReflectionOutlineRevealLevel.FULL; // k≤2
+        }
+        if (k == ReflectionConstants.OUTLINE_SCAFFOLD_PARTIAL_K) {
+            return ReflectionOutlineRevealLevel.PARTIAL; // k==3
+        }
+        return ReflectionOutlineRevealLevel.HIDDEN; // k≥4（足場ゼロ＝従来完全マスク）
     }
 
     /**

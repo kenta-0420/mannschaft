@@ -80,7 +80,7 @@ public class UserEntity extends BaseEntity {
     @Builder.Default
     private OnlineVisibility onlineVisibility = OnlineVisibility.NOBODY;
 
-    @Column(length = 50)
+    @Column(name = "nickname2", length = 50)
     private String nickname2;
 
     @Column(nullable = false)
@@ -154,6 +154,26 @@ public class UserEntity extends BaseEntity {
     /** 物理削除完了日時。NULLの場合は未実行。 */
     @Column(name = "purged_at")
     private LocalDateTime purgedAt;
+
+    // === プライバシーポリシー同意記録（F_privacy_policy）===
+
+    /**
+     * プライバシーポリシー同意日時。
+     *
+     * <p>NULL の場合は未同意または旧登録（V131.001 より前に登録したアカウント）を意味する。
+     * GDPR Art.7 / 個人情報保護法 準拠のため、同意タイムスタンプを保存する。</p>
+     */
+    @Column(name = "privacy_policy_accepted_at")
+    private LocalDateTime privacyPolicyAcceptedAt;
+
+    /**
+     * プライバシーポリシー同意時のバージョン文字列（例: "1.1.0"）。
+     *
+     * <p>NULL の場合は旧登録（同意取得前）を意味する。
+     * ポリシー改訂時に同意バージョンを比較し、再同意要否の判定に使用する。</p>
+     */
+    @Column(name = "privacy_policy_version", length = 20)
+    private String privacyPolicyVersion;
 
     // === ケア対象者属性（F03.12）===
 
@@ -470,6 +490,19 @@ public class UserEntity extends BaseEntity {
      */
     public void updatePublicProfileEnabled(boolean enabled) {
         this.publicProfileEnabled = enabled;
+    }
+
+    /**
+     * プライバシーポリシー同意情報を記録する（F_privacy_policy）。
+     *
+     * <p>登録時に呼び出す。同意日時は {@code LocalDateTime.now()} を渡すこと。</p>
+     *
+     * @param acceptedAt 同意日時
+     * @param version    同意したポリシーバージョン（例: "1.1.0"）
+     */
+    public void recordPrivacyPolicyConsent(LocalDateTime acceptedAt, String version) {
+        this.privacyPolicyAcceptedAt = acceptedAt;
+        this.privacyPolicyVersion = version;
     }
 
     /**

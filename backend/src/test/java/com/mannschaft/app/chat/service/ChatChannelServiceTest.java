@@ -28,12 +28,18 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.mannschaft.app.chat.ChannelMemberRole;
+import com.mannschaft.app.chat.repository.ChatChannelMemberRepository.ChannelMemberCount;
+import org.springframework.test.util.ReflectionTestUtils;
+
 import java.util.List;
 import java.util.Optional;
+import java.util.function.BooleanSupplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -84,6 +90,14 @@ class ChatChannelServiceTest {
 
     @Mock
     private AccessControlService accessControlService;
+
+    /**
+     * チャットドメインの認可判定は本ガードに集約されている。
+     * 可否そのもの（メンバーシップ・管理権限・DM 受信範囲）は {@code ChatChannelAccessGuardTest} が検証し、
+     * 本テストは「取得済みの実体・正しい引数でガードへ委譲しているか」を検証する。
+     */
+    @Mock
+    private ChatChannelAccessGuard channelAccessGuard;
 
     @InjectMocks
     private ChatChannelService chatChannelService;
@@ -187,6 +201,24 @@ class ChatChannelServiceTest {
         }
 
         @Test
+        @DisplayName("認可委譲: 作成前にスコープ所属検証へ委譲し、拒否されればチャンネルを保存しない")
+        void スコープ所属検証へ委譲する() {
+            // given: 非公開のチーム非公開チャンネル（＝チーム ADMIN 以上を要する種別）
+            CreateChannelRequest req = new CreateChannelRequest("TEAM_PRIVATE", TEAM_ID, null,
+                    "秘密チャンネル", null, null, true, null);
+            willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                    .given(channelAccessGuard).requireChannelCreationScope(
+                            ChannelType.TEAM_PRIVATE, TEAM_ID, null, true, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> chatChannelService.createChannel(req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+            verify(channelRepository, never()).save(any(ChatChannelEntity.class));
+        }
+
+        @Test
         @DisplayName("異常系: 同名チャンネルが存在する場合はエラー")
         void 同名チャンネルが存在する場合はエラー() {
             // given
@@ -232,6 +264,45 @@ class ChatChannelServiceTest {
 
             // then
             assertThat(result.getMeta().name()).isEqualTo("更新名");
+        }
+
+        @Test
+        @DisplayName("認可委譲: リクエスト値ではなく取得済みチャンネル実体で管理権限を検証する")
+        void 管理権限検証は取得済み実体で委譲される() {
+            // given
+            ChatChannelEntity channel = createChannel();
+            UpdateChannelRequest req = new UpdateChannelRequest("更新名", null, null);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
+            given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(channel);
+            given(chatMapper.toChannelResponse(any(ChatChannelEntity.class)))
+                    .willReturn(ChannelResponse.builder().id(CHANNEL_ID).build());
+
+            // when
+            chatChannelService.updateChannel(CHANNEL_ID, req, USER_ID);
+
+            // then: リポジトリから引いたエンティティそのものが渡る（スコープ詐称を許さない）
+            ArgumentCaptor<ChatChannelEntity> captor = ArgumentCaptor.forClass(ChatChannelEntity.class);
+            verify(channelAccessGuard).requireChannelAdminAccess(captor.capture(), eq(USER_ID));
+            assertThat(captor.getValue()).isSameAs(channel);
+            assertThat(captor.getValue().getTeamId()).isEqualTo(TEAM_ID);
+        }
+
+        @Test
+        @DisplayName("認可委譲: 管理権限が無ければ更新は保存されない")
+        void 管理権限が無ければ保存されない() {
+            // given
+            ChatChannelEntity channel = createChannel();
+            UpdateChannelRequest req = new UpdateChannelRequest("更新名", null, null);
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(channel));
+            willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                    .given(channelAccessGuard).requireChannelAdminAccess(channel, USER_ID);
+
+            // when & then
+            assertThatThrownBy(() -> chatChannelService.updateChannel(CHANNEL_ID, req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+            verify(channelRepository, never()).save(any(ChatChannelEntity.class));
         }
 
         @Test
@@ -372,25 +443,277 @@ class ChatChannelServiceTest {
     }
 
     // ========================================
-    // listMyChannels
+    // listMyChannels（per-user 拡張: memberCount / viewer / dmPartner）
     // ========================================
     @Nested
-    @DisplayName("listMyChannels")
+    @DisplayName("listMyChannels — チャンネル契約 per-user 拡張")
     class ListMyChannels {
 
-        @Test
-        @DisplayName("正常系: ユーザーの参加チャンネル一覧を取得できる")
-        void ユーザーの参加チャンネル一覧を取得できる() {
-            // given
-            List<ChatChannelEntity> channels = List.of(createChannel());
-            given(channelRepository.findByMemberUserId(USER_ID)).willReturn(channels);
-            given(chatMapper.toChannelResponseList(channels)).willReturn(List.of());
+        private static final Long TEAM_CH_ID = 1L;
+        private static final Long DM_CH_ID = 2L;
 
-            // when
+        /** id を採番した TEAM_PUBLIC チャンネル。 */
+        private ChatChannelEntity teamChannelWithId() {
+            ChatChannelEntity ch = ChatChannelEntity.builder()
+                    .channelType(ChannelType.TEAM_PUBLIC).teamId(TEAM_ID).name("一般").build();
+            ReflectionTestUtils.setField(ch, "id", TEAM_CH_ID);
+            return ch;
+        }
+
+        /** id を採番した DM チャンネル。 */
+        private ChatChannelEntity dmChannelWithId() {
+            ChatChannelEntity ch = ChatChannelEntity.builder()
+                    .channelType(ChannelType.DM).build();
+            ReflectionTestUtils.setField(ch, "id", DM_CH_ID);
+            return ch;
+        }
+
+        private ChannelResponse baseResponse(Long id, String channelType) {
+            return ChannelResponse.builder()
+                    .id(id)
+                    .identity(new ChannelResponse.ChannelIdentityDto(channelType, null, null))
+                    .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, null))
+                    .build();
+        }
+
+        private ChannelMemberCount count(Long channelId, long n) {
+            return new ChannelMemberCount() {
+                @Override public Long getChannelId() { return channelId; }
+                @Override public long getMemberCount() { return n; }
+            };
+        }
+
+        @Test
+        @DisplayName("空: 参加チャンネルが無ければ空リスト")
+        void 参加チャンネルなしで空リスト() {
+            given(channelRepository.findByMemberUserId(USER_ID)).willReturn(List.of());
+
+            assertThat(chatChannelService.listMyChannels(USER_ID)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("AC-B1: 各要素に memberCount が入り countGroupedByChannelIds と一致する")
+        void AC_B1_memberCountが集計値と一致() {
+            ChatChannelEntity team = teamChannelWithId();
+            given(channelRepository.findByMemberUserId(USER_ID)).willReturn(List.of(team));
+            given(memberRepository.findByUserId(USER_ID)).willReturn(List.of(
+                    ChatChannelMemberEntity.builder().channelId(TEAM_CH_ID).userId(USER_ID).build()));
+            given(memberRepository.countGroupedByChannelIds(anyList()))
+                    .willReturn(List.of(count(TEAM_CH_ID, 5L)));
+            given(chatMapper.toChannelResponse(team)).willReturn(baseResponse(TEAM_CH_ID, "TEAM_PUBLIC"));
+
             List<ChannelResponse> result = chatChannelService.listMyChannels(USER_ID);
 
-            // then
-            assertThat(result).isNotNull();
+            assertThat(result).hasSize(1);
+            assertThat(result.get(0).getMemberCount()).isEqualTo(5);
+        }
+
+        @Test
+        @DisplayName("AC-B2: viewer が呼出ユーザーのメンバー行と一致する")
+        void AC_B2_viewerが自分のメンバー行と一致() {
+            ChatChannelEntity team = teamChannelWithId();
+            ChatChannelMemberEntity myMember = ChatChannelMemberEntity.builder()
+                    .channelId(TEAM_CH_ID).userId(USER_ID).role(ChannelMemberRole.ADMIN)
+                    .unreadCount(3).isMuted(true).isPinned(false).category("仕事").build();
+            given(channelRepository.findByMemberUserId(USER_ID)).willReturn(List.of(team));
+            given(memberRepository.findByUserId(USER_ID)).willReturn(List.of(myMember));
+            given(memberRepository.countGroupedByChannelIds(anyList()))
+                    .willReturn(List.of(count(TEAM_CH_ID, 5L)));
+            given(chatMapper.toChannelResponse(team)).willReturn(baseResponse(TEAM_CH_ID, "TEAM_PUBLIC"));
+
+            ChannelResponse.ViewerStateDto viewer = chatChannelService.listMyChannels(USER_ID).get(0).getViewer();
+
+            assertThat(viewer).isNotNull();
+            assertThat(viewer.unreadCount()).isEqualTo(3);
+            assertThat(viewer.isMuted()).isTrue();
+            assertThat(viewer.isPinned()).isFalse();
+            assertThat(viewer.category()).isEqualTo("仕事");
+            assertThat(viewer.role()).isEqualTo("ADMIN");
+        }
+
+        @Test
+        @DisplayName("AC-B3: DM の dmPartner が自分以外メンバー＋表示名で構築される")
+        void AC_B3_DMのdmPartnerが相手で構築() {
+            ChatChannelEntity dm = dmChannelWithId();
+            ChatChannelMemberEntity myMember = ChatChannelMemberEntity.builder()
+                    .channelId(DM_CH_ID).userId(USER_ID).role(ChannelMemberRole.OWNER).build();
+            ChatChannelMemberEntity partnerMember = ChatChannelMemberEntity.builder()
+                    .channelId(DM_CH_ID).userId(PARTNER_ID).role(ChannelMemberRole.MEMBER).build();
+            UserEntity partner = UserEntity.builder()
+                    .email("p@example.com").displayName("田中太郎").avatarUrl("http://x/a.png").build();
+            ReflectionTestUtils.setField(partner, "id", PARTNER_ID);
+
+            given(channelRepository.findByMemberUserId(USER_ID)).willReturn(List.of(dm));
+            given(memberRepository.findByUserId(USER_ID)).willReturn(List.of(myMember));
+            given(memberRepository.countGroupedByChannelIds(anyList()))
+                    .willReturn(List.of(count(DM_CH_ID, 2L)));
+            given(memberRepository.findByChannelIdInAndUserIdNot(anyList(), eq(USER_ID)))
+                    .willReturn(List.of(partnerMember));
+            given(userRepository.findAllById(anyList())).willReturn(List.of(partner));
+            given(chatMapper.toChannelResponse(dm)).willReturn(baseResponse(DM_CH_ID, "DM"));
+
+            ChannelResponse.DmPartnerDto dmPartner =
+                    chatChannelService.listMyChannels(USER_ID).get(0).getDmPartner();
+
+            assertThat(dmPartner).isNotNull();
+            assertThat(dmPartner.userId()).isEqualTo(PARTNER_ID);
+            assertThat(dmPartner.displayName()).isEqualTo("田中太郎");
+            assertThat(dmPartner.avatarUrl()).isEqualTo("http://x/a.png");
+        }
+
+        @Test
+        @DisplayName("AC-B3: 相手の displayName が null の場合は \"ユーザー\" にフォールバック")
+        void AC_B3_displayName_null_フォールバック() {
+            ChatChannelEntity dm = dmChannelWithId();
+            ChatChannelMemberEntity partnerMember = ChatChannelMemberEntity.builder()
+                    .channelId(DM_CH_ID).userId(PARTNER_ID).role(ChannelMemberRole.MEMBER).build();
+            UserEntity partner = UserEntity.builder().email("p@example.com").build();
+            ReflectionTestUtils.setField(partner, "id", PARTNER_ID);
+
+            given(channelRepository.findByMemberUserId(USER_ID)).willReturn(List.of(dm));
+            given(memberRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(memberRepository.countGroupedByChannelIds(anyList()))
+                    .willReturn(List.of(count(DM_CH_ID, 2L)));
+            given(memberRepository.findByChannelIdInAndUserIdNot(anyList(), eq(USER_ID)))
+                    .willReturn(List.of(partnerMember));
+            given(userRepository.findAllById(anyList())).willReturn(List.of(partner));
+            given(chatMapper.toChannelResponse(dm)).willReturn(baseResponse(DM_CH_ID, "DM"));
+
+            ChannelResponse.DmPartnerDto dmPartner =
+                    chatChannelService.listMyChannels(USER_ID).get(0).getDmPartner();
+
+            assertThat(dmPartner.displayName()).isEqualTo("ユーザー");
+        }
+
+        @Test
+        @DisplayName("AC-B4: DM 以外（TEAM_PUBLIC）は dmPartner=null")
+        void AC_B4_DM以外はdmPartnerがnull() {
+            ChatChannelEntity team = teamChannelWithId();
+            given(channelRepository.findByMemberUserId(USER_ID)).willReturn(List.of(team));
+            given(memberRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(memberRepository.countGroupedByChannelIds(anyList()))
+                    .willReturn(List.of(count(TEAM_CH_ID, 5L)));
+            given(chatMapper.toChannelResponse(team)).willReturn(baseResponse(TEAM_CH_ID, "TEAM_PUBLIC"));
+
+            ChannelResponse result = chatChannelService.listMyChannels(USER_ID).get(0);
+
+            assertThat(result.getDmPartner()).isNull();
+            // DM が無いので相手解決クエリは発行されない（N+1 ガード AC-B7 の一端）
+            verify(memberRepository, never()).findByChannelIdInAndUserIdNot(anyList(), anyLong());
+        }
+    }
+
+    // ========================================
+    // getChannel（per-user 拡張 / AC-B5・B6）
+    // ========================================
+    @Nested
+    @DisplayName("getChannel — per-user 拡張")
+    class GetChannel {
+
+        private ChatChannelEntity dmChannelWithId() {
+            ChatChannelEntity ch = ChatChannelEntity.builder().channelType(ChannelType.DM).build();
+            ReflectionTestUtils.setField(ch, "id", CHANNEL_ID);
+            return ch;
+        }
+
+        private ChannelResponse base(String channelType) {
+            return ChannelResponse.builder()
+                    .id(CHANNEL_ID)
+                    .identity(new ChannelResponse.ChannelIdentityDto(channelType, null, null))
+                    .settings(new ChannelResponse.ChannelSettingsDto(false, false, false, null))
+                    .build();
+        }
+
+        @Test
+        @DisplayName("AC-B5: DM 詳細で memberCount / viewer / dmPartner を返す")
+        void AC_B5_DM詳細でper_user拡張を返す() {
+            ChatChannelEntity dm = dmChannelWithId();
+            ChatChannelMemberEntity myMember = ChatChannelMemberEntity.builder()
+                    .channelId(CHANNEL_ID).userId(USER_ID).role(ChannelMemberRole.OWNER)
+                    .unreadCount(1).build();
+            ChatChannelMemberEntity partnerMember = ChatChannelMemberEntity.builder()
+                    .channelId(CHANNEL_ID).userId(PARTNER_ID).role(ChannelMemberRole.MEMBER).build();
+            UserEntity partner = UserEntity.builder()
+                    .email("p@example.com").displayName("佐藤花子").build();
+            ReflectionTestUtils.setField(partner, "id", PARTNER_ID);
+
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(dm));
+            // 閲覧のメンバーシップ検証はガードへ委譲済み（モック既定＝通過＝当事者として扱う）。
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
+                    .willReturn(Optional.of(myMember));
+            given(memberRepository.countByChannelId(CHANNEL_ID)).willReturn(2L);
+            given(memberRepository.findByChannelIdAndUserIdNot(CHANNEL_ID, USER_ID))
+                    .willReturn(List.of(partnerMember));
+            given(userRepository.findById(PARTNER_ID)).willReturn(Optional.of(partner));
+            given(chatMapper.toChannelResponse(dm)).willReturn(base("DM"));
+
+            ChannelResponse result = chatChannelService.getChannel(CHANNEL_ID, USER_ID);
+
+            assertThat(result.getMemberCount()).isEqualTo(2);
+            assertThat(result.getViewer()).isNotNull();
+            assertThat(result.getViewer().unreadCount()).isEqualTo(1);
+            assertThat(result.getDmPartner()).isNotNull();
+            assertThat(result.getDmPartner().userId()).isEqualTo(PARTNER_ID);
+            assertThat(result.getDmPartner().displayName()).isEqualTo("佐藤花子");
+        }
+
+        @Test
+        @DisplayName("認可委譲: 閲覧判定は取得済みチャンネル実体でガードへ渡され、拒否されれば本文情報を返さない")
+        void 閲覧判定はガードへ委譲される() {
+            // 非メンバーにレスポンスを返すと、DM では相手の userId・表示名・アバターが漏れる。
+            // メンバーシップ管理種別の閲覧可否は ChatChannelAccessGuardTest が検証し、
+            // ここでは「実体を渡して委譲していること」と「拒否時に一切返さないこと」を担保する。
+            ChatChannelEntity team = ChatChannelEntity.builder()
+                    .channelType(ChannelType.TEAM_PUBLIC).teamId(TEAM_ID).name("一般").build();
+            ReflectionTestUtils.setField(team, "id", CHANNEL_ID);
+
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(team));
+            willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                    .given(channelAccessGuard).requireChannelMembership(team, USER_ID);
+
+            assertThatThrownBy(() -> chatChannelService.getChannel(CHANNEL_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+
+            ArgumentCaptor<ChatChannelEntity> captor = ArgumentCaptor.forClass(ChatChannelEntity.class);
+            verify(channelAccessGuard).requireChannelMembership(captor.capture(), eq(USER_ID));
+            assertThat(captor.getValue()).isSameAs(team);
+            // 拒否された時点で相手情報の解決クエリは一切発行されない
+            verify(memberRepository, never()).findByChannelIdAndUserIdNot(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("正常系: メンバーシップ非依存種別(村ロビー)はガードが素通しし viewer=null で返る")
+        void 村ロビーは非メンバーでもviewerがnullで返る() {
+            // VILLAGE_LOBBY / EVENT_CHAT は chat_channel_members を持たない横断スペースであり、
+            // village / event ドメイン側で認可される。ガード側で素通しの扱いとなる種別。
+            ChatChannelEntity lobby = ChatChannelEntity.builder()
+                    .channelType(ChannelType.VILLAGE_LOBBY).name("井戸端").build();
+            ReflectionTestUtils.setField(lobby, "id", CHANNEL_ID);
+
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(lobby));
+            given(memberRepository.findByChannelIdAndUserId(CHANNEL_ID, USER_ID))
+                    .willReturn(Optional.empty());
+            given(memberRepository.countByChannelId(CHANNEL_ID)).willReturn(5L);
+            given(chatMapper.toChannelResponse(lobby)).willReturn(base("VILLAGE_LOBBY"));
+
+            ChannelResponse result = chatChannelService.getChannel(CHANNEL_ID, USER_ID);
+
+            assertThat(result.getViewer()).isNull();
+            assertThat(result.getMemberCount()).isEqualTo(5);
+            assertThat(result.getDmPartner()).isNull();
+        }
+
+        @Test
+        @DisplayName("AC-B6: 存在しないチャンネルは CHANNEL_NOT_FOUND（認可回帰）")
+        void AC_B6_存在しないチャンネルはNOT_FOUND() {
+            given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> chatChannelService.getChannel(CHANNEL_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(ChatErrorCode.CHANNEL_NOT_FOUND));
         }
     }
 
@@ -458,6 +781,10 @@ class ChatChannelServiceTest {
                     .channelType(ChannelType.GROUP_DM).createdBy(USER_ID).build();
             given(userBlockRepository.existsByBlockerIdAndBlockedId(PARTNER_ID, USER_ID)).willReturn(false);
             given(userBlockRepository.existsByBlockerIdAndBlockedId(INVITEE_ID, USER_ID)).willReturn(false);
+            given(userRepository.findById(PARTNER_ID))
+                    .willReturn(Optional.of(createUser(DmReceiveFrom.ANYONE)));
+            given(userRepository.findById(INVITEE_ID))
+                    .willReturn(Optional.of(createUser(DmReceiveFrom.ANYONE)));
             given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(saved);
             given(memberRepository.save(any(ChatChannelMemberEntity.class)))
                     .willReturn(ChatChannelMemberEntity.builder().build());
@@ -489,31 +816,53 @@ class ChatChannelServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 相手がブロックしている場合はエラー")
-        void 相手がブロックしている場合はエラー() {
+        @DisplayName("認可委譲: DM 到達可否はガードへ委譲され、拒否されればチャンネルを作成しない")
+        void DM到達可否の拒否でチャンネルを作らない() {
             given(userBlockRepository.existsByBlockerIdAndBlockedId(PARTNER_ID, USER_ID)).willReturn(true);
+            given(userRepository.findById(PARTNER_ID))
+                    .willReturn(Optional.of(createUser(DmReceiveFrom.ANYONE)));
+            willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                    .given(channelAccessGuard).requireDmDeliverable(
+                            eq(USER_ID), eq(PARTNER_ID), eq(true), eq(DmReceiveFrom.ANYONE), any(), any());
 
             assertThatThrownBy(() ->
                     chatChannelService.startConversation(USER_ID, List.of(PARTNER_ID)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+            verify(channelRepository, never()).save(any(ChatChannelEntity.class));
         }
 
         @Test
-        @DisplayName("異常系: DM受信制限（TEAM_MEMBERS_ONLY）で共通チームなし")
-        void DM受信制限で拒否() {
+        @DisplayName("認可委譲: ブロック状態・相手の受信範囲設定・照会 supplier が正しくガードへ渡る")
+        void DM到達可否の判定材料がガードへ渡る() {
+            // given: 相手は TEAM_MEMBERS_ONLY 設定、ブロックはしていない
             given(userBlockRepository.existsByBlockerIdAndBlockedId(PARTNER_ID, USER_ID)).willReturn(false);
             given(userRepository.findById(PARTNER_ID))
                     .willReturn(Optional.of(createUser(DmReceiveFrom.TEAM_MEMBERS_ONLY)));
-            // receiver.getId() はビルダーでセットできないためanyを使用
-            given(userRoleRepository.existsSharedTeam(eq(USER_ID), any())).willReturn(false);
+            given(channelRepository.findExistingDm(USER_ID, PARTNER_ID))
+                    .willReturn(Optional.of(createDmChannel()));
+            given(chatMapper.toChannelResponse(any(ChatChannelEntity.class))).willReturn(stubResponse());
 
-            assertThatThrownBy(() ->
-                    chatChannelService.startConversation(USER_ID, List.of(PARTNER_ID)))
-                    .isInstanceOf(BusinessException.class)
-                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(ChatErrorCode.DM_RECEIVE_RESTRICTED));
+            // when
+            chatChannelService.startConversation(USER_ID, List.of(PARTNER_ID));
+
+            // then: 相手 ID 由来の設定値がそのまま渡り、照会は supplier として遅延で渡される
+            ArgumentCaptor<BooleanSupplier> sharesTeamCaptor = ArgumentCaptor.forClass(BooleanSupplier.class);
+            ArgumentCaptor<BooleanSupplier> contactCaptor = ArgumentCaptor.forClass(BooleanSupplier.class);
+            verify(channelAccessGuard).requireDmDeliverable(
+                    eq(USER_ID), eq(PARTNER_ID), eq(false), eq(DmReceiveFrom.TEAM_MEMBERS_ONLY),
+                    sharesTeamCaptor.capture(), contactCaptor.capture());
+
+            // 共通チーム照会 supplier は role ドメインの正準（existsSharedTeam）を引く
+            given(userRoleRepository.existsSharedTeam(USER_ID, PARTNER_ID)).willReturn(true);
+            assertThat(sharesTeamCaptor.getValue().getAsBoolean()).isTrue();
+            verify(userRoleRepository).existsSharedTeam(USER_ID, PARTNER_ID);
+
+            // 連絡先照会 supplier は「相手の連絡先フォルダに呼出ユーザーが居るか」を引く
+            given(chatContactFolderItemRepository.existsByFolderOwnerAndItemTypeAndItemId(
+                    PARTNER_ID, FolderItemType.CONTACT, USER_ID)).willReturn(true);
+            assertThat(contactCaptor.getValue().getAsBoolean()).isTrue();
         }
     }
 
@@ -562,13 +911,14 @@ class ChatChannelServiceTest {
                     .channelId(CHANNEL_ID).userId(PARTNER_ID).build();
 
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(kabine));
-            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
             given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(zimmer);
             given(memberRepository.findByChannelIdOrderByJoinedAtAsc(CHANNEL_ID))
                     .willReturn(List.of(memberA, memberB));
             given(memberRepository.save(any(ChatChannelMemberEntity.class)))
                     .willReturn(ChatChannelMemberEntity.builder().build());
             given(userBlockRepository.existsByBlockerIdAndBlockedId(INVITEE_ID, USER_ID)).willReturn(false);
+            given(userRepository.findById(INVITEE_ID))
+                    .willReturn(Optional.of(createUser(DmReceiveFrom.ANYONE)));
             given(memberRepository.existsByChannelIdAndUserId(zimmer.getId(), INVITEE_ID)).willReturn(false);
             given(chatMapper.toChannelResponse(zimmer)).willReturn(stubZimmerResponse());
 
@@ -594,13 +944,14 @@ class ChatChannelServiceTest {
                     .channelId(CHANNEL_ID).userId(USER_ID).build();
 
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(kabine));
-            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
             given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(zimmer);
             given(memberRepository.findByChannelIdOrderByJoinedAtAsc(CHANNEL_ID))
                     .willReturn(List.of(memberA));
             given(memberRepository.save(any(ChatChannelMemberEntity.class)))
                     .willReturn(ChatChannelMemberEntity.builder().build());
             given(userBlockRepository.existsByBlockerIdAndBlockedId(INVITEE_ID, USER_ID)).willReturn(false);
+            given(userRepository.findById(INVITEE_ID))
+                    .willReturn(Optional.of(createUser(DmReceiveFrom.ANYONE)));
             given(memberRepository.existsByChannelIdAndUserId(zimmer.getId(), INVITEE_ID)).willReturn(false);
             given(messageRepository.findByChannelIdOrderByCreatedAtAsc(CHANNEL_ID))
                     .willReturn(List.of(msg));
@@ -632,12 +983,13 @@ class ChatChannelServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: Kabineのメンバー以外は操作不可")
-        void Kabineのメンバー以外は操作不可() {
+        @DisplayName("認可委譲: Kabine のメンバーシップをガードへ要求し、拒否されれば Zimmer を作らない")
+        void Kabineのメンバーシップをガードへ委譲する() {
             // given
             ChatChannelEntity kabine = createDmChannel();
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(kabine));
-            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(false);
+            willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                    .given(channelAccessGuard).requireChannelMember(CHANNEL_ID, USER_ID);
 
             // when & then
             assertThatThrownBy(() ->
@@ -645,18 +997,19 @@ class ChatChannelServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(ChatErrorCode.CHANNEL_ACCESS_DENIED));
+            verify(channelAccessGuard).requireChannelMember(CHANNEL_ID, USER_ID);
+            verify(channelRepository, never()).save(any(ChatChannelEntity.class));
         }
 
         @Test
-        @DisplayName("異常系: 招待対象が呼び出しユーザーをブロックしている場合は拒否")
-        void 招待対象がブロックしている場合は拒否() {
+        @DisplayName("認可委譲: 招待対象ごとに DM 到達可否をガードへ要求し、拒否されればメンバーを追加しない")
+        void 招待対象のDM到達可否をガードへ委譲する() {
             // given
             ChatChannelEntity kabine = createDmChannel();
             ChatChannelMemberEntity memberA = ChatChannelMemberEntity.builder()
                     .channelId(CHANNEL_ID).userId(USER_ID).build();
 
             given(channelRepository.findById(CHANNEL_ID)).willReturn(Optional.of(kabine));
-            given(memberRepository.existsByChannelIdAndUserId(CHANNEL_ID, USER_ID)).willReturn(true);
             given(channelRepository.save(any(ChatChannelEntity.class))).willReturn(
                     ChatChannelEntity.builder().channelType(ChannelType.GROUP_DM).build());
             given(memberRepository.findByChannelIdOrderByJoinedAtAsc(CHANNEL_ID))
@@ -664,8 +1017,13 @@ class ChatChannelServiceTest {
             given(memberRepository.save(any(ChatChannelMemberEntity.class)))
                     .willReturn(ChatChannelMemberEntity.builder().build());
             given(userBlockRepository.existsByBlockerIdAndBlockedId(INVITEE_ID, USER_ID)).willReturn(true);
+            given(userRepository.findById(INVITEE_ID))
+                    .willReturn(Optional.of(createUser(DmReceiveFrom.ANYONE)));
+            willThrow(new BusinessException(ChatErrorCode.CHANNEL_ACCESS_DENIED))
+                    .given(channelAccessGuard).requireDmDeliverable(
+                            eq(USER_ID), eq(INVITEE_ID), eq(true), eq(DmReceiveFrom.ANYONE), any(), any());
 
-            // when & then
+            // when & then: 会話開始（Kabine/Zimmer）と同一の判定を通す
             assertThatThrownBy(() ->
                     chatChannelService.inviteToZimmer(CHANNEL_ID, USER_ID, buildRequest(false)))
                     .isInstanceOf(BusinessException.class)

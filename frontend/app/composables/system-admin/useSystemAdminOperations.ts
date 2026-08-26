@@ -4,6 +4,8 @@ import type {
   CreateMaintenanceScheduleRequest,
   UpdateMaintenanceScheduleRequest,
   ModuleResponse,
+  UpdateModulePaidPlanRequest,
+  UpdateModuleActiveRequest,
   BatchJobLogResponse,
   BetaRestrictionConfigResponse,
   UpdateBetaRestrictionRequest,
@@ -81,6 +83,14 @@ export function useSystemAdminOperations() {
     return api(`${BASE}/modules/${id}/level-availability`, { method: 'PATCH', body })
   }
 
+  async function updateModulePaidPlan(id: number, body: UpdateModulePaidPlanRequest) {
+    return api(`${BASE}/modules/${id}/paid-plan`, { method: 'PATCH', body })
+  }
+
+  async function updateModuleActive(id: number, body: UpdateModuleActiveRequest) {
+    return api(`${BASE}/modules/${id}/active`, { method: 'PATCH', body })
+  }
+
   // ===== Batch Logs =====
   async function getBatchLogs(params?: { page?: number; size?: number; jobName?: string }) {
     const query = new URLSearchParams()
@@ -115,6 +125,8 @@ export function useSystemAdminOperations() {
     getModules,
     getModule,
     updateModuleLevelAvailability,
+    updateModulePaidPlan,
+    updateModuleActive,
     getBatchLogs,
     getBetaRestrictionConfig,
     updateBetaRestrictionConfig,

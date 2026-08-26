@@ -69,7 +69,8 @@ class ScheduleScheduledTaskServiceTest {
         return new CreateSurveyRequest(
                 "出欠アンケート", "説明",
                 false, false,
-                "AFTER_CLOSE", "ALL",
+                com.mannschaft.app.survey.ResultsVisibility.AFTER_CLOSE,
+                com.mannschaft.app.survey.DistributionMode.ALL,
                 null, null, null, null, null, null,
                 null, null, null, null, null);
     }
@@ -110,7 +111,8 @@ class ScheduleScheduledTaskServiceTest {
         void 予約出欠募集_PENDINGで保存され出欠設定がpayloadに入る() {
             // given
             ScheduledAttendanceRequest attendanceReq = new ScheduledAttendanceRequest(
-                    FUTURE, LocalDateTime.now().plusDays(3), "REQUIRED", "MEMBER_PLUS");
+                    FUTURE, OffsetDateTime.now(ZoneOffset.ofHours(9)).plusDays(3),
+                    "REQUIRED", "MEMBER_PLUS");
             LocalDateTime expectedJst = FUTURE.atZoneSameInstant(ZoneId.of("Asia/Tokyo")).toLocalDateTime();
 
             // when
@@ -392,7 +394,8 @@ class ScheduleScheduledTaskServiceTest {
             // given: UTC 00:00 = JST 09:00
             OffsetDateTime utcInput = OffsetDateTime.of(2026, 8, 1, 0, 0, 0, 0, ZoneOffset.UTC);
             ScheduledAttendanceRequest req = new ScheduledAttendanceRequest(
-                    utcInput, LocalDateTime.of(2026, 8, 2, 0, 0), "OPTIONAL", "MEMBER");
+                    utcInput, OffsetDateTime.of(2026, 8, 2, 0, 0, 0, 0, ZoneOffset.ofHours(9)),
+                    "OPTIONAL", "MEMBER");
 
             // when
             service.registerTasks(SCHEDULE_ID, CalendarSyncScopeType.ORGANIZATION, SCOPE_ID, ORG_ID, CREATED_BY,

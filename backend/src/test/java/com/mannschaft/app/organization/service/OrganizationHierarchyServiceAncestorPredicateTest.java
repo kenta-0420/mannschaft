@@ -1,5 +1,6 @@
 package com.mannschaft.app.organization.service;
 
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.repository.TeamOrgMembershipRepository;
@@ -46,6 +47,7 @@ class OrganizationHierarchyServiceAncestorPredicateTest {
     @Mock private OrganizationRepository organizationRepository;
     @Mock private TeamOrgMembershipRepository teamOrgMembershipRepository;
     @Mock private UserRoleRepository userRoleRepository;
+    @Mock private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private OrganizationHierarchyService service;

@@ -7,6 +7,7 @@ import com.mannschaft.app.member.SectionType;
 import com.mannschaft.app.member.dto.CreateSectionRequest;
 import com.mannschaft.app.member.dto.SectionResponse;
 import com.mannschaft.app.member.dto.UpdateSectionRequest;
+import com.mannschaft.app.member.entity.TeamPageEntity;
 import com.mannschaft.app.member.entity.TeamPageSectionEntity;
 import com.mannschaft.app.member.repository.TeamPageSectionRepository;
 import lombok.RequiredArgsConstructor;
@@ -32,9 +33,10 @@ public class TeamPageSectionService {
     /**
      * セクション一覧を取得する。
      */
-    public List<SectionResponse> listSections(Long pageId) {
-        // ページ存在確認
-        pageService.findPageOrThrow(pageId);
+    public List<SectionResponse> listSections(Long actorUserId, Long pageId) {
+        // ページ存在確認 + entity 由来スコープでメンバー検証（Wave3-B2 member 認可根治）
+        TeamPageEntity page = pageService.findPageOrThrow(pageId);
+        pageService.checkPageMembershipOrNotFound(actorUserId, page);
         List<TeamPageSectionEntity> entities = sectionRepository.findByTeamPageIdOrderBySortOrder(pageId);
         return memberMapper.toSectionResponseList(entities);
     }
@@ -43,9 +45,10 @@ public class TeamPageSectionService {
      * セクションを追加する。
      */
     @Transactional
-    public SectionResponse createSection(Long pageId, CreateSectionRequest request) {
-        // ページ存在確認
-        pageService.findPageOrThrow(pageId);
+    public SectionResponse createSection(Long actorUserId, Long pageId, CreateSectionRequest request) {
+        // ページ存在確認 + entity 由来スコープで ADMIN 以上検証（Wave3-B2 member 認可根治）
+        TeamPageEntity page = pageService.findPageOrThrow(pageId);
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
 
         SectionType sectionType = SectionType.valueOf(request.getSectionType());
         Integer sortOrder = request.getSortOrder() != null ? request.getSortOrder() : 0;
@@ -69,8 +72,12 @@ public class TeamPageSectionService {
      * セクションを更新する。
      */
     @Transactional
-    public SectionResponse updateSection(Long sectionId, UpdateSectionRequest request) {
+    public SectionResponse updateSection(Long actorUserId, Long sectionId, UpdateSectionRequest request) {
         TeamPageSectionEntity entity = findSectionOrThrow(sectionId);
+        // URL に pageId/teamId を含まない bare id エンドポイントのため、entity 由来（teamPageId経由の
+        // ページ）スコープで ADMIN 以上を検証する（Wave3-B2 member BOLA対策）。
+        TeamPageEntity page = pageService.findPageOrThrow(entity.getTeamPageId());
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
 
         Integer sortOrder = request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder();
 
@@ -86,8 +93,11 @@ public class TeamPageSectionService {
      * セクションを削除する。
      */
     @Transactional
-    public void deleteSection(Long sectionId) {
+    public void deleteSection(Long actorUserId, Long sectionId) {
         TeamPageSectionEntity entity = findSectionOrThrow(sectionId);
+        // BOLA対策: entity 由来（teamPageId経由のページ）スコープで ADMIN 以上を検証する（Wave3-B2 member）。
+        TeamPageEntity page = pageService.findPageOrThrow(entity.getTeamPageId());
+        pageService.checkPageAdminOrNotFound(actorUserId, page);
         sectionRepository.delete(entity);
         log.info("セクション削除: sectionId={}", sectionId);
     }

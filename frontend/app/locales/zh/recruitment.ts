@@ -140,7 +140,41 @@ export default {
       "noFeedItems": "暂无最新招募",
       "listing": "招募",
       "waitlistPosition": "候补 #{n}",
-      "postedAt": "发布于"
+      "postedAt": "发布于",
+      "loadError": "数据加载失败",
+      "listingLabel": "招募 #{id}"
+    },
+    "guide": {
+      "feed": {
+        "title": "新招募的使用方法",
+        "what": {
+          "title": "什么是新招募",
+          "body": "这是一个只读动态，按时间从新到旧显示你关注或支持的团队发布的新招募，帮助你发现感兴趣的招募。"
+        },
+        "apply": {
+          "title": "查看与报名",
+          "body": "点击卡片可打开招募详情页。报名或加入候补名单请在详情页进行。"
+        },
+        "read": {
+          "title": "如何看显示内容",
+          "body": "通过\"招募中\"\"满员\"等标签可了解状态。人数显示为\"确定人数 / 名额\"，费用以\"¥\"显示。"
+        }
+      },
+      "listings": {
+        "title": "参加计划的使用方法",
+        "what": {
+          "title": "什么是参加计划",
+          "body": "你已报名或已确定的招募会显示在这里。仅显示进行中的参加，已取消或已结束的不会显示。"
+        },
+        "status": {
+          "title": "如何看状态",
+          "body": "通过\"确定\"\"已报名\"\"候补中\"等标签了解当前状态。候补时会以\"#排名\"显示你的等候位置。"
+        },
+        "detail": {
+          "title": "详情与取消",
+          "body": "通过\"查看详情\"打开招募页面。取消报名等操作请在详情页进行。"
+        }
+      }
     },
     "distribution": {
       "title": "配信对象",
@@ -276,6 +310,42 @@ export default {
         "expired": "已过期",
         "lifted": "已解除"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "取消费减免",
+      "pageDescription": "减免应由您收取的取消费",
+      "unknownUser": "未知用户",
+      "loadMore": "查看更多",
+      "reasonTooLong": "减免理由请控制在{max}个字符以内",
+      "columns": {
+        "listing": "招募",
+        "user": "对象用户",
+        "feeAmount": "取消费",
+        "status": "状态",
+        "cancelledAt": "取消时间"
+      },
+      "status": {
+        "pending": "未支付",
+        "failed": "支付失败",
+        "uncollectible": "无法回收",
+        "paid": "已支付",
+        "waived": "已减免",
+        "notRequired": "不适用"
+      },
+      "waiveButton": "减免",
+      "reasonLabel": "减免理由",
+      "reasonPlaceholder": "请输入减免理由（必填）",
+      "reasonRequired": "减免理由为必填项",
+      "confirmDialog": {
+        "title": "取消费减免",
+        "message": "将取消 {amount} 日元的取消费请求。此操作无法撤销。\n如果该用户还有其他未支付的取消费，报名限制将不会解除。",
+        "confirmButton": "减免",
+        "cancelButton": "返回"
+      },
+      "emptyMessage": "没有可减免的取消费记录",
+      "loadError": "获取列表失败",
+      "waiveSuccess": "已减免取消费",
+      "waiveError": "减免失败"
     }
   }
 }

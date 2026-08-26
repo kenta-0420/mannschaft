@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "Draft",
       "PUBLISHED": "Open",
-      "CLOSED": "Closed"
+      "CLOSED": "Closed",
+      "ARCHIVED": "Archived"
     },
     "questionType": {
       "SINGLE_CHOICE": "Single choice",
@@ -17,7 +18,8 @@
       "label": "Results visibility",
       "CREATOR_ONLY": "Creator only",
       "RESPONDENTS": "Respondents only",
-      "ALL_MEMBERS": "All members"
+      "ALL_MEMBERS": "All members",
+      "AFTER_CLOSE": "All members after close"
     },
     "unrespondedVisibility": {
       "label": "Unresponded visibility",
@@ -27,8 +29,10 @@
     },
     "list": {
       "filterAll": "All",
+      "filterDraft": "Draft",
       "filterPlaceholder": "Status",
       "createButton": "Create survey",
+      "editDraft": "Add / edit questions",
       "answeredBadge": "Answered",
       "anonymous": "Anonymous",
       "responseCountUnit": "responses",
@@ -48,7 +52,13 @@
       "questions": "Questions",
       "cancel": "Cancel",
       "save": "Save",
+      "saveDraft": "Save as draft",
+      "saveAndPublish": "Create & publish",
+      "draftSaved": "Draft saved",
+      "draftRestored": "Previous input restored",
+      "draftHint": "You can add questions later. Save with just a title for now.",
       "successToast": "Survey created",
+      "draftSuccessToast": "Saved as draft. Add questions and publish when ready.",
       "failureToast": "Failed to create survey",
       "validation": {
         "titleRequired": "Please enter a title",
@@ -57,7 +67,8 @@
         "questionsRequired": "Please add at least one question",
         "questionTextRequired": "Please enter text for question {index}",
         "optionsTooFew": "Question {index} requires at least two options",
-        "optionEmpty": "Question {index} has empty option(s)"
+        "optionEmpty": "Question {index} has empty option(s)",
+        "questionTypeUnsupported": "Question {index}: Date questions are not supported yet. Please choose another type."
       },
       "questionEditor": {
         "empty": "No questions yet",
@@ -91,6 +102,8 @@
       "responseCount": "Responses",
       "anonymous": "Anonymous",
       "draftHint": "This survey is a draft. It will not accept responses until published.",
+      "draftAddQuestionsHint": "Add questions before publishing. You can publish without questions, but respondents won't be able to answer.",
+      "draftQuestionsSection": "Add questions",
       "publishButton": "Publish",
       "publishSuccess": "Survey published",
       "publishFailed": "Failed to publish the survey",
@@ -169,6 +182,18 @@
       "optionCount": "{count} ({percentage}%)",
       "noOptionData": "No data.",
       "noQuestionData": "No questions to aggregate."
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "Results are hidden while there are only a few responses",
+        "description": "In anonymous surveys, a change in the tally right after someone responds can reveal that person's answer. Results will be shown once there are at least {threshold} responses. (Currently {count})"
+      },
+      "respondCta": "Respond to this survey",
+      "editResponseCta": "Edit your response",
+      "forbidden": {
+        "title": "You do not have permission to view this survey's results",
+        "description": "This survey is limited to a specific audience and you are not included. If you believe this is a mistake, please contact the survey creator."
+      }
     }
   }
 }

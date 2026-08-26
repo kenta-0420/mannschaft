@@ -1,8 +1,9 @@
 <script setup lang="ts">
-// F05.4 アンケート新規作成ダイアログ
-// - PrimeVue Dialog で全項目を1ページに集約
-// - 設問編集は SurveyQuestionEditor を v-model で組み込み
-// - 簡易バリデーションを通過後 useSurveyApi().createSurvey を呼び出す
+// F05.4 アンケート新規作成ダイアログ（ADHD配慮・二段フロー対応）
+//
+// 二段フロー: タイトルのみで下書き保存 → 詳細画面で設問追加 → 公開
+// BE CreateSurveyRequest.questions は @NotEmpty なしのため、設問ゼロでDRAFT作成が可能。
+// useFormDraft で入力途中を localStorage に自動保存し、ダイアログを閉じても復元する。
 
 import type {
   CreateSurveyRequest,
@@ -11,6 +12,7 @@ import type {
   UnrespondedVisibility,
 } from '~/types/survey'
 import type { QuestionDraft } from '~/components/survey/SurveyQuestionEditor.vue'
+import { isQuestionTypeSupportedByBackend } from '~/composables/useSurveyApi'
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
@@ -28,6 +30,7 @@ const { t } = useI18n()
 const { createSurvey } = useSurveyApi()
 const { error: showError, success: showSuccess } = useNotification()
 const { handleApiError } = useErrorHandler()
+const authStore = useAuthStore()
 
 // === フォーム状態 ===
 const title = ref('')
@@ -54,11 +57,90 @@ const questions = ref<QuestionDraft[]>([])
 
 const submitting = ref(false)
 
+// === useFormDraft（ADHD配慮・自動保存）===
+// キーにuserId・scopeType・scopeIdを含めてスコープ間の衝突を防ぐ
+const draftKey = computed(
+  () =>
+    `survey-create-draft-${authStore.currentUser?.id ?? 'guest'}-${props.scopeType}-${props.scopeId}`,
+)
+
+// フォーム状態全体をオブジェクトとして型付けする
+interface SurveyDraftShape {
+  title: string
+  description: string
+  isAnonymous: boolean
+  allowMultipleSubmissions: boolean
+  teamBreakdownEnabled: boolean
+  resultsVisibility: ResultsVisibility
+  unrespondedVisibility: UnrespondedVisibility
+  /**
+   * 締切。これは localStorage の下書きスナップショット専用のキーであり、
+   * BE へは送らない（送信時は `expiresAt` に載せ替える。BE に `deadline` は存在しない）。
+   */
+  deadline: string | null
+  questions: QuestionDraft[]
+}
+
+// source にフォーム全体の computed を渡して自動保存
+const formSnapshot = computed<SurveyDraftShape>(() => ({
+  title: title.value,
+  description: description.value,
+  isAnonymous: isAnonymous.value,
+  allowMultipleSubmissions: allowMultipleSubmissions.value,
+  teamBreakdownEnabled: teamBreakdownEnabled.value,
+  resultsVisibility: resultsVisibility.value,
+  unrespondedVisibility: unrespondedVisibility.value,
+  deadline: deadline.value ? deadline.value.toISOString() : null,
+  questions: questions.value,
+}))
+
+const { clear: clearDraft, restore: restoreDraft, savedFlash } = useFormDraft<SurveyDraftShape>(
+  draftKey.value,
+  { source: formSnapshot, debounceMs: 1000, flashMs: 2000 },
+)
+
+// 復元済みフラグ（ダイアログを開いた直後に1回だけ復元トースト表示）
+const restoredFlash = ref(false)
+
+// ダイアログが開くたびにlocaleストレージから復元を試みる
+watch(visible, (nowVisible) => {
+  if (!nowVisible) return
+  const saved = restoreDraft()
+  if (saved) {
+    title.value = saved.title ?? ''
+    description.value = saved.description ?? ''
+    isAnonymous.value = saved.isAnonymous ?? false
+    allowMultipleSubmissions.value = saved.allowMultipleSubmissions ?? false
+    teamBreakdownEnabled.value = saved.teamBreakdownEnabled ?? false
+    resultsVisibility.value = saved.resultsVisibility ?? 'RESPONDENTS'
+    unrespondedVisibility.value = saved.unrespondedVisibility ?? 'CREATOR_AND_ADMIN'
+    deadline.value = saved.deadline ? new Date(saved.deadline) : null
+    questions.value = saved.questions ?? []
+    // 復元フラッシュ
+    restoredFlash.value = true
+    setTimeout(() => {
+      restoredFlash.value = false
+    }, 3000)
+  }
+})
+
 // === 選択肢定義 ===
 const resultsVisibilityOptions = computed<Array<{ label: string; value: ResultsVisibility }>>(() => [
   { label: t('surveys.resultsVisibility.CREATOR_ONLY'), value: 'CREATOR_ONLY' },
   { label: t('surveys.resultsVisibility.RESPONDENTS'), value: 'RESPONDENTS' },
+  // 'ALL_MEMBERS'（締切前から配信対象スコープの所属者が中間集計を閲覧可）は、かつて BE の
+  // ResultsVisibility enum に対応値が無く必ず弾かれるため PR #2615 で選択肢から外していた。
+  // Issue #2635 で BE に 'ALWAYS' が実装され表現できるようになったので復活させる。
   { label: t('surveys.resultsVisibility.ALL_MEMBERS'), value: 'ALL_MEMBERS' },
+  { label: t('surveys.resultsVisibility.AFTER_CLOSE'), value: 'AFTER_CLOSE' },
+  // NOTE: 'VIEWERS_ONLY' は **意図的に選択肢へ出さない**。
+  // これは survey_result_viewers の名簿で閲覧者を個別指定する方式だが、その名簿を編集する UI が
+  // まだ無い。選択できるようにすると名簿が空のまま保存され「作成者以外の誰も結果を見られない
+  // アンケート」が作れてしまう。
+  // 一方で型・翻訳層では BE と 1:1 に対応させてある（types/survey.ts の対応表を参照）。
+  // 既存データが VIEWERS_ONLY を持つ場合に読み書きの往復で値が化けないようにするためで、
+  // 「読み書きの型としては 1:1、UI の選択肢としては出さない」が本件の線引きである（Issue #2617-2）。
+  // 名簿編集 UI が実装されたらここへ 1 行足すこと。
 ])
 
 const unrespondedVisibilityOptions = computed<Array<{ label: string; value: UnrespondedVisibility }>>(() => [
@@ -86,7 +168,8 @@ function close() {
 }
 
 // === バリデーション ===
-function validate(): string | null {
+// mode: 'draft' = 設問不要、'publish' = 設問1つ以上必須
+function validate(mode: 'draft' | 'publish'): string | null {
   if (!title.value.trim()) {
     return t('surveys.create.validation.titleRequired')
   }
@@ -96,7 +179,7 @@ function validate(): string | null {
   if (description.value.length > 1000) {
     return t('surveys.create.validation.descriptionTooLong')
   }
-  if (questions.value.length === 0) {
+  if (mode === 'publish' && questions.value.length === 0) {
     return t('surveys.create.validation.questionsRequired')
   }
   for (let i = 0; i < questions.value.length; i++) {
@@ -104,6 +187,12 @@ function validate(): string | null {
     if (!q) continue
     if (!q.questionText.trim()) {
       return t('surveys.create.validation.questionTextRequired', { index: i + 1 })
+    }
+    // 'DATE' は BE に対応値が無い。選択肢からは外してあるが、外れる前に localStorage へ
+    // 保存された下書きを復元すると復活しうる。黙って自由記述へ変換すると設問種別が
+    // ユーザーの知らないうちに書き換わるため、明示的に拒否して選び直してもらう。
+    if (!isQuestionTypeSupportedByBackend(q.questionType)) {
+      return t('surveys.create.validation.questionTypeUnsupported', { index: i + 1 })
     }
     if (q.questionType === 'SINGLE_CHOICE' || q.questionType === 'MULTIPLE_CHOICE') {
       const opts = q.options ?? []
@@ -119,9 +208,9 @@ function validate(): string | null {
   return null
 }
 
-// === 保存 ===
-async function submit() {
-  const errorMsg = validate()
+// === 送信共通処理 ===
+async function submitWith(mode: 'draft' | 'publish') {
+  const errorMsg = validate(mode)
   if (errorMsg) {
     showError(errorMsg)
     return
@@ -138,28 +227,37 @@ async function submit() {
       teamBreakdownEnabled: isOrganizationScope.value ? teamBreakdownEnabled.value : undefined,
       resultsVisibility: resultsVisibility.value,
       unrespondedVisibility: unrespondedVisibility.value,
-      deadline: deadline.value ? deadline.value.toISOString() : undefined,
-      questions: questions.value.map((q) => ({
-        questionText: q.questionText.trim(),
-        questionType: q.questionType,
-        isRequired: q.isRequired,
-        sortOrder: q.sortOrder,
-        options:
-          q.questionType === 'TEXT' || q.questionType === 'DATE'
-            ? undefined
-            : (q.options ?? []).map((o) => ({
-                optionText: o.optionText.trim(),
-                sortOrder: o.sortOrder,
-              })),
-      })),
+      expiresAt: deadline.value ? deadline.value.toISOString() : undefined,
+      // 設問ゼロの場合は空配列を送る（BEはDRAFTとして保存）
+      questions:
+        questions.value.length > 0
+          ? questions.value.map((q) => ({
+              questionText: q.questionText.trim(),
+              questionType: q.questionType,
+              isRequired: q.isRequired,
+              sortOrder: q.sortOrder,
+              options:
+                q.questionType === 'TEXT' || q.questionType === 'DATE'
+                  ? undefined
+                  : (q.options ?? []).map((o) => ({
+                      optionText: o.optionText.trim(),
+                      sortOrder: o.sortOrder,
+                    })),
+            }))
+          : [],
     }
 
-    const res = await createSurvey(
-      props.scopeType,
-      props.scopeId,
-      body as unknown as Record<string, unknown>,
-    )
-    showSuccess(t('surveys.create.successToast'))
+    const res = await createSurvey(props.scopeType, props.scopeId, body)
+
+    // 成功 → 下書き削除
+    clearDraft()
+
+    if (mode === 'draft') {
+      showSuccess(t('surveys.create.draftSuccessToast'))
+    } else {
+      showSuccess(t('surveys.create.successToast'))
+    }
+
     emit('created', res.data)
     resetForm()
     close()
@@ -176,6 +274,14 @@ async function submit() {
     submitting.value = false
   }
 }
+
+function submitDraft() {
+  return submitWith('draft')
+}
+
+function submitAndPublish() {
+  return submitWith('publish')
+}
 </script>
 
 <template>
@@ -188,6 +294,32 @@ async function submit() {
     @hide="resetForm"
   >
     <div class="flex flex-col gap-4" data-testid="survey-create-dialog">
+      <!-- 復元フラッシュ -->
+      <div
+        v-if="restoredFlash"
+        class="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-700 dark:bg-blue-900/30 dark:text-blue-200"
+        data-testid="survey-draft-restored-flash"
+      >
+        <i class="pi pi-history" />
+        {{ t('surveys.create.draftRestored') }}
+      </div>
+
+      <!-- 下書き保存済みフラッシュ -->
+      <div
+        v-if="savedFlash"
+        class="flex items-center gap-2 rounded-lg bg-surface-50 px-3 py-2 text-xs text-surface-500 dark:bg-surface-800 dark:text-surface-400"
+        data-testid="survey-draft-saved-flash"
+      >
+        <i class="pi pi-save" />
+        {{ t('surveys.create.draftSaved') }}
+      </div>
+
+      <!-- ADHD配慮ヒント: 設問は後で追加できる旨を案内 -->
+      <div class="flex items-start gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600 dark:bg-blue-900/20 dark:text-blue-300">
+        <i class="pi pi-lightbulb mt-0.5 shrink-0" />
+        <span>{{ t('surveys.create.draftHint') }}</span>
+      </div>
+
       <!-- タイトル -->
       <div>
         <label class="mb-1 block text-sm font-medium">
@@ -290,10 +422,10 @@ async function submit() {
         />
       </div>
 
-      <!-- 設問エディタ -->
+      <!-- 設問エディタ（任意: 下書き保存は設問ゼロでも可） -->
       <div>
         <label class="mb-2 block text-sm font-medium">
-          {{ t('surveys.create.questions') }} <span class="text-red-500">*</span>
+          {{ t('surveys.create.questions') }}
         </label>
         <SurveyQuestionEditor v-model="questions" />
       </div>
@@ -308,12 +440,23 @@ async function submit() {
         data-testid="survey-create-cancel"
         @click="close"
       />
+      <!-- 下書きで保存: 設問不要、DRAFTとして作成 -->
       <Button
-        :label="t('surveys.create.save')"
-        icon="pi pi-check"
+        :label="t('surveys.create.saveDraft')"
+        icon="pi pi-save"
+        severity="secondary"
+        outlined
+        :loading="submitting"
+        data-testid="survey-create-save-draft"
+        @click="submitDraft"
+      />
+      <!-- 公開して作成: 設問1つ以上必須 -->
+      <Button
+        :label="t('surveys.create.saveAndPublish')"
+        icon="pi pi-send"
         :loading="submitting"
         data-testid="survey-create-submit"
-        @click="submit"
+        @click="submitAndPublish"
       />
     </template>
   </Dialog>

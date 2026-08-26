@@ -4,6 +4,7 @@ import { computed, ref, watch, onMounted } from 'vue'
 import type { CandidateItem, PeriodAttendanceEntry, PeriodAttendanceSummary } from '~/types/school'
 
 definePageMeta({
+  layout: 'team',
   middleware: 'auth',
 })
 

@@ -52,6 +52,45 @@ public final class ReflectionConstants {
     /** free_note の最大文字数。 */
     public static final int MAX_FREE_NOTE_LENGTH = 10000;
 
+    // ─── Phase 4: 暗記カード（TERM_CARD）バリデーション（§13-A-3） ───
+    /** 1 section あたりの cards（暗記カード）枚数の上限。 */
+    public static final int MAX_CARDS_PER_SECTION = 50;
+
+    /** card.term の最大文字数（heading と同水準）。 */
+    public static final int MAX_CARD_TERM_LENGTH = 200;
+
+    /** card.meaning の最大文字数。 */
+    public static final int MAX_CARD_MEANING_LENGTH = 200;
+
+    // ─── Phase 4: 期間横断 単語帳ビュー（§13-F・EP #23） ───
+    /** 期間横断 単語帳ビューの期間幅（from〜to）の上限日数（超過は 400・REFLECTION_015）。 */
+    public static final int MAX_VOCAB_DATE_RANGE_DAYS = 366;
+
+    /** 期間横断 単語帳ビューの既定ページサイズ。 */
+    public static final int DEFAULT_VOCAB_PAGE_SIZE = 200;
+
+    /** 期間横断 単語帳ビューのページサイズ上限。 */
+    public static final int MAX_VOCAB_PAGE_SIZE = 500;
+
+    // ─── OUTLINE 段階式マスク（足場ラダー）（§13-B/§13-C 増分） ───
+    /**
+     * 足場ラダーが FULL（全文表示）となる到来済み想起予定日数 {@code k} の上限。
+     * {@code k ≤ FULL}（1,2）で main_theme・heading を全文表示する。
+     */
+    public static final int OUTLINE_SCAFFOLD_FULL_MAX_K = 2;
+
+    /**
+     * 足場ラダーが PARTIAL（先頭数文字のみ）となる到来済み想起予定日数 {@code k}。
+     * {@code k == PARTIAL}（3）で main_theme・heading を先頭数コードポイントに切り詰める。
+     * {@code k ≥ PARTIAL + 1}（4 以上）は HIDDEN（足場ゼロ）。
+     */
+    public static final int OUTLINE_SCAFFOLD_PARTIAL_K = 3;
+
+    /**
+     * PARTIAL レベルで残す先頭コードポイント数（サーバ側で切る・日本語マルチバイト/サロゲートペア安全）。
+     */
+    public static final int OUTLINE_PARTIAL_HINT_PREFIX_LENGTH = 3;
+
     // ─── recall_interval_days（§2.6） ─────────────────────────────
     /** recall_interval_days の各値の最小（1 日）。 */
     public static final int MIN_RECALL_INTERVAL = 1;

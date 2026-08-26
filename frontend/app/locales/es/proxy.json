@@ -31,7 +31,9 @@
       "shift_request": "Solicitud de turno",
       "announcement_read": "Lectura de anuncio",
       "parking_application": "Solicitud de aparcamiento",
-      "circular": "Circular"
+      "circular": "Circular",
+      "supporter_view": "Vista de cuidado",
+      "payment": "Pago por representación"
     },
     "desk": {
       "pinSubject": "Fijar residente",
@@ -42,7 +44,8 @@
         "label": "Fuente de entrada",
         "paper_form": "Formulario en papel",
         "phone_interview": "Entrevista telefónica",
-        "in_person": "Presencial"
+        "in_person": "Presencial",
+        "guardianship_switch": "Cambio de tutela"
       },
       "originalStorage": {
         "label": "Ubicación del original",
@@ -106,6 +109,75 @@
         "junior_high": "Secundaria",
         "high_school": "Bachillerato",
         "adult": "Adulto"
+      },
+      "watch": {
+        "title": "Cuidado",
+        "linkLabel": "Cuidado",
+        "linkTooltip": "Abrir la pantalla de cuidado (solo lectura)",
+        "readonlyNotice": "Esta pantalla es solo de lectura. No se pueden realizar acciones ni respuestas aquí.",
+        "loadError": "No se pudieron cargar los datos de cuidado",
+        "retryButton": "Reintentar",
+        "sections": {
+          "schedules": {
+            "title": "Próximos horarios",
+            "empty": "No hay próximos horarios"
+          },
+          "attendance": {
+            "title": "Asistencia",
+            "attended": "Asistió",
+            "partial": "Parcial",
+            "absent": "Ausente",
+            "total": "Total",
+            "rate": "Tasa de asistencia",
+            "empty": "No hay datos de asistencia"
+          },
+          "memberships": {
+            "title": "Equipos / Organizaciones",
+            "teams": "Equipos",
+            "organizations": "Organizaciones",
+            "empty": "No pertenece a ningún equipo u organización"
+          },
+          "announcements": {
+            "title": "Anuncios",
+            "empty": "No hay anuncios"
+          }
+        },
+        "attendanceStatus": {
+          "ATTENDING": "Asistió",
+          "PARTIAL": "Parcial",
+          "ABSENT": "Ausente",
+          "UNDECIDED": "Indeciso"
+        },
+        "proxyActions": {
+          "title": "Historial de acciones por representación",
+          "badge": "Representación (Tutor)",
+          "empty": "No hay registros de acciones por representación"
+        },
+        "forbidden": {
+          "ageLocked": {
+            "title": "Este niño no es apto para el cuidado",
+            "body": "Los niños de 12 años o más han alcanzado la etapa de independencia y no son aptos para el cuidado de solo lectura."
+          },
+          "linkNotFound": {
+            "title": "No se puede cuidar a este niño",
+            "body": "No se pudo confirmar su vínculo como tutor. Por favor, verifique la configuración de vinculación."
+          }
+        },
+        "guide": {
+          "title": "Cómo usar el cuidado",
+          "readonly": {
+            "title": "Esto es solo de lectura",
+            "body": "Esta pantalla solo permite ver los horarios, la asistencia, las membresías y los anuncios del niño; no se pueden realizar acciones ni respuestas. Utilice el «cambio de tutela» si necesita actuar en nombre del niño."
+          },
+          "ageLimit": {
+            "title": "Solo para niños menores de 12 años",
+            "body": "Los niños de 12 años o más han alcanzado la etapa de independencia y quedan excluidos del cuidado (para proteger su privacidad)."
+          },
+          "proxyBadge": {
+            "title": "Qué significa la marca «Representación»",
+            "body": "Las acciones realizadas en nombre del niño por el tutor (por ejemplo, mediante el cambio de tutela) se marcan como «Representación (Tutor)». La sección de historial de acciones por representación muestra cuándo y en qué función se realizó cada acción."
+          }
+        }
       }
     },
     "delegation": {

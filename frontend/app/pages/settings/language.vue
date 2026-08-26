@@ -10,6 +10,7 @@ const { t, locale } = useI18n()
 const notification = useNotification()
 const { changeLocale } = useLocale()
 const { getProfile, updateProfile } = useUserSettingsApi()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const saving = ref(false)
@@ -93,6 +94,9 @@ async function save() {
       countryCode: form.value.countryCode,
     })
     await changeLocale(form.value.locale)
+    if (authStore.user) {
+      await authStore.setUser({ ...authStore.user, locale: form.value.locale })
+    }
     notification.success(t('settings.language.save_success'))
   } catch {
     notification.error(t('settings.language.save_error'))
@@ -104,7 +108,7 @@ async function save() {
 
 <template>
   <div class="mx-auto max-w-2xl">
-    <PageHeader :title="$t('settings.language.title')" back-to="/settings" />
+    <PageHeader :title="$t('settings.language.title')" />
 
     <PageLoading v-if="loading" />
 

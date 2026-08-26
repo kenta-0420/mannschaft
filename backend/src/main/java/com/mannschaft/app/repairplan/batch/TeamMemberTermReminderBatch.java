@@ -2,6 +2,7 @@ package com.mannschaft.app.repairplan.batch;
 
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationService;
@@ -10,12 +11,15 @@ import com.mannschaft.app.repairplan.repository.TeamMemberTermRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * 任期終了リマインドバッチ（F08.8 Phase 5）。
@@ -37,6 +41,8 @@ public class TeamMemberTermReminderBatch {
     private final TeamMemberTermRepository termRepository;
     private final NotificationService notificationService;
     private final AuditLogService auditLogService;
+    private final MessageSource messageSource;
+    private final UserLocaleCache userLocaleCache;
 
     /**
      * スケジュール起動エントリポイント（毎朝 9:00 JST）。
@@ -63,17 +69,41 @@ public class TeamMemberTermReminderBatch {
             return;
         }
 
+        // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
+        // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
+        Map<Long, String> locales;
+        try {
+            locales = userLocaleCache.getLocales(
+                    targets.stream().map(TeamMemberTerm::getUserId).toList());
+        } catch (Exception e) {
+            log.warn("locale 一括解決に失敗（既定 locale で継続）: error={}", e.getMessage());
+            locales = Map.of();
+        }
+
         int notified = 0;
         for (TeamMemberTerm term : targets) {
             try {
+                Locale locale = Locale.forLanguageTag(locales.getOrDefault(term.getUserId(), "ja"));
+                // AC-7: 任期の日付表記もロケール化する（値そのものは変えない）。
+                String datePattern = messageSource.getMessage(
+                        "notification.repairplan.termReminder.datePattern", null, "yyyy年M月d日", locale);
+                var fmt = java.time.format.DateTimeFormatter.ofPattern(datePattern, locale);
+                long daysRemaining = java.time.temporal.ChronoUnit.DAYS.between(today, term.getTermEnd());
+                String title = messageSource.getMessage(
+                        "notification.repairplan.termReminder.title", null,
+                        "理事任期終了のお知らせ", locale);
+                String body = messageSource.getMessage(
+                        "notification.repairplan.termReminder.body",
+                        new Object[]{term.getTermStart().format(fmt), term.getTermEnd().format(fmt), daysRemaining},
+                        "あなたの理事任期（" + term.getTermStart() + " 〜 " + term.getTermEnd() + "）が "
+                                + daysRemaining + " 日以内に終了します。申し送り準備をお忘れなく。",
+                        locale);
                 notificationService.createNotification(
                         term.getUserId(),
                         "TERM_ENDING_REMINDER",
                         NotificationPriority.NORMAL,
-                        "理事任期終了のお知らせ",
-                        String.format("あなたの理事任期（%s 〜 %s）が %d 日以内に終了します。申し送り準備をお忘れなく。",
-                                term.getTermStart(), term.getTermEnd(),
-                                java.time.temporal.ChronoUnit.DAYS.between(today, term.getTermEnd())),
+                        title,
+                        body,
                         "REPAIR_PLAN",
                         term.getScopeId(),
                         NotificationScopeType.TEAM,

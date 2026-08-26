@@ -76,6 +76,7 @@ public class ShiftAssignmentRunEntity {
     @Column(length = 500)
     private String visualReviewNote;
 
+    @Column(nullable = false)
     private LocalDateTime startedAt;
 
     private LocalDateTime completedAt;

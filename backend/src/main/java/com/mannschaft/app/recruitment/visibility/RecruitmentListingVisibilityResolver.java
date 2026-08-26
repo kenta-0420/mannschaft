@@ -13,7 +13,6 @@ import com.mannschaft.app.common.visibility.mapping.RecruitmentVisibilityMapper;
 import com.mannschaft.app.recruitment.RecruitmentVisibility;
 import com.mannschaft.app.recruitment.repository.RecruitmentListingRepository;
 import com.mannschaft.app.recruitment.service.MarketFriendTargetResolver;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.visibility.service.VisibilityTemplateEvaluator;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -156,9 +155,9 @@ public class RecruitmentListingVisibilityResolver
     /** 閲覧者が所属する全チーム ID 集合を返す（team_id 非 NULL の user_roles）。 */
     private Set<Long> viewerTeamIds(Long viewerUserId) {
         Set<Long> teamIds = new HashSet<>();
-        for (UserRoleEntity role : userRoleRepository.findByUserIdAndTeamIdIsNotNull(viewerUserId)) {
-            if (role.getTeamId() != null) {
-                teamIds.add(role.getTeamId());
+        for (Long teamId : userRoleRepository.findTeamIdsByUserId(viewerUserId)) {
+            if (teamId != null) {
+                teamIds.add(teamId);
             }
         }
         return teamIds;

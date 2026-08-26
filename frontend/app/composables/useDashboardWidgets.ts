@@ -94,8 +94,10 @@ export const WidgetKeyMap: Record<string, { team?: string; organization?: string
   'my-teams': { personal: 'PERSONAL_MY_TEAMS' },
   'my-organizations': { personal: 'PERSONAL_MY_ORGANIZATIONS' },
   favorites: { personal: 'PERSONAL_FAVORITES' },
+  'my-timeline': { personal: 'PERSONAL_MY_TIMELINE' },
   'recent-activity': { personal: 'RECENT_ACTIVITY' },
   'personal-todo': { personal: 'PERSONAL_TODO' },
+  'return-stay-plan': { personal: 'RETURN_STAY_PLAN' },
 }
 
 export const WidgetDefaultMinRoleMap: Record<string, MinRole> = {
@@ -149,6 +151,15 @@ export function backendKeyForWidget(
 }
 
 const ALL_WIDGETS: WidgetDefinition[] = [
+  {
+    key: 'return-stay-plan',
+    label: '帰省・滞在予定',
+    labelKey: 'returnStayPlan.widget.title',
+    icon: 'pi pi-map-marker',
+    description: '帰省・滞在予定をチームに共有',
+    descriptionKey: 'returnStayPlan.widget.description',
+    scope: ['personal'],
+  },
   // =====================================================================
   // personal スコープ（対象3-B: DB永続化対象18ウィジェット）
   // 並び順はDashboardPersonalPanel.vue の初期描画順と一致させる
@@ -323,6 +334,16 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     descriptionKey: 'dashboard.widget_descriptions.favorites',
     scope: ['personal'],
   },
+  // 個人集約タイムライン（WidgetMyTimeline・所属 team/org 横断）
+  {
+    key: 'my-timeline',
+    label: '集約タイムライン',
+    labelKey: 'dashboard.widget_labels.my-timeline',
+    icon: 'pi pi-comments',
+    description: '所属チーム・組織の投稿を横断表示',
+    descriptionKey: 'dashboard.widget_descriptions.my-timeline',
+    scope: ['personal'],
+  },
   // 最近のアクティビティ（WidgetRecentActivity）
   {
     key: 'recent-activity',
@@ -338,24 +359,6 @@ const ALL_WIDGETS: WidgetDefinition[] = [
   // FamilyHub と AdminBusinessAlert は DashboardPersonalPanel で v-if 固定描画
   // 以下はその他の personal 専用ウィジェット
   // =====================================================================
-  {
-    key: 'family-hub',
-    label: '家族',
-    labelKey: 'dashboard.widget_labels.family-hub',
-    icon: 'pi pi-home',
-    description: '家族チームのお知らせ・TODO',
-    descriptionKey: 'dashboard.widget_descriptions.family-hub',
-    scope: ['personal'],
-  },
-  {
-    key: 'notifications',
-    label: '通知',
-    labelKey: 'dashboard.widget_labels.notifications',
-    icon: 'pi pi-bell',
-    description: '未読の通知',
-    descriptionKey: 'dashboard.widget_descriptions.notifications',
-    scope: ['personal'],
-  },
   // Phase 2: F03.11 募集型予約ウィジェット
   {
     key: 'recruitment-feed',
@@ -393,16 +396,6 @@ const ALL_WIDGETS: WidgetDefinition[] = [
     icon: 'pi pi-comments',
     description: 'ピン留め村の本日の井戸端在席状況',
     descriptionKey: 'dashboard.widget_descriptions.village-lobby-digest',
-    scope: ['personal'],
-  },
-  // F04.11: 統合通知インボックスウィジェット
-  {
-    key: 'inbox',
-    label: 'インボックス',
-    labelKey: 'dashboard.widget_labels.inbox',
-    icon: 'pi pi-inbox',
-    description: '通知を一箇所で仕分け',
-    descriptionKey: 'dashboard.widget_descriptions.inbox',
     scope: ['personal'],
   },
   // =====================================================================
@@ -684,7 +677,7 @@ export function useDashboardWidgets(
     // personal スコープの場合は scopeId=undefined（scope_id=0 相当として BE が識別）。
     const effectiveScopeId = apiScopeType === 'personal' ? undefined : resolvedId
     const dataKey = `dashboard-widgets:${apiScopeType}:${effectiveScopeId ?? '0'}`
-    const { data: serverSettings } = useAsyncData(
+    const { data: serverSettings, status } = useAsyncData(
       dataKey,
       async () => {
         const res = await api<{ data: WidgetSettingResponse[] }>('/api/v1/dashboard/widgets', {
@@ -702,6 +695,12 @@ export function useDashboardWidgets(
       },
       { immediate: true },
     )
+
+    // 並び順が確定する（success/error）まではウィジェットを描画させないためのフラグ。
+    // クライアント遷移時は useAsyncData が後追いで解決するため、確定前に描画すると
+    // 「デフォルト順→保存順」の位置ジャンプが見える。確定後に初描画することで根絶する。
+    // SSR/ペイロードキャッシュ時は描画時点で既に success のため初回から保存順で出る。
+    const ready = computed(() => status.value === 'success' || status.value === 'error')
 
     /**
      * 現在の state（並び順・表示状態）を BE へ全量 PUT する。
@@ -779,6 +778,7 @@ export function useDashboardWidgets(
       reorder,
       hiddenKeys,
       orderedKeys,
+      ready,
     }
   }
 
@@ -796,5 +796,6 @@ export function useDashboardWidgets(
     reorder,
     hiddenKeys,
     orderedKeys,
+    ready: ref(true),
   }
 }

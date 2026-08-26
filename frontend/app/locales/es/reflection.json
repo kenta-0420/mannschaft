@@ -97,6 +97,8 @@
     "template": {
       "label": "Plantilla",
       "help": "Elige encabezados predefinidos para tu entrada",
+      "heading_selector_label": "Encabezados a incluir",
+      "heading_optional_badge": "opcional",
       "NORMAL": "Normal",
       "DIARY": "Diario",
       "WORK": "Reflexión laboral",
@@ -121,8 +123,13 @@
           "learned": "Lo que aprendí",
           "stumble": "Dificultades",
           "keypoint": "Puntos clave a recordar"
+        },
+        "vocab": {
+          "cards": "今日の単語"
         }
-      }
+      },
+      "VOCAB": "単語帳",
+      "vocab_desc": "語句と意味を暗記カードとして登録し、想起テストで交互に出題する"
     },
     "entry": {
       "list_heading": "Reflexiones",
@@ -179,7 +186,14 @@
       "history_heading": "Historial de recuerdos",
       "history_empty": "Aún no hay historial de recuerdos.",
       "not_masked": "Esta entrada no está oculta. Puedes editarla normalmente.",
-      "back_to_entry": "Volver a la reflexión"
+      "back_to_entry": "Volver a la reflexión",
+      "card_answer_placeholder": "答えを入力...",
+      "outline_scaffold": {
+        "panel_heading": "Pistas de andamiaje",
+        "main_theme_label": "Tema",
+        "level_note_partial": "Solo se muestran los primeros caracteres de cada encabezado. Intenta recordar el resto.",
+        "aria_panel": "Panel de pistas de andamiaje OUTLINE"
+      }
     },
     "export": {
       "button": "Exportar al blog",
@@ -233,6 +247,55 @@
       "reminder": {
         "title": "Recordatorios y calendario",
         "body": "Recibirás notificaciones cuando sea el momento de repasar. Los días en que escribiste una reflexión quedan marcados en Mi calendario, para que puedas ver tu progreso de un vistazo."
+      }
+    },
+    "section": {
+      "type": {
+        "outline": "アウトライン",
+        "term_card": "暗記カード"
+      },
+      "type_label": "中見出しの型",
+      "expand": "展開する",
+      "collapse": "折りたたむ",
+      "summary_subsections": "小見出し{n}件",
+      "summary_cards": "カード{n}枚"
+    },
+    "card": {
+      "term_label": "語句",
+      "meaning_label": "意味",
+      "add": "カードを追加",
+      "remove": "カードを削除"
+    },
+    "vocab": {
+      "title": "単語帳（期間横断）",
+      "period_from": "開始日",
+      "period_to": "終了日",
+      "filter_theme": "テーマで絞り込み",
+      "filter_subject": "科目で絞り込み",
+      "mode": {
+        "view": "一覧",
+        "quiz": "自己クイズ"
+      },
+      "direction": {
+        "meaning_to_term": "意味→語句",
+        "term_to_meaning": "語句→意味",
+        "shuffle": "シャッフル"
+      },
+      "flip": "めくる",
+      "empty": "この期間に暗記カードはありません",
+      "total_cards": "{n}枚のカード",
+      "source_label": "出典",
+      "subjects_all": "全教科",
+      "subjects_filter": "教科フィルター",
+      "shuffle": "シャッフル",
+      "shuffle_note": "取得のたびに順番が変わります",
+      "card_limit_warning": "カードが多すぎます。教科または期間を絞ってください（最大500件）",
+      "inline": {
+        "title": "＋単語を追加",
+        "term_placeholder": "語句 (例: apple)",
+        "meaning_placeholder": "意味 (例: りんご)",
+        "add_button": "追加",
+        "added": "追加しました"
       }
     }
   }

@@ -1,5 +1,6 @@
 package com.mannschaft.app.parking;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.parking.dto.*;
 import com.mannschaft.app.parking.entity.ParkingSpaceEntity;
@@ -38,6 +39,7 @@ class ParkingSpaceServiceTest {
     @Mock private ParkingSubleaseRepository subleaseRepository;
     @Mock private ParkingSpacePriceHistoryRepository priceHistoryRepository;
     @Mock private ParkingMapper parkingMapper;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private ParkingSpaceService service;
 
     private static final String SCOPE_TYPE = "TEAM";
@@ -88,7 +90,7 @@ class ParkingSpaceServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When / Then
-            assertThatThrownBy(() -> service.delete(SCOPE_TYPE, SCOPE_ID, 1L))
+            assertThatThrownBy(() -> service.delete(SCOPE_TYPE, SCOPE_ID, 1L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_009"));
@@ -102,7 +104,7 @@ class ParkingSpaceServiceTest {
                     .willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.delete(SCOPE_TYPE, SCOPE_ID, 1L))
+            assertThatThrownBy(() -> service.delete(SCOPE_TYPE, SCOPE_ID, 1L, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_001"));
@@ -120,7 +122,7 @@ class ParkingSpaceServiceTest {
             given(spaceRepository.save(any())).willReturn(entity);
 
             // When
-            service.delete(SCOPE_TYPE, SCOPE_ID, 1L);
+            service.delete(SCOPE_TYPE, SCOPE_ID, 1L, USER_ID);
 
             // Then
             verify(spaceRepository).save(any());
@@ -201,7 +203,7 @@ class ParkingSpaceServiceTest {
 
             // When
             SpaceResponse result = service.toggleMaintenance(SCOPE_TYPE, SCOPE_ID, 1L,
-                    new MaintenanceToggleRequest(true));
+                    new MaintenanceToggleRequest(true), USER_ID);
 
             // Then
             assertThat(result.getStatus()).isEqualTo("MAINTENANCE");
@@ -223,7 +225,7 @@ class ParkingSpaceServiceTest {
 
             // When / Then
             assertThatThrownBy(() -> service.toggleMaintenance(SCOPE_TYPE, SCOPE_ID, 1L,
-                    new MaintenanceToggleRequest(true)))
+                    new MaintenanceToggleRequest(true), USER_ID))
                     .isInstanceOf(BusinessException.class);
         }
 
@@ -247,7 +249,7 @@ class ParkingSpaceServiceTest {
 
             // When
             SpaceResponse result = service.toggleMaintenance(SCOPE_TYPE, SCOPE_ID, 1L,
-                    new MaintenanceToggleRequest(false));
+                    new MaintenanceToggleRequest(false), USER_ID);
 
             // Then
             assertThat(result.getStatus()).isEqualTo("VACANT");
@@ -273,7 +275,7 @@ class ParkingSpaceServiceTest {
 
             // When
             SpaceResponse result = service.acceptApplications(SCOPE_TYPE, SCOPE_ID, 1L,
-                    new AcceptApplicationsRequest("LOTTERY", null));
+                    new AcceptApplicationsRequest("LOTTERY", null), USER_ID);
 
             // Then
             assertThat(result.getApplicationStatus()).isEqualTo("ACCEPTING");
@@ -295,7 +297,7 @@ class ParkingSpaceServiceTest {
 
             // When / Then
             assertThatThrownBy(() -> service.acceptApplications(SCOPE_TYPE, SCOPE_ID, 1L,
-                    new AcceptApplicationsRequest("LOTTERY", null)))
+                    new AcceptApplicationsRequest("LOTTERY", null), USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("PARKING_011"));
@@ -318,7 +320,7 @@ class ParkingSpaceServiceTest {
                     .willReturn(Page.empty());
 
             // When
-            ParkingStatsResponse result = service.getStats(SCOPE_TYPE, SCOPE_ID);
+            ParkingStatsResponse result = service.getStats(SCOPE_TYPE, SCOPE_ID, USER_ID);
 
             // Then
             assertThat(result.getTotalSpaces()).isEqualTo(10L);
@@ -345,7 +347,7 @@ class ParkingSpaceServiceTest {
                             null, null, "VACANT", null, null, "NOT_ACCEPTING", null, null, null, null)));
 
             // When
-            List<SpaceResponse> result = service.listVacant(SCOPE_TYPE, SCOPE_ID);
+            List<SpaceResponse> result = service.listVacant(SCOPE_TYPE, SCOPE_ID, USER_ID);
 
             // Then
             assertThat(result).hasSize(1);

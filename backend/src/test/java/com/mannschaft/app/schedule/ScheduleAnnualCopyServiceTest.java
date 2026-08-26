@@ -10,6 +10,7 @@ import com.mannschaft.app.schedule.service.ScheduleAnnualCopyService;
 import com.mannschaft.app.schedule.service.ScheduleAnnualCopyService.CopyItem;
 import com.mannschaft.app.schedule.service.ScheduleAnnualCopyService.CopyResult;
 import com.mannschaft.app.schedule.service.ScheduleAnnualCopyService.ShiftedDates;
+import com.mannschaft.app.schedule.service.ScheduleTargetService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,9 @@ class ScheduleAnnualCopyServiceTest {
 
     @Mock
     private ScheduleEventCategoryRepository categoryRepository;
+
+    @Mock
+    private ScheduleTargetService scheduleTargetService;
 
     @InjectMocks
     private ScheduleAnnualCopyService copyService;

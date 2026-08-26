@@ -21,6 +21,7 @@
  */
 import dayjs from 'dayjs'
 import type { ChatMessageResponse } from '~/types/chat'
+import { mapBeMessage, type BeMessageResponse } from '~/composables/chat/chatMessageMapper'
 import type {
   DailyThreadResponse,
   LobbyChannelResponse,
@@ -56,6 +57,7 @@ const route = useRoute()
 const { t } = useI18n()
 const villageApi = useVillageApi()
 const chatApi = useChatApi()
+const authStore = useAuthStore()
 const { userTimezone } = useDatetime()
 
 const villageId = String(route.params.id)
@@ -84,15 +86,38 @@ const todayIso = computed(() => dayjs().tz(userTimezone.value).format('YYYY-MM-D
 /** 「今日」ボタンが選択されているか */
 const isTodaySelected = computed(() => selectedDate.value === todayIso.value)
 
+/**
+ * BE から渡された ISO 文字列が dayjs.tz() へ安全に渡せるかを判定する。
+ *
+ * dayjs の timezone プラグインは内部で Intl.DateTimeFormat を使ってオフセットを
+ * 算出するため、不正値（NaN Date）を渡すと `dayjs.tz()` 呼び出しの時点で
+ * `RangeError: Invalid time value` を投げてタブ全体がクラッシュする
+ * （Issue #2358）。tz プラグインを経由しないプレーンな `dayjs()` で
+ * 事前に isValid() を確認してから tz 変換を行うことで根治する。
+ */
+function isValidIso(value: string | null | undefined): value is string {
+  return !!value && dayjs(value).isValid()
+}
+
 /** 日付の表示ラベル（今日 / 昨日 / それ以外は localized 短縮形） */
 function formatDateLabel(iso: string): string {
   if (iso === todayIso.value) return t('village.lobby.today')
+  if (!isValidIso(iso)) return iso
   const today = dayjs.tz(todayIso.value, userTimezone.value)
   const target = dayjs.tz(iso, userTimezone.value)
   const diffDays = today.diff(target, 'day')
   if (diffDays === 1) return t('village.lobby.yesterday')
   // 月日表記
   return target.format('M月D日')
+}
+
+/**
+ * メッセージの送信時刻を安全にフォーマットする。
+ * createdAt が不正・欠落の場合は RangeError を投げず `--:--` にフォールバックする。
+ */
+function formatMessageTime(iso: string | null | undefined): string {
+  if (!isValidIso(iso)) return '--:--'
+  return dayjs.tz(iso, userTimezone.value).format('HH:mm')
 }
 
 // =============================================================================
@@ -154,7 +179,8 @@ const offWsEvent = wsEventBus.on((event) => {
   // 今日のチャネルへの MESSAGE_CREATED のみ反映
   if (!isTodaySelected.value || !lobbyChannel.value) return
   if (event.type === 'MESSAGE_CREATED') {
-    const newMsg = event.data as ChatMessageResponse
+    // WS の data は BE ネスト生形状のため、マッパーで FE フラット型へ変換する
+    const newMsg = mapBeMessage(event.data as BeMessageResponse, authStore.user?.id)
     if (newMsg.channelId !== lobbyChannel.value.chatChannelId) return
     if (!messages.value.some(m => m.id === newMsg.id)) {
       messages.value.push(newMsg)
@@ -379,7 +405,7 @@ onBeforeUnmount(() => {
                   <span class="font-semibold text-surface-700 dark:text-surface-200">
                     {{ msg.sender?.displayName ?? '—' }}
                   </span>
-                  <span>{{ dayjs.tz(msg.createdAt, userTimezone).format('HH:mm') }}</span>
+                  <span>{{ formatMessageTime(msg.createdAt) }}</span>
                   <span v-if="msg.isEdited" class="italic">*</span>
                 </div>
                 <div

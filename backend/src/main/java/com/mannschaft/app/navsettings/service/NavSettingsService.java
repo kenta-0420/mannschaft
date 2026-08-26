@@ -52,6 +52,10 @@ public class NavSettingsService {
         // 個人順を尊重し、無い key はマスタ sort_order 順で末尾補完する（欠落・重複なし）
         List<NavFeatureEntity> ordered = resolveOrder(features, userOrder);
 
+        // 'settings' 項目は個人並び順に関わらず常に最後尾に固定する（マスター指示）。
+        // 存在しない場合は何もしない。visible 判定（fixed=常時表示）は変更しない。
+        ordered = pinSettingsToLast(ordered);
+
         final Set<String> finalHidden = hiddenKeys;
         List<NavFeatureResponse> responses = ordered.stream()
                 .map(f -> NavFeatureResponse.from(f, isVisible(f, finalHidden)))
@@ -141,6 +145,32 @@ public class NavSettingsService {
             }
         }
         return result;
+    }
+
+    /**
+     * 'settings' キーの項目を常に最後尾へ移動する。
+     * マスター指示: 「現状のナビバーの表示形式で、必ず一番後ろに表示させる」。
+     * 個人並び順で先頭・中間に設定されていても強制的に末尾へ固定する。
+     * 'settings' 項目が存在しない場合は元のリストをそのまま返す。
+     *
+     * @param features resolveOrder 後の並び順リスト（変更しない・新しいリストを返す）
+     * @return 'settings' が末尾に固定されたリスト
+     */
+    private List<NavFeatureEntity> pinSettingsToLast(List<NavFeatureEntity> features) {
+        NavFeatureEntity settingsFeature = null;
+        List<NavFeatureEntity> rest = new ArrayList<>(features.size());
+        for (NavFeatureEntity f : features) {
+            if ("settings".equals(f.getKey())) {
+                settingsFeature = f;
+            } else {
+                rest.add(f);
+            }
+        }
+        if (settingsFeature == null) {
+            return features; // 'settings' 項目なし: 変更なし
+        }
+        rest.add(settingsFeature);
+        return rest;
     }
 
     private boolean isVisible(NavFeatureEntity feature, Set<String> hiddenKeys) {

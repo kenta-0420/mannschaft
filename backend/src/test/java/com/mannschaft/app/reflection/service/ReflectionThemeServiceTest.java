@@ -11,10 +11,10 @@ import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
 import com.mannschaft.app.reflection.repository.ReflectionEntryRepository;
 import com.mannschaft.app.reflection.repository.ReflectionSpacedReminderRepository;
 import com.mannschaft.app.reflection.repository.ReflectionThemeRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -47,7 +47,18 @@ class ReflectionThemeServiceTest {
     @Mock private ReflectionSpacedReminderRepository reminderRepository;
     @Mock private ReflectionSpacedReminderService reminderService;
 
-    @InjectMocks private ReflectionThemeService service;
+    /**
+     * 認可ゲートは実物を使う（判定対象のリポジトリは上のモックを流用する）。
+     * 所有者判定の実体は {@code themeRepository.findByIdAndUserId} のままなので、
+     * 各テストのスタブはそのまま認可判定に効く。
+     */
+    private ReflectionThemeService service;
+
+    @BeforeEach
+    void wireService() {
+        service = new ReflectionThemeService(themeRepository, entryRepository, reminderRepository,
+                reminderService, new ReflectionAccessGuard(themeRepository, entryRepository));
+    }
 
     private static final Long USER_ID = 100L;
     private static final UUID THEME_ID = UUID.randomUUID();
@@ -309,6 +320,41 @@ class ReflectionThemeServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ReflectionErrorCode.REFLECTION_PARENT_DEPTH_EXCEEDED);
+    }
+
+    // ===== Phase 4.1: AC-64 createTheme linkedSlotKind ガード =====
+
+    @Test
+    @DisplayName("AC-64: linkedSubjectName 指定 + linkedSlotId=null のとき linkedSlotKind は強制 NULL 化される")
+    void testCreateTheme_withLinkedSubjectNameAndNoLinkedSlotId_setsLinkedSlotKindNull() {
+        given(themeRepository.countByUserId(USER_ID)).willReturn(0L);
+        // save 時に entity を返す（引数そのまま）
+        given(themeRepository.save(any())).willAnswer(inv -> {
+            ReflectionThemeEntity t = inv.getArgument(0);
+            setId(t, THEME_ID);
+            return t;
+        });
+
+        // linkedSlotId=null + linkedSubjectName="TOEIC" + linkedSlotKind=SCIENCE(実際は enum TEAM/PERSONAL のどちらか)
+        // CreateReflectionThemeRequest: (title, desc, sourceType, linkedSlotKind, linkedSlotId, examDate,
+        //                                linkedSubjectName, linkedCourseCode, academicYear, termLabel, parentThemeId)
+        ReflectionThemeResponse result = service.createTheme(USER_ID,
+                new CreateReflectionThemeRequest(
+                        "TOEICテーマ",            // title
+                        null,                     // description
+                        null,                     // sourceType
+                        com.mannschaft.app.reflection.ReflectionLinkedSlotKind.PERSONAL, // linkedSlotKind (非NULL)
+                        null,                     // linkedSlotId=null ← AC-64 の鍵
+                        null,                     // examDate
+                        "TOEIC",                  // linkedSubjectName (指定あり)
+                        null,                     // linkedCourseCode
+                        null,                     // academicYear
+                        null,                     // termLabel
+                        null                      // parentThemeId
+                ));
+
+        // AC-64: linkedSlotId=null のとき linkedSlotKind は強制 NULL になること
+        assertThat(result.linkedSlotKind()).isNull();
     }
 
     @Test

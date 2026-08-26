@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import dayjs from 'dayjs'
-import type { ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
+import type { RecurrenceEndType, RecurrenceType, ReminderFormEntry, ScheduleEventFormState, TimeHistoryEntry } from './event-form/types'
+import type { ScheduleTargetMode } from '~/types/schedule'
 
 interface ScopeOption {
   label: string
@@ -20,9 +21,16 @@ const props = defineProps<{
   scopeOptions?: ScopeOption[]
 }>()
 
+/** 実際に保存されたスコープ（フォーム内でスコープ変更が可能なため、呼び出し側の props とは食い違いうる）。 */
+interface SavedScope {
+  isPersonal: boolean
+  scopeType: 'team' | 'organization'
+  scopeId: string
+}
+
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  saved: []
+  saved: [scope: SavedScope]
 }>()
 
 // スコープ選択（フォーム内で変更可能）
@@ -60,10 +68,14 @@ const notification = useNotification()
 const { handleApiError, getFieldErrors } = useErrorHandler()
 const { userTimezone, buildOffsetDateTimeStr } = useDatetime()
 const { t } = useI18n()
+const { googleSyncEnabled, fetchPersonalSyncStatus } = useGoogleCalendarApi()
 
 const submitting = ref(false)
 const fieldErrors = ref<Record<string, string>>({})
 const isEdit = computed(() => !!props.scheduleId)
+const targetMode = ref<ScheduleTargetMode>('ALL_MEMBERS')
+const targetUserIds = ref<number[]>([])
+const targetValidationError = ref<string | null>(null)
 
 // 15分刻みの時刻オプション生成（00:00〜23:45）
 const timeOptions = Array.from({ length: 96 }, (_, i) => {
@@ -81,6 +93,7 @@ function loadTimeHistory(): TimeHistoryEntry[] {
   try {
     return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? '[]') as TimeHistoryEntry[]
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- localStorage の破損履歴に対する防御パース。空配列復帰が正しい（機能劣化なし）
     return []
   }
 }
@@ -172,6 +185,14 @@ watch(
   },
 )
 
+// ダイアログが開くたびに Google 連携ステータスを取得する
+watch(
+  () => props.visible,
+  (v) => {
+    if (v) fetchPersonalSyncStatus()
+  },
+)
+
 watch(
   () => [props.visible, props.scheduleId],
   async ([visible, scheduleId]) => {
@@ -216,6 +237,24 @@ watch(
               absoluteAt: null,
             }))
           }
+          // 個人予定: status.recurrenceRule から繰り返し設定をフォームに復元する
+          const status = (data.status as Record<string, unknown>) ?? {}
+          const recurrenceRule = status.recurrenceRule as Record<string, unknown> | null
+          if (recurrenceRule && typeof recurrenceRule === 'object') {
+            form.value.recurrence = true
+            form.value.recurrenceType = ((recurrenceRule.type as string) ?? 'WEEKLY') as RecurrenceType
+            form.value.recurrenceInterval = (recurrenceRule.interval as number) ?? 1
+            form.value.recurrenceDaysOfWeek = (recurrenceRule.daysOfWeek as string[]) ?? []
+            form.value.recurrenceEndType = ((recurrenceRule.endType as string) ?? 'NEVER') as RecurrenceEndType
+            if (recurrenceRule.endDate) {
+              form.value.recurrenceEndDate = new Date(recurrenceRule.endDate as string)
+            }
+            if (recurrenceRule.count != null) {
+              form.value.recurrenceCount = recurrenceRule.count as number
+            }
+          } else {
+            form.value.recurrence = false
+          }
         }
         else {
           form.value.title = (data.title as string) ?? ''
@@ -226,6 +265,9 @@ watch(
           form.value.allowProxyAttendance = (data.allowProxyAttendance as boolean) ?? false
           form.value.isProxyAutoAccept = (data.isProxyAutoAccept as boolean) ?? false
           form.value.teamBreakdownEnabled = (data.teamBreakdownEnabled as boolean) ?? false
+          targetMode.value = (data.targetMode as ScheduleTargetMode) ?? 'ALL_MEMBERS'
+          targetUserIds.value = ((data.targets as Array<{ userId: number }> | undefined) ?? [])
+            .map(target => target.userId)
           if (data.startAt) {
             const start = new Date(data.startAt as string)
             form.value.startDate = start
@@ -369,6 +411,10 @@ async function submit() {
     fieldErrors.value = { title: t('schedule.error_title_required') }
     return
   }
+  if (!effectiveScope.value.isPersonal && targetValidationError.value) {
+    notification.error(targetValidationError.value)
+    return
+  }
   const scheduledError = validateScheduledInputs()
   if (scheduledError) {
     notification.error(scheduledError)
@@ -399,6 +445,8 @@ async function submit() {
     body.attendanceRequired = form.value.attendanceRequired
     body.allow_proxy_attendance = form.value.allowProxyAttendance
     body.is_proxy_auto_accept = form.value.allowProxyAttendance ? form.value.isProxyAutoAccept : false
+    body.targetMode = targetMode.value
+    body.targetUserIds = targetMode.value === 'SELECTED_MEMBERS' ? targetUserIds.value : []
     // F03.1 (B) チーム別内訳トグルは組織スコープ + 出欠ありのときのみ送る
     if (effectiveScope.value.scopeType === 'organization' && form.value.attendanceRequired) {
       body.teamBreakdownEnabled = form.value.teamBreakdownEnabled
@@ -420,6 +468,9 @@ async function submit() {
         ? form.value.recurrenceCount
         : undefined,
     }
+  } else if (isEdit.value && effectiveScope.value.isPersonal) {
+    // 個人予定の編集で繰り返しを OFF にした場合は null を明示送信してクリアする
+    body.recurrenceRule = null
   }
 
   // === 機能55: リマインダー ===
@@ -478,8 +529,18 @@ async function submit() {
     }
   }
 
+  // [P2是正・検分四巡目] await を跨いでリアクティブな effectiveScope.value を読むと、API 応答待ちの
+  // 間にユーザーがスコープ選択欄（submitting 中も操作可能）を変更した場合、emit に渡る値が
+  // 「実際に保存した先」と食い違う（無関係なレイヤーの案内が出る）。API 呼び出しの直前に値を
+  // スナップショット（プレーンオブジェクトへコピー）し、以降はこのスナップショットだけを使う。
+  const savedScope = {
+    isPersonal: effectiveScope.value.isPersonal,
+    scopeType: effectiveScope.value.scopeType,
+    scopeId: effectiveScope.value.scopeId,
+  }
+
   try {
-    if (effectiveScope.value.isPersonal) {
+    if (savedScope.isPersonal) {
       if (isEdit.value && props.scheduleId) {
         await scheduleApi.updatePersonalSchedule(props.scheduleId, body)
       } else {
@@ -487,12 +548,12 @@ async function submit() {
       }
     } else {
       if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updateSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, props.scheduleId, body)
+        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body)
       } else {
-        await scheduleApi.createSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, body)
+        await scheduleApi.createSchedule(savedScope.scopeType, savedScope.scopeId, body)
       }
     }
-    const successMsg = effectiveScope.value.isPersonal
+    const successMsg = savedScope.isPersonal
       ? isEdit.value
         ? t('schedule.success_update_personal')
         : t('schedule.success_create_personal')
@@ -503,7 +564,9 @@ async function submit() {
       saveTimeHistory(form.value.startTime, form.value.endTime)
     }
     notification.success(successMsg)
-    emit('saved')
+    // 実際に保存されたスコープ（スナップショット）を渡す。呼び出し側が開いた時点の props や
+    // 応答待ち中に変わりうる現在値とは食い違いうるため、これを正とする（§5.4/AC-11b）。
+    emit('saved', savedScope)
     close()
   } catch (error) {
     fieldErrors.value = getFieldErrors(error)
@@ -553,12 +616,14 @@ function resetForm() {
       minResponseRole: '',
     },
   }
+  targetMode.value = 'ALL_MEMBERS'
+  targetUserIds.value = []
+  targetValidationError.value = null
   fieldErrors.value = {}
 }
 
 function close() {
   emit('update:visible', false)
-  resetForm()
 }
 </script>
 
@@ -577,6 +642,7 @@ function close() {
     :style="{ width: '500px' }"
     modal
     @update:visible="close"
+    @hide="resetForm"
   >
     <div class="flex flex-col gap-4">
       <!-- スコープ選択（複数スコープがある場合のみ表示） -->
@@ -591,6 +657,14 @@ function close() {
         :is-personal-scope="effectiveScope.isPersonal"
         :time-history="timeHistory"
         :time-options="timeOptions"
+      />
+      <ScheduleTargetPicker
+        v-if="!effectiveScope.isPersonal"
+        v-model:target-mode="targetMode"
+        v-model:target-user-ids="targetUserIds"
+        :scope-type="effectiveScope.scopeType"
+        :scope-id="effectiveScope.scopeId"
+        @invalid="targetValidationError = $event"
       />
       <!-- F03.1 (B) チーム別内訳トグル（組織スコープ + 出欠ありのときのみ） -->
       <div
@@ -661,6 +735,15 @@ function close() {
         v-if="effectiveScope.isPersonal"
         v-model:color="form.color"
       />
+
+      <!-- Google カレンダー連携中の注意書き -->
+      <div
+        v-if="googleSyncEnabled"
+        class="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200"
+      >
+        <i class="pi pi-info-circle mr-1" aria-hidden="true" />
+        {{ $t('schedule.google_sync_notice') }}
+      </div>
     </div>
     <template #footer>
       <Button label="キャンセル" text @click="close" />

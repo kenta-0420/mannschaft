@@ -125,7 +125,6 @@ async function handleSubmit() {
 
     <PageHeader
       :title="hasPassword ? t('settings.password.section_title_change') : t('settings.password.section_title_set')"
-      back-to="/settings"
     />
 
     <PageLoading v-if="loading" />

@@ -3,6 +3,8 @@ package com.mannschaft.app.jobmatching.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.jobmatching.controller.dto.ApplyRequest;
 import com.mannschaft.app.jobmatching.controller.dto.JobApplicationResponse;
 import com.mannschaft.app.jobmatching.controller.dto.JobContractResponse;
@@ -117,7 +119,13 @@ public class JobApplicationController {
 
     /**
      * 自分の応募履歴をページング取得する。
+     *
+     * <p><b>自己スコープ</b>: 検索条件は
+     * {@code JobApplicationRepository#findByApplicantUserId(認証主体の userId, pageable)} のみ。
+     * ページング指定以外にリクエストで指定できる項目が無く、他人の応募が結果に混ざる経路が無い。</p>
      */
+    @SelfScopedEndpoint("検索条件が findByApplicantUserId(認証主体の userId) のみ"
+            + "（JobApplicationService#listMyApplications・引数は Pageable だけ）")
     @GetMapping("/api/v1/me/applications")
     @Operation(summary = "自分の応募履歴")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -135,16 +143,15 @@ public class JobApplicationController {
     // ========================================
 
     /**
-     * 応募詳細を取得する。
+     * 応募詳細を取得する。当事者（応募者本人、または対象求人の採否権限者）のみ許可。
      *
-     * <p>MVP では Service 側で閲覧権限チェックを行わないため、認証済みであれば参照可能。
-     * 後続 Phase で応募者本人または Requester/ADMIN のみに絞るリファクタを Service 層に加える予定。</p>
+     * <p>BOLA対策: {@link JobApplicationService#findById(Long, Long)} で当事者チェックを行う。</p>
      */
     @GetMapping("/api/v1/applications/{id}")
     @Operation(summary = "応募詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<JobApplicationResponse>> getApplication(@PathVariable Long id) {
-        JobApplicationEntity entity = applicationService.findById(id);
+        JobApplicationEntity entity = applicationService.findById(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(jobMapper.toApplicationResponse(entity)));
     }
 
@@ -181,7 +188,13 @@ public class JobApplicationController {
 
     /**
      * 応募を取り下げる（APPLIED → WITHDRAWN）。応募者本人のみ許可。
+     *
+     * <p><b>認可の所在</b>: {@code JobApplicationService#withdraw}
+     * （{@code jobmatching/service/JobApplicationService.java:130}）が、対象応募を実体として
+     * ロードしたうえで {@code applicantUserId} と認証主体の一致を検証し、不一致は
+     * {@code JOB_PERMISSION_DENIED}（404。越境の存在秘匿）で拒否する。検証は状態遷移・永続化より<b>前</b>に位置する。</p>
      */
+    @AuthorizedInService
     @PostMapping("/api/v1/applications/{id}/withdraw")
     @Operation(summary = "応募を取り下げ")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取り下げ成功")

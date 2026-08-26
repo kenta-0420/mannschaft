@@ -44,4 +44,25 @@ public interface VillageCalendarEventRepository extends JpaRepository<VillageCal
     List<VillageCalendarEventEntity> findByMonth(@Param("villageId") UUID villageId,
                                                  @Param("year") int year,
                                                  @Param("month") int month);
+
+    /**
+     * 接近通知バッチ用（F17.2 Wave2 ①・設計書 §3.5）: 指定日に「開催される」歳時記を全村横断で取得する。
+     *
+     * <p>取得条件は OR で 2 通り（{@link #findByMonth} と同思想で日単位に絞る）:</p>
+     * <ul>
+     *   <li>毎年繰返（{@code is_annual_recurring = TRUE}）で {@code MONTH/DAY(event_date)} が指定日の月日に一致</li>
+     *   <li>単発（{@code is_annual_recurring = FALSE}）で {@code event_date = :date}</li>
+     * </ul>
+     */
+    @Query("""
+            SELECT e FROM VillageCalendarEventEntity e
+             WHERE e.deletedAt IS NULL
+               AND (
+                 (e.isAnnualRecurring = TRUE  AND MONTH(e.eventDate) = :month AND DAY(e.eventDate) = :day)
+                 OR (e.isAnnualRecurring = FALSE AND e.eventDate = :date)
+               )
+            """)
+    List<VillageCalendarEventEntity> findOccurringOn(@Param("date") java.time.LocalDate date,
+                                                     @Param("month") int month,
+                                                     @Param("day") int day);
 }

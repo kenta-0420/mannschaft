@@ -1,5 +1,6 @@
 package com.mannschaft.app.tournament.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.match.domain.Sport;
 import com.mannschaft.app.match.service.MatchService;
@@ -24,6 +25,9 @@ import com.mannschaft.app.tournament.dto.PlayerStatRequest;
 import com.mannschaft.app.tournament.dto.PlayerStatResponse;
 import com.mannschaft.app.tournament.dto.RosterResponse;
 import com.mannschaft.app.tournament.dto.ScoreUpdateRequest;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
+import com.mannschaft.app.tournament.entity.TournamentDivisionEntity;
 import com.mannschaft.app.tournament.entity.TournamentEntity;
 import com.mannschaft.app.tournament.entity.TournamentFixtureEntity;
 import com.mannschaft.app.tournament.entity.TournamentFixturePlayerStatEntity;
@@ -31,6 +35,7 @@ import com.mannschaft.app.tournament.entity.TournamentFixtureRosterEntity;
 import com.mannschaft.app.tournament.entity.TournamentFixtureSetEntity;
 import com.mannschaft.app.tournament.entity.TournamentMatchdayEntity;
 import com.mannschaft.app.tournament.entity.TournamentParticipantEntity;
+import com.mannschaft.app.tournament.repository.TournamentDivisionRepository;
 import com.mannschaft.app.tournament.repository.TournamentFixturePlayerStatRepository;
 import com.mannschaft.app.tournament.repository.TournamentFixtureRepository;
 import com.mannschaft.app.tournament.repository.TournamentFixtureRosterRepository;
@@ -53,6 +58,15 @@ import java.util.Objects;
 
 /**
  * 対戦カード・スコア・出場メンバー・個人成績管理サービス。
+ *
+ * <h2>認可（認可根治戦役 Wave2 トランシェ2C）</h2>
+ * <p>閲覧系は親大会（tId）の F00 可視性判定に委譲する（不可視は 404）。変更系は tId が
+ * path orgId 配下であることを検証（BOLA 是正）した上で主催組織 ADMIN/DEPUTY_ADMIN を要求する。
+ * divId/matchId/mdId/rosterId は必ず親（tId/divId/matchId）配下であることを束縛検証し、
+ * 公開大会の tId を踏み台にした他大会エンティティの閲覧・改竄・batch 混入を遮断する。
+ * スコア入力系（updateScore/updatePlayerStats/changeMatchStatus/batch/import）は
+ * 従来どおり {@link com.mannschaft.app.tournament.scorekeeper.TournamentFixtureAccessService}
+ * （bean 名 {@code tournamentScoreGuard}）の 3-way 判定に委ねる（本トランシェの対象外）。</p>
  */
 @Slf4j
 @Service
@@ -61,6 +75,7 @@ import java.util.Objects;
 public class FixtureService {
 
     private final TournamentRepository tournamentRepository;
+    private final TournamentDivisionRepository divisionRepository;
     private final TournamentMatchdayRepository matchdayRepository;
     private final TournamentFixtureRepository matchRepository;
     private final TournamentFixtureSetRepository matchSetRepository;
@@ -70,6 +85,8 @@ public class FixtureService {
     private final TournamentStatDefRepository statDefRepository;
     private final TournamentMapper mapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final AccessControlService accessControlService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
     /**
      * match ドメインのライフサイクル Service（Phase5b-2'・系統B の match 正本化）。
      * tournament → match はエンティティ直参照せず本 Service メソッド経由で正本を作る（原則 1/5・D-1・05 §H.5）。
@@ -78,7 +95,14 @@ public class FixtureService {
 
     // ===== Matchday =====
 
-    public List<MatchdayResponse> listMatchdays(Long divisionId) {
+    /**
+     * 節一覧を取得する（閲覧系）。
+     * divId が tournamentId 配下であることを束縛検証する（公開大会 tId を踏み台にした
+     * 非公開大会 divId の閲覧を遮断・台帳指摘の穴）。
+     */
+    public List<MatchdayResponse> listMatchdays(Long tournamentId, Long divisionId, Long viewerUserId) {
+        verifyTournamentVisible(tournamentId, viewerUserId);
+        findDivisionInTournamentOrThrow(tournamentId, divisionId);
         return matchdayRepository.findByDivisionIdOrderByMatchdayNumberAsc(divisionId)
                 .stream()
                 .map(md -> {
@@ -89,8 +113,16 @@ public class FixtureService {
                 .toList();
     }
 
+    /**
+     * 節を作成する（変更系）。tId→orgId・divId→tId の束縛を検証した上で主催組織 ADMIN/DEPUTY_ADMIN を要求する。
+     */
     @Transactional
-    public MatchdayResponse createMatchday(Long divisionId, CreateMatchdayRequest request) {
+    public MatchdayResponse createMatchday(Long orgId, Long tournamentId, Long divisionId, Long userId,
+                                            CreateMatchdayRequest request) {
+        findTournamentInOrgOrThrow(orgId, tournamentId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+        findDivisionInTournamentOrThrow(tournamentId, divisionId);
+
         Integer matchdayNumber = request.getMatchdayNumber();
         if (matchdayNumber == null) {
             matchdayNumber = matchdayRepository.findTopByDivisionIdOrderByMatchdayNumberDesc(divisionId)
@@ -108,10 +140,15 @@ public class FixtureService {
 
     // ===== Match Generation =====
 
+    /**
+     * 対戦カードを自動生成する（変更系）。tId→orgId・divId→tId の束縛を検証した上で
+     * 主催組織 ADMIN/DEPUTY_ADMIN を要求する。
+     */
     @Transactional
-    public List<MatchdayResponse> generateMatchdays(Long tournamentId, Long divisionId) {
-        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+    public List<MatchdayResponse> generateMatchdays(Long orgId, Long tournamentId, Long divisionId, Long userId) {
+        TournamentEntity tournament = findTournamentInOrgOrThrow(orgId, tournamentId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+        findDivisionInTournamentOrThrow(tournamentId, divisionId);
 
         List<TournamentParticipantEntity> participants =
                 participantRepository.findByDivisionIdOrderBySeedAsc(divisionId);
@@ -289,7 +326,19 @@ public class FixtureService {
 
     // ===== Score =====
 
-    public FixtureResponse getMatch(Long matchId) {
+    /**
+     * 試合詳細を取得する（閲覧系）。
+     * matchId が tournamentId 配下であることを束縛検証する（公開大会 tId を踏み台にした
+     * 非公開大会 matchId の閲覧を遮断・台帳指摘の穴）。
+     */
+    public FixtureResponse getMatch(Long tournamentId, Long matchId, Long viewerUserId) {
+        verifyTournamentVisible(tournamentId, viewerUserId);
+        verifyMatchInTournament(tournamentId, matchId);
+        return buildMatchResponse(matchId);
+    }
+
+    /** 内部専用: 認可済みの文脈からのみ呼ぶこと（mutation 後のレスポンス構築等）。 */
+    private FixtureResponse buildMatchResponse(Long matchId) {
         TournamentFixtureEntity match = findMatchOrThrow(matchId);
         List<FixtureSetResponse> sets = matchSetRepository.findByMatchIdOrderBySetNumberAsc(match.getId())
                 .stream().map(mapper::toMatchSetResponse).toList();
@@ -300,6 +349,10 @@ public class FixtureService {
 
     @Transactional
     public FixtureResponse updateScore(Long tournamentId, Long matchId, ScoreUpdateRequest request) {
+        // matchId が tournamentId 配下であることを束縛検証する（他大会 matchId の詐称・改竄を遮断・IDOR 対策）。
+        // @PreAuthorize の tournamentScoreGuard は ORG ADMIN 経路で本チェックを行わないため、
+        // Service 層で防御的に必ず検証する（多層防御）。
+        verifyMatchInTournament(tournamentId, matchId);
         TournamentFixtureEntity match = findMatchOrThrow(matchId);
 
         // 楽観ロック: client が最後に見た版とロードした版を突合し、stale client を弾く（F08.7 Wave3a）
@@ -359,16 +412,23 @@ public class FixtureService {
                     new StandingsRecalculationEvent(this, matchday.getDivisionId(), tournamentId));
         }
 
-        return getMatch(matchId);
+        return buildMatchResponse(matchId);
     }
 
     @Transactional
     public void batchUpdateScores(Long tournamentId, Long divisionId, Long matchdayId,
                                   BatchScoreRequest request) {
+        // divId→tId・mdId→divId の束縛を検証する（BOLA 対策）。
+        findDivisionInTournamentOrThrow(tournamentId, divisionId);
+        findMatchdayInDivisionOrThrow(divisionId, matchdayId);
+
         // 大会フラグ（hasSets/setsToWin/hasDraw）はバッチ内で不変のため一括で1回取得する（F08.7 セット制①）。
         TournamentEntity tournament = tournamentRepository.findById(tournamentId).orElse(null);
 
         for (BatchScoreRequest.MatchScoreEntry entry : request.getScores()) {
+            // entry.matchId が tournamentId 配下であることを束縛検証する（他大会 matchId の混入を遮断・
+            // IDOR/BOLA 対策。書込 batch は部分適用しないため 1 件でも不一致なら即例外で全ロールバック）。
+            verifyMatchInTournament(tournamentId, entry.getMatchId());
             TournamentFixtureEntity match = findMatchOrThrow(entry.getMatchId());
 
             // 楽観ロック: 各 fixture ごとに client 版とロード版を突合。1件でも不一致なら
@@ -413,7 +473,10 @@ public class FixtureService {
     }
 
     @Transactional
-    public void changeMatchStatus(Long matchId, FixtureStatus newStatus) {
+    public void changeMatchStatus(Long tournamentId, Long matchId, FixtureStatus newStatus) {
+        // matchId→tournamentId の束縛を防御的に検証する（@PreAuthorize の tournamentScoreGuard は
+        // ORG ADMIN 経路で本チェックを行わないため多層防御）。
+        verifyMatchInTournament(tournamentId, matchId);
         TournamentFixtureEntity match = findMatchOrThrow(matchId);
         match.changeStatus(newStatus);
         matchRepository.save(match);
@@ -421,13 +484,27 @@ public class FixtureService {
 
     // ===== Roster =====
 
-    public List<RosterResponse> listRosters(Long matchId) {
+    /**
+     * 出場メンバー一覧を取得する（閲覧系）。matchId が tournamentId 配下であることを束縛検証する。
+     */
+    public List<RosterResponse> listRosters(Long tournamentId, Long matchId, Long viewerUserId) {
+        verifyTournamentVisible(tournamentId, viewerUserId);
+        verifyMatchInTournament(tournamentId, matchId);
         return rosterRepository.findByMatchIdOrderByParticipantIdAscJerseyNumberAsc(matchId)
                 .stream().map(mapper::toRosterResponse).toList();
     }
 
+    /**
+     * 出場メンバーを一括登録する（変更系）。tId→orgId・matchId→tId の束縛を検証した上で
+     * 主催組織 ADMIN/DEPUTY_ADMIN を要求する。
+     */
     @Transactional
-    public List<RosterResponse> createRosters(Long matchId, CreateRosterRequest request) {
+    public List<RosterResponse> createRosters(Long orgId, Long tournamentId, Long matchId, Long userId,
+                                               CreateRosterRequest request) {
+        findTournamentInOrgOrThrow(orgId, tournamentId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+        verifyMatchInTournament(tournamentId, matchId);
+
         List<TournamentFixtureRosterEntity> rosters = request.getEntries().stream()
                 .map(entry -> (TournamentFixtureRosterEntity) TournamentFixtureRosterEntity.builder()
                         .matchId(matchId)
@@ -442,9 +519,18 @@ public class FixtureService {
                 .map(mapper::toRosterResponse).toList();
     }
 
+    /**
+     * 出場メンバーを削除する（変更系）。tId→orgId・matchId→tId・rosterId→matchId の束縛を検証した上で
+     * 主催組織 ADMIN/DEPUTY_ADMIN を要求する。
+     */
     @Transactional
-    public void deleteRoster(Long rosterId) {
-        rosterRepository.deleteById(rosterId);
+    public void deleteRoster(Long orgId, Long tournamentId, Long matchId, Long rosterId, Long userId) {
+        findTournamentInOrgOrThrow(orgId, tournamentId);
+        accessControlService.checkAdminOrAbove(userId, orgId, "ORGANIZATION");
+        verifyMatchInTournament(tournamentId, matchId);
+        TournamentFixtureRosterEntity roster = rosterRepository.findByIdAndMatchId(rosterId, matchId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.FIXTURE_ROSTER_NOT_FOUND));
+        rosterRepository.delete(roster);
     }
 
     // ===== Player Stats =====
@@ -452,6 +538,8 @@ public class FixtureService {
     @Transactional
     public FixtureResponse updatePlayerStats(Long tournamentId, Long matchId,
                                            PlayerStatBatchRequest request) {
+        // matchId→tournamentId の束縛を防御的に検証する（多層防御・上記 updateScore 参照）。
+        verifyMatchInTournament(tournamentId, matchId);
         findMatchOrThrow(matchId);
 
         for (PlayerStatRequest stat : request.getStats()) {
@@ -485,7 +573,7 @@ public class FixtureService {
         // 個人ランキング再計算イベント発火
         eventPublisher.publishEvent(new RankingsRecalculationEvent(this, tournamentId));
 
-        return getMatch(matchId);
+        return buildMatchResponse(matchId);
     }
 
     // ===== Private =====
@@ -624,6 +712,49 @@ public class FixtureService {
     private TournamentFixtureEntity findMatchOrThrow(Long matchId) {
         return matchRepository.findById(matchId)
                 .orElseThrow(() -> new BusinessException(TournamentErrorCode.MATCH_NOT_FOUND));
+    }
+
+    // ===== 認可根治戦役 Wave2 トランシェ2C: 内部ヘルパー =====
+
+    /**
+     * 大会が path orgId 配下であることを検証する（BOLA 対策・IDOR 対策で 404 に統一）。
+     */
+    private TournamentEntity findTournamentInOrgOrThrow(Long orgId, Long tournamentId) {
+        TournamentEntity tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND));
+        if (!tournament.getOrganizationId().equals(orgId)) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+        return tournament;
+    }
+
+    /**
+     * 大会 visibility ガード（閲覧系）。認証ユーザー（未認証なら null）が当該 tournament を
+     * 閲覧できるか F00 共通可視性 Resolver で判定し、不可視なら 404 を投げる。
+     */
+    private void verifyTournamentVisible(Long tournamentId, Long viewerUserId) {
+        if (!contentVisibilityChecker.canView(ReferenceType.TOURNAMENT, tournamentId, viewerUserId)) {
+            throw new BusinessException(TournamentErrorCode.TOURNAMENT_NOT_FOUND);
+        }
+    }
+
+    /** divId が tournamentId 配下であることを束縛検証する（BOLA/IDOR 対策）。 */
+    private TournamentDivisionEntity findDivisionInTournamentOrThrow(Long tournamentId, Long divisionId) {
+        return divisionRepository.findByIdAndTournamentId(divisionId, tournamentId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.DIVISION_NOT_FOUND));
+    }
+
+    /** mdId が divisionId 配下であることを束縛検証する（BOLA/IDOR 対策）。 */
+    private TournamentMatchdayEntity findMatchdayInDivisionOrThrow(Long divisionId, Long matchdayId) {
+        return matchdayRepository.findByIdAndDivisionId(matchdayId, divisionId)
+                .orElseThrow(() -> new BusinessException(TournamentErrorCode.MATCHDAY_NOT_FOUND));
+    }
+
+    /** matchId が tournamentId 配下であることを束縛検証する（BOLA/IDOR 対策）。 */
+    private void verifyMatchInTournament(Long tournamentId, Long matchId) {
+        if (matchRepository.countByIdAndTournamentId(matchId, tournamentId) == 0) {
+            throw new BusinessException(TournamentErrorCode.MATCH_NOT_FOUND);
+        }
     }
 
     /**

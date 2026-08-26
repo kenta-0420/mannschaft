@@ -3,10 +3,12 @@ package com.mannschaft.app.village.event;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.village.entity.UserVillageNicknameEntity;
 import com.mannschaft.app.village.entity.UserVillagePinEntity;
+import com.mannschaft.app.village.entity.VillageCharterDrafterEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.enums.VillageSubjectType;
 import com.mannschaft.app.village.repository.UserVillageNicknameRepository;
 import com.mannschaft.app.village.repository.UserVillagePinRepository;
+import com.mannschaft.app.village.repository.VillageCharterDrafterRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +60,7 @@ public class VillageUserCleanerEventListener {
     private final UserVillageNicknameRepository nicknameRepository;
     private final UserVillagePinRepository pinRepository;
     private final VillageMembershipRepository membershipRepository;
+    private final VillageCharterDrafterRepository charterDrafterRepository;
 
     @Async("event-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -68,6 +71,7 @@ public class VillageUserCleanerEventListener {
             cleanupNicknames(userId);
             cleanupPins(userId);
             anonymizeMemberships(userId);
+            anonymizeCharterDrafters(userId);
             log.info("ユーザー退会: village ドメイン匿名化完了: userId={}", userId);
         } catch (Exception e) {
             log.warn("ユーザー退会: village ドメイン匿名化失敗: userId={}, error={}",
@@ -117,5 +121,26 @@ public class VillageUserCleanerEventListener {
         membershipRepository.saveAll(memberships);
         log.debug("ユーザー退会: village メンバーシップ匿名化: userId={} count={}",
                 userId, memberships.size());
+    }
+
+    /**
+     * 村憲章の策定者から個人リンク（{@code user_id}）を切断する（F17.3・設計書 §11.1）。
+     *
+     * <p>当該ユーザーが策定者として刻まれている全行の {@code user_id} を <strong>NULL 化</strong>し、
+     * {@code nickname_snapshot}（制定当時の村ニックネーム＝仮名文字列）は<strong>残置</strong>する。
+     * 実名は元々保存していない（§10 G4）ため、これは「個人リンク切断＋仮名残置」という原則4 準拠の
+     * 匿名化であり、憲章という村の史料から「誰が興したか」を消さない。</p>
+     */
+    void anonymizeCharterDrafters(Long userId) {
+        List<VillageCharterDrafterEntity> drafters = charterDrafterRepository.findByUserId(userId);
+        if (drafters.isEmpty()) {
+            return;
+        }
+        for (VillageCharterDrafterEntity d : drafters) {
+            d.setUserId(null); // nickname_snapshot は残置（仮名史料）
+        }
+        charterDrafterRepository.saveAll(drafters);
+        log.debug("ユーザー退会: village 憲章策定者の user_id NULL 化: userId={} count={}",
+                userId, drafters.size());
     }
 }

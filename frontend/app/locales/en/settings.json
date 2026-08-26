@@ -48,7 +48,8 @@
     "inbox": "Inbox",
     "market": "Market",
     "jobs": "Jobs",
-    "matching": "Matching"
+    "matching": "Matching",
+    "myFiles": "My Files"
   },
   "settings": {
     "navigation": {
@@ -59,7 +60,8 @@
       "saveSuccess": "Settings saved",
       "saveError": "Failed to save settings",
       "reorderHint": "Drag the handle to reorder the navigation items",
-      "dragHandleLabel": "Drag handle"
+      "dragHandleLabel": "Drag handle",
+      "pinnedBottom": "Pinned to bottom"
     },
     "account": {
       "page_title": "Account Settings",
@@ -165,6 +167,16 @@
       "backup_codes_description": "Store the following backup codes in a safe place. Each code can only be used once.",
       "rename_dialog_title": "Rename Device",
       "device_name_label": "Device Name",
+      "webauthn": {
+        "register_button": "Register a passkey",
+        "register_dialog_title": "Register a passkey",
+        "device_name_label": "Device name (optional)",
+        "device_name_placeholder": "e.g. Touch ID on iPhone",
+        "register_confirm": "Register",
+        "register_cancel": "Cancel",
+        "register_success": "Passkey registered successfully",
+        "register_error": "Failed to register passkey"
+      },
       "session": {
         "device_label": "{browser} on {os}",
         "unknown_device": "Unknown device"
@@ -184,10 +196,13 @@
       }
     },
     "linked_accounts": {
+      "page_title": "Linked Accounts",
       "oauth_section_title": "OAuth Connections",
       "no_oauth": "No connected accounts",
       "connected_at": "Connected: {date}",
       "unlink_button": "Disconnect",
+      "google_link_button": "Link with Google",
+      "google_link_loading": "Linking...",
       "line_section_title": "LINE Connection",
       "line_icon_alt": "LINE Icon",
       "line_default_user": "LINE User",
@@ -196,10 +211,27 @@
       "line_not_linked": "No LINE account connected",
       "line_link_instruction": "Connect LINE from the LINE app",
       "toast": {
+        "load_error": "Failed to load linked accounts",
         "unlink_success": "{provider} disconnected",
         "unlink_error": "Failed to disconnect",
         "line_unlink_success": "LINE disconnected",
-        "line_unlink_error": "Failed to disconnect LINE"
+        "line_unlink_error": "Failed to disconnect LINE",
+        "link_success": "Linked with {provider}",
+        "link_error": "Failed to get link URL",
+        "already_linked": "This account is already linked to {provider}",
+        "taken_by_other": "This Google account is already used by another user",
+        "oauth_denied": "Google authentication was cancelled",
+        "link_with_calendar_success": "Google account and Calendar linked"
+      },
+      "calendar_sync_toggle": "Also set up Google Calendar sync",
+      "guide": {
+        "title": "About Account Linking",
+        "google_title": "Sign in with Google",
+        "google_desc": "You can sign in easily without a password using your Google account.",
+        "apple_title": "Sign in with Apple (coming soon)",
+        "apple_desc": "A convenient sign-in method for iPhone users. Coming soon.",
+        "line_title": "LINE Notifications",
+        "line_desc": "Add the bot to your LINE group to receive schedule and attendance notifications on LINE. Link from the LINE app."
       }
     },
     "member_card": {
@@ -236,6 +268,47 @@
         "delete_error": "Failed to delete"
       }
     },
+    "seal_guide": {
+      "title": "How to Use Electronic Seals",
+      "description": "Use electronic seals to stamp and manage documents.",
+      "preview": {
+        "title": "Seal Preview",
+        "body": "View the 3 types of electronic seals (last name, full name, first name) automatically generated from your registered name.",
+        "steps": {
+          "step1": "Open the \"Seal Preview\" tab",
+          "step2": "Check the 3 seals (last name, full name, first name) displayed in the grid"
+        }
+      },
+      "regenerate": {
+        "title": "Regenerate Seal",
+        "body": "Recreate your current seal with a new design. Use this when your name changes or you want to update the design.",
+        "note": "You can run this up to 3 times per hour. If you reach the limit, please wait before trying again.",
+        "steps": {
+          "step1": "Open the \"Seal Preview\" tab",
+          "step2": "Click the \"Regenerate Seal\" button",
+          "step3": "After completion, the new seal will appear in the grid"
+        }
+      },
+      "defaults": {
+        "title": "Default Settings",
+        "body": "Set which variant (last name, full name, first name) is automatically used when stamping documents. Saves you from selecting each time.",
+        "note": "「スコープを追加」でチームや組織ごとに使用する印鑑のバリアントを個別設定できます。",
+        "steps": {
+          "step1": "Open the \"Default Settings\" tab",
+          "step2": "Select your preferred variant (last name, full name, first name) from the dropdown",
+          "step3": "Click \"Save\" to save the settings"
+        }
+      },
+      "history": {
+        "title": "Stamp History",
+        "body": "View a list of your past stamps. The date, variant used, target, and status (valid / cancelled) are displayed.",
+        "steps": {
+          "step1": "Open the \"Stamp History\" tab",
+          "step2": "Scroll through the list to review",
+          "step3": "Load older history with the \"Load more\" button"
+        }
+      }
+    },
     "seal": {
       "section_title": "Electronic Seal",
       "tab_preview": "Seal Preview",
@@ -248,6 +321,27 @@
         "regenerate_error": "Failed to regenerate (up to 3 times per hour)",
         "save_defaults_success": "Default settings saved",
         "save_defaults_error": "Failed to save settings"
+      },
+      "scope_defaults": {
+        "section_title": "スコープ別デフォルト印鑑",
+        "add_button": "スコープを追加",
+        "add_dialog_title": "スコープを追加",
+        "scope_type_label": "スコープ種別",
+        "scope_type_team": "チーム",
+        "scope_type_org": "組織",
+        "scope_target_label": "対象",
+        "scope_target_placeholder": "選択してください",
+        "variant_label": "使用する印鑑",
+        "variant_last_name": "姓",
+        "variant_full_name": "フルネーム",
+        "variant_first_name": "名",
+        "default_label": "デフォルト（全体）",
+        "delete_tooltip": "このスコープを削除",
+        "no_teams": "所属チームがありません",
+        "no_orgs": "所属組織がありません",
+        "save_button": "保存",
+        "cancel_button": "キャンセル",
+        "add_scope_button": "追加"
       }
     },
     "login_history": {
@@ -263,26 +357,35 @@
     },
     "gcal": {
       "section_title": "Google Calendar Integration",
+      "connection_status_title": "Connection Status",
       "connected_label": "Connected",
       "last_synced": "Last synced: {date}",
+      "last_sync_error": "Sync error: {message}",
       "manual_sync_button": "Manual Sync",
       "disconnect_button": "Disconnect",
+      "disconnect_confirm": "Disconnect Google Calendar integration?",
       "sync_settings_title": "Sync Settings",
       "personal_calendar_label": "Personal Calendar",
       "personal_calendar_description": "Sync personal events to Google Calendar",
       "team_calendars_label": "Team Calendars",
       "org_calendars_label": "Organization Calendars",
-      "save_settings_button": "Save Settings",
+      "no_team_calendars": "You are not a member of any team",
+      "no_org_calendars": "You are not a member of any organization",
       "not_connected_description": "Connect your Google account to sync calendars",
       "connect_button": "Connect Google Account",
+      "detail_link_button": "Go to detailed settings",
       "toast": {
         "connect_error": "Failed to connect",
+        "oauth_connected": "Connected to Google Calendar",
+        "oauth_connect_failed": "Failed to connect to Google Calendar",
         "disconnect_success": "Disconnected",
         "disconnect_error": "Failed to disconnect",
-        "save_success": "Sync settings saved",
-        "save_error": "Failed to save",
         "sync_success": "Sync completed",
-        "sync_error": "Failed to sync"
+        "sync_error": "Failed to sync",
+        "load_error": "Failed to load",
+        "toggle_on_success": "Turned on sync for {name}",
+        "toggle_off_success": "Turned off sync for {name}",
+        "backfill_info": "{count} events queued for sync"
       }
     },
     "delete_account": {
@@ -322,6 +425,25 @@
       "channel_push": "Push",
       "locked_tag": "Urgent",
       "locked_desc": "This notification cannot be disabled"
+    },
+    "storage": {
+      "page_title": "Storage",
+      "group_personal": "Personal",
+      "group_team": "Teams",
+      "group_org": "Organizations",
+      "scope_personal": "Personal Storage",
+      "file_count": "{count} files",
+      "limit": "Limit",
+      "unlimited": "Unlimited",
+      "error_fetch": "Failed to load storage usage",
+      "empty": "No storage information to display"
+    },
+    "fileBrowser": {
+      "upload_button": "Upload File",
+      "upload_need_folder": "Please open a folder before uploading",
+      "upload_success": "\"{name}\" uploaded successfully",
+      "upload_error": "Failed to upload \"{name}\"",
+      "uploading": "Uploading..."
     }
   }
 }

@@ -1,6 +1,7 @@
 package com.mannschaft.app.cspreport.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.cspreport.dto.CspReportRequest;
 import com.mannschaft.app.cspreport.dto.CspReportWrapper;
 import com.mannschaft.app.cspreport.service.CspReportService;
@@ -24,7 +25,24 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>ブラウザは {@code application/csp-report} または {@code application/json} で送信する。
  * 両 Content-Type に対応し、"csp-report" ラッパーあり・なし両形式を処理する。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 1 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(POST, "/api/v1/security/csp-reports").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * CSP 違反レポートは<b>ブラウザが自動送信</b>するもので、認証情報を添付できない（認証を課すと違反検知そのものが機能しない）
+ * 。書込専用かつ応答は 204 固定で、情報を一切返さない。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic("/api/v1/security/csp-reports")
 @RestController
 @RequestMapping("/api/v1/security")
 @Tag(name = "セキュリティ", description = "CSP 違反レポート受信 API")

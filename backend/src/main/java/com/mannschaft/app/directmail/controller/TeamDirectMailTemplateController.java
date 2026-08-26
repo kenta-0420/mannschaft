@@ -43,7 +43,8 @@ public class TeamDirectMailTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<DirectMailTemplateResponse>>> listTemplates(
             @PathVariable Long teamId) {
-        List<DirectMailTemplateResponse> responses = templateService.listTemplates("TEAM", teamId);
+        List<DirectMailTemplateResponse> responses =
+                templateService.listTemplates("TEAM", teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -68,7 +69,8 @@ public class TeamDirectMailTemplateController {
     public ResponseEntity<ApiResponse<DirectMailTemplateResponse>> updateTemplate(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdateDirectMailTemplateRequest request) {
-        DirectMailTemplateResponse response = templateService.updateTemplate("TEAM", teamId, id, request);
+        DirectMailTemplateResponse response =
+                templateService.updateTemplate("TEAM", teamId, SecurityUtils.getCurrentUserId(), id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -79,7 +81,7 @@ public class TeamDirectMailTemplateController {
     @Operation(summary = "チームDMテンプレート削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteTemplate(@PathVariable Long teamId, @PathVariable Long id) {
-        templateService.deleteTemplate("TEAM", teamId, id);
+        templateService.deleteTemplate("TEAM", teamId, SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.noContent().build();
     }
 }

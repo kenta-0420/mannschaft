@@ -53,7 +53,7 @@ async function loadStats(): Promise<void> {
   try {
     const ctx = await resolveContext(selectedTeamId.value)
     orgId.value = ctx?.orgId ?? null
-    if (ctx === null) {
+    if (ctx === null || ctx.orgId === null) {
       stats.value = null
       return
     }

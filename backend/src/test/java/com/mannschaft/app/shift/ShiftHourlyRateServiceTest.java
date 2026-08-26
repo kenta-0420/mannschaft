@@ -1,5 +1,6 @@
 package com.mannschaft.app.shift;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.shift.dto.CreateHourlyRateRequest;
 import com.mannschaft.app.shift.dto.HourlyRateResponse;
 import com.mannschaft.app.shift.entity.ShiftHourlyRateEntity;
@@ -38,6 +39,9 @@ class ShiftHourlyRateServiceTest {
     @Mock
     private ShiftMapper shiftMapper;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private ShiftHourlyRateService shiftHourlyRateService;
 
@@ -48,6 +52,8 @@ class ShiftHourlyRateServiceTest {
     private static final Long USER_ID = 10L;
     private static final Long TEAM_ID = 1L;
     private static final Long RATE_ID = 500L;
+    /** 対象と同一ユーザー（本人アクセス）を表す操作ユーザーID。 */
+    private static final Long CURRENT_USER_ID = USER_ID;
 
     private ShiftHourlyRateEntity createRateEntity() {
         return ShiftHourlyRateEntity.builder()
@@ -85,7 +91,7 @@ class ShiftHourlyRateServiceTest {
                     .willReturn(List.of(response));
 
             // When
-            List<HourlyRateResponse> result = shiftHourlyRateService.listHourlyRates(USER_ID, TEAM_ID);
+            List<HourlyRateResponse> result = shiftHourlyRateService.listHourlyRates(USER_ID, TEAM_ID, CURRENT_USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -113,7 +119,7 @@ class ShiftHourlyRateServiceTest {
             given(shiftMapper.toHourlyRateResponse(entity)).willReturn(response);
 
             // When
-            HourlyRateResponse result = shiftHourlyRateService.getEffectiveRate(USER_ID, TEAM_ID, date);
+            HourlyRateResponse result = shiftHourlyRateService.getEffectiveRate(USER_ID, TEAM_ID, date, CURRENT_USER_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -129,7 +135,7 @@ class ShiftHourlyRateServiceTest {
                     .willReturn(Optional.empty());
 
             // When
-            HourlyRateResponse result = shiftHourlyRateService.getEffectiveRate(USER_ID, TEAM_ID, date);
+            HourlyRateResponse result = shiftHourlyRateService.getEffectiveRate(USER_ID, TEAM_ID, date, CURRENT_USER_ID);
 
             // Then
             assertThat(result).isNull();
@@ -156,7 +162,7 @@ class ShiftHourlyRateServiceTest {
             given(shiftMapper.toHourlyRateResponse(savedEntity)).willReturn(response);
 
             // When
-            HourlyRateResponse result = shiftHourlyRateService.createHourlyRate(TEAM_ID, req);
+            HourlyRateResponse result = shiftHourlyRateService.createHourlyRate(TEAM_ID, req, CURRENT_USER_ID);
 
             // Then
             assertThat(result).isNotNull();

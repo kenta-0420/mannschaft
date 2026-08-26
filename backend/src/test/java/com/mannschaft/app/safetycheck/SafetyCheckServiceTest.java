@@ -1,7 +1,8 @@
 package com.mannschaft.app.safetycheck;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.safetycheck.event.SafetyCheckReminderNotificationEvent;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.safetycheck.dto.CreateSafetyCheckRequest;
 import com.mannschaft.app.safetycheck.dto.SafetyCheckResponse;
@@ -22,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -60,7 +62,15 @@ class SafetyCheckServiceTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
-    private NotificationHelper notificationHelper;
+    private AccessControlService accessControlService;
+
+    /**
+     * Issue #2834 / CMP-056 第1群ロットA: 付随通知は業務トランザクションの外で発火させるため、
+     * サービスは {@code NotificationHelper} を直接持たずイベントを publish するだけになった
+     * （i18n 依存 {@code UserLocaleCache} / {@code MessageSource} も配送リスナー側へ移動）。
+     */
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private SafetyCheckService safetyCheckService;
@@ -245,9 +255,11 @@ class SafetyCheckServiceTest {
                     SafetyCheckScopeType.TEAM, SCOPE_ID, SafetyCheckStatus.ACTIVE, PageRequest.of(0, 10)))
                     .willReturn(page);
             given(mapper.toSafetyCheckResponse(entity)).willReturn(response);
+            given(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When
-            Page<SafetyCheckResponse> result = safetyCheckService.listSafetyChecks("TEAM", SCOPE_ID, "ACTIVE", 0, 10);
+            Page<SafetyCheckResponse> result = safetyCheckService.listSafetyChecks(
+                    "TEAM", SCOPE_ID, "ACTIVE", 0, 10, USER_ID);
 
             // Then
             assertThat(result.getContent()).hasSize(1);
@@ -264,9 +276,11 @@ class SafetyCheckServiceTest {
                     SafetyCheckScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10)))
                     .willReturn(page);
             given(mapper.toSafetyCheckResponse(entity)).willReturn(response);
+            given(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When
-            Page<SafetyCheckResponse> result = safetyCheckService.listSafetyChecks("TEAM", SCOPE_ID, null, 0, 10);
+            Page<SafetyCheckResponse> result = safetyCheckService.listSafetyChecks(
+                    "TEAM", SCOPE_ID, null, 0, 10, USER_ID);
 
             // Then
             assertThat(result.getContent()).hasSize(1);
@@ -289,9 +303,10 @@ class SafetyCheckServiceTest {
             SafetyCheckResponse response = createCheckResponse();
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(entity));
             given(mapper.toSafetyCheckResponse(entity)).willReturn(response);
+            given(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When
-            SafetyCheckResponse result = safetyCheckService.getSafetyCheck(SAFETY_CHECK_ID);
+            SafetyCheckResponse result = safetyCheckService.getSafetyCheck(SAFETY_CHECK_ID, USER_ID);
 
             // Then
             assertThat(result.getTitle()).isEqualTo("地震発生");
@@ -304,7 +319,7 @@ class SafetyCheckServiceTest {
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> safetyCheckService.getSafetyCheck(SAFETY_CHECK_ID))
+            assertThatThrownBy(() -> safetyCheckService.getSafetyCheck(SAFETY_CHECK_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SafetyCheckErrorCode.SAFETY_CHECK_NOT_FOUND));
@@ -399,7 +414,7 @@ class SafetyCheckServiceTest {
                     .willReturn(1L);
 
             // When
-            SafetyCheckResultsResponse result = safetyCheckService.getResults(SAFETY_CHECK_ID);
+            SafetyCheckResultsResponse result = safetyCheckService.getResults(SAFETY_CHECK_ID, USER_ID);
 
             // Then
             assertThat(result.getSafetyCheckId()).isEqualTo(SAFETY_CHECK_ID);
@@ -430,7 +445,7 @@ class SafetyCheckServiceTest {
                     .willReturn(List.of(1L, 2L));
 
             // When
-            List<UnrespondedUserResponse> result = safetyCheckService.getUnrespondedUsers(SAFETY_CHECK_ID);
+            List<UnrespondedUserResponse> result = safetyCheckService.getUnrespondedUsers(SAFETY_CHECK_ID, USER_ID);
 
             // Then
             assertThat(result).isEmpty();
@@ -443,7 +458,7 @@ class SafetyCheckServiceTest {
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.empty());
 
             // When & Then
-            assertThatThrownBy(() -> safetyCheckService.getUnrespondedUsers(SAFETY_CHECK_ID))
+            assertThatThrownBy(() -> safetyCheckService.getUnrespondedUsers(SAFETY_CHECK_ID, USER_ID))
                     .isInstanceOf(BusinessException.class);
         }
     }
@@ -467,9 +482,10 @@ class SafetyCheckServiceTest {
                     SafetyCheckScopeType.TEAM, SCOPE_ID, PageRequest.of(0, 10)))
                     .willReturn(page);
             given(mapper.toSafetyCheckResponse(entity)).willReturn(response);
+            given(accessControlService.isMember(USER_ID, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When
-            Page<SafetyCheckResponse> result = safetyCheckService.getHistory("TEAM", SCOPE_ID, 0, 10);
+            Page<SafetyCheckResponse> result = safetyCheckService.getHistory("TEAM", SCOPE_ID, 0, 10, USER_ID);
 
             // Then
             assertThat(result.getContent()).hasSize(1);
@@ -498,6 +514,40 @@ class SafetyCheckServiceTest {
             // Then
             assertThat(entity.getLastReminderAt()).isNotNull();
             verify(safetyCheckRepository).save(entity);
+        }
+
+        @Test
+        @DisplayName("Issue #2834/CMP-056: 通知は業務TX内で作らず、AFTER_COMMIT用イベントをpublishするだけ")
+        void リマインド送信_通知はイベントpublishに委ねられる() {
+            // Given
+            SafetyCheckEntity entity = createActiveCheck();
+            given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(entity));
+            given(safetyCheckRepository.save(entity)).willReturn(entity);
+
+            // When
+            safetyCheckService.sendReminder(SAFETY_CHECK_ID, USER_ID);
+
+            // Then: 業務TX内では通知を1件も作らず、イベントだけを publish する。
+            org.mockito.ArgumentCaptor<SafetyCheckReminderNotificationEvent> captor =
+                    org.mockito.ArgumentCaptor.forClass(SafetyCheckReminderNotificationEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().safetyCheckId()).isEqualTo(SAFETY_CHECK_ID);
+            assertThat(captor.getValue().recipientUserId()).isEqualTo(USER_ID);
+            assertThat(captor.getValue().scopeId()).isEqualTo(entity.getScopeId());
+        }
+
+        @Test
+        @DisplayName("AC-2の入口: 業務検証で例外になる場合、通知イベントは publish されない（=通知は作られない）")
+        void リマインド送信_業務例外時はイベントがpublishされない() {
+            // Given
+            SafetyCheckEntity entity = createClosedCheck();
+            given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(entity));
+
+            // When & Then
+            assertThatThrownBy(() -> safetyCheckService.sendReminder(SAFETY_CHECK_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            org.mockito.Mockito.verify(eventPublisher, org.mockito.Mockito.never())
+                    .publishEvent(any(SafetyCheckReminderNotificationEvent.class));
         }
 
         @Test

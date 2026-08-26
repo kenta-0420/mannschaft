@@ -47,7 +47,8 @@ public class TimetableController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TimetableResponse>>> listTimetables(
             @PathVariable Long teamId) {
-        List<TimetableResponse> timetables = timetableService.getByTeamId(teamId).stream()
+        List<TimetableResponse> timetables = timetableService.getByTeamId(teamId, SecurityUtils.getCurrentUserId())
+                .stream()
                 .map(this::toResponse)
                 .toList();
         return ResponseEntity.ok(ApiResponse.of(timetables));
@@ -68,7 +69,7 @@ public class TimetableController {
                 request.getWeekPatternEnabled() != null ? request.getWeekPatternEnabled() : false,
                 request.getWeekPatternBaseDate(), request.getPeriodOverride(),
                 request.getNotes(), SecurityUtils.getCurrentUserId());
-        TimetableEntity entity = timetableService.create(teamId, data);
+        TimetableEntity entity = timetableService.create(teamId, data, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(toResponse(entity)));
     }
 
@@ -77,7 +78,7 @@ public class TimetableController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<TimetableResponse>> getCurrentTimetable(
             @PathVariable Long teamId) {
-        return timetableService.getEffective(teamId, LocalDate.now())
+        return timetableService.getEffective(teamId, LocalDate.now(), SecurityUtils.getCurrentUserId())
                 .map(e -> ResponseEntity.ok(ApiResponse.of(toResponse(e))))
                 .orElse(ResponseEntity.ok(ApiResponse.of(null)));
     }
@@ -88,7 +89,7 @@ public class TimetableController {
     public ResponseEntity<ApiResponse<TimetableResponse>> getTimetable(
             @PathVariable Long teamId,
             @PathVariable Long timetableId) {
-        TimetableEntity entity = timetableService.getById(timetableId, teamId);
+        TimetableEntity entity = timetableService.getById(timetableId, teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(toResponse(entity)));
     }
 
@@ -106,7 +107,7 @@ public class TimetableController {
                 request.getEffectiveFrom(), request.getEffectiveUntil(),
                 request.getWeekPatternEnabled(), request.getWeekPatternBaseDate(),
                 request.getPeriodOverride(), request.getNotes());
-        TimetableEntity entity = timetableService.update(timetableId, teamId, data);
+        TimetableEntity entity = timetableService.update(timetableId, teamId, data, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(toResponse(entity)));
     }
 
@@ -116,7 +117,7 @@ public class TimetableController {
     public ResponseEntity<Void> deleteTimetable(
             @PathVariable Long teamId,
             @PathVariable Long timetableId) {
-        timetableService.delete(timetableId, teamId);
+        timetableService.delete(timetableId, teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -126,7 +127,7 @@ public class TimetableController {
     public ResponseEntity<ApiResponse<TimetableResponse>> activateTimetable(
             @PathVariable Long teamId,
             @PathVariable Long timetableId) {
-        TimetableEntity entity = timetableService.activate(timetableId, teamId);
+        TimetableEntity entity = timetableService.activate(timetableId, teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(toResponse(entity)));
     }
 
@@ -136,7 +137,7 @@ public class TimetableController {
     public ResponseEntity<ApiResponse<TimetableResponse>> archiveTimetable(
             @PathVariable Long teamId,
             @PathVariable Long timetableId) {
-        TimetableEntity entity = timetableService.archive(timetableId, teamId);
+        TimetableEntity entity = timetableService.archive(timetableId, teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(toResponse(entity)));
     }
 
@@ -146,7 +147,7 @@ public class TimetableController {
     public ResponseEntity<ApiResponse<TimetableResponse>> revertToDraft(
             @PathVariable Long teamId,
             @PathVariable Long timetableId) {
-        TimetableEntity entity = timetableService.revertToDraft(timetableId, teamId);
+        TimetableEntity entity = timetableService.revertToDraft(timetableId, teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(toResponse(entity)));
     }
 
@@ -161,7 +162,7 @@ public class TimetableController {
                 request.getTargetTermId(), request.getName(),
                 request.getEffectiveFrom(), request.getEffectiveUntil(),
                 SecurityUtils.getCurrentUserId());
-        TimetableEntity entity = timetableService.duplicate(timetableId, teamId, data);
+        TimetableEntity entity = timetableService.duplicate(timetableId, teamId, data, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(toResponse(entity)));
     }
 
@@ -172,9 +173,10 @@ public class TimetableController {
             @PathVariable Long teamId,
             @PathVariable Long timetableId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate weekOf) {
-        TimetableEntity timetable = timetableService.getById(timetableId, teamId);
+        TimetableEntity timetable = timetableService.getById(timetableId, teamId, SecurityUtils.getCurrentUserId());
         LocalDate targetDate = weekOf != null ? weekOf : LocalDate.now();
-        TimetableSlotService.WeeklyViewData viewData = slotService.getWeeklyView(timetableId, timetable, targetDate);
+        TimetableSlotService.WeeklyViewData viewData =
+                slotService.getWeeklyView(timetableId, timetable, targetDate, SecurityUtils.getCurrentUserId());
 
         // WeeklyViewData → WeeklyViewResponse に変換
         Map<String, WeeklyViewResponse.DayInfo> days = viewData.days().entrySet().stream()

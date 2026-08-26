@@ -7,6 +7,7 @@ import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.WebAuthnCredentialRepository;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,13 @@ class UserServiceProfilePostalCodeTest {
     private OAuthAccountRepository oauthAccountRepository;
     @Mock
     private UserRoleRepository userRoleRepository;
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
+    // Issue #2487: プロフィール更新で timezone / locale が変わったときのキャッシュ即時無効化
+    @Mock
+    private com.mannschaft.app.common.timezone.UserTimezoneCache userTimezoneCache;
+    @Mock
+    private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
 
     @InjectMocks
     private UserService userService;

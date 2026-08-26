@@ -22,14 +22,11 @@ const features = [
   { icon: 'pi pi-trophy', key: 7, slug: 'matching' },
 ]
 
-type PlanKey = 'free' | 'pro' | 'enterprise'
-
-const pricingPlans: PlanKey[] = ['free', 'pro', 'enterprise']
-const pricingHighlight: Record<PlanKey, boolean> = {
-  free: false,
-  pro: true,
-  enterprise: false,
-}
+// F20.1 AC-41: 誠実表示原則。¥980/月 等の未確定価格の表示は撤去し、
+// 「ベータ期間中は無料・正式料金はベータ終了後に決定」の中立な案内に統一する。
+// ログイン済みならプラン一覧（実際の契約状況付き）、未ログインなら登録導線へ。
+const authStore = useAuthStore()
+const pricingCtaTo = computed(() => (authStore.isAuthenticated ? '/billing/plans' : '/register'))
 </script>
 
 <template>
@@ -78,63 +75,25 @@ const pricingHighlight: Record<PlanKey, boolean> = {
         </div>
       </div>
 
-      <!-- 料金プラン -->
+      <!-- 料金プラン（F20.1 AC-41: 誠実表示。未確定価格は表示しない） -->
       <div class="mb-16">
-        <h2 class="mb-10 text-center text-2xl font-bold text-surface-900 dark:text-white">
-          {{ t('landing.product.pricing_heading') }}
+        <h2 class="mb-6 text-center text-2xl font-bold text-surface-900 dark:text-white">
+          {{ t('billing.lp.heading') }}
         </h2>
-        <div class="grid gap-6 md:grid-cols-3">
-          <div
-            v-for="plan in pricingPlans"
-            :key="plan"
-            :class="[
-              'rounded-2xl p-8',
-              pricingHighlight[plan]
-                ? 'border-2 border-primary bg-primary text-white shadow-xl'
-                : 'border border-surface-200 bg-white dark:border-surface-700 dark:bg-surface-800',
-            ]"
+        <div class="mx-auto max-w-2xl rounded-2xl border-2 border-primary bg-primary/5 p-8 text-center dark:bg-primary/10">
+          <span class="mb-4 inline-block rounded-full bg-primary px-4 py-1 text-sm font-semibold text-white">
+            {{ t('billing.lp.betaBadge') }}
+          </span>
+          <p class="mx-auto max-w-lg text-sm leading-relaxed text-surface-600 dark:text-surface-300">
+            {{ t('billing.lp.betaNotice') }}
+          </p>
+          <NuxtLink
+            :to="pricingCtaTo"
+            class="mt-6 inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-primary-600 hover:shadow-lg"
           >
-            <div class="mb-2 text-lg font-bold">
-              {{ t(`landing.product.pricing.${plan}.name`) }}
-            </div>
-            <div class="mb-1 text-3xl font-extrabold">
-              {{ t(`landing.product.pricing.${plan}.price`) }}
-            </div>
-            <div
-              :class="[
-                'mb-6 text-sm',
-                pricingHighlight[plan] ? 'text-primary-100' : 'text-surface-500',
-              ]"
-            >
-              {{ t(`landing.product.pricing.${plan}.desc`) }}
-            </div>
-            <ul class="space-y-2">
-              <li
-                v-for="(item, idx) in (t(`landing.product.pricing.${plan}.features`) as unknown as string[])"
-                :key="idx"
-                class="flex items-center gap-2 text-sm"
-              >
-                <i
-                  :class="[
-                    'pi pi-check shrink-0',
-                    pricingHighlight[plan] ? 'text-white' : 'text-primary',
-                  ]"
-                />
-                {{ item }}
-              </li>
-            </ul>
-            <NuxtLink
-              to="/register"
-              :class="[
-                'mt-8 block rounded-xl px-6 py-3 text-center font-semibold transition-all duration-200',
-                pricingHighlight[plan]
-                  ? 'bg-white text-primary hover:bg-primary-50'
-                  : 'bg-primary text-white hover:bg-primary-600',
-              ]"
-            >
-              {{ t('landing.cta.register') }}
-            </NuxtLink>
-          </div>
+            {{ t('billing.lp.viewPlansCta') }}
+            <i class="pi pi-arrow-right" />
+          </NuxtLink>
         </div>
       </div>
 

@@ -176,6 +176,124 @@ class CareLinkServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("FAMILY_029"));
         }
+
+        @Test
+        @DisplayName("認可: 当事者でない第三者の承認はFAMILY_030で拒否しPENDINGのまま")
+        void acceptInvitation_第三者は拒否() {
+            // Given
+            String token = "abc123token";
+            UserCareLinkEntity link = buildEntity(1L, 10L, 20L, CareLinkStatus.PENDING);
+            given(careLinkRepository.findByInvitationToken(token)).willReturn(Optional.of(link));
+
+            // When / Then
+            assertThatThrownBy(() -> service.acceptInvitation(token, 99L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FAMILY_030"));
+            assertThat(link.getStatus()).isEqualTo(CareLinkStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("認可: 招待を発行した側は自分で承認できない（双方の同意が成立要件）")
+        void acceptInvitation_招待発行者は拒否() {
+            // Given: invitedBy=CARE_RECIPIENT（ケア対象者 10 が発行した招待）
+            String token = "abc123token";
+            UserCareLinkEntity link = buildEntity(1L, 10L, 20L, CareLinkStatus.PENDING);
+            given(careLinkRepository.findByInvitationToken(token)).willReturn(Optional.of(link));
+
+            // When / Then
+            assertThatThrownBy(() -> service.acceptInvitation(token, 10L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FAMILY_030"));
+            assertThat(link.getStatus()).isEqualTo(CareLinkStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("認可: 未認証（userId=null）の承認はFAMILY_030で拒否")
+        void acceptInvitation_未認証は拒否() {
+            // Given
+            String token = "abc123token";
+            UserCareLinkEntity link = buildEntity(1L, 10L, 20L, CareLinkStatus.PENDING);
+            given(careLinkRepository.findByInvitationToken(token)).willReturn(Optional.of(link));
+
+            // When / Then
+            assertThatThrownBy(() -> service.acceptInvitation(token, null))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FAMILY_030"));
+            assertThat(link.getStatus()).isEqualTo(CareLinkStatus.PENDING);
+        }
+    }
+
+    // =========================================================
+    // rejectInvitation / getByInvitationToken
+    // =========================================================
+
+    @Nested
+    @DisplayName("rejectInvitation / getByInvitationToken")
+    class InvitationPartyGuard {
+
+        @Test
+        @DisplayName("正常系: 招待先本人は拒否できる")
+        void rejectInvitation_招待先本人は成功() {
+            // Given
+            String token = "abc123token";
+            UserCareLinkEntity link = buildEntity(1L, 10L, 20L, CareLinkStatus.PENDING);
+            given(careLinkRepository.findByInvitationToken(token)).willReturn(Optional.of(link));
+
+            // When
+            service.rejectInvitation(token, 20L);
+
+            // Then
+            assertThat(link.getStatus()).isEqualTo(CareLinkStatus.REJECTED);
+        }
+
+        @Test
+        @DisplayName("認可: 当事者でない第三者の拒否はFAMILY_030で拒否しPENDINGのまま")
+        void rejectInvitation_第三者は拒否() {
+            // Given
+            String token = "abc123token";
+            UserCareLinkEntity link = buildEntity(1L, 10L, 20L, CareLinkStatus.PENDING);
+            given(careLinkRepository.findByInvitationToken(token)).willReturn(Optional.of(link));
+
+            // When / Then
+            assertThatThrownBy(() -> service.rejectInvitation(token, 99L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FAMILY_030"));
+            assertThat(link.getStatus()).isEqualTo(CareLinkStatus.PENDING);
+        }
+
+        @Test
+        @DisplayName("正常系: 当事者は招待内容を参照できる")
+        void getByInvitationToken_当事者は参照可() {
+            // Given
+            String token = "abc123token";
+            UserCareLinkEntity link = buildEntity(1L, 10L, 20L, CareLinkStatus.PENDING);
+            given(careLinkRepository.findByInvitationToken(token)).willReturn(Optional.of(link));
+
+            // When
+            CareLinkResponse response = service.getByInvitationToken(token, 10L);
+
+            // Then
+            assertThat(response.getWatcherUserId()).isEqualTo(20L);
+        }
+
+        @Test
+        @DisplayName("認可: 当事者でない第三者は招待内容を参照できない（FAMILY_030）")
+        void getByInvitationToken_第三者は拒否() {
+            // Given
+            String token = "abc123token";
+            UserCareLinkEntity link = buildEntity(1L, 10L, 20L, CareLinkStatus.PENDING);
+            given(careLinkRepository.findByInvitationToken(token)).willReturn(Optional.of(link));
+
+            // When / Then
+            assertThatThrownBy(() -> service.getByInvitationToken(token, 99L))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FAMILY_030"));
+        }
     }
 
     // =========================================================

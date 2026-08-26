@@ -237,7 +237,10 @@
           "title": "Aufzeichnung der Periodengrenze fehlgeschlagen",
           "detail": "Der Periodenwechsel konnte nicht auf dem Server gespeichert werden. Spielstand und Einsatzzeiten können ungenau sein. Bitte den Timer erneut auslösen, um es noch einmal aufzuzeichnen."
         },
-        "complete_failed": "Spielende konnte nicht gespeichert werden"
+        "complete_failed": "Spielende konnte nicht gespeichert werden",
+        "score_load_failed": "Vorhandene Wertungen konnten nicht geladen werden. Bitte laden Sie die Seite neu",
+        "load_players_failed": "Die Spielerliste konnte nicht geladen werden",
+        "substitution_rollback_failed": "Der Wechsel konnte nicht rückgängig gemacht werden. Bitte den Wechseleintrag prüfen"
       },
       "read_only_notice": "Nur Ansicht. Nur Admins, Stellvertreter und Protokollführer können erfassen",
       "spectator": {
@@ -456,7 +459,8 @@
     "entry": {
       "record_from_schedule": "Dieses Spiel aufzeichnen",
       "record_from_schedule_hint": "Beginne mit der Aufzeichnung des Spiels für diesen Termin",
-      "resolving": "Spielaufzeichnung wird vorbereitet…"
+      "resolving": "Spielaufzeichnung wird vorbereitet…",
+      "no_org_for_record": "Die Spielaufzeichnung ist nur verfügbar, wenn das Team einer Organisation angehört"
     },
     "fixtures": {
       "title": "Spielplan",

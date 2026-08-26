@@ -3,6 +3,7 @@ package com.mannschaft.app.digest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.admin.service.FeatureFlagService;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.digest.dto.DigestEditRequest;
@@ -45,6 +46,7 @@ class DigestGenerationServiceTest {
     @Mock private BlogPostRepository blogPostRepository;
     @Mock private FeatureFlagService featureFlagService;
     @Mock private ObjectMapper objectMapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private DigestGenerationService service;
@@ -93,7 +95,7 @@ class DigestGenerationServiceTest {
         @DisplayName("異常系: ダイジェスト不在でDIGEST_011例外")
         void 破棄_不在_例外() {
             given(digestRepository.findById(DIGEST_ID)).willReturn(Optional.empty());
-            assertThatThrownBy(() -> service.discard(DIGEST_ID))
+            assertThatThrownBy(() -> service.discard(DIGEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DIGEST_011"));
@@ -106,7 +108,7 @@ class DigestGenerationServiceTest {
                     .status(DigestStatus.PUBLISHED).scopeType(DigestScopeType.TEAM).scopeId(1L).build();
             given(digestRepository.findById(DIGEST_ID)).willReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.discard(DIGEST_ID))
+            assertThatThrownBy(() -> service.discard(DIGEST_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DIGEST_012"));
@@ -125,7 +127,7 @@ class DigestGenerationServiceTest {
 
             DigestEditRequest request = new DigestEditRequest("a".repeat(201), null, null);
 
-            assertThatThrownBy(() -> service.edit(DIGEST_ID, request))
+            assertThatThrownBy(() -> service.edit(DIGEST_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DIGEST_018"));
@@ -140,7 +142,7 @@ class DigestGenerationServiceTest {
 
             DigestEditRequest request = new DigestEditRequest(null, null, "a".repeat(501));
 
-            assertThatThrownBy(() -> service.edit(DIGEST_ID, request))
+            assertThatThrownBy(() -> service.edit(DIGEST_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DIGEST_019"));
@@ -157,7 +159,7 @@ class DigestGenerationServiceTest {
                     .status(DigestStatus.GENERATING).scopeType(DigestScopeType.TEAM).scopeId(1L).build();
             given(digestRepository.findById(DIGEST_ID)).willReturn(Optional.of(entity));
 
-            assertThatThrownBy(() -> service.publish(DIGEST_ID, null))
+            assertThatThrownBy(() -> service.publish(DIGEST_ID, null, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("DIGEST_012"));

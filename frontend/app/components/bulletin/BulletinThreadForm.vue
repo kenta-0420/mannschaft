@@ -227,7 +227,7 @@ watch(visible, (v) => {
       </div>
 
       <!-- お知らせウィジェット表示フラグ（VILLAGE スコープでは非表示） -->
-      <AnnouncementAnnouncementToggle v-if="supportsAnnouncement" v-model="displayInAnnouncement" />
+      <AnnouncementToggle v-if="supportsAnnouncement" v-model="displayInAnnouncement" />
 
       <!-- 下書き保存インジケーター -->
       <div v-if="title || body" class="text-right text-xs text-surface-400">

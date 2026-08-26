@@ -18,7 +18,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -53,7 +52,12 @@ class RecallServiceTest {
     @Mock private ReflectionEntryResponseMapper responseMapper;
     @Mock private UserTimezoneCache userTimezoneCache;
 
-    @InjectMocks private RecallService service;
+    /**
+     * 認可ゲートは実物を使う（判定対象のリポジトリは上のモックを流用する）。
+     * 所有者判定の実体は {@code entryRepository/themeRepository.findByIdAndUserId} のままなので、
+     * 各テストのスタブはそのまま認可判定に効く。
+     */
+    private RecallService service;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -92,6 +96,9 @@ class RecallServiceTest {
 
     @BeforeEach
     void stubCommon() {
+        service = new RecallService(recallAttemptRepository, reminderService, contentSanitizer,
+                responseMapper, userTimezoneCache,
+                new ReflectionAccessGuard(themeRepository, entryRepository));
         lenient().when(userTimezoneCache.getTimezone(USER_ID)).thenReturn("Asia/Tokyo");
         lenient().when(contentSanitizer.sanitizeRecalledContent(any())).thenReturn("{\"note\":\"x\"}");
         lenient().when(responseMapper.toRevealedResponse(any(), any()))

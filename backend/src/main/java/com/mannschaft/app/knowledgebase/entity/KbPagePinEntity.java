@@ -46,6 +46,7 @@ public class KbPagePinEntity {
     @Column(nullable = false)
     private Long pinnedBy;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

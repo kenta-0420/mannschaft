@@ -5,6 +5,7 @@ import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.filesharing.dto.CreateFileRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
+import com.mannschaft.app.filesharing.dto.SharedFileDownloadUrlResponse;
 import com.mannschaft.app.filesharing.dto.SharedFilePresignRequest;
 import com.mannschaft.app.filesharing.dto.SharedFilePresignResponse;
 import com.mannschaft.app.filesharing.dto.UpdateFileRequest;
@@ -49,7 +50,8 @@ public class SharedFileController {
             @RequestParam Long folderId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<FileResponse> result = fileService.listFilesPaged(folderId, PageRequest.of(page, size));
+        Page<FileResponse> result = fileService.listFilesPaged(
+                folderId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -63,7 +65,7 @@ public class SharedFileController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<FileResponse>> getFile(
             @PathVariable Long fileId) {
-        FileResponse response = fileService.getFile(fileId);
+        FileResponse response = fileService.getFile(fileId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -102,6 +104,27 @@ public class SharedFileController {
             @PathVariable Long fileId) {
         fileService.deleteFile(fileId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * ファイルダウンロード用の Presigned GET URL を発行する。
+     *
+     * <p>FE {@code useFileSharingApi.getDownloadUrl(fileId)} が叩く EP。
+     * これまで未実装で NoResourceFound → 500 になっていた箇所の根治。
+     * 認可は {@link SharedFileService#presignDownload} 内でフォルダスコープ別に当てる
+     * （PERSONAL=本人以外404 / TEAM・ORG=非メンバー403 / 大会=連絡スペース認可）。</p>
+     *
+     * @param fileId ファイル ID
+     * @return {@code { data: { downloadUrl, expiresInSeconds } }}
+     */
+    @GetMapping("/{fileId}/download-url")
+    @Operation(summary = "ファイルダウンロード用 presigned URL 発行")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "発行成功")
+    public ResponseEntity<ApiResponse<SharedFileDownloadUrlResponse>> getDownloadUrl(
+            @PathVariable Long fileId) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        SharedFileDownloadUrlResponse response = fileService.presignDownload(fileId, actorId);
+        return ResponseEntity.ok(ApiResponse.of(response));
     }
 
     /**

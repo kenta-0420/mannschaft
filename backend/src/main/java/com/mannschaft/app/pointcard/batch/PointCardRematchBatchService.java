@@ -1,5 +1,6 @@
 package com.mannschaft.app.pointcard.batch;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.AuditEventType;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.errorreport.ErrorReportSeverity;
@@ -100,6 +101,8 @@ public class PointCardRematchBatchService {
             name = JOB_NAME,
             lockAtMostFor = "PT15M",
             lockAtLeastFor = "PT1M")
+    @BatchEndpoint(name = "pointcard-rematch",
+            description = "プロバイダー未確定(provider_id NULL)のポイントカードをマスタ・シノニム辞書に照らして毎晩03:00に再マッチングする")
     public void execute() {
         long startedAt = System.currentTimeMillis();
         log.info("[PointCardRematchBatch] 再マッチバッチ開始: chunkSize={}", chunkSize);

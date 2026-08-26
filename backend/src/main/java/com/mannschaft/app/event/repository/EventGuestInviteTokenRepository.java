@@ -20,4 +20,9 @@ public interface EventGuestInviteTokenRepository extends JpaRepository<EventGues
      * トークン文字列で招待トークンを取得する。
      */
     Optional<EventGuestInviteTokenEntity> findByToken(String token);
+
+    /**
+     * トークンIDとイベントIDで招待トークンを取得する（親子BOLA根治: 越境ID指定を404で秘匿）。
+     */
+    Optional<EventGuestInviteTokenEntity> findByIdAndEventId(Long id, Long eventId);
 }

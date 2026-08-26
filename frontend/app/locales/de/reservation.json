@@ -118,6 +118,37 @@
     "badge": "Notfallschließung"
   },
   "reservation": {
+    "guide": {
+      "title": "So nutzen Sie Meine Reservierungen",
+      "description": "Auf dieser Seite sehen Sie eine Liste der von Ihnen gebuchten Zeitfenster sowie den aktuellen Status jedes einzelnen.",
+      "overview": {
+        "title": "Was sind Meine Reservierungen",
+        "body": "Diese Seite listet die von Ihnen gebuchten Zeitfenster auf. Sie erkennen auf einen Blick, ob ein Eintrag genehmigt ist und für wann er geplant ist.",
+        "steps": {
+          "step1": "Beim Öffnen der Seite werden Ihre Reservierungen automatisch geladen.",
+          "step2": "Jede Karte zeigt den Namen des buchbaren Elements, das Datum sowie die Start- und Endzeit an."
+        }
+      },
+      "status": {
+        "title": "So lesen Sie den Status",
+        "body": "Das farbige Abzeichen auf jeder Reservierungskarte zeigt den aktuellen Status dieser Reservierung an.",
+        "items": {
+          "item1": "Gelb „Ausstehend“ … Wartet auf Genehmigung.",
+          "item2": "Grün „Bestätigt“ … Die Reservierung ist bestätigt.",
+          "item3": "Blau „Abgeschlossen“ … Das Zeitfenster wurde genutzt.",
+          "item4": "Rot „Storniert“ … Die Reservierung wurde storniert.",
+          "item5": "Grau „Nicht erschienen“ … Das Zeitfenster wurde am reservierten Tag nicht genutzt."
+        }
+      },
+      "empty": {
+        "title": "Wenn keine Reservierungen angezeigt werden",
+        "body": "Was zu tun ist, wenn Sie keine Reservierungen haben oder das Laden fehlschlägt.",
+        "steps": {
+          "step1": "Wird „Keine Reservierungen“ angezeigt, haben Sie noch keine Reservierungen.",
+          "step2": "Wird „Reservierungen konnten nicht geladen werden“ angezeigt, liegt ein Verbindungsfehler vor. Bitte laden Sie die Seite neu."
+        }
+      }
+    },
     "status": {
       "PENDING": "Ausstehend",
       "CONFIRMED": "Bestätigt",
@@ -132,33 +163,47 @@
       "my_title": "Meine Reservierungen",
       "team_title": "Reservierungsverwaltung",
       "settings_title": "Reservierungseinstellungen",
-      "settings_subtitle": "Reservierungslinien (Personal / Schalter) verwalten"
+      "settings_subtitle": "Buchbare Elemente (Personal / Schalter) verwalten"
     },
     "tab": {
       "book": "Reservieren",
       "list": "Reservierungen",
-      "line_manage": "Linien verwalten",
-      "emergency_closure": "緊急休業"
+      "my_reservations": "Meine Reservierungen",
+      "line_manage": "{resourceName}-Verwaltung",
+      "emergency_closure": "緊急休業",
+      "team_page": "Reservierung"
+    },
+    "management": {
+      "section_count": "{label} ({n})",
+      "card_help": "Verwendung von {label}",
+      "cards": {
+        "business_hours": { "title": "Öffnungszeiten", "description": "Buchungszeiten festlegen" },
+        "lines": { "title": "Buchungsziele", "description": "{n} Ziele verwalten" },
+        "menus": { "title": "Menüs", "description": "{n} Menüs verwalten" },
+        "weekly_schedule": { "title": "Wochenplan", "description": "{n} Zeit- und Wiederholungseinstellungen" },
+        "exception_day": { "title": "Ausnahmetage", "description": "Bestimmte Tage anpassen" },
+        "advanced": { "title": "Erweiterte Einstellungen", "description": "Sichtbarkeit und Benachrichtigungen" }
+      }
     },
     "column": {
       "datetime": "Datum & Uhrzeit",
-      "line": "Linie",
+      "line": "Buchbares Element",
       "reserver": "Reservierende Person",
       "status": "Status",
       "action": "Aktionen",
-      "line_name": "Linienname",
+      "line_name": "Name des buchbaren Elements",
       "description": "Beschreibung",
       "display_order": "Reihenfolge",
       "state": "Status"
     },
     "field": {
       "date": "Datum",
-      "line": "Linie",
+      "line": "{resourceName}",
       "name": "Name",
       "description": "Beschreibung",
       "display_order": "Anzeigereihenfolge",
       "active": "Aktiv",
-      "line_name_required": "Linienname",
+      "line_name_required": "Name des buchbaren Elements",
       "note": "Notizen (optional)",
       "time": "Uhrzeit"
     },
@@ -177,23 +222,26 @@
       "full": "Ausgebucht"
     },
     "button": {
-      "add_line": "Linie hinzufügen",
-      "add_line_long": "Linie hinzufügen",
+      "add_line": "{resourceName} hinzufügen",
+      "add_line_long": "{resourceName} hinzufügen",
       "save": "Speichern",
       "cancel": "Abbrechen",
       "reserve": "Reservieren",
       "cancel_reservation": "Stornieren",
-      "back": "Zurück"
+      "back": "Zurück",
+      "go_to_line_manage": "Zu Reservierungsziele verwalten",
+      "manage_slots": "Zeitfenster verwalten",
+      "delete_line": "Löschen"
     },
     "dialog": {
       "title": "Bestätigen",
-      "line_create": "Linie erstellen",
-      "line_edit": "Linie bearbeiten",
-      "line_create_long": "Reservierungslinie hinzufügen",
-      "line_edit_long": "Reservierungslinie bearbeiten",
+      "line_create": "Buchbares Element erstellen",
+      "line_edit": "Buchbares Element bearbeiten",
+      "line_create_long": "{resourceName} hinzufügen",
+      "line_edit_long": "{resourceName} bearbeiten",
       "reserve_confirm": "Reservierung bestätigen",
       "cancel_confirm": "Diese Reservierung stornieren?",
-      "line_delete_confirm": "Diese Linie löschen?",
+      "line_delete_confirm": "Dieses buchbare Element löschen?",
       "line_delete_named_confirm": "\"{name}\" löschen?"
     },
     "message": {
@@ -202,27 +250,63 @@
       "cancel_success": "Reservierung storniert",
       "reserve_success": "Reservierung abgeschlossen",
       "reserve_failed": "Reservierung fehlgeschlagen",
-      "line_create_success": "Linie erstellt",
-      "line_update_success": "Linie aktualisiert",
-      "line_delete_success": "Linie gelöscht",
+      "line_create_success": "Buchbares Element erstellt",
+      "line_update_success": "Buchbares Element aktualisiert",
+      "line_delete_success": "Buchbares Element gelöscht",
       "line_save_failed": "Speichern fehlgeschlagen",
-      "line_create_success_long": "Reservierungslinie erstellt",
-      "line_update_success_long": "Reservierungslinie aktualisiert",
-      "line_delete_success_long": "Reservierungslinie gelöscht",
-      "line_load_failed": "Reservierungslinien konnten nicht geladen werden",
+      "line_create_success_long": "Buchbares Element erstellt",
+      "line_update_success_long": "Buchbares Element aktualisiert",
+      "line_delete_success_long": "Buchbares Element gelöscht",
+      "line_load_failed": "Buchbare Elemente konnten nicht geladen werden",
       "save_failed": "Speichern fehlgeschlagen",
       "delete_failed": "Löschen fehlgeschlagen",
       "my_load_failed": "Reservierungsinformationen konnten nicht geladen werden",
-      "reject_reason": "Vom Administrator abgelehnt"
+      "reject_reason": "Vom Administrator abgelehnt",
+      "menu_create_success": "Menü erstellt",
+      "menu_update_success": "Menü aktualisiert",
+      "menu_delete_success": "Menü gelöscht",
+      "menu_save_failed": "Speichern fehlgeschlagen",
+      "menu_load_failed": "Menüs konnten nicht geladen werden",
+      "template_create_partial": "{succeeded}/{total} Vorlagen erstellt; der Rest ist fehlgeschlagen",
+      "template_delete_success": "Vorlage gelöscht",
+      "template_save_failed": "Speichern fehlgeschlagen",
+      "template_load_failed": "Vorlagen konnten nicht geladen werden",
+      "cancel_deadline_passed": "Die Stornofrist ist abgelaufen, daher konnte diese Reservierung nicht storniert werden. Wenden Sie sich bei Änderungsbedarf an einen Team-Administrator",
+      "rate_limited": "Sie erstellen Reservierungen zu schnell hintereinander. Bitte warten Sie einen Moment und versuchen Sie es erneut"
     },
     "empty": {
       "no_reservations": "Keine Reservierungen",
       "no_my_reservations": "Keine Reservierungen",
-      "no_lines": "Keine Reservierungslinien",
-      "no_lines_yet": "Noch keine Linien",
-      "no_available_slots": "An diesem Tag keine freien Zeitfenster"
+      "no_lines": "Keine buchbaren Elemente",
+      "no_lines_yet": "Noch keine buchbaren Elemente",
+      "no_available_slots": "An diesem Tag keine freien Zeitfenster",
+      "book": {
+        "admin_no_lines": "Noch keine Reservierungsziele",
+        "admin_no_lines_hint": "Erstelle unter \"Reservierungsziele verwalten\" Ziele und Zeitfenster, damit hier Zeitfenster erscheinen",
+        "admin_no_slots": "In dieser Woche keine freien Zeitfenster",
+        "admin_no_slots_hint": "Lege Zeitfenster im \"Wochenplan\" an, dann erscheinen sie hier",
+        "member_no_lines": "Reservierungen werden vorbereitet",
+        "member_no_lines_hint": "Bitte warte, bis der Administrator Reservierungszeitfenster bereitstellt",
+        "member_no_slots": "In dieser Woche keine freien Zeitfenster",
+        "member_no_slots_hint": "Bitte versuche es in einer anderen Woche"
+      }
     },
-    "line_manage_title": "Reservierungslinienverwaltung",
+    "line_manage_title": "{resourceName}-Verwaltung",
+    "line": {
+      "delete_guide": "Beim Löschen wird die Zeitfenster-Vorlage dieser Linie gestoppt, und zukünftige Zeitfenster ohne Reservierungen werden automatisch entfernt. Falls aktive Reservierungen bestehen, verschieben oder stornieren Sie diese bitte zuerst."
+    },
+    "resource_name": {
+      "DEFAULT": "Buchbares Element",
+      "STAFF": "Mitarbeiter",
+      "SEAT": "Sitzplatz",
+      "COURT": "Platz",
+      "BED": "Bett",
+      "LANE": "Bahn",
+      "setting_title": "Bezeichnung für buchbare Elemente",
+      "custom_label": "Benutzerdefinierte Bezeichnung",
+      "custom_required": "Bitte geben Sie eine benutzerdefinierte Bezeichnung ein",
+      "deputy_hint": "Stellvertretende Administratoren können nur die Bezeichnung buchbarer Elemente ändern. Die Verwaltung von Linien, Menüs usw. übernehmen Administratoren."
+    },
     "settings": {
       "advanced": {
         "title": "Erweiterte Einstellungen"
@@ -258,6 +342,14 @@
           "placeholder": "z.B. 24,1",
           "error_empty": "Bitte mindestens einen Wert eingeben",
           "error_invalid": "Bitte ganze Zahlen zwischen 0 und 8760, kommagetrennt eingeben"
+        },
+        "pending_expire": {
+          "label": "Automatisches Verfallen vorläufiger Reservierungen (PENDING)",
+          "hint": "Storniert eine vorläufige, noch unbestätigte Reservierung automatisch nach Ablauf der angegebenen Zeit (1-168 Stunden, bis zu 7 Tage)",
+          "unit": " Stunden bis zur automatischen Stornierung",
+          "no_expire_toggle": "Nicht automatisch stornieren",
+          "no_expire_warning": "Derzeit ist \"Nicht automatisch stornieren\" aktiviert. Bei Teams mit manueller Genehmigung (MANUAL) werden vorläufige Reservierungen nicht automatisch storniert. Administratoren müssen diese einzeln bearbeiten",
+          "error_range": "Bitte einen Wert zwischen 1 und 168 eingeben"
         }
       }
     },
@@ -276,6 +368,8 @@
         "start_time": "Startzeit",
         "end_time": "Endzeit",
         "title": "Titel（optional）",
+        "capacity": "Kapazität",
+        "capacity_hint": "Maximale Anzahl der Reservierungen für diesen Slot (Standard 1 = 1:1-Buchung)",
         "note": "Notiz（optional）"
       },
       "placeholder": {
@@ -310,6 +404,7 @@
         "closed": "Geschlossen"
       },
       "booked_count": "{count} gebucht",
+      "booked_capacity": "{count}/{capacity} gebucht",
       "empty": {
         "no_slots": "Keine Slots für diesen Tag"
       },
@@ -318,6 +413,447 @@
         "closed": "Slot geschlossen",
         "reopened": "Slot wieder geöffnet",
         "status_change_failed": "Statusänderung fehlgeschlagen"
+      }
+    },
+    "unavailability": {
+      "section_label": "Sperrzeiten",
+      "help": "Legen Sie Zeiträume fest, in denen keine Reservierungen angenommen werden, etwa bei vorübergehenden Schließungen oder freien Tagen von Mitarbeitenden. Bei Auswahl einer Vorlage wird der Zeitraum aus den Öffnungszeiten automatisch ausgefüllt (später anpassbar). Vor dem Speichern wird gewarnt, falls bestehende Reservierungen in diesen Zeitraum fallen.",
+      "scope": {
+        "label": "Ziel",
+        "team": "Gesamtes Team",
+        "staff": "Mitarbeiter"
+      },
+      "staff": {
+        "label": "Reservierungsziel (Mitarbeiter)",
+        "placeholder": "Ziel auswählen",
+        "hint": "Ziele ohne Standardmitarbeiter können nicht ausgewählt werden."
+      },
+      "field": {
+        "date": "Datum",
+        "time_range": "Zeitraum",
+        "time_range_hint": "Leer lassen, um den ganzen Tag zu sperren.",
+        "start_time": "Beginn",
+        "end_time": "Ende",
+        "reason": "Grund (optional)",
+        "reason_placeholder": "z. B. Vorübergehende Schließung, Mitarbeiterschulung"
+      },
+      "template": {
+        "label": "Vorlage",
+        "full_day": "Ganztägig",
+        "late": "Später Beginn (Vormittag frei)",
+        "early_leave": "Früher Feierabend (Abend frei)",
+        "midday": "Mittagspause",
+        "custom": "Manuell",
+        "no_business_hours": "Öffnungszeiten sind nicht festgelegt, daher keine automatische Ausfüllung. Bitte Zeitraum manuell eingeben."
+      },
+      "impact": {
+        "warning": "In diesem Zeitraum gibt es {count} Reservierungen. Nach Umbuchung oder Stornierung können Sie speichern.",
+        "hint": "Solange Reservierungen bestehen, ist kein Speichern möglich.",
+        "checking": "Auswirkung auf Reservierungen wird geprüft…"
+      },
+      "button": {
+        "register": "Reservierungen sperren",
+        "delete": "Löschen"
+      },
+      "message": {
+        "create_success": "Sperrzeit gespeichert",
+        "delete_success": "Sperrzeit gelöscht"
+      },
+      "error": {
+        "has_active_reservations": "In diesem Zeitraum bestehen noch Reservierungen, daher kein Speichern möglich. Bitte umbuchen oder stornieren und erneut versuchen."
+      },
+      "dialog": {
+        "delete_confirm": "Diese Sperrzeit löschen?"
+      },
+      "list": {
+        "title": "Gespeicherte Sperrzeiten",
+        "empty": "Keine Sperrzeiten gespeichert",
+        "all_day": "Ganztägig"
+      }
+    },
+    "recurring": {
+      "toggle_label": "Diese Reservierung wöchentlich wiederholen",
+      "weeks_option": "{n} Wochen",
+      "weeks_more": "Weitere Optionen (5-12 Wochen)",
+      "weeks_label": "Anzahl der Wochen",
+      "horizon_hint": "Zeitfenster werden nur bis zu 28 Tage im Voraus automatisch erstellt. Wochen danach müssen möglicherweise manuell gebucht werden, sobald das Zeitfenster erstellt wurde",
+      "close_button": "Schließen",
+      "badge": "Wiederkehrend",
+      "result": {
+        "summary": "{created} Reservierung(en) erstellt ({skipped} übersprungen)",
+        "skipped_list_title": "Übersprungene Termine",
+        "all_skipped_notice": "Keine der ausgewählten Wochen konnte reserviert werden. Bitte prüfen Sie die untenstehenden Gründe und buchen Sie die benötigten Wochen einzeln"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "Das Zeitfenster für diese Woche wurde noch nicht erstellt",
+        "FULL": "Das Zeitfenster war ausgebucht",
+        "CLOSED": "Die Buchung war für dieses Zeitfenster geschlossen",
+        "BLOCKED": "Dieser Zeitraum war nicht buchbar",
+        "ALREADY_RESERVED": "Sie hatten bereits eine Reservierung für dieses Zeitfenster",
+        "UNAVAILABLE": "Das Zeitfenster war nicht verfügbar",
+        "NOT_CANCELLABLE": "Diese Reservierung konnte nicht storniert werden",
+        "CANCEL_DEADLINE_PASSED": "Die Stornierungsfrist war abgelaufen",
+        "NOT_PENDING": "Diese Reservierung wartete nicht auf Genehmigung"
+      },
+      "cancel_scope": {
+        "dialog_title": "Stornierungsumfang wählen",
+        "this_only": "Nur dieser Termin",
+        "this_and_following": "Dieser und alle folgenden Termine",
+        "result_summary": "{cancelled} storniert ({skipped} nicht berechtigt)",
+        "all_skipped_notice": "Keiner der Termine konnte storniert werden. Bitte prüfen Sie die untenstehenden Gründe"
+      },
+      "confirm_series": {
+        "button": "Alle genehmigen (wiederkehrende Serie)",
+        "confirm_message": "Alle ausstehenden Reservierungen dieser wiederkehrenden Serie genehmigen?",
+        "success": "{confirmed} genehmigt ({skipped} übersprungen)"
+      }
+    },
+    "notify_recipients": {
+      "section_label": "Benachrichtigungs-E-Mails für Reservierungen",
+      "help": "Legen Sie E-Mail-Adressen fest, die bei jeder Reservierung benachrichtigt werden. Sie können auch Adressen von Nicht-App-Nutzern hinzufügen, z. B. die Hauptadresse Ihres Geschäfts. Der kostenlose Tarif erlaubt bis zu 3 Adressen; ab der 4. ist ein kostenpflichtiger Tarif erforderlich (bis zu 10).",
+      "pii_notice": "Registrierte Adressen erhalten den Namen der buchenden Person, das Ankunftsdatum/-zeit und das Menü. Seien Sie vorsichtig beim Registrieren von Adressen, die extern geteilt werden.",
+      "field": {
+        "email": "E-Mail-Adresse",
+        "email_placeholder": "z. B. shop{'@'}example.com",
+        "label": "Bezeichnung (optional)",
+        "label_placeholder": "z. B. Empfang, Reservierungen"
+      },
+      "paid_lock": {
+        "title": "Der kostenlose Tarif erlaubt bis zu {free} Adressen",
+        "detail": "Führen Sie ein Upgrade auf einen kostenpflichtigen Tarif durch, um die 4. und weitere zu registrieren (bis zu {max})."
+      },
+      "limit_reached": "Sie können bis zu {max} Adressen registrieren. Es können keine weiteren hinzugefügt werden.",
+      "count_status": "Registriert {total} / {max}",
+      "button": {
+        "add": "Empfänger hinzufügen",
+        "delete": "Löschen"
+      },
+      "list": {
+        "title": "Registrierte Benachrichtigungs-E-Mails",
+        "empty": "Keine Empfänger registriert",
+        "disabled": "Deaktiviert"
+      },
+      "toggle": {
+        "aria": "Benachrichtigungen für {email} aktivieren"
+      },
+      "message": {
+        "create_success": "Benachrichtigungsempfänger hinzugefügt",
+        "delete_success": "Benachrichtigungsempfänger gelöscht"
+      },
+      "dialog": {
+        "delete_confirm": "Diesen Benachrichtigungsempfänger löschen?"
+      },
+      "error": {
+        "paid_required_title": "Kostenpflichtiger Tarif erforderlich",
+        "paid_required_detail": "Der kostenlose Tarif erlaubt bis zu 3 Empfänger. Führen Sie ein Upgrade auf einen kostenpflichtigen Tarif durch, um die 4. und weitere zu registrieren.",
+        "limit_exceeded": "Sie können bis zu {limit} Empfänger registrieren.",
+        "duplicate": "Diese E-Mail-Adresse ist bereits registriert.",
+        "invalid_email": "Das Format der E-Mail-Adresse ist ungültig."
+      }
+    },
+    "menu": {
+      "title": "Menüverwaltung",
+      "name": "Name",
+      "duration": "Dauer",
+      "price": "Preis",
+      "price_display_only": "Der Preis dient nur zur Anzeige und wird nicht abgerechnet",
+      "description": "Beschreibung",
+      "display_order": "Anzeigereihenfolge",
+      "is_active": "Aktiv",
+      "lines_all": "Für alle Reservierungsziele verfügbar",
+      "lines_selected": "Nur ausgewählte Reservierungsziele",
+      "line_scope_note": "Später hinzugefügte Reservierungsziele werden nicht automatisch zu Menüs mit eingeschränktem Angebot hinzugefügt",
+      "required_slots": "Benötigte Slots (30 Min. × {n})",
+      "add": "Menü hinzufügen",
+      "edit": "Menü bearbeiten",
+      "delete": "Löschen",
+      "delete_confirm": "Dieses Menü löschen?",
+      "limit_reached": "Sie können bis zu 20 Menüs registrieren",
+      "duration_invalid": "Die Dauer muss ein Vielfaches von 30 Minuten sein, zwischen 30 Minuten und 8 Stunden",
+      "empty_state": "Noch keine Menüs registriert",
+      "empty_state_hint": "Über \"Menü hinzufügen\" können Sie ein Menü mit Dauer erstellen",
+      "line_ids_invalid": "Die ausgewählten Reservierungsziele sind ungültig. Prüfen Sie, ob gelöschte Reservierungsziele enthalten sind",
+      "line_not_available": "Dieses Menü ist für das ausgewählte Reservierungsziel nicht verfügbar",
+      "duration_minutes_label": "{m} Min."
+    },
+    "weekly_schedule": {
+      "section_title": "Wochenplan"
+    },
+    "template": {
+      "title": "Wochenvorlagen",
+      "add": "Vorlage hinzufügen",
+      "edit": "Vorlage bearbeiten",
+      "delete": "Löschen",
+      "delete_confirm": "Diese Vorlage löschen? (Bereits erzeugte Slots bleiben erhalten)",
+      "day_of_week": "Wochentag",
+      "time_range": "Zeitraum",
+      "line": "Reservierungsziel",
+      "line_common": "Gemeinsamer Slot",
+      "capacity": "Kapazität",
+      "is_active": "Aktiv",
+      "cell_count": "{n} Slots/Tag (je 30 Min.)",
+      "ends_next_day": "Ende am nächsten Tag",
+      "next_day_time": "Nächster Tag {time}",
+      "price": "Preis (optional)",
+      "slot_title": "Titel (optional)",
+      "generate": "Slots jetzt erzeugen",
+      "generate_result": "{generated} Slots erstellt, {skipped} existierten bereits",
+      "generate_rate_limited": "Bitte warten Sie einen Moment, bevor Sie es erneut versuchen (die Erzeugung wurde zu kürzlich ausgeführt)",
+      "generate_no_active_templates": "Für diesen Wochentag gibt es keine Vorlage",
+      "regenerate_guide": "Änderungen werden beim Speichern automatisch übernommen (nur neu hinzugefügte Slots). Wenn bereits vorhandene, nicht gebuchte Slots an die neuen Einstellungen angepasst werden sollen, löschen Sie sie und speichern Sie erneut",
+      "limit_reached": "Sie können bis zu 500 Vorlagen registrieren",
+      "empty_state": "Noch keine Wochenvorlagen registriert",
+      "empty_state_hint": "Über \"Vorlage hinzufügen\" legen Sie Wochentag und Zeitraum fest – die Slots werden dann direkt beim Speichern automatisch erzeugt",
+      "error": {
+        "day_required": "Bitte wählen Sie einen Wochentag",
+        "time_range_invalid": "Die Startzeit muss vor der Endzeit liegen, in 30-Minuten-Schritten"
+      },
+      "generate_skipped_closed": "{n} Slots wurden wegen Ruhetagen übersprungen",
+      "auto_generated": "Gespeichert. {generated} Slots wurden für die nächsten {days} Tage erstellt",
+      "auto_generated_partial": "Bei {failed} von {total} Wochentagen ist die Slot-Erzeugung fehlgeschlagen (die gespeicherten Tage bleiben gültig)",
+      "need_business_hours_hint": "Bitte legen Sie zuerst die Geschäftszeiten fest",
+      "generated_zero_hint": "Es wurden keine Slots erstellt (außerhalb der Geschäftszeiten oder an einem Ruhetag). Bitte prüfen Sie die Geschäftszeiten",
+      "grid": {
+        "title": "ドラッグで枠を作成",
+        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
+        "legend_existing": "登録済み",
+        "legend_selected": "選択中",
+        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
+        "confirm_title": "枠を作成",
+        "create": "作成"
+      }
+    },
+    "recurring_block": {
+      "title": "Wöchentliche Sperrzeit",
+      "add": "Sperrzeit hinzufügen",
+      "edit": "Sperrzeit bearbeiten",
+      "delete_confirm": "Diese wiederkehrende Sperrzeit-Regel löschen?",
+      "reason": "Grund",
+      "reason_no_pii": "Bitte keine Namen oder Kundendaten im Grund angeben (wird allen Mitgliedern angezeigt)",
+      "reason_placeholder": "z. B. Schulung, Kurs, Reinigung, Wartung",
+      "is_public": "Grund den Mitgliedern anzeigen",
+      "is_public_note": "Bei Aktivierung wird dieses Label in der Verfügbarkeitsansicht angezeigt",
+      "line_all": "Gesamtes Team",
+      "limit_reached": "Es können maximal 50 wiederkehrende Sperrzeit-Regeln registriert werden",
+      "full_day_hint": "Für einen ganztägigen Ruhetag stattdessen in den Geschäftszeiten einen regulären Ruhetag festlegen",
+      "impact_warning": "In den nächsten 90 Tagen gibt es {n} überschneidende Reservierungen",
+      "day_empty": "Für diesen Tag gibt es keine Sperrzeit-Regeln",
+      "message": {
+        "load_failed": "Wiederkehrende Sperrzeit-Regeln konnten nicht geladen werden",
+        "create_success": "Wiederkehrende Sperrzeit-Regel erstellt",
+        "update_success": "Wiederkehrende Sperrzeit-Regel aktualisiert",
+        "delete_success": "Wiederkehrende Sperrzeit-Regel gelöscht"
+      },
+      "error": {
+        "toggle_conflict": "Pausieren/Fortsetzen fehlgeschlagen. In diesem Zeitraum gibt es überschneidende Reservierungen"
+      },
+      "force_cancel": {
+        "button": "Widersprüchliche Reservierungen stornieren und registrieren",
+        "confirm_title": "Erzwungene Registrierung bestätigen",
+        "confirm_message": "{n} Reservierung(en) werden storniert und die Mitglieder benachrichtigt. Fortfahren?",
+        "confirm_ok": "Stornieren und registrieren",
+        "result_notice": "{n} Reservierung(en) wurden storniert und die Sperre wurde registriert"
+      }
+    },
+    "business_hours": {
+      "title": "Geschäftszeiten",
+      "day_open": "Geöffnet",
+      "ends_next_day": "Ende am nächsten Tag",
+      "save_success": "Gespeichert. {generated} Slots wurden aktualisiert",
+      "generating": "Slots werden aktualisiert…",
+      "generation_failed": "Die Geschäftszeiten wurden gespeichert, aber die automatische Slot-Aktualisierung ist fehlgeschlagen. Sie wird morgen früh automatisch nachgeholt",
+      "shrink_note": "Bereits erzeugte zukünftige Slots für diesen Tag bleiben unverändert bestehen (sie werden nicht rückwirkend geschlossen). Um ein bestimmtes Datum dauerhaft zu schließen, verwenden Sie \"Diesen Tag schließen\" im Kalender für Ausnahmetage"
+    },
+    "exception_day": {
+      "title": "Kalender für Ausnahmetage",
+      "help": "Wähle ein Datum im Kalender, um diesen Tag zu schließen oder an einem normalerweise geschlossenen Tag ausnahmsweise zu öffnen.",
+      "close_day": "Diesen Tag schließen",
+      "open_special": "Sonderöffnung",
+      "close_day_impact_warning": "An diesem Tag gibt es {n} aktive Reservierungen",
+      "goto_reservations": "In der Reservierungsliste bearbeiten",
+      "notify_hint": "Falls du Reservierende benachrichtigen musst, verwende stattdessen die Notfallschließung",
+      "special_source_day": "Anzuwendender Wochentagsplan",
+      "special_done": "{generated} Slots für {date} erstellt",
+      "blocked_conflict": "Dieser Tag ist als geschlossen markiert. Hebe die Schließung auf, bevor du dies ausführst",
+      "date_range_hint": "Sonderöffnungen können ab morgen bis zu 90 Tage im Voraus festgelegt werden",
+      "goto_book": "Im Tab \"Buchen\" prüfen"
+    },
+    "slot_manage": {
+      "advanced_label": "Einzelne Slots manuell verwalten (Ausnahmen)"
+    },
+    "grid": {
+      "view": {
+        "week": "Woche"
+      },
+      "column": {
+        "common": "Gemeinsam"
+      },
+      "state": {
+        "available": "Frei",
+        "booked": "Voll",
+        "reserved": "Von Ihnen gebucht",
+        "closed": "Geschlossen",
+        "unavailable": "Nicht verfügbar"
+      },
+      "load_error": "Raster konnte nicht geladen werden"
+    },
+    "matrix": {
+      "title": "Verfügbarkeitsmatrix",
+      "legend_available": "Verfügbar",
+      "legend_booked": "Gebucht",
+      "legend_unavailable": "Nicht verfügbar",
+      "legend_closed": "Geschlossen",
+      "legend_none": "Kein Zeitfenster",
+      "menu_filter": "Nach Menü filtern",
+      "menu_filter_all": "Kein Filter",
+      "cannot_start_here": "Ab dieser Uhrzeit sind nicht genug aufeinanderfolgende Zeitfenster für {menu} verfügbar",
+      "cannot_extend": "Keine weitere Verlängerung möglich (das nächste Zeitfenster ist nicht frei oder das Limit von 8 Stunden ist erreicht)",
+      "select_menu_title": "Menü auswählen",
+      "no_menu_single": "Nur 30 Minuten ohne Menü buchen",
+      "preview_title": "Diese Buchung bestätigen",
+      "extend_30": "+30 Min.",
+      "open_all": "Alle anzeigen",
+      "close_all": "Alle schließen",
+      "open_day_hint": "Wählen Sie ein Datum, um Reservierungszeiten anzuzeigen",
+      "date_line_header": "Datum / {resourceName}",
+      "help_toggle": "Anleitung anzeigen",
+      "help_body": "Tippen Sie auf ein freies (grünes) Zeitfenster und wählen Sie ein Menü — die benötigte Anzahl an Zeitfenstern wird automatisch ausgewählt. Mit „+30 Min.“ können Sie weitere hinzufügen. Bei einem gemeinsamen Zeitfenster wählen Sie das gewünschte Element ({resourceName}) aus.",
+      "slot_unavailable_conflict": "Dieses Zeitfenster nimmt derzeit keine Buchungen an. Bitte eine andere Uhrzeit versuchen"
+    },
+    "group": {
+      "title": "Sammelbuchung",
+      "slot_count": "30 Min. × {n} Zeitfenster",
+      "time_range": "Zeitraum",
+      "auto_selected": "Die für {menu} benötigten {n} Zeitfenster wurden automatisch ausgewählt",
+      "extend": "Zeitfenster verlängern",
+      "extend_hint": "Eine Verlängerung ist möglich, wenn das nächste Zeitfenster frei ist",
+      "confirm": "Diese Buchung bestätigen",
+      "cancel": "Stornieren",
+      "cancel_confirm": "Alle {n} Zeitfenster werden storniert",
+      "conflict_retry": "Jemand anderes hat zuerst gebucht. Die Verfügbarkeit wurde aktualisiert — bitte erneut auswählen",
+      "not_consecutive": "Die ausgewählten Zeitfenster sind nicht aufeinanderfolgend oder stimmen nicht mit dem Ziel überein",
+      "size_exceeded": "Eine Buchungsgruppe kann maximal 16 Zeitfenster umfassen",
+      "row_locked": "Dies ist eine Sammelbuchung. Bitte als Gruppe verwalten",
+      "deadline_passed": "Die Stornofrist ist abgelaufen, eine Stornierung ist nicht mehr möglich",
+      "own_overlap": "Sie haben bereits eine andere Buchung im ausgewählten Zeitfenster. Bitte prüfen Sie die Uhrzeit"
+    },
+    "waitlist": {
+      "register_button": "Auf die Warteliste setzen",
+      "cancel_button": "Von der Warteliste entfernen",
+      "registered_badge": "Wartend",
+      "dialog_title": "Warteliste",
+      "notice": "Wir benachrichtigen Sie, sobald ein Platz frei wird. Die Reihenfolge ist nicht garantiert – es gilt \"first come, first served\"",
+      "register_success": "Zur Warteliste hinzugefügt",
+      "cancel_success": "Von der Warteliste entfernt",
+      "admin_count": "{n} auf der Warteliste",
+      "already_registered": "Sie stehen bereits auf der Warteliste für diesen Termin",
+      "not_found": "Wartelisteneintrag nicht gefunden (möglicherweise bereits storniert oder in eine Reservierung umgewandelt)",
+      "limit_exceeded": "Sie haben das Limit für Wartelisteneinträge erreicht",
+      "rate_limited": "Das ging zu schnell. Bitte warten Sie etwa eine Minute und versuchen Sie es erneut",
+      "slot_not_full": "Ein Platz ist frei geworden. Sie können jetzt direkt buchen",
+      "my_list_title": "Meine Warteliste",
+      "no_entries": "Sie stehen auf keiner Warteliste",
+      "aria_hint_register": "Drücken, um sich auf die Warteliste zu setzen",
+      "aria_hint_cancel": "Drücken, um sich von der Warteliste zu entfernen"
+    },
+    "pending_expire_notice": {
+      "form_note": "Wenn diese Reservierung nicht innerhalb von {n} Stunden bestätigt wird, wird sie automatisch storniert"
+    },
+    "team_guide": {
+      "title": "So funktionieren Reservierungen",
+      "help_button": "Anleitung",
+      "book": {
+        "matrix_title": "Die Matrix lesen",
+        "matrix_steps": {
+          "0": "Zeilen sind \"Datum × {resourceName}\", Spalten sind \"Uhrzeit\".",
+          "1": "Farben: Grün = frei / Grau = gebucht / Schraffiert = nicht verfügbar / Hellgrau = geschlossen."
+        },
+        "filter_title": "Nach Menü filtern",
+        "filter_steps": {
+          "0": "Mit dem \"Menü\"-Filter oben werden automatisch genau die Zeitfenster hervorgehoben, die dieses Menü benötigt.",
+          "1": "Ohne Menü kannst du einzelne 30-Minuten-Zeitfenster nacheinander buchen."
+        },
+        "flow_title": "Ablauf der Buchung",
+        "flow_steps": {
+          "0": "Klicke auf ein \"Verfügbar\"-Feld (grün).",
+          "1": "Bei der Wahl eines Menüs werden die benötigten Zeitfenster automatisch gruppiert (dieser Schritt entfällt, wenn bereits ein Menüfilter aktiv ist).",
+          "2": "Klicke auf \"+30 Min.\", wenn du die Zeit verlängern möchtest.",
+          "3": "Prüfe Datum und Details, fülle \"Notizen (optional)\" aus und klicke auf \"Diese Buchung bestätigen\", um die Buchung abzuschließen."
+        },
+        "conflict_title": "Bei Vollbelegung oder Konflikten",
+        "conflict_steps": {
+          "0": "Graue Felder (gebucht, geschlossen oder nicht verfügbar) können nicht ausgewählt werden. Wähle eine andere Zeit oder ein anderes Element (\"{resourceName}\").",
+          "1": "Wenn jemand kurz vor deiner Bestätigung dasselbe Zeitfenster bucht, erscheint ein Fehler und die Ansicht wird automatisch mit der aktuellen Verfügbarkeit aktualisiert. Wähle bitte erneut ein freies Zeitfenster."
+        }
+      },
+      "list": {
+        "admin_overview_title": "Alle Reservierungen des Teams ansehen",
+        "admin_overview_steps": {
+          "0": "Du kannst nach Status filtern (ausstehend, genehmigt, storniert, abgeschlossen, nicht erschienen).",
+          "1": "\"Gruppenbuchungen\" mit mehreren Zeitfenstern werden als eine einzige Zeile mit der Anzahl der Zeitfenster angezeigt."
+        },
+        "admin_manage_title": "Genehmigen, ablehnen und stornieren",
+        "admin_manage_steps": {
+          "0": "In Teams mit manueller Genehmigung genehmigst oder lehnst du ausstehende Reservierungen ab.",
+          "1": "Bestätigte Reservierungen kannst du ebenfalls stornieren. Gruppenbuchungen werden als Gruppe verwaltet.",
+          "2": "Diese Aktionen aktualisieren die Verfügbarkeit im Tab \"Reservieren\" sofort."
+        },
+        "member_mine_title": "Eigene Reservierungen ansehen",
+        "member_mine_steps": {
+          "0": "Hier erscheinen nur deine eigenen Reservierungen (die anderer Mitglieder werden nie angezeigt).",
+          "1": "Du kannst sie nach Status filtern."
+        },
+        "member_cancel_title": "Stornieren",
+        "member_cancel_steps": {
+          "0": "Klicke in der Zeile der Reservierung auf \"Stornieren\" und bestätige im Bestätigungsdialog erneut mit \"Stornieren\".",
+          "1": "Nach Ablauf der Stornofrist erscheint ein Fehler und du kannst selbst nicht mehr stornieren — wende dich bei Änderungsbedarf an einen Team-Administrator."
+        }
+      },
+      "line_manage": {
+        "setup0_title": "1. Geschäftszeiten festlegen",
+        "setup0_steps": {
+          "0": "Lege unter \"Geschäftszeiten\" für jeden Wochentag die Öffnungszeiten fest. Das ist die Grundlage, auf der die Zeitfenster erzeugt werden.",
+          "1": "Sobald du speicherst, werden die Zeitfenster für die nächsten 28 Tage automatisch erstellt."
+        },
+        "setup1_title": "2. {resourceName} erstellen",
+        "setup1_steps": {
+          "0": "Registriere oben in diesem Tab mit \"{resourceName} hinzufügen\" buchbare Plätze, Mitarbeiter oder Schalter.",
+          "1": "Ohne {resourceName} zeigt der Tab \"Reservieren\" den Mitgliedern nichts an."
+        },
+        "setup2_title": "3. Menüs erstellen",
+        "setup2_steps": {
+          "0": "Registriere unten unter \"Menüs verwalten\" Menüs mit einer Dauer (in 30-Minuten-Schritten).",
+          "1": "Um ein Menü auf {resourceName} zu beschränken, wähle unter \"Buchbares Element\" die Option \"Nur ausgewählte {resourceName}\" und wähle sie aus (standardmäßig wird es für alle angeboten)."
+        },
+        "setup3_title": "4. Einen Wochenplan erstellen",
+        "setup3_steps": {
+          "0": "Lege unten im \"Wochenplan\" Wochentag, Zeitspanne und Kapazität fest — liegt das innerhalb der Geschäftszeiten, werden die Zeitfenster direkt beim Speichern automatisch erstellt.",
+          "1": "Sobald du speicherst, werden die Zeitfenster für die nächsten 28 Tage automatisch erstellt.",
+          "2": "Danach verlängern sich die Zeitfenster jeden Tag automatisch — es ist keine Aktion nötig."
+        },
+        "daily_title": "Täglicher Betrieb",
+        "daily_steps": {
+          "0": "Sobald der Wochenplan eingerichtet ist, verlängern sich die Zeitfenster jeden Tag automatisch — normalerweise ist nichts weiter zu tun.",
+          "1": "Bearbeite den Wochenplan nur, wenn du Wochentag oder Zeitspanne ändern möchtest."
+        },
+        "exception_title": "Ausnahmefälle",
+        "exception_steps": {
+          "0": "Um einen bestimmten Tag zu schließen oder ausnahmsweise zu öffnen, verwende \"Diesen Tag schließen\" / \"Sonderöffnung\" im Kalender für Ausnahmetage. Um einzelne Zeitfenster im Detail anzupassen, nutze \"Einzelne Slots manuell verwalten\" unter Erweiterte Einstellungen, um sie zu erstellen, zu bearbeiten oder zu schließen.",
+          "1": "Um einen bestimmten Zeitraum für Buchungen zu sperren, nutze \"Nicht verfügbare Zeiträume\" in den erweiterten Einstellungen.",
+          "2": "Beim Löschen von {resourceName} wird dessen Vorlage gestoppt und zukünftige Zeitfenster ohne Reservierungen werden automatisch gelöscht. Bestehen noch aktive Reservierungen, verschiebe oder storniere sie vorher."
+        }
+      },
+      "emergency_closure": {
+        "send_title": "Was beim Senden passiert",
+        "send_steps": {
+          "0": "Alle Personen mit einer Reservierung im betroffenen Zeitraum/Zeitfenster erhalten eine E-Mail und eine In-App-Benachrichtigung über die Schließung.",
+          "1": "Wenn \"Betroffene Reservierungen stornieren\" angehakt ist, werden die Reservierungen im betroffenen Zeitraum ebenfalls automatisch storniert."
+        },
+        "status_title": "Den Bestätigungsstatus lesen",
+        "status_steps": {
+          "0": "Öffne den Sendeverlauf, um in Echtzeit zu sehen, wer die Mitteilung bestätigt (gelesen) hat.",
+          "1": "Die Anzeige \"n/m bestätigt\" bedeutet, dass n von m Empfängern bestätigt haben."
+        }
       }
     }
   }

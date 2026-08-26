@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.filesharing.dto.AccessLinkRequest;
 import com.mannschaft.app.filesharing.dto.CreateLinkRequest;
 import com.mannschaft.app.filesharing.dto.FileResponse;
@@ -76,6 +77,7 @@ public class FileLinkController {
     /**
      * 共有リンクでファイルにアクセスする。
      */
+    @AuthorizedInService
     @PostMapping("/shared-links/{token}/access")
     @Operation(summary = "共有リンクアクセス")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アクセス成功")

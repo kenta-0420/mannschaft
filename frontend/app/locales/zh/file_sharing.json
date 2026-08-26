@@ -1,0 +1,103 @@
+{
+  "visibility": {
+    "label": "最低可见角色",
+    "help": "设置可以查看或下载此文件夹/文件的最低角色。未指定时，所有成员均可查看。",
+    "all": "所有成员（默认）",
+    "SUPPORTERS_AND_ABOVE": "应援者及以上",
+    "MEMBERS_AND_ABOVE": "正式会员及以上",
+    "ADMINS_AND_ABOVE": "仅管理员"
+  },
+  "download": {
+    "disabledLabel": "禁止下载",
+    "disabledHelp": "隐藏下载按钮并拒绝签发下载链接。由于无法阻止在屏幕上查看，这并非完全防护。",
+    "disabledError": "此文件已禁止下载"
+  },
+  "settings": {
+    "title": "文件设置",
+    "nameLabel": "文件名",
+    "descriptionLabel": "说明",
+    "saved": "设置已保存",
+    "saveError": "保存设置失败"
+  },
+  "publicLink": {
+    "title": "公开链接",
+    "description": "通过公开链接分享此文件，即使对方未登录也可查看。默认仅可查看。",
+    "downloadAllowedLabel": "允许下载",
+    "downloadAllowedHelp": "开启后可通过此链接下载。但若文件本身禁止下载，则以文件设置为准。",
+    "expiresLabel": "有效期（最长30天）",
+    "expiresHelp": "公开链接必须设置有效期，最长可设置到30天以后。",
+    "expiresPlaceholder": "选择有效期",
+    "expiresAtLabel": "有效期至",
+    "passwordLabel": "密码（可选）",
+    "passwordPlaceholder": "设置后访问时需要输入",
+    "createButton": "创建分享链接",
+    "createError": "创建分享链接失败",
+    "created": "已创建分享链接",
+    "loadError": "加载分享链接失败",
+    "existingTitle": "已创建的链接",
+    "empty": "暂无分享链接",
+    "copied": "已复制链接",
+    "copyError": "复制失败",
+    "copyButton": "复制链接",
+    "revoked": "已使分享链接失效",
+    "revokeError": "失效操作失败",
+    "revokeButton": "使链接失效",
+    "tagDownload": "可下载",
+    "tagViewOnly": "仅查看",
+    "tagPassword": "密码保护",
+    "adminOnly": "仅管理员和副管理员可以创建和管理公开链接。",
+    "errors": {
+      "notFound": "未找到分享链接",
+      "inactive": "此分享链接已被停用",
+      "expired": "此分享链接已过期",
+      "passwordInvalid": "密码不正确",
+      "downloadNotAllowed": "此分享链接不允许下载",
+      "expiryInvalid": "有效期为必填，最长可设置到30天以后"
+    }
+  },
+  "guide": {
+    "title": "文件共享使用说明",
+    "description": "你可以限定谁能查看文件夹和文件，或通过无需登录的公开链接对外分享。请按需组合这些设置。",
+    "what": {
+      "title": "关于安全设置",
+      "body": "可为每个文件夹或文件设置谁能查看以及是否允许下载。还可以签发公开链接，分享给未登录的人。"
+    },
+    "visibility": {
+      "title": "用最低角色限定可见范围",
+      "body": "可选择可查看的最低角色：应援者及以上、正式会员及以上或仅管理员。未指定时所有成员均可查看。",
+      "steps": {
+        "s1": "打开文件夹创建对话框，或文件上的齿轮图标。",
+        "s2": "在最低可见角色中选择要公开的范围。",
+        "s3": "保存后，低于该角色的人将无法看到。"
+      }
+    },
+    "download": {
+      "title": "禁止下载",
+      "body": "用于希望可查看但不希望被下载的文件。会隐藏下载按钮并阻止签发链接。",
+      "steps": {
+        "s1": "从文件上的齿轮图标打开设置。",
+        "s2": "开启禁止下载并保存。",
+        "s3": "请注意无法阻止在屏幕上查看，因此并非完全防止复制。"
+      }
+    },
+    "link": {
+      "title": "用公开链接对外分享",
+      "body": "签发无需登录即可打开的链接。仅管理员和副管理员可以签发。",
+      "steps": {
+        "s1": "从文件上的链接图标打开公开链接界面。",
+        "s2": "设置有效期（最长30天），如有需要可允许下载或设置密码。",
+        "s3": "复制生成的链接进行分享。不再需要时可使其失效。"
+      }
+    },
+    "note": "公开链接不会被搜索引擎收录。但任何知道链接的人都可访问，请谨慎处理。"
+  },
+  "sharedPage": {
+    "pageTitle": "共享文件",
+    "title": "已共享的文件",
+    "passwordRequired": "此文件受密码保护，请输入密码。",
+    "unlockButton": "打开",
+    "downloadButton": "下载",
+    "viewOnly": "此文件仅可查看，无法下载。",
+    "footer": "此链接是由文件共享功能签发的公开链接。"
+  }
+}

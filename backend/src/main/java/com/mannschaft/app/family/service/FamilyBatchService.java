@@ -6,6 +6,7 @@ import com.mannschaft.app.family.repository.CoinTossResultRepository;
 import com.mannschaft.app.family.repository.PresenceEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,8 @@ public class FamilyBatchService {
 
     @BatchEndpoint(name = "family-overdue-event-check", description = "ファミリーの帰宅遅延イベントを 15 分毎にチェックする")
     @Scheduled(fixedRate = 15 * 60 * 1000)
+    // 起動間隔は 15 分（fixedRate）。処理は帰宅遅延イベントの検出と通知で通常は数秒。間隔の 3 倍を上限とする。
+    @SchedulerLock(name = "familyOverdueEventCheck", lockAtLeastFor = "PT30S", lockAtMostFor = "PT45M")
     @Transactional
     public void checkOverdueEvents() {
         LocalDateTime now = LocalDateTime.now();
@@ -51,12 +54,17 @@ public class FamilyBatchService {
 
     @BatchEndpoint(name = "family-anniversary-notify-daily", description = "ファミリーの記念日通知を毎日 09:00 に送信する")
     @Scheduled(cron = "0 0 9 * * *", zone = "Asia/Tokyo")
+    // 起動間隔は日次 09:00。当日該当の記念日通知のみで最悪ケースでも数分。通知先集中を見込み 30 分を上限とする。
+    @SchedulerLock(name = "familyAnniversaryNotifyDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
     public void checkAnniversaries() {
         log.info("記念日通知バッチを実行しました");
     }
 
     @BatchEndpoint(name = "family-presence-cleanup-daily", description = "プレゼンス・コイントス履歴の保持期間超過を毎日 04:00 にクリーンアップする")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
+    // 起動間隔は日次 04:00。保持期間を超えたプレゼンス・コイントス履歴の一括 DELETE のみで最悪ケースでも数分。
+    // 初回実行時の積み残しを見込み 30 分を上限とする。
+    @SchedulerLock(name = "familyPresenceCleanupDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
     @Transactional
     public void cleanupOldRecords() {
         LocalDateTime presenceThreshold = LocalDateTime.now().minusDays(PRESENCE_RETENTION_DAYS);

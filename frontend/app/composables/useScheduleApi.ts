@@ -44,6 +44,8 @@ export function useScheduleApi() {
     deletePersonalSchedule: personal.deletePersonalSchedule,
     // === Calendar / Categories / Duplicate ===
     getCalendarMonth: crud.getCalendarMonth,
+    getCalendarRange: crud.getCalendarRange,
+    getMyCalendarLayers: crud.getMyCalendarLayers,
     getCategories: crud.getCategories,
     createCategory: crud.createCategory,
     duplicateSchedule: crud.duplicateSchedule,
@@ -60,7 +62,6 @@ export function useScheduleApi() {
     bulkCreatePerformanceRecords: analytics.bulkCreatePerformanceRecords,
     // === Global Schedule Actions ===
     remindSchedule: crud.remindSchedule,
-    respondToSchedule: crud.respondToSchedule,
     getScheduleStats: attendance.getScheduleStats,
     // === Schedule Invitations ===
     getScheduleInvitations: crud.getScheduleInvitations,

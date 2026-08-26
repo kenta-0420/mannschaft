@@ -19,6 +19,7 @@
  *   - HEADMAN 判定は親コンテキスト perms を主とし、members 配列をフォールバックに使う。
  */
 import VillageReportDialog from '~/components/VillageReportDialog.vue'
+import VillageMemberProfileDialog from '~/components/villages/members/VillageMemberProfileDialog.vue'
 import VillageMembersBanDialog from '~/components/villages/members/VillageMembersBanDialog.vue'
 import VillageMembersRoleDialog from '~/components/villages/members/VillageMembersRoleDialog.vue'
 import VillageMembersTable from '~/components/villages/members/VillageMembersTable.vue'
@@ -90,6 +91,10 @@ const reportDialogVisible = ref(false)
 const reportTargetType = ref<VillageReportTargetType>('MEMBERSHIP')
 const reportTargetRefId = ref<string>('')
 
+// Dialog 状態 — 村人ミニプロフィール（F17.2 Wave3 ⑥・§9.5）
+const memberProfileDialogVisible = ref(false)
+const memberProfileTarget = ref<MembershipResponse | null>(null)
+
 // =============================================================================
 // 派生値
 // =============================================================================
@@ -118,6 +123,26 @@ function isSelfMembership(m: MembershipResponse): boolean {
   if (currentUserId.value == null) return false
   return m.subjectType === 'USER' && m.subjectId === currentUserId.value
 }
+
+/**
+ * 自分以外に役職変更できる生存メンバー数。
+ * BAN 済みは操作対象外なので除外する（自分自身も除外）。
+ */
+const otherActiveMemberCount = computed<number>(() =>
+  members.value.filter(m => !isSelfMembership(m) && !m.isBanned).length,
+)
+
+/**
+ * 「ソロ村（村長ひとり）」の空状態案内を出すか。
+ *
+ * 村長ひとりしか居ない村では役職変更操作が一切出せないため、
+ * 「壊れている」と誤解されやすい（実機で誤解が発生）。HEADMAN のときのみ
+ * 「他のメンバーが参加すれば長老に任命できる」旨を案内する。
+ * 村長でない者（長老・村人）には出さない（そもそも役職変更できないため）。
+ */
+const showSoloHeadmanHint = computed<boolean>(() =>
+  isHeadman.value && !membersLoading.value && otherActiveMemberCount.value === 0,
+)
 
 // =============================================================================
 // エラー抽出（FE3 と同形）
@@ -298,6 +323,15 @@ function openMemberReportDialog(m: MembershipResponse) {
 }
 
 // =============================================================================
+// 村人ミニプロフィール（F17.2 Wave3 ⑥・§9.5）
+// =============================================================================
+
+function openMemberProfileDialog(m: MembershipResponse) {
+  memberProfileTarget.value = m
+  memberProfileDialogVisible.value = true
+}
+
+// =============================================================================
 // 初期化
 // =============================================================================
 
@@ -322,6 +356,16 @@ onMounted(() => {
       @open-role-dialog="openRoleDialog"
       @open-ban-dialog="openBanDialog"
       @open-member-report="openMemberReportDialog"
+      @open-member-profile="openMemberProfileDialog"
+    />
+
+    <!-- ソロ村（村長ひとり）の空状態案内。
+         他に役職変更できる生存メンバーが居ない HEADMAN のときのみ表示（誤解防止）。 -->
+    <DashboardEmptyState
+      v-if="showSoloHeadmanHint"
+      icon="pi pi-users"
+      :message="t('village.members.soloHeadmanHint')"
+      data-testid="village-members-solo-headman-hint"
     />
 
     <!-- ロール変更 Dialog -->
@@ -355,6 +399,13 @@ onMounted(() => {
       :village-id="village.id"
       :target-type="reportTargetType"
       :target-ref-id="reportTargetRefId"
+    />
+
+    <!-- 村人ミニプロフィール Dialog（所属村一覧・自分自身なら公開トグル・F17.2 Wave3 ⑥） -->
+    <VillageMemberProfileDialog
+      v-model:visible="memberProfileDialogVisible"
+      :village-id="villageId"
+      :member="memberProfileTarget"
     />
   </div>
 </template>

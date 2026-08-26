@@ -11,6 +11,8 @@ import com.mannschaft.app.cms.PostStatus;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.timeline.PostScopeType;
@@ -29,6 +31,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 
 /**
@@ -57,6 +60,7 @@ public class ScopeWidgetSummaryService {
     private final BulletinThreadRepository bulletinThreadRepository;
     private final BulletinReadStatusRepository bulletinReadStatusRepository;
     private final NameResolverService nameResolverService;
+    private final ContentVisibilityChecker contentVisibilityChecker;
 
     /** 直近アイテムの件数（02 §3.3: ブログ/タイムライン等 直近 3 件）。 */
     private static final int RECENT_LIMIT = 3;
@@ -166,9 +170,10 @@ public class ScopeWidgetSummaryService {
      * @param scopeType {@code "TEAM"} / {@code "ORGANIZATION"}
      * @param scopeId   スコープ ID
      * @param zoneId    閲覧ユーザーのタイムゾーン（並行実行のため呼び出し元で解決して渡す）
+     * @param userId    閲覧ユーザー ID（可視性判定用）
      * @return カレンダーサマリ Map
      */
-    public Map<String, Object> buildCalendarSummary(String scopeType, Long scopeId, ZoneId zoneId) {
+    public Map<String, Object> buildCalendarSummary(String scopeType, Long scopeId, ZoneId zoneId, Long userId) {
         boolean org = isOrganization(scopeType);
         LocalDate today = LocalDate.now(zoneId != null ? zoneId : ZoneId.of("UTC"));
         LocalDateTime todayStart = today.atStartOfDay();
@@ -176,26 +181,45 @@ public class ScopeWidgetSummaryService {
         LocalDateTime weekEnd = todayStart.plusDays(7);
         LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
         LocalDateTime monthEnd = monthStart.plusMonths(1);
+        LocalDateTime widestEnd = todayStart.plusMonths(3);
 
-        long eventsToday = scopeEvents(org, scopeId, todayStart, todayEnd).size();
-        long eventsThisWeek = scopeEvents(org, scopeId, todayStart, weekEnd).size();
+        // F00 認可基盤連携（CMP-017b 第五隊）: today ⊂ week ⊂ month ⊂ 3か月先の入れ子期間を
+        // 個別に 4 クエリ発行していたのを、最広範囲（todayStart〜3か月先）を 1 クエリで取得し
+        // filterAccessible で可視性判定を通してからアプリ層で集計する（AC-13a/b/c）。
+        List<ScheduleEntity> widest = scopeEvents(org, scopeId, todayStart, widestEnd);
+        Set<Long> visibleIds = widest.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        widest.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
+        List<ScheduleEntity> visible = widest.stream().filter(e -> visibleIds.contains(e.getId())).toList();
 
-        // 当月内のイベント日集合
-        List<ScheduleEntity> monthEvents = scopeEvents(org, scopeId, monthStart, monthEnd);
+        long eventsToday = 0;
+        long eventsThisWeek = 0;
         TreeSet<Integer> daysWithEvents = new TreeSet<>();
-        for (ScheduleEntity e : monthEvents) {
-            if (e.getStartAt() != null) {
-                daysWithEvents.add(e.getStartAt().toLocalDate().getDayOfMonth());
+        String nextEvent = null;
+        LocalDateTime nextEventStart = null;
+        for (ScheduleEntity e : visible) {
+            LocalDateTime startAt = e.getStartAt();
+            if (startAt == null) {
+                continue;
+            }
+            if (!startAt.isAfter(todayEnd)) {
+                eventsToday++;
+            }
+            if (!startAt.isAfter(weekEnd)) {
+                eventsThisWeek++;
+            }
+            if (!startAt.isBefore(monthStart) && startAt.isBefore(monthEnd)) {
+                daysWithEvents.add(startAt.toLocalDate().getDayOfMonth());
+            }
+            if (!startAt.isBefore(LocalDateTime.now())
+                    && (nextEventStart == null || startAt.isBefore(nextEventStart))) {
+                nextEventStart = startAt;
+                nextEvent = e.getTitle();
             }
         }
-
-        // next_event: 現在以降の最も近いイベントタイトル
-        List<ScheduleEntity> upcoming = scopeEvents(org, scopeId, todayStart, todayStart.plusMonths(3));
-        String nextEvent = upcoming.stream()
-                .filter(e -> e.getStartAt() != null && !e.getStartAt().isBefore(LocalDateTime.now()))
-                .findFirst()
-                .map(ScheduleEntity::getTitle)
-                .orElse(null);
 
         Map<String, Object> result = new HashMap<>();
         result.put("events_today", eventsToday);
@@ -212,14 +236,27 @@ public class ScopeWidgetSummaryService {
     /**
      * 組織スコープの今後の予定（今後 7 日間・最大 10 件）を返す。チーム版と同形。
      *
-     * @param orgId 組織 ID
+     * @param orgId  組織 ID
+     * @param userId 閲覧ユーザー ID（可視性判定用）
      * @return start_at 昇順の予定 Map リスト
      */
-    public List<Map<String, Object>> buildOrgUpcomingEvents(Long orgId) {
+    public List<Map<String, Object>> buildOrgUpcomingEvents(Long orgId, Long userId) {
         LocalDateTime now = LocalDateTime.now();
         List<ScheduleEntity> events = scheduleRepository
                 .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, now, now.plusDays(7));
-        return events.stream().limit(10).map(this::toScheduleMap).toList();
+        // F00 認可基盤連携（CMP-017b 第五隊）: 組織所属だけで取得しており min_view_role
+        // 等の可視性判定を通していなかった。
+        Set<Long> visibleIds = events.isEmpty()
+                ? Set.of()
+                : contentVisibilityChecker.filterAccessible(
+                        ReferenceType.SCHEDULE,
+                        events.stream().map(ScheduleEntity::getId).toList(),
+                        userId);
+        return events.stream()
+                .filter(e -> visibleIds.contains(e.getId()))
+                .limit(10)
+                .map(this::toScheduleMap)
+                .toList();
     }
 
     // ─────────────────────────────────────────────
@@ -262,6 +299,9 @@ public class ScopeWidgetSummaryService {
             }
         }
 
+        // 直近スレッド一覧（クエリ順 = isPinned降順→updated_at降順 の先頭3件）を同時に構築する。
+        List<Map<String, Object>> threadList = mapRecentThreads(threads.getContent(), userId);
+
         // 組織スコープのチャット未読合計（当該ユーザーが参加するチャンネルのみ）
         List<ChatChannelEntity> channels = scopeChannels(true, orgId);
         long unreadChat = 0;
@@ -276,6 +316,54 @@ public class ScopeWidgetSummaryService {
         Map<String, Object> result = new HashMap<>();
         result.put("bulletin_count", unreadBulletin);
         result.put("chat_count", unreadChat);
+        result.put("bulletin_threads", threadList);
+        return result;
+    }
+
+    /**
+     * dashboard-scope-panel-content 第二陣: 指定スコープの直近掲示板スレッド一覧（直近 3 件）を返す。
+     *
+     * <p>掲示板の「件数のみ」ウィジェットを「直近スレッド一覧」にコンテンツ化するための共通メソッド。
+     * 既存クエリ {@code findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc}
+     * （isPinned 降順 → updated_at 降順）で取得し、先頭 3 件を {@code {id,title,updated_at,is_read}} の
+     * Map へ変換する。nested DTO / record は作らず Map で統一する（同名 record 衝突・OpenAPI nested
+     * schema 衝突回避）。実体が無ければ空配列を正直に返す（握り潰さない）。</p>
+     *
+     * <p>IDOR 注意: {@code scopeType/scopeId} で取得スレッドを当該スコープに限定する。
+     * 呼び出し元（DashboardService）が会員コンテキストで動くため、これで当該スコープの会員のみに閉じる。</p>
+     *
+     * @param scopeType {@code "TEAM"} / {@code "ORGANIZATION"}
+     * @param scopeId   スコープ ID
+     * @param userId    閲覧ユーザー ID（is_read 判定に使用）
+     * @return id / title / updated_at / is_read を含む Map のリスト（直近 3 件・スレッド無しは空配列）
+     */
+    public List<Map<String, Object>> buildThreadListForScope(String scopeType, Long scopeId, Long userId) {
+        com.mannschaft.app.bulletin.ScopeType type = isOrganization(scopeType)
+                ? com.mannschaft.app.bulletin.ScopeType.ORGANIZATION
+                : com.mannschaft.app.bulletin.ScopeType.TEAM;
+        Page<BulletinThreadEntity> threads = bulletinThreadRepository
+                .findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
+                        type, scopeId, PageRequest.of(0, RECENT_LIMIT));
+        return mapRecentThreads(threads.getContent(), userId);
+    }
+
+    /**
+     * 掲示板スレッドエンティティ列を直近 3 件の表示用 Map リストへ変換する。
+     * 入力はクエリ順（isPinned 降順 → updated_at 降順）を前提とし、その順のまま先頭 3 件を採る。
+     */
+    private List<Map<String, Object>> mapRecentThreads(List<BulletinThreadEntity> threads, Long userId) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (BulletinThreadEntity thread : threads) {
+            if (result.size() >= RECENT_LIMIT) {
+                break;
+            }
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", thread.getId());
+            map.put("title", thread.getTitle());
+            map.put("updated_at", thread.getUpdatedAt());
+            map.put("is_read", bulletinReadStatusRepository.existsByThreadIdAndUserId(thread.getId(), userId));
+            result.add(map);
+        }
         return result;
     }
 

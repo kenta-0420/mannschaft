@@ -40,7 +40,7 @@ async function save() {
 <template>
   <PageLoading v-if="loading" />
   <div v-else class="fade-in mx-auto max-w-2xl">
-    <PageHeader title="外観設定" back-to="/settings" />
+    <PageHeader title="外観設定" />
 
     <div class="space-y-8">
       <!-- テーマ選択 -->

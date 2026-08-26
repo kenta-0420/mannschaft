@@ -14,6 +14,7 @@ import com.mannschaft.app.filesharing.repository.SharedFileVersionRepository;
 import com.mannschaft.app.filesharing.service.FolderScopeAccessGuard;
 import com.mannschaft.app.filesharing.service.SharedFileQuotaService;
 import com.mannschaft.app.filesharing.service.SharedFileService;
+import com.mannschaft.app.filesharing.service.SharedFolderQueryService;
 import com.mannschaft.app.filesharing.service.SharedFolderService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -68,6 +69,10 @@ class SharedFileServiceAdditionalTest {
     @Mock
     private FolderScopeAccessGuard folderScopeAccessGuard;
 
+    /** IDOR 封鎖のためのフォルダスコープ別閲覧認可（一覧・詳細で必ず通す）。void mock は既定で通過する。 */
+    @Mock
+    private SharedFolderQueryService folderQueryService;
+
     @InjectMocks
     private SharedFileService service;
 
@@ -88,7 +93,7 @@ class SharedFileServiceAdditionalTest {
 
     private FileResponse mockFileResponse() {
         return new FileResponse(FILE_ID, FOLDER_ID, "test.pdf", "uploads/test.pdf",
-                1024L, "application/pdf", null, USER_ID, 1, null, null);
+                1024L, "application/pdf", null, USER_ID, 1, null, null, null, null);
     }
 
     // ========================================
@@ -103,12 +108,14 @@ class SharedFileServiceAdditionalTest {
         @DisplayName("正常系: フォルダ内のファイル一覧が返却される")
         void ファイル一覧_正常() {
             SharedFileEntity entity = createFile();
+            // 全許可(null)＝従来の絞り無しクエリ経路（SYSTEM_ADMIN / PERSONAL 相当）。
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(null);
             given(fileRepository.findByFolderIdOrderByNameAsc(FOLDER_ID))
                     .willReturn(List.of(entity));
             given(fileSharingMapper.toFileResponseList(any()))
                     .willReturn(List.of(mockFileResponse()));
 
-            List<FileResponse> result = service.listFiles(FOLDER_ID);
+            List<FileResponse> result = service.listFiles(FOLDER_ID, USER_ID);
 
             assertThat(result).hasSize(1);
         }
@@ -127,11 +134,13 @@ class SharedFileServiceAdditionalTest {
         void ファイル一覧ページング_正常() {
             SharedFileEntity entity = createFile();
             Page<SharedFileEntity> page = new PageImpl<>(List.of(entity));
+            // 全許可(null)＝従来の絞り無しクエリ経路（SYSTEM_ADMIN / PERSONAL 相当）。
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(null);
             given(fileRepository.findByFolderIdOrderByNameAsc(eq(FOLDER_ID), any()))
                     .willReturn(page);
             given(fileSharingMapper.toFileResponse(entity)).willReturn(mockFileResponse());
 
-            Page<FileResponse> result = service.listFilesPaged(FOLDER_ID, PageRequest.of(0, 10));
+            Page<FileResponse> result = service.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 10));
 
             assertThat(result.getContent()).hasSize(1);
         }
@@ -152,7 +161,7 @@ class SharedFileServiceAdditionalTest {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
             given(fileSharingMapper.toFileResponse(entity)).willReturn(mockFileResponse());
 
-            FileResponse result = service.getFile(FILE_ID);
+            FileResponse result = service.getFile(FILE_ID, USER_ID);
 
             assertThat(result.getName()).isEqualTo("test.pdf");
         }
@@ -162,7 +171,7 @@ class SharedFileServiceAdditionalTest {
         void ファイル詳細_不在_例外() {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.getFile(FILE_ID))
+            assertThatThrownBy(() -> service.getFile(FILE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
@@ -266,7 +275,7 @@ class SharedFileServiceAdditionalTest {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
             given(fileRepository.save(entity)).willReturn(entity);
             given(fileSharingMapper.toFileResponse(entity)).willReturn(mockFileResponse());
-            UpdateFileRequest request = new UpdateFileRequest("renamed.pdf", "新説明", 300L);
+            UpdateFileRequest request = new UpdateFileRequest("renamed.pdf", "新説明", 300L, null, null);
 
             FileResponse result = service.updateFile(FILE_ID, request);
 
@@ -283,7 +292,7 @@ class SharedFileServiceAdditionalTest {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(entity));
             given(fileRepository.save(entity)).willReturn(entity);
             given(fileSharingMapper.toFileResponse(entity)).willReturn(mockFileResponse());
-            UpdateFileRequest request = new UpdateFileRequest(null, null, null);
+            UpdateFileRequest request = new UpdateFileRequest(null, null, null, null, null);
 
             service.updateFile(FILE_ID, request);
 

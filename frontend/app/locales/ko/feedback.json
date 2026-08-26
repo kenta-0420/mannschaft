@@ -25,6 +25,39 @@
     },
     "anonymous": {
       "label": "익명으로 보내기"
+    },
+    "submitter": "제출자",
+    "votes": "찬성 수",
+    "status": {
+      "NEW": "신규",
+      "OPEN": "미처리",
+      "IN_PROGRESS": "처리 중",
+      "RESPONDED": "답변됨",
+      "CLOSED": "종료됨"
+    },
+    "inbox": {
+      "title": "의견함 (전체)",
+      "description": "GENERAL 범위의 모든 피드백 확인 및 응답",
+      "noData": "피드백이 없습니다",
+      "filter": {
+        "all": "전체",
+        "label": "상태로 필터"
+      },
+      "respond": {
+        "title": "답변하기",
+        "adminResponse": "답변 내용",
+        "adminResponsePlaceholder": "사용자에게 보낼 답변을 입력하세요",
+        "publicResponse": "공개 답변으로 표시",
+        "submit": "답변 전송",
+        "success": "답변이 전송되었습니다",
+        "error": "답변 전송에 실패했습니다"
+      },
+      "statusChange": {
+        "success": "상태가 업데이트되었습니다",
+        "error": "상태 업데이트에 실패했습니다"
+      },
+      "viewAsUser": "사용자 관점으로 보기",
+      "anonymous": "익명"
     }
   }
 }

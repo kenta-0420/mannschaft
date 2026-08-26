@@ -230,21 +230,82 @@ class NavSettingsServiceTest {
         assertThat(orderedKeys(res)).containsExactly("a", "b", "c");
     }
 
-    @Test
-    @DisplayName("固定項目も並び替え対象として個人順に従う（非表示は不可のまま）")
-    void get_fixedFeatureFollowsUserOrder() {
-        given(navFeatureRepository.findByEnabledTrueOrderBySortOrderAsc())
-                .willReturn(List.of(makeFeature("calendar", true, 20), makeFeature("settings", true, 100),
-                        makeFeature("todo", false, 30)));
+    // ─────────────────────────────────────────────────────────────────────
+    // バグB修正: 'settings' 項目は個人並び順に関わらず常に最後尾に固定される
+    // ─────────────────────────────────────────────────────────────────────
 
+    @Test
+    @DisplayName("settings最後尾固定: 個人並び順の先頭に settings があっても応答の最後尾に強制移動される")
+    void get_settingsAlwaysLast_evenIfUserOrderPutsItFirst() {
+        given(navFeatureRepository.findByEnabledTrueOrderBySortOrderAsc())
+                .willReturn(List.of(makeFeature("calendar", true, 20),
+                        makeFeature("todo", false, 30),
+                        makeFeature("settings", true, 100)));
+
+        // ユーザーが settings を先頭に設定している場合でも
         UserNavSettingsEntity entity = orderedSettings("[]", "[\"settings\",\"todo\",\"calendar\"]");
         given(userNavSettingsRepository.findById(1L)).willReturn(Optional.of(entity));
 
         NavSettingsResponse res = service.getMyNavSettings(1L);
 
-        assertThat(orderedKeys(res)).containsExactly("settings", "todo", "calendar");
+        // settings は最後尾でなければならない
+        List<String> keys = orderedKeys(res);
+        assertThat(keys.get(keys.size() - 1)).isEqualTo("settings");
+        // 他の項目も全て含まれること（欠落なし）
+        assertThat(keys).contains("calendar", "todo", "settings");
+        // settings の visible=true は変わらない（fixed 項目）
         assertThat(res.getFeatures().stream()
                 .filter(f -> f.getKey().equals("settings")).findFirst().orElseThrow().isVisible()).isTrue();
+    }
+
+    @Test
+    @DisplayName("settings最後尾固定: 個人並び順なし（マスタ順）でも settings が最後尾")
+    void get_settingsAlwaysLast_whenNoUserOrder() {
+        // マスタ sort_order: calendar=20, todo=30, settings=100（マスタ順でも最後尾）
+        given(navFeatureRepository.findByEnabledTrueOrderBySortOrderAsc())
+                .willReturn(List.of(makeFeature("calendar", true, 20),
+                        makeFeature("todo", false, 30),
+                        makeFeature("settings", true, 100)));
+        given(userNavSettingsRepository.findById(1L)).willReturn(Optional.empty());
+
+        NavSettingsResponse res = service.getMyNavSettings(1L);
+
+        List<String> keys = orderedKeys(res);
+        assertThat(keys.get(keys.size() - 1)).isEqualTo("settings");
+    }
+
+    @Test
+    @DisplayName("settings最後尾固定: 個人並び順の中間に settings があっても最後尾に移動")
+    void get_settingsAlwaysLast_whenSettingsInMiddleOfUserOrder() {
+        given(navFeatureRepository.findByEnabledTrueOrderBySortOrderAsc())
+                .willReturn(List.of(makeFeature("a", false, 10),
+                        makeFeature("settings", true, 100),
+                        makeFeature("b", false, 20),
+                        makeFeature("c", false, 30)));
+
+        UserNavSettingsEntity entity = orderedSettings("[]", "[\"a\",\"settings\",\"b\",\"c\"]");
+        given(userNavSettingsRepository.findById(1L)).willReturn(Optional.of(entity));
+
+        NavSettingsResponse res = service.getMyNavSettings(1L);
+
+        List<String> keys = orderedKeys(res);
+        assertThat(keys.get(keys.size() - 1)).isEqualTo("settings");
+        // 残りの順序は維持されること（settings 抜き）
+        assertThat(keys.subList(0, keys.size() - 1)).containsExactly("a", "b", "c");
+    }
+
+    @Test
+    @DisplayName("settings最後尾固定: settings 項目が存在しない場合は通常の順序で返る")
+    void get_settingsAlwaysLast_whenSettingsNotPresent() {
+        given(navFeatureRepository.findByEnabledTrueOrderBySortOrderAsc())
+                .willReturn(List.of(makeFeature("a", false, 10),
+                        makeFeature("b", false, 20),
+                        makeFeature("c", false, 30)));
+        given(userNavSettingsRepository.findById(1L)).willReturn(Optional.empty());
+
+        NavSettingsResponse res = service.getMyNavSettings(1L);
+
+        assertThat(orderedKeys(res)).containsExactly("a", "b", "c");
     }
 
     private UserNavSettingsEntity hiddenSettings(String json) {

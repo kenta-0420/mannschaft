@@ -66,6 +66,10 @@ class PropertyWorkPackageControllerIntegrationTest extends AbstractMySqlIntegrat
         userId = insertUser("pwp-test-" + System.nanoTime() + "@example.jp", "履歴", "テスト");
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(userId.toString(), null, List.of()));
+        // 認可根治戦役 Wave3-B5: Controller に checkMembership/checkAdminOrAbove を追加したため、
+        // 本テストの被験者は全テストで当該チームの ADMIN として振る舞う前提で ADMIN を付与する
+        // （非会員/非ADMINの拒否経路は PropertyScopeContractIT が担当する）。
+        grantTeamAdminToCurrentUser();
     }
 
     /** users INSERT helper（FK 制約クリア用）。 */
@@ -195,7 +199,6 @@ class PropertyWorkPackageControllerIntegrationTest extends AbstractMySqlIntegrat
     @Test
     @DisplayName("POST /property-history/{id}/export?format=pdf → application/pdf + %PDF- 始まり")
     void exportSinglePdf() {
-        grantTeamAdminToCurrentUser();
         Long id = createPackage(WorkPackageVisibility.MEMBERS_MASKED);
 
         ResponseEntity<byte[]> resp = controller.exportSingle(
@@ -211,7 +214,6 @@ class PropertyWorkPackageControllerIntegrationTest extends AbstractMySqlIntegrat
     @Test
     @DisplayName("POST /property-history/{id}/export?format=xlsx → xlsx Content-Type + PK 始まり")
     void exportSingleXlsx() {
-        grantTeamAdminToCurrentUser();
         Long id = createPackage(WorkPackageVisibility.MEMBERS_MASKED);
 
         ResponseEntity<byte[]> resp = controller.exportSingle(
