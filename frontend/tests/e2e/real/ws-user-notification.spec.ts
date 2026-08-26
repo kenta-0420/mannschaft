@@ -124,7 +124,7 @@ test.beforeAll(async () => {
         await api.patch(`${BE_API}/chat/channels/${ch.id}/inquiry`, {
           headers: authHeaders(adminToken),
           data: { is_inquiry_channel: false },
-        }).catch(() => {})
+        }).catch((e: unknown) => { console.warn('[後片付け] 削除に失敗（試験結果には影響しないが残骸が残る）:', e) })
       }
     }
   }
@@ -161,8 +161,8 @@ test.afterAll(async () => {
     await api.patch(`${BE_API}/chat/channels/${channelId}/inquiry`, {
       headers: authHeaders(adminToken),
       data: { is_inquiry_channel: false },
-    }).catch(() => {})
-    await api.delete(`${BE_API}/chat/channels/${channelId}`, { headers: authHeaders(adminToken) }).catch(() => {})
+    }).catch((e: unknown) => { console.warn('[後片付け] 削除に失敗（試験結果には影響しないが残骸が残る）:', e) })
+    await api.delete(`${BE_API}/chat/channels/${channelId}`, { headers: authHeaders(adminToken) }).catch((e: unknown) => { console.warn('[後片付け] 削除に失敗（試験結果には影響しないが残骸が残る）:', e) })
   }
   await api?.dispose()
 })
@@ -178,7 +178,8 @@ test('AC-9: 問い合わせ通知が実ブラウザにWebSocketでリアルタ�
   await waitForHydration(page)
   await page.reload({ waitUntil: 'domcontentloaded' })
   await waitForHydration(page)
-  await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+  await page.locator('.pi-spin').waitFor({ state: 'detached', timeout: 20_000 })
+    .catch((e: unknown) => { console.warn('[待機] ローディング消滅を待てなかったまま続行:', e) })
 
   // ウィジェット本体が描画されるまで待つ
   await expect(page.getByRole('heading', { name: WIDGET_TITLE })).toBeVisible({ timeout: 20_000 })

@@ -291,10 +291,10 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   if (channelId) {
-    await api.delete(`${BE_API}/chat/channels/${channelId}`, { headers: authHeaders(memberToken) }).catch(() => {})
+    await api.delete(`${BE_API}/chat/channels/${channelId}`, { headers: authHeaders(memberToken) }).catch((e: unknown) => { console.warn('[後片付け] 削除に失敗（試験結果には影響しないが残骸が残る）:', e) })
   }
   if (teamSlug) {
-    await api.delete(`${BE_API}/teams/${teamSlug}`, { headers: authHeaders(memberToken) }).catch(() => {})
+    await api.delete(`${BE_API}/teams/${teamSlug}`, { headers: authHeaders(memberToken) }).catch((e: unknown) => { console.warn('[後片付け] 削除に失敗（試験結果には影響しないが残骸が残る）:', e) })
   }
   await api?.dispose()
 })

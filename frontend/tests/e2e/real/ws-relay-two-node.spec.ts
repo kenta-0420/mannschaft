@@ -81,7 +81,8 @@ async function fetchNodeId(origin: string, token: string): Promise<string | null
     if (!res.ok()) return null
     const body = await res.json() as { nodeId?: string }
     return body.nodeId ?? null
-  } catch {
+  } catch (e) {
+    console.warn('[nodeId取得] /actuator/info の取得に失敗したため null を返す:', e)
     return null
   }
 }
@@ -228,10 +229,10 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   if (envReady && channelId) {
-    await api.delete(`${NODE_A}/api/v1/chat/channels/${channelId}`, { headers: authHeaders(adminToken) }).catch(() => {})
+    await api.delete(`${NODE_A}/api/v1/chat/channels/${channelId}`, { headers: authHeaders(adminToken) }).catch((e: unknown) => { console.warn('[後片付け] 削除に失敗（試験結果には影響しないが残骸が残る）:', e) })
   }
   if (envReady && teamSlug) {
-    await api.delete(`${NODE_A}/api/v1/teams/${teamSlug}`, { headers: authHeaders(adminToken) }).catch(() => {})
+    await api.delete(`${NODE_A}/api/v1/teams/${teamSlug}`, { headers: authHeaders(adminToken) }).catch((e: unknown) => { console.warn('[後片付け] 削除に失敗（試験結果には影響しないが残骸が残る）:', e) })
   }
   await api?.dispose()
 })
