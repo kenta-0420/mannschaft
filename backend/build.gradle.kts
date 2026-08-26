@@ -368,9 +368,35 @@ tasks.withType<Test> {
     // 実測で安全域だった水準の半分以下でヒープを定期リセットできる。
     // ※ この値を 100 に戻すと CI shard は再び 60 分打ち切りに戻る。変更時は必ず再実測すること。
     //
+    // 【500 → 200 に是正した理由（実測 2026-08-26・CI shard5 の OOM 根治）】
+    // 上に書かれた「fork 回数が約 14 → 約 3 に減り、ヒープを定期リセットできる」という
+    // 前提が、実際のクラス数に対して外れていた。各 shard のテストクラス数を実測すると
+    //   shard0=350 / shard1=382 / shard2=374 / shard3=383 / shard4=384 / shard5=377
+    // であり、いずれも 500 未満である。すなわち forkEvery=500 では
+    // 【JVM は shard 実行中に一度も fork し直されない（fork 回数は約 3 ではなく 0）】。
+    // 謳っていた「ヒープの定期リセット」は、この緩和を入れた時点から一度も働いていない。
+    //
+    // その結果 1 shard 分の Spring コンテキスト（shard5 実測で 30 種類）が単一の
+    // -Xmx4g ヒープへ最後まで蓄積し、すぐ上のローカル実測が記録するとおり
+    // 「4g 上限に対し 3.9g 使用まで張り付く」＝残余わずか約 2.5% で回っていた。
+    // 実際、全体をわずかに重くする PR（AOP プロキシ対象クラスが 55 → 120 に増加）で
+    // shard5 が OutOfMemoryError: Java heap space を 3 回連続で起こしている。
+    //
+    // 【なぜ 200 か】実測クラス数 350〜384 に対し、
+    //   ・最小 shard(350) でも 1 回はリセットさせたい  → N < 350
+    //   ・最大 shard(384) で 2 回目を発火させたくない  → 2N >= 384 すなわち N >= 192
+    // よって N ∈ [192, 349] が「全 shard でちょうど 1 回リセット」となる窓であり、
+    // 両側に余裕を持たせて 200 を採る（クラス数が 400 まで増えても 2 回目は出ず、
+    // 201 まで減ってもリセットは失われない）。
+    // 追加コストは上の実測値で 1 fork あたり約 447 秒＝約 7.5 分であり、
+    // 現状の shard 壁時計（約 25 分）に足しても 60 分打ち切りには十分収まる。
+    //
+    // ※ 値を変えるときは必ず「実クラス数 ÷ 目標 fork 回数」で検算すること。
+    //   クラス数を見ずに大きな値へ緩めると、また fork 回数が 0 になり本欠陥が再発する。
+    //
     // ローカル（WSL2 Docker）環境では -Pfork.every=0 で無効化し、1コンテナ共有で高速化できる。
     // perfTask は単一クラスの重量級 IT ゆえ forkEvery=0（1 JVM 共有）で無駄な再 fork を避ける。
-    setForkEvery(if (isPerfTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 500L))
+    setForkEvery(if (isPerfTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 200L))
     // ローカル（WSL2 Docker）環境では Testcontainers の並列コンテナ起動が WSL2 ポートミラーリングの
     // タイミング問題を引き起こすため、-Pmax.parallel.forks=1 で上書きできるようにする。
     // CI 環境ではデフォルト 2 のまま動作する。
@@ -396,10 +422,20 @@ tasks.withType<Test> {
     //   問題が発生していた（ShiftBudgetAllocationRepositoryTest で expected 2026-06-01 / but was
     //   2026-05-31）。JVM 側で TZ を JST に固定することで JDBC との一貫性を保証し、テスト結果が
     //   実行時刻・実行環境（ローカル/CI）に依存しないようにする。
+    // 【ヒープダンプはワーカーごとに分ける（実測 2026-08-26）】
+    // 以前は -XX:HeapDumpPath=build/heap-dump.hprof という【固定ファイル名】だったため、
+    // maxParallelForks=2 の 2 ワーカーが OOM 時に同一ファイルへ同時に書き込み、
+    // 出来上がったダンプが 6.97GB になった。-Xmx4g のワーカー 1 個から 4g を超える
+    // ダンプが出ることは原理的にあり得ず、この数字は【解析者を誤らせる嘘の値】である
+    // （実際 shard5 の OOM 調査で「1 プロセスが 7GB 使った」という誤読を招き、
+    //  真因（fork が 0 回でコンテキストが蓄積していたこと）の特定を遅らせた）。
+    // ディレクトリを指定すると JVM が java_pid<PID>.hprof を各自作るため衝突しない。
+    val heapDumpDir = project.layout.buildDirectory.dir("heap-dumps").get().asFile
+    doFirst { heapDumpDir.mkdirs() }
     jvmArgs(
         "-XX:+UseG1GC",
         "-XX:+HeapDumpOnOutOfMemoryError",
-        "-XX:HeapDumpPath=build/heap-dump.hprof",
+        "-XX:HeapDumpPath=${heapDumpDir.absolutePath}",
         "-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true",
         "-Duser.timezone=Asia/Tokyo"
     )
