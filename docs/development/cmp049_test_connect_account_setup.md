@@ -68,7 +68,8 @@ mannschaft:
     connect-webhook-secret: whsec_...
 ```
 
-> `stripe listen` で得られるシークレットは **CLI を起動するたびに変わる**。BE 起動前に貼り直すこと。
+> このシークレットは **ダッシュボードに登録した Webhook エンドポイントのものとは別物**である。必ず `stripe listen` が出力した値を使うこと。
+> 同じ設定であれば `listen` を再起動しても値は変わらないが、**アカウント・プロジェクト・認証設定を切り替えたときは変わりうる**ので、その場合は貼り直す。
 
 ### 1.3 BE / FE の起動
 
@@ -93,8 +94,9 @@ FE に既に実装がある（`frontend/app/components/payment/MarketConnectOnbo
 
 このとき BE 側で行われること（`ConnectAccountService.createOnboardingLink`）:
 
-- `Account.create` で **国 `JP` 固定**の Express アカウントを作成（`DEFAULT_COUNTRY = "JP"`、通貨 `JPY`）
-- `connect_accounts` に `payouts_enabled=false` / `onboarding_status=ONBOARDING` で保存
+- **その scope の口座がまだ無い場合のみ** `Account.create` で **国 `JP` 固定**の Express アカウントを作成する（`DEFAULT_COUNTRY = "JP"`）。
+  既に `connect_accounts` に行がある場合は **既存の Stripe Account を再利用**し、`onboarding_status` を `ONBOARDING` に戻して onboarding を再開する（`ConnectAccountService.java:76-83`）
+- `connect_accounts` に `payouts_enabled=false` / `onboarding_status=ONBOARDING` で保存（**既定通貨 `JPY` はこの DB 鏡像に保存される値であり、`AccountCreateParams` には渡していない**）
 - AccountLink を発行して URL を返す
 
 ---
@@ -111,9 +113,14 @@ Stripe のホスト型画面に遷移したら、以下の**テスト専用の�
 | 銀行コード（Routing・日本） | `1100000` | 入金が成功する組み合わせ |
 | 口座番号（日本） | `0001234` | 同上 |
 
-> **住所トークンは順序に注意。** Stripe の仕様上、**後からより緩い検証条件のトークンへ変更できない**。
-> `address_full_match` を一度使うと、そのアカウントで入金を無効化する方向のテストはできなくなる。
-> 失敗系（入金ブロック等）も試したい場合は、**別のアカウントを新規に作る**こと。
+> **住所トークンは使う順序に注意。** Stripe の仕様上、一度使ったトークンより **制限の厳しいトークンへ後から変更することはできない**。
+> つまり `address_full_match`（支払い・入金の両方が有効になる）を先に使うと、そのアカウントを
+> 「入金が無効な状態」へ引き戻すテストはできなくなる。検証条件の緩いものから順に試すこと。
+>
+> **失敗系を試すには別の scope を使うこと。** アプリは同一 scope に `connect_accounts` の行があると
+> **既存の Stripe Account を再利用して新規作成しない**（`ConnectAccountService.java:76-83`）。
+> したがって「同じユーザーでもう一度やり直す」ことはできない。別のユーザー、あるいは TEAM / ORG scope で
+> onboarding をやり直すこと（`POST /api/v1/payment/connect/onboarding-link` の `scopeKind` / `scopeId` が別なら別口座になる）。
 
 入金の失敗系を試したい場合の口座番号（日本）:
 
@@ -173,9 +180,9 @@ ORDER BY created_at DESC LIMIT 5;
 
 - **ダッシュボードや CLI で直接作った Connect 口座は使えない。** `connect_accounts` に鏡像が無く、アプリから見えない。必ずアプリの導線から作ること。
 - **`stripe listen` を止めると webhook が届かなくなる。** 検証中は起動したままにする。
-- **シークレットは CLI 再起動のたびに変わる。** 「昨日動いたのに今日 `HELD` のまま」の大半はこれ。
+- **CLI のシークレットとダッシュボードのシークレットは別物。** `stripe listen` が出力した値を使うこと。アカウントやプロジェクトを切り替えたら貼り直す。
 - **`application.yml` に鍵を書かないこと。** このリポジトリは公開である。`application-local.yml`（git 追跡外）か環境変数を使う。
-- **`address_full_match` を使った口座では入金無効化のテストができない。** 失敗系は別口座で。
+- **`address_full_match` を使った口座では入金無効化のテストができない。** 失敗系は**別の scope**（別ユーザー / TEAM / ORG）でやり直す。同じ scope では既存口座が再利用されて作り直せない。
 
 ---
 
