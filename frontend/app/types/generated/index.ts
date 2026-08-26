@@ -99686,7 +99686,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
             };
             cookie?: never;
         };
@@ -99708,7 +99708,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
             };
             cookie?: never;
         };
@@ -99734,7 +99734,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -99757,7 +99757,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -99784,7 +99784,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -115978,7 +115978,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
             };
             cookie?: never;
         };
@@ -116000,7 +116000,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
             };
             cookie?: never;
         };
@@ -116026,7 +116026,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -116049,7 +116049,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -131328,7 +131328,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -131353,7 +131353,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -131376,7 +131376,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -131403,7 +131403,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -138215,7 +138215,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -138240,7 +138240,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -138263,7 +138263,7 @@ export interface operations {
             };
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -144836,7 +144836,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -144859,7 +144859,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -154455,7 +154455,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -154478,7 +154478,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -154501,7 +154501,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -154524,7 +154524,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
                 scheduleId: number;
             };
             cookie?: never;
@@ -162821,7 +162821,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
                 taskId: string;
             };
@@ -162843,7 +162843,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                teamPublicId: number;
+                teamPublicId: string;
                 scheduleId: number;
                 invitationId: number;
             };
@@ -163760,7 +163760,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgPublicId: number;
+                orgPublicId: string;
                 scheduleId: number;
                 taskId: string;
             };
