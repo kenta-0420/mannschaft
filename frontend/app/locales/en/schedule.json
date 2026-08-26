@@ -17,7 +17,9 @@
       "today": "Today",
       "dayOverflow": "{count} more",
       "laneOverflow": "+{count} more",
-      "dayDetailTitle": "Events on {date}"
+      "dayDetailTitle": "Events on {date}",
+      "hiddenLayerNotice": "The layer \"{layer}\" you created this in is hidden",
+      "hiddenLayerShow": "Show it"
     },
     "common_delete": "Delete",
     "description_label": "Description",

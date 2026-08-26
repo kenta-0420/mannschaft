@@ -17,7 +17,9 @@
       "today": "Heute",
       "dayOverflow": "{count} weitere",
       "laneOverflow": "+{count} weitere",
-      "dayDetailTitle": "Termine am {date}"
+      "dayDetailTitle": "Termine am {date}",
+      "hiddenLayerNotice": "Die Ziel-Ebene \"{layer}\" ist ausgeblendet",
+      "hiddenLayerShow": "Anzeigen"
     },
     "common_delete": "Löschen",
     "description_label": "Beschreibung",

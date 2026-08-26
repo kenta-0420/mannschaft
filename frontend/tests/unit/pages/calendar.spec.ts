@@ -115,6 +115,10 @@ async function mountCalendarPage() {
 describe('pages/calendar.vue: AC-11 作成スコープと表示フィルタの分離', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    // useMyCalendarData の scopeFilter は localStorage に永続化される。jsdom の localStorage は
+    // テストファイル内で使い回されるため、前のテストの選択状態が漏れて初期状態が狂わないよう
+    // 各テストの開始時に必ずクリアする。
+    localStorage.clear()
     scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
     scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [teamCalendarEntry()] })
     ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
@@ -152,5 +156,73 @@ describe('pages/calendar.vue: AC-11 作成スコープと表示フィルタの�
     // 個人チップも変化しない（選択されたまま）
     const personalChip = chipFor('個人')!
     expect(personalChip.classes()).toContain('border-primary')
+  })
+})
+
+/**
+ * AC-11b（§5.4）回帰テスト。
+ *
+ * 背景（マスター裁定により本 task に追加）: AC-11 の結合切りにより作成スコープを変えても
+ * 表示フィルタは変わらなくなった。その結果、作成先のレイヤーが表示フィルタで非表示のまま
+ * 予定を作成すると、作った予定が何の説明も無く現れないという新たな不具合が起こりうる。
+ * この案内（「作成先のレイヤーが非表示です」＋「表示する」ボタン）が正しく機能することを検証する。
+ */
+describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    localStorage.clear()
+    scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
+    scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [teamCalendarEntry()] })
+    ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
+  })
+
+  it('AC-11b: 作成先レイヤーが非表示のまま予定を作成すると案内が出て、押すとそのレイヤーだけ選択状態になる', async () => {
+    const wrapper = await mountCalendarPage()
+    const chipFor = (label: string) =>
+      wrapper.findAll('button').find(b => b.text() === label)
+
+    // チームAのレイヤーチップを非表示にする
+    await chipFor('チームA')!.trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(chipFor('チームA')!.classes()).not.toContain('border-primary')
+
+    // 作成スコープをチームAへ変更してから保存する
+    const select = wrapper.get('[data-testid="create-scope-select"]')
+    await select.setValue('TEAM:t1')
+    await wrapper.vm.$nextTick()
+
+    // 案内はまだ出ていない（保存前）
+    expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
+
+    // 作成フォームの保存完了を模擬する
+    const createForm = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    expect(createForm.exists()).toBe(true)
+    createForm.vm.$emit('saved')
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    // 案内が現れる。表示フィルタはまだ書き換わっていない（P2: 押すまで変えない）
+    const notice = wrapper.get('[data-testid="hidden-layer-notice"]')
+    expect(notice.text()).toContain('チームA')
+    expect(chipFor('チームA')!.classes()).not.toContain('border-primary')
+
+    // 「表示する」ボタンを押すと、そのレイヤーだけが選択状態になる
+    await wrapper.get('[data-testid="hidden-layer-show-button"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(chipFor('チームA')!.classes()).toContain('border-primary')
+    expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
+  })
+
+  it('AC-11b: 作成先レイヤーが既に表示されている場合は案内を出さない', async () => {
+    const wrapper = await mountCalendarPage()
+
+    // 初期状態は個人・チームAとも表示済み（作成スコープ既定=個人＝表示中）
+    const createForm = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    createForm.vm.$emit('saved')
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
   })
 })

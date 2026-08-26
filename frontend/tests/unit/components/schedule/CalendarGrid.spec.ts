@@ -325,6 +325,65 @@ describe('CalendarGrid', () => {
     expect(overflow.text()).toContain('2')
   })
 
+  // [A-1・検分二巡目] 「+N件」のタップ領域拡張が、レーン1の実バーや下の単日予定と
+  // 重なって誤操作（別の予定のつもりが「+N件」を開いてしまう）を生んでいないことの回帰テスト。
+  // jsdom は実レイアウト（getBoundingClientRect）を計算しないため、コンポーネントが実際に
+  // 算出した inline style（top/height）を読み取り、矩形として重ならないことを検証する。
+  it('[A-1回帰] レーン1のバーと「+N件」チップは縦方向に重ならず、バー領域のクリックはその予定を開く', async () => {
+    const events: CalendarEventItem[] = Array.from({ length: 4 }, (_, i) => ({
+      id: 401 + i,
+      uniqueKey: `a1-${i + 1}`,
+      title: `A1予定${i + 1}`,
+      startAt: '2026-08-03T00:00:00+09:00',
+      endAt: '2026-08-04T23:59:59+09:00',
+      allDay: true,
+      color: '#6366f1',
+      isPersonal: false,
+      scopeType: 'TEAM',
+    }))
+
+    const wrapper = await mountSuspended(CalendarGrid, {
+      props: { year: 2026, month: 8, events },
+      global: {
+        stubs: {
+          Button: true,
+          ScheduleTargetAudience: AudienceStub,
+          Popover: PopoverStub,
+          ScheduleListRow: ScheduleListRowStub,
+        },
+      },
+    })
+
+    const parsePx = (style: string | undefined, prop: string): number => {
+      const m = new RegExp(`${prop}:\\s*(-?[0-9.]+)px`).exec(style ?? '')
+      if (!m) throw new Error(`${prop} not found in style="${style}"`)
+      return Number(m[1])
+    }
+
+    // レーン1の実バー（2本目に表示される予定）
+    const bars = wrapper.findAll('div.absolute.cursor-pointer.select-none')
+    const lane1Bar = bars.find(b => b.text().includes('A1予定2'))
+    expect(lane1Bar).toBeTruthy()
+    const barTop = parsePx(lane1Bar!.attributes('style'), 'top')
+    const barHeight = parsePx(lane1Bar!.attributes('style'), 'height')
+    const barBottom = barTop + barHeight
+
+    // 「+N件」チップ
+    const overflow = wrapper.get('[data-testid="day-overflow-2026-08-03"]')
+    const overflowTop = parsePx(overflow.attributes('style'), 'top')
+
+    // 縦方向に重ならない（チップの上端がバーの下端以上）
+    expect(overflowTop).toBeGreaterThanOrEqual(barBottom)
+
+    // レーン1のバー領域をクリックすると、そのバーの予定が開く（「+N件」ではない）
+    await lane1Bar!.trigger('click')
+    expect(wrapper.emitted('eventClick')).toEqual([[402, false]])
+    // 「+N件」側のクリックハンドラ（day-overflow）は誤って発火していない
+    // （日別ポップオーバーが開いていない＝popoverDateStr が設定されていないことを、
+    // ポップオーバー内に行が無いことで確認する）
+    expect(wrapper.findAll('[data-testid^="popover-row-"]')).toHaveLength(0)
+  })
+
   // AC-12d: 「今日」ボタン押下時のフォーカス移動（月移動は親コンポーネントの責務のため、
   // ここでは CalendarGrid が公開する focusToday() のフォーカス付与のみを検証する）
   it('AC-12d: focusToday() を呼ぶと今日のセルへフォーカスが移る（当月表示中でも必ず移る）', async () => {

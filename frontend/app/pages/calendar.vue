@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { GanttResponse, GanttTodo } from '~/types/todo'
-import { useMyCalendarData, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
+import { useMyCalendarData, PERSONAL_KEY, FILTER_OVERFLOW } from '~/composables/useMyCalendarData'
 
 definePageMeta({ middleware: 'auth' })
 
@@ -252,6 +252,38 @@ const selectedCreateScope = computed(
   () => createScopeOptions.value.find(o => o.value === createScopeKey.value) ?? createScopeOptions.value[0]!,
 )
 
+// AC-11b（§5.4）: 表示フィルタで非表示のレイヤーへ予定を作成すると、作った予定が何の説明も
+// 無く現れない（無言で消える＝P3違反）。作成完了時にだけ判定し、案内＋「表示する」ボタンを出す。
+// 勝手にフィルタを書き換えない（P2）のが AC-11 の結合切りと表裏一体の要件であり、
+// ここでも selectedScopes への代入はボタン押下時（onShowHiddenLayer）のみに限定する。
+const hiddenLayerNotice = ref<{ scopeKey: string; layerLabel: string } | null>(null)
+
+/** 作成スコープに対応する selectedScopes 用キー（PERSONAL_KEY または `${SCOPE_TYPE}:${scopeId}`）。 */
+function createScopeFilterKey(scope: CreateScope): string {
+  return scope.isPersonal ? PERSONAL_KEY : scope.value
+}
+
+/** 作成ダイアログの保存完了（新規作成のみ・§5.4/AC-11b）。 */
+async function onCreated() {
+  const scope = selectedCreateScope.value
+  const scopeKey = createScopeFilterKey(scope)
+  await refresh()
+  hiddenLayerNotice.value = selectedScopes.value.includes(scopeKey)
+    ? null
+    : { scopeKey, layerLabel: scope.label }
+}
+
+/** 「表示する」ボタン（AC-11b）: 押されたときだけそのレイヤーを表示状態にする。他は一切変更しない。 */
+function onShowHiddenLayer() {
+  const notice = hiddenLayerNotice.value
+  if (!notice) return
+  if (!selectedScopes.value.includes(notice.scopeKey)) {
+    selectedScopes.value = [...selectedScopes.value, notice.scopeKey]
+  }
+  hiddenLayerNotice.value = null
+}
+
+
 // 作成スコープ（作成フォームの初期スコープ）と表示フィルタ（selectedScopes）は分離する（§5.4/AC-11）。
 // 以前はここで selectedScopes を強制的に書き換えていたが、それだと表示中のレイヤーチップの選択状態が
 // 作成スコープの変更につられて勝手に変わってしまう（P2 違反）。作成スコープは createScopeKey /
@@ -449,6 +481,15 @@ onMounted(async () => {
       <span class="font-medium">{{ t('schedule.todo_load_error.summary') }}</span>
       <span class="ml-2">{{ t('schedule.todo_load_error.detail') }}</span>
     </Message>
+
+    <!-- AC-11b（§5.4）: 作成先のレイヤーが表示フィルタで非表示のときの案内。表示するだけで
+         フィルタは書き換えない。「表示する」を押したときだけ onShowHiddenLayer が変更する -->
+    <HiddenLayerNotice
+      v-if="hiddenLayerNotice"
+      :layer-label="hiddenLayerNotice.layerLabel"
+      class="mb-4"
+      @show="onShowHiddenLayer"
+    />
 
     <!-- タブ切替 -->
     <div class="mb-4 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700 w-fit">
@@ -654,7 +695,7 @@ onMounted(async () => {
       :initial-date="selectedDate"
       :is-personal="selectedCreateScope.isPersonal"
       :scope-options="createScopeOptions.length > 1 ? createScopeOptions : undefined"
-      @saved="refresh"
+      @saved="onCreated"
     />
 
     <!-- 編集ダイアログ -->

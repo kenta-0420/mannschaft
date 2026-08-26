@@ -1,4 +1,20 @@
 <script setup lang="ts">
+/**
+ * [A-2 調査結果・検分二巡目]（FRONTEND_CODING_CONVENTION.md §3b の44x44px規約とモバイル幅の関係）
+ *
+ * 375〜390px 幅（iPhone SE 相当）では、月グリッドは7列に分割されるため1日分のセル幅は
+ * 物理的に44px を下回る（カード余白・列境界線を差し引くと実測 約43px 以下）。これは列数に
+ * 由来する構造的制約であり、CalendarGrid.vue 側の実装で解消できるものではない。
+ *
+ * 設計書 §12 の Wave 分割表で `AC-14`（375px 幅で /calendar を開くとアジェンダ＝リスト表示が
+ * 既定になる）は W3-b（`CalendarAgendaList.vue` 新設 ＋ ビュー切替 UI）の担当であり、W2-b
+ * （本ファイル）の担当範囲外と確認した。現状 `pages/calendar.vue` にはビューポート幅に応じた
+ * 分岐が無く、W3 未着手のため375px幅でも今はこの月グリッドがそのまま表示され続ける。
+ *
+ * よって本ファイルでは「他N件」「+N件」ボタンの幅を**列幅いっぱい**（物理的な最大）まで
+ * 広げるところまでを W2-b の対応とし、44px 未達自体は解消しない。モバイル幅での本来の
+ * 答えは W3-b のアジェンダビューである（一次元リストで列制約自体が無くなる）。
+ */
 import dayjs from 'dayjs'
 import type { CalendarEventItem } from '~/composables/useCalendarEvents'
 
@@ -59,6 +75,11 @@ const MAX_LANES = 3
 // 日ごとの「+N件」として出す。3本ちょうどのときは超過扱いにせず MAX_LANES 全てを表示する
 // （閾値と描画レーン数は別物。同一視すると3本ちょうどの週で3本目が消える表示退行になる）。
 const OVERFLOW_VISIBLE_LANES = MAX_LANES - 1
+// 「+N件」行自体の実高さ（タップ領域44px規約）。バー行(BAR_STRIDE=21px)とは別枠で確保し、
+// 疑似要素の負insetでヒット領域だけ広げる手法はやめた（レーン1のバーや下の単日予定と
+// 重なり、誤ってそちらではなく「+N件」が開いてしまう実害があったため。検分[A-1]）。
+// 実ボックス自体を44pxにして、その分スペーサーの高さも伸ばし他要素を押し下げる。
+const OVERFLOW_ROW_HEIGHT = 44
 
 interface DayInfo {
   date: number
@@ -164,8 +185,12 @@ const weeks = computed<WeekData[]>(() =>
     const lanesUsedRaw = slots.length > 0 ? Math.max(...slots.map(s => s.lane)) + 1 : 0
     const hasLaneOverflow = lanesUsedRaw > MAX_LANES
     const visibleBarLaneCap = hasLaneOverflow ? OVERFLOW_VISIBLE_LANES : lanesUsedRaw
-    // 表示に確保する高さ（レーン）。超過時は実バー ＋「+N件」行の1行分を追加で確保する。
-    const lanesUsed = hasLaneOverflow ? OVERFLOW_VISIBLE_LANES + 1 : lanesUsedRaw
+    // 表示に確保する高さ（px）。超過時は実バー分（visibleBarLaneCap本）＋「+N件」行の
+    // 実高さ(OVERFLOW_ROW_HEIGHT)を追加で確保する。バー行と「+N件」行は高さが異なるため
+    // レーン数ではなく px で直接持つ（[A-1] 対応）。
+    const lanesUsed = hasLaneOverflow
+      ? visibleBarLaneCap * BAR_STRIDE + OVERFLOW_ROW_HEIGHT
+      : lanesUsedRaw * BAR_STRIDE
 
     // 日ごとの非表示バー件数を数える（週で1つの数字にすると日によって嘘になるため必ず日単位）。
     const laneOverflowByCol = days.map((_, di) =>
@@ -226,14 +251,21 @@ function barStyle(slot: MultiDaySlot): Record<string, string> {
   }
 }
 
-/** 複数日バーのレーン超過「+N件」チップの位置（該当日1列分・§6.2）。行はその週の実バー本数の直後。 */
+/**
+ * 複数日バーのレーン超過「+N件」チップの位置（該当日1列分・§6.2）。行はその週の実バー本数の直後。
+ * 実高さを OVERFLOW_ROW_HEIGHT（44px）にして、タップ領域をそのまま実ボックスとして確保する
+ * （疑似要素での不可視拡張はレーン1のバーや下の単日予定と重なり誤操作を招くため廃止・[A-1]）。
+ * 幅は列幅いっぱい（縦線の余白2px分のみ差し引き）まで広げているが、375〜390px 幅の
+ * モバイルでは列幅自体が44pxを下回るため、幅方向は44pxに届かない（[A-2]、詳細はコンポーネント
+ * コメント冒頭を参照）。
+ */
 function laneOverflowStyle(di: number, visibleBarLaneCap: number): Record<string, string> {
   const colW = 100 / 7
   return {
     top: `${visibleBarLaneCap * BAR_STRIDE}px`,
     left: `calc(${di * colW}% + 2px)`,
     width: `calc(${colW}% - 4px)`,
-    height: `${BAR_H}px`,
+    height: `${OVERFLOW_ROW_HEIGHT}px`,
   }
 }
 
@@ -343,7 +375,7 @@ defineExpose({ focusToday })
             {{ day.date }}
           </div>
           <!-- 複数日バー用スペーサー（バー絶対レイヤーと高さを同期） -->
-          <div :style="{ height: `${week.lanesUsed * BAR_STRIDE}px` }" />
+          <div :style="{ height: `${week.lanesUsed}px` }" />
           <!-- 祝日名 -->
           <div
             v-if="getHoliday(day.dateStr)"
@@ -403,7 +435,7 @@ defineExpose({ focusToday })
         class="pointer-events-none absolute inset-x-0 z-10"
         :style="{ top: `${DATE_HEADER_H}px` }"
       >
-        <div class="relative" :style="{ height: `${week.lanesUsed * BAR_STRIDE}px` }">
+        <div class="relative" :style="{ height: `${week.lanesUsed}px` }">
           <div
             v-for="slot in week.slots.filter(s => s.lane < week.visibleBarLaneCap)"
             :key="`${slot.event.uniqueKey}-w${wi}`"
@@ -435,15 +467,16 @@ defineExpose({ focusToday })
           </div>
 
           <!-- 複数日バーのレーン超過「+N件」（§6.2・AC-12b・日ごとに数える）。
-               見た目の高さ（BAR_H=18px）はバー行との整列上変えられないため、タップ領域は
-               `lane-overflow-hit-area` の疑似要素で不可視に拡張する（見た目は変えない）。 -->
+               実ボックス自体を OVERFLOW_ROW_HEIGHT(44px) にしてタップ領域を確保する
+               （[A-1]: 疑似要素での不可視拡張はレーン1のバーや下の単日予定と重なり、
+               その予定ではなく「+N件」が開いてしまう実害があったため廃止）。 -->
           <button
             v-for="(count, di) in week.laneOverflowByCol"
             v-show="count > 0"
             :key="`overflow-w${wi}-${di}`"
             type="button"
             :data-testid="`day-overflow-${week.days[di]?.dateStr}`"
-            class="lane-overflow-hit-area pointer-events-auto absolute rounded bg-surface-100 px-1 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600"
+            class="pointer-events-auto absolute flex items-center rounded bg-surface-100 px-1 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-200 dark:bg-surface-700 dark:text-surface-300 dark:hover:bg-surface-600"
             :style="laneOverflowStyle(di, week.visibleBarLaneCap)"
             @click.stop="openDayOverflow(week.days[di]!.dateStr, $event)"
           >
@@ -474,20 +507,3 @@ defineExpose({ focusToday })
   </div>
 </template>
 
-<style scoped>
-/*
- * 複数日バーのレーン超過「+N件」（AC-12b）のタップ領域拡張（FRONTEND_CODING_CONVENTION.md §3b）。
- * 見た目のボックスは BAR_H=18px のまま（バー行との整列を保つため変えられない）だが、
- * ::before の透明な疑似要素を負のinsetで重ねることで、視覚サイズを変えずにヒット領域だけ
- * 44x44px 相当まで広げる（生成コンテンツはホスト要素の一部としてヒットテストされるため、
- * クリックはボタン自身のイベントとして届く）。
- */
-.lane-overflow-hit-area {
-  position: absolute;
-}
-.lane-overflow-hit-area::before {
-  content: '';
-  position: absolute;
-  inset: -13px -4px;
-}
-</style>

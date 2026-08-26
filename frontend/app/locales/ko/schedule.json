@@ -17,7 +17,9 @@
       "today": "오늘",
       "dayOverflow": "외 {count}건",
       "laneOverflow": "+{count}건",
-      "dayDetailTitle": "{date}의 일정"
+      "dayDetailTitle": "{date}의 일정",
+      "hiddenLayerNotice": "생성 대상 레이어 \"{layer}\"가 숨겨져 있습니다",
+      "hiddenLayerShow": "표시하기"
     },
     "common_delete": "삭제",
     "description_label": "설명",

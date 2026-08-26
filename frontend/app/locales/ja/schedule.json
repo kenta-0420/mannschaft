@@ -17,7 +17,9 @@
       "today": "今日",
       "dayOverflow": "他{count}件",
       "laneOverflow": "+{count}件",
-      "dayDetailTitle": "{date} の予定"
+      "dayDetailTitle": "{date} の予定",
+      "hiddenLayerNotice": "作成先のレイヤー「{layer}」が非表示です",
+      "hiddenLayerShow": "表示する"
     },
     "common_delete": "削除",
     "description_label": "説明",
