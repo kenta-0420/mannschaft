@@ -375,20 +375,4 @@ class EventDismissalServiceTest {
         event.recordDismissal(OPERATOR_USER_ID);
         return event;
     }
-
-    /**
-     * テスト用の通知エンティティを構築する。
-     */
-    private NotificationEntity buildNotification() {
-        return NotificationEntity.builder()
-                .userId(ATTENDING_USER_ID_1)
-                .notificationType("EVENT_DISMISSAL")
-                .title("解散通知")
-                .body("解散しました")
-                .sourceType("EVENT")
-                .sourceId(EVENT_ID)
-                .scopeType(NotificationScopeType.PERSONAL)
-                .scopeId(ATTENDING_USER_ID_1)
-                .build();
-    }
 }
