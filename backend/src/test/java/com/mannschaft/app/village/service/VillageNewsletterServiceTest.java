@@ -66,11 +66,23 @@ class VillageNewsletterServiceTest {
     private VillageNewsletterSendLogRepository sendLogRepository;
     @Mock
     private VillageRepository villageRepository;
+    /** 存在確認・可視性判定の共通ゲート（実物へ委譲。VillageAccessGateTestSupport 参照）。 */
+    @Mock
+    private VillageAccessGate accessGate;
     @Mock
     private AuditLogService auditLogService;
     /** ②-4 堅牢性（AC-15/16）: HEADMAN/ELDER 認可述語は掲示板認可サービスへ集約されたためモック化する。 */
     @Mock
     private VillageBulletinAccessService bulletinAccessService;
+
+
+    @org.junit.jupiter.api.BeforeEach
+    void wireAccessGate() {
+        // 存在確認・可視性判定は VillageAccessGate へ一元化された。ゲートのモックをそのまま使うと
+        // 既存試練の villageRepository stub が読まれなくなるため、実物ゲートへ委譲させる。
+        VillageAccessGateTestSupport.delegateToRealGate(
+                accessGate, villageRepository, org.mockito.Mockito.mock(com.mannschaft.app.village.repository.VillageMembershipRepository.class));
+    }
 
     @InjectMocks
     private VillageNewsletterService service;
@@ -240,7 +252,11 @@ class VillageNewsletterServiceTest {
     // ====================================================================
 
     private void givenAliveVillage() {
-        VillageEntity v = VillageEntity.builder().build();
+        // visibility は DB 上 NOT NULL であり、null のままだと共通ゲートが
+        // 「未知の可視性＝秘匿側」として扱い、本番では起こりえない状態で試練が落ちる。
+        VillageEntity v = VillageEntity.builder()
+                .visibility(com.mannschaft.app.village.entity.enums.VillageVisibility.PUBLIC)
+                .build();
         v.setId(VILLAGE_ID);
         given(villageRepository.findById(VILLAGE_ID)).willReturn(Optional.of(v));
     }
