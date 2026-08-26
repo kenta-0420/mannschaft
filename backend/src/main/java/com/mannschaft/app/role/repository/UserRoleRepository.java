@@ -427,6 +427,42 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
     List<Long> findUserIdsByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
 
     /**
+     * {@link #findUserIdsByScope(String, Long)} の<b>COUNT 版</b>（件数だけが必要な経路用）。
+     *
+     * <p><b>母集団条件はリスト版と完全に同一</b>である。派生表 {@code x} の中身
+     * （{@code user_roles} ∪ {@code memberships} の和集合・{@code left_at IS NULL}・
+     * {@code scope_type IN ('TEAM','ORGANIZATION')} の明示限定・{@code users.deleted_at IS NULL}
+     * かつ {@code status = 'ACTIVE'}）を 1 文字も変えず、外側の射影を
+     * {@code SELECT DISTINCT uid} から {@code SELECT COUNT(DISTINCT uid)} へ替えただけである。
+     * 片方だけ条件が古くなると数が静かに食い違うため、
+     * <b>リスト版を変更するときは必ず本メソッドも同じだけ変更すること</b>
+     * （不一致は {@code SurveyPublishTargetCountSnapshotIT} の AC-13 が検出する）。</p>
+     *
+     * <p>アンケート公開時の {@code target_count} スナップショットのように「人数しか要らない」経路が
+     * 全ユーザー ID を Java ヒープへ展開しないためのもの。ID の一覧が実際に必要な経路
+     * （通知 fan-out 等）は従来どおりリスト版を使うこと。</p>
+     *
+     * <p>戻り値は {@code long}。native の {@code COUNT(...)} は BIGINT であり、
+     * {@code int} / {@code boolean} で受けると環境により型変換で落ちる。</p>
+     */
+    @Query(value =
+            "SELECT COUNT(DISTINCT uid) FROM ( " +
+            "  SELECT ur.user_id AS uid FROM user_roles ur " +
+            "    JOIN users u ON u.id = ur.user_id " +
+            "    WHERE CASE WHEN :scopeType = 'TEAM' THEN ur.team_id = :scopeId " +
+            "               WHEN :scopeType = 'ORGANIZATION' THEN ur.organization_id = :scopeId END " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  UNION " +
+            "  SELECT m.user_id AS uid FROM memberships m " +
+            "    JOIN users u ON u.id = m.user_id " +
+            "    WHERE m.scope_type = :scopeType AND m.scope_id = :scopeId AND m.left_at IS NULL " +
+            "      AND m.scope_type IN ('TEAM', 'ORGANIZATION') " +
+            "      AND u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            ") x",
+            nativeQuery = true)
+    long countUserIdsByScope(@Param("scopeType") String scopeType, @Param("scopeId") Long scopeId);
+
+    /**
      * 指定チームの指定ロール名を持つユーザーIDリストを取得する (通知発火用)。
      */
     @Query(value = "SELECT DISTINCT ur.user_id FROM user_roles ur " +
@@ -818,6 +854,91 @@ public interface UserRoleRepository extends JpaRepository<UserRoleEntity, Long> 
             "  )",
             nativeQuery = true)
     List<Long> findDistributionUserIdsForOrganizationRecursive(
+            @Param("organizationId") Long organizationId,
+            @Param("includeSupporters") boolean includeSupporters,
+            @Param("maxDepth") int maxDepth);
+
+    /**
+     * {@link #findDistributionUserIdsForOrganizationRecursive(Long, boolean, int)} の<b>COUNT 版</b>。
+     *
+     * <p><b>母集団条件はリスト版と完全に同一</b>である。{@code WITH RECURSIVE org_tree} の CTE、
+     * 候補集合の派生表 {@code cand}（{@code user_roles} ∪ {@code memberships} の和集合・
+     * {@code team_org_memberships.status = 'ACTIVE'} 経由の配下チーム展開）、
+     * 生存ユーザー条件（{@code users.deleted_at IS NULL AND status = 'ACTIVE'}）、
+     * 純 SUPPORTER 除外の 2 段 {@code NOT EXISTS} を 1 つも変えず、外側の射影を
+     * {@code SELECT DISTINCT cand.user_id} から {@code SELECT COUNT(DISTINCT cand.user_id)} へ
+     * 替えただけである。片方だけ条件が古くなると数が静かに食い違うため、
+     * <b>リスト版を変更するときは必ず本メソッドも同じだけ変更すること</b>
+     * （不一致は {@code SurveyPublishTargetCountSnapshotIT} の AC-13 が検出する）。</p>
+     *
+     * <p>組織配信の母集団は 50 万規模を想定しており、人数を知りたいだけの経路
+     * （アンケート公開時の {@code target_count} スナップショット）が全 ID を
+     * Java ヒープへ展開すると、応答時間とメモリが母集団規模に比例してしまう。
+     * ID の一覧が実際に必要な経路（耐久 fan-out 等）は従来どおりリスト版・キーセット版を使うこと。</p>
+     *
+     * <p>戻り値は {@code long}（native の {@code COUNT(...)} は BIGINT）。</p>
+     *
+     * @param organizationId    母集団の根となる組織 ID
+     * @param includeSupporters true=応援者も含める / false=応援者を除外する
+     * @param maxDepth          再帰展開の最大深さ
+     * @return 配信対象ユーザー数（重複なし・在籍中のアクティブユーザーのみ）
+     */
+    @Query(value =
+            "WITH RECURSIVE org_tree (id, depth) AS ( " +
+            "    SELECT o.id, 0 FROM organizations o " +
+            "      WHERE o.id = :organizationId AND o.deleted_at IS NULL " +
+            "  UNION ALL " +
+            "    SELECT c.id, p.depth + 1 FROM organizations c " +
+            "      JOIN org_tree p ON c.parent_organization_id = p.id " +
+            "      WHERE c.deleted_at IS NULL AND p.depth < :maxDepth " +
+            ") " +
+            "SELECT COUNT(DISTINCT cand.user_id) FROM ( " +
+            "  SELECT ur.user_id AS user_id FROM user_roles ur " +
+            "    WHERE ur.organization_id IN (SELECT id FROM org_tree) " +
+            "      OR ur.team_id IN ( " +
+            "        SELECT tom.team_id FROM team_org_memberships tom " +
+            "        WHERE tom.organization_id IN (SELECT id FROM org_tree) AND tom.status = 'ACTIVE' " +
+            "      ) " +
+            "  UNION " +
+            "  SELECT ms0.user_id AS user_id FROM memberships ms0 " +
+            "    WHERE ms0.left_at IS NULL " +
+            "      AND ( (ms0.scope_type = 'ORGANIZATION' AND ms0.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms0.scope_type = 'TEAM' AND ms0.scope_id IN ( " +
+            "              SELECT tom1.team_id FROM team_org_memberships tom1 " +
+            "              WHERE tom1.organization_id IN (SELECT id FROM org_tree) AND tom1.status = 'ACTIVE' " +
+            "            )) ) " +
+            ") cand " +
+            "JOIN users u ON u.id = cand.user_id " +
+            "WHERE u.deleted_at IS NULL AND u.status = 'ACTIVE' " +
+            "  AND ( " +
+            "    :includeSupporters = TRUE " +
+            "    OR NOT ( " +
+            "      EXISTS ( " +
+            "        SELECT 1 FROM memberships ms " +
+            "        WHERE ms.user_id = cand.user_id AND ms.left_at IS NULL AND ms.role_kind = 'SUPPORTER' " +
+            "          AND ( " +
+            "            (ms.scope_type = 'ORGANIZATION' AND ms.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms.scope_type = 'TEAM' AND ms.scope_id IN ( " +
+            "              SELECT tom2.team_id FROM team_org_memberships tom2 " +
+            "              WHERE tom2.organization_id IN (SELECT id FROM org_tree) AND tom2.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "      AND NOT EXISTS ( " +
+            "        SELECT 1 FROM memberships ms2 " +
+            "        WHERE ms2.user_id = cand.user_id AND ms2.left_at IS NULL AND ms2.role_kind = 'MEMBER' " +
+            "          AND ( " +
+            "            (ms2.scope_type = 'ORGANIZATION' AND ms2.scope_id IN (SELECT id FROM org_tree)) " +
+            "            OR (ms2.scope_type = 'TEAM' AND ms2.scope_id IN ( " +
+            "              SELECT tom3.team_id FROM team_org_memberships tom3 " +
+            "              WHERE tom3.organization_id IN (SELECT id FROM org_tree) AND tom3.status = 'ACTIVE' " +
+            "            )) " +
+            "          ) " +
+            "      ) " +
+            "    ) " +
+            "  )",
+            nativeQuery = true)
+    long countDistributionUserIdsForOrganizationRecursive(
             @Param("organizationId") Long organizationId,
             @Param("includeSupporters") boolean includeSupporters,
             @Param("maxDepth") int maxDepth);
