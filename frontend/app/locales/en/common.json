@@ -1326,6 +1326,16 @@
     "filter": {
       "allTeamsOrgs": "Teams & Orgs (All)",
       "selectScope": "Select destination"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Personal",
+        "unknown": "Other events",
+        "loadError": {
+          "summary": "Failed to load layers",
+          "detail": "Team/organization filters are temporarily unavailable. Events are still shown. Please reload later."
+        }
+      }
     }
   },
   "handoff": {
