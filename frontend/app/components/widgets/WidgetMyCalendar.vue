@@ -42,7 +42,7 @@ const {
   onPrevMonth, onNextMonth,
   extendedEvents, allScopeOptions, selectedScopes, filteredEvents,
   toggleScope, multiSelectScopes, initStorage,
-} = useMyCalendarData({ storageKey: 'mannschaft:widget:calendar:scopeFilter' })
+} = useMyCalendarData()
 
 const selectedEventId = ref<number | null>(null)
 const selectedEvent = ref<EventDetail | null>(null)

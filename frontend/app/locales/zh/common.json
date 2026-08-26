@@ -1334,7 +1334,14 @@
         "loadError": {
           "summary": "图层列表加载失败",
           "detail": "团队・组织的显示切换暂时无法使用。日程仍会显示。请稍后重新加载。"
-        }
+        },
+        "hiddenNotice": "创建目标图层已隐藏",
+        "showIt": "显示"
+      },
+      "more": "还有{count}项",
+      "today": "今天",
+      "dayDetail": {
+        "title": "{date} 的日程"
       }
     }
   },
@@ -1909,7 +1916,24 @@
     "bulletinOpen": "在公告板上讨论"
   },
   "scopeDashboard": {
-    "storageSummary": { "title": "存储", "personal": "个人", "team": "团队", "organization": "组织", "details": "查看详情", "error": "无法加载存储", "retry": "重试", "unconfigured": "未设置容量", "not_available": "无存储数据", "meterLabel": "{scope}存储使用率", "meterValue": "使用率 {percent}%", "warningTitle": "存储空间即将用尽", "warningMessage": "{scope}已使用{percent}%。请考虑升级付费方案。", "viewPlans": "查看方案", "checkStorage": "检查存储", "cancel": "取消" },
+    "storageSummary": {
+      "title": "存储",
+      "personal": "个人",
+      "team": "团队",
+      "organization": "组织",
+      "details": "查看详情",
+      "error": "无法加载存储",
+      "retry": "重试",
+      "unconfigured": "未设置容量",
+      "not_available": "无存储数据",
+      "meterLabel": "{scope}存储使用率",
+      "meterValue": "使用率 {percent}%",
+      "warningTitle": "存储空间即将用尽",
+      "warningMessage": "{scope}已使用{percent}%。请考虑升级付费方案。",
+      "viewPlans": "查看方案",
+      "checkStorage": "检查存储",
+      "cancel": "取消"
+    },
     "tabs": {
       "personal": "个人",
       "team": "团队",
