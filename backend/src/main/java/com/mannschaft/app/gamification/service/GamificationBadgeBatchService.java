@@ -1,5 +1,7 @@
 package com.mannschaft.app.gamification.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.gamification.AwardedBy;
 import com.mannschaft.app.gamification.BadgeConditionType;
@@ -64,6 +66,9 @@ public class GamificationBadgeBatchService {
      *   <li>条件を満たすユーザーに UserBadge を付与（重複チェック済み）</li>
      * </ol>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_GAMIFICATION_ENABLED",
+            reason = "バッジ付与は重複チェック済みで累積実績から再評価でき、機能を閉じている間はバッジを表示する画面自体が閉じている")
     @BatchEndpoint(name = "gamification-badge-evaluation-daily", description = "バッジ獲得条件を毎日 03:00 に評価して付与する")
     @Scheduled(cron = "0 0 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "gamification_badge_evaluation", lockAtMostFor = "PT30M")

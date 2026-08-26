@@ -1,5 +1,7 @@
 package com.mannschaft.app.property.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.incident.entity.IncidentEntity;
 import com.mannschaft.app.incident.event.IncidentStatusChangedEvent;
 import com.mannschaft.app.incident.repository.IncidentRepository;
@@ -76,6 +78,9 @@ public class PropertyWorkPackageEventListener {
      * <p>例外が発生した場合はログに記録するのみで、F07.6 側の処理を阻害しない
      * （{@code REQUIRES_NEW} + 内部 try-catch）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROPERTY_REPAIRPLAN_ENABLED",
+            reason = "失われるのは工事パッケージの自動生成のみで、元のインシデントは正本として残るため再開後に手動または再発火で生成できる")
     @EventListener
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void onIncidentStatusChanged(IncidentStatusChangedEvent event) {

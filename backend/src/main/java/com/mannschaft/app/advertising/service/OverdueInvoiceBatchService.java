@@ -1,5 +1,7 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.entity.AdInvoiceEntity;
@@ -43,6 +45,9 @@ public class OverdueInvoiceBatchService {
      * OVERDUE 自動化バッチ。毎日 AM 6:00 (JST) に実行。
      * status = ISSUED かつ due_date < TODAY の請求書を OVERDUE に更新。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_PROMOTION_ENABLED",
+            reason = "支払期限切れ判定は due_date が本日より前という時刻条件のみで冪等に決まるため、止めても再開後の初回実行で同じ請求書をまとめて OVERDUE にできる")
     @BatchEndpoint(name = "advertising-invoice-overdue-mark-daily", description = "支払期限切れの広告請求書を OVERDUE に更新する（毎日 06:00）")
     @Scheduled(cron = "0 0 6 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "overdueInvoiceMark", lockAtMostFor = "PT30M", lockAtLeastFor = "PT1M")

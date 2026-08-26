@@ -1,5 +1,7 @@
 package com.mannschaft.app.analytics.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.analytics.PageViewScopeType;
 import com.mannschaft.app.analytics.entity.PageViewLogEntity;
 import com.mannschaft.app.analytics.repository.PageViewLogRepository;
@@ -55,6 +57,9 @@ public class PageViewRecordListener {
      *
      * @param event 計測イベント（Controller で相対パス検証済み・title は未加工）
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
+            gateKeys = "FEATURE_TRANSLATION_SEARCH_ENABLED",
+            reason = "失われるのはアクセス解析の計測ログのみで、業務上の正本を一切持たない。解析機能を閉じている間は計測値を参照する画面も閉じており、欠測は閉栓期間として説明できる")
     @Async("page-view-pool")
     @EventListener
     public void onPageViewRecorded(PageViewRecordedEvent event) {

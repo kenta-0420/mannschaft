@@ -1,5 +1,7 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.EventScopeType;
@@ -95,6 +97,9 @@ public class EventEndReminderBatchService {
      * <p>冪等性: 同一イベントに対して1回のバッチ実行で複数回通知しない。
      * カウント値を確認してから段階を判定する。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_FAMILY_CARE_ENABLED",
+            reason = "止まるのは解散リマインドのエスカレーション送信のみで、イベント本体の状態は書き換えずカウント値も DB に残る")
     // TODO: familyドメインがeventドメイン（EventRepository）とroleドメイン（UserRoleRepository）をまたいでいる。将来はEventQueryServiceとUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     @BatchEndpoint(name = "family-event-end-reminder", description = "未解散イベントの解散リマインドを 5 分毎にエスカレーション送信する")
     @Scheduled(fixedDelay = 300_000) // 5分間隔

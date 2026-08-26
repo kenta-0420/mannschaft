@@ -1,5 +1,7 @@
 package com.mannschaft.app.recruitment.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -50,6 +52,9 @@ public class RecruitmentReminderBatch {
      * 未送信リマインダーを処理する。
      * {@code fixedDelay = 60_000} ms = 1分間隔（前回実行完了から1分後に次の実行）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_RECRUITMENT_ENABLED",
+            reason = "未送信リマインドは DB に残り続けるため消失せず、募集機能を閉じている間は通知を送る意味自体が無い")
     @BatchEndpoint(name = "recruitment-reminder", description = "募集型予約の未送信リマインドを毎分処理する")
     @Scheduled(fixedDelay = 60_000)
     @SchedulerLock(name = "recruitment-reminder-batch",

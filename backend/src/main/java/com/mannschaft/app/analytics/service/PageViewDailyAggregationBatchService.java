@@ -1,5 +1,7 @@
 package com.mannschaft.app.analytics.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.analytics.PageViewScopeType;
 import com.mannschaft.app.analytics.entity.PageViewDailyStatsEntity;
@@ -52,6 +54,9 @@ public class PageViewDailyAggregationBatchService {
     /**
      * 日次集計バッチ本体。前日（JST）を集計する。ShedLock 排他（最大 30 分）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_TRANSLATION_SEARCH_ENABLED",
+            reason = "集計元の生ログは保持期間 13 ヶ月のパーティションに残り、その期間内なら BatchEndpoint 経由で対象日を再集計できる。パーティション保守側は ALWAYS のまま止まらない")
     @BatchEndpoint(
             name = "analytics-pageview-daily-aggregation",
             description = "前日分のページビュー生ログを scope 単位で集計し page_view_daily_stats に毎日 02:00 に書き込む")

@@ -1,5 +1,7 @@
 package com.mannschaft.app.skill.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.skill.NotificationType;
@@ -40,6 +42,9 @@ public class SkillExpiryReminderBatchService {
      * 2. 7日前リマインダー
      * 3. 期限切れ自動ステータス更新（ACTIVE → EXPIRED）
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_SKILL_RESUME_ENABLED",
+            reason = "失効判定は有効期限日という時刻条件のみで決まる冪等処理で、止めても再開後の初回実行で期限切れ分をまとめて EXPIRED にできる")
     @BatchEndpoint(name = "skill-expiry-reminder-daily", description = "資格期限の 30/7 日前リマインドと自動失効を毎日 08:00 に処理する")
     @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "skill_expiry_reminder", lockAtMostFor = "PT10M")

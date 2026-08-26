@@ -1,5 +1,7 @@
 package com.mannschaft.app.analytics.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.analytics.MonthlyReportHtmlBuilder;
 import com.mannschaft.app.analytics.RevenueSource;
@@ -44,6 +46,9 @@ public class MonthlyKpiSnapshotBatchService {
     private final UserRoleRepository userRoleRepository;
     private final UserRepository userRepository;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_TRANSLATION_SEARCH_ENABLED",
+            reason = "スナップショットは元データからの派生値で BatchEndpoint 経由の手動再実行経路を持ち、止めても元データ側は一切壊れない")
     @BatchEndpoint(name = "analytics-monthly-kpi-snapshot", description = "前月分の KPI スナップショットを毎月 1 日 04:00 に保存する")
     @Scheduled(cron = "0 0 4 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "monthlyKpiSnapshot", lockAtMostFor = "30m", lockAtLeastFor = "5m")

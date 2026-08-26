@@ -1,5 +1,7 @@
 package com.mannschaft.app.gamification.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.gamification.TransactionType;
 import com.mannschaft.app.gamification.entity.GamificationConfigEntity;
@@ -50,6 +52,9 @@ public class GamificationResetBatchService {
      *   <li>処理件数をログ出力</li>
      * </ol>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+            gateKeys = "FEATURE_GAMIFICATION_ENABLED",
+            reason = "同じキーで付与側リスナーも同時に止まるため、加算されないポイントをリセットしないという首尾一貫した状態になる。ポイントは金銭ではなくゲーム内状態である")
     @BatchEndpoint(name = "gamification-point-reset-daily", description = "ポイントリセット設定に該当するスコープを毎日 04:00 にリセットする")
     @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "gamification_point_reset", lockAtMostFor = "PT30M")
