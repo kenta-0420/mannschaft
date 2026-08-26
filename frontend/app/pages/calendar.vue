@@ -79,10 +79,23 @@ const pad = (n: number) => String(n).padStart(2, '0')
 
 const {
   currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
-  onPrevMonth: calPrevMonth, onNextMonth: calNextMonth,
+  onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday,
   extendedEvents, todosFailed, layersFailed, availableScopes, allScopeOptions, selectedScopes,
   filteredEvents, toggleScope, multiSelectScopes, initStorage,
 } = useMyCalendarData()
+
+// 「今日」ボタン（§6.3・AC-12d）: 月グリッド本体の DOM 操作（フォーカス）は CalendarGrid に委譲する。
+const calendarGridRef = ref<{ focusToday: () => void } | null>(null)
+
+async function onToday() {
+  goToToday()
+  if (activeTab.value === 'gantt') await loadGantt()
+  // 月移動時は年月 props が変わってから DOM が再描画されるまで待つ必要がある
+  // （既に当月表示中でも focusToday は必ず呼ぶ＝無反応にしない）。
+  await nextTick()
+  await nextTick()
+  calendarGridRef.value?.focusToday()
+}
 
 // #49-B: 日別一覧
 const dayEvents = computed(() => {
@@ -242,16 +255,99 @@ const selectedCreateScope = computed(
   () => createScopeOptions.value.find(o => o.value === createScopeKey.value) ?? createScopeOptions.value[0]!,
 )
 
-// 上部セレクト変更でカレンダー表示を絞り込む（ガントタブ表示中は再読み込みも行う）
-watch(createScopeKey, (key) => {
-  withScopeLoading(() => {
-    if (key === 'personal') {
-      selectedScopes.value = [PERSONAL_KEY]
-    } else {
-      selectedScopes.value = [PERSONAL_KEY, key]
-    }
-  })
-  // スコープ変更時はキャッシュを破棄して再取得（ガントビューのみ）
+// AC-11b（§5.4）: 表示フィルタで非表示のレイヤーへ予定を作成すると、作った予定が何の説明も
+// 無く現れない（無言で消える＝P3違反）。作成完了時にだけ判定し、案内＋「表示する」ボタンを出す。
+// 勝手にフィルタを書き換えない（P2）のが AC-11 の結合切りと表裏一体の要件であり、
+// ここでも selectedScopes への代入はボタン押下時（onShowHiddenLayer）のみに限定する。
+//
+// [P2是正・検分三巡目] 判定対象は「実際に保存されたスコープ」（ScheduleEventForm の
+// `saved` イベントが返す値）であって、ページ上部の作成スコープ Select（selectedCreateScope）
+// ではない。ScheduleEventForm はフォーム内でもスコープを変更できるため、上部の選択と
+// 実際の保存先が食い違いうる（上部=個人のままフォーム内でチームへ変更する等）。
+// scopeKey だけ ref に保持し、実際に非表示かどうかは computed で毎回 selectedScopes と
+// 突き合わせる（[P3是正] ユーザーがレイヤーチップ等で後から自分で表示に戻したら、
+// selectedScopes に含まれた時点で自動的に案内が消える＝「非表示です」と言い続けない）。
+const hiddenLayerNoticeScopeKey = ref<string | null>(null)
+
+interface SavedScope {
+  isPersonal: boolean
+  scopeType: 'team' | 'organization'
+  scopeId: string
+}
+
+/**
+ * 実際に保存されたスコープに対応する selectedScopes 用キー（PERSONAL_KEY または
+ * `${SCOPE_TYPE}:数値scopeId`）。
+ *
+ * F03.19 W2-a との統合修繕: `scope.scopeId`（ScheduleEventForm の保存API呼び出しに使う値）は
+ * **slug**（公開スコープID）。一方 `selectedScopes`／`allScopeOptions` は数値スコープIDで
+ * キー付けされている（`useMyCalendarData.ts` の `availableScopes` コメント参照 — 作成スコープ選択
+ * 専用の slug 値を表示フィルタへ混入させてはならない）。両者を橋渡しするため、
+ * `availableScopes`（slug 側）のエントリが持つ `filterKey`（数値キー・useMyCalendarData.ts の
+ * `layers.value` 走査時に確定済み）をそのまま使う。
+ *
+ * [P2是正・Codex検分] 以前は scopeType + 表示名（label）が一致するエントリを
+ * `allScopeOptions` から逆引きしていたが、`TeamEntity` にチーム名の一意制約が無いため、
+ * 同名の別チーム／組織に複数所属していると `find` が常に先頭の別スコープを誤って返しうる
+ * （案内が出ない・「表示する」で別チームが表示される、という AC-11b 違反）。
+ * `filterKey` は layers.value の走査中に scopeId（数値）そのものから作られるため、
+ * 名前の一意性に依存しない。
+ */
+function savedScopeFilterKey(scope: SavedScope): string {
+  if (scope.isPersonal) return PERSONAL_KEY
+  const created = availableScopes.value.find(
+    sc => sc.scopeId === scope.scopeId && sc.scopeType.toLowerCase() === scope.scopeType,
+  )
+  return created?.filterKey ?? `${scope.scopeType.toUpperCase()}:${scope.scopeId}`
+}
+
+/** 案内に出すレイヤー表示名。allScopeOptions（表示フィルタと同じ一覧）から引く。 */
+function scopeLabelForKey(scopeKey: string): string {
+  return allScopeOptions.value.find(o => o.value === scopeKey)?.label ?? scopeKey
+}
+
+// 表示条件は「案内対象のスコープキーが設定されており、かつ現在も非表示」の両方（[P3是正]）。
+const hiddenLayerNotice = computed(() => {
+  const scopeKey = hiddenLayerNoticeScopeKey.value
+  if (!scopeKey || selectedScopes.value.includes(scopeKey)) return null
+  return { scopeKey, layerLabel: scopeLabelForKey(scopeKey) }
+})
+
+// [P2是正・検分四巡目] computed で非表示を導出するだけでは、対象キー（hiddenLayerNoticeScopeKey）
+// 自体が保持され続けるため、ユーザーが手で表示に戻した後に同じレイヤーを再び非表示にすると、
+// 何も保存していないのに古い案内が「ゾンビ」として復活してしまう。表示に戻った時点で
+// 対象キー自体を破棄し、次に非表示にしても案内は出さない（＝新しい保存操作でのみ再び現れる）。
+watch(selectedScopes, (val) => {
+  const scopeKey = hiddenLayerNoticeScopeKey.value
+  if (scopeKey && val.includes(scopeKey)) {
+    hiddenLayerNoticeScopeKey.value = null
+  }
+}, { deep: true })
+
+/** 作成ダイアログの保存完了（新規作成のみ・§5.4/AC-11b）。実際に保存されたスコープで判定する。 */
+async function onCreated(scope: SavedScope) {
+  const scopeKey = savedScopeFilterKey(scope)
+  await refresh()
+  hiddenLayerNoticeScopeKey.value = selectedScopes.value.includes(scopeKey) ? null : scopeKey
+}
+
+/** 「表示する」ボタン（AC-11b）: 押されたときだけそのレイヤーを表示状態にする。他は一切変更しない。 */
+function onShowHiddenLayer() {
+  const scopeKey = hiddenLayerNoticeScopeKey.value
+  if (!scopeKey) return
+  if (!selectedScopes.value.includes(scopeKey)) {
+    selectedScopes.value = [...selectedScopes.value, scopeKey]
+  }
+  hiddenLayerNoticeScopeKey.value = null
+}
+
+
+// 作成スコープ（作成フォームの初期スコープ）と表示フィルタ（selectedScopes）は分離する（§5.4/AC-11）。
+// 以前はここで selectedScopes を強制的に書き換えていたが、それだと表示中のレイヤーチップの選択状態が
+// 作成スコープの変更につられて勝手に変わってしまう（P2 違反）。作成スコープは createScopeKey /
+// selectedCreateScope（作成ダイアログへの引き渡し）にのみ影響させ、表示フィルタには一切触れない。
+watch(createScopeKey, () => {
+  // スコープ変更時はキャッシュを破棄して再取得（ガントビューのみ・データ取得対象の変更という正当な副作用）
   if (activeTab.value === 'gantt') {
     ganttCache.clear()
     ganttKey.value++
@@ -334,21 +430,16 @@ async function loadGantt() {
   prefetchAdjacentMonths(year, month)
 }
 
-async function withScopeLoading(fn: () => void) {
-  calendarLoading.value = true
-  await nextTick()
-  await new Promise<void>(resolve => setTimeout(resolve, 0))
-  fn()
-  await nextTick()
-  calendarLoading.value = false
-}
-
+// レイヤーチップでの表示絞り込みは filteredEvents（手元データのみ）で完結し、再取得を伴わない
+// （AC-12c: 全画面スピナーを一度も出さない・ネットワークリクエストも発生しない）。
+// 疑似的な calendarLoading 演出（旧 withScopeLoading）は撤去した。calendarLoading 自体は
+// 月移動（本物の通信）のためだけに使う。
 function onToggleScope(value: string) {
-  withScopeLoading(() => toggleScope(value))
+  toggleScope(value)
 }
 
 function onMultiSelectChange(vals: string[]) {
-  withScopeLoading(() => { selectedScopes.value = vals })
+  selectedScopes.value = vals
 }
 
 async function onTabChange(tab: CalendarTab) {
@@ -455,6 +546,15 @@ onMounted(async () => {
       <span class="ml-2">{{ t('schedule.calendar.layer.loadError.detail') }}</span>
     </Message>
 
+    <!-- AC-11b（§5.4）: 作成先のレイヤーが表示フィルタで非表示のときの案内。表示するだけで
+         フィルタは書き換えない。「表示する」を押したときだけ onShowHiddenLayer が変更する -->
+    <HiddenLayerNotice
+      v-if="hiddenLayerNotice"
+      :layer-label="hiddenLayerNotice.layerLabel"
+      class="mb-4"
+      @show="onShowHiddenLayer"
+    />
+
     <!-- タブ切替 -->
     <div class="mb-4 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700 w-fit">
       <button
@@ -487,14 +587,17 @@ onMounted(async () => {
           <div class="relative">
             <DashboardWidgetCard :scrollable="false">
               <CalendarGrid
+                ref="calendarGridRef"
                 :year="currentYear"
                 :month="currentMonth"
                 :events="filteredEvents"
+                show-today-button
                 @date-click="onDateClick"
                 @event-click="onEventClick"
                 @reflection-click="onReflectionClick"
                 @prev-month="onPrevMonth"
                 @next-month="onNextMonth"
+                @today="onToday"
               />
             </DashboardWidgetCard>
             <Transition name="fade">
@@ -656,7 +759,7 @@ onMounted(async () => {
       :initial-date="selectedDate"
       :is-personal="selectedCreateScope.isPersonal"
       :scope-options="createScopeOptions.length > 1 ? createScopeOptions : undefined"
-      @saved="refresh"
+      @saved="onCreated"
     />
 
     <!-- 編集ダイアログ -->

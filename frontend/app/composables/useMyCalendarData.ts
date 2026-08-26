@@ -53,6 +53,16 @@ export interface ScopeOption {
   value: string
   scopeType: string
   scopeId: string
+  /**
+   * 表示フィルタ（selectedScopes/allScopeOptions）と同じ数値スコープIDキー（例: `TEAM:1`）。
+   * `availableScopes` の `value`（slug形式・作成スコープ選択専用）とは別物 — このフィールドだけが
+   * 表示フィルタ側と橋渡しできる。`layers.value` を走査するその場で分かっている値をここへ
+   * そのまま積む（P2修繕: 名前（label）での逆引き突き合わせはチーム名の一意性が保証されない
+   * ため誤対応の温床になる。詳細は calendar.vue の savedScopeFilterKey 参照）。
+   * `availableScopes` 由来のエントリにのみ設定され、`fallbackScopeOptions` 由来には無い
+   * （フォールバックは元々レイヤーに存在しないスコープのため対応する数値キーが無い）。
+   */
+  filterKey?: string
 }
 
 /** `/me/calendar-layers` 応答を正規化した1レイヤー分の表示情報（F03.19 §4.3）。 */
@@ -260,7 +270,7 @@ export function resolveCalendarScopeRouteId(scope: CalendarEntryRaw['scope']): s
   return scope?.scopeSlug ?? String(scope?.scopeId ?? '')
 }
 
-export function useMyCalendarData(_options?: { storageKey?: string }) {
+export function useMyCalendarData() {
   const scheduleApi = useScheduleApi()
   const ganttApi = useTodoGantt()
   const { buildDayStartStr, buildDayEndStr } = useDatetime()
@@ -429,7 +439,7 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
     return merged
   }
 
-  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth } =
+  const { currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday } =
     useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
 
   /**
@@ -529,7 +539,15 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
       if (l.scopeType === 'PERSONAL') continue
       const slug = scopeSlugMap.value.get(layerKey(l.scopeType, l.scopeId))
       if (!slug) continue
-      result.push({ label: layerLabel(l), value: `${l.scopeType}:${slug}`, scopeType: l.scopeType, scopeId: slug })
+      result.push({
+        label: layerLabel(l),
+        value: `${l.scopeType}:${slug}`,
+        scopeType: l.scopeType,
+        scopeId: slug,
+        // P2修繕: layers.value の走査中にしか分からない数値キーを、slug と一緒にここで確定させる。
+        // 後から名前（label）で逆引きすると、チーム名の一意性が保証されないため誤対応しうる。
+        filterKey: layerKey(l.scopeType, l.scopeId),
+      })
     }
     return result
   })
@@ -700,7 +718,7 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
   }
 
   return {
-    currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth,
+    currentYear, currentMonth, events, loading, calendarLoading, loadEvents, refresh, onPrevMonth, onNextMonth, goToToday,
     extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes, filteredEvents,
     toggleScope, multiSelectScopes, initStorage,
     layers, layersLoaded, layersFailed, layersDegraded, loadLayers, view,

@@ -192,6 +192,7 @@ SCHEDULED|com.mannschaft.app.village.batch.VillageSerendipityBatchService|1|1
 SCHEDULED|com.mannschaft.app.weather.job.GeonamesImportScheduler|1|1
 SQS_LISTENER|com.mannschaft.app.directmail.listener.SesNotificationSqsListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.actionmemo.event.ActionMemoAnonymizationEventListener|0|2
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.advertising.event.OverdueInvoiceNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.auth.event.AuditLogEventListener|35|35
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.auth.event.AuthAnonymizationEventListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.auth.event.AuthEmailEventListener|3|3
@@ -241,8 +242,10 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.pointcard.listener.PointCardOrga
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.proxy.event.ProxyPurgeEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.proxyvote.listener.EventDelegationAcceptedListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.publicview.event.SupporterNameDisclosureChangedEventListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.quickmemo.event.QuickMemoReminderNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.recruitment.service.MarketFinalizeConfirmedListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.reservation.EmergencyClosureBroadcastListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.reservation.event.EmergencyClosureReminderNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.reservation.event.ReservationAdminNotificationEventListener|2|2
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.reservation.event.ReservationAnonymizationEventListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.reservation.event.ReservationForceCancelNotificationEventListener|1|1
@@ -267,6 +270,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.scopefolder.listener.MembershipE
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.search.event.SearchAnonymizationEventListener|0|2
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shift.event.ShiftArchivedToTodoCancelListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shift.event.ShiftPublishedNotificationListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shift.event.ShiftSwapExpiredNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shift.event.ShiftToTaskListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumptionCancelListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumptionRecordListener|1|1
