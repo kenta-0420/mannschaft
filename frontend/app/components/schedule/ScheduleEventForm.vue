@@ -21,9 +21,16 @@ const props = defineProps<{
   scopeOptions?: ScopeOption[]
 }>()
 
+/** 実際に保存されたスコープ（フォーム内でスコープ変更が可能なため、呼び出し側の props とは食い違いうる）。 */
+interface SavedScope {
+  isPersonal: boolean
+  scopeType: 'team' | 'organization'
+  scopeId: string
+}
+
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  saved: []
+  saved: [scope: SavedScope]
 }>()
 
 // スコープ選択（フォーム内で変更可能）
@@ -522,8 +529,18 @@ async function submit() {
     }
   }
 
+  // [P2是正・検分四巡目] await を跨いでリアクティブな effectiveScope.value を読むと、API 応答待ちの
+  // 間にユーザーがスコープ選択欄（submitting 中も操作可能）を変更した場合、emit に渡る値が
+  // 「実際に保存した先」と食い違う（無関係なレイヤーの案内が出る）。API 呼び出しの直前に値を
+  // スナップショット（プレーンオブジェクトへコピー）し、以降はこのスナップショットだけを使う。
+  const savedScope = {
+    isPersonal: effectiveScope.value.isPersonal,
+    scopeType: effectiveScope.value.scopeType,
+    scopeId: effectiveScope.value.scopeId,
+  }
+
   try {
-    if (effectiveScope.value.isPersonal) {
+    if (savedScope.isPersonal) {
       if (isEdit.value && props.scheduleId) {
         await scheduleApi.updatePersonalSchedule(props.scheduleId, body)
       } else {
@@ -531,12 +548,12 @@ async function submit() {
       }
     } else {
       if (isEdit.value && props.scheduleId) {
-        await scheduleApi.updateSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, props.scheduleId, body)
+        await scheduleApi.updateSchedule(savedScope.scopeType, savedScope.scopeId, props.scheduleId, body)
       } else {
-        await scheduleApi.createSchedule(effectiveScope.value.scopeType, effectiveScope.value.scopeId, body)
+        await scheduleApi.createSchedule(savedScope.scopeType, savedScope.scopeId, body)
       }
     }
-    const successMsg = effectiveScope.value.isPersonal
+    const successMsg = savedScope.isPersonal
       ? isEdit.value
         ? t('schedule.success_update_personal')
         : t('schedule.success_create_personal')
@@ -547,7 +564,9 @@ async function submit() {
       saveTimeHistory(form.value.startTime, form.value.endTime)
     }
     notification.success(successMsg)
-    emit('saved')
+    // 実際に保存されたスコープ（スナップショット）を渡す。呼び出し側が開いた時点の props や
+    // 応答待ち中に変わりうる現在値とは食い違いうるため、これを正とする（§5.4/AC-11b）。
+    emit('saved', savedScope)
     close()
   } catch (error) {
     fieldErrors.value = getFieldErrors(error)

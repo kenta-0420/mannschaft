@@ -76,3 +76,47 @@ describe('useCalendarEvents の範囲組み立て', () => {
     expect(to).toMatch(/^\d{4}-\d{2}-\d{2}T23:59:59\+09:00$/)
   })
 })
+
+/**
+ * goToToday（§6.3・AC-12d）: 「今日」ボタン押下時のユーザーTZ基準の月移動。
+ * フォーカス移動自体は CalendarGrid.vue 側の責務（DOM操作）のため、ここでは
+ * currentYear/currentMonth が正しい月へ移動するか・不要な再取得をしないかのみを検証する。
+ */
+describe('useCalendarEvents の goToToday（AC-12d）', () => {
+  it('CAL-004: 表示月を3か月先へ進めた後 goToToday() で当月（ユーザーTZ基準の今日）へ戻る', async () => {
+    setUserTimezone('Asia/Tokyo')
+    const fetcher = vi.fn().mockResolvedValue([])
+    const { loadEvents, onNextMonth, goToToday, currentYear, currentMonth } =
+      useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
+
+    await loadEvents()
+    expect(currentYear.value).toBe(2026)
+    expect(currentMonth.value).toBe(8)
+
+    onNextMonth()
+    onNextMonth()
+    onNextMonth()
+    expect(currentYear.value).toBe(2026)
+    expect(currentMonth.value).toBe(11)
+
+    goToToday()
+    expect(currentYear.value).toBe(2026)
+    expect(currentMonth.value).toBe(8)
+  })
+
+  it('CAL-005: 既に当月表示中に goToToday() を呼んでも年月は変わらず、再取得も発生しない（無反応ではなく、単に移動不要なだけ）', async () => {
+    setUserTimezone('Asia/Tokyo')
+    const fetcher = vi.fn().mockResolvedValue([])
+    const { loadEvents, goToToday, currentYear, currentMonth } =
+      useCalendarEvents(fetcher, { cacheHalfMonths: 0 })
+
+    await loadEvents()
+    const callCountBefore = fetcher.mock.calls.length
+
+    goToToday()
+
+    expect(currentYear.value).toBe(2026)
+    expect(currentMonth.value).toBe(8)
+    expect(fetcher.mock.calls.length).toBe(callCountBefore)
+  })
+})

@@ -1334,7 +1334,14 @@
         "loadError": {
           "summary": "Error al cargar las capas",
           "detail": "Los filtros de equipo/organización no están disponibles temporalmente. Los eventos siguen mostrándose. Vuelve a intentarlo más tarde."
-        }
+        },
+        "hiddenNotice": "La capa en la que lo creaste está oculta",
+        "showIt": "Mostrar"
+      },
+      "more": "+{count} más",
+      "today": "Hoy",
+      "dayDetail": {
+        "title": "Eventos del {date}"
       }
     }
   },
@@ -1909,7 +1916,24 @@
     "bulletinOpen": "Discutir en el tablón"
   },
   "scopeDashboard": {
-    "storageSummary": { "title": "Almacenamiento", "personal": "Personal", "team": "Equipo", "organization": "Organización", "details": "Ver detalles", "error": "No se pudo cargar el almacenamiento", "retry": "Reintentar", "unconfigured": "Cuota no configurada", "not_available": "Sin datos de almacenamiento", "meterLabel": "Uso de almacenamiento de {scope}", "meterValue": "Uso {percent}%", "warningTitle": "Límite de almacenamiento cercano", "warningMessage": "{scope} usa el {percent}%. Considera actualizar a un plan de pago.", "viewPlans": "Ver planes", "checkStorage": "Comprobar almacenamiento", "cancel": "Cancelar" },
+    "storageSummary": {
+      "title": "Almacenamiento",
+      "personal": "Personal",
+      "team": "Equipo",
+      "organization": "Organización",
+      "details": "Ver detalles",
+      "error": "No se pudo cargar el almacenamiento",
+      "retry": "Reintentar",
+      "unconfigured": "Cuota no configurada",
+      "not_available": "Sin datos de almacenamiento",
+      "meterLabel": "Uso de almacenamiento de {scope}",
+      "meterValue": "Uso {percent}%",
+      "warningTitle": "Límite de almacenamiento cercano",
+      "warningMessage": "{scope} usa el {percent}%. Considera actualizar a un plan de pago.",
+      "viewPlans": "Ver planes",
+      "checkStorage": "Comprobar almacenamiento",
+      "cancel": "Cancelar"
+    },
     "tabs": {
       "personal": "Personal",
       "team": "Equipo",
