@@ -352,4 +352,69 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     // 案内が復活してはならない（対象キー自体が破棄されているはず）
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
   })
+
+  /**
+   * [P2是正・Codex検分] `savedScopeFilterKey()` が「表示名（label）」でスコープを
+   * 突き合わせていたため、`TeamEntity` にチーム名の一意制約が無いこと（一意制約なし。
+   * `TeamEntity.java` 参照）と噛み合わさり、同名の別チームに複数所属していると
+   * 常に**先頭のチーム**の状態を見てしまっていた（誤対応）。
+   *
+   * このテストは「チームB」という同名チームが2つ（id=10・id=20）ある状態を再現し、
+   * **2つ目（id=20）** を作成先に選んだ場合でも、1つ目（id=10）ではなく正しく
+   * 2つ目のレイヤーが判定・表示切り替えされることを検証する。名前が一意という
+   * 前提のテストデータでは検出できないため、意図的に同名の2チームを用意している。
+   */
+  it('[P2回帰・同名チーム] 同名の別チームが複数所属にあっても、実際に保存された方（2つ目）のレイヤーで判定される', async () => {
+    const sameNameLayers = [
+      { scopeType: 'PERSONAL', scopeId: 0, scopeName: '個人', scopeNameKey: 'schedule.calendar.layer.personal', scopeIconUrl: null, color: '#059669', colorSource: 'LAYER_AUTO', hidden: false },
+      { scopeType: 'TEAM', scopeId: 10, scopeName: 'チームB', scopeNameKey: null, scopeIconUrl: null, color: '#2563eb', colorSource: 'LAYER_AUTO', hidden: false },
+      { scopeType: 'TEAM', scopeId: 20, scopeName: 'チームB', scopeNameKey: null, scopeIconUrl: null, color: '#dc2626', colorSource: 'LAYER_AUTO', hidden: false },
+    ]
+    scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: sameNameLayers })
+    scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [] })
+    teamStoreStub.myTeams = [
+      { id: 10, slug: 'team-b-first', name: 'チームB', nickname1: null, iconUrl: null, role: 'MEMBER', template: 'default', memberCount: 1 },
+      { id: 20, slug: 'team-b-second', name: 'チームB', nickname1: null, iconUrl: null, role: 'MEMBER', template: 'default', memberCount: 1 },
+    ]
+
+    const wrapper = await mountCalendarPage()
+    // 「チームB」ラベルのチップは2枚存在する（1枚目=id10, 2枚目=id20。allScopeOptions は
+    // layers.value の並び順＝レイヤーAPI応答順をそのまま反映するため、この順序で決め打ちできる）。
+    const chipsFor = (label: string) => wrapper.findAll('button').filter(b => b.text() === label)
+    const chips = chipsFor('チームB')
+    expect(chips).toHaveLength(2)
+    const [firstTeamChip, secondTeamChip] = chips
+
+    // 2つ目（id20）のチップだけを非表示にする。1つ目（id10）は表示したままにしておく
+    // （もし誤って1つ目を判定してしまうバグが復活すれば、1つ目は既に表示済みのため
+    // 「案内が出ない」という形で検出できる）。
+    await secondTeamChip!.trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(firstTeamChip!.classes()).toContain('border-primary')
+    expect(secondTeamChip!.classes()).not.toContain('border-primary')
+
+    // 作成スコープ Select で2つ目のチーム（slug=team-b-second）を選ぶ
+    const select = wrapper.get('[data-testid="create-scope-select"]')
+    await select.setValue('TEAM:team-b-second')
+    await wrapper.vm.$nextTick()
+
+    // 実際に2つ目のスコープへ保存された、という結果を saved の引数で再現する
+    const createForm = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    createForm.vm.$emit('saved', { isPersonal: false, scopeType: 'team', scopeId: 'team-b-second' })
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    // 案内が出ること（＝2つ目が非表示だと正しく判定できている。表示名だけで
+    // 突き合わせる旧実装は常に1つ目＝表示済みを見てしまい、ここで案内が出ない誤りになる）
+    expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(true)
+
+    // 「表示する」を押すと、2つ目のチップだけが表示状態になる（1つ目は最初から表示のまま不変）
+    await wrapper.get('[data-testid="hidden-layer-show-button"]').trigger('click')
+    await wrapper.vm.$nextTick()
+
+    const chipsAfter = chipsFor('チームB')
+    expect(chipsAfter[0]!.classes()).toContain('border-primary')
+    expect(chipsAfter[1]!.classes()).toContain('border-primary')
+    expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
+  })
 })

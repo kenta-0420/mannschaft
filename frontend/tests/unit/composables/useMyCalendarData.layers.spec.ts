@@ -400,8 +400,11 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
     await cal.loadLayers()
 
     // TEAM:99 は teamStore に slug が無いため作成候補には出さない（誤ったIDで404を起こさない）。
+    // filterKey は表示フィルタ側（allScopeOptions/selectedScopes）と同じ数値キー（P2是正・
+    // Codex検分: 名前一致での逆引きはチーム名の一意性が保証されず誤対応しうるため、
+    // layers.value 走査時に確定させた数値キーをそのまま持たせる。calendar.vue 参照）。
     expect(cal.availableScopes.value).toEqual([
-      { label: '青葉FC', value: 'TEAM:aoba-fc', scopeType: 'TEAM', scopeId: 'aoba-fc' },
+      { label: '青葉FC', value: 'TEAM:aoba-fc', scopeType: 'TEAM', scopeId: 'aoba-fc', filterKey: 'TEAM:42' },
     ])
     // フィルタ用のレイヤー一覧（allScopeOptions）は数値キーのまま・予定の有無に依存しない。
     expect(cal.allScopeOptions.value.map((o) => o.value)).toEqual(['PERSONAL:0', 'TEAM:42', 'TEAM:99'])
@@ -534,7 +537,7 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
 
     const forA = useMyCalendarData()
     await forA.loadLayers()
-    expect(forA.availableScopes.value).toContainEqual({ label: '青葉FC', value: 'TEAM:a-team', scopeType: 'TEAM', scopeId: 'a-team' })
+    expect(forA.availableScopes.value).toContainEqual({ label: '青葉FC', value: 'TEAM:a-team', scopeType: 'TEAM', scopeId: 'a-team', filterKey: 'TEAM:42' })
 
     // --- 同一SPAセッション内でユーザーB（id=2）へ切替。
     //     useAuthStore.logout() は team/organization ストアをクリアしないため、
@@ -561,7 +564,7 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
     // 旧ユーザー（A）のチームが残っていないこと。
     expect(teamStore.myTeams.map((t) => t.id)).toEqual([77])
     // B の所属チームが作成候補に正しく出ること（slugはBの再取得結果由来）。
-    expect(forB.availableScopes.value).toContainEqual({ label: 'Bのチーム', value: 'TEAM:b-team', scopeType: 'TEAM', scopeId: 'b-team' })
+    expect(forB.availableScopes.value).toContainEqual({ label: 'Bのチーム', value: 'TEAM:b-team', scopeType: 'TEAM', scopeId: 'b-team', filterKey: 'TEAM:77' })
     expect(forB.availableScopes.value.some((o) => o.value === 'TEAM:a-team')).toBe(false)
   })
 })

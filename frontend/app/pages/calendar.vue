@@ -282,22 +282,23 @@ interface SavedScope {
  * F03.19 W2-a との統合修繕: `scope.scopeId`（ScheduleEventForm の保存API呼び出しに使う値）は
  * **slug**（公開スコープID）。一方 `selectedScopes`／`allScopeOptions` は数値スコープIDで
  * キー付けされている（`useMyCalendarData.ts` の `availableScopes` コメント参照 — 作成スコープ選択
- * 専用の slug 値を表示フィルタへ混入させてはならない）。両者を橋渡しするため、まず
- * `availableScopes`（slug 側）でこのスコープの表示名を特定し、同じ scopeType・同じ表示名を
- * 持つ `allScopeOptions`（数値側）のエントリへ変換する。
+ * 専用の slug 値を表示フィルタへ混入させてはならない）。両者を橋渡しするため、
+ * `availableScopes`（slug 側）のエントリが持つ `filterKey`（数値キー・useMyCalendarData.ts の
+ * `layers.value` 走査時に確定済み）をそのまま使う。
+ *
+ * [P2是正・Codex検分] 以前は scopeType + 表示名（label）が一致するエントリを
+ * `allScopeOptions` から逆引きしていたが、`TeamEntity` にチーム名の一意制約が無いため、
+ * 同名の別チーム／組織に複数所属していると `find` が常に先頭の別スコープを誤って返しうる
+ * （案内が出ない・「表示する」で別チームが表示される、という AC-11b 違反）。
+ * `filterKey` は layers.value の走査中に scopeId（数値）そのものから作られるため、
+ * 名前の一意性に依存しない。
  */
 function savedScopeFilterKey(scope: SavedScope): string {
   if (scope.isPersonal) return PERSONAL_KEY
   const created = availableScopes.value.find(
     sc => sc.scopeId === scope.scopeId && sc.scopeType.toLowerCase() === scope.scopeType,
   )
-  if (created) {
-    const numeric = allScopeOptions.value.find(
-      o => o.scopeType === created.scopeType && o.label === created.label,
-    )
-    if (numeric) return numeric.value
-  }
-  return `${scope.scopeType.toUpperCase()}:${scope.scopeId}`
+  return created?.filterKey ?? `${scope.scopeType.toUpperCase()}:${scope.scopeId}`
 }
 
 /** 案内に出すレイヤー表示名。allScopeOptions（表示フィルタと同じ一覧）から引く。 */
