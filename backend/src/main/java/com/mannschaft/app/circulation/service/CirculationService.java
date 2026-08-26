@@ -26,14 +26,12 @@ import com.mannschaft.app.circulation.dto.RemindResponse;
 import com.mannschaft.app.circulation.dto.UpdateDocumentRequest;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.auth.repository.UserRepository.MemberSummary;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationService;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.circulation.entity.CirculationAttachmentEntity;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
 import com.mannschaft.app.circulation.event.CirculationDocumentDeletedEvent;
+import com.mannschaft.app.circulation.event.CirculationReminderNotificationEvent;
 import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
@@ -49,7 +47,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -100,11 +97,6 @@ public class CirculationService {
      * Bean 不在のテスト構成（Mockito @InjectMocks 等）では null 注入される。
      */
     private final UserRepository userRepository;
-
-    /** Phase 11 第三陣 3-A: 手動リマインド送信に使用。 */
-    private final NotificationService notificationService;
-    private final MessageSource messageSource;
-    private final com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
 
     /**
      * 管理操作の per-scope 認可に使用する（2026-05-29 fixup）。
@@ -843,9 +835,24 @@ public class CirculationService {
      * <p>{@code IN_PROGRESS / ACTIVE} ステータスの文書のみ対象。
      * {@code PENDING} ステータスの受信者全員に {@code CIRCULATION_REMINDER} 通知を作成する。</p>
      *
+     * <p>Issue #2834 / CMP-056 第1群ロットB: {@code notificationService.createNotification} を直接
+     * 呼ばず、{@link CirculationReminderNotificationEvent} を publish するだけに留める。実際の通知生成・
+     * 配信は {@code CirculationReminderNotificationListener} が {@code AFTER_COMMIT} で受け取ってから、
+     * 受信者ごとに独立トランザクション（{@code REQUIRES_NEW}）で行う。是正前は受信者ループの中で
+     * {@code createNotification}（既定の {@code REQUIRED} 伝播）を呼んでおり、1 受信者の DB 例外が
+     * rollback-only を立てて<b>他受信者の通知も督促の実行そのものもまとめて巻き戻していた</b>
+     * （是正前のコメント自身が「本処理の巻き戻りは防がない」と自認していた）。</p>
+     *
+     * <p><b>戻り値の意味の変化</b>: 是正前の {@code remindedCount} は「同一トランザクション内で
+     * {@code createNotification} が例外を投げなかった件数」だったが、上記のとおり 1 件の DB 例外で
+     * 数えた通知ごと全て消えていたため、この数値は実際の到達件数を意味していなかった。是正後は
+     * <b>配送要求を発行した対象者数</b>（= {@code PENDING} 受信者数）を返す。フィールド自体は
+     * 外向き契約を壊さないため維持する（ロットA の {@code onboarding} の {@code RemindResponse} と同じ扱い）。
+     * 実際の配送成否は配送リスナーの構造化ログで観測する。</p>
+     *
      * @param documentId 文書 ID
      * @param actorId    操作者ユーザー ID
-     * @return 送信結果
+     * @return 送信結果（{@code remindedCount} は<b>対象者数</b>）
      */
     @Transactional
     public RemindResponse remindDocument(Long documentId, Long actorId) {
@@ -859,49 +866,14 @@ public class CirculationService {
         List<CirculationRecipientEntity> pendings =
                 recipientRepository.findByDocumentIdAndStatusOrderBySortOrderAsc(documentId, RecipientStatus.PENDING);
 
-        int remindedCount = 0;
-        if (notificationService != null) {
-            // Issue #2715 CMP-055 ロットC-6: 受信者ごとに locale が異なるため、ループの外で一括解決する（N+1 防止）。
-            // Codex 検分是正（PR #2873）: バルク取得自体を try で隔離し、失敗時は既定 locale ("ja") で継続する。
-            java.util.Map<Long, String> locales;
-            try {
-                locales = userLocaleCache.getLocales(
-                        pendings.stream().map(CirculationRecipientEntity::getUserId).toList());
-            } catch (Exception e) {
-                log.warn("locale 一括解決に失敗（既定 locale で継続）: documentId={}, error={}", documentId, e.getMessage());
-                locales = java.util.Map.of();
-            }
-            for (CirculationRecipientEntity recipient : pendings) {
-                try {
-                    java.util.Locale locale = java.util.Locale.forLanguageTag(
-                            locales.getOrDefault(recipient.getUserId(), "ja"));
-                    notificationService.createNotification(
-                            recipient.getUserId(),
-                            "CIRCULATION_REMINDER",
-                            NotificationPriority.NORMAL,
-                            messageSource.getMessage(
-                                    "notification.circulation.reminder.title", null,
-                                    "回覧の未確認があります", locale),
-                            messageSource.getMessage(
-                                    "notification.circulation.reminder.body",
-                                    new Object[]{entity.getTitle()},
-                                    "「" + entity.getTitle() + "」の押印をお願いします。", locale),
-                            "CIRCULATION_DOCUMENT", documentId,
-                            scopeTypeToNotificationScope(entity.getScopeType()),
-                            entity.getScopeId(),
-                            "/circulations/" + documentId,
-                            actorId);
-                    remindedCount++;
-                } catch (Exception e) {
-                    // 通知失敗を隔離し、他の受信者への配信を継続する
-                    // （非DB例外・MessageFormatエラー等を隔離するもので、本処理の巻き戻りは防がない）。
-                    log.warn("回覧リマインド送信失敗（継続）: documentId={}, userId={}, error={}",
-                            documentId, recipient.getUserId(), e.getMessage());
-                }
-            }
+        if (!pendings.isEmpty()) {
+            applicationEventPublisher.publishEvent(new CirculationReminderNotificationEvent(
+                    documentId, actorId,
+                    pendings.stream().map(CirculationRecipientEntity::getUserId).toList()));
         }
-        log.info("回覧手動リマインド送信: documentId={}, count={}, actorId={}", documentId, remindedCount, actorId);
-        return new RemindResponse(documentId, remindedCount);
+
+        log.info("回覧手動リマインド送信要求: documentId={}, targets={}, actorId={}", documentId, pendings.size(), actorId);
+        return new RemindResponse(documentId, pendings.size());
     }
 
     /**
@@ -988,19 +960,6 @@ public class CirculationService {
                 .toList();
 
         return new DocumentStatusResponse(documentId, entity.getStatus().name(), entries);
-    }
-
-    /**
-     * scope_type 文字列を NotificationScopeType に変換する。
-     */
-    private NotificationScopeType scopeTypeToNotificationScope(String scopeType) {
-        if ("TEAM".equals(scopeType)) {
-            return NotificationScopeType.TEAM;
-        }
-        if ("ORGANIZATION".equals(scopeType)) {
-            return NotificationScopeType.ORGANIZATION;
-        }
-        return NotificationScopeType.PERSONAL;
     }
 
     /**
