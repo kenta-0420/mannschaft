@@ -1,3 +1,5 @@
+import java.util.concurrent.ConcurrentHashMap
+
 plugins {
     java
     jacoco
@@ -368,9 +370,31 @@ tasks.withType<Test> {
     // 実測で安全域だった水準の半分以下でヒープを定期リセットできる。
     // ※ この値を 100 に戻すと CI shard は再び 60 分打ち切りに戻る。変更時は必ず再実測すること。
     //
+    // 【500 → 180 に是正（すべて CI 実走の実測にもとづく・2026-08-26）】
+    //
+    // 最重要: forkEvery は【1 ワーカーが処理したテストクラス数】で数える。
+    // maxParallelForks=2 なら 1 ワーカーの担当は shard 全体（350〜384 クラス）の約半分であり、
+    // 【shard 全体のクラス数と forkEvery を直接比べてはならない】。
+    // この一点を見落として値を二度外した（190 / 200）。以後は必ず計測器の実数で確かめること。
+    //
+    // 本ファイルの計測器が CI ログへ出す "[test-jvm] 起動したテスト JVM 数" の実測値:
+    //
+    //   forkEvery | 起動した JVM 数 (shard0..5) | shard 壁時計 平均 / 最長
+    //   ----------+-----------------------------+--------------------------
+    //   500(旧)   | 4  4  4  4  4  4            | 41.9 分 / 46.8 分
+    //   90        | 14 16 14 14 16 14           | 56.0 分 / 59.2 分  ← 60分打切りに余裕なし
+    //   180(採用) | 8  8  8  8  8  8            | 49.4 分 / 51.5 分  ← 採用（基準の2倍）
+    //
+    // 90 は JVM 数こそ増えるが最長 59.2 分で【打ち切り 60 分にほぼ接している】ため採れない。
+    // 上記2点から「JVM 1 個増あたり約 1.28 分」を得て、基準値 4 の約2倍を狙える 180 を採る。
+    // 目的は「ヒープを実際にリセットさせること」であって fork 回数の最大化ではない。
+    //
+    // ※ 値を変えたら【必ず CI ログの "[test-jvm]" と shard 壁時計の両方】を見ること。
+    //   クラス数だけを見て緩めると、また実際の JVM 数が増えないまま「直したつもり」になる。
+    //
     // ローカル（WSL2 Docker）環境では -Pfork.every=0 で無効化し、1コンテナ共有で高速化できる。
     // perfTask は単一クラスの重量級 IT ゆえ forkEvery=0（1 JVM 共有）で無駄な再 fork を避ける。
-    setForkEvery(if (isPerfTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 500L))
+    setForkEvery(if (isPerfTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 180L))
     // ローカル（WSL2 Docker）環境では Testcontainers の並列コンテナ起動が WSL2 ポートミラーリングの
     // タイミング問題を引き起こすため、-Pmax.parallel.forks=1 で上書きできるようにする。
     // CI 環境ではデフォルト 2 のまま動作する。
@@ -396,10 +420,58 @@ tasks.withType<Test> {
     //   問題が発生していた（ShiftBudgetAllocationRepositoryTest で expected 2026-06-01 / but was
     //   2026-05-31）。JVM 側で TZ を JST に固定することで JDBC との一貫性を保証し、テスト結果が
     //   実行時刻・実行環境（ローカル/CI）に依存しないようにする。
+    // 【テスト JVM 数の計測器（実測 2026-08-26）】
+    // forkEvery が実際に発火したかを「計算」で二度続けて外したため、回数そのものを数える。
+    //
+    // Gradle はワーカー JVM ごとに "Gradle Test Executor N" という名前のスイートを1つ作る。
+    // その名前を beforeSuite で集めれば、【実際に起動したテスト JVM の個数】がそのまま得られる
+    // （テスト側に依存も追加コードも要らない。junit-platform-launcher は test の
+    //  コンパイルクラスパスに無いため、JUnit のリスナー実装では計測できなかった）。
+    //
+    // 出力は root スイートの afterSuite で行うので、テストが失敗した回でも必ず出る
+    // （OOM で落ちた回こそ、この数字が要る）。CI ログを "[test-jvm]" で grep せよ。
+    // beforeSuite は複数ワーカーのイベントを受けるため、スレッド安全な集合を使う。
+    val testJvmNames: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    addTestListener(object : org.gradle.api.tasks.testing.TestListener {
+        override fun beforeSuite(suite: org.gradle.api.tasks.testing.TestDescriptor) {
+            if (suite.name.startsWith("Gradle Test Executor")) {
+                testJvmNames.add(suite.name)
+            }
+        }
+        override fun afterSuite(
+            suite: org.gradle.api.tasks.testing.TestDescriptor,
+            result: org.gradle.api.tasks.testing.TestResult
+        ) {
+            if (suite.parent == null) {
+                logger.lifecycle(
+                    "[test-jvm] 起動したテスト JVM 数 = ${testJvmNames.size}" +
+                        "（forkEvery=${forkEvery} / maxParallelForks=${maxParallelForks}）" +
+                        " ※ forkEvery はワーカー単位で数える"
+                )
+                logger.lifecycle("[test-jvm] 内訳: " + testJvmNames.joinToString(", "))
+            }
+        }
+        override fun beforeTest(testDescriptor: org.gradle.api.tasks.testing.TestDescriptor) {}
+        override fun afterTest(
+            testDescriptor: org.gradle.api.tasks.testing.TestDescriptor,
+            result: org.gradle.api.tasks.testing.TestResult
+        ) {}
+    })
+
+    // 【ヒープダンプはワーカーごとに分ける（実測 2026-08-26）】
+    // 以前は -XX:HeapDumpPath=build/heap-dump.hprof という【固定ファイル名】だったため、
+    // maxParallelForks=2 の 2 ワーカーが OOM 時に同一ファイルへ同時に書き込み、
+    // 出来上がったダンプが 6.97GB になった。-Xmx4g のワーカー 1 個から 4g を超える
+    // ダンプが出ることは原理的にあり得ず、この数字は【解析者を誤らせる嘘の値】である
+    // （実際 shard5 の OOM 調査で「1 プロセスが 7GB 使った」という誤読を招き、
+    //  真因（fork が 0 回でコンテキストが蓄積していたこと）の特定を遅らせた）。
+    // ディレクトリを指定すると JVM が java_pid<PID>.hprof を各自作るため衝突しない。
+    val heapDumpDir = project.layout.buildDirectory.dir("heap-dumps").get().asFile
+    doFirst { heapDumpDir.mkdirs() }
     jvmArgs(
         "-XX:+UseG1GC",
         "-XX:+HeapDumpOnOutOfMemoryError",
-        "-XX:HeapDumpPath=build/heap-dump.hprof",
+        "-XX:HeapDumpPath=${heapDumpDir.absolutePath}",
         "-Dcom.mysql.cj.disableAbandonedConnectionCleanup=true",
         "-Duser.timezone=Asia/Tokyo"
     )
