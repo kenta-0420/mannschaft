@@ -10,6 +10,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -32,6 +33,14 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 @DisplayName("資格期限リマインダー: 既に失効した資格は通知対象に入らない")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
+// 本テストは MockMvc を使わないが、同じ skill ドメインの既存 IT
+// （MemberSkillScopeContractIT 等）と<b>同一の注釈構成</b>にしておく。
+// @AutoConfigureMockMvc は Spring TestContext のコンテキストキャッシュキーに効くため、
+// これが欠けていると本クラス専用の ApplicationContext がもう1つ生成されて
+// キャッシュに積み上がる。shard 5 は既にヒープの上限に近く、
+// 実測でコンテキスト9個超・ヒープダンプ 6.9GB の OutOfMemoryError を2度続けて起こした。
+// 既存 IT とキーを揃えることでコンテキストを共有し、増分をゼロにする。
+@AutoConfigureMockMvc(addFilters = false)
 @Transactional
 class SkillExpiryReminderTargetIT extends AbstractMySqlIntegrationTest {
 
