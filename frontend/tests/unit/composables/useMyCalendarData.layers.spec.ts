@@ -217,6 +217,32 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
     expect(cal.selectedScopes.value).not.toContain('TEAM:99') // hidden=true は初期選択から外れる
   })
 
+  it('AC-15 (W2-c): /calendar でレイヤー選択を変更後、ダッシュボードの WidgetMyCalendar が同じ選択・同じキーを読み出す', async () => {
+    // /calendar 側（WidgetMyCalendar も含め、両者とも引数なしで useMyCalendarData() を呼ぶ —
+    // Wave 2-c で WidgetMyCalendar 固有の storageKey 上書きを廃止したため、両者は完全に同一のキーを共有する）。
+    const calendarPage = useMyCalendarData()
+    await calendarPage.initStorage()
+    expect(calendarPage.selectedScopes.value).toEqual(['PERSONAL:0', 'TEAM:42']) // hidden=false の全選択（初回）
+
+    // /calendar でレイヤー選択を変更（TEAM:42 を外す）。
+    calendarPage.selectedScopes.value = ['PERSONAL:0']
+    // 永続化は watch(selectedScopes, persistLayerState) 経由（非同期）のため flush を待つ。
+    await nextTick()
+
+    const persisted = JSON.parse(localStorage.getItem(LAYER_STATE_KEY)!)
+    expect(persisted.selected).toEqual(['PERSONAL:0'])
+
+    // ダッシュボードへ遷移 → WidgetMyCalendar が新しい composable インスタンスとして初期化される。
+    const widget = useMyCalendarData()
+    await widget.initStorage()
+
+    // 同じレイヤー選択が読み出されること（AC-15 の核心）。
+    expect(widget.selectedScopes.value).toEqual(['PERSONAL:0'])
+    // 両者が同じ localStorage キーを読み書きしていること（storageKey 上書きが完全に消えたことの裏取り）。
+    expect(localStorage.getItem(LAYER_STATE_KEY)).not.toBeNull()
+    expect(localStorage.getItem('mannschaft:widget:calendar:scopeFilter')).toBeNull()
+  })
+
   it('AC-02相当: 予定が1件も無いレイヤーも allScopeOptions に含まれる', async () => {
     // イベントは0件（beforeEach で空応答）。それでもレイヤー一覧 API 由来で選択肢が出る。
     const cal = useMyCalendarData()
@@ -400,8 +426,11 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
     await cal.loadLayers()
 
     // TEAM:99 は teamStore に slug が無いため作成候補には出さない（誤ったIDで404を起こさない）。
+    // filterKey は表示フィルタ側（allScopeOptions/selectedScopes）と同じ数値キー（P2是正・
+    // Codex検分: 名前一致での逆引きはチーム名の一意性が保証されず誤対応しうるため、
+    // layers.value 走査時に確定させた数値キーをそのまま持たせる。calendar.vue 参照）。
     expect(cal.availableScopes.value).toEqual([
-      { label: '青葉FC', value: 'TEAM:aoba-fc', scopeType: 'TEAM', scopeId: 'aoba-fc' },
+      { label: '青葉FC', value: 'TEAM:aoba-fc', scopeType: 'TEAM', scopeId: 'aoba-fc', filterKey: 'TEAM:42' },
     ])
     // フィルタ用のレイヤー一覧（allScopeOptions）は数値キーのまま・予定の有無に依存しない。
     expect(cal.allScopeOptions.value.map((o) => o.value)).toEqual(['PERSONAL:0', 'TEAM:42', 'TEAM:99'])
@@ -534,7 +563,7 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
 
     const forA = useMyCalendarData()
     await forA.loadLayers()
-    expect(forA.availableScopes.value).toContainEqual({ label: '青葉FC', value: 'TEAM:a-team', scopeType: 'TEAM', scopeId: 'a-team' })
+    expect(forA.availableScopes.value).toContainEqual({ label: '青葉FC', value: 'TEAM:a-team', scopeType: 'TEAM', scopeId: 'a-team', filterKey: 'TEAM:42' })
 
     // --- 同一SPAセッション内でユーザーB（id=2）へ切替。
     //     useAuthStore.logout() は team/organization ストアをクリアしないため、
@@ -561,7 +590,7 @@ describe('useMyCalendarData — F03.19 W2-a レイヤー状態管理', () => {
     // 旧ユーザー（A）のチームが残っていないこと。
     expect(teamStore.myTeams.map((t) => t.id)).toEqual([77])
     // B の所属チームが作成候補に正しく出ること（slugはBの再取得結果由来）。
-    expect(forB.availableScopes.value).toContainEqual({ label: 'Bのチーム', value: 'TEAM:b-team', scopeType: 'TEAM', scopeId: 'b-team' })
+    expect(forB.availableScopes.value).toContainEqual({ label: 'Bのチーム', value: 'TEAM:b-team', scopeType: 'TEAM', scopeId: 'b-team', filterKey: 'TEAM:77' })
     expect(forB.availableScopes.value.some((o) => o.value === 'TEAM:a-team')).toBe(false)
   })
 })
