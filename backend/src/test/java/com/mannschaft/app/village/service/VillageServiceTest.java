@@ -74,6 +74,13 @@ class VillageServiceTest {
     /** 画像の生 R2 キー → 署名付き表示 URL の解決（#2355）。 */
     @Mock private MediaUrlResolver mediaUrlResolver;
 
+    /**
+     * 村の存在確認・可視性判定を担う共通ゲート。実物へ委譲させることで、既存試練の
+     * {@code villageRepository.findById} stub をそのまま活かしつつ可視性ロジックも実際に走らせる
+     * （{@link VillageAccessGateTestSupport} の Javadoc 参照）。
+     */
+    @Mock private VillageAccessGate accessGate;
+
     @InjectMocks private VillageService service;
 
     private static final Long ADMIN_USER_ID = 1L;
@@ -83,6 +90,23 @@ class VillageServiceTest {
 
     @BeforeEach
     void setUp() {
+        VillageAccessGateTestSupport.delegateToRealGate(
+                accessGate, villageRepository, membershipRepository, accessControlService);
+        // findActiveOrThrow は VillageAccessGate へ移り、生存判定が
+        // findByIdAndDeletedAtIsNullAndArchivedAtIsNull から findById + deletedAt/archivedAt の
+        // フィールド判定に変わった。既存試練は前者だけを stub しているので、
+        // 既定として findById を同じ stub へ流す（各試練の stub をそのまま活かすため）。
+        // 個別に findById を stub している試練（凍結系）はそちらが優先される。
+        lenient().when(villageRepository.findById(any(UUID.class))).thenAnswer(inv ->
+                villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(inv.getArgument(0)));
+        // 可視性ゲートの村人判定は findActiveByVillageIdAndSubject を使う。既存試練は
+        // VillageService#isMember が使う findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull を
+        // stub しているため、既定としてそちらへ流して「村人である」という試練の意図を保つ。
+        lenient().when(membershipRepository.findActiveByVillageIdAndSubject(
+                any(UUID.class), eq(VillageSubjectType.USER), anyLong())).thenAnswer(inv ->
+                membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                        inv.getArgument(0), inv.getArgument(1), inv.getArgument(2)));
+        lenient().when(accessControlService.isSystemAdmin(anyLong())).thenReturn(false);
         // メンバーシップ・ピンは未参加・未ピンをデフォルト
         lenient().when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                 any(UUID.class), eq(VillageSubjectType.USER), anyLong())).thenReturn(Optional.empty());
@@ -903,7 +927,7 @@ class VillageServiceTest {
             MediaUrlResolver realResolver = new MediaUrlResolver(storageService);
 
             VillageService serviceWithRealResolver = new VillageService(
-                    villageRepository, villageSearchRepository, membershipRepository,
+                    villageRepository, accessGate, villageSearchRepository, membershipRepository,
                     pinRepository, accessControlService, r2StorageService, realResolver);
 
             // 3 村がすべて同じアイコンキーを共有する（例: 同一運営が同じ画像を使い回すケース）

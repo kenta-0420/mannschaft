@@ -1,5 +1,7 @@
 package com.mannschaft.app.search.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.event.UserAnonymizedEvent;
 import com.mannschaft.app.gdpr.event.AccountPurgedEvent;
 import com.mannschaft.app.search.repository.SearchHistoryRepository;
@@ -60,6 +62,8 @@ public class SearchAnonymizationEventListener {
      *
      * @param event 退会即時匿名化イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会・完全削除済み利用者の個人情報が検索インデックスに残り、検索結果から PII が引ける状態が続く")
     @Async("event-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -80,6 +84,8 @@ public class SearchAnonymizationEventListener {
      *
      * @param event アカウント物理削除完了イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会・完全削除済み利用者の個人情報が検索インデックスに残り、検索結果から PII が引ける状態が続く")
     @Async("purge-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

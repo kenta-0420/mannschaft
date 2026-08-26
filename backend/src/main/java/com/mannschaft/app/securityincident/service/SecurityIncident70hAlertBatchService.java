@@ -1,5 +1,7 @@
 package com.mannschaft.app.securityincident.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
@@ -46,6 +48,8 @@ public class SecurityIncident70hAlertBatchService {
     /**
      * 70 時間アラートチェックを実行する（30 分ごと）。
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "GDPR 72時間報告義務の2時間前アラートであり、止めると報告期限が無警告で徒過して法令違反が確定する")
     @BatchEndpoint(
             name = "security-incident-70h-alert",
             description = "セキュリティインシデントの70時間アラートを SYSTEM_ADMIN に送信する"

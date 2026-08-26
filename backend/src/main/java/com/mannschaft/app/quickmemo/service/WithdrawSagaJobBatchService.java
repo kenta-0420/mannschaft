@@ -1,5 +1,7 @@
 package com.mannschaft.app.quickmemo.service;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.storage.R2StorageService;
@@ -44,6 +46,8 @@ public class WithdrawSagaJobBatchService {
     private final R2StorageService s3StorageService;
     private final AuditLogService auditLogService;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "退会 Saga の進行役であり、止めると Saga が中途半端な状態で凍結し、退会処理が途中まで適用された不整合が残る")
     @BatchEndpoint(name = "quickmemo-withdraw-saga", description = "退会 SAGA ジョブを 10 分毎に再開・継続実行する")
     @Scheduled(cron = "0 */10 * * * *")
     // 起動間隔は 10 分。退会 SAGA の継続実行はストレージ削除を伴い 1 ジョブあたり数分かかりうる。間隔の 3 倍を上限とする。
