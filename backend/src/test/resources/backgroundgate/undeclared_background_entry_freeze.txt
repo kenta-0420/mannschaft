@@ -44,7 +44,7 @@ EVENT_LISTENER|com.mannschaft.app.property.event.PropertyWorkPackageEventListene
 EVENT_LISTENER|com.mannschaft.app.proxy.batch.ProxyConsentLifeEventJob|0|1
 EVENT_LISTENER|com.mannschaft.app.recruitment.service.RecruitmentCancellationFeeResultListener|0|2
 EVENT_LISTENER|com.mannschaft.app.schedule.service.ScheduleReminderNotificationListener|1|1
-EVENT_LISTENER|com.mannschaft.app.succession.service.DelinquencyEscalationListener|1|1
+EVENT_LISTENER|com.mannschaft.app.succession.service.DelinquencyEscalationListener|0|1
 EVENT_LISTENER|com.mannschaft.app.timetable.personal.listener.PersonalTimetableSlotMembershipRevokeListener|1|1
 EVENT_LISTENER|com.mannschaft.app.timetable.personal.listener.TeamSlotNoteNotifyListener|1|1
 EVENT_LISTENER|com.mannschaft.app.todo.event.MilestoneNotificationListener|1|1
@@ -57,7 +57,7 @@ SCHEDULED|com.mannschaft.app.admin.systemlog.SsrErrorFlushBatch|0|1
 SCHEDULED|com.mannschaft.app.advertising.campaign.service.AdCampaignDeliveryWorker|0|1
 SCHEDULED|com.mannschaft.app.advertising.campaign.service.AdCampaignStateTransitionScheduler|0|2
 SCHEDULED|com.mannschaft.app.advertising.campaign.service.AdFrequencyCapFlushBatch|0|1
-SCHEDULED|com.mannschaft.app.advertising.campaign.service.AdMessagingBillingBridge|1|1
+SCHEDULED|com.mannschaft.app.advertising.campaign.service.AdMessagingBillingBridge|0|1
 SCHEDULED|com.mannschaft.app.advertising.ranking.service.EquipmentRankingBatchService|0|1
 SCHEDULED|com.mannschaft.app.advertising.service.AdDailyStatsAggregationBatchService|0|1
 SCHEDULED|com.mannschaft.app.advertising.service.MonthlyInvoiceBatchService|0|1
@@ -96,7 +96,8 @@ SCHEDULED|com.mannschaft.app.errorreport.service.ErrorReportCleanupService|1|1
 SCHEDULED|com.mannschaft.app.errorreport.service.ErrorReportWeeklySummaryService|1|1
 SCHEDULED|com.mannschaft.app.family.service.CareAbsentAlertBatchService|0|2
 SCHEDULED|com.mannschaft.app.family.service.EventEndReminderBatchService|0|1
-SCHEDULED|com.mannschaft.app.family.service.FamilyBatchService|0|3
+SCHEDULED|com.mannschaft.app.family.service.FamilyBatchService|0|2
+SCHEDULED|com.mannschaft.app.family.service.FamilyRetentionCleanupBatchService|0|1
 SCHEDULED|com.mannschaft.app.gamification.service.GamificationBadgeBatchService|0|1
 SCHEDULED|com.mannschaft.app.gamification.service.GamificationRankingBatchService|0|1
 SCHEDULED|com.mannschaft.app.gamification.service.GamificationResetBatchService|0|1
@@ -106,7 +107,7 @@ SCHEDULED|com.mannschaft.app.gdpr.service.DataExportService|0|2
 SCHEDULED|com.mannschaft.app.gdpr.service.WithdrawalReminderService|0|1
 SCHEDULED|com.mannschaft.app.health.HealthStatusListener|1|1
 SCHEDULED|com.mannschaft.app.inbox.batch.InboxSnoozeRevivalBatchService|1|1
-SCHEDULED|com.mannschaft.app.incident.service.IncidentSlaBatchService|1|1
+SCHEDULED|com.mannschaft.app.incident.service.IncidentSlaBatchService|0|1
 SCHEDULED|com.mannschaft.app.knowledgebase.service.KbImageCleanupBatchService|1|1
 SCHEDULED|com.mannschaft.app.mail.outbox.EmailOutboxAlertChecker|0|1
 SCHEDULED|com.mannschaft.app.mail.outbox.EmailOutboxStuckRecoveryBatch|0|1
@@ -140,7 +141,7 @@ SCHEDULED|com.mannschaft.app.quickmemo.service.WithdrawSagaJobBatchService|0|1
 SCHEDULED|com.mannschaft.app.recruitment.service.RecruitmentAutoCancelBatch|0|1
 SCHEDULED|com.mannschaft.app.recruitment.service.RecruitmentNoShowConfirmBatch|0|1
 SCHEDULED|com.mannschaft.app.recruitment.service.RecruitmentNoShowDetectBatch|0|1
-SCHEDULED|com.mannschaft.app.recruitment.service.RecruitmentPaymentRetryBatch|1|1
+SCHEDULED|com.mannschaft.app.recruitment.service.RecruitmentPaymentRetryBatch|0|1
 SCHEDULED|com.mannschaft.app.recruitment.service.RecruitmentPenaltyLiftBatch|0|1
 SCHEDULED|com.mannschaft.app.recruitment.service.RecruitmentPenaltyRecomputeBatch|0|1
 SCHEDULED|com.mannschaft.app.recruitment.service.RecruitmentReminderBatch|0|1
@@ -171,6 +172,7 @@ SCHEDULED|com.mannschaft.app.shift.service.ShiftPreferenceReminderBatchService|0
 SCHEDULED|com.mannschaft.app.shiftbudget.batch.MonthlyShiftBudgetCloseBatchJob|0|1
 SCHEDULED|com.mannschaft.app.shiftbudget.batch.ShiftBudgetRetryBatchJob|0|1
 SCHEDULED|com.mannschaft.app.skill.service.SkillExpiryReminderBatchService|0|1
+SCHEDULED|com.mannschaft.app.skill.service.SkillExpiryStatusUpdateBatchService|0|1
 SCHEDULED|com.mannschaft.app.succession.batch.AutoResealBatchService|0|1
 SCHEDULED|com.mannschaft.app.succession.service.DelinquencyEscalationBatchService|0|1
 SCHEDULED|com.mannschaft.app.sync.job.OfflineSyncConflictCleanupJob|0|1
@@ -236,7 +238,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.payment.event.PaymentPurgeEventL
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.pointcard.event.PointCardAnonymizationEventListener|0|2
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.pointcard.listener.PointCardOrganizationDeletedListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.proxy.event.ProxyPurgeEventListener|0|1
-TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.proxyvote.listener.EventDelegationAcceptedListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.proxyvote.listener.EventDelegationAcceptedListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.publicview.event.SupporterNameDisclosureChangedEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.recruitment.service.MarketFinalizeConfirmedListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.reservation.EmergencyClosureBroadcastListener|1|1
@@ -265,8 +267,8 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.search.event.SearchAnonymization
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shift.event.ShiftArchivedToTodoCancelListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shift.event.ShiftPublishedNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shift.event.ShiftToTaskListener|0|1
-TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumptionCancelListener|1|1
-TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumptionRecordListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumptionCancelListener|0|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumptionRecordListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.social.announcement.AnnouncementSyncEventListener|3|3
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.social.event.SocialAnonymizationEventListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.survey.listener.SurveyBulletinThreadListener|2|2

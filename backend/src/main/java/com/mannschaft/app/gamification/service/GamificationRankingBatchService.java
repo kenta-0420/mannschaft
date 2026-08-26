@@ -56,9 +56,8 @@ public class GamificationRankingBatchService {
      *   <li>処理件数をログ出力</li>
      * </ol>
      */
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
-            gateKeys = "FEATURE_GAMIFICATION_ENABLED",
-            reason = "スナップショットは delete and insert で毎回作り直す派生値であり、止めても前回分が残るだけで元のポイント台帳は壊れない")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "第三陣の全数洗い出しで発見: 公開入口は no-arg の runRankingSnapshot のみで期間は today から導出されるため、停止期間の periodLabel のスナップショットは二度と生成できず恒久的な欠測が残る。内部処理のみで外部送信を伴わない")
     @BatchEndpoint(name = "gamification-ranking-snapshot-daily", description = "ランキングスナップショットを毎日 03:30 に生成する")
     @Scheduled(cron = "0 30 3 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "gamification_ranking_snapshot", lockAtMostFor = "PT30M")

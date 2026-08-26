@@ -28,9 +28,8 @@ public class ProxyMonthlySummaryBatchJob {
      * 毎月1日 03:00 JST に実行する。
      * ShedLock により複数インスタンス環境でも1回だけ実行されることを保証する。
      */
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
-            gateKeys = "FEATURE_SUCCESSION_PROXY_ENABLED",
-            reason = "サマリ PDF は代理入力記録から再生成できる派生成果物で、BatchEndpoint 経由の手動再実行経路も持つ。元の記録は保持ジョブ側が守る")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "Codex検分/殿の裁定: 直前月の PDF しか生成せず BatchEndpoint の手動実行も同じ no-arg を呼ぶため、オフライン住民向け月次報告が恒久的に欠落する。生成物の保存のみで外部送信を伴わない")
     @BatchEndpoint(name = "proxy-monthly-summary-pdf-generate", description = "代理入力の前月サマリ PDF を毎月 1 日 03:00 に生成して S3 保存する")
     @Scheduled(cron = "0 0 3 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "ProxyMonthlySummaryBatchJob", lockAtMostFor = "30m", lockAtLeastFor = "5m")

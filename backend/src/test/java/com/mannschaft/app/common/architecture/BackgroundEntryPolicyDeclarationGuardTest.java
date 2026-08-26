@@ -125,7 +125,73 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             // 手数料の消込。止めると残高が合わなくなる。
             "com.mannschaft.app.payment.recovery.FeeReconciliationBatch",
             // Google webhook チャネル更新。失効すると再開しても自動復旧しない。
-            "com.mannschaft.app.schedule.batch.GoogleWebhookChannelRenewalBatch");
+            "com.mannschaft.app.schedule.batch.GoogleWebhookChannelRenewalBatch",
+
+            // ── ④-B 第三陣で追加（第二陣の登録漏れ。実測で洗い出した） ──────────
+            //
+            // GDPR 消去（AccountPurgedEvent 購読）の本体。止めると第17条の消去期限を直接破る。
+            // 初版は `**.*AnonymizationEventListener` しか登録しておらず、
+            // 「命名が違うだけで役割は同じ」本群が丸ごと素通りしていた。
+            // 実測: AccountPurgedEvent の購読クラスは 14。内訳は
+            //   *PurgeEventListener 9 / *AnonymizationEventListener 4 / 下記 Lifecycle 1。
+            "**.*PurgeEventListener",
+            // 名前が役割を表していない AccountPurgedEvent 購読者（上記2パターンのどちらにも当たらない）。
+            // 命名規約に頼った登録では拾えないため FQCN で個別に釘を打つ。
+            "com.mannschaft.app.returnstayplan.event.ReturnStayPlanLifecycleListener",
+            // 保持期間超過削除。止めると保持期限を超えた個人データが残留する
+            // （DisclosureAutoDeleteBatchService と同種）。
+            "com.mannschaft.app.proxy.batch.ProxyInputRecordRetentionJob",
+            // 死亡・転居のライフイベントに応じた代理入力同意の失効。
+            // 止めると本人が既に存在しないのに同意書が有効なまま残る。
+            "com.mannschaft.app.proxy.batch.ProxyConsentLifeEventJob",
+            // 封緘解除の 72h TTL 再封緘。止めると機微情報が開示されたまま残る（復旧不能な露出）。
+            "com.mannschaft.app.succession.batch.AutoResealBatchService",
+            // 外部（Stripe）で徴収が成立した後に発火する結果記録。
+            // 止めると「外部は決済済み・自システムに記録なし」という復旧不能な金銭の乖離が残る。
+            "com.mannschaft.app.recruitment.service.RecruitmentCancellationFeeResultListener",
+            // 組織削除に伴う提携プロバイダ行の清掃。止めると孤児行が恒久的に残る。
+            "com.mannschaft.app.pointcard.listener.PointCardOrganizationDeletedListener",
+
+            // ── ④-B 第三陣・殿の裁定により ALWAYS 固定（迷ったら ALWAYS に倒す） ──
+            //
+            // 誤って ALWAYS にした損は「閉じた機能の上でバッチが無害に空回りする」だけだが、
+            // 誤って SKIP/DROP にした損は「法令や金が静かに壊れ、誰も気づかない」。
+            // この二つは釣り合わないため、釣り合わない賭けでは安いほうの損を選ぶ。
+            //
+            // 手動再実行経路が無く、止めた月が恒久的に未請求になる。
+            "com.mannschaft.app.advertising.campaign.service.AdMessagingBillingBridge",
+            // Stripe の与信は期限で失効する。遅延がそのまま取りはぐれになる。
+            "com.mannschaft.app.recruitment.service.RecruitmentPaymentRetryBatch",
+            // インシデント SLA は期限に縛られる。
+            "com.mannschaft.app.incident.service.IncidentSlaBatchService",
+            // 上流（event ドメイン）が非ゲートのため、落とすと代理出席と投票代理が乖離する。
+            "com.mannschaft.app.proxyvote.listener.EventDelegationAcceptedListener",
+            // 上流（payment）が別キー。エスカレーションの新規生成は本リスナーが唯一の経路。
+            "com.mannschaft.app.succession.service.DelinquencyEscalationListener",
+            // 予算消費の記録と取消は「対」であり、片方だけ止まれば予算残高が壊れる。
+            // 対になっているものを別々に扱わないため、1 パターンで両方に釘を打つ。
+            "com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumption*Listener",
+
+            // ── ④-B 第三陣・Codex 検分と全数洗い出しで判明した「追いつけない」群 ──────
+            //
+            // 病型: SKIP_WHEN_DISABLED は「止めても再開後に追いつける」ことを暗黙の前提にする。
+            // 下記はいずれも対象期間を today から導出する no-arg 入口しか持たず、
+            // 停止期間を跨ぐとその期間分を二度と生成できない（恒久的な欠測が残る）。
+            // いずれも外部送信を伴わない内部処理であり、閉栓中に空回りしても害は無い。
+            //
+            // 月次 KPI スナップショット（createSnapshot は private・常に前月固定）。
+            "com.mannschaft.app.analytics.service.MonthlyKpiSnapshotBatchService",
+            // 代理入力の月次サマリ PDF（BatchEndpoint の手動実行も同じ no-arg を呼ぶ）。
+            "com.mannschaft.app.proxy.batch.ProxyMonthlySummaryBatchJob",
+            // ポイントリセット（現在月に一致する設定しか取らない）／ランキングスナップショット／
+            // バッジ評価（MONTHLY_RANK）。いずれも期間を跨ぐと取り戻せない。
+            "com.mannschaft.app.gamification.service.Gamification*BatchService",
+            // 資格の失効ステータス更新。止めると期限切れ資格が ACTIVE のまま残る。
+            // リマインダー送信（停止可）とは判定が正反対のため別クラスへ切り出してある。
+            "com.mannschaft.app.skill.service.SkillExpiryStatusUpdateBatchService",
+            // プレゼンス（所在）履歴・コイントス履歴の保持期間超過削除。
+            // 通知系（停止可）と同居していたため禁止域に登録できなかったので切り出した。
+            "com.mannschaft.app.family.service.FamilyRetentionCleanupBatchService");
 
     /** {@link #FORBIDDEN_TO_STOP} で禁じるモード。 */
     private static final Set<String> STOPPING_MODES = Set.of("SKIP_WHEN_DISABLED", "DROP_WHEN_DISABLED");
@@ -889,6 +955,82 @@ class BackgroundEntryPolicyDeclarationGuardTest {
                     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
                             reason = "止めると法令上の消去期限を破るため必ず実行する")
                     public void purge() {}
+                    """);
+
+            assertThat(forbiddenStopViolations(es)).isEmpty();
+        }
+
+        // ───────────────────────────────────────────────────────────────
+        // ④-B 第三陣で追加した禁止域の負例（登録しただけで実証しないと空虚になる）
+        // ───────────────────────────────────────────────────────────────
+
+        /** GDPR 消去（AccountPurgedEvent 購読）の本体。命名が Anonymization と違うだけで役割は同じ。 */
+        private static final String PURGE_LISTENER_PATH =
+                "src/main/java/com/mannschaft/app/billing/BillingPurgeEventListener.java";
+
+        /** 名前が役割を表していない AccountPurgedEvent 購読者。 */
+        private static final String LIFECYCLE_LISTENER_PATH =
+                "src/main/java/com/mannschaft/app/returnstayplan/event/ReturnStayPlanLifecycleListener.java";
+
+        /** 停止期間を跨ぐと二度と生成できない月次スナップショット。 */
+        private static final String NO_CATCHUP_PATH =
+                "src/main/java/com/mannschaft/app/analytics/service/MonthlyKpiSnapshotBatchService.java";
+
+        @Test
+        @DisplayName("(AC-1) *PurgeEventListener に DROP_WHEN_DISABLED を付けると違反になる（第二陣の登録漏れの再発防止）")
+        void ac1_パージリスナーのドロップ宣言を検出する() {
+            List<Entry> es = entries(PURGE_LISTENER_PATH, """
+                    @TransactionalEventListener
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
+                            gateKeys = "FEATURE_BILLING_PAYMENT_ENABLED",
+                            reason = "この宣言は番人に拒否されねばならない（GDPR 消去は落とせない）")
+                    public void onAccountPurged(Object e) {}
+                    """);
+
+            assertThat(forbiddenStopViolations(es))
+                    .as("AccountPurgedEvent を購読する *PurgeEventListener を落とすと消去期限を破る")
+                    .hasSize(1);
+        }
+
+        @Test
+        @DisplayName("(AC-1) 名前が役割を表さない AccountPurgedEvent 購読者も禁止域として拒否される")
+        void ac1_ライフサイクルリスナーのドロップ宣言を検出する() {
+            List<Entry> es = entries(LIFECYCLE_LISTENER_PATH, """
+                    @TransactionalEventListener
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
+                            reason = "この宣言は番人に拒否されねばならない（命名規約では拾えない域）")
+                    public void onAccountPurged(Object e) {}
+                    """);
+
+            assertThat(forbiddenStopViolations(es))
+                    .as("命名規約に当たらない購読者は FQCN 登録でしか守れない")
+                    .hasSize(1);
+        }
+
+        @Test
+        @DisplayName("(AC-1) 停止期間を跨ぐと追いつけないバッチに SKIP_WHEN_DISABLED を付けると違反になる")
+        void ac1_追いつけないバッチのスキップ宣言を検出する() {
+            List<Entry> es = entries(NO_CATCHUP_PATH, """
+                    @Scheduled(cron = "0 0 4 1 * *")
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
+                            gateKeys = "FEATURE_TRANSLATION_SEARCH_ENABLED",
+                            reason = "この宣言は番人に拒否されねばならない（前月固定で追いつけない）")
+                    public void execute() {}
+                    """);
+
+            assertThat(forbiddenStopViolations(es))
+                    .as("対象期間を today から導出する no-arg 入口は停止期間分を取り戻せない")
+                    .hasSize(1);
+        }
+
+        @Test
+        @DisplayName("(AC-1) 新規登録した禁止域でも ALWAYS なら違反にならない（偽陽性が無い）")
+        void ac1_新規禁止域のALWAYSは通る() {
+            List<Entry> es = entries(PURGE_LISTENER_PATH, """
+                    @TransactionalEventListener
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+                            reason = "止めると GDPR 第17条の消去期限を直接破るため必ず実行する")
+                    public void onAccountPurged(Object e) {}
                     """);
 
             assertThat(forbiddenStopViolations(es)).isEmpty();

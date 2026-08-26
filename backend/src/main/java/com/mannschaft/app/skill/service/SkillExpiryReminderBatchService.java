@@ -9,7 +9,6 @@ import com.mannschaft.app.skill.entity.MemberSkillEntity;
 import com.mannschaft.app.skill.entity.SkillExpiryNotificationEntity;
 import com.mannschaft.app.skill.event.SkillExpiryReminderEvent;
 import com.mannschaft.app.skill.repository.MemberSkillQueryRepository;
-import com.mannschaft.app.skill.repository.MemberSkillRepository;
 import com.mannschaft.app.skill.repository.SkillExpiryNotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +22,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 資格期限リマインダーバッチサービス。
- * 毎日8時（JST）に実行し、期限切れ前通知と自動ステータス更新を行う。
+ * 資格期限リマインダーバッチサービス。毎日8時（JST）に期限切れ前通知を送る。
+ *
+ * <p><b>失効ステータス更新（ACTIVE → EXPIRED）は本クラスの責務ではない。</b>
+ * 通知は「機能が閉じていれば送る意味が無い」ので停止してよいが、
+ * 失効更新を止めると期限切れの資格が ACTIVE のまま残り既存データの整合性が壊れる。
+ * 判定が正反対であり、番人の禁止域はクラス単位で照合するため、
+ * Gate 基盤工事④-B 第三陣で {@link SkillExpiryStatusUpdateBatchService} へ分離した。</p>
  */
 @Slf4j
 @Service
@@ -32,20 +36,17 @@ import java.util.List;
 public class SkillExpiryReminderBatchService {
 
     private final MemberSkillQueryRepository memberSkillQueryRepository;
-    private final MemberSkillRepository memberSkillRepository;
     private final SkillExpiryNotificationRepository notificationRepository;
     private final DomainEventPublisher eventPublisher;
 
     /**
-     * 毎日8時（JST）に実行。
-     * 1. 30日前リマインダー
-     * 2. 7日前リマインダー
-     * 3. 期限切れ自動ステータス更新（ACTIVE → EXPIRED）
+     * 毎日8時（JST）に実行。30日前・7日前リマインダーを送る。
      */
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
             gateKeys = "FEATURE_SKILL_RESUME_ENABLED",
-            reason = "失効判定は有効期限日という時刻条件のみで決まる冪等処理で、止めても再開後の初回実行で期限切れ分をまとめて EXPIRED にできる")
-    @BatchEndpoint(name = "skill-expiry-reminder-daily", description = "資格期限の 30/7 日前リマインドと自動失効を毎日 08:00 に処理する")
+            reason = "止まるのは期限前の通知送信のみで DB の資格データは書き換えない。資格・履歴書機能を閉じている間は通知を受け取る画面も閉じており、送り損ねた回を再開後に遡って送らないことは仕様として正しい（失効ステータス更新は SkillExpiryStatusUpdateBatchService が ALWAYS で担う）")
+    @BatchEndpoint(name = "skill-expiry-reminder-daily",
+            description = "資格期限の 30/7 日前リマインドを毎日 08:00 に送信する（自動失効は skill-expiry-status-update-daily）")
     @Scheduled(cron = "0 0 8 * * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "skill_expiry_reminder", lockAtMostFor = "PT10M")
     @Transactional
@@ -53,11 +54,10 @@ public class SkillExpiryReminderBatchService {
         log.info("資格期限リマインダーバッチ開始");
         LocalDate today = LocalDate.now();
 
-        int days30Count = processReminder(today.plusDays(30), NotificationType.DAYS_30, "DAYS_30");
-        int days7Count = processReminder(today.plusDays(7), NotificationType.DAYS_7, "DAYS_7");
-        int expiredCount = processExpiry();
+        int days30Count = processReminder(today, today.plusDays(30), NotificationType.DAYS_30, "DAYS_30");
+        int days7Count = processReminder(today, today.plusDays(7), NotificationType.DAYS_7, "DAYS_7");
 
-        log.info("資格期限リマインダーバッチ完了: days30={}, days7={}, expired={}", days30Count, days7Count, expiredCount);
+        log.info("資格期限リマインダーバッチ完了: days30={}, days7={}", days30Count, days7Count);
     }
 
     // ========================================
@@ -67,14 +67,20 @@ public class SkillExpiryReminderBatchService {
     /**
      * 指定閾値以内に失効する資格に対してリマインダーを処理する。
      *
+     * <p>{@code today} を渡して<b>既に失効した資格を除外</b>する。
+     * 下限が無いと、停止や障害で数日走らなかった後の再開時に
+     * 「期限まで30日です」を失効済みの資格へ送ってしまう。</p>
+     *
+     * @param today            基準日（これより前に失効済みのものは通知しない）
      * @param threshold        期限日の閾値
      * @param notificationType NotificationType Enum
      * @param typeStr          通知種別文字列（"DAYS_30" or "DAYS_7"）
      * @return 処理件数
      */
-    private int processReminder(LocalDate threshold, NotificationType notificationType, String typeStr) {
+    private int processReminder(
+            LocalDate today, LocalDate threshold, NotificationType notificationType, String typeStr) {
         List<MemberSkillEntity> targets =
-                memberSkillQueryRepository.findExpiringSoon(threshold, typeStr);
+                memberSkillQueryRepository.findExpiringSoon(today, threshold, typeStr);
 
         int count = 0;
         for (MemberSkillEntity skill : targets) {
@@ -104,27 +110,4 @@ public class SkillExpiryReminderBatchService {
         return count;
     }
 
-    /**
-     * 有効期限が過ぎた ACTIVE 資格を EXPIRED に更新する。
-     *
-     * @return 更新件数
-     */
-    private int processExpiry() {
-        LocalDate today = LocalDate.now();
-        List<MemberSkillEntity> expiredSkills =
-                memberSkillRepository.findByExpiresAtBeforeAndStatusAndDeletedAtIsNull(
-                        today, com.mannschaft.app.skill.SkillStatus.ACTIVE);
-
-        int count = 0;
-        for (MemberSkillEntity skill : expiredSkills) {
-            try {
-                skill.expire();
-                memberSkillRepository.save(skill);
-                count++;
-            } catch (Exception e) {
-                log.warn("資格期限切れ更新失敗: memberSkillId={}", skill.getId(), e);
-            }
-        }
-        return count;
-    }
 }

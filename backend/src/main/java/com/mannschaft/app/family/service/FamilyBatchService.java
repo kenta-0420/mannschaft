@@ -4,7 +4,6 @@ import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
 import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.family.entity.PresenceEventEntity;
-import com.mannschaft.app.family.repository.CoinTossResultRepository;
 import com.mannschaft.app.family.repository.PresenceEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,11 +25,8 @@ public class FamilyBatchService {
 
     private static final int OVERDUE_15MIN_MINUTES = 15;
     private static final int OVERDUE_1HOUR_MINUTES = 60;
-    private static final int PRESENCE_RETENTION_DAYS = 90;
-    private static final int COIN_TOSS_RETENTION_DAYS = 30;
 
     private final PresenceEventRepository presenceEventRepository;
-    private final CoinTossResultRepository coinTossResultRepository;
 
     @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
             gateKeys = "FEATURE_FAMILY_CARE_ENABLED",
@@ -68,19 +64,4 @@ public class FamilyBatchService {
         log.info("記念日通知バッチを実行しました");
     }
 
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
-            reason = "止めると保持期間を超えたプレゼンス（所在）履歴とコイントス履歴が削除されず、保持期限を超えた個人データが残留する。DisclosureAutoDeleteBatchService と同種の保持期間超過削除である")
-    @BatchEndpoint(name = "family-presence-cleanup-daily", description = "プレゼンス・コイントス履歴の保持期間超過を毎日 04:00 にクリーンアップする")
-    @Scheduled(cron = "0 0 4 * * *", zone = "Asia/Tokyo")
-    // 起動間隔は日次 04:00。保持期間を超えたプレゼンス・コイントス履歴の一括 DELETE のみで最悪ケースでも数分。
-    // 初回実行時の積み残しを見込み 30 分を上限とする。
-    @SchedulerLock(name = "familyPresenceCleanupDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT30M")
-    @Transactional
-    public void cleanupOldRecords() {
-        LocalDateTime presenceThreshold = LocalDateTime.now().minusDays(PRESENCE_RETENTION_DAYS);
-        presenceEventRepository.deleteByCreatedAtBefore(presenceThreshold);
-        LocalDateTime coinTossThreshold = LocalDateTime.now().minusDays(COIN_TOSS_RETENTION_DAYS);
-        coinTossResultRepository.deleteByCreatedAtBefore(coinTossThreshold);
-        log.info("クリーンアップバッチ完了: プレゼンス({}日以前), コイントス({}日以前)", PRESENCE_RETENTION_DAYS, COIN_TOSS_RETENTION_DAYS);
-    }
 }

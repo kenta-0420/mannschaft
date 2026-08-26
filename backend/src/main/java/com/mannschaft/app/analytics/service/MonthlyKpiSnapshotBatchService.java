@@ -46,9 +46,8 @@ public class MonthlyKpiSnapshotBatchService {
     private final UserRoleRepository userRoleRepository;
     private final UserRepository userRepository;
 
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.SKIP_WHEN_DISABLED,
-            gateKeys = "FEATURE_TRANSLATION_SEARCH_ENABLED",
-            reason = "スナップショットは元データからの派生値で BatchEndpoint 経由の手動再実行経路を持ち、止めても元データ側は一切壊れない")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "Codex検分/殿の裁定: execute は常に now.minusMonths(1) を対象とし createSnapshot は private のため、手動再実行でも古い月のスナップショットは作れず欠測が恒久的に残る。内部処理のみで外部送信を伴わない")
     @BatchEndpoint(name = "analytics-monthly-kpi-snapshot", description = "前月分の KPI スナップショットを毎月 1 日 04:00 に保存する")
     @Scheduled(cron = "0 0 4 1 * *", zone = "Asia/Tokyo")
     @SchedulerLock(name = "monthlyKpiSnapshot", lockAtMostFor = "30m", lockAtLeastFor = "5m")
