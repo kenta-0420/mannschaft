@@ -119,13 +119,46 @@ jobs:
           # 対象パスの正規表現は .github/scripts/migration-sensitive-paths.regex に
           # 一本化してある（main側 backend-deploy.yml の detect ジョブも同じファイルを
           # 参照する。2箇所に同じ正規表現を書くと必ずドリフトするため）。
-          if echo "${CHANGED}" | grep -E -f .github/scripts/migration-sensitive-paths.regex > /dev/null; then
-            echo "[INFO] migration 関連の変更を検出 → migrations_changed=true（Flyway 再生テストを実行）"
+          #
+          # 【注意】外部ファイル参照にしたことで「ファイルが無い/読めない」という
+          # 新しい失敗様態が生まれた。grep -E -f はパターンファイルが読めないと
+          # exit 2 以上を返すが、素朴な if grep ...; then true; else false; fi の
+          # 二分岐では exit 2 が exit 1（一致なし）に潰れ、
+          # migrations_changed=false（Flyway 再生テストの黙った除外）に
+          # 誤って倒れてしまう。これは「判定不能なら除外する」に等しく禁止事項。
+          # そのため (1) ファイルの存在・非空を先に検証し、(2) grep の終了コードを
+          # 0(一致あり)/1(一致なし)/2以上(判定不能) の3分岐で扱う。
+          # なお本ステップ全体は `set -e` 下だが、`if <cmd>` の条件式は
+          # `set -e` の対象外（bash の仕様）のため、この分岐は明示的に書く必要がある。
+          PATTERN_FILE=".github/scripts/migration-sensitive-paths.regex"
+          if [ ! -s "${PATTERN_FILE}" ]; then
+            echo "[ERROR] パターンファイルが存在しないか空（${PATTERN_FILE}）→ 判定不能 → migrations_changed=true（フル実行へ倒す）"
             echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "[INFO] migration 無変更 → migrations_changed=false（Flyway 再生テストを除外）"
-            echo "migrations_changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+
+          # set -e 下でパイプラインの終了コードを取り違えないよう、
+          # 単独の `cmd; x=$?` ではなく `cmd || x=$?` の形にする（前者は
+          # set -e により grep 非0時点でスクリプトごと即終了し、後段の
+          # 判定コードへ到達できない。if/while の条件式や `||` の右辺は
+          # set -e の対象外という bash の仕様を利用して保護する）。
+          MIGRATION_GREP_STATUS=0
+          echo "${CHANGED}" | grep -E -f "${PATTERN_FILE}" > /dev/null || MIGRATION_GREP_STATUS=$?
+
+          case "${MIGRATION_GREP_STATUS}" in
+            0)
+              echo "[INFO] migration 関連の変更を検出 → migrations_changed=true（Flyway 再生テストを実行）"
+              echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
+              ;;
+            1)
+              echo "[INFO] migration 無変更 → migrations_changed=false（Flyway 再生テストを除外）"
+              echo "migrations_changed=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "[ERROR] grep 照合が失敗した（exit=${MIGRATION_GREP_STATUS}）→ 判定不能 → migrations_changed=true（フル実行へ倒す）"
+              echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
 
   # ---------------------------------------------------------------------------
   # lint: ソースレベル静的チェック（D-5 @Builder guard）

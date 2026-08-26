@@ -41,10 +41,35 @@ if [ "${DIFF_STATUS}" -ne 0 ]; then
   exit 2
 fi
 
-if echo "${CHANGED}" | grep -E -f "${PATTERN_FILE}" > /dev/null; then
-  echo "[INFO] migration-sensitive な変更を検出" >&2
-  echo "true"
-else
-  echo "[INFO] migration-sensitive な変更なし" >&2
-  echo "false"
+# パターンファイルが無い・空の場合は「一致なし」ではなく「判定不能」として扱う。
+# grep -E -f は対象ファイルが読めないと exit 2 以上を返すが、後段を
+# if grep ...; then true; else false; fi の二分岐のままにすると
+# exit 2（読めない）が exit 1（一致なし）に潰れ、migrations_changed=false
+# （Flyway 再生テストの黙った除外）に誤って倒れてしまう。
+# そのためファイルの存在・非空をここで明示的に検証し、無ければ即座に
+# 判定不能として異常終了する。
+if [ ! -s "${PATTERN_FILE}" ]; then
+  echo "[ERROR] パターンファイルが存在しないか空（${PATTERN_FILE}）→ 判定不能" >&2
+  exit 3
 fi
+
+echo "${CHANGED}" | grep -E -f "${PATTERN_FILE}" > /dev/null
+GREP_STATUS=$?
+
+# grep の終了コードは 0（一致あり）/ 1（一致なし）/ 2以上（ファイル読み込み等の
+# 実行時エラー）の3種。1 だけを「一致なし」として扱い、2以上は「判定不能」
+# として明確に区別する（0/1 の二分岐に潰さない）。
+case "${GREP_STATUS}" in
+  0)
+    echo "[INFO] migration-sensitive な変更を検出" >&2
+    echo "true"
+    ;;
+  1)
+    echo "[INFO] migration-sensitive な変更なし" >&2
+    echo "false"
+    ;;
+  *)
+    echo "[ERROR] grep 照合が失敗した（exit=${GREP_STATUS}）→ 判定不能" >&2
+    exit 4
+    ;;
+esac
