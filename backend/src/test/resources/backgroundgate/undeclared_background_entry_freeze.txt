@@ -203,7 +203,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.chart.event.ChartPurgeEventListe
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.chat.event.InquiryChatEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.circulation.event.CirculationReminderNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.common.storage.S3ObjectDeleteEventListener|1|1
-TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.contact.event.ContactInviteUsedNotificationListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.contact.event.ContactInviteUsedNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.contact.event.ContactRequestNotificationListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.corkboard.event.CorkboardEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.dashboard.ActivityFeedEventListener|1|1
@@ -229,7 +229,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.onboarding.event.OnboardingAutoS
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.onboarding.event.OnboardingFormCompletionListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.onboarding.event.OnboardingKbViewCompletionListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.onboarding.event.OnboardingProfileCompletionListener|1|1
-TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.onboarding.event.OnboardingReminderNotificationListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.onboarding.event.OnboardingReminderNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.payment.escrow.MarketChargeCaptureListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.payment.escrow.MembershipPaymentCaptureListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.payment.escrow.RecruitmentCancellationFeeChargeListener|0|1
@@ -253,7 +253,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.resident.event.ResidentAnonymiza
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.resume.event.ResumePurgeEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.returnstayplan.event.ReturnStayPlanLifecycleListener|2|2
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.role.event.RolePurgeEventListener|1|1
-TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.safetycheck.event.SafetyCheckReminderNotificationListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.safetycheck.event.SafetyCheckReminderNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.schedule.event.IntegrationAnonymizationEventListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.schedule.event.ScheduleTargetAnonymizationEventListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.schedule.listener.CalendarLayerLifecycleListener|3|3

@@ -1,5 +1,7 @@
 package com.mannschaft.app.onboarding.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -46,6 +48,8 @@ public class OnboardingReminderNotificationListener {
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "オンボーディングは棚卸し台帳に独立した gate_key を持たない常時提供の導入導線であり、リマインド通知だけを止める停止条件が存在しないため常時実行する")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onOnboardingReminderNotification(OnboardingReminderNotificationEvent event) {

@@ -270,7 +270,7 @@ export function resolveCalendarScopeRouteId(scope: CalendarEntryRaw['scope']): s
   return scope?.scopeSlug ?? String(scope?.scopeId ?? '')
 }
 
-export function useMyCalendarData(_options?: { storageKey?: string }) {
+export function useMyCalendarData() {
   const scheduleApi = useScheduleApi()
   const ganttApi = useTodoGantt()
   const { buildDayStartStr, buildDayEndStr } = useDatetime()
