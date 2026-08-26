@@ -32,6 +32,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -49,8 +50,10 @@ class JobPostingServiceTest {
     @Mock private JobApplicationRepository applicationRepository;
     @Mock private JobPostingStateMachine stateMachine;
     @Mock private JobPolicy jobPolicy;
-    /** F00 Phase C 試験的置換 — listByTeamForViewer から呼ばれるが、本テスト群では未使用。 */
+    /** F00 Phase C — listByTeamForViewer の第二の門（保険）で使用。 */
     @Mock private ContentVisibilityChecker visibilityChecker;
+    /** CMP-028 Phase C — listByTeamForViewer の可視レベル解決（SQL 述語化）で使用。 */
+    @Mock private com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     @InjectMocks private JobPostingService service;
 
@@ -82,7 +85,7 @@ class JobPostingServiceTest {
         }
 
         @Test
-        @DisplayName("異常系: 権限なしで JOB_PERMISSION_DENIED")
+        @DisplayName("異常系: 権限なしで JOB_CREATE_PERMISSION_DENIED")
         void 権限なし_拒否() {
             CreateJobPostingCommand cmd = defaultCreateCommand(VisibilityScope.TEAM_MEMBERS, 3000);
             given(jobPolicy.canCreatePosting(USER_ID, TEAM_ID)).willReturn(false);
@@ -90,7 +93,7 @@ class JobPostingServiceTest {
             assertThatThrownBy(() -> service.create(cmd, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
-                            .isEqualTo(JobmatchingErrorCode.JOB_PERMISSION_DENIED));
+                            .isEqualTo(JobmatchingErrorCode.JOB_CREATE_PERMISSION_DENIED));
         }
 
         @Test
@@ -368,6 +371,69 @@ class JobPostingServiceTest {
             // id が保持されている（toBuilder().build() なら id=null になり INSERT 化していた）。
             assertThat(savedArg.getId()).isEqualTo(POSTING_ID);
             assertThat(savedArg.getTitle()).isEqualTo("新タイトル");
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // listByTeamForViewer
+    // ---------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("listByTeamForViewer")
+    class ListByTeamForViewerTest {
+
+        /**
+         * CMP-028 Phase C: 一覧は {@code MembershipBatchQueryService#resolveVisibleLevels} が
+         * 返したラダーを {@code JobMatchingVisibilityMapper#toFunctional} で逆写像し、
+         * {@code JobPostingRepository#findVisibleByTeamId} へ SQL 述語として渡すようになった
+         * （旧 {@code findByTeamIdAndStatus} + メモリフィルタは撤去）。総件数バグ是正の契約は
+         * 「SQL 述語版 Repository が返した総件数 − 第二の門(F00)で落ちた件数」に引き継がれる。
+         */
+        @Test
+        @DisplayName("回帰: 総件数はDBの総件数からF00で落ちた件数を差し引いた値になる（PageImpl総件数バグ是正）")
+        void 一覧_総件数はDB総件数ベース_絞り込み後件数ではない() {
+            JobPostingEntity posting1 = postingWithStatus(JobPostingStatus.OPEN);
+            JobPostingEntity posting2 = postingWithStatus(JobPostingStatus.OPEN);
+            try {
+                Field field = posting2.getClass().getSuperclass().getDeclaredField("id");
+                field.setAccessible(true);
+                field.set(posting2, 2000L);
+            } catch (NoSuchFieldException | IllegalAccessException e) {
+                throw new IllegalStateException(e);
+            }
+
+            org.springframework.data.domain.Pageable pageable =
+                    org.springframework.data.domain.PageRequest.of(0, 2);
+
+            com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                    com.mannschaft.app.common.visibility.UserScopeRoleSnapshot.empty();
+            given(membershipBatchQueryService.snapshotForUser(eq(USER_ID), any(), any()))
+                    .willReturn(snapshot);
+            given(membershipBatchQueryService.resolveVisibleLevels(any(), eq(snapshot)))
+                    .willReturn(java.util.Set.of(com.mannschaft.app.common.visibility.StandardVisibility.PUBLIC));
+
+            // DB側の総件数は5（絞り込み前）。今回のページに2件取得、うち1件はF00で除外される想定
+            // （SQL述語とF00の乖離を意図的に発生させ、第二の門が総件数を補正することを確認する）。
+            org.springframework.data.domain.Page<JobPostingEntity> raw =
+                    new org.springframework.data.domain.PageImpl<>(
+                            java.util.List.of(posting1, posting2), pageable, 5);
+            given(postingRepository.findVisibleByTeamId(
+                    eq(TEAM_ID), eq(JobPostingStatus.OPEN), any(), eq(USER_ID), eq(false), eq(pageable)))
+                    .willReturn(raw);
+            // posting1（id=POSTING_ID）のみアクセス可能（posting2 は除外＝片方だけが残ることを検証）
+            given(visibilityChecker.filterAccessible(
+                    com.mannschaft.app.common.visibility.ReferenceType.JOB_POSTING,
+                    java.util.List.of(POSTING_ID, 2000L), USER_ID))
+                    .willReturn(java.util.Set.of(POSTING_ID));
+
+            org.springframework.data.domain.Page<JobPostingEntity> result =
+                    service.listByTeamForViewer(TEAM_ID, JobPostingStatus.OPEN, USER_ID, pageable);
+
+            // 旧実装のバグでは filtered.size()=1 が総件数になっていた。
+            // 是正後は「DB総件数5 − このページで落ちた件数1」= 4 になるはず。
+            assertThat(result.getTotalElements()).isEqualTo(4L);
+            assertThat(result.getContent()).hasSize(1);
+            assertThat(result.getContent().get(0).getId()).isEqualTo(POSTING_ID);
         }
     }
 

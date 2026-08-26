@@ -96,7 +96,12 @@ onMounted(async () => {
   <div v-else>
     <div class="mb-4 flex items-center justify-between">
       <PageHeader title="スケジュール" />
-      <Button label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
+      <div class="flex items-center gap-2">
+        <NuxtLink :to="`/teams/${teamSlug}/schedule-keeps`">
+          <Button :label="$t('scheduleKeep.title')" icon="pi pi-bookmark" outlined data-testid="schedule-keep-nav-link" />
+        </NuxtLink>
+        <Button label="予定を追加" icon="pi pi-plus" @click="onAddButtonClick" />
+      </div>
     </div>
 
     <!-- ===== モバイル（<768px）: リストビュー既定 ===== -->

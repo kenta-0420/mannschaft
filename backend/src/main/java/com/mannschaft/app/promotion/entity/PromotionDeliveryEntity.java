@@ -49,6 +49,7 @@ public class PromotionDeliveryEntity {
     private String failedReason;
 
     @Builder.Default
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     /**

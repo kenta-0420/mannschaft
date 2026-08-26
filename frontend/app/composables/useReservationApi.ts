@@ -3,17 +3,18 @@ import type { components, operations } from '~/types/generated'
 
 // === 生成型（真実のソース = openapi-typescript）===
 // 機能B（予約不可枠）は BE #2109 で resourceType/resourceId/impact を追加済み。
-type BlockedTimeRequest = components['schemas']['BlockedTimeRequest']
-type BlockedTimeResponse = components['schemas']['BlockedTimeResponse']
+type BlockedTimeRequest = components['schemas']['BlockedTimeRequest'] & { endsNextDay?: boolean }
+type BlockedTimeResponse = components['schemas']['BlockedTimeResponse'] & { endsNextDay?: boolean }
 type BlockedTimeImpactResponse = components['schemas']['BlockedTimeImpactResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
-type BusinessHourResponse = components['schemas']['BusinessHourResponse']
+type BusinessHourResponse = components['schemas']['BusinessHourResponse'] & {
+  businessStatus?: components['schemas']['BusinessHourResponse']['businessStatus'] & { endsNextDay?: boolean }
+}
 type BusinessHoursUpdateRequest = components['schemas']['BusinessHoursUpdateRequest']
 // 機能C（複数予約対象の空きグリッド）は BE #2112 で grid API を追加済み。
-// F03.4.4（機能H・#2189）で axis=LINE・from/to レンジ・menuId フィルターへ拡張済み（後方互換）。
+// F03.4.4（機能H・#2189）で from/to レンジ・menuId フィルターへ拡張済み。
+// #2575 でスタッフ軸（axis=STAFF）と staffUserIds を撤去し、列軸はライン固定になった。
 type ReservationGridResponse = components['schemas']['ReservationGridResponse']
-/** グリッドの列軸。既定 STAFF（従来動作）／LINE（列=予約対象）。 */
-export type GridAxis = 'STAFF' | 'LINE'
 // F03.4.3（機能G・予約グループ・#2190）は BE で CRUD API を追加済み。
 type CreateReservationGroupRequest = components['schemas']['CreateReservationGroupRequest']
 type ReservationGroupResponse = components['schemas']['ReservationGroupResponse']
@@ -31,8 +32,8 @@ type UpdateReservationMenuRequest = components['schemas']['UpdateReservationMenu
 type ReservationMenuDeleteResponse = components['schemas']['ReservationMenuDeleteResponse']
 // 週間テンプレート・一括生成は BE #2161 で追加済み（F03.4.2）。
 type SlotTemplateListResponse = components['schemas']['SlotTemplateListResponse']
-type CreateSlotTemplateRequest = components['schemas']['CreateSlotTemplateRequest']
-type UpdateSlotTemplateRequest = components['schemas']['UpdateSlotTemplateRequest']
+type CreateSlotTemplateRequest = components['schemas']['CreateSlotTemplateRequest'] & { endsNextDay?: boolean }
+type UpdateSlotTemplateRequest = components['schemas']['UpdateSlotTemplateRequest'] & { endsNextDay?: boolean }
 type DeleteSlotTemplateResponse = components['schemas']['DeleteSlotTemplateResponse']
 type GenerateSlotsRequest = components['schemas']['GenerateSlotsRequest']
 type GenerateSlotsResponse = components['schemas']['GenerateSlotsResponse']
@@ -42,9 +43,9 @@ type GenerateSingleDayRequest = components['schemas']['GenerateSingleDayRequest'
 // F03.4.5 §3.2（BE #2204）: 営業時間 PUT の保存＋同期自動生成の統合レスポンス（GET は BusinessHourResponse[] のまま不変）。
 type BusinessHoursSaveResponse = components['schemas']['BusinessHoursSaveResponse']
 // F03.4.5 §4（BE PR #2232・mergeCommit 71bd24fa1）: 定期予約不可枠（週次繰り返し）CRUD5本＋impact。
-type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeResponse']
-type CreateRecurringBlockedTimeRequest = components['schemas']['CreateRecurringBlockedTimeRequest']
-type UpdateRecurringBlockedTimeRequest = components['schemas']['UpdateRecurringBlockedTimeRequest']
+type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeResponse'] & { endsNextDay?: boolean }
+type CreateRecurringBlockedTimeRequest = components['schemas']['CreateRecurringBlockedTimeRequest'] & { endsNextDay?: boolean }
+type UpdateRecurringBlockedTimeRequest = components['schemas']['UpdateRecurringBlockedTimeRequest'] & { endsNextDay?: boolean }
 type RecurringBlockedTimeImpactResponse = components['schemas']['RecurringBlockedTimeImpactResponse']
 // F03.4.5 §6.1 W2-4（BE #2206 で着地済み）: キャンセル待ち（waitlist）登録・取消・件数・自分の一覧。
 type WaitlistEntryResponse = components['schemas']['WaitlistEntryResponse']
@@ -82,6 +83,7 @@ export interface BusinessHoursUpdateHourInput {
   isOpen: boolean
   openTime?: string
   closeTime?: string
+  endsNextDay?: boolean
 }
 
 export function useReservationApi() {
@@ -165,23 +167,18 @@ export function useReservationApi() {
     return api<{ data: unknown[] }>(`${base(teamId)}/reservation-slots/available?${query}`)
   }
 
-  // 機能C: 複数予約対象の空きグリッド（列=予約対象／セル=時間帯 state）。
+  // 機能C: 空きグリッド（列=予約対象ライン＋共通列／セル=時間帯 state）。
   // BE: GET /reservation-slots/grid は date（単日）または from/to（レンジ・最大7日・排他）＋
-  // axis（STAFF既定/LINE）＋ menuId（axis=LINE時のみ）＋ staffUserIds（CSV・任意）。
-  // F03.4.4（機能H）で axis=LINE・from/to レンジ・menuId フィルターへ拡張（既存 date 単日呼びは無変更で後方互換）。
+  // menuId（提供可能ラインで列を絞る）。列軸はライン固定（#2575 でスタッフ軸を撤去）。
   async function getSlotGrid(
     teamId: string,
-    params: { date?: string; from?: string; to?: string; axis?: GridAxis; menuId?: string; staffUserIds?: number[] },
+    params: { date?: string; from?: string; to?: string; menuId?: string },
   ) {
     const query = new URLSearchParams()
     if (params.date) query.set('date', params.date)
     if (params.from) query.set('from', params.from)
     if (params.to) query.set('to', params.to)
-    if (params.axis) query.set('axis', params.axis)
     if (params.menuId) query.set('menuId', params.menuId)
-    if (params.staffUserIds && params.staffUserIds.length > 0) {
-      query.set('staffUserIds', params.staffUserIds.join(','))
-    }
     return api<{ data: ReservationGridResponse }>(
       `${base(teamId)}/reservation-slots/grid?${query}`,
     )
@@ -393,6 +390,7 @@ export function useReservationApi() {
       resourceId?: number
       startTime?: string
       endTime?: string
+      endsNextDay?: boolean
     },
   ) {
     const query = new URLSearchParams()
@@ -401,6 +399,7 @@ export function useReservationApi() {
     if (params.resourceId != null) query.set('resourceId', String(params.resourceId))
     if (params.startTime) query.set('startTime', params.startTime)
     if (params.endTime) query.set('endTime', params.endTime)
+    if (params.endsNextDay) query.set('endsNextDay', 'true')
     return api<{ data: BlockedTimeImpactResponse }>(
       `${base(teamId)}/reservation-settings/blocked-times/impact?${query}`,
     )
@@ -445,12 +444,13 @@ export function useReservationApi() {
    */
   async function getRecurringBlockedTimeImpact(
     teamId: string,
-    params: { dayOfWeek: ReservationDayOfWeekCode; startTime: string; endTime: string; lineId?: number },
+    params: { dayOfWeek: ReservationDayOfWeekCode; startTime: string; endTime: string; endsNextDay?: boolean; lineId?: number },
   ) {
     const query = new URLSearchParams()
     query.set('dayOfWeek', params.dayOfWeek)
     query.set('startTime', params.startTime)
     query.set('endTime', params.endTime)
+    if (params.endsNextDay) query.set('endsNextDay', 'true')
     if (params.lineId != null) query.set('lineId', String(params.lineId))
     return api<{ data: RecurringBlockedTimeImpactResponse }>(
       `${base(teamId)}/reservation-recurring-blocked-times/impact?${query}`,

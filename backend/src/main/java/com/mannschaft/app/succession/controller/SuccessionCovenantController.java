@@ -2,6 +2,8 @@ package com.mannschaft.app.succession.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.succession.dto.SignCovenantRequest;
 import com.mannschaft.app.succession.dto.SuccessionCovenantResponse;
 import com.mannschaft.app.succession.service.SuccessionCovenantService;
@@ -52,6 +54,11 @@ public class SuccessionCovenantController {
      *
      * <p>ステータス 201 Created で誓約レコードを返す。
      */
+    // 認可根治済み（本監査で追加）: SuccessionCovenantService#signCovenant が
+    // resident.getUserId().equals(currentUserId) でリクエストボディの residentRegistryId が
+    // 呼び出し者本人の居住者台帳であることを検証する（他人の台帳を指定した代理署名・PII混入・
+    // 多重署名ロックを防止。不一致時は RESIDENT_REGISTRY_NOT_FOUND で存在秘匿）。
+    @AuthorizedInService
     @PostMapping("/api/v1/succession/covenants/sign")
     @Operation(summary = "入居時誓約への署名（PDF 生成 + 内部署名トークン付与 + 保存）",
             description = "本人が同意項目を確認した上で誓約 PDF を発行・署名・保存する一括処理。")
@@ -65,6 +72,10 @@ public class SuccessionCovenantController {
     /**
      * 誓約撤回（本人のみ）。
      */
+    // 認可根治済み: SuccessionCovenantService#revokeCovenant が
+    // entity.getSignerUserId().equals(currentUserId) で本人所有を検証する
+    // （COVENANT_FORBIDDEN。存在秘匿のため 404 で応答し、不在と区別できないようにしている）。
+    @AuthorizedInService
     @PostMapping("/api/v1/succession/covenants/{id}/revoke")
     @Operation(summary = "入居時誓約の撤回（本人のみ）")
     public ResponseEntity<ApiResponse<SuccessionCovenantResponse>> revokeCovenant(
@@ -107,6 +118,8 @@ public class SuccessionCovenantController {
     /**
      * 本人の誓約履歴。
      */
+    @SelfScopedEndpoint("SuccessionCovenantService#listMyCovenants が "
+            + "SecurityUtils.getCurrentUserId()（signerUserId）のみを検索条件に束縛する")
     @GetMapping("/api/v1/succession/covenants/me")
     @Operation(summary = "本人の誓約履歴（自分自身のみ）")
     public ResponseEntity<ApiResponse<List<SuccessionCovenantResponse>>> listMyCovenants() {

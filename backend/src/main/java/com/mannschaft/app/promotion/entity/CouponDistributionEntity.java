@@ -47,6 +47,7 @@ public class CouponDistributionEntity {
     private LocalDateTime expiresAt;
 
     @Builder.Default
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
     /**

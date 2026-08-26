@@ -264,12 +264,18 @@ function encryptForTest(plain) {
   // 4. ロール配置
   // ============================================================
   async function assignRole(userId, roleId, teamId, orgId) {
-    await conn.execute(
-      `INSERT IGNORE INTO user_roles
-        (user_id, role_id, team_id, organization_id, granted_by, created_at, updated_at)
-       VALUES (?,?,?,?,?,?,?)`,
-      [userId, roleId, teamId || null, orgId || null, SYS, now, now]
-    );
+    // CMP-027: 所属ロール MEMBER(role_id=4) / SUPPORTER(role_id=5) は V60.010 で user_roles から
+    // 除去され memberships へ完全移行済み。本番で成立しえないため user_roles へは書かず、
+    // 下の memberships 同期のみに委ねる。権限ロール（SYSTEM_ADMIN/ADMIN/DEPUTY_ADMIN/GUEST）は
+    // 従来どおり user_roles が正統なので INSERT する。
+    if (!(roleId === 4 || roleId === 5)) {
+      await conn.execute(
+        `INSERT IGNORE INTO user_roles
+          (user_id, role_id, team_id, organization_id, granted_by, created_at, updated_at)
+         VALUES (?,?,?,?,?,?,?)`,
+        [userId, roleId, teamId || null, orgId || null, SYS, now, now]
+      );
+    }
 
     // F00.5 Phase 3: memberships 基盤への同期。
     // isMember() は user_roles ではなく memberships.left_at IS NULL を参照するため、
@@ -354,7 +360,11 @@ function encryptForTest(plain) {
   // ============================================================
   // 5. スケジュール
   // ============================================================
-  async function createSchedule(teamId, orgId, title, eventType, startAt, endAt, location, createdBy) {
+  // CMP-017b: min_view_role（閲覧できる最低ロール）が閲覧認可に組み込まれたため、
+  // 全予定を MEMBER_PLUS 固定で投入すると応援者から共有予定が一切見えなくなる。
+  // minViewRole を呼び出し側で指定できるようにし、応援者可視性の両側
+  // （見えるべき予定／見えてはならない予定）を踏めるデータを投入する（AC-25）。
+  async function createSchedule(teamId, orgId, title, eventType, startAt, endAt, location, createdBy, minViewRole = 'MEMBER_PLUS') {
     await conn.execute(
       `INSERT IGNORE INTO schedules
         (team_id, organization_id, title, event_type, start_at, end_at, location,
@@ -362,7 +372,7 @@ function encryptForTest(plain) {
          attendance_status, comment_option, is_exception, created_by, created_at, updated_at)
        VALUES (?,?,?,?,?,?,?,0,?,?,?,?,?,?,?,0,?,?,?)`,
       [teamId, orgId, title, eventType, startAt, endAt, location,
-       'MEMBERS_ONLY', 'MEMBER_PLUS', 'MEMBER_PLUS', 'SCHEDULED', 1, 'READY', 'OPTIONAL', createdBy, now, now]
+       'MEMBERS_ONLY', minViewRole, 'MEMBER_PLUS', 'SCHEDULED', 1, 'READY', 'OPTIONAL', createdBy, now, now]
     );
   }
 
@@ -372,6 +382,8 @@ function encryptForTest(plain) {
   await createSchedule(teams.fcTokyoU18, null, '練習（紅白戦）', 'PRACTICE', '2026-04-08 15:00:00', '2026-04-08 18:00:00', '味の素スタジアム西練習場', userIds[0]);
   await createSchedule(teams.fcTokyoU18, null, 'プリンスリーグ関東 第4節 vs 浦和ユース', 'MATCH', '2026-04-12 13:00:00', '2026-04-12 15:00:00', '浦和駒場スタジアム', userIds[0]);
   await createSchedule(teams.fcTokyoU18, null, 'ミーティング（戦術確認）', 'MEETING', '2026-04-04 18:00:00', '2026-04-04 19:30:00', 'クラブハウス会議室', userIds[0]);
+  // AC-25: 応援者可視性の実機E2Eで「見える」側を踏むため、SUPPORTER_PLUS の予定を最低1件投入する
+  await createSchedule(teams.fcTokyoU18, null, '保護者・応援者向け見学会', 'EVENT', '2026-04-11 10:00:00', '2026-04-11 12:00:00', '味の素スタジアム西練習場', userIds[0], 'SUPPORTER_PLUS');
 
   // 横浜FCジュニアA
   await createSchedule(teams.yokohamaJr, null, '練習（ボール回し）', 'PRACTICE', '2026-04-05 14:00:00', '2026-04-05 16:00:00', 'ニッパツ三ツ沢球技場サブグラウンド', userIds[9]);
@@ -388,7 +400,7 @@ function encryptForTest(plain) {
   await createSchedule(teams.indieFC, null, '練習試合 vs 草サッカー倶楽部', 'MATCH', '2026-04-06 10:00:00', '2026-04-06 12:00:00', '船橋運動公園', userIds[18]);
   await createSchedule(teams.grassroots, null, '週末練習', 'PRACTICE', '2026-04-05 08:00:00', '2026-04-05 10:00:00', '大宮公園サッカー場', userIds[19]);
 
-  console.log('Schedules created: 12');
+  console.log('Schedules created: 13');
 
   // ============================================================
   // 6. チャットチャンネル + メッセージ

@@ -21,7 +21,7 @@ public class PathConfigMarkerAnnotatedController {
     private final DummyPlainService plainService = new DummyPlainService();
 
     /** メソッドに監査済マーカーを付与した公開エンドポイント（合格すべき）。 */
-    @AuthorizedByPathConfig
+    @AuthorizedByPathConfig("/fixtures/path-config-marker-annotated")
     @GetMapping
     public String markedMethod(Long id) {
         return plainService.loadData(id);

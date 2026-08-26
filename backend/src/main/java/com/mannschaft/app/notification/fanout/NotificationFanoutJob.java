@@ -9,6 +9,7 @@ import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -36,7 +37,9 @@ import java.time.LocalDateTime;
         name = "notification_fanout_jobs",
         uniqueConstraints = @UniqueConstraint(
                 name = "uk_fanout_idempotency",
-                columnNames = {"scope_type", "scope_ref", "notification_type", "source_event_uuid"}),
+                columnNames = {
+                        "scope_type", "scope_ref", "notification_type", "source_event_uuid", "shard_index"
+                }),
         indexes = @Index(name = "idx_fanout_status_next", columnList = "status, next_attempt_at"))
 @Getter
 @Setter
@@ -65,11 +68,10 @@ public class NotificationFanoutJob extends UuidV7Entity {
     @Column(name = "organization_id")
     private Long organizationId;
 
-    @Column(name = "title", nullable = false, length = 200)
-    private String title;
-
-    @Column(name = "body", length = 1000)
-    private String body;
+    // Issue #2871: 描画済みの title / body 列は撤去した。文面の正本はロケール別の子表
+    // notification_fanout_job_messages（{@link NotificationFanoutJobMessage}）1 箇所に統一する。
+    // 親に残したままにすると「子表があるのに親の日本語が配られている」経路が静かに生き残るため、
+    // 二経路を作らない（本番に未処理データが無いことを確認済みで後方互換は不要・マスター裁可）。
 
     @Enumerated(EnumType.STRING)
     @Column(name = "priority", nullable = false, length = 10)
@@ -108,6 +110,41 @@ public class NotificationFanoutJob extends UuidV7Entity {
 
     @Column(name = "last_error", length = 500)
     private String lastError;
+
+    /**
+     * Wave-2（ORG スコープ耐久 fan-out）: SUPPORTER（応援者）を配信対象に含めるか。
+     *
+     * <p>{@code DEFAULT TRUE}（V175）で既存 VILLAGE 行の後方互換を保つ（旧経路は応援者も含め全員配信のため）。
+     * enqueue 経由で {@code NotificationFanoutJobService} からこの列に値が渡され、ジョブに保存される。</p>
+     */
+    @Builder.Default
+    @Column(name = "include_supporters", nullable = false)
+    private Boolean includeSupporters = Boolean.TRUE;
+
+    /**
+     * CMP-001⑤（ワーカー並列化）: このジョブが属するシャード番号（0始まり）。
+     *
+     * <p>{@code DEFAULT 0}（V176）で既存行・既存経路（単一ワーカー担当）の後方互換を保つ。
+     * enqueue 時のシャード算出ロジックは本フィールド追加時点では未実装（出陣-3 担当）。</p>
+     */
+    @Builder.Default
+    @Column(name = "shard_index", nullable = false)
+    private short shardIndex = 0;
+
+    /**
+     * CMP-001⑤（ワーカー並列化・B案 是正）: 総シャード数を表す番人値。
+     *
+     * <p><b>番人値契約</b>: {@code 0}＝未評価（enqueue 直後の親ジョブ。初回 claim した worker が
+     * {@link NotificationFanoutJobService#resolveAndSplitShards} で母集団を数えて確定する）／
+     * {@code 1..N}＝評価済（{@code 1}=単一シャード・{@code N}=N 本に分割済）。enqueue は真の O(1) のため
+     * 受信者数を数えず、常に親 1 行を {@code shard_count=0} で作る。</p>
+     *
+     * <p>{@code @Builder.Default} は {@code 1} のまま残す。DB 既定値（V176）と一致させ、レガシー行・
+     * shard_count を明示しない経路の後方互換を保つため（enqueue は明示的に {@code 0} をセットする）。</p>
+     */
+    @Builder.Default
+    @Column(name = "shard_count", nullable = false)
+    private short shardCount = 1;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

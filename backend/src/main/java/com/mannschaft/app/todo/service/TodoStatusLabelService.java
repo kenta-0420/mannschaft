@@ -20,6 +20,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.mannschaft.app.todo.dto.TodoStatusLabelView;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +52,17 @@ public class TodoStatusLabelService {
     private final TodoStatusLabelRepository labelRepository;
     private final AccessControlService accessControlService;
     private final AuditLogService auditLogService;
+
+    /**
+     * 自己プロキシ参照（issue #2544）。{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用するため、
+     * {@link #findSystemDefaultByBucket} から {@link #getSystemDefaultsByBucket} を {@code this.} で
+     * 呼ぶとプロキシをバイパスし、{@code systemDefaultLabels} キャッシュが一度も発火しない
+     * （唯一の呼び出し元が同一クラス内なので、実質「死んだ注釈」になっていた）。
+     * 循環参照を避けるため {@code @Lazy} を付けたフィールド注入とする。
+     */
+    @org.springframework.beans.factory.annotation.Autowired
+    @org.springframework.context.annotation.Lazy
+    private TodoStatusLabelService self;
 
     /**
      * SYSTEM 既定ラベル + 当該スコープのアクティブラベル一覧を sort_order 順で取得する。
@@ -279,30 +292,49 @@ public class TodoStatusLabelService {
      * {@code map.get(bucket)}（enum キー）が常に null を返して既定ラベル参照が静かに壊れる。
      * キーを最初から {@code String} にすることで JSON ラウンドトリップで形が崩れない。</p>
      *
+     * <p><b>戻り値を呼び出し側で変異させないこと（issue #2544）。</b>
+     * 復元可能性のため不変コレクションをやめて可変の実装を返しているが、
+     * これは「変更してよい」という意味ではない。test プロファイルの
+     * {@code ConcurrentMapCacheManager} はキャッシュ済みの<b>同一インスタンス</b>を返すため、
+     * 呼び出し側が {@code add}/{@code remove}/{@code put} するとキャッシュ本体が汚染され、
+     * 以降の全呼び出し元が汚染後の値を受け取る（本番の Valkey は毎回デシリアライズするので
+     * 症状が出ず、<b>テストと本番で挙動が食い違う</b>厄介な形になる）。
+     * 加工が要る場合は必ずコピーしてから行うこと。</p>
+     *
      * @return bucket名（{@link TodoStatusBucket#name()}）をキーとした SYSTEM 既定ラベルのマップ
      *         （空はあり得ないが、欠落時は空の Map を返す）
      */
     @Cacheable("systemDefaultLabels")
-    public Map<String, TodoStatusLabelEntity> getSystemDefaultsByBucket() {
-        Map<String, TodoStatusLabelEntity> result = new java.util.LinkedHashMap<>();
+    public Map<String, TodoStatusLabelView> getSystemDefaultsByBucket() {
+        Map<String, TodoStatusLabelView> result = new java.util.LinkedHashMap<>();
         for (TodoStatusLabelEntity entity : labelRepository.findAllSystemDefaults()) {
             // 同一 bucket が複数あった場合は sort_order が小さい方を優先（findAllSystemDefaults が ASC 順）
-            result.putIfAbsent(entity.getBucket().name(), entity);
+            // issue #2544 D 群: JPA エンティティは setter を持たず往復で全 null 化するため View へ射影する。
+            result.putIfAbsent(entity.getBucket().name(),
+                    new TodoStatusLabelView(
+                            entity.getId(),
+                            entity.getName(),
+                            entity.getBucket().name(),
+                            entity.getColor()));
         }
-        return Map.copyOf(result);
+        // issue #2544 B 群: Map.copyOf(...) は java.util.ImmutableCollections$MapN を返し、
+        // RedisConfig が埋め込む具象型 ID から復元できない（既定コンストラクタが無い）。
+        // 可変の LinkedHashMap をそのまま返す（挿入順＝sort_order 昇順も保たれる）。
+        return result;
     }
 
     /**
      * 指定 bucket の SYSTEM 既定ラベルを取得する（F02.3.1 後続 B-6）。
      *
      * @param bucket 取得したいバケット
-     * @return SYSTEM 既定ラベル（マイグレーション欠落時は empty）
+     * @return SYSTEM 既定ラベルの View（マイグレーション欠落時は empty）
      */
-    public Optional<TodoStatusLabelEntity> findSystemDefaultByBucket(TodoStatusBucket bucket) {
+    public Optional<TodoStatusLabelView> findSystemDefaultByBucket(TodoStatusBucket bucket) {
         if (bucket == null) {
             return Optional.empty();
         }
-        return Optional.ofNullable(getSystemDefaultsByBucket().get(bucket.name()));
+        // issue #2544: 自己プロキシ経由で呼ぶ（this. だと @Cacheable が発火しない）。
+        return Optional.ofNullable(self.getSystemDefaultsByBucket().get(bucket.name()));
     }
 
     // ─────────────────────────────────────────────

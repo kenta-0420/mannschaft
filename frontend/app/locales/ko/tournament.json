@@ -154,7 +154,9 @@
     "no_chat": "채팅 공간이 없습니다",
     "visibility_saved": "공개 설정을 변경했습니다",
     "visibility_failed": "공개 설정 변경에 실패했습니다",
-    "load_failed": "연락 공간 불러오기에 실패했습니다"
+    "load_failed": "연락 공간 불러오기에 실패했습니다",
+    "divisions_load_failed": "디비전 목록 불러오기에 실패했습니다",
+    "permissions_load_failed": "권한 정보를 불러오지 못했습니다. 일부 작업이 제한될 수 있습니다"
   },
   "submission": {
     "title": "서류 제출 접수",

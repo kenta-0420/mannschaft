@@ -33,7 +33,7 @@
  *   BE が要求する {reservationSlotId, lineId, userNote} と不一致で予約作成が 400 になり、
  *   さらに notification.error で握りつぶされて会員が予約できない実機専用バグがあった。
  *   次の3点を修正して根治した:
- *     1) SlotPicker.vue が slotSelected で lineId も emit する
+ *     1) 枠ピッカー（当時 SlotPicker.vue・現 SlotMatrixPicker.vue）が slotSelected で lineId も emit する
  *     2) ReservationForm.vue / useReservationApi.createReservation が
  *        body を { reservationSlotId, lineId, userNote } で送る
  *     3) reservations.vue の onSlotSelected が lineId を受け渡す
@@ -41,7 +41,7 @@
  *   予約が PENDING 成立することを assert する通常テストに書き換えてある。
  */
 
-import { test as base, expect, request as playwrightRequest, type APIRequestContext } from '@playwright/test'
+import { test as base, expect, request as playwrightRequest, type APIRequestContext, type Page } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
 
 const BE = 'http://localhost:8080'
@@ -245,6 +245,32 @@ function futureDate(daysAhead: number): string {
   const d = new Date()
   d.setDate(d.getDate() + daysAhead)
   return d.toISOString().slice(0, 10)
+}
+
+const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'] as const
+
+/** マトリックスの行ラベル "YYYY/MM/DD (ddd)"（SlotMatrixPicker の dayjs ja 表記と一致）。 */
+function matrixRowDateLabel(iso: string): string {
+  return `${iso.replaceAll('-', '/')} (${WEEKDAY_JA[new Date(`${iso}T00:00:00Z`).getUTCDay()]})`
+}
+
+/**
+ * マトリックス（月曜起点の週表示）で対象日を含む週まで週ナビを進める。
+ * 写経元: reservation-v2-d-group.spec.ts の goToWeekContaining。
+ */
+async function goToWeekContaining(page: Page, targetIso: string): Promise<void> {
+  const weekBtn = page.getByRole('button', { name: /^週 /, exact: false })
+  await expect(weekBtn).toBeVisible({ timeout: 20_000 })
+  const nextWeekBtn = page.locator('button').filter({ has: page.locator('.pi-angle-right') }).first()
+  for (let i = 0; i < 10; i++) {
+    const text = (await weekBtn.textContent()) ?? ''
+    const m = text.match(/(\d{4})\/(\d{2})\/(\d{2}) - (\d{4})\/(\d{2})\/(\d{2})/)
+    if (!m) throw new Error(`週ラベル取得失敗: "${text}"`)
+    if (targetIso >= `${m[1]}-${m[2]}-${m[3]}` && targetIso <= `${m[4]}-${m[5]}-${m[6]}`) return
+    await nextWeekBtn.click()
+    await page.waitForTimeout(400)
+  }
+  throw new Error(`週範囲内に ${targetIso} が見つからない`)
 }
 
 // ---------------------------------------------------------------------------
@@ -456,9 +482,14 @@ test.describe('RSV-REAL-004(D): 会員 UI からの予約作成→PENDING 成立
     const line = await createLine(request, authToken, lineName)
     lineId = line.id
     const slotDate = futureDate(32)
-    const startM = Date.now() % 60
-    const startTime = `14:${String(startM).padStart(2, '0')}` // 14:MM（営業時間内・一意）
-    const endTotalMin = 14 * 60 + startM + 30 // 30分枠
+    // 【旧表示撤去 2026-08-04 追従】ReservationForm（本テストが契約検証したい経路）へは
+    // マトリックスの「長尺手動枠（span>1）」セルからのみ到達する（30分セルは GroupBookingDialog 行き）。
+    // 旧リスト表示（SlotPicker）が撤去されたため、枠を60分にして長尺セルとして描画させる。
+    // また、マトリックスのヘッダ列は30分刻みのため開始時刻は :00/:30 に揃える必要がある
+    // （半端な分で始まる枠は列に整列できず描画から落ちる）。枠の一意性はライン名（一意）で担保する。
+    const startHour = 10 + (Date.now() % 6) // 10〜15時（営業時間内）
+    const startTime = `${String(startHour).padStart(2, '0')}:00`
+    const endTotalMin = startHour * 60 + 60 // 60分枠（マトリックス上で span=2 の長尺セル）
     const endTime = `${String(Math.floor(endTotalMin / 60)).padStart(2, '0')}:${String(endTotalMin % 60).padStart(2, '0')}`
     const slot = await createSlot(request, authToken, {
       slotDate,
@@ -470,38 +501,22 @@ test.describe('RSV-REAL-004(D): 会員 UI からの予約作成→PENDING 成立
     // 2) ブラウザ→BE のクロスオリジン fetch を APIブリッジで中継する（:3001 は BE CORS 非許可）
     await installApiBridge(page, authToken)
 
-    // 3) 予約管理ページを開く（既定タブは「予約する」= SlotPicker）
+    // 3) 予約管理ページを開く（「予約する」タブ = マトリックス表示 SlotMatrixPicker）
     await page.goto(`/teams/${TEAM_SLUG}/reservations`, { waitUntil: 'domcontentloaded' })
     await waitForHydration(page)
 
     // 「予約する」タブを明示的に選択（既定で開いているが念のため）
     const bookTab = page.getByRole('tab', { name: '予約する' })
     if (await bookTab.count()) await bookTab.click()
+    await expect(page.getByText('メニューで絞り込む')).toBeVisible({ timeout: 20_000 })
 
-    // 4) ライン Select で作成したラインを選ぶ
-    //    PrimeVue Select はネイティブ <select> ではないため、トリガを開いてから選ぶ
-    const lineSelect = page.locator('.p-select').first()
-    await lineSelect.waitFor({ state: 'visible', timeout: 15_000 })
-    await lineSelect.click()
-    await page.getByRole('option', { name: lineName }).click()
+    // 4) 作成スロットの日付(32日後)を含む週まで週ナビを進める
+    await goToWeekContaining(page, slotDate)
 
-    // 5) 日付ピッカーを作成スロットの日付(32日後)に合わせる。
-    //    SlotPicker は日付＋ライン変更で watch によりスロットを再取得する。
-    //    PrimeVue DatePicker(date-format=yy/mm/dd) はクリックでパネルが開くため、
-    //    Escape で閉じてから直接入力して v-model に反映させる（helpers/form.ts pickDate と同手）。
-    const ymd = slotDate.replaceAll('-', '/') // YYYY/MM/DD（yy=4桁年）
-    const dateInput = page.locator('.p-datepicker-input').first()
-    await dateInput.waitFor({ state: 'visible', timeout: 15_000 })
-    await dateInput.click()
-    await dateInput.press('Escape')
-    await dateInput.fill(ymd)
-    await dateInput.press('Enter')
-    await dateInput.press('Tab')
-
-    // 6) 空きスロットボタン（一意な開始時刻 14:MM）が描画されるのを待ってクリック
-    //    ボタンのアクセシブル名は「14:MM:00 - ... 空きあり」（秒付き）。一意時刻で取り違えを防ぐ
-    const slotTimeRe = new RegExp(`${startTime}:00.*空きあり`)
-    const slotButton = page.getByRole('button', { name: slotTimeRe }).first()
+    // 5) 該当セル（一意なライン名の行・60分の長尺枠）をクリック
+    //    アクセシブル名は「YYYY/MM/DD (曜) HH:MM {ライン名} 空き」。ライン名が一意なので取り違えない
+    const cellName = `${matrixRowDateLabel(slotDate)} ${startTime} ${lineName} 空き`
+    const slotButton = page.getByRole('button', { name: cellName, exact: true })
     await slotButton.waitFor({ state: 'visible', timeout: 15_000 })
     await slotButton.click()
 

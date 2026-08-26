@@ -297,7 +297,7 @@ class DashboardScopeTabServiceTest {
 
             MyScopeFolderEntity folder = MyScopeFolderEntity.builder()
                     .userId(USER_ID)
-                    .scopeType(com.mannschaft.app.scopefolder.entity.ScopeType.TEAM)
+                    .scopeType(com.mannschaft.app.scopefolder.entity.enums.ScopeType.TEAM)
                     .name("お気に入り")
                     .build();
             given(scopeFolderRepository.findByIdAndUserIdAndDeletedAtIsNull(7L, USER_ID))

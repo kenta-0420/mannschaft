@@ -1,0 +1,20 @@
+# 番人: PagingTotalCountSizeGuardTest の凍結リスト。
+#
+# 【重要】このリストは「確定した病巣リスト」であり、削っていく対象である。
+# 新規に同じ型（PageImpl の第3引数=総件数にフィルタ後件数(.size())を渡す実装）を書いて
+# ここへ追記することは禁止する。既存分のみ、監査済みの負債として凍結している。
+# 根治したら該当行を削除すること（chip-away）。
+#
+# キー形式: <完全修飾クラス名>#<メソッド名>
+#
+# 2026-08-04 main 追随（PR #2577 是正の反映）:
+# PhotoAlbumService#listAlbums / JobPostingService#listByTeamForViewer の2件は
+# PR #2577「PageImpl 総件数バグの是正」（main コミット bb549f44e）で
+# page.getTotalElements() - excluded 方式へ是正され、もう本番人の違反条件に該当しないため
+# 凍結リストから削除した（chip-away の第一歩）。番人が意図どおり陳腐化を検知した実例。
+#
+# 2026-08-13 CMP-028 Phase D で根治済み（chip-away）:
+# IncidentService#listIncidents / TeamFriendQueryService#listFriends の2件は、
+# 全件ロード＋メモリページング（前者）／1ページ取得後のメモリ is_public フィルタ（後者）を
+# 撤去し、DB の Pageable + SQL WHERE 述語 + Page#getTotalElements() へ是正されたため
+# 凍結リストから削除した。

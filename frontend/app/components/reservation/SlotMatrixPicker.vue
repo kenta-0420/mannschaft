@@ -21,9 +21,12 @@ import {
   computeStartableIndices,
   isPastCell,
   mondayOffsetDays,
+  resolveDragSelection,
   unavailableReasonOfSlot,
   type MatrixCellInput,
   type RowSlot,
+  type HeaderSlot,
+  GROUP_MAX_SIZE,
 } from '~/utils/reservationMatrix'
 import type { GroupBookingContext, LineOption } from '~/components/reservation/GroupBookingDialog.vue'
 import ReservationWaitlistDialog, { type WaitlistDialogContext } from '~/components/reservation/ReservationWaitlistDialog.vue'
@@ -33,6 +36,8 @@ type ReservationMenuResponse = components['schemas']['ReservationMenuResponse']
 
 const props = defineProps<{
   teamId: string
+  /** 予約枠の日付・現在時刻判定に使うチーム基準タイムゾーン。 */
+  teamTimezone?: string
   /** 管理者（ADMIN）か否か。空状態の文言・管理CTAの出し分けに使う。 */
   isAdmin: boolean
 }>()
@@ -41,6 +46,11 @@ const props = defineProps<{
 const emit = defineEmits<{
   slotSelected: [slotId: number, lineId: number, lineName: string, date: string, startTime: string, endTime: string]
   manageLines: []
+  /**
+   * 「予約対象はあるが表示中の週に枠が1件も無い」空状態の管理者CTA。
+   * 予約対象ゼロ（manageLines）と違い、次の一手は**枠の作成**なので週間スケジュール管理へ誘導する。
+   */
+  manageSlots: []
   /** グループ/単枠 予約確定成功。親（TeamReservationsPanel）が一覧等を再読込する。 */
   reserved: []
   /** キャンセル待ちの登録/取消が成功した（W2-4-FE）。親は「自分のキャンセル待ち」一覧を再読込する。 */
@@ -49,7 +59,7 @@ const emit = defineEmits<{
 
 const { t } = useI18n()
 const reservationApi = useReservationApi()
-const { userTimezone } = useDatetime()
+const teamTimezone = computed(() => props.teamTimezone ?? 'Asia/Tokyo')
 /** 静かなエラー記録（トーストは出さずバックエンドへ送信。WidgetAttendanceResults.vue 等と同一パターン）。 */
 const { captureQuiet } = useErrorReport()
 
@@ -75,6 +85,8 @@ const filterMenuId = ref<string | null>(null)
 const weekStart = ref('')
 const loading = ref(false)
 const errorMsg = ref('')
+/** 曜日単位で保持するため、週を移動しても開閉状態を維持する。 */
+const openWeekdays = ref<Set<number>>(new Set())
 
 const todayStr = ref('')
 const nowMinutes = ref(0)
@@ -97,12 +109,22 @@ const menuFilterOptions = computed(() => [
 
 const hasLines = computed(() => lines.value.length > 0)
 
+/**
+ * 表示中の週に枠が1件でもあるか。
+ *
+ * 「予約対象が無い」（`hasLines === false`）とは**別物**で、こちらは「予約対象はあるが、その週に
+ * 枠が1件も無い」の判定に使う。旧表示 SlotPicker には両方の空状態があったが、マトリックスには
+ * 枠ゼロ側が実装されておらず、既定がマトリックスになった時点で到達不能になっていた
+ * （PR #2574 の旧表示撤去で恒久化）。ここで復活させる。
+ */
+const hasSlots = computed(() => allCells.value.length > 0)
+
 function columnLabel(col: GridColumnDto): string {
   return col.lineId == null ? t('reservation.grid.column.common') : (col.lineName ?? '')
 }
 
 function dayLabel(date: string): string {
-  return date ? dayjs(date).format('YYYY/MM/DD (ddd)') : ''
+  return date ? dayjs.tz(date, teamTimezone.value).format('YYYY/MM/DD (ddd)') : ''
 }
 
 const allCells = computed<MatrixCellInput[]>(() => {
@@ -136,41 +158,81 @@ const matrixRows = computed<MatrixRowVM[]>(() => {
   for (const day of days.value) {
     for (const col of day.columns ?? []) {
       const aligned = alignRowToHeader(col.cells ?? [], header.value)
-      const startable = requiredCellCount.value
-        ? computeStartableIndices(aligned, requiredCellCount.value)
-        : null
       rows.push({
         date: day.date,
         column: col,
         dateLabel: dayLabel(day.date),
         columnLabel: columnLabel(col),
         aligned,
-        startable,
+        startable: null,
       })
     }
+  }
+  // 日付行を跨ぐメニューでも、翌日00:00枠が同一lineかつ連続なら起点にできる。
+  for (const row of rows) {
+    const nextDate = dayjs.tz(row.date, teamTimezone.value).add(1, 'day').format('YYYY-MM-DD')
+    const next = rows.find(candidate => candidate.date === nextDate
+      && candidate.column.lineId === row.column.lineId)
+    const continuation = next ? [...row.aligned, ...next.aligned.slice(0, GROUP_MAX_SIZE)] : row.aligned
+    row.startable = requiredCellCount.value
+      ? computeStartableIndices(continuation, requiredCellCount.value)
+      : null
   }
   return rows
 })
 
+function weekdayOf(date: string): number { return dayjs.tz(date, teamTimezone.value).day() }
+function isDateOpen(date: string): boolean { return openWeekdays.value.has(weekdayOf(date)) }
+function toggleDate(date: string) {
+  const weekday = weekdayOf(date)
+  const next = new Set(openWeekdays.value)
+  if (next.has(weekday)) {
+    next.delete(weekday)
+  }
+  else {
+    next.add(weekday)
+  }
+  openWeekdays.value = next
+}
+const allDatesOpen = computed(() => days.value.length > 0 && days.value.every(day => isDateOpen(day.date)))
+function toggleAllDates() {
+  openWeekdays.value = allDatesOpen.value ? new Set() : new Set(days.value.map(day => weekdayOf(day.date)))
+}
+const visibleMatrixRows = computed(() => matrixRows.value.filter(row => isDateOpen(row.date)))
+
+function continuationFor(row: MatrixRowVM): { slots: RowSlot[]; header: HeaderSlot[] } {
+  const nextDate = dayjs.tz(row.date, teamTimezone.value).add(1, 'day').format('YYYY-MM-DD')
+  const next = matrixRows.value.find(candidate => candidate.date === nextDate
+    && candidate.column.lineId === row.column.lineId)
+  if (!next) return { slots: row.aligned, header: header.value }
+  const extra = next.aligned.slice(0, GROUP_MAX_SIZE)
+  const extraHeader = extra.map((_, index) => ({
+    minutes: (index * 30) + 1440,
+    label: dayjs().startOf('day').add(index * 30, 'minute').format('HH:mm'),
+  }))
+  return { slots: [...row.aligned, ...extra], header: [...header.value, ...extraHeader] }
+}
+
 function weekRangeLabel(): string {
   if (!weekStart.value) return ''
-  const end = dayjs(weekStart.value).add(6, 'day')
-  return `${dayjs(weekStart.value).format('YYYY/MM/DD')} - ${end.format('YYYY/MM/DD')}`
+  const start = dayjs.tz(weekStart.value, teamTimezone.value)
+  const end = start.add(6, 'day')
+  return `${start.format('YYYY/MM/DD')} - ${end.format('YYYY/MM/DD')}`
 }
 
 function prevWeek() {
-  weekStart.value = dayjs(weekStart.value).subtract(7, 'day').format('YYYY-MM-DD')
+  weekStart.value = dayjs.tz(weekStart.value, teamTimezone.value).subtract(7, 'day').format('YYYY-MM-DD')
 }
 function nextWeek() {
-  weekStart.value = dayjs(weekStart.value).add(7, 'day').format('YYYY-MM-DD')
+  weekStart.value = dayjs.tz(weekStart.value, teamTimezone.value).add(7, 'day').format('YYYY-MM-DD')
 }
 function thisWeek() {
-  const today = dayjs().tz(userTimezone.value)
+  const today = dayjs().tz(teamTimezone.value)
   weekStart.value = today.subtract(mondayOffsetDays(today.day()), 'day').format('YYYY-MM-DD')
 }
 
 function refreshClock() {
-  const now = dayjs().tz(userTimezone.value)
+  const now = dayjs().tz(teamTimezone.value)
   todayStr.value = now.format('YYYY-MM-DD')
   nowMinutes.value = now.hour() * 60 + now.minute()
 }
@@ -198,14 +260,25 @@ async function loadGrid(opts?: { silent?: boolean }) {
   refreshClock()
   try {
     const from = weekStart.value
-    const to = dayjs(weekStart.value).add(6, 'day').format('YYYY-MM-DD')
+    const to = dayjs.tz(weekStart.value, teamTimezone.value).add(6, 'day').format('YYYY-MM-DD')
     const res = await reservationApi.getSlotGrid(props.teamId, {
       from,
       to,
-      axis: 'LINE',
       menuId: filterMenuId.value ?? undefined,
     })
-    days.value = (res.data.days ?? []).map(d => ({ date: d.date ?? '', columns: d.columns ?? [] }))
+    days.value = (res.data.days ?? []).map((d) => {
+      const date = d.date ?? ''
+      return {
+        date,
+        columns: (d.columns ?? []).map(col => ({
+          ...col,
+          cells: (col.cells ?? []).map((c) => {
+            const cell = c as typeof c & { slotDate?: string; endDate?: string }
+            return { ...c, slotDate: cell.slotDate ?? date, endDate: cell.endDate ?? (cell.slotDate ?? date) }
+          }),
+        })),
+      }
+    })
     requiredCellCount.value = res.data.meta?.requiredCellCount ?? null
   }
   catch {
@@ -240,12 +313,13 @@ function isCellDisabled(row: MatrixRowVM, headerIndex: number): boolean {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind !== 'cell') return true
   if (slot.cell.state === 'BOOKED') {
+    if (slot.cell.reservedByCurrentUser) return true
     // slotId 不明の BOOKED セルは押しても無反応（early return）になるため disabled にする（検分是正）。
     if (slot.cell.slotId == null) return true
-    return isPastCell(row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)
+    return isPastCell(slot.cell.slotDate ?? row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)
   }
   if (slot.cell.state !== 'AVAILABLE') return true
-  if (isPastCell(row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)) return true
+  if (isPastCell(slot.cell.slotDate ?? row.date, slot.cell.startTime, todayStr.value, nowMinutes.value)) return true
   if (slot.span === 1 && row.startable && !row.startable.has(headerIndex)) return true
   return false
 }
@@ -287,20 +361,27 @@ function cellLabel(row: MatrixRowVM, headerIndex: number): string {
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind === 'empty') return '—'
   if (slot.kind === 'covered') return ''
+  let label: string
   switch (slot.cell.state) {
-    case 'AVAILABLE': return t('reservation.grid.state.available')
+    case 'AVAILABLE': label = t('reservation.grid.state.available'); break
     // BOOKED は自分が WAITING 登録済みなら「待機中」に切り替える（W2-4-FE）。
     case 'BOOKED':
-      return slot.cell.slotId != null && myWaitlistSlotIds.value.has(slot.cell.slotId)
+      label = slot.cell.reservedByCurrentUser
+        ? t('reservation.grid.state.reserved')
+        : slot.cell.slotId != null && myWaitlistSlotIds.value.has(slot.cell.slotId)
         ? t('reservation.waitlist.registered_badge')
         : t('reservation.grid.state.booked')
-    case 'CLOSED': return t('reservation.grid.state.closed')
+      break
+    case 'CLOSED': label = t('reservation.grid.state.closed'); break
     case 'UNAVAILABLE': {
       const reason = unavailableReasonOf(row, headerIndex)
-      return reason ? `× ${reason}` : t('reservation.grid.state.unavailable')
+      label = reason ? `× ${reason}` : t('reservation.grid.state.unavailable')
+      break
     }
     default: return ''
   }
+  const isNextDay = slot.cell.endDate && slot.cell.slotDate && slot.cell.endDate !== slot.cell.slotDate
+  return isNextDay ? `${label} (${t('reservation.template.next_day_time', { time: slot.cell.endTime ?? '' })})` : label
 }
 
 /**
@@ -323,12 +404,201 @@ function cellAriaLabel(row: MatrixRowVM, headerIndex: number): string {
   return hint ? `${base}: ${hint}` : base
 }
 
+// === ドラッグ複数選択（機能H）===
+//
+// 同一行内で連続する AVAILABLE な30分セルを pointerdown→pointermove→pointerup でまとめて選び、
+// 離した時点で既存の GroupBookingDialog（連続枠の一括予約）へ渡す。
+//
+// 【長尺枠（span>1）の解き方】
+//   ドラッグ先のマスは「可視セルの通し番号」ではなく DOM の data-header-index（＝ヘッダ列
+//   インデックス）から取る。長尺枠は grid-column: span N で複数列を1要素で覆うため、通し番号で
+//   数えると跨ぎ枠の先で列がずれる。範囲解決の純関数 resolveDragSelection はヘッダ列基準で
+//   走査し、長尺枠（および covered 列）を「連続の切れ目」として打ち切る。
+//
+// 【座標→セル特定】
+//   document.elementFromPoint（ビューポート座標）で拾うため、コンテナのスクロール量や
+//   sticky ヘッダーのオフセットを自前計算する必要がない。sticky ヘッダー/行見出しが
+//   ポインタ下に来た場合は data-header-index を持つ祖先が無い（or 行が違う）ので、
+//   直前の有効なフォーカスを保持する＝ヘッダーの下を通っても選択が壊れない。
+//
+// 【タッチ端末での衝突回避】
+//   タッチはマトリックスの縦横パン（スクロール）に使う。ドラッグ選択を触ると衝突するため、
+//   pointerType が 'mouse'/'pen' のときだけドラッグ選択を有効にし、タッチでは touch-action を
+//   一切変更しない（＝スクロールは完全に従来どおり）。タッチ利用者の複数枠予約は、単発タップで
+//   開く GroupBookingDialog の「＋30分延長」で従来どおり行える。
+/** ドラッグ開始と判定する移動距離のしきい値（px）。これ未満で離せば単発クリック扱い。 */
+const DRAG_THRESHOLD_PX = 8
+
+interface DragAnchor { rowIndex: number; headerIndex: number; clientX: number; clientY: number }
+const dragAnchor = ref<DragAnchor | null>(null)
+const dragFocusIndex = ref<number | null>(null)
+/** しきい値を超えて実際にドラッグ中か（未超過なら単発クリックとして扱う）。 */
+const isDragging = ref(false)
+/** ドラッグ確定直後に発火する click を単発クリックとして処理しないための抑止フラグ。 */
+let suppressNextClick = false
+
+/** 現在のドラッグで選択中のヘッダ列インデックス（アンカー行のみ）。 */
+const dragSelectedIndices = computed<number[]>(() => {
+  const anchor = dragAnchor.value
+  if (!anchor || !isDragging.value) return []
+  const row = matrixRows.value[anchor.rowIndex]
+  if (!row) return []
+  return resolveDragSelection(
+    row.aligned,
+    anchor.headerIndex,
+    dragFocusIndex.value ?? anchor.headerIndex,
+    i => !isPastCell(cellDateAt(row, i), cellStartTimeAt(row, i), todayStr.value, nowMinutes.value),
+  )
+})
+
+function cellStartTimeAt(row: MatrixRowVM, headerIndex: number): string | undefined {
+  const slot = row.aligned[headerIndex]
+  return slot && slot.kind === 'cell' ? slot.cell.startTime : undefined
+}
+
+function cellDateAt(row: MatrixRowVM, headerIndex: number): string {
+  const slot = row.aligned[headerIndex]
+  return slot && slot.kind === 'cell' ? (slot.cell.slotDate ?? row.date) : row.date
+}
+
+/** そのマスがドラッグ選択のハイライト対象か（テンプレートの :class 用）。 */
+function isDragSelected(rowIndex: number, headerIndex: number): boolean {
+  if (dragAnchor.value?.rowIndex !== rowIndex) return false
+  return dragSelectedIndices.value.includes(headerIndex)
+}
+
+function clearDrag() {
+  dragAnchor.value = null
+  dragFocusIndex.value = null
+  isDragging.value = false
+  if (import.meta.client) {
+    window.removeEventListener('pointermove', onPointerMove)
+    window.removeEventListener('pointerup', onPointerUp)
+    window.removeEventListener('pointercancel', onDragCancel)
+    window.removeEventListener('keydown', onDragKeydown)
+  }
+}
+
+/** ESC でドラッグ選択を取り消す。 */
+function onDragKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Escape') return
+  // 取り消した直後の pointerup で予約導線へ入らないよう、click も併せて抑止する。
+  suppressNextClick = isDragging.value
+  clearDrag()
+}
+
+function onDragCancel() {
+  clearDrag()
+}
+
+function onCellPointerDown(rowIndex: number, row: MatrixRowVM, headerIndex: number, event: PointerEvent) {
+  // タッチはパン（スクロール）専用。マウス/ペンの主ボタンのみドラッグ選択を開始する。
+  if (event.pointerType === 'touch') return
+  if (event.button !== 0) return
+  const slot = row.aligned[headerIndex]
+  if (!slot || slot.kind !== 'cell') return
+  // ドラッグで一括予約できるのは span=1 の AVAILABLE セルのみ（長尺枠・満席は単発クリックの担当）。
+  if (slot.span !== 1 || slot.cell.state !== 'AVAILABLE') return
+  if (isCellDisabled(row, headerIndex)) return
+
+  dragAnchor.value = { rowIndex, headerIndex, clientX: event.clientX, clientY: event.clientY }
+  dragFocusIndex.value = headerIndex
+  isDragging.value = false
+  window.addEventListener('pointermove', onPointerMove)
+  window.addEventListener('pointerup', onPointerUp)
+  window.addEventListener('pointercancel', onDragCancel)
+  window.addEventListener('keydown', onDragKeydown)
+}
+
+/**
+ * ポインタ直下のマスから、同一行の「ヘッダ列インデックス」を解決する。
+ *
+ * ポインタキャプチャを使っていないため、マウスドラッグ中の `event.target` は常に
+ * 「カーソル直下の最前面要素」＝拾いたいマスそのものになる。これを一次情報にし、
+ * target が要素でない等の例外時のみ座標から `elementFromPoint` で引き直す
+ * （ビューポート座標のため、コンテナのスクロール量や sticky ヘッダーのオフセットを
+ * 自前計算する必要がない）。
+ */
+function headerIndexFromEvent(event: PointerEvent, rowIndex: number): number | null {
+  const fromTarget = event.target instanceof Element ? event.target : null
+  const el = fromTarget ?? document.elementFromPoint(event.clientX, event.clientY)
+  const cell = el instanceof Element ? el.closest('[data-header-index]') : null
+  if (!(cell instanceof HTMLElement)) return null
+  if (Number(cell.dataset.rowIndex) !== rowIndex) return null
+  const index = Number(cell.dataset.headerIndex)
+  return Number.isInteger(index) ? index : null
+}
+
+function onPointerMove(event: PointerEvent) {
+  const anchor = dragAnchor.value
+  if (!anchor) return
+  if (!isDragging.value) {
+    const dx = event.clientX - anchor.clientX
+    const dy = event.clientY - anchor.clientY
+    if (Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return
+    isDragging.value = true
+  }
+  // ドラッグ中のテキスト選択を防ぐ（選択範囲が青く反転して見た目が壊れるため）。
+  event.preventDefault()
+  const index = headerIndexFromEvent(event, anchor.rowIndex)
+  // 解決できない位置（sticky ヘッダーの下・別行・グリッド外）では直前のフォーカスを保持する。
+  if (index != null) dragFocusIndex.value = index
+}
+
+function onPointerUp() {
+  const anchor = dragAnchor.value
+  const indices = dragSelectedIndices.value
+  const wasDragging = isDragging.value
+  if (!anchor || !wasDragging) {
+    // しきい値未満＝単発クリック。既存の @click（onCellClick）にそのまま任せる。
+    clearDrag()
+    return
+  }
+  const row = matrixRows.value[anchor.rowIndex]
+  clearDrag()
+  // ドラッグ確定時は直後の click を食わせない（単発クリックの導線と二重に走らせない）。
+  suppressNextClick = true
+  if (!row || indices.length === 0) return
+
+  const startIndex = indices[0]!
+  if (indices.length === 1) {
+    // 実質単発。メニューフィルター等の既存挙動をそのまま使う。
+    openGroupDialog(row, startIndex, null)
+    return
+  }
+  openGroupDialog(row, startIndex, indices.length)
+}
+
+/** GroupBookingDialog を開く（単発クリックとドラッグ確定の共通経路）。 */
+function openGroupDialog(row: MatrixRowVM, startIndex: number, dragCellCount: number | null) {
+  const continuation = continuationFor(row)
+  dialogContext.value = {
+    date: row.date,
+    columnLineId: row.column.lineId ?? null,
+    columnLineName: row.column.lineName ?? null,
+    rowSlots: continuation.slots,
+    startIndex,
+    header: continuation.header,
+    preselectedMenuId: filterMenuId.value,
+    preselectedRequiredCellCount: requiredCellCount.value,
+    dragCellCount,
+  }
+  dialogVisible.value = true
+}
+
+onBeforeUnmount(() => clearDrag())
+
 function onCellClick(row: MatrixRowVM, headerIndex: number) {
+  if (suppressNextClick) {
+    suppressNextClick = false
+    return
+  }
   const slot = row.aligned[headerIndex]
   if (!slot || slot.kind !== 'cell') return
   if (isCellDisabled(row, headerIndex)) return
 
   if (slot.cell.state === 'BOOKED') {
+    if (slot.cell.reservedByCurrentUser) return
     // 満席セル: キャンセル待ちダイアログを開く（W2-4-FE）。span（長尺枠の跨ぎ）に関わらず
     // 対象は常に単一 slotId のため、長尺/30分どちらでも扱いは同じ。
     if (slot.cell.slotId == null) return
@@ -359,17 +629,7 @@ function onCellClick(row: MatrixRowVM, headerIndex: number) {
     return
   }
 
-  dialogContext.value = {
-    date: row.date,
-    columnLineId: row.column.lineId ?? null,
-    columnLineName: row.column.lineName ?? null,
-    rowSlots: row.aligned,
-    startIndex: headerIndex,
-    header: header.value,
-    preselectedMenuId: filterMenuId.value,
-    preselectedRequiredCellCount: requiredCellCount.value,
-  }
-  dialogVisible.value = true
+  openGroupDialog(row, headerIndex, null)
 }
 
 function onDialogReserved() {
@@ -467,6 +727,7 @@ defineExpose({
         <Button icon="pi pi-angle-left" text rounded @click="prevWeek" />
         <Button :label="t('reservation.grid.view.week') + ' ' + weekRangeLabel()" text size="small" @click="thisWeek" />
         <Button icon="pi pi-angle-right" text rounded @click="nextWeek" />
+        <Button data-testid="matrix-toggle-all" :label="allDatesOpen ? t('reservation.matrix.close_all') : t('reservation.matrix.open_all')" text size="small" @click="toggleAllDates" />
       </div>
     </div>
 
@@ -509,10 +770,41 @@ defineExpose({
       {{ errorMsg }}
     </Message>
 
+    <!-- 予約対象はあるが表示中の週の枠がゼロ: 枠作成導線（管理者のみCTA）。
+         上の「予約対象ゼロ」（*_no_lines）とは別物なので取り違えないこと。 -->
+    <DashboardEmptyState
+      v-else-if="!hasSlots"
+      icon="pi pi-calendar-times"
+      data-testid="matrix-no-slots-empty"
+      :message="isAdmin ? t('reservation.empty.book.admin_no_slots') : t('reservation.empty.book.member_no_slots')"
+      :sub-message="isAdmin ? t('reservation.empty.book.admin_no_slots_hint') : t('reservation.empty.book.member_no_slots_hint')"
+    >
+      <template v-if="isAdmin" #action>
+        <Button
+          :label="t('reservation.button.manage_slots')"
+          icon="pi pi-cog"
+          size="small"
+          @click="emit('manageSlots')"
+        />
+      </template>
+    </DashboardEmptyState>
+
     <!-- マトリックス本体（縦横スクロール・overscroll-contain・時間ヘッダ行 sticky top・行ヘッダ列 sticky left）。
          縦スクロールを本コンテナ内に閉じ込める（max-h + overflow-auto）ことで sticky top を確実に効かせる。 -->
-    <div v-else class="max-h-[65vh] overflow-auto overscroll-contain">
-      <div class="inline-grid min-w-full gap-1" :style="gridStyle(header.length)">
+    <div v-else class="space-y-2">
+      <div class="flex flex-wrap gap-2">
+        <Button v-for="day in days" :key="day.date" :data-testid="`matrix-toggle-date-${day.date}`" :label="dayLabel(day.date)" :icon="isDateOpen(day.date) ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" text size="small" :aria-expanded="isDateOpen(day.date)" @click="toggleDate(day.date)" />
+      </div>
+      <div v-if="visibleMatrixRows.length === 0" class="rounded-lg bg-surface-50 p-4 text-center text-sm text-surface-500 dark:bg-surface-800">{{ t('reservation.matrix.open_day_hint') }}</div>
+      <div v-else class="max-h-[65vh] overflow-auto overscroll-contain">
+      <!-- ドラッグ中のみテキスト選択を殺す（常時 select-none にはしない＝通常時のコピーを妨げない）。
+           touch-action は一切いじらない: タッチはマトリックスの縦横パン専用で、ドラッグ選択は
+           マウス/ペンのみ（onCellPointerDown で pointerType を判定）。 -->
+      <div
+        class="inline-grid min-w-full gap-1"
+        :class="isDragging ? 'select-none' : ''"
+        :style="gridStyle(header.length)"
+      >
         <!-- ヘッダー行: 左上コーナー（両軸 sticky・最前面）+ 時間見出し（sticky top） -->
         <div class="sticky left-0 top-0 z-20 flex items-center justify-center bg-surface-0 p-2 text-xs font-semibold text-surface-500 dark:bg-surface-900">
           {{ t('reservation.matrix.date_line_header', { resourceName }) }}
@@ -526,7 +818,7 @@ defineExpose({
         </div>
 
         <!-- 本体行: 日付×予約対象 -->
-        <template v-for="(row, ri) in matrixRows" :key="`r-${ri}`">
+        <template v-for="(row, ri) in visibleMatrixRows" :key="`r-${ri}`">
           <div class="sticky left-0 z-10 flex flex-col items-center justify-center bg-surface-0 p-2 text-center text-[11px] font-medium text-surface-600 dark:bg-surface-900 dark:text-surface-300">
             <span>{{ row.dateLabel }}</span>
             <span class="text-surface-400">{{ row.columnLabel }}</span>
@@ -537,16 +829,20 @@ defineExpose({
               type="button"
               class="rounded-md border p-2 text-center text-[11px] transition-all"
               :style="slot.kind === 'cell' && slot.span > 1 ? `grid-column: span ${slot.span};` : undefined"
-              :class="cellStateClass(row, ci)"
+              :class="[cellStateClass(row, ci), isDragSelected(ri, ci) ? 'border-primary bg-primary/20 ring-2 ring-primary' : '']"
               :disabled="isCellDisabled(row, ci)"
               :aria-label="cellAriaLabel(row, ci)"
+              :data-row-index="ri"
+              :data-header-index="ci"
               :title="unavailableReasonOf(row, ci) ?? (row.startable && slot.kind === 'cell' && slot.span === 1 && !row.startable.has(ci) && slot.cell.state === 'AVAILABLE' ? t('reservation.matrix.cannot_start_here', { menu: menuFilterOptions.find(o => o.value === filterMenuId)?.label ?? '' }) : undefined)"
+              @pointerdown="onCellPointerDown(ri, row, ci, $event)"
               @click="onCellClick(row, ci)"
             >
               {{ cellLabel(row, ci) }}
             </button>
           </template>
         </template>
+      </div>
       </div>
     </div>
 

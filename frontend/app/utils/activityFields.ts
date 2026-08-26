@@ -1,5 +1,5 @@
 import type { ActivityTemplateField } from '~/types/activity'
-import { toLocalDateString } from '~/utils/localDate'
+import { toLocalDateString, toLocalDateTimeString } from '~/utils/localDate'
 
 /** 活動カスタムフィールドの入力値（DatePicker は Date を持つ）。 */
 export type ActivityFieldValue = string | number | boolean | Date | null | undefined
@@ -35,7 +35,7 @@ export function toYmd(d: Date): string {
 /**
  * フィールドが入力済みか判定する（必須検証用）。
  * - NUMBER: null/undefined/'' は未入力（0 は入力済み）
- * - DATE: Date インスタンスのみ入力済み
+ * - DATE/DATETIME: Date インスタンスのみ入力済み
  * - CHECKBOX: 真偽値は常に値を持つため常に true（必須でもブロックしない）
  * - TEXT/TEXTAREA/SELECT: 空白除去後に文字があれば入力済み
  */
@@ -47,6 +47,7 @@ export function isActivityFieldFilled(
     case 'NUMBER':
       return value !== null && value !== undefined && value !== ''
     case 'DATE':
+    case 'DATETIME':
       return value instanceof Date
     case 'CHECKBOX':
       return true
@@ -70,6 +71,10 @@ export function buildActivityFieldValues(
     if (v === null || v === undefined) continue
     if (field.fieldType === 'DATE') {
       if (v instanceof Date) out[field.fieldKey] = toYmd(v)
+      continue
+    }
+    if (field.fieldType === 'DATETIME') {
+      if (v instanceof Date) out[field.fieldKey] = toLocalDateTimeString(v)
       continue
     }
     if (field.fieldType === 'CHECKBOX') {

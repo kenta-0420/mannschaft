@@ -300,10 +300,12 @@ class QuickMemoSelfScopeContractIT extends AbstractMySqlIntegrationTest {
                             .content(json(Map.of("version", 1))))
                     .andExpect(status().isCreated());
 
-            // outsider の撤回要求は「自分の同意が無い」として拒否される。
+            // outsider の撤回要求は「自分の同意が無い」として404（自分の資源が存在しない。
+            // revokeConsent は /api/v1/me 配下で認証コンテキストの userId のみを使うため、
+            // 他人のIDを探索する余地はなく、単に「自分の有効な同意が無い」ことを表す）。
             setAuthentication(outsiderId);
             mockMvc.perform(delete("/api/v1/me/voice-input-consents/active"))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("QM_030"));
 
             // owner の同意は撤回されずに残っている。

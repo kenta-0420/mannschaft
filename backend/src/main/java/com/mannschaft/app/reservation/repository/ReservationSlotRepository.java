@@ -16,6 +16,13 @@ import java.util.Optional;
  */
 public interface ReservationSlotRepository extends JpaRepository<ReservationSlotEntity, Long> {
 
+    /** endDate を含む業務日範囲検索（日跨ぎ枠を slotDate だけで落とさない）。 */
+    @Query("SELECT s FROM ReservationSlotEntity s WHERE s.teamId = :teamId "
+            + "AND s.slotDate <= :to AND s.endDate >= :from AND s.deletedAt IS NULL")
+    List<ReservationSlotEntity> findByTeamIdAndBusinessDateOverlap(@Param("teamId") Long teamId,
+                                                                     @Param("from") LocalDate from,
+                                                                     @Param("to") LocalDate to);
+
     /**
      * チームのスロットを日付範囲で取得する。
      */
@@ -101,8 +108,8 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
      * <p>Hibernate のネイティブクエリとして実行することで、TIME/DATE/BINARY(16) のパラメータバインドが
      * エンティティ永続化と<b>同一の変換規則</b>になる（素の JdbcTemplate 直挿入は MySQL Connector/J の
      * タイムゾーン変換が Hibernate 読取と非対称になり、JVM≠DB タイムゾーン環境で時刻が +9h ずれる
-     * 実測バグがあったため禁止）。{@code booked_count}/{@code slot_status}/{@code is_exception} は
-     * DDL 既定値（0 / 'AVAILABLE' / FALSE）に委ねる。</p>
+     * 実測バグがあったため禁止）。{@code booked_count}/{@code slot_status} は
+     * DDL 既定値（0 / 'AVAILABLE'）に委ねる。</p>
      *
      * @param templateId 生成元テンプレート ID（UUIDv7 の BINARY(16) 表現・{@code UuidV7Entity} と同じ
      *                   ビッグエンディアン MSB→LSB）
@@ -110,9 +117,9 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
      */
     @Modifying
     @Query(value = "INSERT IGNORE INTO reservation_slots "
-            + "(team_id, line_id, staff_user_id, template_id, slot_date, start_time, end_time, "
+            + "(team_id, line_id, staff_user_id, template_id, slot_date, end_date, start_time, end_time, "
             + " capacity, title, price, approval_mode, created_by, created_at, updated_at) "
-            + "VALUES (:teamId, :lineId, :staffUserId, :templateId, :slotDate, :startTime, :endTime, "
+            + "VALUES (:teamId, :lineId, :staffUserId, :templateId, :slotDate, :endDate, :startTime, :endTime, "
             + " :capacity, :title, :price, :approvalMode, :createdBy, NOW(6), NOW(6))",
             nativeQuery = true)
     int insertGeneratedCellIgnoreDuplicate(
@@ -121,6 +128,7 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
             @Param("staffUserId") Long staffUserId,
             @Param("templateId") byte[] templateId,
             @Param("slotDate") LocalDate slotDate,
+            @Param("endDate") LocalDate endDate,
             @Param("startTime") java.time.LocalTime startTime,
             @Param("endTime") java.time.LocalTime endTime,
             @Param("capacity") Integer capacity,

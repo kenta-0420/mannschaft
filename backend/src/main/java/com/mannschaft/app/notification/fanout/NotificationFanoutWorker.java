@@ -1,5 +1,9 @@
 package com.mannschaft.app.notification.fanout;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
+import com.mannschaft.app.common.batch.BatchEndpointExempt;
+import com.mannschaft.app.common.i18n.DeliveryLocales;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationBulkFanoutService;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +16,13 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * 通知 fan-out 耐久ジョブの裏ワーカー（P2）。
@@ -37,8 +47,16 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationFanoutWorker {
 
-    /** 1 周回で取得するジョブ数の上限。 */
-    static final int BATCH_SIZE = 20;
+    /**
+     * 1 周回で取得するジョブ数の上限。
+     *
+     * <p>{@link NotificationFanoutJobService#MAX_SHARDS}（=32）と揃える（検分ステップ2の是正・CMP-001⑤）。
+     * 1 スコープの enqueue は最大 32 本のシャードジョブに分割されるが、{@code BATCH_SIZE} が
+     * {@code MAX_SHARDS} を下回ると同一スコープのシャード群が 1 回の {@link #processReady} で
+     * 全数 claim できず 2 波以降に直列化し、500,000 人（25 シャード）規模で ≤120 秒 SLO を割り込む。
+     * {@code MAX_SHARDS} と同値にすることで 1 スコープの全シャードを同一 poll で並列消化できる。</p>
+     */
+    static final int BATCH_SIZE = 32;
 
     /** 1 チャンクで配信する受信者数（P1 の受信者ストリームチャンクと同規模）。 */
     static final int CHUNK_SIZE = 500;
@@ -49,13 +67,25 @@ public class NotificationFanoutWorker {
     private final FanoutRecipientSourceRegistry recipientSourceRegistry;
     private final NotificationFanoutJobService jobService;
     private final NotificationBulkFanoutService bulkFanoutService;
+    /** ロケール別・描画済み文面の子表リポジトリ（Issue #2871）。 */
+    private final NotificationFanoutJobMessageRepository jobMessageRepository;
 
     /**
      * 5 秒間隔で実行可能ジョブを 1 周回処理する。
      *
      * <p>{@code poll} 全体を 1 トランザクションで包むと per-job／per-chunk の独立コミット（再開・リトライの確定）が
      * 巻き戻るため、外側 TX を張らない契約を {@code NEVER} で固定する（email_outbox ワーカー前例）。</p>
+     *
+     * <p><b>バッチ実行履歴基盤（{@code @BatchEndpoint}）へ登録しない理由</b>:
+     * 5 秒間隔＝日次 17,280 回の起動であり、1 回ごとに実行履歴を書くと
+     * 履歴テーブルが「実行可能ジョブ 0 件」の記録で埋まり、日次・月次バッチの記録が埋没する。
+     * fan-out の進捗・失敗は {@code notification_fanout_jobs} のジョブ行そのもの
+     * （ステータス・{@code cursor_subject_id}・リトライ回数）が記録しているため、実行履歴は不要である。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "通知 fan-out の唯一の実行主体であり、止めると配信ジョブが滞留して再開時に一斉配信される")
+    @BatchEndpointExempt("5 秒間隔（日次 17,280 回）の高頻度ワーカーであり、"
+        + "実行履歴を書くと日次・月次バッチの記録が埋没する。進捗は notification_fanout_jobs のジョブ行が記録")
     @Scheduled(fixedDelay = 5_000)
     @SchedulerLock(name = "notificationFanoutWorker", lockAtMostFor = "PT5M", lockAtLeastFor = "PT5S")
     @Transactional(propagation = Propagation.NEVER)
@@ -65,7 +95,24 @@ public class NotificationFanoutWorker {
     }
 
     /**
-     * 実行可能ジョブを claim（RUNNING 化）して各ジョブを {@link #processOne} で排出する（1 周回）。
+     * 実行可能ジョブを claim（RUNNING 化）して各ジョブを {@link #processOne} で
+     * <b>Virtual Threads で並列</b>に排出する（1 周回・CMP-001⑤）。
+     *
+     * <p><b>並列化の狙い（AC-1/6）</b>: 1 スコープが複数シャードジョブに分割されている場合、
+     * 各シャードを別スレッドで同時配信してスループットを稼ぐ。{@code @SchedulerLock}（クラスタ単一 poll）は
+     * {@link #poll()} 側で維持しており、並列度は 1 poll 内に閉じる（複数 pod が同一 batch を掴まない）。</p>
+     *
+     * <p><b>claim 整合</b>: {@link NotificationFanoutJobService#claimReady} が
+     * {@code FOR UPDATE SKIP LOCKED} ＋ RUNNING 化で排他 claim 済みの batch を並列処理するだけであり、
+     * 同一ジョブを 2 スレッドが持つことはない（並列化で新たな二重 claim は生じない）。</p>
+     *
+     * <p><b>例外分離（AC-6）</b>: 1 ジョブ（=1 シャード）の {@link #processOne} が例外を投げても
+     * 他ジョブの処理は止めない。各タスクの {@code Future#get} で throw を捕捉してログに残す
+     * （握り潰さずログと状態遷移で露見させる）。配信失敗は {@code processOne} 内で {@code recordFailure} 済み。</p>
+     *
+     * <p><b>コネクション有界性</b>: 並列度の上限は batch 件数（{@code BATCH_SIZE}=32）であり、
+     * Hikari 最大プール（50）に収まる。Virtual Thread 自体は多重化されるが、同時に DB を掴むタスク数は
+     * batch 件数が上限のため枯渇しない想定（最終的な 50 万実測は検分で裏取り）。</p>
      */
     public void processReady() {
         List<NotificationFanoutJob> batch = jobService.claimReady(LocalDateTime.now(), BATCH_SIZE);
@@ -73,12 +120,19 @@ public class NotificationFanoutWorker {
             return;
         }
         log.debug("NotificationFanoutWorker claimed {} jobs", batch.size());
-        for (NotificationFanoutJob job : batch) {
-            try {
-                processOne(job);
-            } catch (Exception ex) {
-                // processOne は失敗を内部で recordFailure に落とす設計。ここに来るのは想定外（バグ）。
-                log.error("NotificationFanoutWorker: 想定外の例外 jobId={}", job.getId(), ex);
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<?>> futures = batch.stream()
+                    .<Future<?>>map(job -> executor.submit(() -> processOne(job)))
+                    .toList();
+            for (int i = 0; i < futures.size(); i++) {
+                NotificationFanoutJob job = batch.get(i);
+                try {
+                    futures.get(i).get();
+                } catch (Exception ex) {
+                    // processOne は失敗を内部で recordFailure に落とす設計。ここに来るのは想定外（バグ）。
+                    // 1 ジョブの想定外例外で他ジョブを止めないため、ここで捕捉してログに残す（露見させる）。
+                    log.error("NotificationFanoutWorker: 想定外の例外 jobId={}", job.getId(), ex);
+                }
             }
         }
     }
@@ -89,36 +143,83 @@ public class NotificationFanoutWorker {
      * バルク INSERT ＋配信する。チャンクごとに {@link NotificationFanoutJobService#advanceCursor} で
      * カーソルを前進コミットし、空ページで {@code DONE}。失敗はリトライ／上限超で {@code DEAD_LETTER}。
      *
-     * <p><b>例外契約</b>: 受信者解決／配信の失敗は本メソッド内で捕捉し
+     * <p><b>例外契約（CMP-030 根治）</b>: 受信者ソース解決・シャード分割・配信ループの<b>すべて</b>を
+     * {@link #markRunning} 後の単一 {@code try} で包み、あらゆる例外を {@code catch} して
      * {@link NotificationFanoutJobService#recordFailure} に落とす（呼び出し側へ伝播しない＝耐久キューの正常動作）。
+     * かつて {@code resolve().orElseThrow()} と {@code resolveAndSplitShards} を {@code try} の<b>外</b>で呼んでいたため、
+     * 未登録 {@code scope_type} や分割失敗の例外が {@code recordFailure} に届かず、claim 済み（RUNNING）ジョブが
+     * RUNNING のまま停滞→stuck リカバリで PENDING へ戻る→再 claim→同一例外、を延々繰り返す
+     * <b>無限 RUNNING ループ</b>（DEAD_LETTER にも配信にも至らない）を招いていた。これを断つため全処理を try 内へ入れる。
      * 失敗は握り潰さず {@code last_error}／{@code status} に残して可視化する。</p>
+     *
+     * <p><b>未登録 scope_type は即 DEAD_LETTER（短絡）</b>: 未登録は「受信者ソース実装が存在しない」＝設定・デプロイ不備で
+     * あり、{@link #MAX_RETRY} 回リトライしても実装が後から生えることはない（＝永久に成功しない恒久失敗）。無駄な
+     * バックオフ×上限回を挟まず即 {@code DEAD_LETTER} に落とすのが妥当（運用者が気付いて実装を追加・手動再投入する）。
+     * 一方、シャード分割・配信の失敗は一過性（DB 一時障害等）でありうるため従来どおりリトライ→上限超で DEAD_LETTER。</p>
      */
     public void processOne(NotificationFanoutJob job) {
-        FanoutRecipientSource source = recipientSourceRegistry.resolve(job.getScopeType())
-                .orElseThrow(() -> new IllegalStateException(
-                        "未登録の fan-out scope_type: " + job.getScopeType() + "（jobId=" + job.getId() + "）"));
         jobService.markRunning(job.getId());
         try {
+            java.util.Optional<FanoutRecipientSource> resolved =
+                    recipientSourceRegistry.resolve(job.getScopeType());
+            if (resolved.isEmpty()) {
+                // 未登録 scope_type はリトライ不能な恒久失敗。即 DEAD_LETTER へ短絡し RUNNING 残置を断つ。
+                String reason = "未登録の fan-out scope_type: " + job.getScopeType() + "（jobId=" + job.getId() + "）";
+                log.warn("fan-out ジョブ: {}（即 DEAD_LETTER）", reason);
+                jobService.recordFailure(job.getId(), "IllegalStateException: " + reason, MAX_RETRY, true);
+                return;
+            }
+            FanoutRecipientSource source = resolved.get();
+            // 初回 claim 時のシャード確定・分割（B案・CMP-001⑤ 是正）。enqueue は O(1) のため親ジョブは
+            // shard_count=0（未評価）で作られる。ここで母集団を数えて N を確定し子シャード行を発行する
+            // （REQUIRES_NEW で原子確定・冪等）。shard_count!=0 の行（評価済 or レガシー）は現状の N を返すだけ。
+            // 分割中の例外（母集団カウントの DB 一時障害等）も本 try で捕捉し recordFailure に落とす（CMP-030）。
+            if (job.getShardCount() == 0) {
+                int n = jobService.resolveAndSplitShards(job.getId());
+                job.setShardCount((short) n);
+            }
+            // 防御ガード: shard_count=0 を nextPage に渡すと MOD(user_id, 0) が 0 除算になる。ここで必ず >=1 を保証する。
+            if (job.getShardCount() < 1) {
+                job.setShardCount((short) 1);
+            }
+            // Issue #2871: ロケール別の描画済み文面をジョブ 1 件につき 1 回だけ読む（高々 6 行）。
+            // チャンクごと・受信者ごとに引かない（チャンク数にも受信者数にも比例させない）。
+            Map<String, NotificationFanoutJobMessage> messagesByLocale = loadMessages(job.getId());
             while (true) {
                 long cursor = job.getCursorSubjectId();
-                List<Long> page = source.nextPage(job.getScopeRef(), cursor, CHUNK_SIZE);
+                // include_supporters は非 NULL 列（DEFAULT TRUE）。防御的に NULL は true 扱い
+                //（旧 VILLAGE 行の全員配信を保つ）。
+                boolean includeSupporters = !Boolean.FALSE.equals(job.getIncludeSupporters());
+                // 受信者の取得条件は FanoutPageRequest 1 つに集約されている（Issue #2871）。
+                // 各シャードジョブ（shard_index=0..N-1・shard_count=N）は自分のモジュロ区画
+                //（subject_id % shardCount == shardIndex）だけを配信し、シャード間で重複しない。
+                // shard_count=1 のジョブは各実装が従来どおり非シャード版クエリを引く＝既存挙動不変。
+                List<FanoutRecipient> page = source.nextPage(new FanoutPageRequest(
+                        job.getScopeRef(), cursor, CHUNK_SIZE, includeSupporters,
+                        job.getShardIndex(), job.getShardCount()));
                 if (page.isEmpty()) {
                     jobService.markDone(job.getId());
                     break;
                 }
                 // P1 バルク INSERT ＋ チャンクコミット ＋ 専用プール配信を再利用。
                 // 通知行の per-row スコープは現行の村行事還流と同一（SYSTEM / scopeId=null）。
+                //
+                // Issue #2871: 行ごとに title / body を差し替える。notifications への多値 INSERT は
+                // 元から 1 行 14 列で title / body を per-row に持っており、共有引数になっていたのは
+                // Java 側の API だけだった。よって INSERT 文数・トランザクション数は
+                // 「1 チャンクにつき 1」のまま（受信者数にもロケール数にも比例しない・AC-3）。
                 bulkFanoutService.insertAndDispatchChunk(
-                        page,
+                        toRows(page, messagesByLocale),
                         job.getNotificationType(), job.getPriority(),
-                        job.getTitle(), job.getBody(),
                         job.getSourceType(), job.getSourceId(),
                         NotificationScopeType.SYSTEM, null,
                         job.getActionUrl(), job.getActorId(), job.getOrganizationId());
 
-                long newCursor = page.get(page.size() - 1);
+                // 再開カーソルは user_id ただ 1 本のまま（locale はカーソルに含めない・AC-4）。
+                long newCursor = page.get(page.size() - 1).userId();
                 long added = page.size();
                 // in-memory カーソル前進（ループ終了条件）＋ 独立コミットで耐久化（クラッシュ再開の要・AC-2）。
+                // 順序は「INSERT 確定 → カーソル前進」を厳守する（逆にすると欠落する）。
                 job.setCursorSubjectId(newCursor);
                 jobService.advanceCursor(job.getId(), newCursor, added);
             }
@@ -128,5 +229,57 @@ public class NotificationFanoutWorker {
                     job.getId(), job.getScopeType(), job.getScopeRef(), job.getCursorSubjectId(), ex);
             jobService.recordFailure(job.getId(), ex.getClass().getSimpleName() + ": " + ex.getMessage(), MAX_RETRY);
         }
+    }
+
+    /**
+     * ジョブのロケール別・描画済み文面を読み込む（Issue #2871）。
+     *
+     * <p>ジョブ 1 件につき 1 回だけ呼ぶ。戻りは高々 6 エントリ。</p>
+     *
+     * <p>文面が 1 行も無いジョブは<b>配信してはならない</b>。enqueue は親ジョブと文面 6 行を同一 TX で
+     * 確定するため通常は起こらないが、万一起きた場合に「空タイトルで配信する」と、利用者には意味不明の
+     * 通知が届いたうえログにも何も残らない（最悪の握り潰し）。ここで例外を投げて
+     * {@code recordFailure} → リトライ／DEAD_LETTER の可視な経路へ落とす。</p>
+     */
+    private Map<String, NotificationFanoutJobMessage> loadMessages(java.util.UUID jobId) {
+        List<NotificationFanoutJobMessage> rows = jobMessageRepository.findByJobId(jobId);
+        if (rows.isEmpty()) {
+            throw new IllegalStateException(
+                    "fan-out ジョブにロケール別文面が 1 行も無い（enqueue が壊れている）: jobId=" + jobId);
+        }
+        Map<String, NotificationFanoutJobMessage> byLocale = new HashMap<>();
+        for (NotificationFanoutJobMessage row : rows) {
+            byLocale.put(row.getLocale(), row);
+        }
+        return byLocale;
+    }
+
+    /**
+     * 受信者ページを「受信者ごとの user_id ＋ title ＋ body」の行リストへ写す（Issue #2871）。
+     *
+     * <p>{@link FanoutRecipient} の locale は {@code DeliveryLocales} で 6 種のいずれかに正規化済みだが、
+     * 万一その locale の文面行が欠けていた場合は既定ロケール（{@code ja}）の行へ落とす。ここで例外を
+     * 投げてチャンクごと落とすより、既定言語で確実に届けるほうが「欠落なし」の不変条件に忠実である。
+     * 文面がまったく無い（既定すら無い）場合は {@link #loadMessages} が先に例外で止めている。</p>
+     */
+    private static List<NotificationBulkFanoutService.RecipientMessage> toRows(
+            List<FanoutRecipient> page, Map<String, NotificationFanoutJobMessage> messagesByLocale) {
+        NotificationFanoutJobMessage fallback = messagesByLocale.get(DeliveryLocales.DEFAULT_TAG);
+        List<NotificationBulkFanoutService.RecipientMessage> rows = new ArrayList<>(page.size());
+        for (FanoutRecipient recipient : page) {
+            NotificationFanoutJobMessage message = messagesByLocale.get(recipient.locale());
+            if (message == null) {
+                message = fallback;
+            }
+            if (message == null) {
+                // 既定ロケールの行すら無い＝loadMessages を通り抜けた想定外。握り潰さず露見させる。
+                throw new IllegalStateException(
+                        "受信者の配信ロケールに対応する文面が無く既定ロケールの文面も無い: locale="
+                                + recipient.locale());
+            }
+            rows.add(new NotificationBulkFanoutService.RecipientMessage(
+                    recipient.userId(), message.getTitle(), message.getBody()));
+        }
+        return rows;
     }
 }

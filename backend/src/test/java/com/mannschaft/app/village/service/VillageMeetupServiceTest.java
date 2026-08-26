@@ -31,6 +31,7 @@ import com.mannschaft.app.village.repository.VillageMeetupRepository;
 import com.mannschaft.app.village.repository.VillageMeetupVoteRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -98,8 +99,23 @@ class VillageMeetupServiceTest {
     @Mock
     private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
+    /** 村の存在秘匿ゲート。実物へ委譲させるため {@link VillageAccessGateTestSupport} で結線する。 */
+    @Mock
+    private VillageAccessGate accessGate;
+
     @InjectMocks
     private VillageMeetupService service;
+
+    /**
+     * 村サービスの村存在確認は {@link VillageAccessGate} へ移った。
+     * モックのゲートに実物のゲート（同じモックのリポジトリを注入）を委譲させることで、
+     * 本テストが積み上げてきた {@code villageRepository.findById} の stub をそのまま生かしつつ、
+     * 可視性判定は実物のロジックで走らせる。
+     */
+    @BeforeEach
+    void wireVillageAccessGate() {
+        VillageAccessGateTestSupport.delegateToRealGate(accessGate, villageRepository, membershipRepository);
+    }
 
     // ========================================================================
     // create
@@ -210,6 +226,7 @@ class VillageMeetupServiceTest {
     @DisplayName("update: 正常系（幹事による title 変更）")
     void update_ok() {
         givenActiveVillage();
+        givenActorIsVillager();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
         given(meetupRepository.save(any(VillageMeetupEntity.class)))
@@ -241,9 +258,30 @@ class VillageMeetupServiceTest {
     }
 
     @Test
+    @DisplayName("update: BAN 済みの幹事本人は更新できない（認可 Wave3・村ロットA・真の穴の修正）")
+    void update_banned_organizer() {
+        givenActiveVillage();
+        VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
+        given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
+        // BAN 済み（退村扱い）のため findActiveByVillageIdAndSubject は現役メンバーを返さない
+        given(membershipRepository.findActiveByVillageIdAndSubject(
+                VILLAGE_ID, VillageSubjectType.USER, ACTOR_USER_ID))
+                .willReturn(Optional.empty());
+
+        MeetupUpdateRequest req = new MeetupUpdateRequest("BAN逃れの改ざん", null, null, null);
+        assertThatThrownBy(() -> service.updateMeetup(VILLAGE_ID, MEETUP_ID, req, ACTOR_USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(ex -> ((BusinessException) ex).getErrorCode())
+                .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
+
+        verify(meetupRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("update: CONFIRMED の寄合 → 409 MEETUP_INVALID_STATUS")
     void update_confirmed_rejected() {
         givenActiveVillage();
+        givenActorIsVillager();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.CONFIRMED, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
 
@@ -262,6 +300,7 @@ class VillageMeetupServiceTest {
     @DisplayName("cancel: 正常系 → CANCELLED に遷移")
     void cancel_ok() {
         givenActiveVillage();
+        givenActorIsVillager();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
         given(meetupRepository.save(any(VillageMeetupEntity.class)))
@@ -281,6 +320,7 @@ class VillageMeetupServiceTest {
     @DisplayName("cancel: CONFIRMED → 409 MEETUP_INVALID_STATUS")
     void cancel_confirmed_rejected() {
         givenActiveVillage();
+        givenActorIsVillager();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.CONFIRMED, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
 
@@ -298,6 +338,7 @@ class VillageMeetupServiceTest {
     @DisplayName("confirm: AC-5 正常系 → CONFIRMED + 候補の date/time が confirmed へ転記")
     void confirm_ok() {
         givenActiveVillage();
+        givenActorIsVillager();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
         // 時刻付きの候補（19:00）を確定 → confirmedTime へ転記される
@@ -322,6 +363,7 @@ class VillageMeetupServiceTest {
     @DisplayName("confirm: AC-5b 終日候補（time=null）を確定すると confirmedTime も null のまま")
     void confirm_allday_keeps_null_time() {
         givenActiveVillage();
+        givenActorIsVillager();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
         VillageMeetupCandidateDateEntity cd = candidateDate(LocalDate.of(2026, 1, 10), null, MEETUP_ID);
@@ -342,6 +384,7 @@ class VillageMeetupServiceTest {
     @DisplayName("confirm: 既に CONFIRMED → 409 MEETUP_ALREADY_CONFIRMED")
     void confirm_already_confirmed() {
         givenActiveVillage();
+        givenActorIsVillager();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.CONFIRMED, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
 
@@ -356,6 +399,7 @@ class VillageMeetupServiceTest {
     @DisplayName("confirm: 別寄合の候補日 ID → 404 CANDIDATE_DATE_NOT_FOUND (IDOR防止)")
     void confirm_idor_other_meetup_candidate() {
         givenActiveVillage();
+        givenActorIsVillager();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
         // 別寄合に属する候補日
@@ -471,6 +515,7 @@ class VillageMeetupServiceTest {
     @DisplayName("addCandidateDate: 同一 (date, time) 既存 → 409 VOTE_DUPLICATE（終日同士も弾く）")
     void add_candidate_duplicate() {
         givenActiveVillage();
+        givenActorIsVillager();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
         // 既存は終日候補（time=null）。追加も終日 → (date, null) ペアが一致するので重複
@@ -489,6 +534,7 @@ class VillageMeetupServiceTest {
     @DisplayName("addCandidateDate: AC-6 同一日でも時刻が違えば追加できる（重複にしない・時刻も保存）")
     void add_candidate_same_date_different_time_ok() {
         givenActiveVillage();
+        givenActorIsVillager();
         VillageMeetupEntity existing = meetup(VillageMeetupStatus.PLANNING, ACTOR_USER_ID);
         given(meetupRepository.findById(MEETUP_ID)).willReturn(Optional.of(existing));
         // 既存は 10:00 の候補。追加は同日 19:00 → 別ペアなので許可

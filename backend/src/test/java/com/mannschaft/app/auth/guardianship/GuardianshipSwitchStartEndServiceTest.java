@@ -46,7 +46,8 @@ import static org.mockito.Mockito.verify;
  *   <li>リンクなし → 403 GUARDIANSHIP_LINK_NOT_FOUND / 監査なし</li>
  *   <li>年齢封印 → 403 GUARDIANSHIP_SWITCH_AGE_LOCKED / 監査なし</li>
  *   <li>care_links 経路でも成立</li>
- *   <li>endSwitch → 監査記録のみ（ステートレス）</li>
+ *   <li>endSwitch → 過去に一度でもリンクが存在すれば許容（現在の状態は問わない）・監査記録のみ（ステートレス）／
+ *       一切の関係がなければ 403 GUARDIANSHIP_LINK_NOT_FOUND</li>
  * </ul>
  *
  * <p>Clock は {@code Asia/Tokyo} 固定で date-pin（CI を固定日付で塞がない・P3a 写経）。</p>
@@ -259,8 +260,10 @@ class GuardianshipSwitchStartEndServiceTest {
     class EndSwitch {
 
         @Test
-        @DisplayName("監査記録のみ（ステートレス・proxy_input_records は書かない）")
-        void recordsAuditOnly() {
+        @DisplayName("正常系（parental_consent 経路・現在有効）: 監査記録のみ（ステートレス・proxy_input_records は書かない）")
+        void ok_currentlyApproved_recordsAuditOnly() {
+            given(parentalConsentService.hasEverBeenGuardian(GUARDIAN_ID, CHILD_ID)).willReturn(true);
+
             service.endSwitch(GUARDIAN_ID, CHILD_ID);
 
             verify(auditLogService).record(
@@ -268,6 +271,50 @@ class GuardianshipSwitchStartEndServiceTest {
                     eq(GUARDIAN_ID), eq(CHILD_ID),
                     isNull(), isNull(), isNull(), isNull(), isNull(), anyString());
             verify(proxyInputRecordRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("正常系（care_links 経路）: parental_consent が false でも care_links の過去リンクで成立")
+        void ok_viaCareLinksHistory() {
+            given(parentalConsentService.hasEverBeenGuardian(GUARDIAN_ID, CHILD_ID)).willReturn(false);
+            given(careLinkService.hasEverBeenParentWatcher(GUARDIAN_ID, CHILD_ID)).willReturn(true);
+
+            service.endSwitch(GUARDIAN_ID, CHILD_ID);
+
+            verify(auditLogService).record(
+                    eq(AuditEventType.GUARDIANSHIP_SWITCH_ENDED.name()),
+                    eq(GUARDIAN_ID), eq(CHILD_ID),
+                    isNull(), isNull(), isNull(), isNull(), isNull(), anyString());
+        }
+
+        @Test
+        @DisplayName("正常系（過去に存在したが現在は解除済み）: 現在有効性は問わず終了できる（安全側）")
+        void ok_revokedLinkStillAllowsEnd() {
+            // hasEverBeenGuardian は現在ステータスを問わない緩い存在チェック（REVOKED でも true）。
+            // startSwitch/evaluateSwitch の isApprovedGuardian（現在有効性のみ）とは別判定であることを固定する。
+            given(parentalConsentService.hasEverBeenGuardian(GUARDIAN_ID, CHILD_ID)).willReturn(true);
+
+            service.endSwitch(GUARDIAN_ID, CHILD_ID);
+
+            verify(auditLogService).record(
+                    eq(AuditEventType.GUARDIANSHIP_SWITCH_ENDED.name()),
+                    eq(GUARDIAN_ID), eq(CHILD_ID),
+                    isNull(), isNull(), isNull(), isNull(), isNull(), anyString());
+        }
+
+        @Test
+        @DisplayName("一切の関係がない childUserId → 403 GUARDIANSHIP_LINK_NOT_FOUND / 監査なし（IDOR 防止）")
+        void neverLinked_403_noAudit() {
+            given(parentalConsentService.hasEverBeenGuardian(GUARDIAN_ID, CHILD_ID)).willReturn(false);
+            given(careLinkService.hasEverBeenParentWatcher(GUARDIAN_ID, CHILD_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> service.endSwitch(GUARDIAN_ID, CHILD_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND);
+
+            verify(auditLogService, never()).record(
+                    anyString(), any(), any(), any(), any(), any(), any(), any(), any());
         }
     }
 }

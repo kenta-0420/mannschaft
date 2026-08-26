@@ -22,10 +22,9 @@ import org.springframework.web.bind.annotation.RestController;
  * チャンネルはイベント作成時に自動生成される（{@link com.mannschaft.app.event.listener.EventChatChannelListener}）。</p>
  *
  * <p><b>認可（認可根治 Wave3-B12event）:</b> 本 EP は eventId のみを path に持つフラットな
- * サブリソースであり、認可が一切敷設されていなかったため任意イベントの channelId・チャンネル名
- * （イベントタイトル由来）・teamId/orgId が非メンバーにも漏洩していた（IDOR）。
- * チャットメッセージ本体は chat ドメインの {@code ChatChannelController} 側で別途
- * メンバーシップ検証されるが、本 EP 自体がスコープ帰属情報を漏らすため
+ * サブリソースである。チャットメッセージ本体は chat ドメインの {@code ChatChannelController} 側で
+ * 別途メンバーシップ検証されるが、本 EP はチャンネル名（イベントタイトル由来）・teamId/orgId 等の
+ * スコープ帰属情報を返すため、
  * {@link EventScopeAccessGuard#requireMemberByEventId} で当該イベントスコープのメンバーのみに限定する。</p>
  */
 @RestController

@@ -56,7 +56,7 @@ public class StorageUsageLogEntity {
     @Column(name = "actor_id")
     private Long actorId;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

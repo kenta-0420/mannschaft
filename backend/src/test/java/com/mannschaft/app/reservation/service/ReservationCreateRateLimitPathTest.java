@@ -130,7 +130,7 @@ class ReservationCreateRateLimitPathTest {
                 FIXED_CLOCK);
 
         // 単枠は枠解決で止める（レートリミット消費より後）。
-        given(slotService.getSlotEntity(anyLong()))
+        given(slotService.getSlotEntity(anyLong(), anyLong()))
                 .willThrow(new BusinessException(ReservationErrorCode.SLOT_NOT_FOUND));
     }
 
@@ -341,9 +341,12 @@ class ReservationCreateRateLimitPathTest {
         ReservationWaitlistService waitlistService = new ReservationWaitlistService(
                 mock(com.mannschaft.app.reservation.repository.ReservationWaitlistEntryRepository.class),
                 slotRepository,
+                mock(com.mannschaft.app.reservation.repository.ReservationRepository.class),
                 viewAccessGuard,
                 valkeyRateLimiter,
                 mock(com.mannschaft.app.notification.service.NotificationHelper.class),
+                mock(com.mannschaft.app.common.i18n.UserLocaleCache.class),
+                mock(org.springframework.context.MessageSource.class),
                 FIXED_CLOCK);
         given(valkeyRateLimiter.tryConsume(anyString(), anyString(), anyInt(), any()))
                 .willReturn(new RateLimitResult(true, 10, 9, 0L, 1L));

@@ -2,6 +2,8 @@ package com.mannschaft.app.actionmemo;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.support.test.AbstractMySqlIntegrationTest;
+import com.mannschaft.app.membership.domain.RoleKind;
+import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.support.test.MembershipTestHelper;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -109,8 +111,8 @@ class ActionMemoScopeContractIT extends AbstractMySqlIntegrationTest {
 
         // owner は teamA / orgA の一般メンバー。actionmemo の所属判定は user_roles 由来
         // （UserRoleRepository#existsByUserIdAndTeamId / existsByUserIdAndOrganizationId）。
-        MembershipTestHelper.insertUserRole(em, ownerId, "MEMBER", teamAId, null);
-        MembershipTestHelper.insertUserRole(em, ownerId, "MEMBER", null, orgAId);
+        MembershipTestHelper.insertMembership(em, ownerId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
+        MembershipTestHelper.insertMembership(em, ownerId, ScopeType.ORGANIZATION, orgAId, RoleKind.MEMBER);
 
         // 管理者判定は roles.name IN ('ADMIN','DEPUTY_ADMIN')
         // （UserRoleRepository#countTeamAdminByUserIdAndTeamId）。

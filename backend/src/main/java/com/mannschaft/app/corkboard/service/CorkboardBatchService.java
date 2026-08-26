@@ -81,7 +81,7 @@ public class CorkboardBatchService {
      */
     @BatchEndpoint(name = "corkboard-auto-archive-hourly", description = "コルクボードカードの自動アーカイブを毎時 0 分に実行する")
     @Scheduled(cron = "0 0 * * * *", zone = "Asia/Tokyo")
-    @SchedulerLock(name = "corkboardAutoArchiveBatch", lockAtMostFor = "PT10M", lockAtLeastFor = "PT0S")
+    @SchedulerLock(name = "corkboardAutoArchiveBatch", lockAtMostFor = "PT2H", lockAtLeastFor = "PT0S")
     @Transactional
     public void autoArchiveCards() {
         executeAutoArchive(LocalDateTime.now());

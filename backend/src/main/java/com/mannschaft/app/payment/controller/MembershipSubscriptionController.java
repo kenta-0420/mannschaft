@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.payment.dto.MembershipSubscriptionListItemResponse;
 import com.mannschaft.app.payment.dto.MembershipSubscriptionResponse;
 import com.mannschaft.app.payment.dto.SubscribeRequest;
@@ -163,8 +164,14 @@ public class MembershipSubscriptionController {
      *
      * <p>認証ユーザーが払い手の全サブスクを返す。会費項目名・受益者表示名を名前解決済みで返す。</p>
      *
+     * <p><b>自己スコープ</b>: 検索条件は
+     * {@code findByPayerUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(認証主体の userId)} のみで、
+     * エンドポイントは引数を一切取らない。名前解決は引き当て済みの自分のサブスクに対してのみ行う。</p>
+     *
      * @return 200 OK + 継続課金一覧（作成日時降順）
      */
+    @SelfScopedEndpoint("検索条件が findByPayerUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(認証主体の userId) のみ"
+            + "（MembershipSubscriptionService#findForPayerWithNames・エンドポイントは引数を取らない）")
     @GetMapping("/api/v1/me/membership-subscriptions")
     @Operation(summary = "自分の継続課金一覧（F08.9 P5 第四波）")
     public ResponseEntity<ApiResponse<List<MembershipSubscriptionListItemResponse>>> listMySubscriptions() {

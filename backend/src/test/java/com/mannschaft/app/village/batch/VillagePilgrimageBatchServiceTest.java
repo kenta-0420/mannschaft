@@ -1,6 +1,5 @@
 package com.mannschaft.app.village.batch;
 
-import com.mannschaft.app.village.entity.UserVillagePinEntity;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageMembershipEntity;
 import com.mannschaft.app.village.entity.VillagePilgrimageRecommendationEntity;
@@ -20,13 +19,15 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -34,14 +35,11 @@ import static org.mockito.Mockito.verify;
 /**
  * {@link VillagePilgrimageBatchService} 単体テスト（F17.1 Phase 3-β 巡礼バッチ）。
  *
- * <p>カバー観点:</p>
- * <ul>
- *   <li>generateForUser: カテゴリ一致 + 未参加 + 未ピン の候補から推薦行を 1 件生成</li>
- *   <li>generateForUser: 当日既に推薦行があればスキップ（冪等）</li>
- *   <li>generateForUser: 候補がゼロなら行を作らない</li>
- *   <li>generateForUser: 削除済 / 凍結 / UNLISTED の村は候補から除外</li>
- *   <li>generateForUser: ピン済 / 参加済 の村は候補から除外</li>
- * </ul>
+ * <p>候補選定の絞り込み（削除/凍結/UNLISTED除外・カテゴリ一致・参加済/ピン済除外）は
+ * {@link VillageRepository#findPilgrimageCandidateIds} の SQL 側 WHERE 句へ移管したため、
+ * 本テストは「サービスが正しい引数（除外ID集合・カテゴリ絞り込みの有無）でリポジトリを呼ぶか」
+ * 「候補の有無に応じて正しく作成/スキップするか」のみを検証する。SQL の絞り込み自体の正しさは
+ * {@code VillagePilgrimageCandidateRepositoryIntegrationTest}（実 DB 結合テスト）で検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("VillagePilgrimageBatchService 単体テスト")
@@ -62,7 +60,7 @@ class VillagePilgrimageBatchServiceTest {
     private VillagePilgrimageBatchService batch;
 
     @Test
-    @DisplayName("カテゴリ一致 + 未参加 + 未ピン の村が候補となり、1 件生成される")
+    @DisplayName("カテゴリ一致の候補が返れば、その村で推薦行を1件生成しカテゴリ理由を記録する")
     void generate_categoryMatch() {
         LocalDate today = LocalDate.now();
         UUID joinedVillageId = UUID.randomUUID();
@@ -74,10 +72,12 @@ class VillagePilgrimageBatchServiceTest {
         given(villageRepository.findAllById(anyCollection()))
                 .willReturn(List.of(village(joinedVillageId, "sports", VillageVisibility.PUBLIC, false, false)));
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID)).willReturn(List.of());
-        given(villageRepository.findAll()).willReturn(List.of(
-                village(joinedVillageId, "sports", VillageVisibility.PUBLIC, false, false),     // 参加済→除外
-                village(candidateVillageId, "sports", VillageVisibility.PUBLIC, false, false)   // 候補
-        ));
+        given(villageRepository.findPilgrimageCandidateIds(
+                eq(VillageVisibility.PUBLIC), anyCollection(), eq(false), anyCollection()))
+                .willReturn(List.of(candidateVillageId));
+        given(villageRepository.findById(candidateVillageId))
+                .willReturn(java.util.Optional.of(
+                        village(candidateVillageId, "sports", VillageVisibility.PUBLIC, false, false)));
         given(pilgrimageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         boolean created = batch.generateForUser(USER_ID, today);
@@ -90,6 +90,13 @@ class VillagePilgrimageBatchServiceTest {
         assertThat(cap.getValue().getReason()).isEqualTo("CATEGORY_MATCH:sports");
         assertThat(cap.getValue().getUserId()).isEqualTo(USER_ID);
         assertThat(cap.getValue().getRecommendedDate()).isEqualTo(today);
+
+        // 参加済み・ピン済みの村IDが除外集合として渡っていること
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Collection<UUID>> excludeCap = ArgumentCaptor.forClass(Collection.class);
+        verify(villageRepository).findPilgrimageCandidateIds(
+                eq(VillageVisibility.PUBLIC), excludeCap.capture(), eq(false), anyCollection());
+        assertThat(excludeCap.getValue()).contains(joinedVillageId);
     }
 
     @Test
@@ -106,11 +113,25 @@ class VillagePilgrimageBatchServiceTest {
     }
 
     @Test
-    @DisplayName("候補がゼロ（カテゴリ一致なし）なら行を作らない")
+    @DisplayName("所属村が無ければスキップして save しない")
+    void generate_noMembership() {
+        LocalDate today = LocalDate.now();
+        given(pilgrimageRepository.existsByUserIdAndRecommendedDate(USER_ID, today)).willReturn(false);
+        given(membershipRepository.findActiveUserMemberships(USER_ID)).willReturn(List.of());
+
+        boolean created = batch.generateForUser(USER_ID, today);
+
+        assertThat(created).isFalse();
+        verify(pilgrimageRepository, never()).save(any());
+        verify(villageRepository, never()).findPilgrimageCandidateIds(
+                any(), any(), anyBoolean(), any());
+    }
+
+    @Test
+    @DisplayName("リポジトリが候補ゼロを返せば行を作らない")
     void generate_noCandidate() {
         LocalDate today = LocalDate.now();
         UUID joinedVillageId = UUID.randomUUID();
-        UUID otherCategoryVillageId = UUID.randomUUID();
 
         given(pilgrimageRepository.existsByUserIdAndRecommendedDate(USER_ID, today)).willReturn(false);
         given(membershipRepository.findActiveUserMemberships(USER_ID))
@@ -118,10 +139,9 @@ class VillagePilgrimageBatchServiceTest {
         given(villageRepository.findAllById(anyCollection()))
                 .willReturn(List.of(village(joinedVillageId, "sports", VillageVisibility.PUBLIC, false, false)));
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID)).willReturn(List.of());
-        given(villageRepository.findAll()).willReturn(List.of(
-                village(joinedVillageId, "sports", VillageVisibility.PUBLIC, false, false),     // 参加済
-                village(otherCategoryVillageId, "music", VillageVisibility.PUBLIC, false, false) // カテゴリ不一致
-        ));
+        given(villageRepository.findPilgrimageCandidateIds(
+                any(), anyCollection(), anyBoolean(), anyCollection()))
+                .willReturn(List.of());
 
         boolean created = batch.generateForUser(USER_ID, today);
 
@@ -130,56 +150,38 @@ class VillagePilgrimageBatchServiceTest {
     }
 
     @Test
-    @DisplayName("削除済・凍結・UNLISTED の村は候補から除外される")
-    void generate_excludesDeletedArchivedUnlisted() {
+    @DisplayName("所属村にカテゴリが無い場合、カテゴリ絞り込み無しでリポジトリを呼び RANDOM 理由になる")
+    void generate_noCategory_randomReason() {
         LocalDate today = LocalDate.now();
         UUID joinedVillageId = UUID.randomUUID();
-        UUID deletedId = UUID.randomUUID();
-        UUID archivedId = UUID.randomUUID();
-        UUID unlistedId = UUID.randomUUID();
+        UUID candidateVillageId = UUID.randomUUID();
 
         given(pilgrimageRepository.existsByUserIdAndRecommendedDate(USER_ID, today)).willReturn(false);
         given(membershipRepository.findActiveUserMemberships(USER_ID))
                 .willReturn(List.of(membership(joinedVillageId)));
+        // 所属村がカテゴリ未設定（null）
         given(villageRepository.findAllById(anyCollection()))
-                .willReturn(List.of(village(joinedVillageId, "sports", VillageVisibility.PUBLIC, false, false)));
+                .willReturn(List.of(village(joinedVillageId, null, VillageVisibility.PUBLIC, false, false)));
         given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID)).willReturn(List.of());
-        given(villageRepository.findAll()).willReturn(List.of(
-                village(joinedVillageId, "sports", VillageVisibility.PUBLIC, false, false),
-                village(deletedId, "sports", VillageVisibility.PUBLIC, true, false),   // 削除済
-                village(archivedId, "sports", VillageVisibility.PUBLIC, false, true),  // 凍結
-                village(unlistedId, "sports", VillageVisibility.UNLISTED, false, false) // UNLISTED
-        ));
+        given(villageRepository.findPilgrimageCandidateIds(
+                eq(VillageVisibility.PUBLIC), anyCollection(), eq(true), anyCollection()))
+                .willReturn(List.of(candidateVillageId));
+        given(villageRepository.findById(candidateVillageId))
+                .willReturn(java.util.Optional.of(
+                        village(candidateVillageId, "music", VillageVisibility.PUBLIC, false, false)));
+        given(pilgrimageRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         boolean created = batch.generateForUser(USER_ID, today);
 
-        assertThat(created).isFalse();
-        verify(pilgrimageRepository, never()).save(any());
-    }
+        assertThat(created).isTrue();
+        ArgumentCaptor<VillagePilgrimageRecommendationEntity> cap =
+                ArgumentCaptor.forClass(VillagePilgrimageRecommendationEntity.class);
+        verify(pilgrimageRepository).save(cap.capture());
+        assertThat(cap.getValue().getReason()).isEqualTo("RANDOM");
 
-    @Test
-    @DisplayName("ピン済みの村は候補から除外される")
-    void generate_excludesPinned() {
-        LocalDate today = LocalDate.now();
-        UUID joinedVillageId = UUID.randomUUID();
-        UUID pinnedId = UUID.randomUUID();
-
-        given(pilgrimageRepository.existsByUserIdAndRecommendedDate(USER_ID, today)).willReturn(false);
-        given(membershipRepository.findActiveUserMemberships(USER_ID))
-                .willReturn(List.of(membership(joinedVillageId)));
-        given(villageRepository.findAllById(anyCollection()))
-                .willReturn(List.of(village(joinedVillageId, "sports", VillageVisibility.PUBLIC, false, false)));
-        given(pinRepository.findByUserIdOrderBySortOrderAsc(USER_ID))
-                .willReturn(List.of(pin(pinnedId)));
-        given(villageRepository.findAll()).willReturn(List.of(
-                village(joinedVillageId, "sports", VillageVisibility.PUBLIC, false, false),
-                village(pinnedId, "sports", VillageVisibility.PUBLIC, false, false)
-        ));
-
-        boolean created = batch.generateForUser(USER_ID, today);
-
-        assertThat(created).isFalse();
-        verify(pilgrimageRepository, never()).save(any());
+        // categoriesEmpty=true でリポジトリが呼ばれていること
+        verify(villageRepository).findPilgrimageCandidateIds(
+                eq(VillageVisibility.PUBLIC), anyCollection(), eq(true), anyCollection());
     }
 
     // ====================================================================
@@ -215,12 +217,4 @@ class VillagePilgrimageBatchServiceTest {
         return v;
     }
 
-    private UserVillagePinEntity pin(UUID villageId) {
-        UserVillagePinEntity p = UserVillagePinEntity.builder()
-                .userId(USER_ID)
-                .villageId(villageId)
-                .sortOrder(0L)
-                .build();
-        return p;
-    }
 }

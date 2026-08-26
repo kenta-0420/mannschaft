@@ -2,6 +2,7 @@
 import type { SwitchableChild } from '~/types/guardianship'
 import type { SubscribeRequest } from '~/types/membershipSubscription'
 import type { PaymentItemResponse } from '~/types/payment'
+import { formatLocalDateOnly } from '~/utils/localDate'
 
 /**
  * F08.9 P5/P6 継続課金・期別課金 加入ページ（専用ページ方式・殿裁定 / 設計書 04 §2）。
@@ -47,19 +48,20 @@ const isTermType = computed(() => paymentItem.value?.meta.type === 'TERM')
 const termStartsOnFormatted = computed<string | null>(() => {
   const d = paymentItem.value?.term?.termStartsOn
   if (!d) return null
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(d))
+  return formatLocalDateOnly(d, locale.value)
 })
 
 /** TERM 有効期間終了日（ロケールに合わせてフォーマット）。 */
 const termEndsOnFormatted = computed<string | null>(() => {
   const d = paymentItem.value?.term?.termEndsOn
   if (!d) return null
-  return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium' }).format(new Date(d))
+  return formatLocalDateOnly(d, locale.value)
 })
 
 /**
  * 支払い項目を取得する（TERM 型の有効期間表示に使用）。
- * BE エンドポイント未実装の間は取得失敗を許容し、ページ機能は継続する（UI 上は期間非表示）。
+ * Issue #2657 で BE エンドポイント（GET /api/v1/payment-items/{itemId}）を実装済み。
+ * 取得失敗時（権限なし・削除済み等）は加入フロー自体を止めず、UI 上は期間表示のみ省略する。
  * 症状を隠さない原則：エラー時は WARN でログに出す（ユーザー向けエラー表示はしない）。
  */
 async function loadPaymentItem() {
@@ -68,7 +70,6 @@ async function loadPaymentItem() {
     const res = await paymentApi.getPaymentItemById(itemId.value)
     paymentItem.value = res.data
   } catch (err) {
-    // P6 BE 未実装の間は 404/500 が返るため WARN のみ（加入フロー自体は継続可能）。
     console.warn('[subscribe] 支払い項目の取得に失敗（TERM 型表示は省略）', { itemId: itemId.value, err })
   }
 }

@@ -20,7 +20,7 @@ import org.springframework.stereotype.Component;
  * {@code TEAM / ORGANIZATION} のみである。設計書 §2 の対象レベルも組織・チームに限定される。</p>
  * <ul>
  *   <li>{@code TEAM / ORGANIZATION}: {@link AccessControlService} 経由で所属・ロール・権限を実効認可する。
- *       現状の重大欠陥（他チームのスレッド削除・ロック・カテゴリ削除が誰でも可能）を本ガードで塞ぐ。</li>
+ *       スレッド削除・ロック・カテゴリ削除といった管理操作の認可を本ガードで一貫して適用する。</li>
  *   <li>{@code PERSONAL}: ユーザー個人スコープ（{@code scope_id = userId}）。ロール基盤の外だが
  *       「本人であること」は本ガードで判定できるため、
  *       {@link #checkPersonalOwner(Long, Long)} で本人性を実効検証する。</li>
@@ -33,9 +33,7 @@ import org.springframework.stereotype.Component;
  *
  * <h2>fail-closed 方針（重要）</h2>
  * <p>{@link #checkMembership(Long, ScopeType, Long)} は<b>全スコープ種別を網羅し、
- * 本ガードで判定できない種別は素通しせず拒否する</b>。以前は「当該スコープ側の検証に委ねる」として
- * TEAM / ORGANIZATION 以外を無条件に素通りさせていたが、委ねた先の検証を呼び出し側が
- * 行っていない経路があると誰も検証しない状態になり得た。委譲は「呼び出し側で分岐済み」を
+ * 本ガードで判定できない種別は素通しせず拒否する</b>。委譲は「呼び出し側で分岐済み」を
  * 前提にしてよいが、<b>分岐漏れは素通しではなく拒否として現れる</b>ようにする。</p>
  *
  * <p>あわせて、スコープ付きパス経路（{@code /api/v1/{scopeType}/{scopeId}/bulletin/...}）では
@@ -72,9 +70,8 @@ public class BulletinAccessGuard {
     /**
      * 当該スコープへのアクセス資格を検証する。資格が無ければ 403（COMMON_002）。
      *
-     * <p><b>全スコープ種別を網羅する（fail-closed）</b>。以前は TEAM / ORGANIZATION 以外を
-     * 一律で素通りさせていたため、呼び出し側が当該スコープの検証を忘れると誰も検証しない
-     * 状態になり得た。本メソッドは種別ごとに扱いを明示し、想定外の種別は拒否する。</p>
+     * <p><b>全スコープ種別を網羅する（fail-closed）</b>。本メソッドは種別ごとに扱いを明示し、
+     * 想定外の種別は拒否する。</p>
      *
      * <ul>
      *   <li>{@code TEAM / ORGANIZATION}: {@link AccessControlService} でメンバーシップを検証</li>

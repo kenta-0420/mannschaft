@@ -79,6 +79,15 @@ public class PublicSitemapController {
      * （sitemap は URL を検索エンジンへ差し出すため、載せた時点で存在が漏れる）。
      * 判定は {@code SitemapQueryService} 側。設計書 F19.1 §9.2.1 参照。</p>
      *
+     * <p><b>この保証は投稿 URL（{@code /public/teams/{teamId}/posts/{postId}} /
+     * {@code /public/organizations/{organizationId}/posts/{postId}}）にも及ぶ。</b>
+     * 投稿の 2 経路はかつて投稿自身の可視性しか見ておらず、非公開チーム / 組織配下の
+     * PUBLIC + PUBLISHED 投稿が載っていた。現在は
+     * {@code SitemapQueryService#findPublicTeamPostEntries} /
+     * {@code #findPublicOrganizationPostEntries} が公開スコープ ID 集合を SQL へ渡して
+     * 親を絞っており、活動記録・チーム・組織の各経路と同じ基準に揃っている。
+     * 収録経路を増やすときは、必ず親スコープの公開判定を伴わせること。</p>
+     *
      * <p>Cache-Control: public, max-age=3600 (1時間) を付与する。</p>
      */
     @GetMapping(value = "/sitemap.xml", produces = "application/xml;charset=UTF-8")

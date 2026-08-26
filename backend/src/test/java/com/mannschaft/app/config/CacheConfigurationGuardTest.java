@@ -133,5 +133,24 @@ class CacheConfigurationGuardTest {
                     .as("可視性テンプレートキャッシュ。閲覧認可の中核であり既定30分は長すぎる")
                     .isLessThanOrEqualTo(MAX_AUTHZ_TTL);
         }
+
+        @Test
+        @DisplayName("adNgWords の TTL は5分以内（evict が存在せず TTL が唯一の収束手段のため）")
+        void 広告NG辞書キャッシュのTTLは5分以内() {
+            Map<String, RedisCacheConfiguration> configurations = cacheConfigurations();
+
+            // issue #2544: ad_ng_words にはアプリ側の書き込み経路が 1 つも無く
+            // （更新は Flyway マイグレーション＝デプロイ時のみ）、@CacheEvict を貼るべき
+            // ミューテーションメソッドが存在しない。よって反映の収束手段は TTL だけである。
+            // 同 issue で自己呼び出しを是正して本キャッシュが初めて実際に効くようになったため、
+            // 既定 30 分に戻すと「NG ワードを追加したのに最大 30 分ブロックされない」という
+            // 是正前には無かった反映遅延を作り込むことになる。ここで機械的に固定する。
+            assertThat(configurations)
+                    .as("adNgWords に個別 TTL が登録されていない（既定30分に落ちている）")
+                    .containsKey("adNgWords");
+            assertThat(ttlOf(configurations.get("adNgWords")))
+                    .as("広告 NG 辞書キャッシュ。evict 経路が無いため TTL でしか収束しない")
+                    .isLessThanOrEqualTo(MAX_AUTHZ_TTL);
+        }
     }
 }

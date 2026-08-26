@@ -4,7 +4,9 @@ import com.mannschaft.app.team.service.TeamService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.social.dto.FollowResponse;
@@ -85,6 +87,8 @@ public class TeamController {
     // チーム CRUD
     // ========================================
 
+    @SelfScopedEndpoint("TeamService#createTeam は SecurityUtils.getCurrentUserId() を"
+            + "作成者として新規チームを作るのみで、他人の識別子を指定する余地が無い")
     @PostMapping
     @Operation(summary = "チーム作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
@@ -100,6 +104,10 @@ public class TeamController {
      * <p>結果は <b>PUBLIC かつ未アーカイブ</b>のチームのみに限定される（可視性フィルタは
      * {@code TeamRepository#searchByKeyword} のクエリが担保。論理削除は {@code @SQLRestriction} が除外）。</p>
      */
+    // 全ユーザーに同一内容を返す（PUBLIC チームのみ）参照系 EP。/api/v1/teams/search は
+    // permitAll 未登録のため SecurityConfig の anyRequest().authenticated() で
+    // 認証必須が強制される（同名の /api/v1/public/teams/search とは別エンドポイント）。
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/search")
     @Operation(summary = "チーム検索（PUBLIC かつ未アーカイブのチームのみ）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -108,6 +116,10 @@ public class TeamController {
         return ResponseEntity.ok(teamService.searchTeams(keyword, pageable));
     }
 
+    // 全ユーザーに同一内容を返す（重複有無のみ）参照系 EP。/api/v1/teams/slug-available は
+    // permitAll 未登録のため SecurityConfig の anyRequest().authenticated() で
+    // 認証必須が強制される。
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/slug-available")
     @Operation(summary = "slug 可用性チェック（作成前のリアルタイム検証・村方式統一）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "判定結果")
@@ -274,6 +286,8 @@ public class TeamController {
                 .body(supporterService.follow(userId, SCOPE_TYPE, id));
     }
 
+    @SelfScopedEndpoint("SupporterService#unfollow は SecurityUtils.getCurrentUserId() 自身の"
+            + "フォロー関係のみを解除し、他人のフォロー関係を指定する余地が無い")
     @DeleteMapping("/{slug}/follow")
     @Operation(summary = "チームサポーター解除・申請取消（APPROVED/PENDING どちらも取消可）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "解除成功")
@@ -283,6 +297,9 @@ public class TeamController {
         return ResponseEntity.noContent().build();
     }
 
+    @SelfScopedEndpoint("SupporterService#getFollowStatus は SecurityUtils.getCurrentUserId() と"
+            + "対象チームの間の自分自身のフォロー関係のみを返し、他人のフォロー状態を"
+            + "指定する余地が無い")
     @GetMapping("/{slug}/follow/status")
     @Operation(summary = "チームサポーター申請状態取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

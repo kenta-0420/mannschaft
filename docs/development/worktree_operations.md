@@ -79,3 +79,20 @@ rmdir .claude/worktrees/agent-* 2>/dev/null || true
 - worktree 内で commit が完了したら、メインリポジトリに `git merge` でマージする
 
 詳細経緯: memory `feedback_branch_isolation` / `feedback_merge_gh_only_no_honjin_git`。
+
+## 並列ビルドの交通整理
+
+- **実証事実**: 同一マシン上で Gradle の heavy build（compileJava/test/build 等）を複数 worktree から同時に走らせると遅くなる。原因はファイルロック待ちではなく **CPU/IO リソース競合**（3並列 --info ログでロック待ちゼロ件、単独310秒 → 3並列489〜513秒、約1.6倍悪化）。build cache（`org.gradle.caching=true`）は正常に機能しており、無効化する必要はない。
+- **旧処方の撤回**: 「遅ければ `--no-build-cache` を付ける」という対処は誤り。build cache は原因ではないため無効化しても改善しない。付けないこと。
+- **対策**: `backend/scripts/gradle-turnstile.sh` で heavy build を1本に直列化する。
+  ```bash
+  cd backend
+  ./scripts/gradle-turnstile.sh ./gradlew build
+  ./scripts/gradle-turnstile.sh ./gradlew test
+  ```
+  - ロック置き場はマシン全体で固定の1箇所（`${LOCALAPPDATA:-$HOME}/gradle-turnstile`）。worktree ごとの `GRADLE_USER_HOME` には依存しない（直列化の単位はマシンなのでロックも1つでよい）
+  - 取得は「一意な一時ディレクトリに info(PID/TIME/TOKEN) を書いてから `mv -T` でロック名へ改名」方式でアトミックに行う（mkdir直後の空ディレクトリが見える隙間を作らない）
+  - 先客がいる場合は15秒間隔でポーリングして待機（1分毎に状況を出力）
+  - stale 奪取の条件は**ロック保持プロセスの PID が死んでいること**のみ（生存中は経過時間に関わらず奪取しない）。生存中の先客を待つ時間には上限180分を設け、超過時はエラー終了して人間の確認に委ねる
+  - **heavy**（このスクリプト経由が必須）: `test` / `build` / `bootJar` / `check` / `compileJava` / `compileTestJava` を含む実行
+  - **軽量**（対象外）: `help` / `tasks` / `properties` / `--status` / `--stop` 等

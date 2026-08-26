@@ -1,5 +1,6 @@
 package com.mannschaft.app.schedule.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,7 +15,7 @@ import java.util.List;
  * スケジュール作成リクエストDTO。
  */
 @Getter
-@RequiredArgsConstructor
+@RequiredArgsConstructor(onConstructor_ = @JsonCreator)
 public class CreateScheduleRequest {
 
     @NotBlank
@@ -50,6 +51,13 @@ public class CreateScheduleRequest {
     private final String minViewRole;
 
     private final String minResponseRole;
+
+    /** null は後方互換のため ALL_MEMBERS として扱う。 */
+    private final String targetMode;
+
+    /** SELECTED_MEMBERS 時だけ指定する、スコープ内の対象ユーザーID。 */
+    @Size(max = 500)
+    private final List<Long> targetUserIds;
 
     @NotNull
     private final Boolean attendanceRequired;
@@ -104,4 +112,21 @@ public class CreateScheduleRequest {
      * 組織出欠集計が by_team を算出して返す。
      */
     private final Boolean teamBreakdownEnabled;
+
+    /** 対象者機能追加以前のJava呼び出し元向け。JSON契約では省略時ALL_MEMBERSとして扱う。 */
+    public CreateScheduleRequest(
+            String title, String description, String location,
+            OffsetDateTime startAt, OffsetDateTime endAt, Boolean allDay,
+            String eventType, String visibility, String minViewRole, String minResponseRole,
+            Boolean attendanceRequired, OffsetDateTime attendanceDeadline, String commentOption,
+            Long eventCategoryId, Integer academicYear, RecurrenceRuleDto recurrenceRule,
+            List<CreateSurveyRequest> surveys, List<CreateReminderRequest> reminders,
+            List<ScheduledSurveyRequest> scheduledSurveys,
+            ScheduledAttendanceRequest scheduledAttendance,
+            Boolean includeSupporters, Boolean teamBreakdownEnabled) {
+        this(title, description, location, startAt, endAt, allDay, eventType, visibility,
+                minViewRole, minResponseRole, null, null, attendanceRequired, attendanceDeadline,
+                commentOption, eventCategoryId, academicYear, recurrenceRule, surveys, reminders,
+                scheduledSurveys, scheduledAttendance, includeSupporters, teamBreakdownEnabled);
+    }
 }

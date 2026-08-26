@@ -29,8 +29,7 @@ import com.mannschaft.app.common.SecurityUtils;
  * エンドポイント数: 2（GET, PUT）
  *
  * <p><b>認可根治戦役 Wave5早馬（B1b・2026-07-17）:</b> 兄弟 {@link OrganizationPaymentController}
- * は Wave3-B1 で全 EP に {@link AccessControlService} を敷設済みだったが、本コントローラは
- * 未注入のまま素通りしていた（組織認可無しでコンテンツゲートを全消去できる欠陥）。兄弟と同型で、
+ * と同型で、全 EP に {@link AccessControlService} を適用する。
  * 閲覧系（GET）は {@link AccessControlService#checkMembership}、変更系（PUT）は
  * {@link AccessControlService#checkAdminOrAbove} を要求する。</p>
  */

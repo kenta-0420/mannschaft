@@ -17,6 +17,7 @@ import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
+import com.mannschaft.app.schedule.ScheduleTargetMode;
 import com.mannschaft.app.schedule.dto.AttendanceRequest;
 import com.mannschaft.app.schedule.dto.AttendanceSolicitationSettings;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
@@ -30,6 +31,7 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.event.AttendanceRespondedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.repository.ScheduleTargetRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -80,6 +82,7 @@ public class ScheduleAttendanceService {
     private final ScheduleDelegationService scheduleDelegationService;
     private final NotificationService notificationService;
     private final NotificationDispatchService notificationDispatchService;
+    private final ScheduleTargetRepository scheduleTargetRepository;
 
     /**
      * (B) 組織→参加チーム配信 案C フェーズA: 組織スコープ配信の宛先解決窓口。
@@ -605,6 +608,12 @@ public class ScheduleAttendanceService {
                     .distinct()
                     .toList();
         }
+        if (schedule.getTargetMode() == ScheduleTargetMode.SELECTED_MEMBERS) {
+            var targetIds = scheduleTargetRepository.findByScheduleIdOrderByUserIdAsc(schedule.getId()).stream()
+                    .map(com.mannschaft.app.schedule.entity.ScheduleTargetEntity::getUserId)
+                    .collect(java.util.stream.Collectors.toSet());
+            memberUserIds = memberUserIds.stream().filter(targetIds::contains).toList();
+        }
         if (memberUserIds.isEmpty()) {
             log.info("出欠募集スキップ（対象メンバー0名）: scheduleId={}, scope={}:{}",
                     scheduleId, scopeType, scopeId);
@@ -731,18 +740,17 @@ public class ScheduleAttendanceService {
         // ユーザーが所属するチームのスケジュールIDを収集
         List<Long> allScheduleIds = new ArrayList<>();
 
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        for (UserRoleEntity role : teamRoles) {
+        // CMP-027: user_roles ∪ memberships の在籍チーム（素メンバー/応援者を取りこぼさない）
+        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
             List<ScheduleEntity> teamSchedules = scheduleRepository
-                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to);
+                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to);
             allScheduleIds.addAll(teamSchedules.stream().map(ScheduleEntity::getId).toList());
         }
 
-        // ユーザーが所属する組織のスケジュールIDを収集
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        for (UserRoleEntity role : orgRoles) {
+        // ユーザーが所属する組織のスケジュールIDを収集（CMP-027: user_roles ∪ memberships の在籍組織）
+        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
             List<ScheduleEntity> orgSchedules = scheduleRepository
-                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to);
+                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to);
             allScheduleIds.addAll(orgSchedules.stream().map(ScheduleEntity::getId).toList());
         }
 

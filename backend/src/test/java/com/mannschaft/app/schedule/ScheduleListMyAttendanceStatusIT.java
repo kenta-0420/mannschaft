@@ -89,8 +89,11 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        teamSlug = "wb-myattend-team-" + System.nanoTime();
-        orgSlug = "wb-myattend-org-" + System.nanoTime();
+        // slug 列は VARCHAR(30) かつ一意制約。"wb-myattend-team-" + nanoTime()（19桁）は
+        // 36文字超で Data too long になる（既存不良・本件の差分とは無関係）。
+        // 接頭辞を短縮し nanoTime() を6桁に丸めて 30文字以内に収める。
+        teamSlug = "wbmat-t-" + (System.nanoTime() % 1_000_000L);
+        orgSlug = "wbmat-o-" + (System.nanoTime() % 1_000_000L);
 
         teamId = insertTeam("MYATTEND チーム", teamSlug);
         orgId = insertOrganization("MYATTEND 組織", orgSlug);
@@ -98,6 +101,15 @@ class ScheduleListMyAttendanceStatusIT extends AbstractMySqlIntegrationTest {
         userAId = insertUser("myattend-a@example.com");
         userBId = insertUser("myattend-b@example.com");
 
+        // 検分差し戻し是正（2026-08-15、二度目）: schedules.min_response_role は DDL
+        // NOT NULL DEFAULT 'MEMBER_PLUS' であり ScheduleEntity 側も @Builder.Default で
+        // 揃えたため、respondAttendance は実際に ScheduleAttendanceService#validateMinResponseRole
+        // → AccessControlService#hasRoleOrAbove(...,"MEMBER") を通る。
+        // 所属ロール（MEMBER/SUPPORTER）は CMP-027（V60.010 移行）以降 memberships のみで
+        // 表現するのが本番の姿であり、user_roles へ張るのは本番で成立しえない
+        // （MembershipTestHelper.insertUserRole が MEMBER/SUPPORTER を禁じる番人を持つ）。
+        // insertMembership 自体が roles テーブルへの roleKind 冪等 seed を内包しているため
+        // （resolveRoleIdByName 呼び出し）、追加の insertUserRole は不要かつ禁止。
         MembershipTestHelper.insertMembership(em, userAId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, userBId, ScopeType.TEAM, teamId, RoleKind.MEMBER);
         MembershipTestHelper.insertMembership(em, userAId, ScopeType.ORGANIZATION, orgId, RoleKind.MEMBER);

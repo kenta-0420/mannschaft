@@ -218,6 +218,27 @@
       "unpinAction": "Unpin this card",
       "navigationFailed": "Cannot access the reference of this card",
       "colorLabelAria": "{color} label"
+    },
+    "activity_feed": {
+      "post_created": "posted",
+      "event_created": "created an event",
+      "member_joined": "joined",
+      "todo_completed": "completed a TODO",
+      "bulletin_created": "posted a notice",
+      "poll_created": "created a poll",
+      "file_uploaded": "shared a file",
+      "schedule_created": "created a schedule",
+      "schedule_updated": "updated a schedule",
+      "schedule_cancelled": "cancelled a schedule",
+      "schedule_rescheduled": "rescheduled a schedule",
+      "detail_start_at": "Start time",
+      "detail_end_at": "End time",
+      "detail_is_all_day": "All-day",
+      "detail_title": "Title",
+      "detail_location": "Location",
+      "detail_status": "Status",
+      "detail_description_changed": "Description updated",
+      "unknown": "did something"
     }
   },
   "swipeWidgets": {

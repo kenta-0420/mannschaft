@@ -42,6 +42,8 @@ export interface SlotSummaryDto {
   title?: string
   /** Format: date (YYYY-MM-DD) */
   slotDate?: string
+  /** Format: date (YYYY-MM-DD), 日跨ぎ枠の終了業務日。 */
+  endDate?: string
   /** Format: time (HH:mm:ss) */
   startTime?: string
   /** Format: time (HH:mm:ss) */
@@ -100,6 +102,8 @@ export interface SlotBasicDto {
   title?: string
   /** Format: date (YYYY-MM-DD) */
   slotDate?: string
+  /** Format: date (YYYY-MM-DD), 日跨ぎ枠の終了業務日。 */
+  endDate?: string
   /** Format: time (HH:mm:ss) */
   startTime?: string
   /** Format: time (HH:mm:ss) */
@@ -111,14 +115,8 @@ export interface SlotStatusDto {
   bookedCount?: number
   /** 予約枠の定員（同時にこの枠を予約できる人数の上限。既定 1） */
   capacity?: number
-  isException?: boolean
   closedReason?: string
   note?: string
-}
-
-export interface SlotRecurrenceDto {
-  recurrenceRule?: string
-  parentSlotId?: number
 }
 
 export interface SlotPricingDto {
@@ -143,7 +141,6 @@ export interface ReservationSlotResponse {
   staffUserId?: number
   basic?: SlotBasicDto
   status?: SlotStatusDto
-  recurrence?: SlotRecurrenceDto
   pricing?: SlotPricingDto
   policy?: SlotPolicyDto
   audit?: SlotAuditDto
@@ -178,6 +175,7 @@ export interface TimeSlotDto {
   startTime?: string
   /** Format: time (HH:mm:ss) */
   endTime?: string
+  endsNextDay?: boolean
 }
 
 export interface BlockedAuditDto {
@@ -202,6 +200,7 @@ export interface BusinessStatusDto {
   openTime?: string
   /** Format: time (HH:mm:ss) */
   closeTime?: string
+  endsNextDay?: boolean
 }
 
 export interface BusinessHourResponse {
@@ -287,6 +286,7 @@ export interface CreateSlotRequest {
   startTime: string
   /** Format: time (HH:mm:ss) */
   endTime: string
+  endsNextDay?: boolean
   recurrenceRule?: string
   price?: number
   note?: string
@@ -305,6 +305,7 @@ export interface UpdateSlotRequest {
   startTime?: string
   /** Format: time (HH:mm:ss) */
   endTime?: string
+  endsNextDay?: boolean
   price?: number
   note?: string
   /** 枠単位の承認モード上書き（clearApprovalMode=true と同時指定不可） */

@@ -23,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * ケアリンクサービス。F03.12 ケア対象者イベント参加見守り通知システム。
@@ -430,10 +432,12 @@ public class CareLinkService {
     public List<Long> getActiveWatchers(Long recipientUserId, String notifyType) {
         List<UserCareLinkEntity> links = careLinkRepository
                 .findByCareRecipientUserIdAndStatus(recipientUserId, CareLinkStatus.ACTIVE);
+        // issue #2544 B 群: toList() が返す ImmutableCollections$ListN は Valkey から復元できないため
+        // 可変の ArrayList に集める（復元失敗は fail-open で WARN に消え、毎回 DB を引く状態に戻る）。
         return links.stream()
                 .filter(link -> matchesNotifyType(link, notifyType))
                 .map(UserCareLinkEntity::getWatcherUserId)
-                .toList();
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -457,6 +461,29 @@ public class CareLinkService {
         }
         return careLinkRepository.existsByCareRecipientUserIdAndWatcherUserIdAndRelationshipAndStatus(
                 careRecipientUserId, watcherUserId, CareRelationship.PARENT, CareLinkStatus.ACTIVE);
+    }
+
+    /**
+     * 指定ユーザーが対象のケア対象者と<b>過去に一度でも</b>見守り PARENT のケアリンクを
+     * 持ったことがあるか（ステータスを問わない）を判定する。
+     *
+     * <p>F08.9 後見切替終了（{@code GuardianshipSwitchService#endSwitch}）の認可から呼び出される
+     * 境界メソッド。{@link #isActiveParentWatcher} より<b>緩い</b>存在チェックとして用意し、
+     * 切替中にリンクが解除された正当な保護者を締め出さない一方、一切の関係がない第三者による
+     * 監査ログの捏造を防ぐ（認可根治戦役 Wave5・endSwitch 是正）。
+     * 現在 REVOKED / REJECTED / PENDING であっても、当該 (recipient, watcher, PARENT) の組で
+     * ケアリンク行が一度でも作成されていれば true。</p>
+     *
+     * @param watcherUserId       見守り者候補（保護者候補）のユーザーID
+     * @param careRecipientUserId ケア対象者（子）のユーザーID
+     * @return 過去に一度でも当該組み合わせのケアリンクが存在した場合 true
+     */
+    public boolean hasEverBeenParentWatcher(Long watcherUserId, Long careRecipientUserId) {
+        if (watcherUserId == null || careRecipientUserId == null) {
+            return false;
+        }
+        return careLinkRepository.existsByCareRecipientUserIdAndWatcherUserIdAndRelationship(
+                careRecipientUserId, watcherUserId, CareRelationship.PARENT);
     }
 
     /**

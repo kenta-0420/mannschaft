@@ -232,7 +232,8 @@ public class ShiftScheduleService {
 
         // イベント発行は save() 後（AFTER_COMMIT リスナーがコミット済みデータを参照するため）
         if (targetStatus == ShiftScheduleStatus.PUBLISHED) {
-            eventPublisher.publish(new ShiftPublishedEvent(entity.getId(), entity.getTeamId(), userId));
+            eventPublisher.publish(new ShiftPublishedEvent(
+                    entity.getId(), entity.getTeamId(), userId, entity.getPublishedAt()));
         }
 
         log.info("シフトスケジュールステータス遷移: id={}, status={}", id, targetStatus);
@@ -277,9 +278,8 @@ public class ShiftScheduleService {
      * それぞれ集計し、未充足の箇所を一望できるマトリクスとして返す。</p>
      *
      * <p><b>認可の真の強制点（Track2 第二陣 / 2026-05-29）</b>: コントローラーの
-     * {@code @PreAuthorize("hasRole('ADMIN')")} は {@code @EnableMethodSecurity} 未有効のため
-     * 実機では効かず、かつ JWT には {@code MEMBER} しか乗らないため per-scope 認可にならない。
-     * 本メソッド内の {@link #checkScheduleAdminAccess} が実際の per-scope 認可
+     * {@code @PreAuthorize("hasRole('ADMIN')")} は、JWT には {@code MEMBER} しか乗らないため
+     * per-scope 認可にならない。本メソッド内の {@link #checkScheduleAdminAccess} が実際の per-scope 認可
      * （当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN）を強制する。</p>
      *
      * @param id     スケジュール ID

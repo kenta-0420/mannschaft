@@ -46,6 +46,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -73,6 +74,13 @@ class VillageServiceTest {
     /** 画像の生 R2 キー → 署名付き表示 URL の解決（#2355）。 */
     @Mock private MediaUrlResolver mediaUrlResolver;
 
+    /**
+     * 村の存在確認・可視性判定を担う共通ゲート。実物へ委譲させることで、既存試練の
+     * {@code villageRepository.findById} stub をそのまま活かしつつ可視性ロジックも実際に走らせる
+     * （{@link VillageAccessGateTestSupport} の Javadoc 参照）。
+     */
+    @Mock private VillageAccessGate accessGate;
+
     @InjectMocks private VillageService service;
 
     private static final Long ADMIN_USER_ID = 1L;
@@ -82,6 +90,23 @@ class VillageServiceTest {
 
     @BeforeEach
     void setUp() {
+        VillageAccessGateTestSupport.delegateToRealGate(
+                accessGate, villageRepository, membershipRepository, accessControlService);
+        // findActiveOrThrow は VillageAccessGate へ移り、生存判定が
+        // findByIdAndDeletedAtIsNullAndArchivedAtIsNull から findById + deletedAt/archivedAt の
+        // フィールド判定に変わった。既存試練は前者だけを stub しているので、
+        // 既定として findById を同じ stub へ流す（各試練の stub をそのまま活かすため）。
+        // 個別に findById を stub している試練（凍結系）はそちらが優先される。
+        lenient().when(villageRepository.findById(any(UUID.class))).thenAnswer(inv ->
+                villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(inv.getArgument(0)));
+        // 可視性ゲートの村人判定は findActiveByVillageIdAndSubject を使う。既存試練は
+        // VillageService#isMember が使う findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull を
+        // stub しているため、既定としてそちらへ流して「村人である」という試練の意図を保つ。
+        lenient().when(membershipRepository.findActiveByVillageIdAndSubject(
+                any(UUID.class), eq(VillageSubjectType.USER), anyLong())).thenAnswer(inv ->
+                membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+                        inv.getArgument(0), inv.getArgument(1), inv.getArgument(2)));
+        lenient().when(accessControlService.isSystemAdmin(anyLong())).thenReturn(false);
         // メンバーシップ・ピンは未参加・未ピンをデフォルト
         lenient().when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                 any(UUID.class), eq(VillageSubjectType.USER), anyLong())).thenReturn(Optional.empty());
@@ -235,7 +260,7 @@ class VillageServiceTest {
         }
 
         @Test
-        @DisplayName("UNLISTED 村は非村人だと VILLAGE_UNLISTED")
+        @DisplayName("AC-1: UNLISTED 村は非村人だと VILLAGE_NOT_FOUND（不在と同一コードで存在秘匿）")
         void get_unlistedHiddenFromNonMember() {
             VillageEntity entity = sampleVillage(VillageVisibility.UNLISTED, null);
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
@@ -245,7 +270,34 @@ class VillageServiceTest {
             assertThatThrownBy(() -> service.get(VILLAGE_ID, REGULAR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(VillageErrorCode.VILLAGE_UNLISTED);
+                    .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
+        }
+
+        /**
+         * AC-1: 存在オラクルの直接照合。UNLISTED 村の非村人が受け取る ErrorCode が、
+         * 実在しない村 ID を同じ EP に投げたときの ErrorCode と<b>完全に一致</b>することを見る。
+         * ステータス（どちらも 404）だけでなく応答本文の {@code error.code} まで揃って初めて秘匿が成立する。
+         */
+        @Test
+        @DisplayName("AC-1: UNLISTED 村の非村人と不在村 ID は ErrorCode が完全一致する")
+        void get_unlistedAndMissingShareSameErrorCode() {
+            UUID missingId = UUID.fromString("018f0000-0000-7000-8000-00000000dead");
+            when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(missingId))
+                    .thenReturn(Optional.empty());
+            Object missingCode = ((BusinessException) catchThrowable(
+                    () -> service.get(missingId, REGULAR_USER_ID))).getErrorCode();
+
+            VillageEntity entity = sampleVillage(VillageVisibility.UNLISTED, null);
+            when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
+                    .thenReturn(Optional.of(entity));
+            lenient().when(accessControlService.isSystemAdmin(REGULAR_USER_ID)).thenReturn(false);
+            Object unlistedCode = ((BusinessException) catchThrowable(
+                    () -> service.get(VILLAGE_ID, REGULAR_USER_ID))).getErrorCode();
+
+            assertThat(unlistedCode)
+                    .as("UNLISTED 村の非村人と不在 ID で ErrorCode が異なると本文で実在が判別できる")
+                    .isEqualTo(missingCode)
+                    .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
 
         @Test
@@ -255,6 +307,10 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(REGULAR_USER_ID)).thenReturn(false);
+            when(membershipRepository.findActiveByVillageIdAndSubject(
+                    VILLAGE_ID, VillageSubjectType.USER, REGULAR_USER_ID))
+                    .thenReturn(Optional.of(membership(VillageRole.VILLAGER)));
+            // 表示メタ（myRole）の解決は在籍ベースのクエリを使うため別途スタブする
             when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
                     VILLAGE_ID, VillageSubjectType.USER, REGULAR_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.VILLAGER)));
@@ -306,7 +362,7 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
-            when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            when(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
             when(villageRepository.existsByName("新しい名前")).thenReturn(false);
@@ -327,7 +383,7 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(REGULAR_USER_ID)).thenReturn(false);
-            when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            when(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, REGULAR_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.VILLAGER)));
 
@@ -347,7 +403,7 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
-            when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            when(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
 
@@ -365,7 +421,7 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
-            when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            when(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
             when(villageRepository.existsByName("既存名前")).thenReturn(true);
@@ -395,7 +451,7 @@ class VillageServiceTest {
             when(villageRepository.findByIdAndDeletedAtIsNullAndArchivedAtIsNull(VILLAGE_ID))
                     .thenReturn(Optional.of(entity));
             when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
-            when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            when(membershipRepository.findActiveByVillageIdAndSubject(
                     VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
 
@@ -568,7 +624,7 @@ class VillageServiceTest {
 
         private void givenHeadman() {
             lenient().when(accessControlService.isSystemAdmin(HEADMAN_USER_ID)).thenReturn(false);
-            lenient().when(membershipRepository.findByVillageIdAndSubjectTypeAndSubjectIdAndLeftAtIsNull(
+            lenient().when(membershipRepository.findActiveByVillageIdAndSubject(
                             VILLAGE_ID, VillageSubjectType.USER, HEADMAN_USER_ID))
                     .thenReturn(Optional.of(membership(VillageRole.HEADMAN)));
         }
@@ -853,7 +909,7 @@ class VillageServiceTest {
             assertThatThrownBy(() -> service.get(VILLAGE_ID, REGULAR_USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting("errorCode")
-                    .isEqualTo(VillageErrorCode.VILLAGE_UNLISTED);
+                    .isEqualTo(VillageErrorCode.VILLAGE_NOT_FOUND);
 
             // 認可で弾いた以上、署名 URL の発行自体が起きてはならない。
             // （URL 解決を toResponse より手前へ移す実装にすると、例外経路でも presign が走り
@@ -871,7 +927,7 @@ class VillageServiceTest {
             MediaUrlResolver realResolver = new MediaUrlResolver(storageService);
 
             VillageService serviceWithRealResolver = new VillageService(
-                    villageRepository, villageSearchRepository, membershipRepository,
+                    villageRepository, accessGate, villageSearchRepository, membershipRepository,
                     pinRepository, accessControlService, r2StorageService, realResolver);
 
             // 3 村がすべて同じアイコンキーを共有する（例: 同一運営が同じ画像を使い回すケース）

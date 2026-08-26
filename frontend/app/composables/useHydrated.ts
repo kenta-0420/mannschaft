@@ -1,5 +1,5 @@
 /**
- * ハイドレーション完了を表す composable。
+ * ハイドレーション開始時のフォーム送信準備状態を表す composable。
  *
  * 目的: **SSR で配信済みの HTML に対して、Vue のイベントハンドラがまだ結合されていない窓を塞ぐため**。
  *
@@ -24,7 +24,10 @@
  * // <Button type="submit" :disabled="!hydrated" />
  * ```
  *
- * @returns ハイドレーション完了で `true` になる読み取り専用の ref（SSR 中は常に `false`）
+ * @returns SSR 中およびクライアント初回レンダー（ハイドレーション用レンダー）では `false`、
+ * ハイドレーション完了（mount）後に `true` となる読み取り専用の ref。
+ * 初回レンダー出力を SSR と一致させることで hydration mismatch を避けつつ、
+ * イベントハンドラ結合後の reactive パッチで submit を有効化する。
  */
 
 import { ref, readonly, onMounted, type Ref } from 'vue'
@@ -32,6 +35,25 @@ import { ref, readonly, onMounted, type Ref } from 'vue'
 export function useHydrated(): Readonly<Ref<boolean>> {
   const hydrated = ref(false)
 
+  // **必ず onMounted を使うこと。onBeforeMount にしてはならない。**
+  //
+  // Vue のハイドレーションは「SSR が吐いた HTML」と「クライアントの初回レンダー結果」が
+  // 一致している前提で DOM を再利用する。属性・クラスの不一致は**修正されず警告のみ**で、
+  // SSR 側の値がそのまま DOM に残る。
+  //
+  // onBeforeMount はクライアント初回レンダー（＝ハイドレーション用レンダー）より前に
+  // 同期実行されるため、そこで hydrated を true にすると初回レンダー結果が
+  // 「有効・非ローディング」になり、SSR の HTML（disabled + spinner）と食い違う。
+  // 結果、`disabled` 属性が SSR の値のまま凍結され、しかも hydrated の変化は
+  // マウント前に済んでいて以降 reactive な再パッチも起きないため、
+  // ボタンが永久に押せなくなる（2026-08-18 の実機回帰）。
+  //
+  // onMounted なら初回レンダー時点では hydrated=false のままで SSR 出力と完全一致し
+  // （＝mismatch が起きない）、ハイドレーション完了後の値変化として
+  // 通常の reactive パッチで disabled が外れる。
+  // このフックはコンポーネント自身の DOM パッチ（＝@submit.prevent の結合）完了後に走るため、
+  // 「ハンドラ結合前にボタンが有効になる」ことも起こり得ない。
+  // SSR ではこのフックが走らないため、初期 HTML の native submit 防止も維持できる。
   onMounted(() => {
     hydrated.value = true
   })

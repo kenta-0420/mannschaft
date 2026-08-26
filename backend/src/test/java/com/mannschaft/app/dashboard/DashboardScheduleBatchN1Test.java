@@ -55,6 +55,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -135,6 +138,14 @@ class DashboardScheduleBatchN1Test {
                 .thenReturn(Map.of());
         org.mockito.Mockito.lenient().when(swipeWidgetVisibilityResolver.filterIfVisible(any(), any(), any(), any()))
                 .thenAnswer(inv -> inv.getArgument(3));
+        // CMP-017b 第五隊: filterAccessible は既定で「渡された ID を全て可視」として通す
+        // （本テストの主眼は N+1 バッチ化であり可視性判定そのものは対象外のため pass-through）。
+        org.mockito.Mockito.lenient()
+                .when(contentVisibilityChecker.filterAccessible(any(), anyCollection(), any()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<Long> ids = inv.getArgument(1);
+                    return new java.util.HashSet<>(ids);
+                });
 
         dashboardController = new DashboardController(
                 dashboardServiceMock,
@@ -195,12 +206,13 @@ class DashboardScheduleBatchN1Test {
     class Ac14BatchQuery {
 
         @Test
-        @DisplayName("Controller.getCalendar: 3チーム所属でも旧teamメソッドは呼ばれず新バッチメソッドが定数回（3期間=3回）")
-        void getCalendar_3チーム_旧メソッド未呼出_新バッチ3回() {
+        @DisplayName("Controller.getCalendar: 3チーム所属でも旧teamメソッドは呼ばれず新バッチメソッドが定数回"
+                + "（CMP-017b 第五隊: 期間別3回発行を最広範囲1回に統合＋可視性判定を追加）")
+        void getCalendar_3チーム_旧メソッド未呼出_新バッチ1回() {
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B), teamRole(TEAM_C)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B, TEAM_C));
             given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                     .willReturn(List.of());
 
@@ -210,8 +222,9 @@ class DashboardScheduleBatchN1Test {
             // 旧 N+1 メソッドは一切呼ばれない。
             verify(scheduleRepository, never())
                     .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(anyLong(), any(), any());
-            // 期間（today/week/month）ごとに 1 回ずつ、チーム数に依存しない定数回。
-            verify(scheduleRepository, times(3))
+            // 最広範囲（todayStart〜monthEnd）を 1 回だけ取得し、today/week/month はアプリ層で集計する
+            // （AC-24: 可視性判定を追加しても SQL 本数は増やさない）。
+            verify(scheduleRepository, times(1))
                     .findByTeamIdInAndStartAtBetween(anyCollection(), any(), any());
         }
 
@@ -219,8 +232,8 @@ class DashboardScheduleBatchN1Test {
         @DisplayName("Service.getPersonalDashboard: 3チーム所属でも旧teamメソッドは呼ばれず新バッチメソッドのみ使用")
         void personalDashboard_3チーム_旧メソッド未呼出_新バッチ使用() {
             stubCommonPersonalForAll();
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B), teamRole(TEAM_C)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B, TEAM_C));
             given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                     .willReturn(List.of());
 
@@ -240,31 +253,18 @@ class DashboardScheduleBatchN1Test {
     class Ac15Aggregation {
 
         @Test
-        @DisplayName("Controller.getCalendar: 複数チーム×複数予定で today/week/month が期待値どおり集計される")
+        @DisplayName("Controller.getCalendar: 複数チーム×複数予定で today/week/month が期待値どおり集計される"
+                + "（CMP-017b 第五隊: 最広範囲1回取得＋アプリ層集計に統合後も従来と同じ集計結果）")
         void getCalendar_複数チーム複数予定_集計値一致() {
             LocalDateTime todayStart = LocalDate.now(ZoneOffset.UTC).atStartOfDay();
             // 個人予定は 0 件。
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
 
-            // バッチ取得は from/to に応じて期間別の件数を返す。
-            // today（todayStart 〜 当日23:59:59.999...）: 2件
-            given(scheduleRepository.findByTeamIdInAndStartAtBetween(
-                    anyCollection(), eq(todayStart), eq(LocalDate.now(ZoneOffset.UTC).atTime(LocalTime.MAX))))
-                    .willReturn(List.of(
-                            teamSchedule(TEAM_A, todayStart.plusHours(1), 1L),
-                            teamSchedule(TEAM_B, todayStart.plusHours(2), 2L)));
-            // week（todayStart 〜 +7d）: 4件
-            given(scheduleRepository.findByTeamIdInAndStartAtBetween(
-                    anyCollection(), eq(todayStart), eq(todayStart.plusDays(7))))
-                    .willReturn(List.of(
-                            teamSchedule(TEAM_A, todayStart.plusHours(1), 1L),
-                            teamSchedule(TEAM_B, todayStart.plusHours(2), 2L),
-                            teamSchedule(TEAM_A, todayStart.plusDays(3), 3L),
-                            teamSchedule(TEAM_B, todayStart.plusDays(5), 4L)));
-            // month（todayStart 〜 +1M）: 5件
+            // 最広範囲（todayStart〜monthEnd）を 1 回だけ取得する。5件のうち
+            // 1,2 が today 以内、1,2,3,4 が week 以内、全件が month 以内。
             given(scheduleRepository.findByTeamIdInAndStartAtBetween(
                     anyCollection(), eq(todayStart), eq(todayStart.plusMonths(1))))
                     .willReturn(List.of(
@@ -281,6 +281,33 @@ class DashboardScheduleBatchN1Test {
             assertThat(data.get("events_this_week")).isEqualTo(4L);
             assertThat(data.get("events_this_month")).isEqualTo(5L);
         }
+
+        @Test
+        @DisplayName("Controller.getCalendar: min_view_role で不可視な予定は集計から除外される"
+                + "（CMP-017b 第五隊 AC-13: 応援者に MEMBER_PLUS 予定の件数を漏らさない）")
+        void getCalendar_不可視予定は集計から除外() {
+            LocalDateTime todayStart = LocalDate.now(ZoneOffset.UTC).atStartOfDay();
+            given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
+                    .willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A));
+
+            ScheduleEntity visible = teamSchedule(TEAM_A, todayStart.plusHours(1), 1L);
+            ScheduleEntity hidden = teamSchedule(TEAM_A, todayStart.plusHours(2), 2L);
+            given(scheduleRepository.findByTeamIdInAndStartAtBetween(
+                    anyCollection(), eq(todayStart), eq(todayStart.plusMonths(1))))
+                    .willReturn(List.of(visible, hidden));
+            // filterAccessible は id=1 のみ可視として返す（id=2 は SUPPORTER に不可視な MEMBER_PLUS 予定）。
+            given(contentVisibilityChecker.filterAccessible(any(), anyCollection(), any()))
+                    .willReturn(Set.of(1L));
+
+            ResponseEntity<ApiResponse<Map<String, Object>>> response = dashboardController.getCalendar(null);
+            Map<String, Object> data = response.getBody().getData();
+
+            assertThat(data.get("events_today")).isEqualTo(1L);
+            assertThat(data.get("events_this_week")).isEqualTo(1L);
+            assertThat(data.get("events_this_month")).isEqualTo(1L);
+        }
     }
 
     // =====================================================
@@ -296,7 +323,7 @@ class DashboardScheduleBatchN1Test {
         void getCalendar_teamRoles空_バッチ未呼出() {
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
             dashboardController.getCalendar(null);
 
@@ -310,7 +337,7 @@ class DashboardScheduleBatchN1Test {
         @DisplayName("Service.getPersonalDashboard: teamRoles が空ならバッチメソッドを呼ばない")
         void personalDashboard_teamRoles空_バッチ未呼出() {
             stubCommonPersonalForAll();
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
             dashboardService.getPersonalDashboard(USER_ID, "ALL");
 
@@ -333,7 +360,7 @@ class DashboardScheduleBatchN1Test {
                 .willReturn(new org.springframework.data.domain.PageImpl<>(List.of()));
         given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any()))
@@ -342,7 +369,7 @@ class DashboardScheduleBatchN1Test {
         given(bulletinThreadRepository.findByScopeTypeAndScopeIdOrderByIsPinnedDescUpdatedAtDesc(
                 any(), anyLong(), any()))
                 .willReturn(new org.springframework.data.domain.PageImpl<>(List.of()));
-        given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any()))
-                .willReturn(List.of());
+        given(activityFeedService.getActivityFeed(eq(USER_ID), any(), any(Integer.class), any(), any()))
+                .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
     }
 }

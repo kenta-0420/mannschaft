@@ -3,7 +3,6 @@ package com.mannschaft.app.safetycheck;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.safetycheck.dto.CreateSafetyCheckRequest;
 import com.mannschaft.app.safetycheck.entity.SafetyCheckEntity;
@@ -18,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
 
@@ -55,10 +55,13 @@ class SafetyCheckServiceAuthzTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
-    private NotificationHelper notificationHelper;
-
-    @Mock
     private AccessControlService accessControlService;
+
+    /**
+     * Issue #2834 / CMP-056 第1群ロットA: サービスは通知を直接作らずイベントを publish するだけになった。
+     */
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private SafetyCheckService safetyCheckService;

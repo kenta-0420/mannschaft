@@ -21,6 +21,9 @@ interface EventDetail {
   status?: string
   categoryName?: string | null
   categoryColor?: string | null
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: Array<{ userId: number; displayName: string; avatarUrl: string | null; calendarColor: string | null }>
 }
 
 interface PersonalScheduleRaw {
@@ -100,17 +103,22 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const ext = extendedEvents.value.find(e => e.id === eventId && !e.isPersonal)
       if (!ext) return
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
-      const sid = ext.scopeId ?? ''
+      // F03.19 W2-a P1修繕: 詳細APIは公開スコープID（slug）を要求する。ext.scopeId は
+      // レイヤーキー照合用の数値IDに変わったため、詳細取得には ext.scopeRouteId を使う。
+      const sid = ext.scopeRouteId ?? ''
       const res = await scheduleApi.getSchedule(st, sid, eventId)
       const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
       selectedEvent.value = {
         ...d,
         scopeType: ext.scopeType,
-        scopeId: ext.scopeId,
+        scopeId: ext.scopeRouteId,
         scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
         scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
         createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
         myAttendance: d.myAttendanceStatus ?? null,
+        targetMode: d.targetMode ?? ext.targetMode,
+        targetCount: d.targetCount ?? ext.targetCount,
+        targets: d.targets ?? ext.targets,
       }
     }
     showEventDialog.value = true
@@ -243,6 +251,9 @@ onMounted(() => {
           attendanceRequired: selectedEvent.attendanceRequired ?? false,
           myAttendance: selectedEvent.myAttendance ?? null,
           attendanceStats: selectedEvent.attendanceStats ?? null,
+          targetMode: selectedEvent.targetMode,
+          targetCount: selectedEvent.targetCount,
+          targets: selectedEvent.targets,
         }"
         :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
         :scope-id="selectedEvent.scopeId ?? ''"
@@ -250,6 +261,7 @@ onMounted(() => {
         :skip-delegations="selectedEventIsPersonal"
         :scope-name="selectedEvent.scopeName ?? null"
         :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
+        :show-audience="!selectedEventIsPersonal"
         @edit="onEditEvent"
         @delete="onDeleteEvent"
         @responded="refresh"

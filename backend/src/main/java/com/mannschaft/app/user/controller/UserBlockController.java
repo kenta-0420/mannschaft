@@ -2,6 +2,7 @@ package com.mannschaft.app.user.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.user.dto.BlockRequest;
 import com.mannschaft.app.user.dto.UserBlockResponse;
 import com.mannschaft.app.user.service.UserBlockService;
@@ -35,6 +36,9 @@ public class UserBlockController {
     /**
      * ユーザーをブロックする。
      */
+    @SelfScopedEndpoint("UserBlockService#block は常に SecurityUtils.getCurrentUserId() を"
+            + "ブロック行の主体として記録するのみで、任意の他ユーザーを主体として"
+            + "偽装する余地が無い（対象 blockedId は主体ではなく単なるブロック相手）")
     @PostMapping
     @Operation(summary = "ユーザーブロック")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "ブロック成功")
@@ -47,6 +51,8 @@ public class UserBlockController {
     /**
      * ユーザーブロックを解除する。
      */
+    @SelfScopedEndpoint("UserBlockService#unblock は SecurityUtils.getCurrentUserId() 自身の"
+            + "ブロック行のみを解除し、他人が設定したブロック関係を指定する余地が無い")
     @DeleteMapping("/{blockedId}")
     @Operation(summary = "ユーザーブロック解除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "ブロック解除成功")
@@ -59,6 +65,8 @@ public class UserBlockController {
     /**
      * ブロック一覧を取得する。
      */
+    @SelfScopedEndpoint("UserBlockService#listBlocks が "
+            + "SecurityUtils.getCurrentUserId() のみを検索条件に束縛する")
     @GetMapping
     @Operation(summary = "ブロック一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

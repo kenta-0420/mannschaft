@@ -19,13 +19,11 @@ import com.mannschaft.app.incident.repository.IncidentStatusHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 /**
  * インシデント管理サービス。
@@ -236,30 +234,13 @@ public class IncidentService {
             String scopeType, Long scopeId, String status, Pageable pageable, Long userId) {
         accessControlService.checkMembership(userId, scopeId, scopeType);
 
-        // リポジトリからスコープに紐づく未削除インシデントを取得
-        List<IncidentEntity> all =
-                incidentRepository.findByScopeTypeAndScopeIdAndDeletedAtIsNullOrderByCreatedAtDesc(
-                        scopeType, scopeId);
+        // CMP-028 Phase D: 全件ロード＋メモリページングを撤去し、status絞り込みも含めて
+        // DB に Pageable を渡してページング・総件数算出させる。
+        String normalizedStatus = (status != null && !status.isBlank()) ? status : null;
+        Page<IncidentEntity> page = incidentRepository.findByScopeTypeAndScopeIdAndStatus(
+                scopeType, scopeId, normalizedStatus, pageable);
 
-        // ステータスフィルタ適用
-        List<IncidentEntity> filtered = all;
-        if (status != null && !status.isBlank()) {
-            filtered = all.stream()
-                    .filter(i -> i.getStatus().equals(status))
-                    .toList();
-        }
-
-        // 手動ページング
-        int total = filtered.size();
-        int from = (int) pageable.getOffset();
-        int to = Math.min(from + pageable.getPageSize(), total);
-        List<IncidentSummaryResponse> content = (from > total)
-                ? List.of()
-                : filtered.subList(from, to).stream()
-                        .map(IncidentSummaryResponse::from)
-                        .toList();
-
-        return new PageImpl<>(content, pageable, total);
+        return page.map(IncidentSummaryResponse::from);
     }
 
     /**

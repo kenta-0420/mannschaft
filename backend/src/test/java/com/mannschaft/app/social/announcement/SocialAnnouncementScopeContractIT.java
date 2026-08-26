@@ -48,28 +48,29 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 一致させる。判定は一覧側と同一の正準経路（{@code RoleResolver#resolveViewerRole} →
  * {@link AnnouncementVisibility#allowedFor}）を流用する。</p>
  *
- * <p><b>本テストが炙り出した／固定した実穴:</b></p>
+ * <p><b>本テストが固定している保証</b>（いずれも回帰ガードとして常時検証する）:</p>
  * <ul>
- *   <li><b>越境既読</b>（AC-S2）: Service が「お知らせ ID の存在確認」だけを行い、URL のスコープとの
- *       帰属照合を行っていなかった。認証済みでありさえすれば無関係なスコープの URL で
- *       他テナントのお知らせに既読行を作れた（書き込み副作用 + 実在オラクル）。</li>
- *   <li><b>一括既読</b>（AC-S5）: スコープ・可視性の検証が皆無で、非メンバーが他テナントのスコープ配下の
- *       <b>内輪限定を含む全お知らせ</b>に自分の既読行を一括生成できた（DB 汚染）。</li>
- *   <li><b>応援者への内輪露出</b>（AC-S5b）: 既読系が {@link AnnouncementVisibility} を一切見ておらず、
- *       応援者が一覧に出ない {@code MEMBERS_AND_ABOVE} のお知らせを既読化できた。応答差分から
- *       内輪お知らせ ID の実在も判別でき、さらに後日 MEMBER に昇格した際に既読済み扱いとなり
- *       未読バッジに出ない（通知の見落とし）。</li>
- *   <li><b>削除済み・期限切れ</b>（AC-S1c）: 一覧に出ないお知らせを単件既読化でき、実在も判別できた。</li>
+ *   <li><b>単件既読の帰属</b>（AC-S2）: 対象お知らせが URL のスコープに帰属することを要求する。
+ *       帰属しない ID では既読行を作らず {@code ANNOUNCE_001} を返す
+ *       （ID の存在確認だけでは不十分であり、帰属照合を必須とする）。</li>
+ *   <li><b>一括既読の対象集合</b>（AC-S5）: 一括既読はスコープ内の<b>可視な</b>お知らせだけを
+ *       対象とする。可視でないお知らせには既読行を 1 件も作らない。</li>
+ *   <li><b>応援者の可視集合</b>（AC-S5b）: 既読可能集合は {@link AnnouncementVisibility} の判定に
+ *       従う。一覧に出ない {@code MEMBERS_AND_ABOVE} は既読化できない（既読済み扱いになって
+ *       後日 MEMBER 昇格後の未読バッジから漏れることも同時に防ぐ）。</li>
+ *   <li><b>削除済み・期限切れ</b>（AC-S1c）: 一覧に出ないお知らせは単件既読化もできない。</li>
  * </ul>
  *
- * <p><b>期待ステータスの根拠（AC-S11）</b>:
- * {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} には {@code ANNOUNCE_} で始まるコードが
- * <b>1 件も登録されていない</b>。未登録コードは {@code resolveHttpStatus} の既定
- * （{@code Severity.WARN → HTTP 400}）にフォールバックするため、{@code AnnouncementErrorCode} の
- * Javadoc が「(404)」「(403)」と書いていても<b>実際に返るのは 400</b> である。一方
- * {@code SOCIAL_105} は 403 に、{@code SOCIAL_110} は 404 に明示マップ済みなので、そちらは
- * 403/404 が返る。本テストは<b>実挙動</b>に期待値を合わせる
- * （{@code ANNOUNCE_*} の 404/403 への統一は別課題 #2468）。</p>
+ * <p><b>期待ステータスの根拠（AC-S11・#2468 で是正済み）</b>:
+ * かつて {@code GlobalExceptionHandler.ERROR_CODE_STATUS_MAP} に {@code ANNOUNCE_} で始まる
+ * コードが 1 件も登録されておらず、未登録コードは {@code resolveHttpStatus} の既定
+ * （{@code Severity.WARN → HTTP 400}）にフォールバックしていた。そのため
+ * {@code AnnouncementErrorCode} の Javadoc が「(404)」「(403)」と宣言していても実際に返るのは
+ * 400 で、宣言と実挙動が乖離していた。#2468 で {@code ANNOUNCE_001}=404 /
+ * {@code ANNOUNCE_002}=403 等を明示登録し、宣言どおりのステータスが返るようになったため、
+ * 本テストの期待値も 404/403 に揃えている。以後の登録漏れは番人テスト
+ * {@code ErrorCodeHttpStatusDeclarationGuardTest} が機械的に検出する。
+ * 兄弟の {@code SOCIAL_105}=403 / {@code SOCIAL_110}=404 は従来から登録済み。</p>
  *
  * <p><b>実在オラクル封じ（AC-S7）</b>: 「越境した実在 ID」「そもそも存在しない ID」
  * 「自分には可視でない ID」の 3 つが同一ステータス・<b>同一エラーコード</b>で返ることを固定する。
@@ -232,7 +233,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         void ac_s1_部外者の内輪限定既読は遮断() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annAId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(annAId, outsiderId)).isZero();
         }
@@ -243,7 +244,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         void ac_s1_別テナントADMINの内輪限定既読は遮断() throws Exception {
             setAuth(adminBId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annAId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(annAId, adminBId)).isZero();
         }
@@ -269,7 +270,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         void ac_s1c_削除済みは既読化できない() throws Exception {
             setAuth(memberAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annADeletedId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(annADeletedId, memberAId)).isZero();
         }
@@ -280,7 +281,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         void ac_s1c_期限切れは既読化できない() throws Exception {
             setAuth(memberAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annAExpiredId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(annAExpiredId, memberAId)).isZero();
         }
@@ -291,7 +292,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         void ac_s2_越境announcementIdの既読は遮断() throws Exception {
             setAuth(memberAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annBId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(annBId, memberAId)).isZero();
         }
@@ -330,7 +331,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         void ac_s5b_応援者は内輪限定を既読化できない() throws Exception {
             setAuth(supporterAId);
             mockMvc.perform(post("/api/v1/teams/{teamId}/announcements/{id}/read", teamAId, annAId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(annAId, supporterAId)).isZero();
         }
@@ -358,11 +359,11 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
             assertThat(errorCodeOf(invisible)).isEqualTo(errorCodeOf(missing));
         }
 
-        /** 既読 EP を叩き 400 であることを確認したうえでレスポンス本文を返す。 */
+        /** 既読 EP を叩き 404（ANNOUNCE_001・存在秘匿）であることを確認したうえで本文を返す。 */
         private String readAndReturnBody(Long teamId, Long announcementId) throws Exception {
             return mockMvc.perform(
                             post("/api/v1/teams/{teamId}/announcements/{id}/read", teamId, announcementId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andReturn().getResponse().getContentAsString();
         }
     }
@@ -448,7 +449,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         void ac_s6_部外者の組織既読は遮断() throws Exception {
             setAuth(outsiderId);
             mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnAId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(orgAnnAId, outsiderId)).isZero();
         }
@@ -459,7 +460,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         void ac_s6_別テナントADMINの組織既読は遮断() throws Exception {
             setAuth(adminBId);
             mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnAId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(orgAnnAId, adminBId)).isZero();
         }
@@ -497,7 +498,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         void ac_s6_配下チーム所属者は組織内輪限定を既読化できない() throws Exception {
             setAuth(childMemberAId);
             mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnAId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(orgAnnAId, childMemberAId)).isZero();
         }
@@ -508,7 +509,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         void ac_s6_越境announcementIdの組織既読は遮断() throws Exception {
             setAuth(memberAId);
             mockMvc.perform(post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgAId, orgAnnBId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_001"));
             assertThat(countReadStatus(orgAnnBId, memberAId)).isZero();
         }
@@ -578,7 +579,7 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
         private String readAndReturnBody(Long orgId, Long announcementId) throws Exception {
             return mockMvc.perform(
                             post("/api/v1/organizations/{orgId}/announcements/{id}/read", orgId, announcementId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isNotFound())
                     .andReturn().getResponse().getContentAsString();
         }
     }
@@ -593,39 +594,39 @@ class SocialAnnouncementScopeContractIT extends AbstractMySqlIntegrationTest {
 
         /**
          * AC-S8: 正当 ADMIN が別チームの announcementId を自チーム URL に差し込んでも、
-         * entity 自身のスコープで再認可されるため権限昇格しない（ANNOUNCE_002 → 400）。
+         * entity 自身のスコープで再認可されるため権限昇格しない（ANNOUNCE_002 → 403）。
          */
         @Test
-        @DisplayName("AC-S8 越境announcementIdの削除は400（entityスコープで再認可・権限昇格なし）")
-        void ac_s8_越境削除は400() throws Exception {
+        @DisplayName("AC-S8 越境announcementIdの削除は403（entityスコープで再認可・権限昇格なし）")
+        void ac_s8_越境削除は403() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(delete("/api/v1/teams/{teamId}/announcements/{id}", teamAId, annBId))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_002"));
             assertThat(feedRepository.existsById(annBId)).isTrue();
         }
 
         /** AC-S8: 越境 announcementId のピン留めも entity スコープで再認可され遮断される。 */
         @Test
-        @DisplayName("AC-S8 越境announcementIdのピン留めは400（entityスコープで再認可）")
-        void ac_s8_越境ピン留めは400() throws Exception {
+        @DisplayName("AC-S8 越境announcementIdのピン留めは403（entityスコープで再認可）")
+        void ac_s8_越境ピン留めは403() throws Exception {
             setAuth(adminAId);
             mockMvc.perform(patch("/api/v1/teams/{teamId}/announcements/{id}/pin", teamAId, annBId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"pinned\":true}"))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_002"));
         }
 
-        /** AC-S8: 非管理者メンバーのピン留めは遮断される（ANNOUNCE_002 → 400）。 */
+        /** AC-S8: 非管理者メンバーのピン留めは遮断される（ANNOUNCE_002 → 403）。 */
         @Test
-        @DisplayName("AC-S8 非管理者メンバーのピン留めは400")
-        void ac_s8_非管理者のピン留めは400() throws Exception {
+        @DisplayName("AC-S8 非管理者メンバーのピン留めは403")
+        void ac_s8_非管理者のピン留めは403() throws Exception {
             setAuth(memberAId);
             mockMvc.perform(patch("/api/v1/teams/{teamId}/announcements/{id}/pin", teamAId, annAId)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{\"pinned\":true}"))
-                    .andExpect(status().isBadRequest())
+                    .andExpect(status().isForbidden())
                     .andExpect(jsonPath("$.error.code").value("ANNOUNCE_002"));
         }
 

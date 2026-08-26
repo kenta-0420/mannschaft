@@ -31,9 +31,8 @@ public interface ReservationMapper {
 
     // F03.4.2: lineName（ライン名）は NameResolver と同じ発想で Service 層が一括解決して後付けする（ここでは null）。
     @Mapping(target = "lineName", ignore = true)
-    @Mapping(target = "basic", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotBasicDto(entity.getTitle(), entity.getSlotDate(), entity.getStartTime(), entity.getEndTime()))")
-    @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotStatusDto(entity.getSlotStatus() != null ? entity.getSlotStatus().name() : null, entity.getBookedCount(), entity.getCapacity(), entity.getIsException(), entity.getClosedReason(), entity.getNote()))")
-    @Mapping(target = "recurrence", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.RecurrenceDto(entity.getRecurrenceRule(), entity.getParentSlotId()))")
+    @Mapping(target = "basic", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotBasicDto(entity.getTitle(), entity.getSlotDate(), entity.getEndDate(), entity.getStartTime(), entity.getEndTime()))")
+    @Mapping(target = "status", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotStatusDto(entity.getSlotStatus() != null ? entity.getSlotStatus().name() : null, entity.getBookedCount(), entity.getCapacity(), entity.getClosedReason(), entity.getNote()))")
     @Mapping(target = "pricing", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotPricingDto(entity.getPrice()))")
     @Mapping(target = "policy", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotPolicyDto(entity.getApprovalMode() != null ? entity.getApprovalMode().name() : null))")
     @Mapping(target = "audit", expression = "java(new com.mannschaft.app.reservation.dto.ReservationSlotResponse.SlotAuditDto(entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()))")
@@ -87,7 +86,7 @@ public interface ReservationMapper {
                 .build();
     }
 
-    @Mapping(target = "businessStatus", expression = "java(new com.mannschaft.app.reservation.dto.BusinessHourResponse.BusinessStatusDto(entity.getDayOfWeek(), entity.getIsOpen(), entity.getOpenTime(), entity.getCloseTime()))")
+    @Mapping(target = "businessStatus", expression = "java(new com.mannschaft.app.reservation.dto.BusinessHourResponse.BusinessStatusDto(entity.getDayOfWeek(), entity.getIsOpen(), entity.getOpenTime(), entity.getCloseTime(), entity.getEndsNextDay()))")
     BusinessHourResponse toBusinessHourResponse(ReservationBusinessHourEntity entity);
 
     List<BusinessHourResponse> toBusinessHourResponseList(List<ReservationBusinessHourEntity> entities);
@@ -96,6 +95,7 @@ public interface ReservationMapper {
     // 機能B: resourceName（STAFF 時の担当スタッフ表示名）は NameResolver 一括解決のため Service 層で後付けする（ここでは null）。
     @Mapping(target = "resource", expression = "java(new com.mannschaft.app.reservation.dto.BlockedTimeResponse.ResourceDto(entity.getResourceType() != null ? entity.getResourceType().name() : null, entity.getResourceId(), null))")
     @Mapping(target = "audit", expression = "java(new com.mannschaft.app.reservation.dto.BlockedTimeResponse.BlockedAuditDto(entity.getReason(), entity.getCreatedBy(), entity.getCreatedAt(), entity.getUpdatedAt()))")
+    @Mapping(target = "endsNextDay", source = "endsNextDay")
     BlockedTimeResponse toBlockedTimeResponse(ReservationBlockedTimeEntity entity);
 
     List<BlockedTimeResponse> toBlockedTimeResponseList(List<ReservationBlockedTimeEntity> entities);

@@ -8,6 +8,7 @@ import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.dashboard.dto.OrgDashboardResponse;
 import com.mannschaft.app.dashboard.dto.PersonalDashboardResponse;
 import com.mannschaft.app.dashboard.dto.TeamDashboardResponse;
@@ -18,7 +19,6 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.repository.NotificationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
@@ -33,6 +33,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -117,6 +118,9 @@ class DashboardServiceTest {
     @Mock
     private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
 
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
     @InjectMocks
     private DashboardService dashboardService;
 
@@ -127,6 +131,18 @@ class DashboardServiceTest {
     private static final Long USER_ID = 1L;
     private static final Long TEAM_ID = 10L;
     private static final Long ORG_ID = 20L;
+
+    @org.junit.jupiter.api.BeforeEach
+    void stubContentVisibilityCheckerPassThrough() {
+        // CMP-017b 第五隊: filterAccessible は既定で「渡された ID を全て可視」として通す
+        // （本テストの主眼は可視性判定そのものではないため pass-through）。
+        org.mockito.Mockito.lenient()
+                .when(contentVisibilityChecker.filterAccessible(any(), anyCollection(), any()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<Long> ids = inv.getArgument(1);
+                    return new java.util.HashSet<>(ids);
+                });
+    }
 
     /**
      * F02.2.1 で追加された RoleResolver / WidgetVisibilityResolver のデフォルトスタブ。
@@ -173,14 +189,14 @@ class DashboardServiceTest {
                 .willReturn(new PageImpl<>(List.of()));
         given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
     }
 
     private void stubScopeCoverage() {
-        given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
     }
 
     // ========================================
@@ -223,8 +239,8 @@ class DashboardServiceTest {
             given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
                     .willReturn(List.of());
             given(chatChannelMemberRepository.findByUserId(USER_ID)).willReturn(List.of());
-            given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                    .willReturn(List.of());
+            given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                    .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
 
             // When
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");
@@ -235,6 +251,33 @@ class DashboardServiceTest {
             assertThat(result.getUnreadThreads()).isNotNull();
             assertThat(result.getRecentActivity()).isNotNull();
             assertThat(result.getPersonalCalendar()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("AC-22: ダッシュボード初期表示も同一の getActivityFeed 経路を通り、所属組織IDが渡る")
+        void ac22_dashboardRouteUsesSameFeedEntryPointWithOrgIds() {
+            // Given: 可視性フィルタは ActivityFeedService 側に一元化されているため、
+            // 「同じ入口を、同じスコープ引数で呼ぶ」ことが2経路の同値性の証明になる。
+            stubPersonalDashboardCommon();
+            stubScopeCoverage();
+
+            given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any(PageRequest.class)))
+                    .willReturn(List.of());
+            given(chatChannelMemberRepository.findByUserId(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of(77L));
+            given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                    .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
+
+            // When
+            dashboardService.getPersonalDashboard(USER_ID, "ALL");
+
+            // Then: ウィジェット単体経路と同じ ActivityFeedService.getActivityFeed を通り、
+            // かつ所属組織IDが渡っている（従来はチームIDのみで ORGANIZATION の活動が0件だった）。
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<List<Long>> orgCaptor = ArgumentCaptor.forClass(List.class);
+            verify(activityFeedService).getActivityFeed(
+                    eq(USER_ID), isNull(), anyInt(), any(), orgCaptor.capture());
+            assertThat(orgCaptor.getValue()).containsExactly(77L);
         }
 
         @Test
@@ -253,7 +296,7 @@ class DashboardServiceTest {
                     .willReturn(new PageImpl<>(List.of()));
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
             given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
@@ -294,7 +337,7 @@ class DashboardServiceTest {
                     .willReturn(new PageImpl<>(List.of()));
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
             TodoEntity overdueTodo = TodoEntity.builder()
@@ -355,7 +398,7 @@ class DashboardServiceTest {
                     .willReturn(new PageImpl<>(List.of(notification)));
             given(scheduleRepository.findByUserIdAndStartAtBetweenOrderByStartAtAsc(eq(USER_ID), any(), any()))
                     .willReturn(List.of());
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
             given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
@@ -386,16 +429,11 @@ class DashboardServiceTest {
             given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
             given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
 
-            // 3チーム + 2組織に所属
-            UserRoleEntity teamRole1 = UserRoleEntity.builder().userId(USER_ID).teamId(10L).roleId(1L).build();
-            UserRoleEntity teamRole2 = UserRoleEntity.builder().userId(USER_ID).teamId(11L).roleId(1L).build();
-            UserRoleEntity teamRole3 = UserRoleEntity.builder().userId(USER_ID).teamId(12L).roleId(1L).build();
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole1, teamRole2, teamRole3));
-            UserRoleEntity orgRole1 = UserRoleEntity.builder().userId(USER_ID).organizationId(20L).roleId(1L).build();
-            UserRoleEntity orgRole2 = UserRoleEntity.builder().userId(USER_ID).organizationId(21L).roleId(1L).build();
-            given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID))
-                    .willReturn(List.of(orgRole1, orgRole2));
+            // 3チーム + 2組織に所属（CMP-027: 在籍列挙は teamId/orgId を返す）
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(10L, 11L, 12L));
+            given(userRoleRepository.findOrganizationIdsByUserId(USER_ID))
+                    .willReturn(List.of(20L, 21L));
 
             // When
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "CRITICAL");
@@ -422,8 +460,8 @@ class DashboardServiceTest {
                     .userId(USER_ID).channelId(2L).unreadCount(5).build();
             given(chatChannelMemberRepository.findByUserId(USER_ID))
                     .willReturn(List.of(chatMember1, chatMember2));
-            given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                    .willReturn(List.of());
+            given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                    .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
 
             // When
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");

@@ -433,7 +433,9 @@ class ArchUnitFreezeStoreIntegrityTest {
      * <p>同一コミットに以下の実装是正・契約テストを含む:</p>
      * <ul>
      *   <li>{@code GlobalExceptionHandler}: {@code PAYMENT_029}（会費支払い記録の不在）を 404、
-     *       {@code PAYMENT_030}（払い手／受益者以外のアクセス拒否）を 403、
+     *       {@code PAYMENT_030}（払い手／受益者以外のアクセス拒否）を 403
+     *       （<b>この 403 は後日 404 へ是正済み</b>。不在の {@code PAYMENT_029} と割れていて
+     *       存在オラクルになっていたため。現行値は {@code GlobalExceptionHandler} を参照）、
      *       {@code RECEIPT_002}（領収書の不在・宛先不一致）を 404 に登録。3 コードとも未登録のため
      *       {@code Severity.WARN} 既定の 400 が返っており、Javadoc の宣言と実挙動が乖離していた。
      *       同ファイルへの変更は<b>この 3 エントリとコメントのみ</b>（並行整備中のため最小限）。</li>
@@ -465,8 +467,218 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 束ねが削除した 36 行（contact 9 / family 8 / payment 9 / pointcard 10）は
      * <b>互いに素</b>であることを集合差分で機械的に確認済み（重複 0 件）。したがって
      * 564 − 27 = 537 となる。ロットC 自身は追加の認可是正を行っておらず、値の合成のみである。</p>
+     *
+     * <p><b>537 → 509</b>（2026-08-04 / 第2波 残務: gdpr・jobmatching・resume・payment 一部）:
+     * 対象 28 EP を Controller → Service → Repository まで 1 件ずつ追跡し、認可判定が
+     * 情報開示・副作用より<b>前</b>に位置することを確認したうえで、性質に応じてマーカーを付与した。
+     * 分類は次のとおり:</p>
+     * <ul>
+     *   <li><b>実体由来の当事者・所有者照合（18 件）</b>: 履歴書は
+     *       {@code findByIdAndUserId} の複合条件で引き当て（不一致は不存在と同じ 404 で存在を秘匿）、
+     *       求人契約は {@code JobContractService#isParticipant} と
+     *       {@code JobPolicy#canReportCompletion} / {@code canApproveCompletion}、
+     *       QR は {@code JobPolicy#canIssueQrToken}、チェックインは
+     *       {@code JobPolicy#canRecordCheckIn}、応募取り下げは応募行の
+     *       {@code applicant_user_id} 照合が担う。認可の所在を各 EP の Javadoc に明記のうえ
+     *       {@code @AuthorizedInService} をメソッド単位で付与した（第1波と同方針）。</li>
+     *   <li><b>自己スコープ（10 件）</b>: 検索・作成のスコープが
+     *       {@code SecurityUtils#getCurrentUserId()} に束縛され、リクエストで他人の識別子を
+     *       指定する余地が構造的に無い EP 群。{@code @SelfScopedEndpoint} を付与し、
+     *       {@code SelfScopedEndpointMarkerGuardTest} が要求する契約テストを併せて新設した。</li>
+     * </ul>
+     * <p>同一コミットに以下の実装是正・契約テストを含む:</p>
+     * <ul>
+     *   <li>{@code ResumePhotoService#uploadPhoto}: 所有者確認を入力検証・画像再エンコードより
+     *       <b>前</b>へ移した。所有者以外に対して「形式は妥当だが履歴書が無い」と
+     *       「形式が不正」の差分を返さないことで、履歴書の存在有無が推測される余地を無くす。</li>
+     *   <li>契約テスト: {@code JobContractLifecycleScopeContractIT}（新設・11 EP）／
+     *       {@code ResumeOwnerScopeContractIT}（新設・11 EP）／
+     *       {@code GdprSelfScopeContractIT}（新設・4 EP）／
+     *       {@code MembershipSubscriptionSelfListScopeContractIT}（新設・1 EP）。
+     *       「当事者・所有者以外 → 403 / 404」「他ユーザーのデータが結果に混入しないこと」を
+     *       実測で固定し、書き込み系では<b>操作が成立していないことを DB の実値</b>
+     *       （契約ステータス・応募ステータス・履歴書のタイトルと photo_key・
+     *       チェックイン行の件数・複製の不発生）で確認した。正常系も併せて張っている。</li>
+     * </ul>
+     * <p>なお {@code SubscriptionController} の 2 EP（Phase 4 未実装のプレースホルダ）は、
+     * 実装するか撤去するかの設計判断が未了のため本ロットでも触らず凍結を維持する。</p>
+     *
+     * <p>本ロットの基点は当初 564 行（第1波 ロットC が main へ着地する前）であり、単独では
+     * 564 − 28 = 536 であった。ロットC が先に main へ着地して 537 行となったため、
+     * main 追随マージで期待値を合成し直している。ロットC が削除した 27 行
+     * （reflection / inbox / favorite / corkboard）と本ロットが削除する 28 行
+     * （gdpr / jobmatching / resume / payment）は<b>互いに素</b>であることを集合差分で
+     * 機械的に確認済み（重複 0 件）。したがって 537 − 28 = 509 となる。</p>
+     *
+     * <p>509 → 504（2026-08-04）: #2531「todo ドメイン認可ガードの一元化」で
+     * {@code PersonalBlogController.listMyPosts} と {@code UserTodoStatusLabelController} の
+     * create/delete/list/update の計5件が Service 層（{@code TodoStatusLabelService#validateScopeAccess}
+     * 等）へ認可判定を集約したことで検出条件（Controller 直下の認可シグナル）から外れ、違反が解消。
+     * ただし #2531 のマージ時に凍結ストア更新が PR に含まれず取り残されていたため、本更新で棚卸しした。
+     * 認可自体は Service 層で実施されており（PERSONAL スコープの actorId 照合、契約テスト
+     * {@code TodoStatusLabelScopeContractIT} で他人アクセスの拒否も確認済み）、違反隠蔽ではなく
+     * 実態にストアを合わせる是正。</p>
+     *
+     * <p>認可漏れ(IDOR)全域監査戦役・第3波「村」ロットA（2026-08-04）: 504 → 467（37 行削除）。
+     * 本ロットの基点は分岐時点の 509 であり単独では 509 − 37 = 472 だが、上記 #2531 の棚卸し（5 行）が
+     * 先に main へ着地したため、main 追随マージで合成し直した値である。両者が削除する行は
+     * <b>互いに素</b>であることを集合差分で機械的に確認済み（重複 0 件）。したがって 504 − 37 = 467。
+     * 対象は {@code VillageMatchRecruitController}（11 EP）/ {@code VillageMeetupController}
+     * （在庫 10 EP。出欠・コメント・宿題系は別ロット担当のため対象外）/
+     * {@code VillageJoinRequestController}（6 EP）/ {@code VillageRecruitCategoryController}
+     * （5 EP）/ {@code VillageMembershipController}（5 EP）。全 37 EP は Service 層で
+     * {@code findActiveByVillageIdAndSubject} を根拠に認可判定済みであることを確認し、
+     * {@code @AuthorizedInService} を付与（{@code VillageJoinRequestController#listMine} のみ
+     * IDOR 閉塞（他人の識別子を受け取らない構造）を理由に {@code @SelfScopedEndpoint} を付与）。
+     * 監査の結果、2 箇所で認可条件を村内の標準の流儀へ揃えた:</p>
+     * <ul>
+     *   <li>{@code VillageMatchRecruitController#list}: 一覧も詳細取得（{@code get}）と同じく
+     *       村人限定とする。{@code VillageMatchRecruitService#listRecruits} に
+     *       {@code ensureVillager} を敷設し、兄弟メソッドと判定基準を一致させた。</li>
+     *   <li>{@code VillageMatchRecruitController#update} / {@code VillageMeetupController} の
+     *       update・cancel・confirm・candidate-dates 系: 投稿者/幹事の本人判定に、状態遷移系
+     *       （{@code ensureRecruitReviewer}）と同一の現役性述語
+     *       {@code findActiveByVillageIdAndSubject} を先行させ、更新系と状態遷移系の判定を
+     *       同一基準に揃えた（#2284 §12 と同型）。{@code ensureAuthor} / {@code requireOrganizer}
+     *       の双方に適用。</li>
+     * </ul>
+     *
+     * <p>467 → 434（2026-08-04 / 第3波「村」ロットB）: 村ドメインの 33 エンドポイントを全数監査し、
+     * 主張の内容ごとにマーカーを付与して返済した。内訳は
+     * {@code VillagePin} 4 / {@code VillageNewsletter} 4 / {@code VillageReport} 3 /
+     * {@code VillagePilgrimage} 3 / {@code VillageLobby} 3 / {@code VillageCreationRequest} 3 /
+     * {@code VillageCalendar} 3 / {@code VillageRepresentative} 2 / {@code VillageNickname} 2 /
+     * {@code VillageSerendipity} 1 / {@code VillageSearch} 1 / {@code VillageLobbyPresence} 1 /
+     * {@code VillageFeed} 1 / {@code VillageController} 1 / {@code PostingIdentity} 1。</p>
+     * <ul>
+     *   <li>認可を新設した 3 EP —
+     *       {@code VillageNewsletterController.getSettings}（掲示板と同一の閲覧認可へ委譲）/
+     *       {@code listSendLogs}（現役 HEADMAN・ELDER のみ）/
+     *       {@code VillageFeedController.feed}（村内コンテンツを現役の村人である村に限定）</li>
+     *   <li>残りは Service 層に実効的な認可が実在すること、または検索条件が認証主体に
+     *       束縛され他人のデータへ到達し得ないことを追跡して確認済み。契約テストは
+     *       {@code VillageLotBScopeContractIT} / {@code VillageSelfScopeContractIT} に張っている。</li>
+     * </ul>
+     * <p>本ロットの基点は分岐時点の 504 であり単独では 504 − 33 = 471 だが、上記ロットA（37 行）が
+     * 先に main へ着地したため、main 追随マージで合成し直した値である。ロットA が削除する 37 行と
+     * 本ロットが削除する 33 行は <b>互いに素</b>であることを集合差分で機械的に確認済み（重複 0 件）。
+     * したがって 467 − 33 = 434。</p>
+     *
+     * <p>434（変化なし、2026-08-04）: {@code scopefolder.entity.ScopeType} を
+     * {@code scopefolder.entity.enums.ScopeType} へ移設（D-1 番人の「共有される値オブジェクトは
+     * entity.enums 配下」除外規定に実体を合わせる是正）した副作用として、本ストアのキーが
+     * メソッド完全修飾シグネチャ（引数の完全修飾型名を含む）で構成されているため、
+     * {@code ScopeType} を引数に取る6エンドポイント（{@code NotificationController.listNotifications} /
+     * {@code MyScopeFolderController.createFolder / getDefaultFolder / getFolders /
+     * getNotificationSummary / reorderFolders}）のキー文字列がパッケージ名の変更分だけ変わった。
+     * 旧キー6件が解消・新キー6件が追加され、差引ゼロで行数は変わらない。
+     * 認可の実態（未認可であること自体）は一切変わっておらず、新規の認可違反ではなく
+     * 既存負債のキー改名である。この同一性は同一コミット内の
+     * {@code git diff .../9ed4737d-c74f-4374-923e-4663d3c9e256} が
+     * 「6行削除・6行追加（内容はパッケージ名のみ差分）」という形で機械的に検証可能である。</p>
+     *
+     * <p>405 → 369（第4波ロットB・2026-08-05）: circulation 22 行 / committee 14 行を返済。
+     * 内訳は次のとおりで、いずれも「実体由来スコープでの認可が呼び出しグラフ上で到達可能である」
+     * 状態にしたうえでの削除である（マーカー付与による沈黙ではない）。</p>
+     * <ul>
+     *   <li>circulation の押印 5 EP とコメント削除 1 EP — {@code CirculationAccessGuard} を新設し、
+     *       受信者行・コメント行が<b>当該文書に属し、かつ操作者本人のものである</b>ことを検証する</li>
+     *   <li>circulation の文書ライフサイクル 8 EP（Org/Team 各 4）・あて先増減 2 EP・添付管理 3 EP・
+     *       エクスポート 2 EP — 既存の {@code AccessControlService} による per-scope 判定を
+     *       委譲 1 段で到達できる形に整理（判定内容は不変）</li>
+     *   <li>{@code MyCirculationController.listCreatedDocuments} — 検索条件が認証主体に束縛されるため
+     *       {@code @SelfScopedEndpoint}（契約テストは {@code CirculationStampRecipientAclScopeContractIT}）</li>
+     *   <li>committee 14 EP — {@code CommitteeAccessGuard} を新設し、委員会メンバーシップ・
+     *       委員会内ロール・招集状の宛先本人性の判定を集約</li>
+     * </ul>
+     *
+     * <p>369 → 331（第4波ロットC・2026-08-05）: schedule 28 行 / scopefolder 10 行を返済。
+     * 内訳は次のとおりで、いずれも認可の所在をコード上に確立したうえでの削除である。</p>
+     * <ul>
+     *   <li>{@code ScheduleAccessGuard} を新設し、個人スケジュールの所有者判定と
+     *       代理委任のあて先本人判定を集約（{@code PersonalScheduleController} の
+     *       詳細・更新・削除・一括削除、{@code ScheduleDelegationController} の承諾・辞退）</li>
+     *   <li>{@code CalendarSyncAccessGuard} を新設し、チーム／組織のカレンダー同期トグルの
+     *       アクティブメンバー判定を集約（拒否は存在秘匿の 404 に畳む）</li>
+     *   <li>{@code ScopeFolderAccessGuard} を新設し、マイスコープフォルダの所有者判定を集約
+     *       （更新・削除・アイテム追加削除・一括振り分け。一括系も 1 件ずつ判定を通す）</li>
+     *   <li>代理委任の指定・取り消し・自状況照会は、スケジュール実体由来スコープに対する
+     *       {@code ScheduleService#checkScopeViewAccess} を public 入口で行う</li>
+     *   <li>出欠一括更新は {@code ScheduleService#checkScopeAdminAccess} を public 入口で行う</li>
+     *   <li>チーム／組織のスケジュール一覧は {@code ContentVisibilityChecker#filterAccessible} を
+     *       入口メソッドから直接呼ぶ形へ整理（判定内容は不変）</li>
+     *   <li>対象の識別子を一切受け取らない 19 EP は {@code @SelfScopedEndpoint}
+     *       （契約テストは {@code ScheduleAuthzScopeContractIT} /
+     *       {@code ScopeFolderAuthzScopeContractIT}）</li>
+     * </ul>
+     *
+     * <h3>Wave6 ロットE（74 → 50 単独時点）</h3>
+     * <p>contact / favorite / inbox の 24 EP を監査し、いずれも
+     * {@code SecurityUtils.getCurrentUserId()} のみを検索条件・保存条件に渡す自己スコープ
+     * （{@code @SelfScopedEndpoint}）、ないしサービス層で開示制御を行う
+     * （{@code @AuthorizedInService}）であることを確認したうえで、該当 24 行を削除した。
+     * 契約テストは {@code ContactScopeContractIT} / {@code FavoriteScopeContractIT} /
+     * {@code InboxScopeContractIT}。</p>
+     *
+     * <h3>Wave6 ロットE と Wave7 ロットA の合流（74 → 22）</h3>
+     * <p>本ロットの基点は分岐時点の 74 であり単独では 74 − 24 = 50 だが、並行して進んでいた
+     * Wave7 ロットA（金銭・記録系17コントローラ31EP、PR #2670）が先に main へ着地したため、
+     * main 追随マージで合成し直した値である。ロットA は 74 → 43（31 行削除）で、その31行の内訳は
+     * favorite 3 行（listFavorites / checkFavorite / reorderFavorites）＋
+     * notification/payment/pointcard/receipt/ticket/todo 系 28 行。
+     * 本ロットの24行（contact 15・favorite 3・inbox 6）とロットA の31行は
+     * <b>favorite 3 行のみが重複</b>し（同一 EP を両ロットが別々に認可監査した）、
+     * それ以外（本ロットの contact 15・inbox 6 の計21行、ロットAの28行）は互いに素である。
+     * 重複除去した和集合は 24 + 31 − 3 = 52 行。したがって 74 − 52 = 22。
+     * 実際の解消手順は、main の43行（ロットA適用後）から本ロット独自の contact・inbox 計21行を
+     * 追加削除する形で行った（favorite 3 行は既に main 側の削除で消えているため二重に触れていない）。
+     * 削除後の実行数は {@code grep -c . <ストアファイル>} で 22 であることを実測確認済み。</p>
+     *
+     * <h3>Wave6 ロットF の合流（22 → 9）</h3>
+     * <p>Wave6 ロットF（reflection 10・corkboard 2・advertising 1 の計13EP、本ファイル）を
+     * ロットE 着地後の main（22行）へ追随マージした。ロットFが監査した13EPは、いずれも
+     * ロットE・ロットAの対象と重複しない（ドメインが完全に独立）。対象データの検索・更新条件が
+     * 認証主体（{@code SecurityUtils.getCurrentUserId()}）に構造的に束縛されていることを確認し、
+     * {@code @SelfScopedEndpoint} を付与（契約テストは {@code ReflectionPersonalScopeContractIT} /
+     * {@code CorkboardBoardScopeContractIT} / {@code AdReportIT}）。したがって 22 − 13 = 9。
+     * 削除後の残行数は {@code grep -c . <ストアファイル>} で 9（family 7・tournament 2）であることを
+     * 実測確認済み。</p>
+     *
+     * <p><b>9 → 0</b>（第7波ロットB・戦役最終ロット）: 本ロットの基点は分岐時点の 43 であり、
+     * 独立に family 7 / inbox 6 / reflection 10 / corkboard 2 / advertising 1 /
+     * tournament fee 2 / contact 15 の計 43 EP を全数監査してストアを空にする形で作業していたが、
+     * 並行して進んでいた Wave6 ロットE（contact 15・inbox 6 を含む 24 EP）およびロットF
+     * （reflection 10・corkboard 2・advertising 1 の計13EP）が先に main へ着地したため、
+     * main 追随マージで合成し直した。本ロットが監査した contact 15・inbox 6・reflection 10・
+     * corkboard 2・advertising 1（計 34 行）は、ロットE・ロットFが削除した行と<b>完全に重複</b>し
+     * （同一 EP を両ロットが別々に認可監査し、いずれも同一結論・自己スコープに到達）、二重差分は
+     * 生じない。ロットE・ロットFが未着手だった family 7 / tournament fee 2（計 9 行）が
+     * 本ロット固有の追加解消であり、両ロット合流後の 9 行とちょうど一致する。したがって
+     * 9 − 9 = 0。内訳:</p>
+     * <ul>
+     *   <li><b>実装是正（1件）</b>: {@code TournamentFeeCheckoutController#checkout} は
+     *       fee 実体の主催組織・対象チームと払い手を照合する認可判定が無く、対象外の
+     *       fee でも決済が実行できる状態だった。{@code TournamentFeePaymentService#requireEligible}
+     *       を新設し、{@code getMyTournamentFees} と同一基準（主催組織のアクティブメンバー・
+     *       {@code SPECIFIC_TEAMS} は対象チームのアクティブメンバー）で fee 実体から検証し、
+     *       対象外は不存在と同じ {@code FEE_NOT_FOUND}（404）で秘匿するよう是正した。</li>
+     *   <li><b>自己スコープ（大半）</b>: 検索・作成・登録先が
+     *       {@code SecurityUtils#getCurrentUserId()} に束縛され、リクエストで他人の識別子を
+     *       指定する余地が構造的に無い EP 群。{@code @SelfScopedEndpoint} を付与し、
+     *       {@code SelfScopedEndpointMarkerGuardTest} が要求する契約テストを併せて新設・拡張した。</li>
+     *   <li><b>認可済み・番人から不可視</b>: {@code ContactHandleController#searchByHandle}
+     *       （開示は対象ユーザー自身の公開設定に従うサイレント方式）・
+     *       {@code ContactInviteController#acceptInvite}（capability トークンで認可）・
+     *       {@code TournamentFeeCheckoutController#checkout}（上記 requireEligible）は
+     *       {@code @AuthorizedInService} で明示した。</li>
+     * </ul>
+     * <p>契約テスト: {@code ContactScopeContractIT} / {@code CareLinkInvitationScopeContractIT} /
+     * {@code InboxScopeContractIT} / {@code ReflectionPersonalScopeContractIT} /
+     * {@code CorkboardBoardScopeContractIT} 拡張、{@code AdReportServiceTest} 新設、
+     * {@code TournamentFeePaymentServiceTest} 拡張（対象外 fee の決済拒否を追加）。
+     * 本 PR をもって認可漏れ(IDOR)全域監査戦役の凍結ストア全数返済が完結する。</p>
      */
-    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 537;
+    private static final int EXPECTED_LINES_AUTHZ_WAVE4 = 0;
 
     /**
      * クロスドメイン Entity 参照禁止ストア（D-1）の期待行数。
@@ -477,8 +689,16 @@ class ArchUnitFreezeStoreIntegrityTest {
      * 一覧3エンドポイントを Summary DTO 返却に是正し、Controller からの他ドメイン Entity 参照
      * 3 件（auth.UserEntity / organization.OrganizationEntity / team.TeamEntity）が根治で解消。
      * 違反隠蔽ではなく正当な負債返済に伴う縮小。</p>
+     *
+     * <p>2135 → 2129（2026-08-04）: {@code scopefolder.entity.ScopeType}（フィールド・振る舞いを
+     * 持たない純粋な2値enum）を {@code scopefolder.entity.enums.ScopeType} へ移設。D-1 番人は
+     * {@code ..entity.enums..} 配下の enum を「共有される値オブジェクト」としてドメイン越境import
+     * の対象外に除外しており、本 enum はこの除外規定に該当する実体であるにも関わらず
+     * {@code entity} 直下にあったため対象外になっていなかった。規約に実体を合わせた結果、
+     * dashboard / notification（2箇所） / role の計4クラスから参照していた既存違反6行が解消。
+     * 違反隠蔽ではなく、共有値オブジェクトの置き場所を規約どおりに是正した結果の縮小。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2135;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_ENTITY_D1 = 2129;
 
     /**
      * 越境 {@code @Transactional} 禁止ストア（D-3）の期待行数。
@@ -508,8 +728,12 @@ class ArchUnitFreezeStoreIntegrityTest {
      * （{@link CrossDomainRepositoryDependencyArchTest}）の初期凍結。既存負債の台帳であり、
      * 新規の越境 Repository 依存のみを fail させる。返済（chip-away）で行数が減った場合のみ
      * この定数を実測値へ更新する。</p>
+     *
+     * <p>2026-08-04 更新（2025→2022）: 通知 fan-out Wave-1 で
+     * {@code ShiftPublishedNotificationListener}（shift ドメイン）の {@code UserRoleRepository}（role ドメイン）
+     * 越境依存を耐久ジョブ enqueue への載せ替えで解消し、当該 3 行が正当に返済されたため実測値へ追随。</p>
      */
-    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2025;
+    private static final int EXPECTED_LINES_CROSS_DOMAIN_REPO_D5 = 2022;
 
     /** ルール説明（{@code stored.rules} のキー）・ストアファイル名・期待行数の対応表。 */
     private static final List<FrozenStoreExpectation> EXPECTATIONS = List.of(

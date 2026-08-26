@@ -38,5 +38,6 @@ public class PromotionSegmentEntity {
     private String segmentValue;
 
     @Builder.Default
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }

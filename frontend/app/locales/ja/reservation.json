@@ -174,7 +174,16 @@
       "team_page": "予約"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "{label}の使い方",
+      "cards": {
+        "business_hours": { "title": "営業時間", "description": "予約受付時間を設定" },
+        "lines": { "title": "予約対象", "description": "{n}件の予約対象を管理" },
+        "menus": { "title": "メニュー", "description": "{n}件のメニューを管理" },
+        "weekly_schedule": { "title": "週間スケジュール", "description": "{n}件の枠・定期設定" },
+        "exception_day": { "title": "例外日", "description": "特定日の営業を調整" },
+        "advanced": { "title": "詳細設定", "description": "公開範囲や通知を設定" }
+      }
     },
     "column": {
       "datetime": "日時",
@@ -274,12 +283,12 @@
       "book": {
         "admin_no_lines": "予約対象がまだありません",
         "admin_no_lines_hint": "「予約対象の管理」で予約対象と枠を作成すると、ここに予約枠が表示されます",
-        "admin_no_slots": "この日は空き枠がありません",
-        "admin_no_slots_hint": "「予約対象の管理」から枠を追加できます",
+        "admin_no_slots": "この週は空き枠がありません",
+        "admin_no_slots_hint": "「週間スケジュール」で枠を作成すると、ここに予約枠が表示されます",
         "member_no_lines": "予約の受付準備中です",
         "member_no_lines_hint": "管理者が予約枠を用意するまでお待ちください",
-        "member_no_slots": "この日は空き枠がありません",
-        "member_no_slots_hint": "別の日を選んでお試しください"
+        "member_no_slots": "この週は空き枠がありません",
+        "member_no_slots_hint": "別の週を選んでお試しください"
       }
     },
     "line_manage_title": "{resourceName}の管理",
@@ -578,6 +587,8 @@
       "delete_confirm": "このテンプレートを削除しますか？（生成済みの枠は残ります）",
       "day_of_week": "曜日",
       "time_range": "時間帯",
+      "ends_next_day": "終了は翌日",
+      "next_day_time": "翌 {time}",
       "line": "予約対象",
       "line_common": "共通枠",
       "capacity": "定員",
@@ -601,7 +612,16 @@
       "auto_generated": "保存し、{days}日先までの枠を{generated}件作成しました",
       "auto_generated_partial": "{total}曜日中{failed}曜日で枠の作成に失敗しました（保存済みの曜日は有効です）",
       "need_business_hours_hint": "先に営業時間を設定してください",
-      "generated_zero_hint": "枠は作成されませんでした（営業時間外/定休日のため）。営業時間を確認してください"
+      "generated_zero_hint": "枠は作成されませんでした（営業時間外/定休日のため）。営業時間を確認してください",
+      "grid": {
+        "title": "ドラッグで枠を作成",
+        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
+        "legend_existing": "登録済み",
+        "legend_selected": "選択中",
+        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
+        "confirm_title": "枠を作成",
+        "create": "作成"
+      }
     },
     "recurring_block": {
       "title": "毎週の予約不可",
@@ -638,6 +658,7 @@
     "business_hours": {
       "title": "営業時間",
       "day_open": "営業する",
+      "ends_next_day": "終了は翌日",
       "save_success": "保存し、枠を{generated}件更新しました",
       "generating": "枠を更新しています…",
       "generation_failed": "営業時間は保存しましたが、枠の自動更新に失敗しました。明朝に自動で追い付きます",
@@ -661,36 +682,19 @@
       "advanced_label": "個別の枠を手動管理（例外操作）"
     },
     "grid": {
-      "title": "空きグリッド",
-      "help": "縦は時間帯、横は{resourceName}です。緑の「空き」をタップすると予約に進めます。灰色・斜線の枠は予約できません。「週」タブで7日分をまとめて確認できます。",
-      "display_toggle": {
-        "list": "リスト表示",
-        "grid": "グリッド表示"
-      },
       "view": {
-        "single": "単日",
         "week": "週"
       },
-      "axis": {
-        "label": "軸",
-        "time_rows": "時間を縦",
-        "time_cols": "時間を横"
-      },
       "column": {
-        "common": "共通",
-        "time": "時間"
-      },
-      "staff_filter": {
-        "label": "{resourceName}で絞り込む",
-        "placeholder": "すべての予約対象"
+        "common": "共通"
       },
       "state": {
         "available": "空き",
         "booked": "埋まっている",
+        "reserved": "予約済み",
         "closed": "受付終了",
         "unavailable": "予約不可"
       },
-      "empty": "この日の枠はありません",
       "load_error": "グリッドの取得に失敗しました"
     },
     "matrix": {
@@ -708,9 +712,9 @@
       "no_menu_single": "メニューなしで30分だけ予約",
       "preview_title": "この内容で予約します",
       "extend_30": "＋30分延長",
-      "view_matrix": "マトリックス表示",
-      "view_list": "リスト表示",
-      "view_staff_grid": "スタッフ別グリッド",
+      "open_all": "すべて表示",
+      "close_all": "すべて閉じる",
+      "open_day_hint": "日付を選ぶと予約枠を表示します",
       "date_line_header": "日付・{resourceName}",
       "help_toggle": "使い方を見る",
       "help_body": "空いている時間（緑）をタップし、メニューを選ぶと必要な枠数が自動で選ばれます。「＋30分延長」でさらに枠を追加できます。共通枠を選んだ場合は{resourceName}を選んでください。",
@@ -758,7 +762,6 @@
     "team_guide": {
       "title": "予約の使い方",
       "help_button": "使い方",
-      "event_link": "イベント募集を見る",
       "book": {
         "matrix_title": "マトリックスの見方",
         "matrix_steps": {

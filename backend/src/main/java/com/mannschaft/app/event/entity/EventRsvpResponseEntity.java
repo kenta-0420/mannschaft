@@ -53,8 +53,10 @@ public class EventRsvpResponseEntity {
 
     private LocalDateTime respondedAt;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     // F03.12 ケア対象者見守り通知・事前遅刻連絡

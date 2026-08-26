@@ -53,7 +53,10 @@ import java.util.UUID;
  *   / 03_permissions_and_recording_modes.md §C.4 / §C.4a</p>
  */
 @RestController("matchRecordEventController")
-@RequestMapping("/api/v1/organizations/{orgId}/matches/{matchId}")
+@RequestMapping({
+        "/api/v1/organizations/{orgId}/matches/{matchId}",
+        "/api/v1/teams/{teamId}/matches/{matchId}"
+})
 @Tag(name = "試合イベント", description = "F08.10 タイムラインイベント記録・取得")
 @RequiredArgsConstructor
 public class MatchRecordEventController {
@@ -73,21 +76,23 @@ public class MatchRecordEventController {
     @GetMapping("/events")
     @Operation(summary = "試合内タイムライン取得（スコア整合警告込み）")
     public ResponseEntity<ApiResponse<MatchEventsResponse>> listEvents(
-            @PathVariable Long orgId,
+            @PathVariable(required = false) Long orgId,
+            @PathVariable(required = false) Long teamId,
             @PathVariable UUID matchId) {
         Long actor = SecurityUtils.getCurrentUserId();
         matchAccessService.assertCanView(actor, matchId);
-        return ResponseEntity.ok(ApiResponse.of(aggregationService.getMatchEvents(matchId, orgId)));
+        return ResponseEntity.ok(ApiResponse.of(aggregationService.getMatchEvents(matchId, orgId, teamId)));
     }
 
     @GetMapping("/appearances")
     @Operation(summary = "試合内出場記録一覧（computed_minutes 込み）")
     public ResponseEntity<ApiResponse<List<PlayerAppearanceResponse>>> listAppearances(
-            @PathVariable Long orgId,
+            @PathVariable(required = false) Long orgId,
+            @PathVariable(required = false) Long teamId,
             @PathVariable UUID matchId) {
         Long actor = SecurityUtils.getCurrentUserId();
         matchAccessService.assertCanView(actor, matchId);
-        return ResponseEntity.ok(ApiResponse.of(aggregationService.getMatchAppearances(matchId, orgId)));
+        return ResponseEntity.ok(ApiResponse.of(aggregationService.getMatchAppearances(matchId, orgId, teamId)));
     }
 
     // ─────────────────────────────────────────────
@@ -97,17 +102,18 @@ public class MatchRecordEventController {
     @PostMapping("/events")
     @Operation(summary = "イベント記録")
     public ResponseEntity<ApiResponse<MatchEventResponse>> recordEvent(
-            @PathVariable Long orgId,
+            @PathVariable(required = false) Long orgId,
+            @PathVariable(required = false) Long teamId,
             @PathVariable UUID matchId,
             @Valid @RequestBody MatchEventRequest request) {
         Long actor = SecurityUtils.getCurrentUserId();
-        MatchEntity match = matchService.getMatchOrThrow(matchId, orgId);
+        MatchEntity match = matchService.getMatchOrThrow(matchId, orgId, teamId);
         // 一次認可（principal がこの試合に記録してよいか）。Service 側でも assertCanRecordTimeline が再検証する。
         matchAccessService.assertCanRecordTimeline(actor, match);
 
         Long recordedByTeamId = deriveRecordedByTeamId(actor, match, request.getTeamSide());
         MatchEventService.EventCommand command = toCommand(request, recordedByTeamId);
-        MatchEventEntity saved = matchEventService.record(matchId, orgId, actor, command);
+        MatchEventEntity saved = matchEventService.record(matchId, orgId, teamId, actor, command);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.of(MatchEventResponse.from(saved)));
     }
@@ -115,27 +121,29 @@ public class MatchRecordEventController {
     @PatchMapping("/events/{eventId}")
     @Operation(summary = "イベント更新")
     public ResponseEntity<ApiResponse<MatchEventResponse>> updateEvent(
-            @PathVariable Long orgId,
+            @PathVariable(required = false) Long orgId,
+            @PathVariable(required = false) Long teamId,
             @PathVariable UUID matchId,
             @PathVariable UUID eventId,
             @Valid @RequestBody MatchEventRequest request) {
         Long actor = SecurityUtils.getCurrentUserId();
-        MatchEntity match = matchService.getMatchOrThrow(matchId, orgId);
+        MatchEntity match = matchService.getMatchOrThrow(matchId, orgId, teamId);
         matchAccessService.assertCanRecordTimeline(actor, match);
         // 更新では recorded_by_team_id は Service 側が既存値を維持する（DTO 由来の名義は渡さない）
         MatchEventService.EventCommand command = toCommand(request, null);
-        MatchEventEntity saved = matchEventService.update(matchId, eventId, orgId, actor, command);
+        MatchEventEntity saved = matchEventService.update(matchId, eventId, orgId, teamId, actor, command);
         return ResponseEntity.ok(ApiResponse.of(MatchEventResponse.from(saved)));
     }
 
     @DeleteMapping("/events/{eventId}")
     @Operation(summary = "イベント削除")
     public ResponseEntity<Void> deleteEvent(
-            @PathVariable Long orgId,
+            @PathVariable(required = false) Long orgId,
+            @PathVariable(required = false) Long teamId,
             @PathVariable UUID matchId,
             @PathVariable UUID eventId) {
         Long actor = SecurityUtils.getCurrentUserId();
-        matchEventService.delete(matchId, eventId, orgId, actor);
+        matchEventService.delete(matchId, eventId, orgId, teamId, actor);
         return ResponseEntity.noContent().build();
     }
 

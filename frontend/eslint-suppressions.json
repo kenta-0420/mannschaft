@@ -181,7 +181,7 @@
   },
   "tests/e2e/real/dashboard.spec.ts": {
     "no-restricted-syntax": {
-      "count": 21
+      "count": 20
     }
   },
   "tests/e2e/real/event-chat-survey-bulletin.spec.ts": {
@@ -426,7 +426,7 @@
   },
   "tests/e2e/real/villages.spec.ts": {
     "no-restricted-syntax": {
-      "count": 12
+      "count": 8
     }
   },
   "tests/e2e/real/write-ops.spec.ts": {

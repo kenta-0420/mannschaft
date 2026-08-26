@@ -183,6 +183,44 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             @Param("orgIds") Collection<Long> orgIds);
 
     /**
+     * F03.16 §4.5.0 段1 — <b>1 スコープ × 複数ユーザー</b>の所属ロール一括取得。
+     *
+     * <p>{@link #findActiveRoleKindsByUserAndScopes} と<b>向きが逆</b>である（あちらは
+     * 「1 ユーザー × 複数スコープ」）。メンション通知フィルタ（§6.3）・{@code mention-candidates}
+     * （§4.4）は「単一スケジュールのスコープに対し候補ユーザー全員」を解決する必要があり、
+     * 候補者ごとに {@link #findActiveRoleKinds} を呼ぶと候補者数に比例して SQL が増える
+     * （AC-39 が禁じる形）。</p>
+     *
+     * <p>{@code role_kind} の名前（MEMBER / SUPPORTER）は {@code roles.name} と一致するため、
+     * 呼び出し側は {@code RolePriority} でメモリ比較でき、優先度取得の追加 SQL は不要。</p>
+     *
+     * <p>空集合に対する {@code IN ()} を避けるため、{@code userIds} が空の場合は呼ばないこと。</p>
+     *
+     * @param scopeType スコープ種別
+     * @param scopeId   スコープ ID
+     * @param userIds   候補ユーザー ID 集合
+     * @return ユーザー ID × role_kind（アクティブ行のみ）
+     */
+    @Query("SELECT m.userId AS userId, m.roleKind AS roleKind FROM MembershipEntity m " +
+            "WHERE m.scopeType = :scopeType AND m.scopeId = :scopeId " +
+            "AND m.userId IN :userIds AND m.leftAt IS NULL")
+    List<MembershipUserRoleKindProjection> findActiveRoleKindsByScopeAndUsers(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("userIds") Collection<Long> userIds);
+
+    /**
+     * {@link #findActiveRoleKindsByScopeAndUsers} の射影（ユーザー ID × 所属ロール種別）。
+     */
+    interface MembershipUserRoleKindProjection {
+        /** ユーザー ID。 */
+        Long getUserId();
+
+        /** 所属ロール種別（MEMBER / SUPPORTER）。 */
+        RoleKind getRoleKind();
+    }
+
+    /**
      * F10.1.1 / P3b Wave2: 指定スコープのアクティブ会員総数（role_kind 横断・DISTINCT user_id 件数）を返す。
      *
      * <p>管理者レンズ「メンバー統計」の「総数」用。{@code left_at IS NULL} を在籍の真実の源とし、
@@ -280,4 +318,113 @@ public interface MembershipRepository extends JpaRepository<MembershipEntity, Lo
             + "WHERE m.userId IN :userIds AND m.leftAt IS NULL "
             + "GROUP BY m.userId")
     List<Object[]> findEarliestActiveJoinedAtByUsers(@Param("userIds") Collection<Long> userIds);
+
+    /**
+     * 指定スコープ（TEAM / ORGANIZATION）の現役メンバーの user_id を<strong>キーセットページング</strong>で
+     * 1 チャンク取得する（通知 fan-out 抜本改修 Wave-1・TEAM 受信者ストリーム配信用）。
+     *
+     * <p>{@link #findActiveDistinctUserIdsByScope} が全件を 1 つの {@code List} に載せるのに対し、
+     * 本メソッドは {@code user_id > :cursor} を昇順 + {@code LIMIT chunk}（{@link Pageable}）で刻むことで、
+     * 大規模スコープでも受信者集合をメモリ有界に走査できる。呼び出し側は「返却末尾の user_id を
+     * 次カーソルにして、結果が chunk 未満になるまで繰り返す」ことで全現役メンバーを漏れなく列挙する。</p>
+     *
+     * <p>被覆索引 {@code idx_membership_fanout_keyset (scope_type, scope_id, left_at, user_id)}
+     * により index-only 走査となる（V174 migration）。現役判定（{@code left_at IS NULL}）は WHERE に
+     * 閉じ込め、退会者を漏れなく除外する。{@code scope_id} で等値絞り込みするためテナント分離も満たす。</p>
+     *
+     * <h2>受信者母集団の一致（旧 {@code UserRoleRepository.findUserIdsByScope} との回帰防止）</h2>
+     * <p>載せ替え前の同期経路は {@code JOIN users u ... AND u.deleted_at IS NULL AND u.status = 'ACTIVE'} で
+     * 停止・削除済みユーザーを除外していた。membership 行（{@code left_at IS NULL}）だけを見ると、行は開存だが
+     * ユーザー本体が停止（{@code status != 'ACTIVE'}）・論理削除（{@code deleted_at IS NOT NULL}）済みの
+     * 相手にまで通知が漏れる回帰となる。そこで {@code users} を JOIN し旧経路と同じユーザー状態フィルタを補う。
+     * JPQL では membership↔user のクロスドメイン association を張れない（原則1・FK 禁止）ため native query とする。
+     * {@code UserEntity} の {@code @SQLRestriction} は native には効かないので {@code deleted_at IS NULL} を明示する。
+     * JOIN 先は PK 参照ゆえ被覆索引の index-only 性は保たれる。</p>
+     *
+     * @param scopeType 対象スコープ種別（fan-out では TEAM）
+     * @param scopeId   対象スコープ ID（対象チーム ID 等）
+     * @param cursor    直前チャンク末尾の user_id（初回は最小値未満＝{@code 0L} 等を渡す）
+     * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}。ソートはクエリ側で固定）
+     * @return {@code user_id > cursor} の現役かつ ACTIVE・未削除ユーザーの {@code [user_id, locale]} を昇順に最大 chunk 件
+     *         （Issue #2871: 受信者ごとに文面のロケールを変えるため locale も同時に取る。users は既に PK で
+     *         JOIN 済みであり、射影を 1 列広げるだけなので実行計画は変わらない）
+     */
+    @Query(value = "SELECT CAST(m.user_id AS SIGNED), u.locale FROM memberships m "
+            + "JOIN users u ON u.id = m.user_id "
+            + "WHERE m.scope_type = :#{#scopeType.name()} AND m.scope_id = :scopeId "
+            + "AND m.left_at IS NULL "
+            + "AND u.deleted_at IS NULL AND u.status = 'ACTIVE' "
+            + "AND m.user_id > :cursor "
+            + "ORDER BY m.user_id ASC",
+            nativeQuery = true)
+    List<Object[]> findActiveUserIdsByScopeKeyset(
+            @Param("scopeType") ScopeType scopeType,
+            @Param("scopeId") Long scopeId,
+            @Param("cursor") Long cursor,
+            Pageable pageable);
+
+    /**
+     * CMP-017c: TEAM スコープの<b>MEMBER 以上（{@code role_kind='MEMBER'}）</b>現役メンバーの user_id を、
+     * 指定 2 名（変換操作者・キープ作成者）を除いて<strong>キーセットページング</strong>で 1 チャンク取得する
+     * （キープ変換通知の耐久 fan-out・母集団供給用）。
+     *
+     * <p><b>なぜ {@code role_kind='MEMBER'} か（SUPPORTER/GUEST 除外の一次根拠）</b>: memberships の
+     * {@code role_kind} は {@link RoleKind} の 2 値（{@code MEMBER}／{@code SUPPORTER}）。管理者（ADMIN/DEPUTY）も
+     * memberships には {@code role_kind='MEMBER'} 行として在籍する（権限ロールは user_roles 側の別概念）ため、
+     * 「MEMBER 以上（ADMIN/DEPUTY/MEMBER）」の母集団は {@code role_kind='MEMBER'} で過不足なく表せる。
+     * 純 SUPPORTER は {@code role_kind='SUPPORTER'} で除外され、GUEST は memberships 行を持たないため自然に外れる。
+     * キープ本体は {@code ScheduleKeepVisibilityResolver}（{@code MEMBERS_AND_ABOVE}）で SUPPORTER に不可視であり、
+     * 受信者ごとの可視性再チェックをしない一括配信でも<b>母集団段階で SUPPORTER を落とすことでタイトル漏洩を防ぐ</b>
+     * （§6.1・CMP-017b）。</p>
+     *
+     * <p>操作者・作成者の除外は母集団側で行う（{@code m.user_id <> :excludedA AND m.user_id <> :excludedB}）。
+     * 作成者は別途「必達」の直送で受領するため母集団からは外し二重送信を避ける。除外不要枠には
+     * 使われない番人値（{@code 0}・user_id は常に正）を渡す。ユーザー状態フィルタ（{@code status='ACTIVE'}・
+     * {@code deleted_at IS NULL}）は {@link #findActiveUserIdsByScopeKeyset} と同じく users を JOIN して補う
+     * （停止・削除済みユーザーへの漏洩回帰防止）。被覆索引 {@code idx_membership_keep_fanout}
+     * （{@code scope_type, scope_id, role_kind, left_at, user_id}）で index-only 走査になる。</p>
+     *
+     * @param teamId    対象チーム ID（{@code scope_id}）
+     * @param excludedA 母集団から除く user_id その1（変換操作者。番人値 {@code 0} 可）
+     * @param excludedB 母集団から除く user_id その2（キープ作成者。作成者匿名化時は番人値 {@code 0}）
+     * @param cursor    直前チャンク末尾の user_id（初回は {@code 0L}）
+     * @param pageable  チャンクサイズ（{@code PageRequest.of(0, chunk)}）
+     * @return {@code user_id > cursor} の MEMBER 以上・現役・ACTIVE・未削除・除外対象外の {@code [user_id, locale]} を昇順に最大 chunk 件
+     *         （Issue #2871: locale を同時取得。users は既に PK JOIN 済みのため実行計画は不変）
+     */
+    @Query(value = "SELECT CAST(m.user_id AS SIGNED), u.locale FROM memberships m "
+            + "JOIN users u ON u.id = m.user_id "
+            + "WHERE m.scope_type = 'TEAM' AND m.scope_id = :teamId "
+            + "AND m.role_kind = 'MEMBER' "
+            + "AND m.left_at IS NULL "
+            + "AND u.deleted_at IS NULL AND u.status = 'ACTIVE' "
+            + "AND m.user_id <> :excludedA AND m.user_id <> :excludedB "
+            + "AND m.user_id > :cursor "
+            + "ORDER BY m.user_id ASC",
+            nativeQuery = true)
+    List<Object[]> findMemberAndAboveTeamUserIdsByKeysetExcluding(
+            @Param("teamId") Long teamId,
+            @Param("excludedA") Long excludedA,
+            @Param("excludedB") Long excludedB,
+            @Param("cursor") Long cursor,
+            Pageable pageable);
+
+    /**
+     * F00.5 フェーズ 3 — {@link com.mannschaft.app.membership.batch.MembershipConsistencyChecker} 用:
+     * memberships のアクティブ行（{@code left_at IS NULL}）のうち、対応する user_roles 行が
+     * 存在しない件数を SQL 側で集計する。
+     *
+     * <p>全件をアプリ側にロードして突き合わせると行数に比例してヒープを消費するため、
+     * {@code NOT EXISTS} 相関サブクエリで DB に差分を出させ、アプリはスカラー件数のみ受け取る。
+     * JPQL では membership↔role のクロスドメイン association を張れない（原則1・FK 禁止）ため
+     * native query とする（{@link #findActiveUserIdsByScopeKeyset} 前例踏襲）。</p>
+     */
+    @Query(value = "SELECT COUNT(*) FROM memberships m "
+            + "WHERE m.left_at IS NULL AND m.user_id IS NOT NULL AND NOT EXISTS ("
+            + "  SELECT 1 FROM user_roles ur WHERE ur.user_id = m.user_id AND ("
+            + "    (m.scope_type = 'TEAM' AND ur.team_id = m.scope_id) OR "
+            + "    (m.scope_type = 'ORGANIZATION' AND ur.organization_id = m.scope_id)"
+            + "  ))",
+            nativeQuery = true)
+    long countOnlyInMemberships();
 }

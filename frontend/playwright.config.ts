@@ -22,6 +22,15 @@ export default defineConfig({
     video: 'off',
     locale: 'ja-JP',
     timezoneId: 'Asia/Tokyo',
+    // この環境は WSL2 mirrored networking (hostAddressLoopback=true) の影響で
+    // http://localhost:<port> への接続が IPv6(::1) 側のゴーストソケット
+    // （426 Upgrade Required を返す別リスナー）に落ちる既知の罠がある。
+    // Chromium のホスト解決ルールで localhost を 127.0.0.1 へマップして回避する。
+    // BE が発行する Cookie の domain=localhost 要件は hostname 文字列としては
+    // localhost のまま維持されるため崩れない。
+    launchOptions: {
+      args: ['--host-resolver-rules=MAP localhost 127.0.0.1'],
+    },
   },
 
   projects: [
@@ -47,7 +56,11 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'tests/e2e/.auth/user.json',
       },
-      dependencies: ['setup-user'],
+      // dependencies: ['setup-user'], // 既存 storageState を使うため一時的にコメントアウト
+      // tests/e2e/real/** は chromium-real 専用（毎テストで実ログインする実機テストのため）。
+      // testMatch 制限が無いとここでも二重実行され、ログイン試行回数の上限（1分あたり10回）に
+      // 引っかかって偽の赤を生む。chromium はそれ以外の（モック中心の）spec のみ対象とする。
+      testIgnore: '**/real/**/*.spec.ts',
     },
     // 管理者権限テスト（admin/ 配下のみ実行）
     {
@@ -56,7 +69,8 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         storageState: 'tests/e2e/.auth/admin.json',
       },
-      dependencies: ['setup-admin'],
+      // setup-admin は .env.test の認証情報が必要。既存 storageState を使うため一時的にコメントアウト
+      // dependencies: ['setup-admin'],
       testMatch: '**/admin/**/*.spec.ts',
     },
     // Setup: 実機テスト用管理者認証状態を保存
@@ -97,7 +111,10 @@ export default defineConfig({
   // 正しく動作するよう設定。既存サーバーが起動中の場合は URL チェックで reuse される。
   webServer: {
     command: `npm run dev -- --port ${new URL(BASE_URL).port || '8081'}`,
-    url: BASE_URL,
+    // readiness チェックは Node の http クライアントで行われ Chromium の
+    // host-resolver-rules の恩恵を受けないため、ここだけ 127.0.0.1 で疎通確認する
+    // （use.baseURL は BASE_URL のまま維持し、Cookie domain 要件は崩さない）。
+    url: BASE_URL.replace('localhost', '127.0.0.1'),
     reuseExistingServer: true,
     timeout: 240_000,
     env: {

@@ -6,16 +6,22 @@ import com.mannschaft.app.common.architecture.JsonRequestBodyCreatorArchTest.Pay
 import com.mannschaft.app.common.architecture.fixtures.D7ArrayElementBrokenItem;
 import com.mannschaft.app.common.architecture.fixtures.D7ContentDeserializeBrokenRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7CustomDeserializerRequest;
+import com.mannschaft.app.common.architecture.fixtures.D7DelegatingAndPropertiesCreatorRequest;
+import com.mannschaft.app.common.architecture.fixtures.D7DisabledModeCreatorRequest;
+import com.mannschaft.app.common.architecture.fixtures.D7DisabledPlusFallbackCreatorRequest;
+import com.mannschaft.app.common.architecture.fixtures.D7DualJsonCreatorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7FormBrokenSearchRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7FormOkSearchRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7JsonCreatorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7NestedBrokenAttachment;
 import com.mannschaft.app.common.architecture.fixtures.D7NoArgsAndSettersRequest;
+import com.mannschaft.app.common.architecture.fixtures.D7NoArgsPlusDualCreatorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7PreFixCreateThreadRequestReplica;
 import com.mannschaft.app.common.architecture.fixtures.D7RootRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7SingleConstructorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7StaticFactoryCreatorRequest;
 import com.mannschaft.app.common.architecture.fixtures.D7UnboundBrokenRequest;
+import com.mannschaft.app.common.architecture.fixtures.D7ValidOnlyBoundRequest;
 import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
@@ -58,6 +64,24 @@ import org.junit.jupiter.api.Test;
  *   <tr><td>{@link D7FormBrokenSearchRequest}</td>
  *       <td>{@code @ModelAttribute} ＋ 2 ctor ＋ no-arg 無し（{@code @JsonCreator} あり）</td>
  *       <td><b>検出</b>＝フォーム経路は Jackson 注釈で救われない</td></tr>
+ *   <tr><td>{@link D7DualJsonCreatorRequest}</td>
+ *       <td>2 ctor の<b>両方</b>に {@code @JsonCreator}（properties-based が 2 本）</td>
+ *       <td><b>検出</b>＝注釈の存在ではなく採用可能な creator の本数で見る</td></tr>
+ *   <tr><td>{@link D7NoArgsPlusDualCreatorRequest}</td>
+ *       <td>引数無しコンストラクタあり ＋ properties-based creator が 2 本（#2613）</td>
+ *       <td><b>検出</b>＝引数無しコンストラクタの有無は二重 creator の衝突を抑止しない</td></tr>
+ *   <tr><td>{@link D7DisabledModeCreatorRequest}</td>
+ *       <td><b>唯一の</b> ctor に {@code @JsonCreator(mode = DISABLED)}</td>
+ *       <td><b>検出</b>＝暗黙 creator も明示的に断たれている</td></tr>
+ *   <tr><td>{@link D7DisabledPlusFallbackCreatorRequest}</td>
+ *       <td>2 ctor のうち片方だけ {@code DISABLED}</td>
+ *       <td>非検出＝残る 1 本が暗黙 creator になる（実測固定）</td></tr>
+ *   <tr><td>{@link D7ValidOnlyBoundRequest}</td>
+ *       <td>{@code @Valid} だけが付いた複合型引数で受ける壊れた DTO</td>
+ *       <td><b>検出</b>＝検証注釈はバインド元を決めない</td></tr>
+ *   <tr><td>{@link D7DelegatingAndPropertiesCreatorRequest}</td>
+ *       <td>delegating creator ＋ properties-based creator を 1 本ずつ</td>
+ *       <td>非検出＝共存は Jackson が扱える</td></tr>
  *   <tr><td>{@link D7JsonCreatorRequest}</td><td>2 ctor ＋ {@code @JsonCreator}</td>
  *       <td>非検出</td></tr>
  *   <tr><td>{@link D7StaticFactoryCreatorRequest}</td>
@@ -183,9 +207,74 @@ class JsonRequestBodyCreatorConditionTest {
             .isTrue();
     }
 
+    @Test
+    @DisplayName("抜け道封じ: @JsonCreatorが2本のコンストラクタに二重付与されたDTOは検出される")
+    void duplicatePropertiesBasedCreatorsAreDetected() {
+        assertThat(jsonBoundNames).contains(D7DualJsonCreatorRequest.class.getName());
+        assertThat(violatesJson(D7DualJsonCreatorRequest.class))
+            .as("Jackson は properties-based creator をちょうど 1 本しか採れず、"
+                + "2 本宣言されると Conflicting property-based creators で常時 500 になる。"
+                + "「@JsonCreator が 1 つでもあれば合格」という判定はこの形を素通りさせる")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("抜け道封じ(#2613): 引数無しctorがあってもproperties-based creatorが2本なら検出される")
+    void noArgsPlusDualCreatorIsDetected() {
+        assertThat(jsonBoundNames).contains(D7NoArgsPlusDualCreatorRequest.class.getName());
+        assertThat(violatesJson(D7NoArgsPlusDualCreatorRequest.class))
+            .as("引数無しコンストラクタの有無による早期 return を二重 creator 検査より前に置くと、"
+                + "この形（no-arg あり＋properties-based creator 2 本）が素通りする。"
+                + "Jackson は creator の衝突を先に検出するため、no-arg コンストラクタへの"
+                + "フォールバックは起きず常時 500 になる")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("抜け道封じ: 唯一のctorが@JsonCreator(mode=DISABLED)なら暗黙creatorも断たれ検出される")
+    void disabledModeCreatorIsDetected() {
+        assertThat(jsonBoundNames).contains(D7DisabledModeCreatorRequest.class.getName());
+        assertThat(violatesJson(D7DisabledModeCreatorRequest.class))
+            .as("mode = DISABLED は creator の明示的な打ち消しであり、「コンストラクタ 1 本なら"
+                + "暗黙 creator になる」という免責がここでは成り立たない。"
+                + "注釈の存在だけを見ると常時 500 の DTO を合格にしてしまう")
+            .isTrue();
+    }
+
+    @Test
+    @DisplayName("@Validのみが付いた複合型引数の型もフォーム経路の検査対象に入り検出される")
+    void validOnlyAnnotatedParameterIsScannedAsFormBound() {
+        assertThat(formBoundNames)
+            .as("@Valid はバインド元を決めないため、Spring は暗黙 @ModelAttribute として扱う。"
+                + "「注釈が 1 つでもあれば対象外」にするとこの引数型がどの経路にも入らない")
+            .contains(D7ValidOnlyBoundRequest.class.getName());
+        assertThat(JsonRequestBodyCreatorArchTest.lacksResolvableConstructor(
+                fixtureClasses.get(D7ValidOnlyBoundRequest.class)))
+            .as("2 ctor + 引数無しコンストラクタ無しはフォームバインダも実体生成できない")
+            .isTrue();
+    }
+
     // ------------------------------------------------------------------
     // 偽陽性ゼロ（バインダが扱える DTO を誤検出しない）
     // ------------------------------------------------------------------
+
+    @Test
+    @DisplayName("2ctorのうち片方だけDISABLEDは検出されない（残る1本が暗黙creator・実測固定）")
+    void disabledWithSingleFallbackNotDetected() {
+        assertThat(violatesJson(D7DisabledPlusFallbackCreatorRequest.class))
+            .as("打ち消しで候補が 1 本に絞られる形は実際に往復できる（実測 2026-08-05）。"
+                + "「DISABLED が付いていたら違反」と机上で決めると誤検出になる")
+            .isFalse();
+    }
+
+    @Test
+    @DisplayName("delegating creatorとproperties-based creatorの共存は検出されない（1本ずつは正常）")
+    void delegatingAndPropertiesCreatorsNotDetected() {
+        assertThat(violatesJson(D7DelegatingAndPropertiesCreatorRequest.class))
+            .as("Jackson は delegating と properties-based を各 1 本ずつ持てるため、"
+                + "@JsonCreator が 2 本あるというだけで違反にしてはならない")
+            .isFalse();
+    }
 
     @Test
     @DisplayName("金型: @JsonCreator付きコンストラクタを持つDTOは検出されない")

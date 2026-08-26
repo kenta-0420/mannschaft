@@ -42,11 +42,12 @@ import {
   toHm,
   isValidHalfHourRange,
 } from '~/composables/useReservationDayOptions'
+import { collectOccupiedCells, type SlotDragRange } from '~/composables/useSlotDragSelection'
 
-type SlotTemplateResponse = components['schemas']['SlotTemplateResponse']
+type SlotTemplateResponse = components['schemas']['SlotTemplateResponse'] & { endsNextDay?: boolean }
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type SlotGenerationResultDto = components['schemas']['SlotGenerationResultDto']
-type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeResponse']
+type RecurringBlockedTimeResponse = components['schemas']['RecurringBlockedTimeResponse'] & { endsNextDay?: boolean }
 type RecurringBlockedTimeImpactResponse = components['schemas']['RecurringBlockedTimeImpactResponse']
 
 const props = defineProps<{
@@ -90,6 +91,7 @@ interface TemplateForm {
   lineId: number
   startTime: string
   endTime: string
+  endsNextDay: boolean
   capacity: number
   isActive: boolean
 }
@@ -99,6 +101,7 @@ function defaultForm(): TemplateForm {
     lineId: COMMON_LINE,
     startTime: '09:00',
     endTime: '10:00',
+    endsNextDay: false,
     capacity: 1,
     isActive: true,
   }
@@ -125,7 +128,8 @@ const lineOptions = computed(() => [
 ])
 
 const timeRangeValid = computed(() =>
-  !!form.value.startTime && !!form.value.endTime && form.value.startTime < form.value.endTime,
+  !!form.value.startTime && !!form.value.endTime
+  && (form.value.endsNextDay ? form.value.startTime > form.value.endTime : form.value.startTime < form.value.endTime),
 )
 
 const saveDisabled = computed(() =>
@@ -139,6 +143,11 @@ const saveDisabled = computed(() =>
 function dayLabel(code?: string | null): string {
   const opt = RESERVATION_DAY_OPTIONS.find(d => d.value === code)
   return opt ? t(opt.labelKey) : (code ?? '')
+}
+
+function formatEndTime(value: string | null | undefined, endsNextDay?: boolean): string {
+  const hm = toHm(value)
+  return endsNextDay ? t('reservation.template.next_day_time', { time: hm }) : hm
 }
 
 /**
@@ -198,6 +207,7 @@ function openEdit(template: SlotTemplateResponse) {
     lineId: template.lineId ?? COMMON_LINE,
     startTime: toHm(template.startTime),
     endTime: toHm(template.endTime),
+    endsNextDay: template.endsNextDay ?? false,
     capacity: template.capacity ?? 1,
     isActive: template.isActive ?? true,
   }
@@ -259,6 +269,7 @@ async function save() {
   const base = {
     startTime: `${form.value.startTime}:00`,
     endTime: `${form.value.endTime}:00`,
+    endsNextDay: form.value.endsNextDay,
     capacity: form.value.capacity,
   }
   try {
@@ -332,6 +343,59 @@ async function save() {
   }
 }
 
+// === 週グリッドのドラッグ範囲選択（管理者の枠作成の手数削減）===
+//
+// ダイアログのフォーム（曜日トグル＋開始/終了 Select＋定員）は残したまま（AC5・キーボード操作と
+// ドラッグが使えない場面のため）、グリッドを主導線として併設する。
+// ドラッグで曜日・開始/終了時刻は確定済みなので、確認では**定員だけ**を聞く（再入力させない）。
+
+/** グリッド上で既に埋まっているセル。枠テンプレと定期予約不可の両方を「埋まっている」とみなす。 */
+const occupiedCells = computed(() =>
+  collectOccupiedCells([...templates.value, ...recurringRules.value]),
+)
+
+const showDragConfirm = ref(false)
+const dragRange = ref<SlotDragRange | null>(null)
+const dragCapacity = ref(1)
+
+/** 確認ダイアログに出す確定済みの範囲（曜日ラベル＋時刻）。 */
+const dragRangeLabel = computed(() => {
+  const range = dragRange.value
+  if (!range) return ''
+  return `${range.days.map(d => dayLabel(d)).join(' / ')} ${range.startTime} - ${range.endTime}`
+})
+
+function onGridSelect(range: SlotDragRange) {
+  dragRange.value = range
+  dragCapacity.value = 1
+  showDragConfirm.value = true
+}
+
+/** 既存枠を含む範囲がなぞられた場合（重複作成の API エラーを踏ませない・AC6）。 */
+function onGridBlocked() {
+  notification.warn(t('reservation.template.title'), t('reservation.template.grid.blocked'))
+}
+
+/**
+ * ドラッグ確定＋定員入力から作成する。既存の `save()`（複数曜日ループ・generation 集約・
+ * 部分失敗処理）をそのまま再利用するため、フォーム状態へ流し込んでから呼ぶ（作成経路を二重化しない）。
+ */
+async function createFromDragRange() {
+  const range = dragRange.value
+  if (!range || range.days.length === 0) return
+  editingTemplate.value = null
+  form.value = {
+    ...defaultForm(),
+    startTime: range.startTime,
+    endTime: range.endTime,
+    capacity: dragCapacity.value,
+  }
+  selectedDays.value = [...range.days]
+  showDragConfirm.value = false
+  dragRange.value = null
+  await save()
+}
+
 async function remove(template: SlotTemplateResponse) {
   if (!template.id) return
   if (!confirm(t('reservation.template.delete_confirm'))) return
@@ -358,6 +422,7 @@ interface RecurringForm {
   lineId: number
   startTime: string
   endTime: string
+  endsNextDay: boolean
   reason: string
   isPublic: boolean
   isActive: boolean
@@ -369,6 +434,7 @@ function defaultRecurringForm(day?: ReservationDayOfWeekCode): RecurringForm {
     lineId: COMMON_LINE,
     startTime: '19:00',
     endTime: '20:00',
+    endsNextDay: false,
     reason: '',
     isPublic: false,
     isActive: true,
@@ -384,7 +450,9 @@ const recurringDayOptions = computed(() =>
 
 /** 全日型は作らせない（§4.3）: 両時刻が有効な半開区間（start < end）のときのみ true。 */
 const recurringTimeRangeValid = computed(() =>
-  isValidHalfHourRange(recurringForm.value.startTime, recurringForm.value.endTime),
+  recurringForm.value.endsNextDay
+    ? !!recurringForm.value.startTime && !!recurringForm.value.endTime && recurringForm.value.startTime > recurringForm.value.endTime
+    : isValidHalfHourRange(recurringForm.value.startTime, recurringForm.value.endTime),
 )
 
 /** 事由（reason）は必須（BE `@NotBlank`・§4.1）。 */
@@ -403,6 +471,7 @@ const recurringEffectiveRequest = computed(() => {
     dayOfWeek: recurringForm.value.dayOfWeek,
     startTime: `${recurringForm.value.startTime}:00`,
     endTime: `${recurringForm.value.endTime}:00`,
+    endsNextDay: recurringForm.value.endsNextDay,
     lineId: recurringForm.value.lineId === COMMON_LINE ? undefined : recurringForm.value.lineId,
   }
 })
@@ -481,6 +550,7 @@ function openEditRecurring(rule: RecurringBlockedTimeResponse) {
     lineId: rule.lineId ?? COMMON_LINE,
     startTime: toHm(rule.startTime),
     endTime: toHm(rule.endTime),
+    endsNextDay: rule.endsNextDay ?? false,
     reason: rule.reason ?? '',
     isPublic: rule.isPublic ?? false,
     isActive: rule.isActive ?? true,
@@ -533,6 +603,7 @@ async function saveRecurring(force = false) {
         dayOfWeek: req.dayOfWeek,
         startTime: req.startTime,
         endTime: req.endTime,
+        endsNextDay: req.endsNextDay,
         reason: recurringForm.value.reason.trim(),
         isPublic: recurringForm.value.isPublic,
         isActive: recurringForm.value.isActive,
@@ -547,6 +618,7 @@ async function saveRecurring(force = false) {
         dayOfWeek: req.dayOfWeek,
         startTime: req.startTime,
         endTime: req.endTime,
+        endsNextDay: req.endsNextDay,
         reason: recurringForm.value.reason.trim(),
         isPublic: recurringForm.value.isPublic,
         ...(recurringForm.value.lineId === COMMON_LINE ? {} : { lineId: recurringForm.value.lineId }),
@@ -677,6 +749,15 @@ defineExpose({
       </span>
     </p>
 
+    <!-- 週グリッド（ドラッグ範囲選択で枠を作成・ADMIN限定）。フォーム導線は下のダイアログに残置。 -->
+    <WeeklySlotDragGrid
+      v-if="isAdmin && !loading && !recurringLoading"
+      class="mb-4"
+      :occupied="occupiedCells"
+      @select="onGridSelect"
+      @blocked="onGridBlocked"
+    />
+
     <!-- 一覧（曜日ごとのグルーピング表示・§3.2/§4.5） -->
     <div v-if="loading || recurringLoading"><Skeleton v-for="i in 3" :key="i" height="3rem" class="mb-2" /></div>
     <div v-else-if="hasAnyContent" class="space-y-3">
@@ -720,7 +801,7 @@ defineExpose({
             <div class="min-w-0 flex-1">
               <p class="font-medium">
                 {{ dayLabel(template.dayOfWeek) }}
-                {{ toHm(template.startTime) }} - {{ toHm(template.endTime) }}
+                {{ toHm(template.startTime) }} - {{ formatEndTime(template.endTime, template.endsNextDay) }}
                 <span class="ml-2 text-sm text-surface-500">
                   {{ template.lineId != null ? (template.lineName ?? '') : t('reservation.template.line_common') }}
                 </span>
@@ -748,7 +829,7 @@ defineExpose({
             <div class="min-w-0 flex-1">
               <p class="font-medium">
                 {{ dayLabel(rule.dayOfWeek) }}
-                {{ toHm(rule.startTime) }} - {{ toHm(rule.endTime) }}
+                {{ toHm(rule.startTime) }} - {{ formatEndTime(rule.endTime, rule.endsNextDay) }}
                 <span class="ml-2 text-sm text-surface-500">
                   {{ rule.lineId != null ? (rule.lineName ?? '') : t('reservation.recurring_block.line_all') }}
                 </span>
@@ -810,6 +891,32 @@ defineExpose({
         </div>
       </template>
     </DashboardEmptyState>
+
+    <!-- ドラッグ確定後の最小限確認（定員だけ。曜日・時刻は確定済みなので再入力させない） -->
+    <Dialog
+      v-model:visible="showDragConfirm"
+      :header="t('reservation.template.grid.confirm_title')"
+      :style="{ width: '360px' }"
+      modal
+    >
+      <div class="flex flex-col gap-4">
+        <p class="text-sm font-medium" data-testid="drag-range-label">{{ dragRangeLabel }}</p>
+        <div>
+          <label class="mb-1 block text-sm font-medium">{{ t('reservation.template.capacity') }}</label>
+          <InputNumber v-model="dragCapacity" :min="1" :max="99" show-buttons class="w-full" />
+        </div>
+      </div>
+      <template #footer>
+        <Button :label="t('reservation.button.cancel')" text @click="showDragConfirm = false" />
+        <Button
+          :label="t('reservation.template.grid.create')"
+          icon="pi pi-check"
+          :loading="saving"
+          data-testid="drag-create-confirm"
+          @click="createFromDragRange"
+        />
+      </template>
+    </Dialog>
 
     <!-- 作成・編集ダイアログ -->
     <Dialog
@@ -878,6 +985,10 @@ defineExpose({
               option-value="value"
               class="w-32"
             />
+            <div class="flex items-center gap-2">
+              <ToggleSwitch v-model="form.endsNextDay" data-testid="template-ends-next-day" />
+              <span class="text-sm text-surface-600 dark:text-surface-400">{{ t('reservation.template.ends_next_day') }}</span>
+            </div>
           </div>
           <p v-if="!timeRangeValid" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
             {{ t('reservation.template.error.time_range_invalid') }}
@@ -969,6 +1080,10 @@ defineExpose({
               class="w-32"
               data-testid="recurring-end-time"
             />
+            <div class="flex items-center gap-2">
+              <ToggleSwitch v-model="recurringForm.endsNextDay" data-testid="recurring-ends-next-day" />
+              <span class="text-sm text-surface-600 dark:text-surface-400">{{ t('reservation.template.ends_next_day') }}</span>
+            </div>
           </div>
           <p v-if="!recurringTimeRangeValid" class="mt-1 text-xs text-amber-600 dark:text-amber-400">
             {{ t('reservation.template.error.time_range_invalid') }}

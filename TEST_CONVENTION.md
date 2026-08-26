@@ -87,6 +87,9 @@
    （例: `JobCheckInService` / `JobQrTokenService` は注入済み）
 2. **入力・期待値の両方を相対化する** — 固定基準を使わず `now().plusDays(7)` / `now().minusMonths(1)`
    のように「現在からの相対」で組み、アサートも相対値で行う。両辺が同じ時刻軸で動くため日跨ぎで壊れない。
+   > ⚠️ **「両辺が同じ時刻軸」は前提であって保証ではない。** テスト側と被テスト側が**別のタイムゾーンで
+   > 暦日を算出**していると、相対化していても日跨ぎで壊れる。とくにフロントエンドで実害が出ている
+   > （§2.4.1）。相対化を選ぶ前に、被テスト側が明示 TZ 変換をしていないかを必ず確認すること。
 3. **固定入力に対する相対アサート** — メソッドへ固定日時を **明示的に引数で渡し**、その固定入力に対する
    出力を固定値でアサートする（実時刻を参照しないため安全。例: `SlaPolicy.calcDueAt(base)`）。
 
@@ -101,6 +104,63 @@ assertThat(LocalDate.now()).isBefore(LocalDate.of(2026, 12, 31));     // 2026/12
 > 監査記録（2026-06-13 / Phase3a B-4）: `backend/src/test` 配下の固定 2026 リテラルと `now()` を併用する
 > 約70ファイルを精査した結果、「固定過去日付 vs 実時刻」の破壊パターンは **0 件**（上記 1〜3 の安全形のみ）。
 > 既知の `JobQrTokenServiceTest` は `Clock` 注入済みのため対象外。本節は再発防止の規約として明文化したもの。
+
+### 2.4.1 フロントエンド（Vitest）— TZ 軸の食い違いによる暦日ずれ **【必須】**
+
+**テストで期待値を組み立てるとき、引数なしの `dayjs()` / `new Date()` を使ってはならない。**
+
+前節の「相対化すれば安全」は **テスト側と被テスト側が同じ時刻軸で暦日を出している場合にのみ**成り立つ。
+本プロジェクトのコンポーネントは `useDatetime` の `userTimezone`（既定 `Asia/Tokyo`）で
+`dayjs(...).tz(...)` と**明示変換**するものが多い。一方テストで素の `dayjs()` を使うと
+**実行プロセスの TZ** で評価される。**CI は `TZ=UTC` で走る**ため、両者の暦日は
+**UTC 15:00〜24:00（= JST の翌日 00:00〜09:00）の窓で 1 日ずれる**。
+
+```ts
+// NG: プロセス TZ で暦日を出している。コンポーネントが .tz('Asia/Tokyo') なら CI の特定時間帯で壊れる
+const targetDate = dayjs().add(2, 'day').toDate()
+const targetDateIso = dayjs(targetDate).format('YYYY-MM-DD')
+```
+
+**正攻法 — 時計を固定する。相対化では解決しない:**
+
+```ts
+beforeAll(() => {
+  // UTC 03:00 = JST 12:00。どちらの TZ で評価しても同じ暦日になる「安全な昼間」を選ぶ。
+  // 境界近く（UTC 15:00〜24:00 など）を選ぶと固定しても暦日がずれるため意味がない。
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date('2026-08-11T03:00:00Z'))
+})
+afterAll(() => {
+  vi.useRealTimers()   // 他スペックへの汚染を防ぐため必ず戻す
+})
+```
+
+- `toFake: ['Date']` で**日付系だけ**を差し替える。タイマー全体を止めると `flushPromises` や
+  Vue の非同期描画と干渉することがある。
+- 固定する瞬間は**両 TZ で同じ暦日になる時刻**を選ぶ。固定しさえすればよいのではない。
+
+> 実例（2026-08-12 / PR #2744）: `ScheduleExceptionPanel.spec.ts` が
+> `dayjs().add(2, 'day')`（プロセス TZ）で期待値を組む一方、コンポーネントの `formatDate()` は
+> `dayjs(date).tz('Asia/Tokyo')` で変換していた。CI が UTC 15:15 に走った際に暦日が 1 日ずれて
+> 3 件が落ち、**FE を触る全 PR を数時間ブロック**した。日付直書きを避けて相対化した結果、
+> 「その日が来たら壊れる」爆弾が「特定の時間帯に走ると壊れる」爆弾に化けた形である。
+> **相対化は解ではない。時計を止めるのが解。**
+
+---
+
+### 2.5 ログ出力を検証するテスト（`ListAppender`）はロガーの実効レベルを自ら設定・復元すること **【必須】**
+
+`ch.qos.logback.core.read.ListAppender` を対象クラスの `Logger` に付けてログ出力内容を検証する
+プレーンな単体テスト（Spring コンテキストを起動しないもの）は、`@BeforeEach` で**対象ロガーの
+実効レベルを明示的に設定**し、`@AfterEach` で**元のレベルへ確実に復元**すること（取得した
+`getLevel()` の戻り値をそのまま戻す。null なら null に戻し、継承状態へ戻す）。
+
+**理由**: `backend/build.gradle.kts` の `setForkEvery` により、同一 gradle テストフォーク内で複数
+のテストクラスが JVM を共有する。先に `@ActiveProfiles("test")` の `@SpringBootTest`（`test`
+プロファイルは `logback-spring.xml` で root レベルを WARN に設定）が走ると、その状態が同一フォーク
+内の後続のプレーン単体テストへ持ち越され、`log.info` 等が実効レベル未達で握りつぶされて
+`ListAppender` に何も届かない。**ローカルで対象クラス単体だけを実行すると Spring コンテキストが
+起動しないため再現せず、CI 特有の実行順依存ですり抜ける。**
 
 ---
 
@@ -702,6 +762,57 @@ void setUp() {
 | `denyWithReason(checker, reason)` | `decide()` でカスタム `DenyReason` を返す |
 
 詳細は設計書 `docs/features/F00_content_visibility_resolver.md` §13.8 を参照。
+
+---
+
+## 9.6 バッチ（`@Scheduled`）を書くときの規約 — 番人あり
+
+本番は複数 Pod で動く。**`@Scheduled` を書いたメソッドは、何もしなければ Pod 数だけ同時に走る**
+（＝二重通知・二重課金・二重集計）。従来この規約は `ShedLockConfig` の Javadoc 一覧という
+「人間の善意」だけで維持されていたが、番人 `ScheduledBatchGuardTest` が CI で機械的に強制する。
+
+| ルール | 内容 |
+|---|---|
+| 1 | `@Scheduled` には **`@SchedulerLock` を必ず併記**する。例外は `@PodLocalScheduled` のみ |
+| 2 | `@SchedulerLock` には **`lockAtMostFor` を必ず明示**する（既定 30m への暗黙依存を禁止） |
+| 3 | `@Scheduled` には **`@BatchEndpoint` を必ず併記**する。例外は `@BatchEndpointExempt` のみ |
+| 4 | 短周期バッチ（起動間隔 1 時間以下）は **`lockAtMostFor` を起動間隔より長く**する（同値も不可） |
+
+```java
+/** 予約リマインドを送出する（毎分）。 */
+@BatchEndpoint(name = "reservation-reminder-dispatch", description = "予約リマインド送出")
+@Scheduled(cron = "0 * * * * *")
+@SchedulerLock(name = "reservationReminderDispatchBatch", lockAtMostFor = "PT5M")
+public void dispatch() { ... }
+```
+
+**`lockAtMostFor` を必ず書かせる理由**: 未指定だと `@EnableSchedulerLock(defaultLockAtMostFor = "30m")`
+の既定値に暗黙依存する。既定 30 分は数秒で終わるワーカーには長すぎ（Pod が異常終了するとロックが
+30 分残り、その間バッチが完全停止する）、1 時間かかる夜間集計には短すぎる（処理中に他 Pod が
+二重起動しうる）。**そのバッチの最大実行時間を書き手に必ず考えさせる**のが本ルールの目的である。
+
+**`lockAtMostFor` が起動間隔以下だと何が起きるか（ルール 4）**: 1 回の実行が `lockAtMostFor` を
+超えた時点でロックが失効するため、次の起動が前の実行と重なる。**同値が最も危険**で、実行が
+わずかに超過しただけで重なる。番人は起動間隔を `cron` / `fixedRate` / `fixedDelay`（文字列版含む）
+から算出し、cron は Spring の `CronExpression` に発火時刻を列挙させて**最小**間隔を採る。
+**算出できない場合は安全側に倒して落とす**（`${prop}` を既定値なしで書いて番人を迂回させないため。
+`${prop:0 0 3 * * *}` のように既定値付きで書くこと）。
+日次・週次・月次は次の起動まで 24 時間以上あり重なりが起きないため**対象外**であり、
+これらは間隔ではなく最悪ケースの処理時間から `lockAtMostFor` を決める。
+
+**例外マーカーの使い方**: `@PodLocalScheduled` / `@BatchEndpointExempt` は番人の出力を黙らせる力を
+持つため、**理由の記述（`value()` の文字列リテラル）と対象メソッドの Javadoc を必須**とする。
+これを二次番人 `BatchMarkerAnnotationGuardTest` が機械的に検証する（免除リストは無い）。
+「ロックの付け方が分からない」は付与理由にならない。付与が正当なのは、
+**ロックを掛けるとかえって壊れる**場合（Pod ローカルのメモリバッファ flush・Pod ごとの死活監視）と、
+**数秒間隔の高頻度ワーカーで実行履歴が有害**な場合だけである。
+
+**番人自体のテスト（`@Repeatable` の罠）**: `@Scheduled` は `@Repeatable(Schedules.class)` であり、
+1 メソッドに 2 つ以上書くと javac は `@Scheduled` を直接付けず `@Schedules` コンテナに包む。
+`areAnnotatedWith(Scheduled.class)` だけを見る番人は**複数スケジュール指定のバッチを丸ごと取り逃す**。
+メタテスト `ScheduledBatchGuardConditionTest` がこのケースを fixture で実証している。
+番人の判定ロジックを触るときは、必ずメタテストの負例で「違反が返ること」を確認すること
+（**違反 0 件は番人が動いていることの証明にはならない**）。
 
 ---
 

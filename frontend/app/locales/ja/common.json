@@ -248,7 +248,19 @@
     "AUTH_010": "現在のパスワードが正しくありません",
     "AUTH_011": "パスワードがまだ設定されていません",
     "AUTH_044": "リクエストが集中しています。しばらく時間をおいて再試行してください",
-    "SURVEY_023": "匿名アンケートではチーム別内訳を有効化できません"
+    "SURVEY_023": "匿名アンケートではチーム別内訳を有効化できません",
+    "SCHEDULE_KEEP_001": "キープが見つかりません",
+    "SCHEDULE_KEEP_002": "タイトルを入力してください",
+    "SCHEDULE_KEEP_003": "候補日は最大10件です",
+    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
+    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
+    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
+    "SCHEDULE_KEEP_007": "この状態では編集できません",
+    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
+    "SCHEDULE_KEEP_009": "この操作はできません",
+    "SCHEDULE_KEEP_010": "キープの上限に達しました",
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "ミュートの上限（200件）に達しています。「非表示にしている相手」から不要な設定を解除してください。"
   },
   "annual_plan": {
     "title": "年間行事計画",
@@ -480,7 +492,38 @@
       "PUBLIC": "今どうしてる？"
     },
     "submitLabel": "投稿",
-    "pollOptionsCount": "{count}択"
+    "pollOptionsCount": "{count}択",
+    "deliveryScope": {
+      "label": "配信範囲",
+      "options": {
+        "DIRECT": "この団体のメンバーだけ",
+        "CHILDREN": "直下の子団体まで",
+        "DESCENDANTS": "配下のすべての団体"
+      },
+      "hints": {
+        "DIRECT": "この団体に所属している人のタイムラインにだけ表示されます。",
+        "CHILDREN": "この団体と、そのすぐ下の子団体のメンバーにも表示されます。",
+        "DESCENDANTS": "この団体の配下にあるすべての団体のメンバーに表示されます。"
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "このチームの投稿を非表示にする",
+        "ORGANIZATION": "この団体の投稿を非表示にする"
+      },
+      "targetType": {
+        "TEAM": "チーム",
+        "ORGANIZATION": "団体"
+      },
+      "muted": "{name} の投稿を非表示にしました",
+      "undo": "元に戻す",
+      "unmuted": "再び表示するようにしました",
+      "chip": "非表示中: {count}件",
+      "dialogTitle": "非表示にしている相手",
+      "emptyList": "非表示にしている相手はいません。",
+      "unmuteAction": "表示に戻す",
+      "unknownTarget": "{type}（ID: {id}）"
+    }
   },
   "gallery": {
     "title": "ギャラリー",
@@ -533,7 +576,8 @@
       "selfReviewEnd": "セルフレビュー終了時刻",
       "selfReviewHelp": "設定した時間帯は投稿前の見直し期間として扱われます",
       "saveSettings": "設定を保存",
-      "loadFailed": "記事を読み込めませんでした"
+      "loadFailed": "記事を読み込めませんでした",
+      "scheduledPublishUnavailable": "予約公開は現在ご利用いただけません。公開すると記事はすぐに公開されます。"
     },
     "autoSave": {
       "label": "自動保存",
@@ -1282,6 +1326,16 @@
     "filter": {
       "allTeamsOrgs": "チーム・組織 (全て)",
       "selectScope": "作成先を選択"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "個人",
+        "unknown": "その他の予定",
+        "loadError": {
+          "summary": "レイヤー一覧の読み込みに失敗しました",
+          "detail": "チーム・組織の表示切り替えが一時的に使えません。予定は表示されています。時間をおいて再読み込みしてください。"
+        }
+      }
     }
   },
   "handoff": {
@@ -1451,6 +1505,10 @@
       "back_to_dashboard": "ダッシュボードへ戻る",
       "retry": "再試行",
       "slow_loading": "読み込みに時間がかかっています"
+    },
+    "unsavedChanges": {
+      "title": "未保存の変更",
+      "confirmLeave": "保存されていない変更があります。このページを離れると入力内容は失われます。よろしいですか？"
     }
   },
   "teamHub": {
@@ -1827,6 +1885,13 @@
     "mapEmbedUrlHelp": "Google Maps で「共有 > 地図を埋め込む > HTML をコピー」して src= の URL を貼り付けてください",
     "mapEmbedUrlInvalidFormat": "Google Maps 埋め込み URL（https://www.google.com/maps/embed?...）の形式である必要があります",
     "mapEmbedUrlSaved": "店舗地図 URL を保存しました",
+    "timezone": {
+      "label": "予約タイムゾーン",
+      "help": "予約枠の開始・終了時刻を解釈する IANA タイムゾーンです。",
+      "placeholder": "例: Asia/Tokyo",
+      "invalid": "有効な IANA タイムゾーンを入力してください",
+      "saved": "予約タイムゾーンを保存しました"
+    },
     "regionCode": {
       "label": "所在地（都道府県・市区町村）",
       "help": "都道府県・市区町村を選択すると、地域検索や札立ての初期値に使われます。",
@@ -1844,6 +1909,7 @@
     "bulletinOpen": "掲示板で議論する"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "容量", "personal": "個人", "team": "チーム", "organization": "組織", "details": "詳細を見る", "error": "容量を取得できませんでした", "retry": "再試行", "unconfigured": "容量枠未設定", "not_available": "容量データなし", "meterLabel": "{scope}の容量使用率", "meterValue": "使用率 {percent}%", "warningTitle": "容量上限に近づいています", "warningMessage": "{scope}の使用率は{percent}%です。有料プランへの変更をご検討ください。", "viewPlans": "プランを見る", "checkStorage": "ストレージを確認", "cancel": "キャンセル" },
     "tabs": {
       "personal": "個人",
       "team": "チーム",
@@ -2097,5 +2163,31 @@
   "comingSoon": {
     "title": "準備中",
     "description": "この機能は現在準備中です。もうしばらくお待ちください。"
+  },
+  "transferOwnership": {
+    "sectionTitle": "オーナー譲渡",
+    "sectionDescription": "管理者（オーナー）権限を他のメンバーへ引き継ぎます。譲渡後、あなたは副管理者になり、管理者専用の操作は行えなくなります。",
+    "openButton": "オーナーを譲渡",
+    "dialogTitle": "オーナーを譲渡する",
+    "warning": "この操作は取り消せません。譲渡すると管理者権限は新しいオーナーへ移り、元に戻すには新しいオーナーの操作が必要になります。",
+    "targetLabel": "譲渡先メンバー",
+    "targetPlaceholder": "メンバーを選択",
+    "noCandidates": "譲渡できるメンバーがいません。",
+    "confirmLabel": "確認のため「{name}」と入力してください",
+    "confirmMismatch": "名称が一致しません。",
+    "cancel": "キャンセル",
+    "submit": "譲渡する",
+    "successTitle": "オーナーを譲渡しました",
+    "successDetail": "管理者権限が新しいオーナーへ移りました。"
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "非公開の機能です",
+      "body": "この機能は現在ご利用いただけません。ダッシュボードに戻ります。"
+    },
+    "error": {
+      "fetchFailedTitle": "機能の公開状態を確認できませんでした",
+      "fetchFailedBody": "通信エラーのため機能の公開状態を確認できませんでした。しばらくしてから再度お試しください。"
+    }
   }
 }

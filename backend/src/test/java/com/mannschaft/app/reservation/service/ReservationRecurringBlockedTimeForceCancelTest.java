@@ -3,6 +3,7 @@ package com.mannschaft.app.reservation.service;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.ReservationDayOfWeek;
 import com.mannschaft.app.reservation.ReservationErrorCode;
@@ -102,6 +103,8 @@ class ReservationRecurringBlockedTimeForceCancelTest {
     @Mock
     private ReservationSlotRepository slotRepository;
     @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
+    @Mock
     private ReservationSlotService slotService;
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -116,7 +119,8 @@ class ReservationRecurringBlockedTimeForceCancelTest {
         service = new ReservationRecurringBlockedTimeService(
                 ruleRepository, lineRepository, reservationRepository,
                 new ReservationUnavailabilityChecker(), nameResolverService, auditLogService,
-                slotRepository, slotService, eventPublisher, FIXED_CLOCK);
+                slotRepository, slotService, eventPublisher, FIXED_CLOCK, teamTimezoneResolver);
+        given(teamTimezoneResolver.resolveZone(anyLong())).willReturn(ZoneId.of("UTC"));
 
         given(ruleRepository.countByTeamId(anyLong())).willReturn(0L);
         given(ruleRepository.save(any())).willAnswer(inv -> {
@@ -324,8 +328,69 @@ class ReservationRecurringBlockedTimeForceCancelTest {
                     assertThat(e.getBlockReason())
                             .as("何のためにキャンセルされたのかを本人に伝える")
                             .isEqualTo("研修");
-                    assertThat(e.getSlotStartAt()).isNotNull();
+                    assertThat(e.getCancelledSlots())
+                            .as("それぞれ1枠ずつキャンセルされたことが列挙されていること")
+                            .hasSize(1);
+                    assertThat(e.getCancelledSlots().get(0).slotStartAt()).isNotNull();
                 });
+    }
+
+    @Test
+    @DisplayName("Issue #2543 ①: 1グループが兄弟2枠に跨り両方が overlap 判定に直接ヒットしても、"
+            + "同一ユーザーへの通知は1通だけになる（重複通知の是正）")
+    void グループが兄弟2枠に跨り両方overlapしても通知は1通() {
+        UUID groupId = UUID.fromString("018f0000-0000-7000-8000-0000000000cd");
+        seedSlot(9300L, TUESDAY);
+        seedSlot(9301L, TUESDAY.plusWeeks(1));
+        ReservationEntity primary =
+                seedReservation(1001L, APPLICANT_A, 9300L, groupId, true, ReservationStatus.CONFIRMED);
+        ReservationEntity sibling =
+                seedReservation(1002L, APPLICANT_A, 9301L, groupId, false, ReservationStatus.CONFIRMED);
+        // ブロック時間帯が両方の枠を覆うため、overlap 判定に両方が直接ヒットする状況を再現する。
+        givenOverlapping(
+                row(1001L, APPLICANT_A, 9300L, TUESDAY),
+                row(1002L, APPLICANT_A, 9301L, TUESDAY.plusWeeks(1)));
+        given(reservationRepository.findByGroupIdAndTeamIdOrderById(groupId, TEAM_ID))
+                .willReturn(List.of(primary, sibling));
+
+        service.createRule(TEAM_ID, createRequest(true), ADMIN_ID);
+
+        ArgumentCaptor<ReservationForceCancelledByBlockEvent> captor =
+                ArgumentCaptor.forClass(ReservationForceCancelledByBlockEvent.class);
+        // 失敗時の説明は Mockito の VerificationMode#description で付ける
+        // （.as(...) は AssertJ のメソッドで、verify() の戻り値には存在しない）。
+        verify(eventPublisher, times(1).description("同一ユーザーに2通飛んではならない（グループにつき1通）"))
+                .publishEvent(captor.capture());
+        ReservationForceCancelledByBlockEvent event = captor.getValue();
+        assertThat(event.getUserId()).isEqualTo(APPLICANT_A);
+        assertThat(event.getCancelledSlots())
+                .as("本文には実際にキャンセルされた枠を全て列挙すること（枠数の不一致を作らない）")
+                .hasSize(2);
+    }
+
+    @Test
+    @DisplayName("Issue #2543 ②: overlap しなかった兄弟行も含め、通知本文にキャンセルされた枠を全て列挙する")
+    void 本文にoverlapしなかった兄弟行も含め全枠を列挙する() {
+        UUID groupId = UUID.fromString("018f0000-0000-7000-8000-0000000000ce");
+        seedSlot(9310L, TUESDAY);
+        seedSlot(9311L, TUESDAY);
+        ReservationEntity primary =
+                seedReservation(1101L, APPLICANT_A, 9310L, groupId, true, ReservationStatus.CONFIRMED);
+        ReservationEntity sibling =
+                seedReservation(1102L, APPLICANT_A, 9311L, groupId, false, ReservationStatus.CONFIRMED);
+        // overlap 判定に引っかかるのは代表行だけ（兄弟行は一括キャンセルの展開でのみ消える）
+        givenOverlapping(row(1101L, APPLICANT_A, 9310L, TUESDAY));
+        given(reservationRepository.findByGroupIdAndTeamIdOrderById(groupId, TEAM_ID))
+                .willReturn(List.of(primary, sibling));
+
+        service.createRule(TEAM_ID, createRequest(true), ADMIN_ID);
+
+        ArgumentCaptor<ReservationForceCancelledByBlockEvent> captor =
+                ArgumentCaptor.forClass(ReservationForceCancelledByBlockEvent.class);
+        verify(eventPublisher, times(1)).publishEvent(captor.capture());
+        assertThat(captor.getValue().getCancelledSlots())
+                .as("overlap しなかった兄弟行 1102 も本文の列挙に含まれること（実際に消えた枠数と一致させる）")
+                .hasSize(2);
     }
 
     @Test

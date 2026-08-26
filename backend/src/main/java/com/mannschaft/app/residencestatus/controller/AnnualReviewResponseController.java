@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.AuthorizedInService;
 
 import java.util.List;
 import java.util.UUID;
@@ -52,6 +53,11 @@ public class AnnualReviewResponseController {
      *
      * <p>同一キャンペーン × 居住者の回答が既存の場合は更新、新規の場合は作成する。</p>
      */
+    // 認可根治戦役 Wave6 ロットC: AnnualReviewResponseService#submitResponse が
+    // ResidentRegistryRepository#findById で req.residentRegistryId の所有者を引き、
+    // 呼び出し元 userId と一致することを検証してから UPSERT する（他居住者の residentRegistryId
+    // を指定した回答書き換えは 404 相当で拒否）。
+    @AuthorizedInService
     @PutMapping("/me")
     @Operation(summary = "年次更新回答送信（UPSERT）")
     public ResponseEntity<ApiResponse<AnnualReviewResponseDto>> submitMyResponse(

@@ -20,6 +20,10 @@ const loading = ref(false)
 // SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
 // ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
 const hydrated = useHydrated()
+// ハイドレーション待ちの間もボタンをローディング表示にする（無反応に見える問題の解消）。
+// :disabled="!hydrated" は Enter キーによる implicit submission 抑止のため別途維持する
+// （PrimeVue の loading は内部的に disabled 相当になるが、明示指定で確実に塞ぐ）。
+const submitting = computed(() => loading.value || !hydrated.value)
 
 const mfaSessionToken = computed(() => route.query.session as string | undefined)
 
@@ -120,7 +124,7 @@ async function handleVerify() {
         type="submit"
         label="認証する"
         icon="pi pi-shield"
-        :loading="loading"
+        :loading="submitting"
         :disabled="!hydrated || totpCode.length !== 6"
         class="w-full"
       />

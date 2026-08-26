@@ -1,8 +1,15 @@
 # =============================================================================
-# Frontend CI — pull_request to main
+# Frontend CI — pull_request to main / push to main
 # =============================================================================
 # Runs install, lint, and typecheck on every PR targeting main.
 # No AWS credentials required — build and deploy are intentionally omitted.
+#
+# main への push でも実行する理由:
+# 本ワークフローは元々 pull_request のみで main では一度も走らなかった。
+# そのため main に壊れた状態（例: eslint-suppressions.json のカウント乖離で
+# lint が exit 2）が紛れ込んでも誰も気づけず、次に frontend を触った
+# 無関係な PR が赤くなって初めて露見していた。push トリガを追加し main を
+# 常時監視することで、壊れた main を早期検知する。
 # =============================================================================
 
 name: Frontend — CI (PR Check)
@@ -15,10 +22,21 @@ on:
       - "frontend/**"
       - "docs/openapi.json"
       - ".github/workflows/frontend-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+      - "docs/openapi.json"
+      - ".github/workflows/frontend-ci.yml"
 
 concurrency:
-  group: frontend-ci-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  # push イベントでは github.event.pull_request.number が空になるため、
+  # PR番号だけだと main への全 push が単一グループに落ちて次々キャンセルされ、
+  # main 監視の実績が一度も残らない。push は github.sha で個別グループにする。
+  group: frontend-ci-${{ github.event.pull_request.number || github.sha }}
+  # cancel-in-progress は PR の再実行のみに適用する（main の検証を打ち切らないため）。
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   NODE_VERSION: "22"
@@ -71,3 +89,98 @@ jobs:
         run: npm run typecheck
         env:
           NODE_OPTIONS: --max-old-space-size=8192
+
+      # ユニットテスト（Issue #2609 後続）。ワーカー過剰供給是正のため
+      # vitest.config.ts の maxWorkers はコア数8未満（本ランナーは2〜4コア）
+      # では未指定（vitest既定）のまま動くため、typecheck と同様の
+      # メモリ配慮は不要（多コア機のみで踏む問題のため）。
+      - name: Unit test (vitest)
+        run: npm run test:unit
+
+  # ===========================================================================
+  # Docker ビルド検証（CMP-260821-2130 / CMP-260822-1005）
+  # ===========================================================================
+  # 経緯: `nuxt build` は CI のどこでも実行されておらず、FE の本番デプロイ経路は
+  # 一度も通ったことがなかった。そのため次の2つの欠陥が長期間気づかれずにいた。
+  #   1. 本番ビルドが OOM で完走しない（CMP-260821-2130）
+  #   2. ビルドは通るがコンテナが全リクエストへ 500 を返す（CMP-260822-1005）
+  #
+  # 2 は「vue が二重にインストールされ、Nitro の依存トレーサが不完全な方を拾う」
+  # ことで起きた。lockfile の解決結果に依存するため、**ビルドが成功しただけでは
+  # 検知できない**。したがってこのジョブは、イメージを実際に起動して HTTP 応答を
+  # 確認するところまでを必須とする。ビルド成功で緑にしてはならない。
+  #
+  # main への push でのみ実行する理由（マスター裁可）:
+  # このジョブは実測で約13分かかる。直近14日の50コミット中44件が frontend を
+  # 変更しており、PR 必須ゲートにすると全 PR にこの所要時間が乗って開発体験を
+  # 大きく損なう。本番ビルドの健全性は main の継続的な監視で足りると判断した。
+  docker-build-verify:
+    name: Docker ビルド検証（main push のみ）
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile
+          push: false
+          load: true
+          tags: mannschaft-frontend:ci-verify
+          # 依存インストール（deps ステージ）は変更が無ければキャッシュから再利用できる。
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ビルド成果物の自己完結性を直接確認する。
+      # CMP-260822-1005 では、この index.mjs が欠けたまま「ビルド成功」になっていた。
+      # HTTP 検証だけでも失敗は捕まえられるが、原因の切り分けを一目で済ませるために残す。
+      - name: Verify .output is self-contained
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint sh mannschaft-frontend:ci-verify -c '
+            if [ ! -f /app/server/node_modules/vue/index.mjs ]; then
+              echo "::error::/app/server/node_modules/vue/index.mjs が存在しない。Nitro の依存トレースが不完全（CMP-260822-1005 の再発）。"
+              echo "--- vue エントリの実体 ---"
+              ls -la /app/server/node_modules/vue || true
+              readlink -f /app/server/node_modules/vue || true
+              find -L /app/server/node_modules/vue -maxdepth 2 -type f 2>/dev/null | sort || true
+              exit 1
+            fi
+            echo "vue/index.mjs あり"
+          '
+
+      - name: Run container and verify HTTP response
+        run: |
+          set -euo pipefail
+          # バックエンド無しでも起動できる最低限の値でよい（実データ疎通は問わない）。
+          docker run -d --name frontend-ci-verify -p 3000:3000 \
+            -e NUXT_PUBLIC_API_BASE=http://localhost:8080 \
+            -e NUXT_INTERNAL_API_BASE=http://localhost:8080 \
+            mannschaft-frontend:ci-verify
+
+          # 起動待ち（最大60秒）。応答が無ければログを出してジョブを失敗させる。
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/ -o /dev/null; then
+              echo "コンテナが HTTP 応答を返した（${i}回目のリトライで成功）"
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "::error::コンテナが60秒以内にHTTP応答を返さなかった"
+          docker logs frontend-ci-verify
+          exit 1
+
+      - name: Dump container logs (always)
+        if: always()
+        run: docker logs frontend-ci-verify || true
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f frontend-ci-verify || true

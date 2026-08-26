@@ -4,6 +4,8 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.timezone.UserZoneLocalDateTimeParser;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.ApprovalMode;
 import com.mannschaft.app.reservation.CancelledBy;
 import com.mannschaft.app.reservation.RecurringWeekSkipReason;
@@ -42,6 +44,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -89,6 +94,10 @@ public class ReservationService {
     /** F03.4.5 §6.4: 予約作成のレートリミット（グループ作成と同一バケットを共有・§6.4）。 */
     private final ReservationCreateRateLimiter createRateLimiter;
     private final Clock clock;
+
+    /** 予約の壁時計をチーム業務TZで Instant 化する。非Springの既存テストではAsia/Tokyoへフォールバックする。 */
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /**
      * チームの予約一覧をページング取得する。
@@ -191,7 +200,18 @@ public class ReservationService {
      */
     private ReservationResponse doCreateReservation(
             Long teamId, Long userId, CreateReservationRequest request, java.util.UUID seriesId) {
-        ReservationSlotEntity slot = slotService.getSlotEntity(request.getReservationSlotId());
+        // Issue #2538: reservationSlotId はリクエスト由来（利用者が任意に指定できる）のため、
+        // teamId スコープの finder で解決する。他チームの枠 id を渡した場合は SLOT_NOT_FOUND（404）で秘匿する。
+        ReservationSlotEntity slot = slotService.getSlotEntity(teamId, request.getReservationSlotId());
+
+        // slot の業務壁時計はチーム TZ で Instant 化してから現在時刻と比較する。
+        Instant slotStart = teamTimezoneResolver == null
+                ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime())
+                        .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                : teamTimezoneResolver.toInstant(teamId, slot.getSlotDate(), slot.getStartTime());
+        if (slotStart.isBefore(clock.instant())) {
+            throw new BusinessException(ReservationErrorCode.PAST_DATE_RESERVATION);
+        }
 
         if (!slot.isAvailable()) {
             throw new BusinessException(
@@ -204,7 +224,7 @@ public class ReservationService {
         // 予約作成を拒否（RESERVATION_009・400）。判定は空き枠除外・グリッドと共有の
         // 単一 overlap ユーティリティを用いる（別実装厳禁）。
         List<ReservationBlockedTimeEntity> blocks =
-                blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, slot.getSlotDate());
+                blockedTimeRepository.findEffectiveOnDate(teamId, slot.getSlotDate(), slot.getSlotDate().minusDays(1));
         List<ReservationRecurringBlockedTimeEntity> recurringRules =
                 recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
         if (unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules)) {
@@ -424,7 +444,14 @@ public class ReservationService {
                 t -> reservationPolicyService.getOrDefault(t).getCancelDeadlineHours());
         LocalDateTime deadline =
                 LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).minusHours(deadlineHours);
-        return LocalDateTime.now(clock).isAfter(deadline);
+        // Issue #2526: deadline は slot_date/start_time（業務ローカル時刻）由来のため、
+        // Clock（UTC固定）の瞬間を JVM 既定ゾーンで解釈し直してから比較する
+        // （ReservationPendingExpireService#findExpirableUnits と同型）。
+        Instant deadlineInstant = teamTimezoneResolver == null
+                ? deadline.atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                : teamTimezoneResolver.toInstant(teamId, slot.getSlotDate(), slot.getStartTime())
+                        .minusSeconds(deadlineHours * 3600L);
+        return clock.instant().isAfter(deadlineInstant);
     }
 
     /** 会員キャンセルの通知イベントを発行する（管理者キャンセルは従来どおりイベントなし）。 */
@@ -711,10 +738,14 @@ public class ReservationService {
         ReservationEntity entity = findReservationOrThrow(teamId, reservationId);
         assertNotGroupRow(entity);
 
+        // oldSlot: entity は findReservationOrThrow で既に teamId 検証済みのため、その reservationSlotId は
+        // 自チームの枠であることが保証されている（teamId スコープ不要）。
         ReservationSlotEntity oldSlot = slotService.getSlotEntity(entity.getReservationSlotId());
         slotService.decrementAndReopen(oldSlot);
 
-        ReservationSlotEntity newSlot = slotService.getSlotEntity(request.getNewSlotId());
+        // newSlot: request.newSlotId はリクエスト由来（利用者が任意に指定できる）のため、
+        // teamId スコープの finder で解決する（Issue #2538）。他チームの枠 id は 404 で秘匿する。
+        ReservationSlotEntity newSlot = slotService.getSlotEntity(teamId, request.getNewSlotId());
         if (!newSlot.isAvailable()) {
             throw new BusinessException(ReservationErrorCode.SLOT_FULL);
         }
@@ -782,10 +813,32 @@ public class ReservationService {
      */
     public List<ReservationResponse> listUpcomingReservations(Long userId) {
         // 直近予約は「申込時刻（booked_at）」ではなく「来店日時（枠の日付＋開始時刻）」で判定する。
-        // 現在時刻は注入 Clock 基準（cancel_deadline 等と同様）。
-        LocalDateTime now = LocalDateTime.now(clock);
-        List<ReservationEntity> reservations =
-                reservationRepository.findUpcomingByUserId(userId, now.toLocalDate(), now.toLocalTime());
+        // Issue #2526（表に無い同型バグとして監査で発見）: 来店日時は業務ローカル時刻のため、
+        // Clock の瞬間を JVM 既定ゾーンで解釈し直してから比較する（cancel_deadline 等と同様）。
+        Instant nowInstant = clock.instant();
+        LocalDateTime now = LocalDateTime.ofInstant(nowInstant, UserZoneLocalDateTimeParser.SERVER_ZONE);
+        // JST 境界だけで切ると、チームTZが日付境界を跨ぐ予約を落とすため、前日0時から候補を取得し
+        // チームTZでInstant比較する。候補は無制限ではなくDB側で現在日前日以降に絞る。
+        LocalDate candidateFrom = now.toLocalDate().minusDays(1);
+        List<ReservationEntity> candidates = reservationRepository.findUpcomingByUserId(
+                userId, candidateFrom, java.time.LocalTime.MIDNIGHT);
+        Map<Long, ReservationSlotEntity> slotMap = slotRepository.findAllById(candidates.stream()
+                        .map(ReservationEntity::getReservationSlotId).collect(Collectors.toSet()))
+                .stream().collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+        Map<Long, ZoneId> teamZones = teamTimezoneResolver == null ? Map.of()
+                : teamTimezoneResolver.resolveZones(candidates.stream()
+                        .map(ReservationEntity::getTeamId).collect(Collectors.toSet()));
+        List<ReservationEntity> reservations = candidates.stream()
+                .filter(r -> {
+                    ReservationSlotEntity slot = slotMap.get(r.getReservationSlotId());
+                    if (slot == null) return false;
+                    ZoneId zone = teamZones.get(r.getTeamId());
+                    Instant start = teamTimezoneResolver == null || zone == null
+                            ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime())
+                                .atZone(UserZoneLocalDateTimeParser.SERVER_ZONE).toInstant()
+                            : teamTimezoneResolver.toInstant(slot.getSlotDate(), slot.getStartTime(), zone);
+                    return !start.isBefore(nowInstant);
+                }).toList();
         return enrichList(reservations);
     }
 

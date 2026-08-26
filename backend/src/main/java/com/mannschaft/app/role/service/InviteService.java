@@ -212,10 +212,11 @@ public class InviteService {
         // ブロックチェック
         checkNotBlocked(userId, scopeId, scopeType);
 
-        // 重複参加チェック
+        // 重複参加チェック（CMP-027: user_roles ∪ memberships の在籍で判定。
+        // ORG 側も exists 版へ揃え、memberships 専属の素メンバーの再参加を正しく検出する）
         boolean alreadyJoined = "TEAM".equals(scopeType)
                 ? userRoleRepository.existsByUserIdAndTeamId(userId, scopeId)
-                : userRoleRepository.findByUserIdAndOrganizationId(userId, scopeId).isPresent();
+                : userRoleRepository.existsByUserIdAndOrganizationId(userId, scopeId);
         if (alreadyJoined) {
             throw new BusinessException(TeamErrorCode.TEAM_003);
         }
@@ -273,9 +274,9 @@ public class InviteService {
      * フォルダの scope_type が招待 scope と不一致なら {@code SCOPE_FOLDER_TYPE_MISMATCH} を投げる。</p>
      */
     private void assignToFolder(Long userId, String scopeType, Long scopeId, Long folderId) {
-        com.mannschaft.app.scopefolder.entity.ScopeType folderScope = "TEAM".equals(scopeType)
-                ? com.mannschaft.app.scopefolder.entity.ScopeType.TEAM
-                : com.mannschaft.app.scopefolder.entity.ScopeType.ORGANIZATION;
+        com.mannschaft.app.scopefolder.entity.enums.ScopeType folderScope = "TEAM".equals(scopeType)
+                ? com.mannschaft.app.scopefolder.entity.enums.ScopeType.TEAM
+                : com.mannschaft.app.scopefolder.entity.enums.ScopeType.ORGANIZATION;
 
         if (folderId != null) {
             // フォルダの存在と scope_type 整合チェック（IDOR 含む）

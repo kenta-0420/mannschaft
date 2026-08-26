@@ -26,24 +26,20 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const { buildOffsetDateTimeStr } = useDatetime()
 
 /**
- * Date を ISO-8601 LocalDateTime 形式 (YYYY-MM-DDTHH:mm:ss) に変換する。
+ * Date を ISO-8601 オフセット付き文字列に変換する（Issue #2508 FEオフセット明示）。
  *
  * <p>BE の {@code expiresAt}（リクエスト直下）と SURVEY の {@code closesAt} は
- * {@code LocalDateTime}（タイムゾーンオフセット非対応）なので、{@code toISOString()} の
- * 末尾 {@code Z}＋ミリ秒を送ると JavaTimeModule に弾かれ 400 になる。
- * ユーザーが選んだローカルの壁時計時刻をオフセットなしでそのまま送る。
- * 一方 SCHEDULE の startAt/endAt は OffsetDateTime なので {@code toISOString()} のままで良い。</p>
+ * {@code LocalDateTime} 宣言だが、受信時にユーザーTZを無視して壁時計として保持してしまう
+ * 非対称バグがある（送信時はユーザーTZへ変換して出力するのに受信時は無視する）。
+ * BE 側の是正（オフセット付き入力を正しく解釈する）と対で、FE はユーザーTZのオフセットを
+ * 明示的に付与した ISO 文字列を送る（useDatetime の共通道具 buildOffsetDateTimeStr を使用）。
+ * 一方 SCHEDULE の startAt/endAt は既に OffsetDateTime なので {@code toISOString()} のままで良い。</p>
  */
 function toLocalDateTimeString(d: Date): string {
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  const hh = String(d.getHours()).padStart(2, '0')
-  const mi = String(d.getMinutes()).padStart(2, '0')
-  const ss = String(d.getSeconds()).padStart(2, '0')
-  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`
+  return buildOffsetDateTimeStr(d) ?? d.toISOString()
 }
 
 /** 共通タイトルフィールド（チャネルをまたいで引き継ぐ） */

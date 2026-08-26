@@ -43,10 +43,10 @@ public class OrganizationEntity extends BaseEntity {
     @Column(length = 100)
     private String nameKana;
 
-    @Column(length = 50)
+    @Column(name = "nickname1", length = 50)
     private String nickname1;
 
-    @Column(length = 50)
+    @Column(name = "nickname2", length = 50)
     private String nickname2;
 
     @Enumerated(EnumType.STRING)

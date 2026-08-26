@@ -15,7 +15,7 @@ import com.mannschaft.app.notification.dto.UnreadCountResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderQueryService;
 import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
@@ -119,36 +119,41 @@ public class NotificationService {
      * が余分にあるが、マイスコープフォルダはチーム／組織しか分類しない（F15.3 §4.3）ため
      * それらがフォルダフィルタの引数に来ることはない。</p>
      *
-     * <p><b>なぜ switch を使わないのか（重要・戻さないこと）</b>:
+     * <p><b>過去の経緯（switch → == 連鎖 → switch へ差し戻し）</b>:
      * enum に対する {@code switch} を書くと、javac が {@code $SwitchMap$...} を保持する
-     * <b>合成クラス {@code NotificationService$1} を自動生成する</b>。この合成クラスは外側クラスの
-     * {@code ScopeType} 依存をそのまま写して持つため、クロスドメイン Entity 参照の番人
-     * （{@code CrossDomainEntityImportArchTest} / D-1）が<b>新しいクラス名の新規違反</b>として検出し
-     * CI が落ちる（{@code NotificationService} 本体の依存は凍結ストア済みだが、合成クラスは別名のため
-     * 凍結に当たらない）。D-1 は合成クラスを除外していないため、ここでは
-     * <b>{@code ==} による enum 参照比較</b>で書く。こうすれば {@code $SwitchMap} は生成されない。
-     * 「switch のほうが安全だ」と善意で書き戻すと CI が再び赤になるので注意すること。</p>
+     * 合成クラス {@code NotificationService$1} を自動生成する。かつてクロスドメイン Entity 参照の
+     * 番人（{@code CrossDomainEntityImportArchTest} / D-1）はこの合成クラスを除外しておらず、
+     * 外側クラスの依存は凍結ストア済みでも合成クラスは別名のため「新規違反」と誤検出して CI が落ちて
+     * いた（コミット {@code 598f56d09}）。当時はこれを {@code ==} による enum 参照比較へ書き換えて
+     * 回避したが、これは番人の欠陥に対する対処療法であった。本 PR で D-1 番人自体に合成クラス除外
+     * （{@code SyntheticClasses#isSynthetic}、{@code ACC_SYNTHETIC} 修飾子判定）を実装し根治したため、
+     * ここでは {@code switch} 式へ差し戻す。網羅性がコンパイラに保証される形（{@code switch} 式・
+     * 全 enum 定数を列挙）を維持すること。</p>
      *
-     * <p><b>将来 {@code ScopeType} に定数が増えた場合</b>: switch を捨てたためコンパイル時の網羅性保証は
-     * 失われる。代わりに未知値では {@link IllegalStateException} を投げて<b>必ず落とす</b>
-     * （黙って null や空ページを返して握りつぶすことはしない）。さらに番人テスト
-     * {@code NotificationScopeTypeMappingTest} が {@code ScopeType.values()} を全件ループして
-     * 写像可能性を検査しているため、<b>定数が増えた瞬間にそのテストが落ちて</b>写像先の判断を強制できる。</p>
+     * <p><b>将来 {@code ScopeType} に定数が増えた場合（重要・{@code default} を足さないこと）</b>:
+     * この {@code switch} 式には {@code TEAM} / {@code ORGANIZATION} の2ケースしか書いておらず、
+     * <b>意図的に {@code default} を用意していない</b>。{@code ScopeType} は現時点で定数2つの
+     * 純粋な enum であり、Java の {@code switch} 式は enum に対して既知の定数を網羅していれば
+     * {@code default} 無しでコンパイルできる。{@code default} を足すとこの網羅性チェックが
+     * 失われ、{@code ScopeType} に新しい定数が増えてもコンパイルが通ってしまい、写像漏れが
+     * 実行時まで表面化しない状態に逆戻りする。「安全のため」と善意で {@code default} を
+     * 足さないこと —— それは本メソッドをかつて {@code ==} 連鎖に歪めさせた事故
+     * （上記の過去の経緯）と<b>同じ型の事故</b>である。{@code ScopeType} に定数を追加した際は、
+     * ここに {@code case} を追加しない限り notification ドメインがコンパイルエラーになる。
+     * これが最強の検知であり、実行時に未知値が来ることは enum である以上あり得ない。</p>
+     *
+     * <p>番人テスト {@code NotificationScopeTypeMappingTest} は
+     * {@code ScopeType.values()} を全件ループして写像可能性を検査しており、コンパイル時の
+     * 網羅性チェックと合わせた二重の守りとして<b>そのまま維持する</b>。</p>
      *
      * @param scopeType scopefolder ドメインのスコープ種別
      * @return 通知ドメインのスコープ種別
-     * @throws IllegalStateException 写像先が定義されていないスコープ種別が渡された場合
      */
     static NotificationScopeType toNotificationScopeType(ScopeType scopeType) {
-        if (scopeType == ScopeType.TEAM) {
-            return NotificationScopeType.TEAM;
-        }
-        if (scopeType == ScopeType.ORGANIZATION) {
-            return NotificationScopeType.ORGANIZATION;
-        }
-        throw new IllegalStateException(
-                "ScopeType から NotificationScopeType への写像が未定義です: " + scopeType
-                        + "（NotificationService#toNotificationScopeType に写像先を追加すること）");
+        return switch (scopeType) {
+            case TEAM -> NotificationScopeType.TEAM;
+            case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
+        };
     }
 
     /**

@@ -38,6 +38,15 @@ export interface GroupBookingContext {
   /** メニューフィルターが有効な場合の事前絞り込みメニュー（menu選択ステップをスキップ）。 */
   preselectedMenuId?: string | null
   preselectedRequiredCellCount?: number | null
+  /**
+   * ドラッグ複数選択で確定した枠数（機能H）。指定時は `startIndex` を起点に この枠数ぶんを
+   * メニューなしで選択済みにし、menu ステップをスキップして即プレビューへ進む。
+   *
+   * メニューフィルター（`preselectedMenuId`）より優先する: 利用者が自分の指で選んだ範囲を
+   * メニュー既定長で上書きすると「ドラッグした範囲と違う予約が入る」ため。
+   * プレビューでは従来どおり「＋30分延長」で伸ばせる。
+   */
+  dragCellCount?: number | null
 }
 
 const props = defineProps<{
@@ -150,8 +159,13 @@ watch(() => props.visible, (v) => {
   if (v) {
     resetState()
     void loadPendingExpireNotice()
+    // ドラッグ複数選択で入ってきた場合は、その枠数をメニューなしで確定して即プレビューへ
+    // （メニューフィルターより優先。利用者が指で選んだ範囲を既定長で上書きしない）。
+    if (props.context?.dragCellCount && props.context.dragCellCount > 0) {
+      applyMenuSelection(null, props.context.dragCellCount)
+    }
     // メニューフィルター事前絞り込み済みなら menu ステップをスキップして即プレビューへ
-    if (props.context?.preselectedMenuId && props.context.preselectedRequiredCellCount) {
+    else if (props.context?.preselectedMenuId && props.context.preselectedRequiredCellCount) {
       const menu = menuOptions.value.find(m => m.id === props.context?.preselectedMenuId)
       if (menu) applyMenuSelection(menu, props.context.preselectedRequiredCellCount)
     }
@@ -193,13 +207,21 @@ const selectedSlotIds = computed<number[] | null>(() => {
 
 const canExtendNow = computed(() => {
   if (!props.context) return false
-  return canExtend(props.context.rowSlots, selectedIndices.value)
+  return selectedIndices.value.length < 16 && canExtend(props.context.rowSlots, selectedIndices.value)
 })
+
+const minimumCellCount = computed(() => selectedMenuId.value == null ? 1 : requiredCellCount.value)
+const canReduceNow = computed(() => selectedIndices.value.length > minimumCellCount.value)
 
 function extend() {
   if (!canExtendNow.value) return
   const last = Math.max(...selectedIndices.value)
   selectedIndices.value = [...selectedIndices.value, last + 1]
+}
+
+function reduce() {
+  if (!canReduceNow.value) return
+  selectedIndices.value = selectedIndices.value.slice(0, -1)
 }
 
 const previewTimeLabel = computed(() => {
@@ -385,16 +407,11 @@ async function confirm() {
 
         <Message v-if="lineWarning" severity="warn" :closable="false">{{ lineWarning }}</Message>
 
-        <Button
-          data-testid="group-extend"
-          :label="t('reservation.matrix.extend_30')"
-          icon="pi pi-plus"
-          text
-          size="small"
-          :disabled="!canExtendNow"
-          :title="!canExtendNow ? t('reservation.matrix.cannot_extend') : undefined"
-          @click="extend"
-        />
+        <div class="flex items-center justify-center gap-2" data-testid="group-slot-stepper">
+          <Button data-testid="group-reduce" icon="pi pi-minus" text rounded :disabled="!canReduceNow" @click="reduce" />
+          <span class="min-w-28 text-center text-sm font-medium">{{ t('reservation.group.slot_count', { n: selectedIndices.length }) }}（{{ selectedIndices.length * 30 }}分）</span>
+          <Button data-testid="group-extend" icon="pi pi-plus" text rounded :disabled="!canExtendNow" :title="!canExtendNow ? t('reservation.matrix.cannot_extend') : undefined" @click="extend" />
+        </div>
 
         <div>
           <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.note') }}</label>

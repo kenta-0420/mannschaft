@@ -42,7 +42,6 @@ import com.mannschaft.app.village.repository.VillageMeetupRepository;
 import com.mannschaft.app.village.repository.VillageMeetupTodoRepository;
 import com.mannschaft.app.village.repository.VillageMeetupVoteRepository;
 import com.mannschaft.app.village.repository.VillageMembershipRepository;
-import com.mannschaft.app.village.repository.VillageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -102,7 +101,6 @@ public class VillageMeetupService {
     private final VillageMeetupRepository meetupRepository;
     private final VillageMeetupCandidateDateRepository candidateDateRepository;
     private final VillageMeetupVoteRepository voteRepository;
-    private final VillageRepository villageRepository;
     private final VillageMembershipRepository membershipRepository;
     private final AuditLogService auditLogService;
     // F17.2 Wave1 ②寄合後半戦
@@ -113,6 +111,7 @@ public class VillageMeetupService {
     private final VillageNicknameResolver villageNicknameResolver;
     /** F17.2 Wave2 ①: 行事→村フィード自動還流イベントの発行（AFTER_COMMIT リスナーが購読・§3.3.1）。 */
     private final org.springframework.context.ApplicationEventPublisher eventPublisher;
+    private final VillageAccessGate accessGate;
 
     // ====================================================================
     // 作成
@@ -124,7 +123,7 @@ public class VillageMeetupService {
      */
     @Transactional
     public MeetupResponse createMeetup(UUID villageId, MeetupCreateRequest request, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillager(villageId, actorUserId);
 
         if (request.candidateDates() == null || request.candidateDates().isEmpty()) {
@@ -203,7 +202,7 @@ public class VillageMeetupService {
                                        UUID meetupId,
                                        MeetupUpdateRequest request,
                                        Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
 
         // F17.2 Wave1 ②寄合後半戦（AC-13）: フィールド単位で認可・状態ガードを分ける。
@@ -222,7 +221,7 @@ public class VillageMeetupService {
         // どのフィールドも変更しない空更新は、後方互換のため従来の「幹事・PLANNING」ガードで扱う。
         // capacity/decisions のみの更新は core ガードに巻き込まない（各々専用の認可・状態ガードで扱う）。
         if (touchesCore || (!touchesDecisions && !touchesCapacity)) {
-            requireOrganizer(entity, actorUserId);
+            requireOrganizer(villageId, entity, actorUserId);
             if (entity.getStatus() != VillageMeetupStatus.PLANNING) {
                 throw new BusinessException(VillageErrorCode.MEETUP_INVALID_STATUS);
             }
@@ -275,9 +274,9 @@ public class VillageMeetupService {
      */
     @Transactional
     public MeetupResponse cancelMeetup(UUID villageId, UUID meetupId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
-        requireOrganizer(entity, actorUserId);
+        requireOrganizer(villageId, entity, actorUserId);
 
         if (entity.getStatus() == VillageMeetupStatus.CANCELLED) {
             return buildResponseWithCandidates(entity);
@@ -316,9 +315,9 @@ public class VillageMeetupService {
                                         UUID meetupId,
                                         MeetupConfirmRequest request,
                                         Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
-        requireOrganizer(entity, actorUserId);
+        requireOrganizer(villageId, entity, actorUserId);
 
         if (entity.getStatus() == VillageMeetupStatus.CONFIRMED) {
             throw new BusinessException(VillageErrorCode.MEETUP_ALREADY_CONFIRMED);
@@ -368,7 +367,7 @@ public class VillageMeetupService {
      */
     public List<MeetupResponse> listMeetups(UUID villageId, VillageMeetupStatus status,
                                             Long actorUserId, Pageable pageable) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillager(villageId, actorUserId);
         Pageable resolved = resolvePageable(pageable);
         Page<VillageMeetupEntity> page = (status == null)
@@ -396,7 +395,7 @@ public class VillageMeetupService {
      * 寄合詳細を取得する（候補日込み）。
      */
     public MeetupResponse getMeetup(UUID villageId, UUID meetupId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillager(villageId, actorUserId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
         return buildResponseWithCandidates(entity);
@@ -414,9 +413,9 @@ public class VillageMeetupService {
                                                        UUID meetupId,
                                                        MeetupCandidateDateAddRequest request,
                                                        Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
-        requireOrganizer(entity, actorUserId);
+        requireOrganizer(villageId, entity, actorUserId);
 
         if (entity.getStatus() != VillageMeetupStatus.PLANNING) {
             throw new BusinessException(VillageErrorCode.MEETUP_INVALID_STATUS);
@@ -452,9 +451,9 @@ public class VillageMeetupService {
                                     UUID meetupId,
                                     UUID candidateDateId,
                                     Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
-        requireOrganizer(entity, actorUserId);
+        requireOrganizer(villageId, entity, actorUserId);
 
         if (entity.getStatus() != VillageMeetupStatus.PLANNING) {
             throw new BusinessException(VillageErrorCode.MEETUP_INVALID_STATUS);
@@ -482,7 +481,7 @@ public class VillageMeetupService {
                          UUID candidateDateId,
                          MeetupVoteRequest request,
                          Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillager(villageId, actorUserId);
         VillageMeetupEntity entity = loadMeetup(villageId, meetupId);
 
@@ -520,7 +519,7 @@ public class VillageMeetupService {
      * 寄合の投票集計を取得する（村人のみ）。
      */
     public MeetupVoteSummaryResponse getVoteSummary(UUID villageId, UUID meetupId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         requireVillager(villageId, actorUserId);
         loadMeetup(villageId, meetupId); // 存在/IDOR チェック
 
@@ -582,7 +581,7 @@ public class VillageMeetupService {
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public MeetupAttendanceResponse upsertAttendance(UUID villageId, UUID meetupId,
                                                      MeetupAttendanceUpsertRequest request, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         requireConfirmed(meetup);
@@ -668,7 +667,7 @@ public class VillageMeetupService {
     /** 寄合の出欠一覧（付いた順・村ニックネーム表示・設計書 §13.5）。 */
     public List<MeetupAttendanceResponse> listAttendances(UUID villageId, UUID meetupId,
                                                           Long actorUserId, Pageable pageable) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         Pageable resolved = resolvePageableAsc(pageable);
@@ -689,7 +688,7 @@ public class VillageMeetupService {
     @Transactional
     public MeetupCommentResponse createComment(UUID villageId, UUID meetupId,
                                                MeetupCommentCreateRequest request, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         rejectIfCancelled(meetup);
@@ -706,7 +705,7 @@ public class VillageMeetupService {
     /** コメント一覧（作成日昇順＝古い順・村ニックネーム表示・設計書 §13.5）。 */
     public List<MeetupCommentResponse> listComments(UUID villageId, UUID meetupId,
                                                     Long actorUserId, Pageable pageable) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         Pageable resolved = resolvePageableAsc(pageable);
@@ -722,7 +721,7 @@ public class VillageMeetupService {
     /** コメントを論理削除する（投稿者本人＋村長/長老のみ・設計書 §4.4/AC-09）。 */
     @Transactional
     public void deleteComment(UUID villageId, UUID meetupId, UUID commentId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
 
@@ -743,7 +742,7 @@ public class VillageMeetupService {
     @Transactional
     public MeetupTodoResponse createTodo(UUID villageId, UUID meetupId,
                                          MeetupTodoCreateRequest request, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireOrganizerOrModerator(villageId, meetup, actorUserId);
         rejectIfCancelled(meetup);
@@ -761,7 +760,7 @@ public class VillageMeetupService {
     /** 宿題一覧（作成日昇順・設計書 §13.5）。 */
     public List<MeetupTodoResponse> listTodos(UUID villageId, UUID meetupId,
                                               Long actorUserId, Pageable pageable) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         Pageable resolved = resolvePageableAsc(pageable);
@@ -781,7 +780,7 @@ public class VillageMeetupService {
      */
     @Transactional
     public MeetupTodoResponse claimTodo(UUID villageId, UUID meetupId, UUID todoId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         rejectIfCancelled(meetup);
@@ -808,7 +807,7 @@ public class VillageMeetupService {
      */
     @Transactional
     public MeetupTodoResponse completeTodo(UUID villageId, UUID meetupId, UUID todoId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         rejectIfCancelled(meetup);
@@ -838,7 +837,7 @@ public class VillageMeetupService {
      */
     @Transactional
     public MeetupTodoResponse releaseTodo(UUID villageId, UUID meetupId, UUID todoId, Long actorUserId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, actorUserId);
         VillageMeetupEntity meetup = loadMeetup(villageId, meetupId);
         requireVillager(villageId, actorUserId);
         rejectIfCancelled(meetup);
@@ -864,16 +863,16 @@ public class VillageMeetupService {
     // 共通ヘルパ
     // ====================================================================
 
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
-        }
-        if (v.getArchivedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_ALREADY_ARCHIVED);
-        }
-        return v;
+    /**
+     * 稼働中かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>非公開(UNLISTED)村を非村人が叩いた場合は、実在しない村 ID と<b>同一の</b>
+     * {@code VILLAGE_NOT_FOUND} を返して村の存在ごと秘匿する。公開(PUBLIC)村は素通りし、
+     * 非村人かどうかの 403 判定は従来どおり本サービスの呼び出し元に残る。
+     * 判定順序とその理由は {@link VillageAccessGate#loadActiveVillage} の Javadoc を参照。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadActiveVillage(villageId, actorUserId);
     }
 
     private VillageMeetupEntity loadMeetup(UUID villageId, UUID meetupId) {
@@ -899,7 +898,18 @@ public class VillageMeetupService {
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.MEETUP_NOT_MEMBER));
     }
 
-    private void requireOrganizer(VillageMeetupEntity entity, Long actorUserId) {
+    /**
+     * 幹事本人であることを検証する。
+     *
+     * <p><strong>現役性の検査を含む（#2284 §12 と同型）</strong>: {@code findActiveByVillageIdAndSubject}
+     * 述語で「その村の現役メンバーであること」を先に確認したうえで幹事本人かを判定する。
+     * 退村済み・BAN 済みの利用者は現役判定の段階で拒否される。述語は {@link #isModerator} 経由の
+     * モデレーター判定と同一で、寄合の更新・中止・確定・候補日追加削除はいずれもこの流儀に従う。</p>
+     */
+    private void requireOrganizer(UUID villageId, VillageMeetupEntity entity, Long actorUserId) {
+        membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN));
         if (!entity.getOrganizerUserId().equals(actorUserId)) {
             throw new BusinessException(VillageErrorCode.MODERATION_FORBIDDEN);
         }

@@ -2,6 +2,7 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.dto.VillageRecruitCategoryCreateRequest;
 import com.mannschaft.app.village.dto.VillageRecruitCategoryOrderRequest;
 import com.mannschaft.app.village.dto.VillageRecruitCategoryResponse;
@@ -41,6 +42,7 @@ import java.util.UUID;
 @RestController
 @RequiredArgsConstructor
 @Tag(name = "F17.1 村機能 - 募集カテゴリ", description = "村ごと募集カテゴリマスタの CRUD API")
+@AuthorizedInService
 public class VillageRecruitCategoryController {
 
     private final VillageRecruitCategoryService service;

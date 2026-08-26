@@ -2,6 +2,8 @@ package com.mannschaft.app.role.controller;
 
 import com.mannschaft.app.role.service.InviteService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.role.dto.InviteJoinRequest;
 import com.mannschaft.app.role.dto.InvitePreviewResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,8 +34,14 @@ public class InviteController {
 
 
     /**
-     * 招待トークンをプレビューする（未認証可）。
+     * 招待トークンをプレビューする。
+     *
+     * <p>「未認証可」は招待UXの将来設計を示す旧コメント。実際は {@code /api/v1/invite/**} が
+     * permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
+     * で認証必須が現に強制されている。返却内容も招待トークン自体（bearer capability）に紐づく
+     * 情報のみで、個人の非公開情報は含まない。</p>
      */
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/{token}")
     @Operation(summary = "招待プレビュー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -43,8 +51,13 @@ public class InviteController {
     }
 
     /**
-     * 招待URLをエンコードした QR コード画像（PNG）を返す。未認証可。
+     * 招待URLをエンコードした QR コード画像（PNG）を返す。
+     *
+     * <p>「未認証可」は招待UXの将来設計を示す旧コメント。実際は {@code /api/v1/invite/**} が
+     * permitAll 未登録のため SecurityConfig の {@code anyRequest().authenticated()}
+     * で認証必須が現に強制されている。</p>
      */
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping(value = "/{token}/qr", produces = MediaType.IMAGE_PNG_VALUE)
     @Operation(summary = "招待QRコード取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "PNG画像")
@@ -64,6 +77,9 @@ public class InviteController {
      * 未指定時はサーバー側で「未分類」フォルダへ自動配置される。
      * ボディ全体も任意（後方互換）。</p>
      */
+    @SelfScopedEndpoint("InviteService#joinByInvite が参加者として "
+            + "SecurityUtils.getCurrentUserId() のみを使用し、招待トークン自体が対象スコープを決める "
+            + "capability であるため他人の識別子を指定する余地が無い")
     @PostMapping("/{token}/join")
     @Operation(summary = "招待による参加",
             description = "招待トークンで参加。ボディの folderId 指定時はそのフォルダへ、未指定時は未分類フォルダへ配置")

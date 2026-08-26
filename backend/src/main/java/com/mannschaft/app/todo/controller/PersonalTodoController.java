@@ -3,6 +3,7 @@ package com.mannschaft.app.todo.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.dto.CreateTodoRequest;
+import com.mannschaft.app.todo.dto.CalendarTodoResponse;
 import com.mannschaft.app.todo.dto.GanttTodoResponse;
 import com.mannschaft.app.todo.dto.LinkScheduleRequest;
 import com.mannschaft.app.todo.dto.PatchTodoRequest;
@@ -16,6 +17,7 @@ import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
 import com.mannschaft.app.todo.security.TodoAccessGuard;
 import com.mannschaft.app.todo.service.TodoGanttService;
+import com.mannschaft.app.todo.service.TodoCalendarService;
 import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
@@ -42,6 +44,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.ArrayList;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 
 /**
  * 個人TODOコントローラー。全スコープ横断の自分のTODO一覧を提供する。
@@ -73,6 +77,7 @@ public class PersonalTodoController {
     private final TodoService todoService;
     private final TodoStatusService todoStatusService;
     private final TodoGanttService ganttService;
+    private final TodoCalendarService calendarService;
     private final TodoScheduleLinkService scheduleLinkService;
     private final TodoPersonalMemoService personalMemoService;
     private final TodoAccessGuard todoAccessGuard;
@@ -81,6 +86,10 @@ public class PersonalTodoController {
     /**
      * 個人TODOを作成する。
      */
+    // 認可の所在: TodoService#createTodo が、リクエストで指定されたプロジェクト・親TODO・
+    // マイルストーンについて「自分の個人スコープに属すること」を照合する（自己スコープ外への
+    // 作成は拒む）。担当者は本メソッド内で必ず作成者自身を含める。
+    @AuthorizedInService
     @PostMapping
     @Operation(summary = "個人TODO作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
@@ -220,11 +229,31 @@ public class PersonalTodoController {
     /**
      * 自分に割り当てられた全TODOを取得する（全スコープ横断）。
      */
+    @SelfScopedEndpoint("対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（getMyTodos メソッド本体）")
     @GetMapping("/my")
     @Operation(summary = "自分のTODO一覧（全スコープ横断）")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<TodoResponse>>> getMyTodos() {
         return ResponseEntity.ok(todoService.getMyTodos(SecurityUtils.getCurrentUserId()));
+    }
+
+    /**
+     * ダッシュボード・マイカレンダー用に、自分が担当する全スコープの未完了 TODO を返す。
+     */
+    @SelfScopedEndpoint("TodoCalendarService#getMyCalendarTodos は SecurityUtils.getCurrentUserId() を検索条件に固定し、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い")
+    @GetMapping("/my/calendar")
+    @Operation(summary = "自分担当TODOのマイカレンダー表示用一覧（全スコープ横断）")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    public ResponseEntity<ApiResponse<List<CalendarTodoResponse>>> getMyCalendarTodos(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        if (from.isAfter(to)) {
+            return ResponseEntity.badRequest().build();
+        }
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(ApiResponse.of(calendarService.getMyCalendarTodos(userId, from, to)));
     }
 
     /**
@@ -277,6 +306,8 @@ public class PersonalTodoController {
     /**
      * 個人ガントバー用TODO一覧を取得する。
      */
+    @SelfScopedEndpoint("対象は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（getGanttTodos メソッド本体）")
     @GetMapping("/gantt")
     @Operation(summary = "個人ガントバー用TODO一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

@@ -83,6 +83,8 @@ export interface TeamResponse {
   basicInfo?: TeamBasicInfoDto
   location?: TeamLocationDto
   visibility?: TeamVisibilityDto
+  /** 予約等の業務ローカル時刻に使う IANA タイムゾーン。 */
+  timezone?: string
   metadata?: TeamMetadataDto
   social?: TeamSocialDto
   timestamps?: TeamTimestampsDto
@@ -158,6 +160,8 @@ export interface TeamPublicDetailResponse {
 }
 
 export interface UpdateTeamRequest {
+  /** 予約等の業務ローカル時刻に使う IANA タイムゾーン。 */
+  timezone?: string
   name?: string
   nameKana?: string
   nickname1?: string

@@ -45,11 +45,21 @@ export interface NestedScheduleResponse {
     createdByDisplayName?: string | null
   } | null
   myAttendanceStatus?: string | null
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: Array<{
+    userId: number
+    displayName: string
+    avatarUrl: string | null
+    calendarColor: string | null
+  }>
 }
 
 /** EventDetailPanel.vue が期待する平坦な予定詳細型。 */
 export interface FlatScheduleEvent {
   id: number
+  /** 親 schedules 行の ID（BE CalendarEntryResponse.scheduleId・設計書 §1.5 / AC-07(b)）。 */
+  scheduleId: number | null
   title: string
   description: string | null
   location: string | null
@@ -64,6 +74,14 @@ export interface FlatScheduleEvent {
   attendanceRequired: boolean
   myAttendance: string | null
   attendanceStats: { yes: number; no: number; maybe: number; pending: number; total: number } | null
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: Array<{
+    userId: number
+    displayName: string
+    avatarUrl: string | null
+    calendarColor: string | null
+  }>
 }
 
 /**
@@ -84,6 +102,7 @@ export function toCalendarEventItem(
 
   return {
     id: raw.id,
+    scheduleId: raw.id,
     uniqueKey: `${scopeType.toLowerCase()}:${raw.id}`,
     title: content.title ?? '',
     startAt: time.startAt ?? '',
@@ -99,6 +118,9 @@ export function toCalendarEventItem(
     // 一覧 API は myAttendanceStatus=null を返す（詳細 GET でのみ実値・BE 現仕様）。
     attendanceRequired: content.attendanceRequired ?? false,
     myAttendance: raw.myAttendanceStatus ?? null,
+    targetMode: raw.targetMode,
+    targetCount: raw.targetCount,
+    targets: raw.targets,
   }
 }
 
@@ -126,6 +148,7 @@ export function toFlatScheduleEvent(raw: NestedScheduleResponse): FlatScheduleEv
 
   return {
     id: raw.id,
+    scheduleId: raw.id,
     title: content.title ?? '',
     description: null,
     location: content.location ?? null,
@@ -140,5 +163,8 @@ export function toFlatScheduleEvent(raw: NestedScheduleResponse): FlatScheduleEv
     attendanceRequired: content.attendanceRequired ?? false,
     myAttendance: raw.myAttendanceStatus ?? null,
     attendanceStats: null,
+    targetMode: raw.targetMode,
+    targetCount: raw.targetCount,
+    targets: raw.targets,
   }
 }

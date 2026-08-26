@@ -44,10 +44,11 @@ interface DayRow {
   isOpen: boolean
   openTime: string
   closeTime: string
+  endsNextDay: boolean
 }
 
 function defaultRow(dayOfWeek: ReservationDayOfWeekCode): DayRow {
-  return { dayOfWeek, isOpen: false, openTime: '09:00', closeTime: '18:00' }
+  return { dayOfWeek, isOpen: false, openTime: '09:00', closeTime: '18:00', endsNextDay: false }
 }
 
 const loading = ref(true)
@@ -61,7 +62,7 @@ const timeOptions = computed(() => buildHalfHourTimeOptions())
 function rowValid(row: DayRow): boolean {
   if (!row.isOpen) return true
   if (!row.openTime || !row.closeTime) return false
-  return row.openTime < row.closeTime
+  return row.endsNextDay ? row.openTime > row.closeTime : row.openTime < row.closeTime
 }
 
 const allValid = computed(() => rows.value.every(rowValid))
@@ -77,6 +78,7 @@ function fromResponse(list: BusinessHourResponse[]): DayRow[] {
       isOpen: status.isOpen ?? false,
       openTime: toHm(status.openTime) || '09:00',
       closeTime: toHm(status.closeTime) || '18:00',
+      endsNextDay: status.endsNextDay ?? false,
     }
   })
 }
@@ -116,6 +118,7 @@ function buildRequestBody(): BusinessHoursUpdateHourInput[] {
     // isOpen=false の曜日は時刻を送らない（BE validation は isOpen=true のときのみ範囲検証・§3.2）
     openTime: row.isOpen ? `${row.openTime}:00` : undefined,
     closeTime: row.isOpen ? `${row.closeTime}:00` : undefined,
+    endsNextDay: row.isOpen ? row.endsNextDay : false,
   }))
 }
 
@@ -221,6 +224,17 @@ defineExpose({ refresh: load })
               :disabled="disabled || saving"
               class="w-28"
             />
+            <div class="flex items-center gap-2">
+              <ToggleSwitch
+                v-model="row.endsNextDay"
+                :input-id="`bh-next-day-${row.dayOfWeek}`"
+                :disabled="disabled || saving"
+                :data-testid="`business-hours-next-day-${row.dayOfWeek}`"
+              />
+              <label :for="`bh-next-day-${row.dayOfWeek}`" class="cursor-pointer text-sm text-surface-600 dark:text-surface-400">
+                {{ t('reservation.template.ends_next_day') }}
+              </label>
+            </div>
             <span class="text-surface-400">-</span>
             <Select
               v-model="row.closeTime"

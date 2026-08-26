@@ -8,6 +8,7 @@ import {
   collectConsecutiveSlotIds,
   canExtend,
   isPastCell,
+  resolveDragSelection,
   cellUnavailableReason,
   unavailableReasonOfSlot,
   type MatrixCellInput,
@@ -284,5 +285,142 @@ describe('cellUnavailableReason / unavailableReasonOfSlot（F03.4.5 §4.4: 定�
     expect(unavailableReasonOfSlot({ kind: 'empty' })).toBeNull()
     expect(unavailableReasonOfSlot({ kind: 'covered' })).toBeNull()
     expect(unavailableReasonOfSlot(undefined)).toBeNull()
+  })
+})
+
+/**
+ * resolveDragSelection（機能H・ドラッグ複数選択）の番人。
+ *
+ * 行は必ず alignRowToHeader を通して組む（テスト用に手で RowSlot 配列を捏造しない）。
+ * 長尺枠が covered 列を生む実際の並びの上で検証しないと、「ヘッダ列インデックス基準で
+ * 走査している」という本実装の肝が保証できないため。
+ */
+describe('resolveDragSelection（ドラッグ複数選択の範囲解決）', () => {
+  /** 10:00〜13:00（30分×6列）のヘッダ。 */
+  const header = buildTimeHeader([{ startTime: '10:00', endTime: '13:00' }])
+
+  /** 指定インデックス群の slotId を取り出す（選択結果の実体照合用）。 */
+  function slotIdsAt(row: ReturnType<typeof alignRowToHeader>, indices: number[]): (number | undefined)[] {
+    return indices.map((i) => {
+      const slot = row[i]
+      return slot && slot.kind === 'cell' ? slot.cell.slotId : undefined
+    })
+  }
+
+  it('連続 AVAILABLE のドラッグで正しい slotId 群が選択される', () => {
+    const row = alignRowToHeader([
+      { slotId: 101, startTime: '10:00', endTime: '10:30', state: 'AVAILABLE' },
+      { slotId: 102, startTime: '10:30', endTime: '11:00', state: 'AVAILABLE' },
+      { slotId: 103, startTime: '11:00', endTime: '11:30', state: 'AVAILABLE' },
+    ], header)
+
+    const indices = resolveDragSelection(row, 0, 2)
+    expect(indices).toEqual([0, 1, 2])
+    expect(slotIdsAt(row, indices)).toEqual([101, 102, 103])
+    // ドラッグ結果がそのまま既存の一括予約経路（GroupBookingDialog）へ渡せること
+    expect(collectConsecutiveSlotIds(row, indices[0]!, indices.length)).toEqual([101, 102, 103])
+  })
+
+  it('BOOKED をまたぐと、その手前で打ち切られる（選択が全消えするのではない）', () => {
+    const row = alignRowToHeader([
+      { slotId: 101, startTime: '10:00', endTime: '10:30', state: 'AVAILABLE' },
+      { slotId: 102, startTime: '10:30', endTime: '11:00', state: 'AVAILABLE' },
+      { slotId: 103, startTime: '11:00', endTime: '11:30', state: 'BOOKED' },
+      { slotId: 104, startTime: '11:30', endTime: '12:00', state: 'AVAILABLE' },
+    ], header)
+
+    // 11:30(index3) まで引いても、BOOKED(index2) で打ち切られる
+    const indices = resolveDragSelection(row, 0, 3)
+    expect(indices).toEqual([0, 1])
+    expect(slotIdsAt(row, indices)).toEqual([101, 102])
+  })
+
+  it('CLOSED / UNAVAILABLE も同様に連続の切れ目になる', () => {
+    const closedRow = alignRowToHeader([
+      { slotId: 201, startTime: '10:00', endTime: '10:30', state: 'AVAILABLE' },
+      { slotId: 202, startTime: '10:30', endTime: '11:00', state: 'CLOSED' },
+      { slotId: 203, startTime: '11:00', endTime: '11:30', state: 'AVAILABLE' },
+    ], header)
+    expect(resolveDragSelection(closedRow, 0, 2)).toEqual([0])
+
+    const unavailableRow = alignRowToHeader([
+      { slotId: 301, startTime: '10:00', endTime: '10:30', state: 'AVAILABLE' },
+      { slotId: 302, startTime: '10:30', endTime: '11:00', state: 'UNAVAILABLE' },
+      { slotId: 303, startTime: '11:00', endTime: '11:30', state: 'AVAILABLE' },
+    ], header)
+    expect(resolveDragSelection(unavailableRow, 0, 2)).toEqual([0])
+  })
+
+  it('長尺枠（span>1）を含む範囲が正しく解決される（covered 列を跨いでも列がズレない）', () => {
+    const row = alignRowToHeader([
+      { slotId: 401, startTime: '10:00', endTime: '10:30', state: 'AVAILABLE' },
+      // 60分の長尺枠。index1 に cell(span=2)・index2 は covered になる
+      { slotId: 402, startTime: '10:30', endTime: '11:30', state: 'AVAILABLE' },
+      { slotId: 403, startTime: '11:30', endTime: '12:00', state: 'AVAILABLE' },
+      { slotId: 404, startTime: '12:00', endTime: '12:30', state: 'AVAILABLE' },
+    ], header)
+    // 前提: 長尺枠が期待どおり span=2 + covered で並んでいる
+    expect(row[1]).toMatchObject({ kind: 'cell', span: 2 })
+    expect(row[2]).toMatchObject({ kind: 'covered' })
+
+    // 長尺枠はグループ連続確保の構成要素にしない方針のため、そこで打ち切られる
+    expect(resolveDragSelection(row, 0, 4)).toEqual([0])
+
+    // 長尺枠の「先」から始めれば、covered 列に惑わされず正しい列（11:30/12:00）が取れる。
+    // 可視セルの通し番号で数えていると index がズレてここが壊れる。
+    const after = resolveDragSelection(row, 3, 4)
+    expect(after).toEqual([3, 4])
+    expect(slotIdsAt(row, after)).toEqual([403, 404])
+    expect(collectConsecutiveSlotIds(row, after[0]!, after.length)).toEqual([403, 404])
+
+    // 長尺枠そのものを起点にはできない（単発クリック＝単枠フローの担当）
+    expect(resolveDragSelection(row, 1, 4)).toEqual([])
+  })
+
+  it('左方向のドラッグでも昇順の連続範囲になる', () => {
+    const row = alignRowToHeader([
+      { slotId: 501, startTime: '10:00', endTime: '10:30', state: 'AVAILABLE' },
+      { slotId: 502, startTime: '10:30', endTime: '11:00', state: 'AVAILABLE' },
+      { slotId: 503, startTime: '11:00', endTime: '11:30', state: 'AVAILABLE' },
+    ], header)
+
+    const indices = resolveDragSelection(row, 2, 0)
+    expect(indices).toEqual([0, 1, 2])
+    expect(slotIdsAt(row, indices)).toEqual([501, 502, 503])
+  })
+
+  it('アンカー自体が選べないマスなら選択不成立（空配列）', () => {
+    const row = alignRowToHeader([
+      { slotId: 601, startTime: '10:00', endTime: '10:30', state: 'BOOKED' },
+      { slotId: 602, startTime: '10:30', endTime: '11:00', state: 'AVAILABLE' },
+    ], header)
+    expect(resolveDragSelection(row, 0, 1)).toEqual([])
+    // 枠が無い列（empty）も同様
+    expect(resolveDragSelection(row, 5, 5)).toEqual([])
+  })
+
+  it('isSelectable 述語（過去セル判定の注入）でも打ち切られる', () => {
+    const row = alignRowToHeader([
+      { slotId: 701, startTime: '10:00', endTime: '10:30', state: 'AVAILABLE' },
+      { slotId: 702, startTime: '10:30', endTime: '11:00', state: 'AVAILABLE' },
+      { slotId: 703, startTime: '11:00', endTime: '11:30', state: 'AVAILABLE' },
+    ], header)
+    // index1 を「選べない」とすると、そこで打ち切られる
+    expect(resolveDragSelection(row, 0, 2, i => i !== 1)).toEqual([0])
+    // アンカーが選べなければ不成立
+    expect(resolveDragSelection(row, 0, 2, () => false)).toEqual([])
+  })
+
+  it('選択枠数は GROUP_MAX_SIZE（16）で頭打ちになる（BEの041を先回りで防ぐ）', () => {
+    const longHeader = buildTimeHeader([{ startTime: '00:00', endTime: '12:00' }])
+    const cells: MatrixCellInput[] = []
+    for (let i = 0; i < 24; i++) {
+      const start = `${String(Math.floor(i / 2)).padStart(2, '0')}:${i % 2 === 0 ? '00' : '30'}`
+      const endMin = i * 30 + 30
+      const end = `${String(Math.floor(endMin / 60)).padStart(2, '0')}:${endMin % 60 === 0 ? '00' : '30'}`
+      cells.push({ slotId: 800 + i, startTime: start, endTime: end, state: 'AVAILABLE' })
+    }
+    const row = alignRowToHeader(cells, longHeader)
+    expect(resolveDragSelection(row, 0, 23)).toHaveLength(16)
   })
 })

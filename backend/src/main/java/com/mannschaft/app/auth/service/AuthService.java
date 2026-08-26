@@ -126,8 +126,8 @@ public class AuthService {
      * 詳細は {@link AuthRegistrationService#resendVerificationEmail} を参照。
      */
     @Transactional
-    public ApiResponse<MessageResponse> resendVerificationEmail(String email) {
-        return authRegistrationService.resendVerificationEmail(email);
+    public ApiResponse<MessageResponse> resendVerificationEmail(String email, String ipAddress) {
+        return authRegistrationService.resendVerificationEmail(email, ipAddress);
     }
 
     // ========================================

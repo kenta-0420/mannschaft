@@ -444,6 +444,7 @@
       "saveSuccess": "축제가 저장되었습니다",
       "cancelSuccess": "축제가 취소되었습니다",
       "loadFailed": "축제 목록을 가져오는 데 실패했습니다",
+      "invalidDateTime": "시작/종료 일시 형식이 올바르지 않습니다. 다시 입력해 주세요.",
       "filterAll": "전체",
       "status": {
         "SCHEDULED": "개최 예정",

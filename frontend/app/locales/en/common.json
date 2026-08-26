@@ -248,7 +248,19 @@
     "AUTH_010": "Your current password is incorrect",
     "AUTH_011": "No password has been set yet",
     "AUTH_044": "Too many requests. Please wait a moment and try again",
-    "SURVEY_023": "Team breakdown cannot be enabled for anonymous surveys"
+    "SURVEY_023": "Team breakdown cannot be enabled for anonymous surveys",
+    "SCHEDULE_KEEP_001": "Keep not found",
+    "SCHEDULE_KEEP_002": "Please enter a title",
+    "SCHEDULE_KEEP_003": "Up to 10 candidate dates",
+    "SCHEDULE_KEEP_004": "Invalid date format",
+    "SCHEDULE_KEEP_005": "You don't have permission for this keep",
+    "SCHEDULE_KEEP_006": "This keep can't be converted",
+    "SCHEDULE_KEEP_007": "Can't edit in this state",
+    "SCHEDULE_KEEP_008": "Can't undo -- attendance replies exist",
+    "SCHEDULE_KEEP_009": "This transition isn't allowed",
+    "SCHEDULE_KEEP_010": "Keep limit reached",
+    "SCHEDULE_KEEP_012": "Invalid reorder request",
+    "TIMELINE_017": "You have reached the mute limit of 200. Please unhide something you no longer need."
   },
   "annual_plan": {
     "title": "Annual Event Plan",
@@ -480,7 +492,38 @@
       "PUBLIC": "What's happening?"
     },
     "submitLabel": "Post",
-    "pollOptionsCount": "{count} options"
+    "pollOptionsCount": "{count} options",
+    "deliveryScope": {
+      "label": "Delivery range",
+      "options": {
+        "DIRECT": "Members of this organization only",
+        "CHILDREN": "Include direct child organizations",
+        "DESCENDANTS": "All organizations below this one"
+      },
+      "hints": {
+        "DIRECT": "Shown only on the timelines of members of this organization.",
+        "CHILDREN": "Also shown to members of the organizations directly below this one.",
+        "DESCENDANTS": "Shown to members of every organization below this one."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Hide posts from this team",
+        "ORGANIZATION": "Hide posts from this organization"
+      },
+      "targetType": {
+        "TEAM": "Team",
+        "ORGANIZATION": "Organization"
+      },
+      "muted": "Posts from {name} are now hidden",
+      "undo": "Undo",
+      "unmuted": "Posts are shown again",
+      "chip": "Hidden: {count}",
+      "dialogTitle": "Hidden sources",
+      "emptyList": "You have not hidden anyone.",
+      "unmuteAction": "Show again",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Gallery",
@@ -533,7 +576,8 @@
       "selfReviewEnd": "Self-review end time",
       "selfReviewHelp": "The configured time period is treated as a review window before publishing",
       "saveSettings": "Save Settings",
-      "loadFailed": "Failed to load the post"
+      "loadFailed": "Failed to load the post",
+      "scheduledPublishUnavailable": "Scheduled publishing is currently unavailable. Publishing makes the post live immediately."
     },
     "autoSave": {
       "label": "Auto-save",
@@ -1282,6 +1326,16 @@
     "filter": {
       "allTeamsOrgs": "Teams & Orgs (All)",
       "selectScope": "Select destination"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Personal",
+        "unknown": "Other events",
+        "loadError": {
+          "summary": "Failed to load layers",
+          "detail": "Team/organization filters are temporarily unavailable. Events are still shown. Please reload later."
+        }
+      }
     }
   },
   "handoff": {
@@ -1451,6 +1505,10 @@
       "back_to_dashboard": "Back to dashboard",
       "retry": "Retry",
       "slow_loading": "Loading is taking longer than expected"
+    },
+    "unsavedChanges": {
+      "title": "Unsaved changes",
+      "confirmLeave": "You have unsaved changes. If you leave this page, your input will be lost. Continue?"
     }
   },
   "teamHub": {
@@ -1827,6 +1885,13 @@
     "mapEmbedUrlHelp": "In Google Maps, click \"Share > Embed a map > Copy HTML\" and paste the src= URL here",
     "mapEmbedUrlInvalidFormat": "Must be a Google Maps embed URL (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "Store map URL saved",
+    "timezone": {
+      "label": "Reservation time zone",
+      "help": "IANA time zone used to interpret reservation start and end times.",
+      "placeholder": "e.g. Asia/Tokyo",
+      "invalid": "Enter a valid IANA time zone",
+      "saved": "Reservation time zone saved"
+    },
     "regionCode": {
       "label": "Location (prefecture / city)",
       "help": "Selecting a prefecture and city sets the defaults for regional search and listings.",
@@ -1844,6 +1909,7 @@
     "bulletinOpen": "Discuss on bulletin board"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "Storage", "personal": "Personal", "team": "Team", "organization": "Organization", "details": "View details", "error": "Could not load storage", "retry": "Retry", "unconfigured": "Quota not configured", "not_available": "No storage data", "meterLabel": "{scope} storage usage", "meterValue": "Usage {percent}%", "warningTitle": "Storage limit approaching", "warningMessage": "{scope} is using {percent}%. Consider upgrading to a paid plan.", "viewPlans": "View plans", "checkStorage": "Check storage", "cancel": "Cancel" },
     "tabs": {
       "personal": "Personal",
       "team": "Team",
@@ -2097,5 +2163,31 @@
   "comingSoon": {
     "title": "Coming Soon",
     "description": "This feature is currently under development. Please check back later."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Transfer ownership",
+    "sectionDescription": "Hand over the owner (admin) role to another member. After the transfer you become a deputy admin and can no longer perform admin-only actions.",
+    "openButton": "Transfer ownership",
+    "dialogTitle": "Transfer ownership",
+    "warning": "This action cannot be undone. Admin rights move to the new owner, and only the new owner can hand them back.",
+    "targetLabel": "New owner",
+    "targetPlaceholder": "Select a member",
+    "noCandidates": "There is no member you can transfer ownership to.",
+    "confirmLabel": "Type “{name}” to confirm",
+    "confirmMismatch": "The name does not match.",
+    "cancel": "Cancel",
+    "submit": "Transfer",
+    "successTitle": "Ownership transferred",
+    "successDetail": "Admin rights have moved to the new owner."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Feature not available",
+      "body": "This feature is not available yet. Returning to your dashboard."
+    },
+    "error": {
+      "fetchFailedTitle": "Could not check feature availability",
+      "fetchFailedBody": "We could not check whether this feature is available because of a network error. Please try again later."
+    }
   }
 }

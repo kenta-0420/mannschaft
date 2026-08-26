@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.auth.service.AuditLogService;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.reservation.CancelledBy;
@@ -31,6 +32,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -94,6 +96,7 @@ public class ReservationRecurringBlockedTimeService {
     /** F03.4.5 §6.2 W2-5（強行登録）: 申込者への通知を AFTER_COMMIT で送るためのイベント発行者。 */
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
+    private final TeamTimezoneResolver teamTimezoneResolver;
 
     // ────────────────────────────────────────────────────────────
     // 一覧
@@ -128,7 +131,8 @@ public class ReservationRecurringBlockedTimeService {
         if (ruleRepository.countByTeamId(teamId) >= MAX_RULES_PER_TEAM) {
             throw new BusinessException(ReservationErrorCode.RECURRING_BLOCKED_TIME_LIMIT_EXCEEDED);
         }
-        SlotTimeValidator.validateTimeRange(request.getStartTime(), request.getEndTime());
+        SlotTimeValidator.validateTimeRange(request.getStartTime(), request.getEndTime(),
+                Boolean.TRUE.equals(request.getEndsNextDay()));
         ReservationLineEntity line = resolveLineOrThrow(teamId, request.getLineId());
         boolean isPublic = Boolean.TRUE.equals(request.getIsPublic());
 
@@ -136,7 +140,8 @@ public class ReservationRecurringBlockedTimeService {
         Integer forceCancelledCount = resolveConflicts(
                 teamId, request.getLineId(), request.getDayOfWeek(),
                 request.getStartTime(), request.getEndTime(), request.getReason(),
-                Boolean.TRUE.equals(request.getForceCancelConflicting()), createdBy);
+                Boolean.TRUE.equals(request.getForceCancelConflicting()),
+                Boolean.TRUE.equals(request.getEndsNextDay()), createdBy);
 
         ReservationRecurringBlockedTimeEntity entity = ReservationRecurringBlockedTimeEntity.builder()
                 .teamId(teamId)
@@ -144,6 +149,7 @@ public class ReservationRecurringBlockedTimeService {
                 .dayOfWeek(request.getDayOfWeek())
                 .startTime(request.getStartTime())
                 .endTime(request.getEndTime())
+                .endsNextDay(Boolean.TRUE.equals(request.getEndsNextDay()))
                 .reason(request.getReason())
                 .isPublic(isPublic)
                 .createdBy(createdBy)
@@ -182,8 +188,13 @@ public class ReservationRecurringBlockedTimeService {
         if (request.getStartTime() != null || request.getEndTime() != null) {
             LocalTime newStart = request.getStartTime() != null ? request.getStartTime() : entity.getStartTime();
             LocalTime newEnd = request.getEndTime() != null ? request.getEndTime() : entity.getEndTime();
-            SlotTimeValidator.validateTimeRange(newStart, newEnd);
-            entity.changeTimeRange(newStart, newEnd);
+            boolean endsNextDay = request.getEndsNextDay() != null
+                    ? request.getEndsNextDay() : Boolean.TRUE.equals(entity.getEndsNextDay());
+            SlotTimeValidator.validateTimeRange(newStart, newEnd, endsNextDay);
+            entity.changeTimeRange(newStart, newEnd, endsNextDay);
+        } else if (request.getEndsNextDay() != null) {
+            SlotTimeValidator.validateTimeRange(entity.getStartTime(), entity.getEndTime(), request.getEndsNextDay());
+            entity.changeTimeRange(entity.getStartTime(), entity.getEndTime(), request.getEndsNextDay());
         }
         if (request.getReason() != null) {
             entity.changeReason(request.getReason());
@@ -204,7 +215,8 @@ public class ReservationRecurringBlockedTimeService {
         Integer forceCancelledCount = resolveConflicts(
                 teamId, entity.getLineId(), entity.getDayOfWeek(),
                 entity.getStartTime(), entity.getEndTime(), entity.getReason(),
-                Boolean.TRUE.equals(request.getForceCancelConflicting()), updatedBy);
+                Boolean.TRUE.equals(request.getForceCancelConflicting()),
+                Boolean.TRUE.equals(entity.getEndsNextDay()), updatedBy);
 
         ReservationRecurringBlockedTimeEntity saved = ruleRepository.save(entity);
         log.info("定期予約不可枠更新: teamId={}, ruleId={}, forceCancelled={}",
@@ -248,7 +260,8 @@ public class ReservationRecurringBlockedTimeService {
     public RecurringBlockedTimeImpactResponse getImpact(
             Long teamId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime, Long lineId) {
         AffectedReservations affected =
-                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime);
+                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime,
+                        endTime.isBefore(startTime));
         if (affected.rows().isEmpty()) {
             return RecurringBlockedTimeImpactResponse.builder().affectedCount(0).reservations(List.of()).build();
         }
@@ -333,13 +346,14 @@ public class ReservationRecurringBlockedTimeService {
      */
     private Integer resolveConflicts(
             Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
-            LocalTime startTime, LocalTime endTime, String blockReason, boolean force, Long actorUserId) {
+            LocalTime startTime, LocalTime endTime, String blockReason, boolean force,
+            boolean endsNextDay, Long actorUserId) {
         if (!force) {
-            guardNoActiveOverlap(teamId, lineId, dayOfWeek, startTime, endTime);
+            guardNoActiveOverlap(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay);
             return null;
         }
         return forceCancelOverlapping(
-                teamId, lineId, dayOfWeek, startTime, endTime, blockReason, actorUserId);
+                teamId, lineId, dayOfWeek, startTime, endTime, blockReason, endsNextDay, actorUserId);
     }
 
     /**
@@ -347,8 +361,9 @@ public class ReservationRecurringBlockedTimeService {
      * {@code RESERVATION_027}（409）で拒否する（§4.3）。
      */
     private void guardNoActiveOverlap(
-            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
-        if (!findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime).isEmpty()) {
+            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime,
+            LocalTime endTime, boolean endsNextDay) {
+        if (!findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay).isEmpty()) {
             throw new BusinessException(ReservationErrorCode.UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS);
         }
     }
@@ -369,10 +384,10 @@ public class ReservationRecurringBlockedTimeService {
      */
     private int forceCancelOverlapping(
             Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek,
-            LocalTime startTime, LocalTime endTime, String blockReason, Long actorUserId) {
+            LocalTime startTime, LocalTime endTime, String blockReason, boolean endsNextDay, Long actorUserId) {
         // impact（事前確認）と<b>完全に同じ集合</b>を解決する（検分 MUST③）。
         AffectedReservations affected =
-                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime);
+                resolveAffectedReservations(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay);
         if (affected.rows().isEmpty()) {
             return 0;
         }
@@ -404,16 +419,27 @@ public class ReservationRecurringBlockedTimeService {
 
         // 予約を消して黙っているのは許されない。AFTER_COMMIT で申込者へ通知する
         // （ロールバックされた登録では通知が飛ばない）。
-        // 通知は「overlap 判定に直接ヒットした行」につき 1 通。グループ予約が兄弟スロット 2 枠で
-        // ルール時間帯に跨る場合は同一ユーザーへ 2 通飛ぶ（通知の集約は別チケット）。
-        for (ReservationEntity row : affected.directlyOverlapping()) {
+        // Issue #2543: 通知対象は user_id 単位に束ねる（overlap 判定に直接ヒットした行の集合ではなく、
+        // 実際にキャンセルされた行の全集合 = toCancel を使う。グループ予約が兄弟スロット複数に跨り
+        // ルール時間帯を両方覆う場合でも、申込者は 1 人なので通知も 1 通）。
+        // 本文には、そのユーザーについて実際にキャンセルされた枠を全て列挙する（兄弟行含む）。
+        Map<Long, List<ReservationForceCancelledByBlockEvent.CancelledSlot>> slotsByUser = new LinkedHashMap<>();
+        Map<Long, Long> representativeReservationIdByUser = new LinkedHashMap<>();
+        for (ReservationEntity row : toCancel) {
             ReservationSlotEntity slot = slotById.get(row.getReservationSlotId());
+            slotsByUser.computeIfAbsent(row.getUserId(), k -> new ArrayList<>())
+                    .add(new ReservationForceCancelledByBlockEvent.CancelledSlot(
+                            slot != null ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()) : null,
+                            slot != null ? slot.getTitle() : null));
+            representativeReservationIdByUser.putIfAbsent(row.getUserId(), row.getId());
+        }
+        for (Map.Entry<Long, List<ReservationForceCancelledByBlockEvent.CancelledSlot>> entry : slotsByUser.entrySet()) {
+            Long userId = entry.getKey();
             eventPublisher.publishEvent(new ReservationForceCancelledByBlockEvent(
                     teamId,
-                    row.getId(),
-                    row.getUserId(),
-                    slot != null ? LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()) : null,
-                    slot != null ? slot.getTitle() : null,
+                    representativeReservationIdByUser.get(userId),
+                    userId,
+                    entry.getValue(),
                     blockReason));
         }
 
@@ -442,9 +468,10 @@ public class ReservationRecurringBlockedTimeService {
      *         overlap に直接ヒットした行（通知の起点）と、枠の一括取得結果
      */
     private AffectedReservations resolveAffectedReservations(
-            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
+            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime,
+            LocalTime endTime, boolean endsNextDay) {
         List<ReservationRecurringOverlapRow> matched =
-                findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime);
+                findOverlappingRows(teamId, lineId, dayOfWeek, startTime, endTime, endsNextDay);
         if (matched.isEmpty()) {
             return new AffectedReservations(List.of(), List.of(), Map.of());
         }
@@ -528,15 +555,17 @@ public class ReservationRecurringBlockedTimeService {
      * アプリ層でフィルタする（別実装厳禁・checker と同一の半開区間・3文字曜日変換）。</p>
      */
     private List<ReservationRecurringOverlapRow> findOverlappingRows(
-            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime, LocalTime endTime) {
-        LocalDate today = LocalDate.now(clock);
+            Long teamId, Long lineId, ReservationDayOfWeek dayOfWeek, LocalTime startTime,
+            LocalTime endTime, boolean endsNextDay) {
+        ZoneId teamZone = teamTimezoneResolver.resolveZone(teamId);
+        LocalDate today = LocalDate.now(clock.withZone(teamZone));
         LocalDate horizonEnd = today.plusDays(GUARD_HORIZON_DAYS);
         List<ReservationRecurringOverlapRow> candidates = reservationRepository
                 .findActiveReservationsInRangeForRecurringGuard(teamId, today, horizonEnd, lineId, ACTIVE_STATUSES);
         return candidates.stream()
-                .filter(row -> unavailabilityChecker.isRecurringBlocked(
-                        row.slotDate(), row.startTime(), row.endTime(), row.lineId(),
-                        true, dayOfWeek, startTime, endTime, lineId))
+                .filter(row -> unavailabilityChecker.isRecurringBlockedForTeam(
+                        row.slotDate(), row.endDate(), row.startTime(), row.endTime(), row.lineId(),
+                        true, dayOfWeek, startTime, endTime, lineId, endsNextDay, teamZone))
                 .toList();
     }
 
@@ -574,6 +603,7 @@ public class ReservationRecurringBlockedTimeService {
                 .reason(entity.getReason())
                 .isPublic(entity.getIsPublic())
                 .isActive(entity.getIsActive())
+                .endsNextDay(entity.getEndsNextDay())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

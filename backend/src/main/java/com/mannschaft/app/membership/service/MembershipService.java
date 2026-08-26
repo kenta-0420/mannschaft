@@ -383,6 +383,14 @@ public class MembershipService {
                 .toList();
     }
 
+    public List<Long> getActiveTeamIdsIncludingRoleAssignments(Long userId) {
+        return java.util.stream.Stream.concat(
+                        userRoleRepository.findTeamIdsByUserId(userId).stream(),
+                        getActiveTeamIdsByUser(userId).stream())
+                .distinct()
+                .toList();
+    }
+
     /**
      * 指定ユーザーがアクティブ（退会していない）に所属する組織の ID 一覧を返す。
      *
@@ -402,6 +410,14 @@ public class MembershipService {
                 .findActiveByUserAndScopeType(userId, ScopeType.ORGANIZATION)
                 .stream()
                 .map(MembershipEntity::getScopeId)
+                .toList();
+    }
+
+    public List<Long> getActiveOrgIdsIncludingRoleAssignments(Long userId) {
+        return java.util.stream.Stream.concat(
+                        userRoleRepository.findOrganizationIdsByUserId(userId).stream(),
+                        getActiveOrgIdsByUser(userId).stream())
+                .distinct()
                 .toList();
     }
 
@@ -440,6 +456,26 @@ public class MembershipService {
      */
     public List<Long> getActiveUserIdsInScopes(Collection<Long> teamIds, Collection<Long> orgIds) {
         return membershipRepository.findActiveDistinctUserIdsByScopes(teamIds, orgIds);
+    }
+
+    /**
+     * 指定スコープ（単一）に在籍するアクティブメンバーの user_id 一覧を joined_at 昇順で返す。
+     *
+     * <p>{@code schedule} ドメインの {@code ScheduleCommentService} がメンション候補の母集団
+     * （親スコープの直属メンバー）を取得する際、{@code membership} ドメインの
+     * {@link MembershipRepository} を直接注入することを避けるための公開窓口
+     * （D-5 ArchUnit 準拠: 別ドメインの Repository へ直接依存しない）。
+     * プリミティブ（{@code List<Long>}）のみを返し、Entity を漏らさない
+     * （{@link #getActiveUserIdsInScopes(Collection, Collection)} の単一スコープ版）。</p>
+     *
+     * @param scopeType スコープ種別（TEAM / ORGANIZATION）
+     * @param scopeId   スコープ ID
+     * @return 在籍者の user_id 一覧（joined_at 昇順・退会済みは除外）
+     */
+    public List<Long> getActiveMemberUserIds(ScopeType scopeType, Long scopeId) {
+        return membershipRepository.findAllActiveByScope(scopeType, scopeId).stream()
+                .map(MembershipEntity::getUserId)
+                .toList();
     }
 
 }

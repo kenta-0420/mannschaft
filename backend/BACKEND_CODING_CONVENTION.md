@@ -167,7 +167,14 @@ Spring はこれを `HttpMessageConversionException`（400 にマップ済みの
 - コンストラクタが **1 本だけ**なら `@JsonCreator` は不要（`-parameters` ＋ `ParameterNamesModule` で暗黙 creator になる）
 - Lombok の `@Data + @NoArgsConstructor + @AllArgsConstructor` 様式も可（引数無しコンストラクタ＋setter で成立する）
 - `record` は Jackson が正準コンストラクタをネイティブ解決するため、コンストラクタが複数でも `@JsonCreator` は不要
-- 機械検出: `JsonRequestBodyCreatorArchTest`（`common/architecture`。`.claudecode.md` §30）
+- `@JsonCreator` は **1 本だけ**付けること。2 本のコンストラクタに付けると Jackson が
+  properties-based creator を一意に決められず（conflicting property-based creators）、
+  **付けていないのと同じく常時 500** になる（delegating creator と 1 本ずつの共存のみ可）
+- `@JsonCreator(mode = Mode.DISABLED)` は creator の**明示的な打ち消し**であり、
+  「付いているのに creator が 1 本も無い」状態になる。救済にはならない
+- 機械検出: `JsonRequestBodyCreatorArchTest`（`common/architecture`。`.claudecode.md` §30）。
+  その構造条件が実際の壊れ方と一致していることは `JsonRequestBodyCreatorRuntimeProofTest` が
+  本番同等設定の実 `ObjectMapper` でデシリアライズを走らせて実測固定している
 
 #### `@ModelAttribute`（フォームバインド）DTO は `@JsonCreator` では救えない
 
@@ -410,6 +417,8 @@ private String scannedDocumentS3Key;
 
 **再発防止テスト**: `ddl-auto=create` のみのテスト（通常の `AbstractMySqlIntegrationTest` 派生クラス）では検出不能。
 S3Key 系フィールドを持つ Entity には、専用の Flyway 実スキーマテストクラスを作成すること。
+
+**機械的な番人（2026-08-20 / Issue #2856 で追加）**: `backend/src/test/java/com/mannschaft/app/common/architecture/EntityDigitBoundaryColumnNameGuardTest.java` が全 `@Entity` を反射で走査し、フィールド名に「数字→大文字」の並びを含むのに `@Column(name=...)` が未指定なものを機械的に落とす（Docker 不要・第一防衛線）。実 Flyway スキーマに対する経験的な再現は`backend/src/test/java/com/mannschaft/app/common/schema/EntityDigitBoundaryColumnFlywaySchemaIT.java`が担う（Issue #2856 では `data_exports.s3_key` ほか 7 Entity の不一致をこの 2 本で赤→緑にした）。
 
 実装パターン（`@SpringBootTest` プロパティ上書き + ネイティブ SQL 列名直接確認）:
 

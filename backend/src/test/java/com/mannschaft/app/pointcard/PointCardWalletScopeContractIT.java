@@ -135,6 +135,12 @@ class PointCardWalletScopeContractIT extends AbstractMySqlIntegrationTest {
     // ID を取らない EP（自己スコープ）
     // ═════════════════════════════════════════════════════════════════════
 
+    /**
+     * PointCardController#listMyCards・PointCardController#createCard・
+     * PointCardGroupController#listMyGroups・PointCardUserSettingsController#getSettings・
+     * PointCardUserSettingsController#updateSettings・PointCardProviderController#listProviders の
+     * 自己スコープ性を固定する。
+     */
     @Nested
     @DisplayName("一覧・追加・設定 — 絞り込みキーが認証主体に固定される")
     class SelfScopedEndpoints {

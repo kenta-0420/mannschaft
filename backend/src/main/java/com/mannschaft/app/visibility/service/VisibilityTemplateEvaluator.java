@@ -1,15 +1,16 @@
 package com.mannschaft.app.visibility.service;
 
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.social.repository.TeamFriendRepository;
-import com.mannschaft.app.visibility.entity.VisibilityTemplateRuleEntity;
+import com.mannschaft.app.visibility.dto.VisibilityTemplateRuleView;
 import com.mannschaft.app.visibility.repository.VisibilityTemplateRepository;
 import com.mannschaft.app.visibility.repository.VisibilityTemplateRuleRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +41,17 @@ public class VisibilityTemplateEvaluator {
     private final TeamFriendRepository teamFriendRepository;
 
     /**
+     * 自己プロキシ参照（issue #2544）。{@code @Cacheable} は Spring AOP プロキシ経由でのみ作用するため、
+     * {@link #canView} / {@link #resolveMemberUserIds} から {@link #getTemplateRules} を {@code this.} で
+     * 呼ぶとプロキシをバイパスし、{@code visibilityTemplate} キャッシュが一度も発火しない
+     * （外部からの呼び出し元が無い＝実質「死んだ注釈」になっていた）。
+     * 循環参照を避けるため {@code @Lazy} を付けたフィールド注入とする。
+     */
+    @Autowired
+    @Lazy
+    private VisibilityTemplateEvaluator self;
+
+    /**
      * viewer がこのテンプレートを通じて対象を閲覧可能か判定する（OR結合・short-circuit）。
      *
      * <p>ルール評価は OR 結合のため、1つでも {@code true} になった時点で即座に {@code true} を返す。
@@ -59,14 +71,14 @@ public class VisibilityTemplateEvaluator {
             return false;
         }
 
-        // ルール取得（キャッシュ経由）
-        List<VisibilityTemplateRuleEntity> rules = getTemplateRules(templateId);
+        // ルール取得（キャッシュ経由。issue #2544: self 経由でないと @Cacheable が発火しない）
+        List<VisibilityTemplateRuleView> rules = self.getTemplateRules(templateId);
         if (rules.isEmpty()) {
             return false;
         }
 
         // OR結合で評価（short-circuit）
-        for (VisibilityTemplateRuleEntity rule : rules) {
+        for (VisibilityTemplateRuleView rule : rules) {
             if (evaluateRule(rule, viewerUserId, ownerUserId)) {
                 return true;
             }
@@ -86,10 +98,11 @@ public class VisibilityTemplateEvaluator {
      */
     @Transactional(readOnly = true)
     public Set<Long> resolveMemberUserIds(Long templateId, Long ownerUserId) {
-        List<VisibilityTemplateRuleEntity> rules = getTemplateRules(templateId);
+        // issue #2544: self 経由でないと @Cacheable が発火しない。
+        List<VisibilityTemplateRuleView> rules = self.getTemplateRules(templateId);
         Set<Long> memberUserIds = new HashSet<>();
 
-        for (VisibilityTemplateRuleEntity rule : rules) {
+        for (VisibilityTemplateRuleView rule : rules) {
             Set<Long> ruleUserIds = resolveRuleUserIds(rule, ownerUserId);
             memberUserIds.addAll(ruleUserIds);
         }
@@ -100,12 +113,35 @@ public class VisibilityTemplateEvaluator {
     /**
      * テンプレートのルール一覧を取得する（キャッシュ付き、TTL=5分）。
      *
+     * <p><b>issue #2544 D 群:</b> 旧実装は JPA エンティティ
+     * {@code List<VisibilityTemplateRuleEntity>} をそのままキャッシュしていた。当該エンティティは
+     * setter を持たず、{@code RedisConfig} の素の {@code ObjectMapper}（フィールド可視性
+     * {@code PUBLIC_ONLY}）では復元時に private フィールドへ書き込めないため、キャッシュヒット時に
+     * <b>全フィールド null の抜け殻</b>が返る（例外にならず fail-open ログにも残らない）。
+     * さらに {@code @ManyToOne(LAZY)} の {@code template} を辿るため Hibernate プロキシが
+     * シリアライズ経路へ混入する。そこで往復可能な record
+     * {@link VisibilityTemplateRuleView} へ射影してキャッシュする。</p>
+     *
+     * <p>戻り値は可変の {@code ArrayList} に集める（{@code Stream#toList()} が返す
+     * {@code ImmutableCollections$ListN} は既定コンストラクタが無く復元できない）。</p>
+     *
+     * <p><b>呼び出しは必ず自己プロキシ {@code self} 経由で行うこと。</b>
+     * {@code this.getTemplateRules(...)} では Spring AOP を迂回しキャッシュが発火しない。</p>
+     *
      * @param templateId テンプレートID
      * @return ルール一覧（表示順序昇順）
      */
     @Cacheable(value = "visibilityTemplate", key = "#templateId")
-    public List<VisibilityTemplateRuleEntity> getTemplateRules(Long templateId) {
-        return visibilityTemplateRuleRepository.findByTemplateIdOrderBySortOrderAsc(templateId);
+    public List<VisibilityTemplateRuleView> getTemplateRules(Long templateId) {
+        return visibilityTemplateRuleRepository.findByTemplateIdOrderBySortOrderAsc(templateId)
+                .stream()
+                .map(e -> new VisibilityTemplateRuleView(
+                        e.getId(),
+                        e.getTemplate() != null ? e.getTemplate().getId() : null,
+                        e.getRuleType(),
+                        e.getRuleTargetId(),
+                        e.getRuleTargetText()))
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
     }
 
     /**
@@ -131,34 +167,34 @@ public class VisibilityTemplateEvaluator {
      * @param ownerUserId  テンプレート所有者のユーザーID
      * @return ルールを満たす場合 true
      */
-    private boolean evaluateRule(VisibilityTemplateRuleEntity rule, Long viewerUserId, Long ownerUserId) {
-        return switch (rule.getRuleType()) {
+    private boolean evaluateRule(VisibilityTemplateRuleView rule, Long viewerUserId, Long ownerUserId) {
+        return switch (rule.ruleType()) {
             case EXPLICIT_USER ->
                 // 明示指定ユーザー: viewer.id == rule_target_id
-                rule.getRuleTargetId() != null
-                        && rule.getRuleTargetId().equals(viewerUserId);
+                rule.ruleTargetId() != null
+                        && rule.ruleTargetId().equals(viewerUserId);
 
             case EXPLICIT_TEAM ->
                 // 明示指定チームのメンバー: viewer が該当チームに所属しているか
-                rule.getRuleTargetId() != null
-                        && userRoleRepository.existsByUserIdAndTeamId(viewerUserId, rule.getRuleTargetId());
+                rule.ruleTargetId() != null
+                        && userRoleRepository.existsByUserIdAndTeamId(viewerUserId, rule.ruleTargetId());
 
             case EXPLICIT_SOCIAL_PROFILE -> {
                 // social_profile の確認: 現時点では viewer.id == rule_target_id で暫定
                 // （social_profile_id = user_id の想定。F01.2 完全実装後に再設計予定）
-                yield rule.getRuleTargetId() != null
-                        && rule.getRuleTargetId().equals(viewerUserId);
+                yield rule.ruleTargetId() != null
+                        && rule.ruleTargetId().equals(viewerUserId);
             }
 
             case TEAM_MEMBER_OF ->
                 // 指定チームのメンバー: viewer が該当チームに所属しているか
-                rule.getRuleTargetId() != null
-                        && userRoleRepository.existsByUserIdAndTeamId(viewerUserId, rule.getRuleTargetId());
+                rule.ruleTargetId() != null
+                        && userRoleRepository.existsByUserIdAndTeamId(viewerUserId, rule.ruleTargetId());
 
             case ORGANIZATION_MEMBER_OF ->
                 // 指定組織のメンバー: viewer が該当組織に所属しているか
-                rule.getRuleTargetId() != null
-                        && userRoleRepository.existsByUserIdAndOrganizationId(viewerUserId, rule.getRuleTargetId());
+                rule.ruleTargetId() != null
+                        && userRoleRepository.existsByUserIdAndOrganizationId(viewerUserId, rule.ruleTargetId());
 
             case TEAM_FRIEND_OF ->
                 // フレンドチームのメンバー（プレースホルダ解決含む）
@@ -167,7 +203,7 @@ public class VisibilityTemplateEvaluator {
             case REGION_MATCH -> {
                 // F01.2 region 実装が未完のためフォールバック（false）
                 log.warn("REGION_MATCH ルール評価スキップ（F01.2 未実装）: templateId={}, ruleId={}",
-                        rule.getTemplate().getId(), rule.getId());
+                        rule.templateId(), rule.ruleId());
                 yield false;
             }
         };
@@ -184,14 +220,16 @@ public class VisibilityTemplateEvaluator {
      * @param ownerUserId  テンプレート所有者のユーザーID（プレースホルダ解決に使用）
      * @return フレンドチームのメンバーである場合 true
      */
-    private boolean evaluateTeamFriendOf(VisibilityTemplateRuleEntity rule, Long viewerUserId, Long ownerUserId) {
+    private boolean evaluateTeamFriendOf(VisibilityTemplateRuleView rule, Long viewerUserId, Long ownerUserId) {
         Long targetTeamId;
 
-        if ("@USER_PRIMARY_TEAM".equals(rule.getRuleTargetText())) {
+        if ("@USER_PRIMARY_TEAM".equals(rule.ruleTargetText())) {
             // オーナーの primary チームを解決（最小 team_id を primary とする暫定実装）
-            targetTeamId = userRoleRepository.findByUserIdAndTeamIdIsNotNull(ownerUserId)
+            // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
+            // CMP-050: 本メソッドは ACTIVE な在籍のみを返す。凍結オーナーのテンプレは解決不能となり
+            //          false/null（＝非公開）へ倒れるのが期待挙動である（フェイルセーフ）。
+            targetTeamId = userRoleRepository.findTeamIdsByUserId(ownerUserId)
                     .stream()
-                    .map(UserRoleEntity::getTeamId)
                     .min(Long::compareTo)
                     .orElse(null);
             if (targetTeamId == null) {
@@ -199,17 +237,14 @@ public class VisibilityTemplateEvaluator {
                 return false;
             }
         } else {
-            targetTeamId = rule.getRuleTargetId();
+            targetTeamId = rule.ruleTargetId();
             if (targetTeamId == null) {
                 return false;
             }
         }
 
-        // viewer が属するチームを取得
-        List<Long> viewerTeamIds = userRoleRepository.findByUserIdAndTeamIdIsNotNull(viewerUserId)
-                .stream()
-                .map(UserRoleEntity::getTeamId)
-                .toList();
+        // viewer が属するチームを取得（CMP-027: user_roles ∪ memberships の在籍チーム ID）
+        List<Long> viewerTeamIds = userRoleRepository.findTeamIdsByUserId(viewerUserId);
         if (viewerTeamIds.isEmpty()) {
             return false;
         }
@@ -231,30 +266,30 @@ public class VisibilityTemplateEvaluator {
      * @param ownerUserId テンプレート所有者のユーザーID
      * @return ルールに該当するユーザーID集合
      */
-    private Set<Long> resolveRuleUserIds(VisibilityTemplateRuleEntity rule, Long ownerUserId) {
+    private Set<Long> resolveRuleUserIds(VisibilityTemplateRuleView rule, Long ownerUserId) {
         Set<Long> result = new HashSet<>();
 
-        switch (rule.getRuleType()) {
+        switch (rule.ruleType()) {
             case EXPLICIT_USER -> {
-                if (rule.getRuleTargetId() != null) {
-                    result.add(rule.getRuleTargetId());
+                if (rule.ruleTargetId() != null) {
+                    result.add(rule.ruleTargetId());
                 }
             }
             case EXPLICIT_SOCIAL_PROFILE -> {
                 // 暫定: social_profile_id = user_id の想定
-                if (rule.getRuleTargetId() != null) {
-                    result.add(rule.getRuleTargetId());
+                if (rule.ruleTargetId() != null) {
+                    result.add(rule.ruleTargetId());
                 }
             }
             case EXPLICIT_TEAM, TEAM_MEMBER_OF -> {
-                if (rule.getRuleTargetId() != null) {
-                    List<Long> userIds = userRoleRepository.findUserIdsByScope("TEAM", rule.getRuleTargetId());
+                if (rule.ruleTargetId() != null) {
+                    List<Long> userIds = userRoleRepository.findUserIdsByScope("TEAM", rule.ruleTargetId());
                     result.addAll(userIds);
                 }
             }
             case ORGANIZATION_MEMBER_OF -> {
-                if (rule.getRuleTargetId() != null) {
-                    List<Long> userIds = userRoleRepository.findUserIdsByScope("ORGANIZATION", rule.getRuleTargetId());
+                if (rule.ruleTargetId() != null) {
+                    List<Long> userIds = userRoleRepository.findUserIdsByScope("ORGANIZATION", rule.ruleTargetId());
                     result.addAll(userIds);
                 }
             }
@@ -270,7 +305,7 @@ public class VisibilityTemplateEvaluator {
             case REGION_MATCH -> {
                 // F01.2 未実装のためスキップ
                 log.warn("REGION_MATCH ルール resolveMemberUserIds スキップ（F01.2 未実装）: templateId={}, ruleId={}",
-                        rule.getTemplate().getId(), rule.getId());
+                        rule.templateId(), rule.ruleId());
             }
         }
 
@@ -285,11 +320,13 @@ public class VisibilityTemplateEvaluator {
      * @param ownerUserId テンプレート所有者のユーザーID
      * @return 解決されたチームID（解決できない場合は null）
      */
-    private Long resolveTargetTeamId(VisibilityTemplateRuleEntity rule, Long ownerUserId) {
-        if ("@USER_PRIMARY_TEAM".equals(rule.getRuleTargetText())) {
-            Long primaryTeamId = userRoleRepository.findByUserIdAndTeamIdIsNotNull(ownerUserId)
+    private Long resolveTargetTeamId(VisibilityTemplateRuleView rule, Long ownerUserId) {
+        if ("@USER_PRIMARY_TEAM".equals(rule.ruleTargetText())) {
+            // CMP-027: user_roles ∪ memberships の在籍チーム ID（素メンバー/応援者を取りこぼさない）
+            // CMP-050: 本メソッドは ACTIVE な在籍のみを返す。凍結オーナーのテンプレは解決不能となり
+            //          false/null（＝非公開）へ倒れるのが期待挙動である（フェイルセーフ）。
+            Long primaryTeamId = userRoleRepository.findTeamIdsByUserId(ownerUserId)
                     .stream()
-                    .map(UserRoleEntity::getTeamId)
                     .min(Long::compareTo)
                     .orElse(null);
             if (primaryTeamId == null) {
@@ -297,6 +334,6 @@ public class VisibilityTemplateEvaluator {
             }
             return primaryTeamId;
         }
-        return rule.getRuleTargetId();
+        return rule.ruleTargetId();
     }
 }

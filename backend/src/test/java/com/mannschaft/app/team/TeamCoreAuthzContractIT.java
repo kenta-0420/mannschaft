@@ -108,7 +108,6 @@ class TeamCoreAuthzContractIT extends AbstractMySqlIntegrationTest {
 
         // memberA はチームAの一般メンバー（ADMIN 権限なし）。
         // transfer-ownership の正当系で「譲渡先がスコープに所属している」条件も満たす。
-        MembershipTestHelper.insertUserRole(em, memberAId, "MEMBER", teamAId, null);
         MembershipTestHelper.insertMembership(em, memberAId, ScopeType.TEAM, teamAId, RoleKind.MEMBER);
 
         // 可視性ラダーの正常系（非 PUBLIC でもメンバーなら 200）を固定するため
@@ -251,6 +250,16 @@ class TeamCoreAuthzContractIT extends AbstractMySqlIntegrationTest {
                     .andExpect(status().isOk());
             mockMvc.perform(patch("/api/v1/teams/{slug}/unarchive", teamASlug))
                     .andExpect(status().isOk());
+        }
+
+        @Test
+        @DisplayName("ロットD: 既にアーカイブ済みチームの再アーカイブは409（TEAM_002）")
+        void 既にアーカイブ済みの再アーカイブは409() throws Exception {
+            setAuthentication(adminAId);
+            mockMvc.perform(patch("/api/v1/teams/{slug}/archive", teamASlug))
+                    .andExpect(status().isOk());
+            mockMvc.perform(patch("/api/v1/teams/{slug}/archive", teamASlug))
+                    .andExpect(status().isConflict());
         }
 
         @Test

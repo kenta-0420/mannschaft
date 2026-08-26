@@ -12,14 +12,18 @@
  * playwright.config.ts の chromium-real-admin プロジェクト（real/admin/ 配下）で動く。
  *
  * 検証対象（PR #2148 の変更点）:
- *   - SlotPicker: 予約対象ゼロ時は reservation.empty.book.admin_no_lines
+ *   - SlotMatrixPicker: 予約対象ゼロ時は reservation.empty.book.admin_no_lines
  *     （「予約対象がまだありません」）+ CTA「予約対象の管理へ」（管理者のみ）。
  *     「この日の空き枠はありません」ではないことが回帰の要点。
  *   - CTA クリックで内側タブが activeTab=2「予約対象の管理」に切り替わる。
  *   - TeamReservationsPanel 上部の「使い方」ボタンでガイドモーダルが開き、
  *     管理者向け3ステップカード（①予約対象を作る/②予約枠を作る/③公開範囲を決める）を表示。
  *   - 予約対象を1件作ると（枠はまだ0件）admin_no_slots
- *     （「この日は空き枠がありません」）+ CTA「枠を管理する」に切り替わる。
+ *     （「この週は空き枠がありません」）+ CTA「枠を管理する」に切り替わる。
+ *
+ * 【表示一本化に伴う追随（PR #2574 で旧 SlotPicker 撤去・本PRで枠ゼロ空状態をマトリックスへ実装）】
+ *   枠ゼロ空状態はマトリックス（週表示）が出すため、文言が日単位「この日は…」から
+ *   週単位「この週は…」に変わった。検証内容（管理者だけが枠ゼロ空状態＋管理CTAを見る）は不変。
  *
  * テストユーザー: e2e-admin@test.mannschaft.local（ADMIN・システム管理者相当）
  *
@@ -391,7 +395,7 @@ test.describe('RSV-EMPTY-ONBOARD: 予約タブの空初回体験（役割別導�
     }).catch(() => {})
   })
 
-  test('AC-3: 予約対象を1件作ると「この日は空き枠がありません」+ CTA「枠を管理する」に変わる', async ({
+  test('AC-3: 予約対象を1件作ると「この週は空き枠がありません」+ CTA「枠を管理する」に変わる', async ({
     page,
     tokens,
     request,
@@ -406,7 +410,7 @@ test.describe('RSV-EMPTY-ONBOARD: 予約タブの空初回体験（役割別導�
     await waitForHydration(page)
 
     await expect(
-      page.getByText('この日は空き枠がありません'),
+      page.getByText('この週は空き枠がありません'),
       'admin_no_slots（予約対象はあるが枠ゼロの管理者向けメッセージ）が表示されること',
     ).toBeVisible({ timeout: 20_000 })
 

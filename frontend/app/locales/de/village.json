@@ -444,6 +444,7 @@
       "saveSuccess": "Festival gespeichert",
       "cancelSuccess": "Festival abgesagt",
       "loadFailed": "Festivalliste konnte nicht geladen werden",
+      "invalidDateTime": "Start-/Enddatum bzw. -uhrzeit ist ungültig. Bitte erneut eingeben.",
       "filterAll": "Alle",
       "status": {
         "SCHEDULED": "Geplant",

@@ -91,8 +91,7 @@ class ReservationControllerTest {
                 .teamId(TEAM_ID)
                 .staffUserId(USER_ID)
                 .basic(new ReservationSlotResponse.SlotBasicDto("相談枠", LocalDate.now(), LocalTime.of(10, 0), LocalTime.of(11, 0)))
-                .status(new ReservationSlotResponse.SlotStatusDto("OPEN", 0, 1, false, null, null))
-                .recurrence(new ReservationSlotResponse.RecurrenceDto(null, null))
+                .status(new ReservationSlotResponse.SlotStatusDto("OPEN", 0, 1, null, null))
                 .pricing(new ReservationSlotResponse.SlotPricingDto(BigDecimal.ZERO))
                 .audit(new ReservationSlotResponse.SlotAuditDto(USER_ID, LocalDateTime.now(), LocalDateTime.now()))
                 .build();
@@ -389,24 +388,21 @@ class ReservationControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 LocalDate date = LocalDate.of(2026, 4, 1);
-                List<Long> staffUserIds = List.of(50L, 60L);
                 com.mannschaft.app.reservation.dto.ReservationGridResponse grid =
                         com.mannschaft.app.reservation.dto.ReservationGridResponse.builder()
                                 .date(date)
                                 .columns(List.of())
                                 .build();
-                // F03.4.4 で Controller は拡張シグネチャ（from/to/axis/menuId 追加）へ委譲する。
-                // 従来呼び（date 単独）は追加パラメータすべて null（機械的な引数追加のみ・アサーション変更ゼロ）。
-                given(gridService.getGrid(TEAM_ID, USER_ID, date, null, null, null, null, staffUserIds))
-                        .willReturn(grid);
+                // #2575 で axis/staffUserIds を撤去。Controller は date/from/to/menuId のみ委譲する。
+                given(gridService.getGrid(TEAM_ID, USER_ID, date, null, null, null)).willReturn(grid);
 
                 ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationGridResponse>> result =
-                        controller.getGrid(TEAM_ID, date, null, null, null, null, staffUserIds);
+                        controller.getGrid(TEAM_ID, date, null, null, null);
 
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
                 assertThat(result.getBody().getData().getDate()).isEqualTo(date);
                 // コントローラは SecurityUtils の userId を Service へ委譲する（view ゲートの主体）。
-                verify(gridService).getGrid(TEAM_ID, USER_ID, date, null, null, null, null, staffUserIds);
+                verify(gridService).getGrid(TEAM_ID, USER_ID, date, null, null, null);
             }
         }
 

@@ -20,6 +20,7 @@ import com.mannschaft.app.team.repository.TeamShiftSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.springframework.context.MessageSource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -50,6 +51,8 @@ public class ShiftPreferenceReminderBatchService {
     private final AuditLogService auditLogService;
     private final StringRedisTemplate redisTemplate;
     private final AccessControlService accessControlService;
+    /** Issue #2715 CMP-055 ロットC-4: 受信者 locale に応じた通知本文の組み立て。 */
+    private final MessageSource messageSource;
 
     /**
      * 手動リマインド二重起動防止用 Valkey ロックの設定値。
@@ -92,8 +95,11 @@ public class ShiftPreferenceReminderBatchService {
                 }
                 sendReminderToUnsubmittedMembers(schedule,
                         "SHIFT_REQUEST_REMINDER_48H",
+                        "notification.shift.reminder48h.title",
                         "シフト希望の提出期限 48 時間前です",
-                        "シフト「" + schedule.getTitle() + "」の提出期限が 48 時間以内です。まだ提出していない場合はお早めに。");
+                        "notification.shift.reminder48h.body",
+                        "シフト「" + schedule.getTitle() + "」の提出期限が 48 時間以内です。まだ提出していない場合はお早めに。",
+                        new Object[]{schedule.getTitle()});
                 schedule.markReminderSent48h();
                 scheduleRepository.save(schedule);
                 count++;
@@ -121,8 +127,11 @@ public class ShiftPreferenceReminderBatchService {
                 }
                 sendReminderToUnsubmittedMembers(schedule,
                         "SHIFT_REQUEST_REMINDER",
+                        "notification.shift.reminder24h.title",
                         "シフト希望の提出期限が明日までです",
-                        "シフト「" + schedule.getTitle() + "」の提出期限は明日までです。まだ提出していない場合は今すぐご対応ください。");
+                        "notification.shift.reminder24h.body",
+                        "シフト「" + schedule.getTitle() + "」の提出期限は明日までです。まだ提出していない場合は今すぐご対応ください。",
+                        new Object[]{schedule.getTitle()});
                 schedule.markReminderSent();
                 scheduleRepository.save(schedule);
                 count++;
@@ -133,16 +142,26 @@ public class ShiftPreferenceReminderBatchService {
         return count;
     }
 
+    /**
+     * Issue #2715 CMP-055 ロットC-4: 受信者 locale に応じて件名・本文を組み立てる。
+     * 受信者ごとの locale 一括解決（N+1 防止）は {@link NotificationHelper#notifyAllLocalized}
+     * 内部の {@code UserLocaleCache} が担う。
+     */
     private void sendReminderToUnsubmittedMembers(ShiftScheduleEntity schedule,
-            String notificationType, String title, String body) {
+            String notificationType,
+            String titleKey, String titleDefault,
+            String bodyKey, String bodyDefault, Object[] bodyArgs) {
         List<Long> unsubmitted = resolveUnsubmittedUserIds(schedule);
         if (unsubmitted.isEmpty()) return;
 
-        notificationHelper.notifyAll(
-                unsubmitted, notificationType, title, body,
+        notificationHelper.notifyAllLocalized(
+                unsubmitted, notificationType,
                 "SHIFT_SCHEDULE", schedule.getId(),
                 NotificationScopeType.TEAM, schedule.getTeamId(),
-                "/shifts/schedules/" + schedule.getId(), null);
+                "/shifts/schedules/" + schedule.getId(), null,
+                (userId, locale) -> new NotificationHelper.LocalizedMessage(
+                        messageSource.getMessage(titleKey, null, titleDefault, locale),
+                        messageSource.getMessage(bodyKey, bodyArgs, bodyDefault, locale)));
 
         log.info("シフト希望リマインド送信: type={}, scheduleId={}, 未提出人数={}",
                 notificationType, schedule.getId(), unsubmitted.size());
@@ -206,9 +225,8 @@ public class ShiftPreferenceReminderBatchService {
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND));
 
         // per-scope 認可（Track2 第二陣 / 2026-05-29）:
-        // コントローラーの @PreAuthorize("hasRole('ADMIN')") は @EnableMethodSecurity 未有効ゆえ
-        // 実機では効かないため、ここで「当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、
-        // または SYSTEM_ADMIN」を強制する。
+        // コントローラーの @PreAuthorize("hasRole('ADMIN')") は per-scope 判定にならないため、
+        // ここで「当該シフトが属するチームの ADMIN/DEPUTY_ADMIN、または SYSTEM_ADMIN」を強制する。
         if (!accessControlService.isSystemAdmin(userId)) {
             accessControlService.checkAdminOrAbove(userId, schedule.getTeamId(), "TEAM");
         }
@@ -220,14 +238,23 @@ public class ShiftPreferenceReminderBatchService {
         List<Long> unsubmitted = resolveUnsubmittedUserIds(schedule);
 
         if (!unsubmitted.isEmpty()) {
-            notificationHelper.notifyAll(
+            // Issue #2715 CMP-055 ロットC-4: 受信者 locale に応じて件名・本文を組み立てる
+            // （locale 一括解決は notifyAllLocalized 内部の UserLocaleCache が担う）。
+            notificationHelper.notifyAllLocalized(
                     unsubmitted,
                     "SHIFT_REQUEST_REMINDER_MANUAL",
-                    "シフト希望提出のリマインド",
-                    "シフト「" + schedule.getTitle() + "」の希望提出のお願いです。提出期限までにご対応ください。",
                     "SHIFT_SCHEDULE", schedule.getId(),
                     NotificationScopeType.TEAM, schedule.getTeamId(),
-                    "/shifts/schedules/" + schedule.getId(), null);
+                    "/shifts/schedules/" + schedule.getId(), null,
+                    (recipientId, locale) -> new NotificationHelper.LocalizedMessage(
+                            messageSource.getMessage(
+                                    "notification.shift.manualReminder.title", null,
+                                    "シフト希望提出のリマインド", locale),
+                            messageSource.getMessage(
+                                    "notification.shift.manualReminder.body",
+                                    new Object[]{schedule.getTitle()},
+                                    "シフト「" + schedule.getTitle() + "」の希望提出のお願いです。提出期限までにご対応ください。",
+                                    locale)));
         }
 
         // 監査ログ: MANUAL_REMINDER（操作者・スケジュール・チーム・送信件数を記録）

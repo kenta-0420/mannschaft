@@ -45,6 +45,7 @@ public class FollowEntity {
     @Column(nullable = false)
     private Long followedId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

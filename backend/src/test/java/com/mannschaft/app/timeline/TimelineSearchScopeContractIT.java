@@ -100,6 +100,12 @@ class TimelineSearchScopeContractIT extends AbstractMySqlIntegrationTest {
 
     private static final String VILLAGE_SLUG_PREFIX = "b7t-search-village-";
 
+    /** 配下配信テストで作る組織の slug プレフィクス（掃除の目印。slug は 30 文字上限）。 */
+    private static final String ORG_SLUG_PREFIX = "b7tsdlv-";
+
+    @Autowired
+    private com.mannschaft.app.organization.repository.OrganizationRepository organizationRepository;
+
     @BeforeEach
     void setUp() {
         ensureFulltextIndex();
@@ -131,11 +137,14 @@ class TimelineSearchScopeContractIT extends AbstractMySqlIntegrationTest {
     private void cleanUpTestData() {
         jdbcTemplate.update("DELETE FROM timeline_posts WHERE user_id IN (?, ?, ?)",
                 USER_TEAM_A_MEMBER, USER_ORG_A_MEMBER, USER_OUTSIDER);
-        jdbcTemplate.update("DELETE FROM memberships WHERE user_id IN (?, ?)",
-                USER_TEAM_A_MEMBER, USER_ORG_A_MEMBER);
+        jdbcTemplate.update("DELETE FROM memberships WHERE user_id IN (?, ?, ?)",
+                USER_TEAM_A_MEMBER, USER_ORG_A_MEMBER, USER_OUTSIDER);
         jdbcTemplate.update("DELETE FROM village_memberships WHERE village_id IN "
                 + "(SELECT id FROM villages WHERE slug LIKE CONCAT(?, '%'))", VILLAGE_SLUG_PREFIX);
         jdbcTemplate.update("DELETE FROM villages WHERE slug LIKE CONCAT(?, '%')", VILLAGE_SLUG_PREFIX);
+        jdbcTemplate.update("DELETE FROM user_mutes WHERE user_id IN (?, ?, ?)",
+                USER_TEAM_A_MEMBER, USER_ORG_A_MEMBER, USER_OUTSIDER);
+        jdbcTemplate.update("DELETE FROM organizations WHERE slug LIKE CONCAT(?, '%')", ORG_SLUG_PREFIX);
     }
 
     /**
@@ -282,6 +291,92 @@ class TimelineSearchScopeContractIT extends AbstractMySqlIntegrationTest {
             List<Long> ids = searchIds(UNIQUE_KEYWORD);
 
             assertThat(ids).contains(publicPost);
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════
+    // 配下配信の認可対称性（検索）— 認AC-16, 17
+    // ミュートは検索に適用しない（表示設定であり探索行為には効かせない）— 認AC-29
+    // ═════════════════════════════════════════════════════════════════════
+
+    @Nested
+    @DisplayName("配下配信と検索の対称性 / ミュート非適用")
+    class DeliveryScopeAndMuteInSearch {
+
+        @Test
+        @DisplayName("認AC-16 DESCENDANTS の親組織投稿は子組織所属者の検索でヒットする")
+        void deliveredPost_hitsInSearch() {
+            Long parentOrg = saveOrgForDelivery(null);
+            Long childOrg = saveOrgForDelivery(parentOrg);
+            saveMembershipForDelivery(USER_OUTSIDER, ScopeType.ORGANIZATION, childOrg);
+
+            Long postId = saveDeliveryPost(parentOrg, PostDeliveryScope.DESCENDANTS);
+
+            setAuthentication(USER_OUTSIDER);
+            assertThat(searchIds(UNIQUE_KEYWORD)).contains(postId);
+        }
+
+        @Test
+        @DisplayName("認AC-17 DIRECT の親組織投稿は子組織所属者の検索でヒットしない")
+        void directPost_doesNotHitInSearch() {
+            Long parentOrg = saveOrgForDelivery(null);
+            Long childOrg = saveOrgForDelivery(parentOrg);
+            saveMembershipForDelivery(USER_OUTSIDER, ScopeType.ORGANIZATION, childOrg);
+
+            Long postId = saveDeliveryPost(parentOrg, PostDeliveryScope.DIRECT);
+
+            setAuthentication(USER_OUTSIDER);
+            assertThat(searchIds(UNIQUE_KEYWORD)).doesNotContain(postId);
+        }
+
+        @Test
+        @DisplayName("認AC-29 ミュート中スコープの投稿も検索ではヒットする（検索にミュートを適用しない）")
+        void mutedScopePost_stillHitsInSearch() {
+            Long teamPost = savePost(PostScopeType.TEAM, TEAM_A, null, USER_TEAM_A_MEMBER).getId();
+            jdbcTemplate.update(
+                    "INSERT INTO user_mutes (user_id, muted_type, muted_id, created_at) VALUES (?, ?, ?, NOW())",
+                    USER_TEAM_A_MEMBER, "TEAM", TEAM_A);
+
+            setAuthentication(USER_TEAM_A_MEMBER);
+            assertThat(searchIds(UNIQUE_KEYWORD)).contains(teamPost);
+        }
+
+        /** 組織を 1 件作る（親 ID 指定で子組織）。掃除は cleanUpTestData の slug プレフィクスで行う。 */
+        private Long saveOrgForDelivery(Long parentOrgId) {
+            return organizationRepository.saveAndFlush(
+                    com.mannschaft.app.organization.entity.OrganizationEntity.builder()
+                            .slug(ORG_SLUG_PREFIX + (System.nanoTime() % 100_000_000L))
+                            .name("配下配信検索契約テスト組織")
+                            .orgType(com.mannschaft.app.organization.entity.OrganizationEntity
+                                    .OrgType.ASSOCIATION)
+                            .parentOrganizationId(parentOrgId)
+                            .visibility(com.mannschaft.app.organization.entity.OrganizationEntity
+                                    .Visibility.PUBLIC)
+                            .hierarchyVisibility(com.mannschaft.app.organization.entity.OrganizationEntity
+                                    .HierarchyVisibility.FULL)
+                            .supporterEnabled(false)
+                            .build()).getId();
+        }
+
+        private void saveMembershipForDelivery(Long userId, ScopeType scopeType, Long scopeId) {
+            membershipRepository.saveAndFlush(MembershipEntity.builder()
+                    .userId(userId)
+                    .scopeType(scopeType)
+                    .scopeId(scopeId)
+                    .roleKind(RoleKind.MEMBER)
+                    .joinedAt(LocalDateTime.now())
+                    .build());
+        }
+
+        private Long saveDeliveryPost(Long orgId, PostDeliveryScope deliveryScope) {
+            return postRepository.saveAndFlush(TimelinePostEntity.builder()
+                    .scopeType(PostScopeType.ORGANIZATION)
+                    .scopeId(orgId)
+                    .userId(USER_ORG_A_MEMBER)
+                    .content(UNIQUE_KEYWORD + " haika haishin " + deliveryScope)
+                    .status(PostStatus.PUBLISHED)
+                    .deliveryScope(deliveryScope)
+                    .build()).getId();
         }
     }
 

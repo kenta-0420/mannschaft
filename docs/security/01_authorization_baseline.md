@@ -69,7 +69,7 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 
 > **注**: 公開してよいと判断した**理由の記述（Javadoc）は本体であり、引用形式の変更後も必ず残すこと。** 理由なき付与は「認可漏れの永久凍結」と区別がつかない。
 >
-> **残務**: 姉妹マーカー `@AuthorizedByPathConfig` も同じ行番号引用規約で、実測 **40 件中 38 件がずれている**（残り 2 件はパス引用が無く測定不能）。同じ移行が必要だが、対象 Controller が 30 以上に及び並行 PR との衝突面が大きいため別チケットとする。
+> **追記（2026-08-05）**: 姉妹マーカー `@AuthorizedByPathConfig` も同じ行番号引用規約で腐っていた（実測 42 箇所全件が実物より一律 +31 行ずれ）。**matcher 式を `value()` 属性へ申告する規約へ移行済み**（対象 37 箇所・34 ファイル）。番人 `AuthorizedByPathConfigMatcherGuardTest` が新設され、申告された matcher が `SecurityConfig` に実在し、かつ `permitAll()` **ではない**こと（誤って permitAll へ「認可済み」と偽装付与する事故の検知が本丸）を機械検証する。`SecurityConfig` の走査ロジックは `SecurityConfigRules` へ共通化し `IntentionallyPublicMatcherGuardTest` と共有している。突き合わせの結果、対応する認可規則が存在しない・permitAll だった箇所は無かった。
 
 ### 3.1 インフラ・ドキュメント
 | パターン | メソッド | 公開理由 |
@@ -144,7 +144,18 @@ matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人�
 
 > **#3 が重要な理由**: 公開 EP は SSR / CDN / リバースプロキシでキャッシュされうる。閲覧者によって内容が変わる公開 URL は**キャッシュ汚染**（あるユーザー向けの応答が他人へ配られる）と意図しない露出の温床になる。AC-39b は「認証済みと匿名でボディが完全一致」を固定し、誰かが `null` 固定を `SecurityUtils.getCurrentUserIdOrNull()` に差し替えた瞬間に落ちる。
 
-> **未対応（本 PR の対象外・別途要判断）**: `/api/v1/public/teams/{slug}/activities` に **存在しない slug** を渡すと `ScopeSlugIdConverter` が 404 `COMMON_005` を返し、**存在するが非公開なチームの slug** を渡すと 404 `PUBLIC_013` を返す。ステータスは同じ 404 だがボディが異なるため、**slug の実在を判別できる**。これは activity 固有ではなく `ScopeSlugIdConverter`（`config/ScopeSlugIdConverter.java`）を通す全 `/public/teams/{slug}/**` 系に共通する挙動であり、横断的な判断が要る。team slug は公開 URL 識別子として設計されている（`docs` の URL 識別子 slug 一本化方針）ため直ちに致命的とは言えないが、存在秘匿の観点ではグレーである。
+> **【判断済み・2026-08-04 確定】slug の実在は非機密として扱う — エラーコード差は意図して残す（統一するな）**
+>
+> `/api/v1/public/teams/{slug}/**` 系では、**存在しない slug** を渡すと `ScopeSlugIdConverter`（`config/ScopeSlugIdConverter.java`）が 404 `COMMON_005` を返し、**存在するが非公開なチームの slug** を渡すと 404 `PUBLIC_001` / `PUBLIC_013` を返す。ステータスはいずれも 404 だがボディのエラーコードが異なるため、**slug が実在するかどうかの 1 ビット**は判別できる。この差は activity 固有ではなく同コンバータを通す全経路に共通する。
+>
+> **この差は「不整合」ではなく設計上の確定事項である。将来これを見つけて「統一すべき」と善意で潰しにかからないこと。** 理由は次の 4 点:
+>
+> 1. **同じ 1 ビットを専用 EP が公然と配っている**。`GET /api/v1/public/teams/slug-resolve?slug=xxx` は permitAll（`PublicSlugResolveController` に `@IntentionallyPublic` 付与）であり、**未ログインかつ非公開チームでも** `CURRENT` / `MOVED` / `NOT_FOUND` を返す。実装 `TeamService#resolveSlug` は `existsBySlugAndDeletedAtIsNull` だけを見ており**可視性を判定していない**（組織側も同型）。
+> 2. **それは事故ではなく意図的な設計**であり、認可根治戦役 Wave5 で監査済み。`PublicSlugResolveController` のクラス javadoc が「slug → slug の対応自体は非機密として扱う」と明記している。旧 URL からの 301 リダイレクト（ブックマーク・被リンクの保全）と SEO のために未ログイン到達が必要、という判断に基づく。
+> 3. **差を潰しても列挙は止まらず、失うものだけが残る**。上記のとおり実在の 1 ビットは専用 EP から取れるため、エラーコードを揃えても防御力は増えない。一方で `COMMON_005` ＝「**経路そのものが存在しない**」という開発時の診断手段を失う。FE のユニットテスト（`frontend/tests/unit/composables/village/useVillageFeatureApi.spec.ts` ほか）は「`COMMON_005` なら BE に経路が無い／それ以外なら経路はあり ID で弾かれた」という意味の差にコメントで依拠している。
+> 4. **実データは引き続き守られている**。非公開チーム / 組織の実データ取得は `PublicTeamQueryService` 等が `PUBLIC_001` で 404 に倒して防ぐ。漏れるのは「その slug が実在する」という 1 ビットのみで、名前・メンバー・投稿といった中身は一切返らない。
+>
+> 上表（存在秘匿の 3 契約）に**追記していないのは意図的**である。本項には対応する番人（自動テスト）が無く、番人を伴わない契約を表へ足すと「機械的に守られている」と誤読されるため、注記として残す。将来この差に番人を付けるなら、そのとき初めて契約表へ昇格させること。
 
 失敗はすべて `PUBLIC_013` → **404** に正規化する（403 は「存在するが権限がない」を漏らす存在オラクルになるため使わない）。未認証の ID 総当りは `PublicApiRateLimitFilter` の PUBLIC_API バケット（60 req/min/IP・200 req/min/user）で抑止する。書込（POST/PUT/PATCH/DELETE）は permitAll せず `.authenticated()` に落とす。IDOR 面を最小化するため `*`（1 階層厳格）で限定し `/**`（再帰）は使わない。
 

@@ -31,6 +31,12 @@ import java.util.Set;
  *
  * <p>未対応 type は {@code is_accessible = false} + {@code navigate_to = null} へフォールバック
  * （設計書 §4.3 末尾の注記参照）。</p>
+ *
+ * <p><b>意図的に追加していない reference_type</b>（F03.16 §4.5.1 チェックリスト #3）:
+ * {@code ReferenceType.SCHEDULE_COMMENT}（予定コメント）は <b>コルクボードに貼る対象に含めない</b>
+ * 方針であり、{@link #SUPPORTED_TYPES} / {@code NAVIGATE_TEMPLATES} へは追加しない。
+ * 未対応 type は上記フォールバックにより安全に無視されるため、追加しないことが正しい挙動である
+ * （追加すると貼れてしまう）。「対応漏れ」と誤認して追加しないこと。</p>
  */
 @Component
 public class ReferenceTypeResolver {

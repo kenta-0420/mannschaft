@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { FetchError } from 'ofetch'
 import type { PublicFaqItem } from '~/types/faq'
+import type { PublicActivitySummaryResponse } from '~/types/activity'
 import type {
   PublicEventResponse,
   PublicOrganizationResponse,
@@ -12,7 +13,13 @@ import type {
 /**
  * F19.1 公開組織詳細ページ。
  *
- * 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §8.1 / §4.1
+ * 2026-08-06 マスター御裁可（第三陣）: 投稿／タイムライン／イベント／活動記録を
+ * **横並びの実タブ**で切り替える構成に作り替えた（旧: <section> 縦積み）。
+ * 活動記録タブの詳細遷移は公開ページ専用ページを新設せず既存 `/activity/{id}`
+ * （PR #2551 で SSR 化済み）を共用する。
+ *
+ * 設計書: docs/features/F19.1_public_pages_identity_disclosure.md §8.1 / §4.1 / §5.2.1
+ *         docs/features/F06.4_activity_records.md「画面」章
  */
 definePageMeta({
   layout: 'public',
@@ -26,6 +33,7 @@ const {
   fetchPublicOrgTimelinePosts,
   fetchPublicOrgEvents,
 } = usePublicApi()
+const { fetchPublicOrgActivities } = useActivityPublicApi()
 
 const rawId = Array.isArray(route.params.slug) ? route.params.slug[0] : route.params.slug
 const orgSlug = String(rawId)
@@ -109,6 +117,30 @@ async function goEventsPage(next: number) {
   if (next < 0 || next >= eventsTotalPages.value) return
   eventCurrentPage.value = next
   await refreshEvents()
+}
+
+// F06.4 第三陣: 公開活動記録タブ。BE は List のみを返し SpringPage ではないため
+// （PublicActivityQueryService 参照）、総ページ数は分からない。返却件数が pageSize と
+// 一致する間は「次ページがあるかもしれない」とみなすヒューリスティックでページ送りする。
+const activityCurrentPage = ref(0)
+const { data: activitiesData, refresh: refreshActivities } = await useAsyncData<PublicActivitySummaryResponse[]>(
+  `public-org-${orgSlug}-activities`,
+  () => fetchPublicOrgActivities(orgSlug, activityCurrentPage.value, pageSize).then(res => res ?? []),
+  { watch: [activityCurrentPage], default: () => [] },
+)
+
+const activities = computed(() => activitiesData.value ?? [])
+const activityHasNext = computed(() => activities.value.length >= pageSize)
+
+async function goActivityPage(next: number) {
+  if (next < 0) return
+  if (next > activityCurrentPage.value && !activityHasNext.value) return
+  activityCurrentPage.value = next
+  await refreshActivities()
+}
+
+function activityDetailHref(activityId: number): string {
+  return `/activity/${activityId}`
 }
 
 // F21.1 §5.5 FAQ駆動GEO: 公開 FAQ 一覧（認証不要・回答済みのみ・固定→自由順で BE が返す）。
@@ -239,181 +271,261 @@ useSeoMeta({
 function detailHref(postId: number): string {
   return `/public/organizations/${orgSlug}/posts/${postId}`
 }
+
+// PrimeVue Tabs は value（単方向）+ update:value であり、v-model:value で
+// 受けないとタブクリックが選択状態に反映されない（ChatCreateDialog.vue 等の作法に倣う）。
+const activeTab = ref('posts')
 </script>
 
 <template>
   <div v-if="organization" class="space-y-10">
     <PublicOrganizationHeader :organization="organization" />
 
-    <section aria-labelledby="public-org-posts-heading" class="space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 id="public-org-posts-heading" class="text-xl font-bold">
-          {{ t('public.posts.sectionTitle') }}
-        </h2>
-        <span v-if="totalElements > 0" class="text-sm text-surface-500">
-          {{ t('public.posts.totalCount', { n: totalElements }) }}
-        </span>
-      </div>
+    <!-- 2026-08-06 マスター御裁可（第三陣）: 投稿／タイムライン／イベント／活動記録を横並びの実タブで切り替える -->
+    <Tabs v-model:value="activeTab">
+      <TabList>
+        <Tab value="posts">{{ t('public.tabs.posts') }}</Tab>
+        <Tab v-if="organization.timelinePostsPublic" value="timeline">{{ t('public.tabs.timeline') }}</Tab>
+        <Tab v-if="organization.publicEventsEnabled" value="events">{{ t('public.tabs.events') }}</Tab>
+        <Tab value="activities">{{ t('public.tabs.activities') }}</Tab>
+      </TabList>
+      <TabPanels>
+        <TabPanel value="posts">
+          <section aria-labelledby="public-org-posts-heading" class="space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 id="public-org-posts-heading" class="sr-only">
+                {{ t('public.posts.sectionTitle') }}
+              </h2>
+              <span v-if="totalElements > 0" class="text-sm text-surface-500">
+                {{ t('public.posts.totalCount', { n: totalElements }) }}
+              </span>
+            </div>
 
-      <p v-if="posts.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
-        {{ t('public.posts.empty') }}
-      </p>
+            <p v-if="posts.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
+              {{ t('public.posts.empty') }}
+            </p>
 
-      <div v-else class="grid gap-4 sm:grid-cols-2">
-        <PublicPostCard
-          v-for="post in posts"
-          :key="`${post.sourceType}-${post.sourceId}`"
-          :post="post"
-          :detail-href="detailHref(post.sourceId)"
-        />
-      </div>
+            <div v-else class="grid gap-4 sm:grid-cols-2">
+              <PublicPostCard
+                v-for="post in posts"
+                :key="`${post.sourceType}-${post.sourceId}`"
+                :post="post"
+                :detail-href="detailHref(post.sourceId)"
+              />
+            </div>
 
-      <nav v-if="totalPages > 1" class="flex items-center justify-between pt-2" aria-label="pagination">
-        <Button
-          :disabled="currentPage <= 0"
-          severity="secondary"
-          outlined
-          size="small"
-          :label="t('public.posts.prev')"
-          @click="goPage(currentPage - 1)"
-        />
-        <span class="text-sm text-surface-500">
-          {{ t('public.posts.page', { page: currentPage + 1, total: totalPages }) }}
-        </span>
-        <Button
-          :disabled="currentPage >= totalPages - 1"
-          severity="secondary"
-          outlined
-          size="small"
-          :label="t('public.posts.next')"
-          @click="goPage(currentPage + 1)"
-        />
-      </nav>
-    </section>
+            <nav v-if="totalPages > 1" class="flex items-center justify-between pt-2" aria-label="pagination">
+              <Button
+                :disabled="currentPage <= 0"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.prev')"
+                @click="goPage(currentPage - 1)"
+              />
+              <span class="text-sm text-surface-500">
+                {{ t('public.posts.page', { page: currentPage + 1, total: totalPages }) }}
+              </span>
+              <Button
+                :disabled="currentPage >= totalPages - 1"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.next')"
+                @click="goPage(currentPage + 1)"
+              />
+            </nav>
+          </section>
+        </TabPanel>
 
-    <!-- F19.1 Phase 7: タイムライン投稿セクション（timelinePostsPublic = true の場合のみ） -->
-    <section
-      v-if="organization.timelinePostsPublic"
-      data-testid="timeline-posts-section"
-      aria-labelledby="public-org-timeline-heading"
-      class="space-y-4"
-    >
-      <div class="flex items-center justify-between">
-        <h2 id="public-org-timeline-heading" class="text-xl font-bold">
-          {{ t('public.timeline.title') }}
-        </h2>
-        <span v-if="timelineTotalElements > 0" class="text-sm text-surface-500">
-          {{ t('public.posts.totalCount', { n: timelineTotalElements }) }}
-        </span>
-      </div>
+        <!-- F19.1 Phase 7: タイムライン投稿タブ（timelinePostsPublic = true の場合のみ表示） -->
+        <TabPanel v-if="organization.timelinePostsPublic" value="timeline">
+          <section
+            data-testid="timeline-posts-section"
+            aria-labelledby="public-org-timeline-heading"
+            class="space-y-4"
+          >
+            <div class="flex items-center justify-between">
+              <h2 id="public-org-timeline-heading" class="sr-only">
+                {{ t('public.timeline.title') }}
+              </h2>
+              <span v-if="timelineTotalElements > 0" class="text-sm text-surface-500">
+                {{ t('public.posts.totalCount', { n: timelineTotalElements }) }}
+              </span>
+            </div>
 
-      <p v-if="timelinePosts.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
-        {{ t('public.timeline.empty') }}
-      </p>
+            <p v-if="timelinePosts.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
+              {{ t('public.timeline.empty') }}
+            </p>
 
-      <div v-else class="flex flex-col gap-4">
-        <div
-          v-for="post in timelinePosts"
-          :key="post.id"
-          data-testid="timeline-post-item"
-          class="rounded-lg border border-surface-200 p-4 dark:border-surface-700"
-        >
-          <div class="mb-2 flex items-center gap-2">
-            <img
-              v-if="post.authorIconUrl"
-              :src="post.authorIconUrl"
-              :alt="post.authorDisplayName"
-              class="size-8 rounded-full object-cover"
+            <div v-else class="flex flex-col gap-4">
+              <div
+                v-for="post in timelinePosts"
+                :key="post.id"
+                data-testid="timeline-post-item"
+                class="rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+              >
+                <div class="mb-2 flex items-center gap-2">
+                  <img
+                    v-if="post.authorIconUrl"
+                    :src="post.authorIconUrl"
+                    :alt="post.authorDisplayName"
+                    class="size-8 rounded-full object-cover"
+                  >
+                  <span class="text-sm font-medium">{{ post.authorDisplayName }}</span>
+                  <span class="ml-auto text-xs text-surface-400">{{ post.createdAt }}</span>
+                </div>
+                <p class="text-sm">{{ post.content }}</p>
+              </div>
+            </div>
+
+            <nav v-if="timelineTotalPages > 1" class="flex items-center justify-between pt-2" aria-label="timeline-pagination">
+              <Button
+                :disabled="timelineCurrentPage <= 0"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.prev')"
+                @click="goTimelinePage(timelineCurrentPage - 1)"
+              />
+              <span class="text-sm text-surface-500">
+                {{ t('public.posts.page', { page: timelineCurrentPage + 1, total: timelineTotalPages }) }}
+              </span>
+              <Button
+                :disabled="timelineCurrentPage >= timelineTotalPages - 1"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.next')"
+                @click="goTimelinePage(timelineCurrentPage + 1)"
+              />
+            </nav>
+          </section>
+        </TabPanel>
+
+        <!-- F19.1 Phase 7: イベントタブ（publicEventsEnabled = true の場合のみ表示） -->
+        <TabPanel v-if="organization.publicEventsEnabled" value="events">
+          <section
+            data-testid="public-events-section"
+            aria-labelledby="public-org-events-heading"
+            class="space-y-4"
+          >
+            <div class="flex items-center justify-between">
+              <h2 id="public-org-events-heading" class="sr-only">
+                {{ t('public.events.title') }}
+              </h2>
+              <span v-if="eventsTotalElements > 0" class="text-sm text-surface-500">
+                {{ t('public.posts.totalCount', { n: eventsTotalElements }) }}
+              </span>
+            </div>
+
+            <p v-if="events.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
+              {{ t('public.events.empty') }}
+            </p>
+
+            <div v-else class="flex flex-col gap-4">
+              <div
+                v-for="event in events"
+                :key="event.id"
+                data-testid="public-event-item"
+                class="rounded-lg border border-surface-200 p-4 dark:border-surface-700"
+              >
+                <h3 class="mb-1 text-base font-semibold">{{ event.title }}</h3>
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-surface-500">
+                  <span>{{ event.startDate }}</span>
+                  <span v-if="event.endDate">〜 {{ event.endDate }}</span>
+                  <span v-if="event.location">{{ event.location }}</span>
+                </div>
+                <p v-if="event.description" class="mt-2 text-sm">{{ event.description }}</p>
+              </div>
+            </div>
+
+            <nav v-if="eventsTotalPages > 1" class="flex items-center justify-between pt-2" aria-label="events-pagination">
+              <Button
+                :disabled="eventCurrentPage <= 0"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.prev')"
+                @click="goEventsPage(eventCurrentPage - 1)"
+              />
+              <span class="text-sm text-surface-500">
+                {{ t('public.posts.page', { page: eventCurrentPage + 1, total: eventsTotalPages }) }}
+              </span>
+              <Button
+                :disabled="eventCurrentPage >= eventsTotalPages - 1"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.next')"
+                @click="goEventsPage(eventCurrentPage + 1)"
+              />
+            </nav>
+          </section>
+        </TabPanel>
+
+        <!-- F06.4 第三陣: 活動記録タブ。詳細遷移は既存の /activity/{id}（PR #2551 SSR化済み）を共用する -->
+        <TabPanel value="activities">
+          <section
+            data-testid="public-activities-section"
+            aria-labelledby="public-org-activities-heading"
+            class="space-y-4"
+          >
+            <h2 id="public-org-activities-heading" class="sr-only">
+              {{ t('public.activities.sectionTitle') }}
+            </h2>
+
+            <p v-if="activities.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
+              {{ t('public.activities.empty') }}
+            </p>
+
+            <div v-else class="flex flex-col gap-3">
+              <NuxtLink
+                v-for="activity in activities"
+                :key="activity.id"
+                :to="activityDetailHref(activity.id)"
+                data-testid="public-activity-item"
+                class="block rounded-lg border border-surface-200 p-4 transition-colors hover:bg-surface-50 dark:border-surface-700 dark:hover:bg-surface-800"
+              >
+                <h3 class="mb-1 text-base font-semibold">{{ activity.title }}</h3>
+                <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-surface-500">
+                  <span>{{ activity.activityDate }}</span>
+                </div>
+                <p v-if="activity.description" class="mt-2 line-clamp-2 text-sm text-surface-600 dark:text-surface-300">
+                  {{ activity.description }}
+                </p>
+              </NuxtLink>
+            </div>
+
+            <nav
+              v-if="activityCurrentPage > 0 || activityHasNext"
+              class="flex items-center justify-between pt-2"
+              aria-label="activities-pagination"
             >
-            <span class="text-sm font-medium">{{ post.authorDisplayName }}</span>
-            <span class="ml-auto text-xs text-surface-400">{{ post.createdAt }}</span>
-          </div>
-          <p class="text-sm">{{ post.content }}</p>
-        </div>
-      </div>
-
-      <nav v-if="timelineTotalPages > 1" class="flex items-center justify-between pt-2" aria-label="timeline-pagination">
-        <Button
-          :disabled="timelineCurrentPage <= 0"
-          severity="secondary"
-          outlined
-          size="small"
-          :label="t('public.posts.prev')"
-          @click="goTimelinePage(timelineCurrentPage - 1)"
-        />
-        <span class="text-sm text-surface-500">
-          {{ t('public.posts.page', { page: timelineCurrentPage + 1, total: timelineTotalPages }) }}
-        </span>
-        <Button
-          :disabled="timelineCurrentPage >= timelineTotalPages - 1"
-          severity="secondary"
-          outlined
-          size="small"
-          :label="t('public.posts.next')"
-          @click="goTimelinePage(timelineCurrentPage + 1)"
-        />
-      </nav>
-    </section>
-
-    <!-- F19.1 Phase 7: イベントセクション（publicEventsEnabled = true の場合のみ） -->
-    <section
-      v-if="organization.publicEventsEnabled"
-      data-testid="public-events-section"
-      aria-labelledby="public-org-events-heading"
-      class="space-y-4"
-    >
-      <div class="flex items-center justify-between">
-        <h2 id="public-org-events-heading" class="text-xl font-bold">
-          {{ t('public.events.title') }}
-        </h2>
-        <span v-if="eventsTotalElements > 0" class="text-sm text-surface-500">
-          {{ t('public.posts.totalCount', { n: eventsTotalElements }) }}
-        </span>
-      </div>
-
-      <p v-if="events.length === 0" class="rounded-lg bg-surface-50 p-6 text-center text-sm text-surface-500 dark:bg-surface-800">
-        {{ t('public.events.empty') }}
-      </p>
-
-      <div v-else class="flex flex-col gap-4">
-        <div
-          v-for="event in events"
-          :key="event.id"
-          data-testid="public-event-item"
-          class="rounded-lg border border-surface-200 p-4 dark:border-surface-700"
-        >
-          <h3 class="mb-1 text-base font-semibold">{{ event.title }}</h3>
-          <div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-surface-500">
-            <span>{{ event.startDate }}</span>
-            <span v-if="event.endDate">〜 {{ event.endDate }}</span>
-            <span v-if="event.location">{{ event.location }}</span>
-          </div>
-          <p v-if="event.description" class="mt-2 text-sm">{{ event.description }}</p>
-        </div>
-      </div>
-
-      <nav v-if="eventsTotalPages > 1" class="flex items-center justify-between pt-2" aria-label="events-pagination">
-        <Button
-          :disabled="eventCurrentPage <= 0"
-          severity="secondary"
-          outlined
-          size="small"
-          :label="t('public.posts.prev')"
-          @click="goEventsPage(eventCurrentPage - 1)"
-        />
-        <span class="text-sm text-surface-500">
-          {{ t('public.posts.page', { page: eventCurrentPage + 1, total: eventsTotalPages }) }}
-        </span>
-        <Button
-          :disabled="eventCurrentPage >= eventsTotalPages - 1"
-          severity="secondary"
-          outlined
-          size="small"
-          :label="t('public.posts.next')"
-          @click="goEventsPage(eventCurrentPage + 1)"
-        />
-      </nav>
-    </section>
+              <Button
+                :disabled="activityCurrentPage <= 0"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.prev')"
+                @click="goActivityPage(activityCurrentPage - 1)"
+              />
+              <span class="text-sm text-surface-500">
+                {{ t('public.posts.page', { page: activityCurrentPage + 1, total: activityCurrentPage + (activityHasNext ? 2 : 1) }) }}
+              </span>
+              <Button
+                :disabled="!activityHasNext"
+                severity="secondary"
+                outlined
+                size="small"
+                :label="t('public.posts.next')"
+                @click="goActivityPage(activityCurrentPage + 1)"
+              />
+            </nav>
+          </section>
+        </TabPanel>
+      </TabPanels>
+    </Tabs>
 
     <!-- F21.1 §5.5 FAQ駆動GEO: よくあるご質問（回答済み FAQ が 1 件以上のときのみ表示）。
          可視内容は FAQPage JSON-LD の mainEntity と完全一致させる。 -->

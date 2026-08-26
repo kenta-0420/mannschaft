@@ -40,6 +40,7 @@ public class ScheduleRecurrenceService {
     private static final String UPDATE_SCOPE_ALL = "ALL";
 
     private final ScheduleRepository scheduleRepository;
+    private final ScheduleTargetService scheduleTargetService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -74,7 +75,8 @@ public class ScheduleRecurrenceService {
                     .googleCalendarEventId(null)
                     .build();
 
-            scheduleRepository.save(child);
+            ScheduleEntity savedChild = scheduleRepository.save(child);
+            scheduleTargetService.copyTargets(parent.getId(), savedChild.getId());
         }
 
         log.info("繰り返し展開: parentId={}, 生成数={}", parent.getId(), occurrences.size());

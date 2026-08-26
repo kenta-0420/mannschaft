@@ -10,6 +10,45 @@ export type PostedAsType = 'USER' | 'TEAM' | 'ORGANIZATION' | 'SOCIAL_PROFILE'
  */
 export type SystemPostType = 'EVENT_CREATED' | 'EVENT_UPCOMING' | 'MEETUP_CONFIRMED' | 'FESTIVAL_STARTED'
 
+/**
+ * 組織タイムラインの配下配信範囲（CMP-058 / BE PR #2846・#2849）。
+ *
+ * - `DIRECT`      … その組織のメンバーだけに配信（既定）
+ * - `CHILDREN`    … 直下の子組織まで配信
+ * - `DESCENDANTS` … 配下すべての組織へ配信
+ *
+ * `scopeType === 'ORGANIZATION'` のときだけ配信範囲に寄与する。
+ * `CHILDREN` / `DESCENDANTS` の指定は組織の ADMIN / DEPUTY_ADMIN のみ許され、
+ * それ以外が指定すると BE が `COMMON_002`（403）で拒否する。
+ * 返信は親投稿から継承するためクライアントは指定しない。
+ */
+export type TimelineDeliveryScope = 'DIRECT' | 'CHILDREN' | 'DESCENDANTS'
+
+/** 配信範囲の既定値（何も選ばなければこの値で送られる）。 */
+export const DEFAULT_DELIVERY_SCOPE: TimelineDeliveryScope = 'DIRECT'
+
+/** 選択肢の並び順（UI の表示順の正本）。 */
+export const DELIVERY_SCOPE_OPTIONS: readonly TimelineDeliveryScope[] = [
+  'DIRECT',
+  'CHILDREN',
+  'DESCENDANTS',
+] as const
+
+/** ミュート対象の種別（BE `MuteRequest.mutedType`）。 */
+export type TimelineMutedType = 'TEAM' | 'ORGANIZATION'
+
+/** ミュート登録の上限件数（BE 超過時は `TIMELINE_017`）。 */
+export const MAX_TIMELINE_MUTES = 200
+
+/** ミュート1件（BE `MuteResponse`）。 */
+export interface TimelineMute {
+  id: number
+  userId: number
+  mutedType: TimelineMutedType
+  mutedId: number
+  createdAt: string
+}
+
 export const CONTENT_TRUNCATE_LENGTH = 500
 
 export interface TimelineUser {
@@ -194,6 +233,8 @@ export interface TimelinePostDetailResponse {
 export interface CreateTimelinePostRequest {
   scopeType: TimelineScopeType
   scopeId?: number
+  /** 配下配信範囲。省略時は BE 側で `DIRECT` 扱い（`scopeType === 'ORGANIZATION'` のみ有効）。 */
+  deliveryScope?: TimelineDeliveryScope
   postedAsType?: PostedAsType
   postedAsId?: number
   socialProfileId?: number

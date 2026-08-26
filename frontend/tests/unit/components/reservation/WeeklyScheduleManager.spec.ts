@@ -860,3 +860,218 @@ describe('WeeklyScheduleManager.vue — 定期予約不可枠（§4 B・W2-2-FE�
     expect(document.body.querySelector('[data-testid="recurring-force-cancel-button"]')).toBeNull()
   })
 })
+
+/**
+ * 週グリッドのドラッグ範囲選択（管理者の枠作成の手数削減）— 番人
+ *
+ * 座標→セル特定は `document.elementFromPoint` 方式のため、テストでは同関数をスタブして
+ * 「今どのセルの上にいるか」を差し替える（happy-dom はレイアウトを持たないので実座標は使えない）。
+ */
+
+/** グリッドの表示開始は 06:00・30分刻み（`GRID_START_HOUR`）。'HH:mm' → 行番号。 */
+function gridRow(hm: string): number {
+  const [h, m] = hm.split(':').map(Number)
+  return ((h ?? 0) - 6) * 2 + ((m ?? 0) === 30 ? 1 : 0)
+}
+
+/** グリッドは Teleport されない（ダイアログと違い wrapper 配下に描画される）ためマウント root を保持する。 */
+let managerRoot: HTMLElement | null = null
+
+async function mountManager(props: { teamId: string } = { teamId: 'team-slug' }) {
+  const wrapper = await mountSuspended(WeeklyScheduleManager, { props })
+  await flush()
+  managerRoot = wrapper.element as HTMLElement
+  return wrapper
+}
+
+function cellEl(day: string, hm: string): HTMLElement {
+  const el = managerRoot?.querySelector<HTMLElement>(`[data-testid="slot-cell-${day}-${gridRow(hm)}"]`)
+  if (!el) throw new Error(`セルが見つからない: ${day} ${hm}`)
+  return el
+}
+
+function pointerEvent(type: string, init: PointerEventInit = {}): Event {
+  if (typeof PointerEvent === 'function') {
+    return new PointerEvent(type, { bubbles: true, button: 0, pointerType: 'mouse', ...init })
+  }
+  // happy-dom に PointerEvent が無い場合のフォールバック（pointerType はハンドラの分岐に必須）
+  const ev = new MouseEvent(type, { bubbles: true, button: 0, ...init })
+  Object.defineProperty(ev, 'pointerType', { value: init.pointerType ?? 'mouse' })
+  return ev
+}
+
+/** マウスドラッグ（pointerdown → pointermove → pointerup）を再現する。 */
+async function dragOverCells(from: { day: string; hm: string }, to: { day: string; hm: string }) {
+  const startCell = cellEl(from.day, from.hm)
+  const endCell = cellEl(to.day, to.hm)
+  const spy = vi.spyOn(document, 'elementFromPoint').mockReturnValue(endCell)
+  startCell.dispatchEvent(pointerEvent('pointerdown'))
+  await flush()
+  window.dispatchEvent(pointerEvent('pointermove', { clientX: 10, clientY: 10 }))
+  await flush()
+  window.dispatchEvent(pointerEvent('pointerup'))
+  await flush()
+  spy.mockRestore()
+}
+
+describe('WeeklyScheduleManager.vue — 週グリッドのドラッグ範囲選択', () => {
+  beforeEach(() => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: { templates: [], meta: { totalTemplates: 0, limit: 500 } },
+    })
+    mockCreateSlotTemplate.mockResolvedValue(saveResponse())
+  })
+
+  it('DRAG-1: グリッドが表示され、既存フォームからの作成導線も残っている（AC-1/AC-5）', async () => {
+    const wrapper = await mountManager()
+
+    expect(managerRoot!.querySelector('[data-testid="slot-drag-grid"]')).not.toBeNull()
+    // フォーム導線（従来のダイアログ）は撤去しない
+    expect(wrapper.find('[data-testid="template-add"]').exists()).toBe(true)
+    // セルは <button>（キーボードフォーカス可能性を壊さない・AC-8）
+    expect(cellEl('MON', '10:00').tagName).toBe('BUTTON')
+  })
+
+  it('DRAG-2★: ドラッグ範囲が正しい開始/終了時刻に変換され、定員だけの確認で作成される（AC-3）', async () => {
+    await mountManager()
+
+    await dragOverCells({ day: 'MON', hm: '10:00' }, { day: 'MON', hm: '11:30' })
+
+    // 確定済みの曜日・時刻は再入力させない（表示のみ）
+    const label = findByTestId('drag-range-label')
+    expect(label).not.toBeNull()
+    expect(label!.textContent).toContain('10:00 - 12:00')
+
+    findByTestId<HTMLButtonElement>('drag-create-confirm')!.click()
+    await flush()
+
+    expect(mockCreateSlotTemplate).toHaveBeenCalledTimes(1)
+    const [, body] = mockCreateSlotTemplate.mock.calls[0] as [string, Record<string, unknown>]
+    expect(body.dayOfWeek).toBe('MON')
+    expect(body.startTime).toBe('10:00:00')
+    expect(body.endTime).toBe('12:00:00')
+    expect(body.capacity).toBe(1)
+  })
+
+  it('DRAG-3★: 複数曜日にまたがるドラッグで曜日ぶん createSlotTemplate が呼ばれる（AC-4）', async () => {
+    await mountManager()
+
+    await dragOverCells({ day: 'MON', hm: '10:00' }, { day: 'WED', hm: '11:30' })
+    findByTestId<HTMLButtonElement>('drag-create-confirm')!.click()
+    await flush()
+
+    expect(mockCreateSlotTemplate).toHaveBeenCalledTimes(3)
+    const days = mockCreateSlotTemplate.mock.calls.map(
+      c => (c as [string, Record<string, unknown>])[1].dayOfWeek,
+    )
+    expect(days).toEqual(['MON', 'TUE', 'WED'])
+    for (const d of days) expect(VALID_DAY_CODES).toContain(d)
+  })
+
+  it('DRAG-4★: 既存枠を含む範囲は弾かれ、API を呼ばない（AC-6）', async () => {
+    mockGetSlotTemplates.mockResolvedValue({
+      data: {
+        templates: [{ id: 'tpl-1', dayOfWeek: 'MON', startTime: '10:00:00', endTime: '11:00:00', capacity: 1, isActive: true }],
+        meta: { totalTemplates: 1, limit: 500 },
+      },
+    })
+
+    await mountManager()
+
+    // 既存枠のセルは視覚的に区別され、操作対象から外れている
+    expect(cellEl('MON', '10:00').hasAttribute('disabled')).toBe(true)
+    expect(cellEl('TUE', '10:00').hasAttribute('disabled')).toBe(false)
+
+    // 空きセルから既存枠へ向かってなぞる（重複作成の API エラーを踏ませない）
+    await dragOverCells({ day: 'MON', hm: '09:00' }, { day: 'MON', hm: '10:00' })
+
+    expect(findByTestId('drag-create-confirm')).toBeNull()
+    expect(mockCreateSlotTemplate).not.toHaveBeenCalled()
+    expect(mockNotifyWarn).toHaveBeenCalled()
+  })
+
+  it('DRAG-5: ESC キーでドラッグ選択を取り消せる（AC-7）', async () => {
+    await mountManager()
+
+    // 始点だけ置いた状態（2ステップ選択の途中）で ESC
+    cellEl('MON', '10:00').dispatchEvent(pointerEvent('pointerdown', { pointerType: 'touch' }))
+    await flush()
+    expect(cellEl('MON', '10:00').getAttribute('aria-pressed')).toBe('true')
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await flush()
+
+    expect(cellEl('MON', '10:00').getAttribute('aria-pressed')).toBe('false')
+    expect(findByTestId('drag-create-confirm')).toBeNull()
+    expect(mockCreateSlotTemplate).not.toHaveBeenCalled()
+  })
+
+  it('DRAG-6: タッチはドラッグを乗っ取らず2タップで範囲を確定する（パン操作との衝突回避）', async () => {
+    await mountManager()
+
+    cellEl('MON', '10:00').dispatchEvent(pointerEvent('pointerdown', { pointerType: 'touch' }))
+    await flush()
+    // 1タップ目では確認ダイアログは出ない（＝この間ページのパンはブラウザに委ねられている）
+    expect(findByTestId('drag-create-confirm')).toBeNull()
+
+    cellEl('MON', '11:30').dispatchEvent(pointerEvent('pointerdown', { pointerType: 'touch' }))
+    await flush()
+
+    expect(findByTestId('drag-range-label')!.textContent).toContain('10:00 - 12:00')
+  })
+
+  it('DRAG-7: キーボード（Enter）だけでも範囲を確定して枠を作れる（AC-8）', async () => {
+    await mountManager()
+
+    cellEl('TUE', '14:00').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flush()
+    cellEl('TUE', '15:30').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    await flush()
+
+    findByTestId<HTMLButtonElement>('drag-create-confirm')!.click()
+    await flush()
+
+    expect(mockCreateSlotTemplate).toHaveBeenCalledTimes(1)
+    const [, body] = mockCreateSlotTemplate.mock.calls[0] as [string, Record<string, unknown>]
+    expect(body.dayOfWeek).toBe('TUE')
+    expect(body.startTime).toBe('14:00:00')
+    expect(body.endTime).toBe('16:00:00')
+  })
+
+  it('endsNextDay=trueをテンプレートと定期blockedの作成payloadへ保持する', async () => {
+    mockGetSlotTemplates.mockResolvedValue({ data: { templates: [], meta: { totalTemplates: 0, limit: 500 } } })
+    mockCreateSlotTemplate.mockResolvedValue(saveResponse())
+    mockCreateRecurringBlockedTime.mockResolvedValue({ data: { id: 'rule-next-day', endsNextDay: true } })
+    const wrapper = await mountSuspended(WeeklyScheduleManager, { props: { teamId: 'team-slug' } })
+    await flush()
+    await wrapper.find('[data-testid="template-add"]').trigger('click')
+    await flush()
+    document.body.querySelector<HTMLButtonElement>('[data-day="MON"]')!.click()
+    await flush()
+    const templateForm = (wrapper.vm as unknown as { form: { startTime: string; endTime: string } }).form
+    templateForm.startTime = '19:00'
+    templateForm.endTime = '18:00'
+    await wrapper.vm.$nextTick()
+    document.body.querySelector<HTMLInputElement>('[data-testid="template-ends-next-day"] input')!.click()
+    await flush()
+    document.body.querySelector<HTMLButtonElement>('[data-testid="template-save"]')!.click()
+    await flush()
+    expect((mockCreateSlotTemplate.mock.calls[0] as [string, Record<string, unknown>])[1].endsNextDay).toBe(true)
+
+    await wrapper.find('[data-testid="recurring-add"]').trigger('click')
+    await flush()
+    const recurringForm = (wrapper.vm as unknown as { recurringForm: { startTime: string; endTime: string } }).recurringForm
+    recurringForm.startTime = '23:00'
+    recurringForm.endTime = '01:00'
+    await wrapper.vm.$nextTick()
+    document.body.querySelector<HTMLInputElement>('[data-testid="recurring-ends-next-day"] input')!.click()
+    await flush()
+    const reason = document.body.querySelector<HTMLInputElement>('[data-testid="recurring-reason"]')!
+    reason.value = 'overnight'
+    reason.dispatchEvent(new Event('input'))
+    await flush()
+    document.body.querySelector<HTMLButtonElement>('[data-testid="recurring-save"]')!.click()
+    await flush()
+    expect((mockCreateRecurringBlockedTime.mock.calls[0] as [string, Record<string, unknown>])[1].endsNextDay).toBe(true)
+  })
+})

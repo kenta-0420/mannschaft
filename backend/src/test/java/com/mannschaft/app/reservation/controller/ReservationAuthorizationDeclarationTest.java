@@ -123,10 +123,9 @@ class ReservationAuthorizationDeclarationTest {
                     Long.class, LocalDate.class, LocalDate.class);
             assertOpen(TeamReservationSlotController.class, "getSlot", Long.class, Long.class);
             // 機能C: 空きグリッドは会員/公開が使う view ゲート（Service 層）のため @PreAuthorize を付けない（C-7）。
-            // F03.4.4 で from/to/axis/menuId が増えたシグネチャへ機械的追従（アサーション＝開放維持は不変・H-10）。
+            // #2575 で axis/staffUserIds を撤去したシグネチャへ機械的追従（アサーション＝開放維持は不変・H-10）。
             assertOpen(TeamReservationSlotController.class, "getGrid",
-                    Long.class, LocalDate.class, LocalDate.class, LocalDate.class,
-                    String.class, java.util.UUID.class, java.util.List.class);
+                    Long.class, LocalDate.class, LocalDate.class, LocalDate.class, java.util.UUID.class);
         }
     }
 
@@ -216,7 +215,7 @@ class ReservationAuthorizationDeclarationTest {
             assertGated(ReservationBusinessHourController.class, "getBlockedTimeImpact",
                     Long.class, LocalDate.class,
                     com.mannschaft.app.reservation.ReservationBlockedResourceType.class,
-                    Long.class, LocalTime.class, LocalTime.class);
+                    Long.class, LocalTime.class, LocalTime.class, boolean.class);
         }
 
         @Test

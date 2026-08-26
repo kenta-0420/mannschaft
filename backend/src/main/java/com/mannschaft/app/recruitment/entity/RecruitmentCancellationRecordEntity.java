@@ -75,6 +75,7 @@ public class RecruitmentCancellationRecordEntity {
 
     /** §Phase5a 決済リトライ回数（最大3回）。 */
     @Builder.Default
+    @Column(nullable = false)
     private Integer paymentRetryCount = 0;
 
     @Column(length = 500)
@@ -104,8 +105,31 @@ public class RecruitmentCancellationRecordEntity {
         this.paymentStatus = CancellationPaymentStatus.FAILED;
     }
 
-    /** 管理者免除。 */
-    public void waive(Long adminUserId, String notes) {
+    /**
+     * 回収不能（リトライ上限到達・F03.11.1 §5.1）。
+     *
+     * <p>「試行が尽きた」ではなく「回収できない」という<b>結果</b>を表す終端状態である。
+     * 未払いであることに変わりはないため新規申込のブロックは続き、この状態からの出口は免除のみとする。</p>
+     */
+    public void markUncollectible() {
+        this.paymentStatus = CancellationPaymentStatus.UNCOLLECTIBLE;
+    }
+
+    /**
+     * キャンセル料を免除する（F03.11.1 §10）。
+     *
+     * <p>免除できるのは受取先側（TEAM/ORG の精算管理者・個人受取の本人）と運営管理者であり、
+     * 運営管理者とは限らないため引数名は {@code operatorUserId} とする。</p>
+     *
+     * <p><b>操作者の記録は監査ログ側の責務である</b>（Service 層で
+     * {@code AuditEventType.RECRUITMENT_CANCELLATION_FEE_WAIVED} を残す）。本メソッドは
+     * {@code operatorUserId} を状態として保持しない。引数として受けているのは、免除という操作が
+     * 常に操作者を伴うことを呼び出し側に要求するためである。</p>
+     *
+     * @param operatorUserId 操作者ユーザー ID（監査ログ側で記録する）
+     * @param notes          免除理由
+     */
+    public void waive(Long operatorUserId, String notes) {
         this.paymentStatus = CancellationPaymentStatus.WAIVED;
         this.notes = notes;
     }

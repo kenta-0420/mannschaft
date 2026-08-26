@@ -1,5 +1,6 @@
 package com.mannschaft.app.common.architecture.fixtures;
 
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -89,6 +90,53 @@ public class D7RequestBodyController {
     /** 合格（フォーム経路）: 引数無しコンストラクタ + setter。 */
     @GetMapping("/search-ok")
     public String searchOk(@ModelAttribute D7FormOkSearchRequest request) {
+        return request.getKeyword();
+    }
+
+    /** 違反: {@code @JsonCreator} が 2 本のコンストラクタに二重付与されている。 */
+    @PostMapping("/dual-creator")
+    public String dualCreator(@RequestBody D7DualJsonCreatorRequest request) {
+        return request.getTitle();
+    }
+
+    /**
+     * 違反（#2613）: 引数無しコンストラクタがあっても properties-based creator が
+     * 2 本あれば Conflicting property-based creators で常時 500 になる。
+     */
+    @PostMapping("/no-args-plus-dual-creator")
+    public String noArgsPlusDualCreator(
+            @RequestBody D7NoArgsPlusDualCreatorRequest request) {
+        return request.getTitle();
+    }
+
+    /** 違反: {@code @JsonCreator(mode = DISABLED)} は creator を与えない。 */
+    @PostMapping("/disabled-creator")
+    public String disabledCreator(@RequestBody D7DisabledModeCreatorRequest request) {
+        return request.getTitle();
+    }
+
+    /** 合格: 2 本のうち片方だけ DISABLED なら残る 1 本が暗黙 creator になる（実測）。 */
+    @PostMapping("/disabled-with-fallback")
+    public String disabledWithFallback(
+            @RequestBody D7DisabledPlusFallbackCreatorRequest request) {
+        return request.getTitle();
+    }
+
+    /** 合格: delegating creator と properties-based creator の共存は Jackson が扱える。 */
+    @PostMapping("/delegating-and-properties")
+    public String delegatingAndProperties(
+            @RequestBody D7DelegatingAndPropertiesCreatorRequest request) {
+        return request.getTitle();
+    }
+
+    /**
+     * 違反（フォーム経路）: {@code @Valid} だけが付いた複合型引数。
+     *
+     * <p>{@code @Valid} はバインド元を決めないため Spring は暗黙 {@code @ModelAttribute} として扱う。
+     * 「注釈が 1 つでもあればフォーム経路ではない」という判定だと、ここが検査対象から漏れる。
+     */
+    @GetMapping("/valid-only")
+    public String validOnly(@Valid D7ValidOnlyBoundRequest request) {
         return request.getKeyword();
     }
 }

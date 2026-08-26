@@ -58,6 +58,7 @@ public class PersonalScheduleReminderEntity {
     @Builder.Default
     private Boolean notified = false;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

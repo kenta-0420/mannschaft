@@ -8,6 +8,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.experimental.SuperBuilder;
@@ -30,6 +31,13 @@ import java.time.LocalTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @SuperBuilder(toBuilder = true)
 public class ReservationSlotEntity extends BaseEntity {
+
+    @PrePersist
+    protected void backfillEndDate() {
+        if (this.endDate == null) {
+            this.endDate = this.slotDate;
+        }
+    }
 
     @Column(nullable = false)
     private Long teamId;
@@ -63,6 +71,10 @@ public class ReservationSlotEntity extends BaseEntity {
     @Column(nullable = false)
     private LocalDate slotDate;
 
+    /** 終了側の業務日。通常枠は slotDate、日跨ぎ枠は slotDate+1。 */
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
+
     @Column(nullable = false)
     private LocalTime startTime;
 
@@ -87,15 +99,6 @@ public class ReservationSlotEntity extends BaseEntity {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private SlotStatus slotStatus = SlotStatus.AVAILABLE;
-
-    @Column(columnDefinition = "JSON")
-    private String recurrenceRule;
-
-    private Long parentSlotId;
-
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean isException = false;
 
     /**
      * 枠単位の承認モード上書き。
@@ -238,7 +241,15 @@ public class ReservationSlotEntity extends BaseEntity {
      * @param slotDate スロット日付
      */
     public void changeSlotDate(LocalDate slotDate) {
+        LocalDate previousDate = this.slotDate;
+        LocalDate previousEndDate = this.endDate;
         this.slotDate = slotDate;
+        if (previousEndDate == null || previousDate == null) {
+            this.endDate = slotDate;
+        } else {
+            long dayOffset = java.time.temporal.ChronoUnit.DAYS.between(previousDate, previousEndDate);
+            this.endDate = slotDate.plusDays(Math.max(0, Math.min(1, dayOffset)));
+        }
     }
 
     /**
@@ -250,6 +261,11 @@ public class ReservationSlotEntity extends BaseEntity {
     public void changeTimeRange(LocalTime startTime, LocalTime endTime) {
         this.startTime = startTime;
         this.endTime = endTime;
+    }
+
+    public void changeTimeRange(LocalTime startTime, LocalTime endTime, LocalDate endDate) {
+        changeTimeRange(startTime, endTime);
+        this.endDate = endDate;
     }
 
     /**
@@ -284,15 +300,6 @@ public class ReservationSlotEntity extends BaseEntity {
      */
     public void clearApprovalMode() {
         this.approvalMode = null;
-    }
-
-    /**
-     * 繰り返しスロットかどうかを判定する。
-     *
-     * @return 繰り返しルールが設定されている場合 true
-     */
-    public boolean isRecurring() {
-        return this.recurrenceRule != null;
     }
 
     /**

@@ -259,6 +259,40 @@ test('STORAGE-002: 設定メニュー(/settings) → 「ストレージ」クリ
   expect(page.url()).toContain('/settings/storage')
 })
 
+// ── DASHBOARD-STORAGE-001: ダッシュボード容量カードからの導線 ─────────────
+
+test('DASHBOARD-STORAGE-001: 実APIの容量カードからストレージへ遷移', async ({ page }) => {
+  const storageRes = await page.request.get(`${API_BASE_URL}/api/v1/me/storage/usage`)
+  expect(storageRes.status()).toBe(200)
+  const storageData = await storageRes.json() as Array<{
+    scopeType: string
+    includedBytes: number
+    usagePercent: number
+  }>
+  const personalUsage = storageData.find(usage => usage.scopeType === 'PERSONAL')
+  const shouldWarn = Boolean(personalUsage && personalUsage.includedBytes > 0 && personalUsage.usagePercent >= 90)
+  console.log(`DASHBOARD-STORAGE-001: PERSONAL usage=${personalUsage?.usagePercent ?? 'none'}%, warning=${shouldWarn}`)
+
+  const usageResponse = page.waitForResponse(response =>
+    response.url().includes('/api/v1/me/storage/usage'),
+  )
+  await page.goto('/dashboard', { waitUntil: 'domcontentloaded' })
+  await waitForHydration(page)
+  expect((await usageResponse).status()).toBe(200)
+
+  const personalCard = page.getByTestId('storage-card-0')
+  await expect(personalCard).toBeVisible({ timeout: 15_000 })
+  await personalCard.click()
+
+  if (shouldWarn) {
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await page.getByRole('button', { name: 'ストレージを確認' }).click()
+  }
+
+  await page.waitForURL(/\/settings\/storage/, { timeout: 15_000 })
+  expect(page.url()).toContain('/settings/storage')
+})
+
 // ── MYFILES-001: 個人ファイル画面表示 ────────────────────────────────────
 
 test('MYFILES-001: 個人ファイル画面表示 — API 200・FileBrowser 描画', async ({ page }) => {

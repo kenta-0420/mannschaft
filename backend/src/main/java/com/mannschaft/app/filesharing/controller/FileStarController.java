@@ -1,6 +1,7 @@
 package com.mannschaft.app.filesharing.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.filesharing.dto.StarResponse;
 import com.mannschaft.app.filesharing.service.SharedFileStarService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,6 +58,8 @@ public class FileStarController {
     /**
      * ユーザーのスター一覧を取得する。
      */
+    @SelfScopedEndpoint("検索条件が SecurityUtils.getCurrentUserId() のみで、リクエストは他ユーザーの識別子を受け取らない"
+            + "（SharedFileStarService#listStarsByUser の findByUserIdOrderByCreatedAtDesc が認証主体に束縛される）")
     @GetMapping("/me")
     @Operation(summary = "自分のスター一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
