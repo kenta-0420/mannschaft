@@ -183,6 +183,20 @@ export function __resetCalendarLayerMigrationForTest(): void {
  * 自衛するための最小限の状態であり、`legacyStorageMigrated` と同じ「モジュールスコープで
  * SPA セッションを跨いで生存させる」パターンに倣う（composable インスタンス自体は
  * ログアウト時の /login 遷移でページごと破棄され、インスタンス内 state では検知できない）。
+ *
+ * 【この自衛の限界（Codex四巡目検分・マスター裁定 2026-08-26）】
+ * この自衛は「同一 composable（= 本カレンダー機能）を経由したユーザー切替」しか捕捉できない。
+ * ユーザーAが**別画面**（例: ScopeNavDropdown・ダッシュボード等）で team/organization ストアを
+ * 読み込んでからログアウトし、ユーザーBが**初めてカレンダーを開いた**場合、
+ * `lastScopeStoreUserId` はこの composable にとって初観測（`undefined`）のため素通りし、
+ * かつ `teamStore.myTeams.length > 0`（A のデータが残存）により再取得もスキップされる。
+ * 結果、B に A のチーム名が一瞬でも見える可能性が残る（利用者間の情報漏れ）。
+ * これはカレンダーに限らず、所属情報を読む全ての画面に共通する**既存の横断的欠陥**であり、
+ * 本 composable 内の自衛では性質上どうやっても塞ぎきれない。
+ * 根治は `useAuthStore.logout()` 側で team/organization ストアそのものを破棄することであり、
+ * マスターの裁定により**別PRで対処する**（本戦役 W2-a の範囲外）。
+ * この自衛は「不完全だがカレンダー経路については塞いでいる」ものとして残す
+ * （取り除くと状況が悪化するため）。後から読む者は「これで塞がっている」と誤解しないこと。
  */
 let lastScopeStoreUserId: number | null | undefined = undefined
 
@@ -436,6 +450,9 @@ export function useMyCalendarData(_options?: { storageKey?: string }) {
       // 所属チーム／組織が作成スコープ候補から消える。ここではカレンダー機能側の自衛として
       // ユーザーIDの変化を検知したときだけストアを強制的に空にし、再取得させる
       // （ストア自体のクリアは logout 側の根治であり本戦役の範囲外・別課題として報告する）。
+      // 【限界】本 composable を経由した切替しか捕捉できない。別画面でストアが読まれてから
+      // ログアウト→別ユーザーが初めてカレンダーを開いた場合は捕捉できない（詳細は
+      // lastScopeStoreUserId の宣言部コメント参照）。
       const currentUserId = authStore.currentUser?.id ?? null
       if (lastScopeStoreUserId !== undefined && lastScopeStoreUserId !== currentUserId) {
         teamStore.myTeams = []
