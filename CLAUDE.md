@@ -262,6 +262,22 @@ Mannschaft は将来のマイクロサービス分割を見据えた**モジュ�
 | `/引継` | セッション引き継ぎ書を生成（中断時の引き渡し） |
 | `/絵図` | 設計書の要否精査→作成/修正→2度精査 |
 
+
+### Stripe 公式スキル（`.agents/skills/` 配下）
+
+Stripe が公式に配布している Agent Skills をリポジトリに同梱している。**決済・Connect・サブスクリプション・税・Webhook 署名に関わる実装やレビューの際は、記憶や推測に頼らずこれらを引くこと。**
+
+| スキル | 用途 |
+|---|---|
+| `stripe-best-practices` | 統合方針の判断（API 選定・Connect 構成・課金・税・セキュリティ）。`payments` / `connect` / `billing` / `security` / `tax` / `treasury` の分野別参照資料を持つ |
+| `stripe-docs` | Stripe ドキュメント・API リファレンスの検索（`curl` や WebFetch より優先） |
+| `upgrade-stripe` | API バージョン・SDK の移行手順 |
+| `connect-recommend` | Connect の課金パターン・ダッシュボード構成の選定 |
+| `connect-required-verification-information` | Connect アカウントの本人確認（KYC）必要項目 |
+| `stripe-apps` | Stripe App（ダッシュボード拡張）の開発 |
+| `stripe-directory` / `stripe-projects` | 外部サービスの選定・払い出し |
+
+スキルの実体は `.agents/skills/` に入っているが、**クローン直後は `.claude/skills/` のリンクが無いため呼び出せない**（リンクは `core.symlinks=false` の都合でコミットしていない）。必要になったら `npx skills add https://docs.stripe.com` を再実行してリンクを張り直すこと。
 ### DeepSeek 用スキル（`deepseek:` 名前空間）
 
 DeepSeek プロバイダでセッションを起動している場合、`/deepseek:軍議` `/deepseek:出陣` 等の `deepseek:` プレフィックス付きスキルが使える。
