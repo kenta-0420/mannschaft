@@ -30,8 +30,8 @@ import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.circulation.entity.CirculationAttachmentEntity;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
-import com.mannschaft.app.circulation.event.CirculationReminderNotificationEvent;
 import com.mannschaft.app.circulation.event.CirculationDocumentDeletedEvent;
+import com.mannschaft.app.circulation.event.CirculationReminderNotificationEvent;
 import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
 import com.mannschaft.app.circulation.repository.CirculationRecipientRepository;
@@ -835,9 +835,24 @@ public class CirculationService {
      * <p>{@code IN_PROGRESS / ACTIVE} ステータスの文書のみ対象。
      * {@code PENDING} ステータスの受信者全員に {@code CIRCULATION_REMINDER} 通知を作成する。</p>
      *
+     * <p>Issue #2834 / CMP-056 第1群ロットB: {@code notificationService.createNotification} を直接
+     * 呼ばず、{@link CirculationReminderNotificationEvent} を publish するだけに留める。実際の通知生成・
+     * 配信は {@code CirculationReminderNotificationListener} が {@code AFTER_COMMIT} で受け取ってから、
+     * 受信者ごとに独立トランザクション（{@code REQUIRES_NEW}）で行う。是正前は受信者ループの中で
+     * {@code createNotification}（既定の {@code REQUIRED} 伝播）を呼んでおり、1 受信者の DB 例外が
+     * rollback-only を立てて<b>他受信者の通知も督促の実行そのものもまとめて巻き戻していた</b>
+     * （是正前のコメント自身が「本処理の巻き戻りは防がない」と自認していた）。</p>
+     *
+     * <p><b>戻り値の意味の変化</b>: 是正前の {@code remindedCount} は「同一トランザクション内で
+     * {@code createNotification} が例外を投げなかった件数」だったが、上記のとおり 1 件の DB 例外で
+     * 数えた通知ごと全て消えていたため、この数値は実際の到達件数を意味していなかった。是正後は
+     * <b>配送要求を発行した対象者数</b>（= {@code PENDING} 受信者数）を返す。フィールド自体は
+     * 外向き契約を壊さないため維持する（ロットA の {@code onboarding} の {@code RemindResponse} と同じ扱い）。
+     * 実際の配送成否は配送リスナーの構造化ログで観測する。</p>
+     *
      * @param documentId 文書 ID
      * @param actorId    操作者ユーザー ID
-     * @return 送信結果
+     * @return 送信結果（{@code remindedCount} は<b>対象者数</b>）
      */
     @Transactional
     public RemindResponse remindDocument(Long documentId, Long actorId) {
@@ -848,19 +863,17 @@ public class CirculationService {
             throw new BusinessException(CirculationErrorCode.INVALID_DOCUMENT_STATUS);
         }
 
-        // remindedCount は「送信対象（PENDING）件数」であり、業務コミット時点のスナップショット。
-        // 実際の配送成否（visibility deny・DB例外）は AFTER_COMMIT の非同期リスナーで解決するため、
-        // ここで同期的に配送成功数を数えることはできない（Issue #2834 / CMP-056 横展開の帰結）。
-        int remindedCount = (int) recipientRepository
-                .countByDocumentIdAndStatus(documentId, RecipientStatus.PENDING);
+        List<CirculationRecipientEntity> pendings =
+                recipientRepository.findByDocumentIdAndStatusOrderBySortOrderAsc(documentId, RecipientStatus.PENDING);
 
-        // 業務TX内ではイベントを publish するだけに留め、未押印受信者の解決・文面組み立て・配送は
-        // AFTER_COMMIT の CirculationReminderNotificationListener に委譲する
-        // （受信者ごと1件単位で隔離される）。
-        applicationEventPublisher.publishEvent(new CirculationReminderNotificationEvent(documentId, actorId));
+        if (!pendings.isEmpty()) {
+            applicationEventPublisher.publishEvent(new CirculationReminderNotificationEvent(
+                    documentId, actorId,
+                    pendings.stream().map(CirculationRecipientEntity::getUserId).toList()));
+        }
 
-        log.info("回覧手動リマインド送信: documentId={}, count={}, actorId={}", documentId, remindedCount, actorId);
-        return new RemindResponse(documentId, remindedCount);
+        log.info("回覧手動リマインド送信要求: documentId={}, targets={}, actorId={}", documentId, pendings.size(), actorId);
+        return new RemindResponse(documentId, pendings.size());
     }
 
     /**

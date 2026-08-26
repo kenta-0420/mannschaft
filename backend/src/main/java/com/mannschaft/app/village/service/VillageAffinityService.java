@@ -63,6 +63,7 @@ public class VillageAffinityService {
     private static final String REASON_PIONEER = "village.affinity.reason.pioneer";
 
     private final VillageRepository villageRepository;
+    private final VillageAccessGate accessGate;
     private final VillageMembershipRepository membershipRepository;
     private final AuditLogService auditLogService;
 
@@ -74,7 +75,7 @@ public class VillageAffinityService {
      * @return 相性のヒント（バケット化・i18n キー・アピールのみ。identity は含まない）
      */
     public VillageAffinityResponse getAffinity(UUID villageId, Long viewerId) {
-        VillageEntity village = loadPublicVillageOrHide(villageId);
+        VillageEntity village = loadPublicVillageOrHide(villageId, viewerId);
 
         // 閲覧者の現役 USER メンバーシップを 1 回だけ取得し、以降の各軸で使い回す（N+1 回避）。
         List<VillageMembershipEntity> viewerMemberships =
@@ -122,12 +123,14 @@ public class VillageAffinityService {
      * <p>UNLISTED を専用コードにせず 404 に寄せるのは、「架空の村IDへの応答」と
      * 「存在するが非公開の村への応答」の区別を攻撃者に与えないため（存在秘匿優先）。</p>
      */
-    private VillageEntity loadPublicVillageOrHide(UUID villageId) {
-        VillageEntity village = villageRepository.findById(villageId)
-                .filter(v -> v.getDeletedAt() == null)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+    private VillageEntity loadPublicVillageOrHide(UUID villageId, Long viewerId) {
+        // 存在確認・可視性判定は VillageAccessGate へ一元化する。
+        // 凍結済み村の相性表示は従来どおり許すため loadVillageAllowingArchived を使う。
+        VillageEntity village = accessGate.loadVillageAllowingArchived(villageId, viewerId);
         if (village.getVisibility() != VillageVisibility.PUBLIC) {
-            // UNLISTED は存在秘匿（架空IDと同一の 404）。VILLAGE_099 は内部予約で通常返さない（§8.7）。
+            // 加入前相性は PUBLIC 村専用（§8.7）。ゲートは村人・SYSTEM_ADMIN には UNLISTED 村を通すが、
+            // 本 EP は「村人であっても非 PUBLIC 村では返さない」というゲートより厳しい契約なのでここで再判定する。
+            // 架空IDと同一の 404 に倒す点は従来どおり（VILLAGE_099 は内部予約で通常返さない）。
             throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
         }
         return village;

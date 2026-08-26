@@ -2,7 +2,7 @@ package com.mannschaft.app.safetycheck;
 
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
-import com.mannschaft.app.notification.service.NotificationHelper;
+import com.mannschaft.app.safetycheck.event.SafetyCheckReminderNotificationEvent;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.safetycheck.dto.CreateSafetyCheckRequest;
 import com.mannschaft.app.safetycheck.dto.SafetyCheckResponse;
@@ -18,14 +18,12 @@ import com.mannschaft.app.safetycheck.repository.SafetyResponseRepository;
 import com.mannschaft.app.safetycheck.service.SafetyCheckService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
-import com.mannschaft.app.common.i18n.UserLocaleCache;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -64,34 +62,18 @@ class SafetyCheckServiceTest {
     private UserRoleRepository userRoleRepository;
 
     @Mock
-    private NotificationHelper notificationHelper;
-
-    @Mock
     private AccessControlService accessControlService;
 
-    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
-    @Mock private UserLocaleCache userLocaleCache;
-    @Mock private MessageSource messageSource;
-
-    /** Issue #2834 / CMP-056 横展開: sendReminder はイベント publish のみに留める。 */
-    @Mock private ApplicationEventPublisher applicationEventPublisher;
+    /**
+     * Issue #2834 / CMP-056 第1群ロットA: 付随通知は業務トランザクションの外で発火させるため、
+     * サービスは {@code NotificationHelper} を直接持たずイベントを publish するだけになった
+     * （i18n 依存 {@code UserLocaleCache} / {@code MessageSource} も配送リスナー側へ移動）。
+     */
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private SafetyCheckService safetyCheckService;
-
-    /**
-     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
-     * title/body. Return the supplied default message so existing assertions keep working.
-     */
-    @org.junit.jupiter.api.BeforeEach
-    void stubI18nMessageSource() {
-        org.mockito.Mockito.lenient().when(messageSource.getMessage(
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any(),
-                        org.mockito.ArgumentMatchers.anyString(),
-                        org.mockito.ArgumentMatchers.any()))
-                .thenAnswer(inv -> inv.getArgument(2));
-    }
 
     // ========================================
     // テスト用定数・ヘルパー
@@ -532,8 +514,40 @@ class SafetyCheckServiceTest {
             // Then
             assertThat(entity.getLastReminderAt()).isNotNull();
             verify(safetyCheckRepository).save(entity);
-            verify(applicationEventPublisher).publishEvent(
-                    any(com.mannschaft.app.safetycheck.event.SafetyCheckReminderNotificationEvent.class));
+        }
+
+        @Test
+        @DisplayName("Issue #2834/CMP-056: 通知は業務TX内で作らず、AFTER_COMMIT用イベントをpublishするだけ")
+        void リマインド送信_通知はイベントpublishに委ねられる() {
+            // Given
+            SafetyCheckEntity entity = createActiveCheck();
+            given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(entity));
+            given(safetyCheckRepository.save(entity)).willReturn(entity);
+
+            // When
+            safetyCheckService.sendReminder(SAFETY_CHECK_ID, USER_ID);
+
+            // Then: 業務TX内では通知を1件も作らず、イベントだけを publish する。
+            org.mockito.ArgumentCaptor<SafetyCheckReminderNotificationEvent> captor =
+                    org.mockito.ArgumentCaptor.forClass(SafetyCheckReminderNotificationEvent.class);
+            verify(eventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().safetyCheckId()).isEqualTo(SAFETY_CHECK_ID);
+            assertThat(captor.getValue().recipientUserId()).isEqualTo(USER_ID);
+            assertThat(captor.getValue().scopeId()).isEqualTo(entity.getScopeId());
+        }
+
+        @Test
+        @DisplayName("AC-2の入口: 業務検証で例外になる場合、通知イベントは publish されない（=通知は作られない）")
+        void リマインド送信_業務例外時はイベントがpublishされない() {
+            // Given
+            SafetyCheckEntity entity = createClosedCheck();
+            given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(entity));
+
+            // When & Then
+            assertThatThrownBy(() -> safetyCheckService.sendReminder(SAFETY_CHECK_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            org.mockito.Mockito.verify(eventPublisher, org.mockito.Mockito.never())
+                    .publishEvent(any(SafetyCheckReminderNotificationEvent.class));
         }
 
         @Test

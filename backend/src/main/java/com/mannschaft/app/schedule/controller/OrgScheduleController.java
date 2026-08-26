@@ -3,7 +3,7 @@ package com.mannschaft.app.schedule.controller;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.organization.service.OrganizationService;
+import com.mannschaft.app.config.OrgScopeId;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
 import com.mannschaft.app.schedule.dto.AttendanceTeamBreakdownResponse;
 import com.mannschaft.app.schedule.CalendarSyncScopeType;
@@ -54,7 +54,6 @@ public class OrgScheduleController {
     private final ScheduleReminderService reminderService;
     private final ScheduleScheduledTaskService scheduledTaskService;
     private final NameResolverService nameResolverService;
-    private final OrganizationService organizationService;
     private final AccessControlService accessControlService;
 
 
@@ -65,13 +64,13 @@ public class OrgScheduleController {
     @Operation(summary = "組織スケジュール一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ScheduleResponse>>> listSchedules(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @RequestParam(required = false) String eventType,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String cursor) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         List<ScheduleResponse> schedules = scheduleService.listOrgSchedules(
                 orgId, from, to, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(schedules));
@@ -84,9 +83,9 @@ public class OrgScheduleController {
     @Operation(summary = "組織スケジュール作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<ScheduleResponse>> createSchedule(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @Valid @RequestBody CreateScheduleRequest request) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         ScheduleResponse response = scheduleService.createSchedule(
                 request, orgId, SCOPE_TYPE_ORGANIZATION, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
@@ -99,9 +98,9 @@ public class OrgScheduleController {
     @Operation(summary = "組織スケジュール詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ScheduleResponse>> getSchedule(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         var entity = scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
         String createdByDisplayName = nameResolverService.resolveUserDisplayName(entity.getCreatedBy());
         String scopeName = nameResolverService.resolveScopeName(SCOPE_TYPE_ORGANIZATION, orgId);
@@ -146,10 +145,10 @@ public class OrgScheduleController {
     @Operation(summary = "予約タスク取消")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取消成功")
     public ResponseEntity<Void> cancelScheduledTask(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId,
             @PathVariable UUID taskId) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         // 認可: 当該予定が閲覧可能か（CanView）を確認してから取消する（既存の予定操作と同等基準）
         scheduleService.getScheduleWithAccessCheck(scheduleId, SecurityUtils.getCurrentUserId());
         scheduledTaskService.cancelTask(taskId, CalendarSyncScopeType.ORGANIZATION, orgId);
@@ -163,7 +162,7 @@ public class OrgScheduleController {
     @Operation(summary = "組織スケジュール更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ScheduleResponse>> updateSchedule(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId,
             @Valid @RequestBody UpdateScheduleRequest request,
             @RequestParam(defaultValue = "THIS_ONLY") String updateScope) {
@@ -179,7 +178,7 @@ public class OrgScheduleController {
     @Operation(summary = "組織スケジュール削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSchedule(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId,
             @RequestParam(defaultValue = "THIS_ONLY") String updateScope) {
         scheduleService.deleteSchedule(scheduleId, updateScope, SecurityUtils.getCurrentUserId());
@@ -193,7 +192,7 @@ public class OrgScheduleController {
     @Operation(summary = "組織スケジュールキャンセル")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "キャンセル成功")
     public ResponseEntity<Void> cancelSchedule(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId) {
         scheduleService.cancelSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
@@ -209,7 +208,7 @@ public class OrgScheduleController {
     @Operation(summary = "組織出欠集計")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendances(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId) {
         List<AttendanceResponse> responses =
                 attendanceService.getAttendances(scheduleId, SecurityUtils.getCurrentUserId());
@@ -225,7 +224,7 @@ public class OrgScheduleController {
     @Operation(summary = "組織出欠CSVエクスポート")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "エクスポート成功")
     public ResponseEntity<byte[]> exportAttendancesCsv(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId) {
         String csv = attendanceService.exportAttendancesCsv(scheduleId, SecurityUtils.getCurrentUserId());
         byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
@@ -251,9 +250,9 @@ public class OrgScheduleController {
     @Operation(summary = "組織出欠チーム別内訳集計")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<AttendanceTeamBreakdownResponse>> getAttendanceTeamBreakdown(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         accessControlService.checkAdminOrAbove(
                 SecurityUtils.getCurrentUserId(), orgId, SCOPE_TYPE_ORGANIZATION);
         AttendanceTeamBreakdownResponse response = attendanceService.getAttendanceTeamBreakdown(scheduleId);
@@ -270,9 +269,9 @@ public class OrgScheduleController {
     @Operation(summary = "組織出欠チーム別内訳CSVエクスポート")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "エクスポート成功")
     public ResponseEntity<byte[]> exportAttendanceTeamBreakdownCsv(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId) {
-        Long orgId = organizationService.resolveOrgId(orgPublicId);
+        Long orgId = orgPublicId.value();
         accessControlService.checkAdminOrAbove(
                 SecurityUtils.getCurrentUserId(), orgId, SCOPE_TYPE_ORGANIZATION);
         String csv = attendanceService.exportAttendanceTeamBreakdownCsv(scheduleId);
@@ -296,7 +295,7 @@ public class OrgScheduleController {
     @Operation(summary = "組織スケジュール複製")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
     public ResponseEntity<ApiResponse<ScheduleResponse>> duplicateSchedule(
-            @PathVariable String orgPublicId,
+            @PathVariable OrgScopeId orgPublicId,
             @PathVariable Long scheduleId) {
         Long userId = SecurityUtils.getCurrentUserId();
         scheduleService.checkScopeAdminAccess(scheduleId, userId);

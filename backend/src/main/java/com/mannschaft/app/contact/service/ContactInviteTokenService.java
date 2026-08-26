@@ -45,7 +45,11 @@ public class ContactInviteTokenService {
     private final ContactService contactService;
     private final BrandedQrImageWriter brandedQrImageWriter;
     private final NameResolverService nameResolverService;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    /**
+     * Issue #2834 / CMP-056: 付随通知は業務トランザクションの外（AFTER_COMMIT）で発火させるため、
+     * 業務メソッドはイベントを publish するだけに留める（backend/.claudecode.md 原則5）。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 招待トークンを発行する。
@@ -211,14 +215,15 @@ public class ContactInviteTokenService {
     }
 
     /**
-     * 招待リンク使用通知イベントを publish する（Issue #2834 / CMP-056 横展開）。
+     * 招待リンク使用通知を発火する（Issue #2834 / CMP-056 第1群ロットA）。
      *
-     * <p>業務トランザクションの内側ではイベントを publish するだけに留め、通知の文面組み立て・配送は
-     * {@link com.mannschaft.app.contact.event.ContactInviteUsedNotificationListener}
-     * （{@code AFTER_COMMIT}）に委譲する。</p>
+     * <p>{@code createNotification} を直接呼ばず、{@link ContactInviteUsedNotificationEvent} を publish
+     * するだけに留める。本メソッド自体は {@link #acceptInvite} の業務トランザクションの<b>内側</b>で
+     * 呼ばれるが、実際の通知生成は {@code ContactInviteUsedNotificationListener} が
+     * {@code AFTER_COMMIT} で受け取ってから行う。これにより通知側の DB 例外が
+     * 招待受諾の永続化（利用回数インクリメント・双方向連絡先追加）を巻き戻さない。</p>
      */
     private void sendInviteUsedNotification(Long actorId, Long issuerId, Long tokenId) {
-        applicationEventPublisher.publishEvent(
-                new ContactInviteUsedNotificationEvent(actorId, issuerId, tokenId));
+        eventPublisher.publishEvent(new ContactInviteUsedNotificationEvent(actorId, issuerId, tokenId));
     }
 }

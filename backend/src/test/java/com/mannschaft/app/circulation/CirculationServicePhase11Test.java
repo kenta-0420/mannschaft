@@ -7,6 +7,7 @@ import com.mannschaft.app.circulation.dto.DocumentStatusResponse;
 import com.mannschaft.app.circulation.dto.ForceCompleteBatchResponse;
 import com.mannschaft.app.circulation.dto.RemindResponse;
 import com.mannschaft.app.circulation.entity.CirculationDocumentEntity;
+import com.mannschaft.app.circulation.event.CirculationReminderNotificationEvent;
 import com.mannschaft.app.circulation.entity.CirculationRecipientEntity;
 import com.mannschaft.app.circulation.repository.CirculationAttachmentRepository;
 import com.mannschaft.app.circulation.repository.CirculationDocumentRepository;
@@ -17,7 +18,6 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.storage.R2StorageService;
-import com.mannschaft.app.notification.service.NotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -27,7 +27,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -87,17 +86,10 @@ class CirculationServicePhase11Test {
     private UserRepository userRepository;
 
     @Mock
-    private NotificationService notificationService;
-
-    @Mock
     private AuditLogService auditLogService;
 
     @Mock
     private AccessControlService accessControlService;
-
-    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
-    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
-    @Mock private MessageSource messageSource;
 
     @InjectMocks
     private CirculationService circulationService;
@@ -107,12 +99,6 @@ class CirculationServicePhase11Test {
      * {@code @Autowired(required = false)} の非 final フィールドとして定義されているため、
      * Mockito の {@code @InjectMocks} はコンストラクタ注入を優先しフィールド注入が
      * スキップされるケースがある。{@link ReflectionTestUtils#setField} で確実に注入する。
-     *
-     * <p>Issue #2834 / CMP-056 横展開: {@code userLocaleCache} / {@code messageSource} は
-     * 通知の文面組み立て責務ごと {@code CirculationReminderNotificationListener}
-     * （AFTER_COMMIT）へ移管され、{@code CirculationService} 自体のフィールドではなくなった
-     * ため、ここでの reflective 注入は不要になった（{@code @Mock} 宣言自体は他ロジックとの
-     * 互換のため残すが、{@code CirculationService} には注入しない）。</p>
      */
     @BeforeEach
     void injectOptionalFields() {
@@ -251,19 +237,28 @@ class CirculationServicePhase11Test {
         @Test
         @DisplayName("ACTIVE文書_PENDING2件_remindedCount2件")
         void 手動リマインド_正常() {
-            // Issue #2834 / CMP-056 横展開: remindDocument は業務TX内で受信者数（PENDING件数）を
-            // カウントしてイベントを publish するだけに留め、通知の解決・組み立て・配送は
-            // AFTER_COMMIT の CirculationReminderNotificationListener に委譲する。
             CirculationDocumentEntity entity = buildActive();
             given(documentRepository.findById(DOCUMENT_ID)).willReturn(Optional.of(entity));
-            given(recipientRepository.countByDocumentIdAndStatus(DOCUMENT_ID, RecipientStatus.PENDING))
-                    .willReturn(2L);
+
+            CirculationRecipientEntity r1 = CirculationRecipientEntity.builder()
+                    .documentId(DOCUMENT_ID).userId(30L).sortOrder(0).build();
+            CirculationRecipientEntity r2 = CirculationRecipientEntity.builder()
+                    .documentId(DOCUMENT_ID).userId(31L).sortOrder(1).build();
+            given(recipientRepository.findByDocumentIdAndStatusOrderBySortOrderAsc(
+                    DOCUMENT_ID, RecipientStatus.PENDING))
+                    .willReturn(List.of(r1, r2));
 
             RemindResponse result = circulationService.remindDocument(DOCUMENT_ID, ACTOR_ID);
 
+            // Issue #2834 / CMP-056 ロットB: 通知は業務TX内で作らず、AFTER_COMMIT 配送用の
+            // イベントを publish するだけ。remindedCount の意味は「対象者数」になった。
             assertThat(result.getRemindedCount()).isEqualTo(2);
-            verify(applicationEventPublisher).publishEvent(
-                    any(com.mannschaft.app.circulation.event.CirculationReminderNotificationEvent.class));
+            org.mockito.ArgumentCaptor<CirculationReminderNotificationEvent> captor =
+                    org.mockito.ArgumentCaptor.forClass(CirculationReminderNotificationEvent.class);
+            verify(applicationEventPublisher).publishEvent(captor.capture());
+            assertThat(captor.getValue().documentId()).isEqualTo(DOCUMENT_ID);
+            assertThat(captor.getValue().actorId()).isEqualTo(ACTOR_ID);
+            assertThat(captor.getValue().recipientUserIds()).containsExactly(30L, 31L);
         }
 
         @Test
@@ -276,6 +271,11 @@ class CirculationServicePhase11Test {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(CirculationErrorCode.INVALID_DOCUMENT_STATUS));
+
+            // Issue #2834 / CMP-056 ロットB: 業務が失敗した場合は配送イベントも publish しない。
+            verify(applicationEventPublisher, org.mockito.Mockito.never())
+                    .publishEvent(org.mockito.ArgumentMatchers.any(
+                            CirculationReminderNotificationEvent.class));
         }
     }
 
