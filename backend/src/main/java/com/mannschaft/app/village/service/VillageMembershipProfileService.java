@@ -46,6 +46,7 @@ import java.util.UUID;
 public class VillageMembershipProfileService {
 
     private final VillageRepository villageRepository;
+    private final VillageAccessGate accessGate;
     private final VillageMembershipRepository membershipRepository;
     private final MediaUrlResolver mediaUrlResolver;
     private final AuditLogService auditLogService;
@@ -58,10 +59,11 @@ public class VillageMembershipProfileService {
      */
     @Transactional
     public ProfileVisibilityResponse updateMyProfileVisibility(UUID villageId, Long userId, boolean profilePublic) {
-        // 村自体の存在確認（削除済みは 404 秘匿）
-        villageRepository.findById(villageId)
-                .filter(v -> v.getDeletedAt() == null)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
+        // 村自体の存在確認・可視性判定は VillageAccessGate へ一元化する（削除済み・非可視は 404 秘匿）。
+        // 凍結済み村でも公開トグルの切り替えは従来どおり許すため loadVillageAllowingArchived を使う。
+        // 後段の NOT_MEMBER は VILLAGE_007 で不在の VILLAGE_001 と error.code が異なるため、
+        // ゲートを通さないと「非公開村の非村人=VILLAGE_007 ／ 不在=VILLAGE_001」の差で村の実在が漏れていた。
+        accessGate.loadVillageAllowingArchived(villageId, userId);
 
         VillageMembershipEntity membership = membershipRepository
                 .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, userId)
