@@ -380,7 +380,7 @@ NO_ARG_NOW|com.mannschaft.app.matching.service.MatchRequestService|7
 NO_ARG_NOW|com.mannschaft.app.matching.service.MatchReviewService|2
 NO_ARG_NOW|com.mannschaft.app.member.entity.TeamPageEntity|1
 NO_ARG_NOW|com.mannschaft.app.member.service.TeamPageService|1
-NO_ARG_NOW|com.mannschaft.app.memberinfo.batch.MemberInfoUpdateReminderBatchService|2
+NO_ARG_NOW|com.mannschaft.app.memberinfo.batch.MemberInfoUpdateReminderBatchService|1
 NO_ARG_NOW|com.mannschaft.app.memberinfo.service.MemberInfoResponseService|5
 NO_ARG_NOW|com.mannschaft.app.membership.entity.CheckinLocationEntity|3
 NO_ARG_NOW|com.mannschaft.app.membership.entity.MemberCardCheckinEntity|1

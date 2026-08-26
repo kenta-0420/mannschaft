@@ -10,6 +10,7 @@ import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.service.NotificationDeliveryRequest;
 import com.mannschaft.app.notification.service.NotificationDeliveryRunner;
 import com.mannschaft.app.onboarding.event.OnboardingReminderNotificationEvent;
+import com.mannschaft.app.onboarding.repository.OnboardingProgressRepository;
 import com.mannschaft.app.onboarding.event.OnboardingReminderNotificationListener;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -62,6 +63,9 @@ class OnboardingReminderNotificationListenerTest {
     private NotificationDeliveryRunner notificationDeliveryRunner;
 
     @Mock
+    private OnboardingProgressRepository progressRepository;
+
+    @Mock
     private UserLocaleCache userLocaleCache;
 
     @Mock
@@ -72,7 +76,7 @@ class OnboardingReminderNotificationListenerTest {
     @BeforeEach
     void setUp() {
         listener = new OnboardingReminderNotificationListener(
-                notificationDeliveryRunner, userLocaleCache, messageSource);
+                notificationDeliveryRunner, progressRepository, userLocaleCache, messageSource);
         lenient().when(userLocaleCache.getLocales(any())).thenReturn(Map.of());
         lenient().when(messageSource.getMessage(anyString(), any(), anyString(), any(Locale.class)))
                 .thenAnswer(inv -> inv.getArgument(2));

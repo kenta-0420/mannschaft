@@ -223,6 +223,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.gamification.event.GamificationP
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.gdpr.service.WithdrawalStripeHandler|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.inbox.event.InboxAnonymizationEventListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.match.live.MatchLiveBroadcastListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.memberinfo.event.MemberInfoUpdateReminderNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.membership.event.ScopeMemberCalendarSettingAnonymizationEventListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.notification.confirmable.event.ConfirmableNotificationEmailEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.notification.event.NotificationAnonymizationEventListener|0|1
@@ -243,6 +244,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.proxy.event.ProxyPurgeEventListe
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.proxyvote.listener.EventDelegationAcceptedListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.publicview.event.SupporterNameDisclosureChangedEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.quickmemo.event.QuickMemoReminderNotificationListener|0|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.recruitment.event.RecruitmentReminderNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.recruitment.service.MarketFinalizeConfirmedListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.reservation.EmergencyClosureBroadcastListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.reservation.event.EmergencyClosureReminderNotificationListener|0|1
