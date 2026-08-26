@@ -34,9 +34,8 @@ public class GamificationPointListener {
      *
      * @param event タイムライン投稿作成イベント
      */
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
-            gateKeys = "FEATURE_GAMIFICATION_ENABLED",
-            reason = "失われるのは投稿に対するポイント加算のみで、投稿本体は正本として保存済み。ポイントは金銭ではなくゲーム内状態であり、リセットバッチも同じキーで止まるため首尾一貫する")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "上流のタイムライン投稿は CORE であり、ゲーミフィケーションのゲートでは閉じない。よって閉栓中もイベントは飛んでくる。落とすと投稿に対するポイント加算が恒久的に欠落し、再生もバックフィルも無い。付与は内部処理のみで外部送信を伴わない")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("event-pool")
     public void handleTimelinePostCreated(TimelinePostCreatedEvent event) {
@@ -60,9 +59,8 @@ public class GamificationPointListener {
      *
      * @param event ログイン成功イベント
      */
-    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
-            gateKeys = "FEATURE_GAMIFICATION_ENABLED",
-            reason = "失われるのはログインに対するポイント加算のみで、ログイン監査記録は別系統に残る。ポイントは金銭ではなくゲーム内状態である")
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "上流のログインは CORE の認証であり、ゲーミフィケーションのゲートでは閉じない。よって閉栓中もイベントは飛んでくる。落とすとログインに対するポイント加算が恒久的に欠落し、再生もバックフィルも無い。付与は内部処理のみで外部送信を伴わない")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Async("event-pool")
     public void handleDailyLogin(LoginSuccessEvent event) {

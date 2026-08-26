@@ -191,7 +191,23 @@ class BackgroundEntryPolicyDeclarationGuardTest {
             "com.mannschaft.app.skill.service.SkillExpiryStatusUpdateBatchService",
             // プレゼンス（所在）履歴・コイントス履歴の保持期間超過削除。
             // 通知系（停止可）と同居していたため禁止域に登録できなかったので切り出した。
-            "com.mannschaft.app.family.service.FamilyRetentionCleanupBatchService");
+            "com.mannschaft.app.family.service.FamilyRetentionCleanupBatchService",
+
+            // ── 第三の型: 上流が同じ gate_key で閉じないリスナー（Codex 検分 P1 と全数照合） ──
+            //
+            // DROP_WHEN_DISABLED が安全なのは【そのイベントを発火する上流が、同じ gate_key で
+            // 一緒に閉じるとき】だけである。上流が閉じなければイベントは閉栓中も飛んでき、
+            // そして黙って消える。SKIP は「自分が動かない」だけだが、DROP は
+            // 「他人が投げたものを捨てる」。この非対称を見落とすと別ドメインが片肺のまま進む。
+            // 下記はいずれも上流が別ゲートまたは CORE で閉じないため ALWAYS 以外を選べない。
+            //
+            // 上流 Incident は FEATURE_MODERATION_INCIDENT_ENABLED で独立に CONFIRMED へ進む。
+            // 落とすと F09.13 §5.2 の incidentId 付き履歴パッケージと相互リンクが欠落する。
+            "com.mannschaft.app.property.event.PropertyWorkPackageEventListener",
+            // 上流の計測ビーコンは全ページ共通で、解析機能のゲートでは閉じない。
+            "com.mannschaft.app.analytics.event.PageViewRecordListener",
+            // 上流のタイムライン投稿とログイン（認証）は CORE であり、ゲーミフィケーションでは閉じない。
+            "com.mannschaft.app.gamification.event.GamificationPointListener");
 
     /** {@link #FORBIDDEN_TO_STOP} で禁じるモード。 */
     private static final Set<String> STOPPING_MODES = Set.of("SKIP_WHEN_DISABLED", "DROP_WHEN_DISABLED");
@@ -1034,6 +1050,26 @@ class BackgroundEntryPolicyDeclarationGuardTest {
                     """);
 
             assertThat(forbiddenStopViolations(es)).isEmpty();
+        }
+
+        /** 上流が別ゲートで閉じないため DROP を選べないリスナー（第三の型）。 */
+        private static final String CROSS_GATE_LISTENER_PATH =
+                "src/main/java/com/mannschaft/app/property/event/PropertyWorkPackageEventListener.java";
+
+        @Test
+        @DisplayName("(AC-1) 上流が同じ gate_key で閉じないリスナーに DROP_WHEN_DISABLED を付けると違反になる")
+        void ac1_上流が閉じないリスナーのドロップ宣言を検出する() {
+            List<Entry> es = entries(CROSS_GATE_LISTENER_PATH, """
+                    @TransactionalEventListener
+                    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
+                            gateKeys = "FEATURE_PROPERTY_REPAIRPLAN_ENABLED",
+                            reason = "この宣言は番人に拒否されねばならない（上流の Incident は別ゲートで進む）")
+                    public void onIncidentStatusChanged(Object e) {}
+                    """);
+
+            assertThat(forbiddenStopViolations(es))
+                    .as("上流が閉じないなら DROP はイベントを永久に失う。選べるのは ALWAYS だけ")
+                    .hasSize(1);
         }
 
         @Test
