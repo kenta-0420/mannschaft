@@ -370,16 +370,20 @@ tasks.withType<Test> {
     // 実測で安全域だった水準の半分以下でヒープを定期リセットできる。
     // ※ この値を 100 に戻すと CI shard は再び 60 分打ち切りに戻る。変更時は必ず再実測すること。
     //
-    // 【調査中（2026-08-26）: forkEvery が発火しているかを実測で確かめている】
-    // 最重要: 【forkEvery はワーカー単位で数える】。maxParallelForks=2 なら 1 ワーカーが
-    // 処理するクラス数は shard 全体の約半分であり、shard 全体のクラス数と比べてはならない。
-    // この一点を見落として二度計算を外した（経緯は TestJvmStartupReporter の Javadoc に残す）。
-    // よって値を動かす前に「起動したテスト JVM 数」を計測できるようにした（同上）。
-    // 本コミットは計測器の導入のみで、値は main と同じ 500 に据え置く（＝是正前の基準値を実測する）。
+    // 【実測（2026-08-26 / CI 実走）: forkEvery はワーカー単位で数える】
+    // 最重要: forkEvery は【1 ワーカーが処理したテストクラス数】で数える。
+    // maxParallelForks=2 なら 1 ワーカーの担当は shard 全体（350〜384 クラス）の約半分であり、
+    // 【shard 全体のクラス数と forkEvery を比べてはならない】。
+    // この一点を見落として値を二度外した（190 / 200。詳細は本ファイルの計測器コメント）。
+    //
+    // 是正前の基準値（forkEvery=500・CI 実走で計測した実数）:
+    //   shard0〜shard5 のすべてで【起動したテスト JVM 数 = 4】（maxParallelForks=2）
+    // 値を動かすときは、この計測器が出す "[test-jvm] 起動したテスト JVM 数" を
+    // 【必ず CI ログで確認する】こと。計算だけで決めてはならない。
     //
     // ローカル（WSL2 Docker）環境では -Pfork.every=0 で無効化し、1コンテナ共有で高速化できる。
     // perfTask は単一クラスの重量級 IT ゆえ forkEvery=0（1 JVM 共有）で無駄な再 fork を避ける。
-    setForkEvery(if (isPerfTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 500L))
+    setForkEvery(if (isPerfTask) 0L else ((project.findProperty("fork.every") as String?)?.toLong() ?: 90L))
     // ローカル（WSL2 Docker）環境では Testcontainers の並列コンテナ起動が WSL2 ポートミラーリングの
     // タイミング問題を引き起こすため、-Pmax.parallel.forks=1 で上書きできるようにする。
     // CI 環境ではデフォルト 2 のまま動作する。
