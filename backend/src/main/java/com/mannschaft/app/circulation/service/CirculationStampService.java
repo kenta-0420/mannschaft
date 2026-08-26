@@ -56,11 +56,19 @@ public class CirculationStampService {
     private final ProxyInputRecordRepository proxyInputRecordRepository;
 
     /**
+     * 押印系操作の本人性判定に用いるガード。
+     *
+     * <p>押印・スキップ・拒否・押印訂正・押印委任は、対象の受信者行が<b>当該文書に属し、
+     * かつ操作者本人のものである</b>ことを {@link CirculationAccessGuard#requireRecipientSelf}
+     * で検証してから実行する。</p>
+     */
+    private final CirculationAccessGuard circulationAccessGuard;
+
+    /**
      * ADMIN 強制スキップの per-scope 認可に使用する（2026-05-29 fixup）。
      *
-     * <p>本アプリは {@code @EnableMethodSecurity} が未有効のため Controller の
-     * {@code @PreAuthorize("hasRole('ADMIN')")} は実機で効かず、かつ {@code hasRole} は per-scope
-     * 判定にならない。そこで {@code adminSkipRecipient} の処理本体前に、対象文書のスコープの
+     * <p>Controller の {@code @PreAuthorize("hasRole('ADMIN')")} は {@code hasRole} である以上
+     * per-scope 判定にならない。そこで {@code adminSkipRecipient} の処理本体前に、対象文書のスコープの
      * ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）であることを {@link AccessControlService} で要求し、
      * 他団体の回覧受信者を強制スキップする操作を遮断する。</p>
      */
@@ -95,6 +103,7 @@ public class CirculationStampService {
         }
 
         CirculationRecipientEntity recipient = findRecipientOrThrow(documentId, userId);
+        circulationAccessGuard.requireRecipientSelf(document, recipient, userId);
 
         if (!recipient.isStampable()) {
             throw new BusinessException(CirculationErrorCode.INVALID_RECIPIENT_STATUS);
@@ -142,6 +151,7 @@ public class CirculationStampService {
         }
 
         CirculationRecipientEntity recipient = findRecipientOrThrow(documentId, userId);
+        circulationAccessGuard.requireRecipientSelf(document, recipient, userId);
 
         if (!recipient.isStampable()) {
             throw new BusinessException(CirculationErrorCode.INVALID_RECIPIENT_STATUS);
@@ -170,6 +180,7 @@ public class CirculationStampService {
         }
 
         CirculationRecipientEntity recipient = findRecipientOrThrow(documentId, userId);
+        circulationAccessGuard.requireRecipientSelf(document, recipient, userId);
 
         if (!recipient.isStampable()) {
             throw new BusinessException(CirculationErrorCode.INVALID_RECIPIENT_STATUS);
@@ -205,6 +216,7 @@ public class CirculationStampService {
         }
 
         CirculationRecipientEntity recipient = findRecipientOrThrow(documentId, userId);
+        circulationAccessGuard.requireRecipientSelf(document, recipient, userId);
 
         if (recipient.getStatus() != RecipientStatus.STAMPED) {
             throw new BusinessException(CirculationErrorCode.NOT_STAMPED_CANNOT_CORRECT);
@@ -275,6 +287,7 @@ public class CirculationStampService {
 
         // 委任者が受信者として登録されているか
         CirculationRecipientEntity recipient = findRecipientOrThrow(documentId, delegatorUserId);
+        circulationAccessGuard.requireRecipientSelf(document, recipient, delegatorUserId);
         if (recipient.getStatus() != RecipientStatus.PENDING) {
             throw new BusinessException(CirculationErrorCode.INVALID_RECIPIENT_STATUS);
         }
@@ -330,7 +343,7 @@ public class CirculationStampService {
      * SKIPPED に強制遷移させる。</p>
      *
      * <p><b>認可（2026-05-29 fixup）:</b> Controller の {@code @PreAuthorize("hasRole('ADMIN')")} は
-     * {@code @EnableMethodSecurity} 未有効ゆえ実機で効かない（将来宣言）。真の強制は本メソッド先頭の
+     * {@code hasRole} である以上 per-scope 判定にならない。真の強制は本メソッド先頭の
      * {@link #checkScopeAdminAccess} による per-scope 認可（対象文書スコープの ADMIN/DEPUTY_ADMIN、
      * または SYSTEM_ADMIN）で行う。</p>
      *

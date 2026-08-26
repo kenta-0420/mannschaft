@@ -62,7 +62,8 @@ public class OrganizationDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<DirectMailResponse>> listMails(
             @PathVariable Long orgId, @PageableDefault(size = 20) Pageable pageable) {
-        PagedResponse<DirectMailResponse> response = directMailService.listMails("ORGANIZATION", orgId, pageable);
+        PagedResponse<DirectMailResponse> response =
+                directMailService.listMails("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -74,7 +75,8 @@ public class OrganizationDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<DirectMailResponse>> getMail(
             @PathVariable Long orgId, @PathVariable Long id) {
-        DirectMailResponse response = directMailService.getMail("ORGANIZATION", orgId, id);
+        DirectMailResponse response =
+                directMailService.getMail("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -87,7 +89,8 @@ public class OrganizationDirectMailController {
     public ResponseEntity<ApiResponse<DirectMailResponse>> updateMail(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody UpdateDirectMailRequest request) {
-        DirectMailResponse response = directMailService.updateMail("ORGANIZATION", orgId, id, request);
+        DirectMailResponse response =
+                directMailService.updateMail("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -99,7 +102,8 @@ public class OrganizationDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "送信開始")
     public ResponseEntity<ApiResponse<DirectMailResponse>> sendMail(
             @PathVariable Long orgId, @PathVariable Long id) {
-        DirectMailResponse response = directMailService.sendMail("ORGANIZATION", orgId, id);
+        DirectMailResponse response =
+                directMailService.sendMail("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -112,7 +116,8 @@ public class OrganizationDirectMailController {
     public ResponseEntity<ApiResponse<DirectMailResponse>> scheduleMail(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody ScheduleMailRequest request) {
-        DirectMailResponse response = directMailService.scheduleMail("ORGANIZATION", orgId, id, request);
+        DirectMailResponse response =
+                directMailService.scheduleMail("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), id, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -124,7 +129,8 @@ public class OrganizationDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "キャンセル成功")
     public ResponseEntity<ApiResponse<DirectMailResponse>> cancelMail(
             @PathVariable Long orgId, @PathVariable Long id) {
-        DirectMailResponse response = directMailService.cancelMail("ORGANIZATION", orgId, id);
+        DirectMailResponse response =
+                directMailService.cancelMail("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -138,7 +144,7 @@ public class OrganizationDirectMailController {
             @PathVariable Long orgId, @PathVariable Long id,
             @PageableDefault(size = 50) Pageable pageable) {
         PagedResponse<DirectMailRecipientResponse> response =
-                directMailService.listRecipients("ORGANIZATION", orgId, id, pageable);
+                directMailService.listRecipients("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), id, pageable);
         return ResponseEntity.ok(response);
     }
 
@@ -150,7 +156,8 @@ public class OrganizationDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<DirectMailStatsResponse>> getStats(
             @PathVariable Long orgId, @PathVariable Long id) {
-        DirectMailStatsResponse response = directMailService.getStats("ORGANIZATION", orgId, id);
+        DirectMailStatsResponse response =
+                directMailService.getStats("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), id);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -162,7 +169,8 @@ public class OrganizationDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "プレビュー生成成功")
     public ResponseEntity<ApiResponse<PreviewMailResponse>> preview(
             @PathVariable Long orgId, @Valid @RequestBody PreviewMailRequest request) {
-        PreviewMailResponse response = directMailService.preview(request);
+        PreviewMailResponse response =
+                directMailService.preview("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -174,7 +182,8 @@ public class OrganizationDirectMailController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "見積成功")
     public ResponseEntity<ApiResponse<EstimateRecipientsResponse>> estimateRecipients(
             @PathVariable Long orgId, @Valid @RequestBody EstimateRecipientsRequest request) {
-        EstimateRecipientsResponse response = directMailService.estimateRecipients("ORGANIZATION", orgId, request);
+        EstimateRecipientsResponse response =
+                directMailService.estimateRecipients("ORGANIZATION", orgId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

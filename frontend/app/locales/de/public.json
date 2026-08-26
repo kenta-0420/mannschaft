@@ -158,6 +158,16 @@
     "events": {
       "title": "Veranstaltungen",
       "empty": "Keine Veranstaltungen"
+    },
+    "tabs": {
+      "posts": "Beiträge",
+      "timeline": "Timeline",
+      "events": "Veranstaltungen",
+      "activities": "Aktivitätsprotokolle"
+    },
+    "activities": {
+      "sectionTitle": "Aktivitätsprotokolle",
+      "empty": "Noch keine öffentlichen Aktivitätsprotokolle"
     }
   }
 }

@@ -6,6 +6,7 @@ import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.survey.controller.SurveyController;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.SurveyDetailResponse;
+import com.mannschaft.app.survey.service.SurveyAccessGuard;
 import com.mannschaft.app.survey.service.SurveyResultService;
 import com.mannschaft.app.survey.service.SurveyService;
 import com.mannschaft.app.team.service.TeamService;
@@ -61,6 +62,10 @@ class SurveyControllerScopeTypeCanonicalTest {
         @Mock
         private SurveyResultService surveyResultService;
 
+        /** 認可根治 Wave7: Controller が作成前に通す認可ゲート（本テストは正準化の検証が主眼）。 */
+        @Mock
+        private SurveyAccessGuard surveyAccessGuard;
+
         @Mock
         private TeamService teamService;
 
@@ -78,7 +83,7 @@ class SurveyControllerScopeTypeCanonicalTest {
                 given(teamService.resolveTeamId("my-team-slug")).willReturn(SCOPE_ID_LONG);
 
                 CreateSurveyRequest request = mock(CreateSurveyRequest.class);
-                SurveyDetailResponse detail = new SurveyDetailResponse(null, List.of());
+                SurveyDetailResponse detail = SurveyDetailResponse.of(null, List.of(), true);
                 // Service は正準値 "TEAM" で呼ばれる（URLパス語 "teams" ではない）
                 given(surveyService.createSurvey(eq("TEAM"), eq(SCOPE_ID_LONG), eq(USER_ID), any()))
                         .willReturn(detail);
@@ -105,7 +110,7 @@ class SurveyControllerScopeTypeCanonicalTest {
                 given(organizationService.resolveOrgId("my-org-slug")).willReturn(SCOPE_ID_LONG);
 
                 CreateSurveyRequest request = mock(CreateSurveyRequest.class);
-                SurveyDetailResponse detail = new SurveyDetailResponse(null, List.of());
+                SurveyDetailResponse detail = SurveyDetailResponse.of(null, List.of(), true);
                 // Service は正準値 "ORGANIZATION" で呼ばれる
                 given(surveyService.createSurvey(eq("ORGANIZATION"), eq(SCOPE_ID_LONG), eq(USER_ID), any()))
                         .willReturn(detail);

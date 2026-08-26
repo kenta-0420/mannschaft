@@ -2,17 +2,32 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
+import com.mannschaft.app.village.dto.NewsletterCommentUpdateRequest;
+import com.mannschaft.app.village.dto.NewsletterIssueDetailResponse;
+import com.mannschaft.app.village.dto.NewsletterIssuePageResponse;
+import com.mannschaft.app.village.dto.NewsletterIssueTagsUpdateRequest;
 import com.mannschaft.app.village.dto.NewsletterSendLogResponse;
 import com.mannschaft.app.village.dto.NewsletterSettingResponse;
 import com.mannschaft.app.village.dto.NewsletterSettingUpdateRequest;
 import com.mannschaft.app.village.dto.NewsletterSettingsResponse;
+import com.mannschaft.app.village.dto.NewsletterTagCreateRequest;
+import com.mannschaft.app.village.dto.NewsletterTagResponse;
+import com.mannschaft.app.village.dto.NewsletterTagUpdateRequest;
+import com.mannschaft.app.village.dto.NewsletterVisibilityUpdateRequest;
 import com.mannschaft.app.village.entity.enums.VillageNewsletterFrequency;
+import com.mannschaft.app.village.service.VillageNewsletterIssueService;
 import com.mannschaft.app.village.service.VillageNewsletterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -46,9 +61,19 @@ import java.util.UUID;
 public class VillageNewsletterController {
 
     private final VillageNewsletterService newsletterService;
+    private final VillageNewsletterIssueService issueService;
 
+    /**
+     * 村のニュースレター設定を取得する。
+     *
+     * <p>認可は {@link VillageNewsletterService#getNewsletterSettings} 内で
+     * {@code VillageBulletinAccessService#checkVillageBulletinViewAccess} に委譲し、
+     * 号一覧・詳細（村史面）と同一の閲覧基準を適用する。
+     * 村が存在しない／削除済みの場合は 404 で存在を秘匿する。</p>
+     */
+    @AuthorizedInService
     @GetMapping
-    @Operation(summary = "村のニュースレター設定を取得する")
+    @Operation(summary = "村のニュースレター設定を取得する（掲示板と同一の閲覧認可）")
     public ApiResponse<NewsletterSettingsResponse> getSettings(
             @PathVariable("villageId") UUID villageId) {
         Long actorUserId = SecurityUtils.getCurrentUserId();
@@ -64,6 +89,9 @@ public class VillageNewsletterController {
         return ApiResponse.of(newsletterService.updateNewsletterSettings(villageId, request, actorUserId));
     }
 
+    @SelfScopedEndpoint("opt-out レコードの主体は常に SecurityUtils.getCurrentUserId() で、"
+            + "リクエストは他ユーザーの識別子を受け取らない"
+            + "（VillageNewsletterService#optOut が (villageId, 認証主体) の 1 行のみを作成する）")
     @PostMapping("/opt-out")
     @Operation(summary = "当該ユーザーをニュースレターから opt-out する")
     public ResponseEntity<Void> optOut(@PathVariable("villageId") UUID villageId) {
@@ -72,6 +100,9 @@ public class VillageNewsletterController {
         return ResponseEntity.noContent().build();
     }
 
+    @SelfScopedEndpoint("削除対象の opt-out レコードは (villageId, SecurityUtils.getCurrentUserId()) で"
+            + "一意に解決され、リクエストは他ユーザーの識別子を受け取らない"
+            + "（VillageNewsletterService#optIn の findByVillageIdAndUserId が認証主体に束縛される）")
     @DeleteMapping("/opt-out")
     @Operation(summary = "当該ユーザーの opt-out を解除する（= opt-in に戻す）")
     public ResponseEntity<Void> optIn(@PathVariable("villageId") UUID villageId) {
@@ -80,11 +111,134 @@ public class VillageNewsletterController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * 指定頻度のニュースレター配信履歴を取得する（村の運営者のみ）。
+     *
+     * <p>認可は {@link VillageNewsletterService#listSendLogs} 内で
+     * {@code VillageBulletinAccessService#requireHeadmanOrElder} に委譲し、
+     * 現役の HEADMAN / ELDER のみを通す（設計書 §1.14）。</p>
+     */
+    @AuthorizedInService
     @GetMapping("/send-logs")
-    @Operation(summary = "指定頻度のニュースレター配信履歴を取得する")
+    @Operation(summary = "指定頻度のニュースレター配信履歴を取得する（HEADMAN / ELDER のみ）")
     public ApiResponse<List<NewsletterSendLogResponse>> listSendLogs(
             @PathVariable("villageId") UUID villageId,
             @RequestParam("frequency") VillageNewsletterFrequency frequency) {
-        return ApiResponse.of(newsletterService.listSendLogs(villageId, frequency));
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(newsletterService.listSendLogs(villageId, frequency, actorUserId));
+    }
+
+    // ========================================================================
+    // ②-4: 号（一覧 / 詳細 / コメント / タグ付け / 公開範囲）
+    // 閲覧は掲示板と同一の認可（村史に倣う）・編集は HEADMAN / ELDER。認可は Service 内で完結。
+    // ========================================================================
+
+    @GetMapping("/issues")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "村ニュースレター号の一覧（新しい順・?tagId= でタグ絞り込み可）")
+    public ApiResponse<NewsletterIssuePageResponse> listIssues(
+            @PathVariable("villageId") UUID villageId,
+            @RequestParam(value = "tagId", required = false) UUID tagId,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "20") int size) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        // size を [1,100] に丸める（過大要求での大量取得・DoS 防止・②-4 堅牢性 AC-10。他ドメイン慣習に合わせる）。
+        Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
+        return ApiResponse.of(issueService.listIssues(villageId, actorUserId, tagId, pageable));
+    }
+
+    @GetMapping("/issues/{issueId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "村ニュースレター号の詳細（凍結ダイジェスト＋コメント＋タグ）")
+    public ApiResponse<NewsletterIssueDetailResponse> getIssue(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("issueId") UUID issueId) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(issueService.getIssue(villageId, issueId, actorUserId));
+    }
+
+    @PutMapping("/issues/{issueId}/comment")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "村ニュースレター号にコメントを保存（HEADMAN / ELDER・楽観ロック・凍結後も可）")
+    public ApiResponse<NewsletterIssueDetailResponse> updateIssueComment(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("issueId") UUID issueId,
+            @Valid @RequestBody NewsletterCommentUpdateRequest request) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(issueService.updateComment(
+                villageId, issueId, actorUserId, request.comment(), request.version()));
+    }
+
+    @PutMapping("/issues/{issueId}/tags")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "村ニュースレター号にタグを付ける（HEADMAN / ELDER・楽観ロック・置き換え式）")
+    public ApiResponse<NewsletterIssueDetailResponse> updateIssueTags(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("issueId") UUID issueId,
+            @Valid @RequestBody NewsletterIssueTagsUpdateRequest request) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(issueService.setIssueTags(
+                villageId, issueId, actorUserId, request.tagIds(), request.version()));
+    }
+
+    @PutMapping("/issues/{issueId}/visibility")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "村ニュースレター号の公開範囲を切替（HEADMAN / ELDER・楽観ロック）")
+    public ApiResponse<NewsletterIssueDetailResponse> updateIssueVisibility(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("issueId") UUID issueId,
+            @Valid @RequestBody NewsletterVisibilityUpdateRequest request) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(issueService.changeVisibility(
+                villageId, issueId, actorUserId, request.visibility(), request.version()));
+    }
+
+    // ========================================================================
+    // ②-4: タグ CRUD（HEADMAN / ELDER・削除は使用中ガード）
+    // ========================================================================
+
+    @GetMapping("/tags")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "村のニュースレタータグ一覧（表示順）")
+    public ApiResponse<List<NewsletterTagResponse>> listTags(
+            @PathVariable("villageId") UUID villageId) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(issueService.listTags(villageId, actorUserId));
+    }
+
+    @PostMapping("/tags")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "村のニュースレタータグを作成（HEADMAN / ELDER）")
+    public ResponseEntity<ApiResponse<NewsletterTagResponse>> createTag(
+            @PathVariable("villageId") UUID villageId,
+            @Valid @RequestBody NewsletterTagCreateRequest request) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        NewsletterTagResponse response = issueService.createTag(
+                villageId, actorUserId, request.name(), request.color(), request.sortOrder());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+    }
+
+    @PutMapping("/tags/{tagId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "村のニュースレタータグを更新（HEADMAN / ELDER・楽観ロック）")
+    public ApiResponse<NewsletterTagResponse> updateTag(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("tagId") UUID tagId,
+            @Valid @RequestBody NewsletterTagUpdateRequest request) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(issueService.updateTag(
+                villageId, tagId, actorUserId,
+                request.name(), request.color(), request.sortOrder(), request.version()));
+    }
+
+    @DeleteMapping("/tags/{tagId}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "村のニュースレタータグを削除（HEADMAN / ELDER・使用中は不可）")
+    public ResponseEntity<Void> deleteTag(
+            @PathVariable("villageId") UUID villageId,
+            @PathVariable("tagId") UUID tagId) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
+        issueService.deleteTag(villageId, tagId, actorUserId);
+        return ResponseEntity.noContent().build();
     }
 }

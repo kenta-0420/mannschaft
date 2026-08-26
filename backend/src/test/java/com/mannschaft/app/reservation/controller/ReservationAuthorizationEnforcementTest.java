@@ -46,6 +46,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -77,11 +78,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ReservationAuthorizationEnforcementTest {
 
     private static final Long TEAM_ID = 10L;
+    /** F03.4.5 §6.3 AC-6-15: 当該管理者が権限を持たない別チーム（IDOR 検証用）。 */
+    private static final Long OTHER_TEAM_ID = 99L;
     private static final Long ADMIN_USER_ID = 100L;
     private static final Long MEMBER_USER_ID = 200L;
 
     private static final String LINES_PATH = "/api/v1/teams/" + TEAM_ID + "/reservation-lines";
     private static final String CLOSURES_PATH = "/api/v1/teams/" + TEAM_ID + "/emergency-closures";
+    private static final String SETTINGS_PATH = "/api/v1/teams/" + TEAM_ID + "/reservation-settings";
+    private static final String OTHER_TEAM_SETTINGS_PATH =
+            "/api/v1/teams/" + OTHER_TEAM_ID + "/reservation-settings";
 
     private static final String VALID_LINE_BODY = "{\"name\":\"一般予約\",\"displayOrder\":1}";
     private static final String VALID_CLOSURE_BODY = """
@@ -106,7 +112,9 @@ class ReservationAuthorizationEnforcementTest {
     @Import({
             SecurityConfig.class,
             TeamReservationLineController.class,
-            TeamEmergencyClosureController.class
+            TeamEmergencyClosureController.class,
+            // F03.4.5 §6.3 AC-6-15: 予約設定 PATCH（pendingExpireHours）の管理者ゲート実発火検証用。
+            ReservationBusinessHourController.class
     })
     static class MinimalReservationSecurityConfig {
 
@@ -198,6 +206,14 @@ class ReservationAuthorizationEnforcementTest {
                     org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
             return new DashboardScopeTabRateLimitFilter(rateLimiterProvider);
         }
+
+        @Bean
+        @SuppressWarnings("unchecked")
+        com.mannschaft.app.village.VillageAffinityRateLimitFilter villageAffinityRateLimitFilter() {
+            org.springframework.beans.factory.ObjectProvider<com.mannschaft.app.common.ratelimit.ValkeyRateLimiter> rateLimiterProvider =
+                    org.mockito.Mockito.mock(org.springframework.beans.factory.ObjectProvider.class);
+            return new com.mannschaft.app.village.VillageAffinityRateLimitFilter(rateLimiterProvider);
+        }
     }
 
     @Autowired
@@ -211,6 +227,33 @@ class ReservationAuthorizationEnforcementTest {
 
     @MockitoBean
     private EmergencyClosureService emergencyClosureService;
+
+    // ── ReservationBusinessHourController の依存（F03.4.5 §6.3 AC-6-15） ──
+    @MockitoBean
+    private com.mannschaft.app.reservation.service.ReservationBusinessHourService reservationBusinessHourService;
+
+    @MockitoBean
+    private com.mannschaft.app.reservation.service.ReservationTeamSettingService reservationTeamSettingService;
+
+    @MockitoBean
+    private com.mannschaft.app.reservation.service.ReservationPolicyService reservationPolicyService;
+
+    @MockitoBean
+    private com.mannschaft.app.reservation.service.ReservationSlotTemplateService reservationSlotTemplateService;
+
+    @MockitoBean
+    private com.mannschaft.app.auth.service.AuditLogService auditLogService;
+
+    /**
+     * 予約設定 GET の view ゲート（main の #2519 系で Controller へ追加された依存）。
+     *
+     * <p>供給を忘れると {@code ReservationBusinessHourController} の生成が失敗し、
+     * <b>本クラスの全テスト（既存の 3 本を含む）が context ロード失敗で全滅する</b>。
+     * 最小 context を組む契約テストに Controller を足すときは、その Controller の
+     * コンストラクタ引数を全数突き合わせること。</p>
+     */
+    @MockitoBean
+    private com.mannschaft.app.reservation.service.ReservationViewAccessGuard reservationViewAccessGuard;
 
     /** ProxyInputContextFilter 依存の JPA ロード防止（AuthorizationIntegrationTest と同様）。 */
     @MockitoBean
@@ -266,6 +309,71 @@ class ReservationAuthorizationEnforcementTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_LINE_BODY))
                 .andExpect(status().isCreated());
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // AC-6-15: 仮押さえ自動失効の設定変更は既存の管理者認可を継承する（IDOR）
+    // ────────────────────────────────────────────────────────────
+
+    @Test
+    @WithMockUser(username = "200", roles = "MEMBER")
+    @DisplayName("AC-6-15: 非管理者が PATCH /reservation-settings（pendingExpireHours）→ 403")
+    void member_updatePendingExpire_forbidden() throws Exception {
+        given(accessControlService.isSystemAdmin(MEMBER_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(MEMBER_USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(patch(SETTINGS_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pendingExpireHours\":48}"))
+                .andExpect(status().isForbidden());
+
+        // 403 で止まっているので Service まで到達していない（設定は書き換わらない）。
+        org.mockito.Mockito.verify(reservationPolicyService, org.mockito.Mockito.never())
+                .updatePolicy(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("AC-6-15(IDOR): 自チームの管理者でも他チームの pendingExpireHours は変更できない → 403")
+    void admin_ofOtherTeam_cannotUpdatePendingExpire() throws Exception {
+        // ADMIN_USER_ID は TEAM_ID の管理者だが、OTHER_TEAM_ID の管理者ではない。
+        given(accessControlService.isSystemAdmin(ADMIN_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, OTHER_TEAM_ID, "TEAM")).willReturn(false);
+
+        mockMvc.perform(patch(OTHER_TEAM_SETTINGS_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pendingExpireHours\":1}"))
+                .andExpect(status().isForbidden());
+
+        org.mockito.Mockito.verify(reservationPolicyService, org.mockito.Mockito.never())
+                .updatePolicy(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "100", roles = "MEMBER")
+    @DisplayName("AC-6-15: 当該チームの管理者は pendingExpireHours を変更できる → 200")
+    void admin_updatePendingExpire_ok() throws Exception {
+        given(accessControlService.isSystemAdmin(ADMIN_USER_ID)).willReturn(false);
+        given(accessControlService.isAdminOrAbove(ADMIN_USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+        given(reservationPolicyService.updatePolicy(eq(TEAM_ID), any(), any(), any(), any(), any()))
+                .willReturn(com.mannschaft.app.reservation.entity.ReservationPolicyEntity.builder()
+                        .teamId(TEAM_ID).pendingExpireHours(48).build());
+        given(reservationPolicyService.getOrDefault(TEAM_ID))
+                .willReturn(com.mannschaft.app.reservation.entity.ReservationPolicyEntity.builder()
+                        .teamId(TEAM_ID).pendingExpireHours(48).build());
+        given(reservationTeamSettingService.getOrDefault(TEAM_ID))
+                .willReturn(com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
+                        .teamId(TEAM_ID).allowPublicReservation(false).build());
+        given(reservationBusinessHourService.hasBusinessHours(TEAM_ID)).willReturn(true);
+
+        mockMvc.perform(patch(SETTINGS_PATH)
+                        .with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"pendingExpireHours\":48}"))
+                .andExpect(status().isOk());
     }
 
     private ReservationLineResponse sampleLineResponse() {

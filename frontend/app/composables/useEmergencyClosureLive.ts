@@ -119,6 +119,7 @@ export function parseConfirmationUpdate(body: string): EmergencyClosureConfirmat
     // 境界の載せ替え（他に散らさない）。
     return raw as EmergencyClosureConfirmationUpdate
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- 不正な STOMP フレーム（JSON パース不能）を破棄する防御（安全系）。null=不正フレームは購読側で無視
     return null
   }
 }
@@ -142,7 +143,7 @@ export interface EmergencyClosureLiveContext {
    */
   teamId: Ref<number | null>
   /**
-   * HTTP API 呼び出しに使うチーム識別子（slug or 数値文字列・BE TeamIdConverter が両対応）。
+   * HTTP API 呼び出しに使うチーム識別子（slug or 数値文字列・BE ScopeSlugIdConverter が両対応）。
    * getConfirmations のパスに使う。
    */
   apiTeamRef: Ref<string>
@@ -231,8 +232,10 @@ export function useEmergencyClosureLive(ctx: EmergencyClosureLiveContext) {
     if (ctx.teamId.value === null) return
 
     const auth = useAuthStore()
+    // BE の /ws は SockJS 登録のみのため、生 WebSocket は /ws/websocket でしか接続できない
+    // （bare /ws は 400。共通ヘルパー useWsUrl 経由で apiBase 込みの URL を解決する）。
     const stomp = new StompClient({
-      webSocketFactory: () => new WebSocket('/ws'),
+      webSocketFactory: () => new WebSocket(useWsUrl()),
       connectHeaders: { Authorization: `Bearer ${auth.accessToken ?? ''}` },
       beforeConnect: () => {
         // 再接続時に最新トークンへ差し替える（リフレッシュ対応・match と同作法）。

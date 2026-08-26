@@ -54,6 +54,9 @@ class MemberPaymentServiceTest {
     @Mock private com.mannschaft.app.common.AccessControlService accessControlService;
     @Mock private com.mannschaft.app.payment.service.PaymentBeneficiarySettingService paymentBeneficiarySettingService;
     @Mock private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+    // Issue #2715 ロットA: 通知本文の i18n 化で追加した依存。
+    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock private org.springframework.context.MessageSource messageSource;
 
     @InjectMocks
     private MemberPaymentService service;
@@ -824,6 +827,29 @@ class MemberPaymentServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(PaymentErrorCode.DONATION_REMIND_NOT_ALLOWED);
+        }
+
+        @Test
+        @DisplayName("正常系: 受信者localeに従って通知の件名・本文が切り替わる（Issue #2715）")
+        void 受信者localeに従って通知が組み立てられる() {
+            PaymentItemEntity item = PaymentItemEntity.builder()
+                    .type(PaymentItemType.ANNUAL_FEE).name("年会費").teamId(TEAM_ID).build();
+            given(paymentItemService.findByIdOrThrow(PAYMENT_ITEM_ID)).willReturn(item);
+            given(memberPaymentRepository.findUnpaidUserIdsByPaymentItemId(PAYMENT_ITEM_ID))
+                    .willReturn(java.util.List.of(USER_ID));
+            given(userLocaleCache.getLocale(USER_ID)).willReturn("en");
+            given(messageSource.getMessage(eq("notification.payment.remind.title"), any(), any(), eq(java.util.Locale.forLanguageTag("en"))))
+                    .willReturn("Payment reminder");
+            given(messageSource.getMessage(eq("notification.payment.remind.body"), any(), any(), eq(java.util.Locale.forLanguageTag("en"))))
+                    .willReturn("Payment for 年会費 is still incomplete");
+
+            service.sendRemind(PAYMENT_ITEM_ID);
+
+            verify(notificationHelper).notify(
+                    eq(USER_ID), eq("PAYMENT_REMIND"),
+                    eq("Payment reminder"), eq("Payment for 年会費 is still incomplete"),
+                    eq("PAYMENT"), eq(PAYMENT_ITEM_ID),
+                    any(), any(), any(), any());
         }
     }
 

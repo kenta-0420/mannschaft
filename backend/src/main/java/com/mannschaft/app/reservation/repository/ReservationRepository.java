@@ -5,6 +5,7 @@ import com.mannschaft.app.reservation.entity.ReservationEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -75,6 +76,57 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
      * IDとユーザーIDで予約を取得する。
      */
     Optional<ReservationEntity> findByIdAndUserId(Long id, Long userId);
+
+    // ===== F03.4.5 §6.2 W2-5: 定期予約（series 兄弟行方式）=====
+
+    /**
+     * series の兄弟行を<b>ユーザースコープ</b>で取得する（「以降すべてキャンセル」の唯一の経路・AC-5-8）。
+     *
+     * <p><b>なぜ {@code userId} を条件に含めるのが必須か（IDOR 根治）</b>: {@code recurring_series_id} は
+     * UUID の推測困難性しか持たない<b>ケイパビリティではない</b>。他人の series ID を何らかの経路で
+     * 知った利用者が「以降すべてキャンセル」を投げたときに他人の予約まで消えてしまう事故を、
+     * <b>クエリの形で</b>構造的に防ぐ（Service 層のフィルタに頼らない）。
+     * 「認可条件をリポジトリメソッドから外に出すと、いつか誰かが素の finder を使う」という
+     * 当リポジトリの典型事故（{@code feedback_centralized_helper_not_proof_all_paths_use_it}）を避けるため、
+     * <b>series を userId 無しで引く finder は意図的に用意しない</b>。</p>
+     *
+     * @param recurringSeriesId series ID
+     * @param userId            所有者ユーザーID（本人のみ）
+     * @return 本人が所有する series の行（id 昇順）
+     */
+    List<ReservationEntity> findByRecurringSeriesIdAndUserIdOrderById(UUID recurringSeriesId, Long userId);
+
+    /**
+     * series の兄弟行を<b>チームスコープ</b>で取得する（{@code scope=SERIES} の一括承認の唯一の経路・AC-5-9）。
+     *
+     * <p>管理者ゲート（{@code @PreAuthorize isScopeAdmin(#teamId)}）は URL の {@code teamId} の
+     * 管理者性だけを見る。series が（データ異常や将来の仕様変更で）複数チームに跨った場合でも
+     * <b>当該チームの行しか掴めない</b>ことをクエリで保証し、テナント境界越えの一括操作を構造的に封じる。</p>
+     *
+     * @param recurringSeriesId series ID
+     * @param teamId            チームID（認可スコープ）
+     * @return 当該チームに属する series の行（id 昇順）
+     */
+    List<ReservationEntity> findByRecurringSeriesIdAndTeamIdOrderById(UUID recurringSeriesId, Long teamId);
+
+    /**
+     * 指定スロット群のうち<b>当該ユーザーが既に active 予約を持つ</b>スロット ID を列挙する
+     * （定期予約の週次解決で二重予約週を事前に弾く・N+1 回避の一括クエリ）。
+     *
+     * <p>週ごとに {@link #existsByReservationSlotIdAndUserIdAndStatusIn} を呼ぶと 12 週で 12 クエリになる。
+     * 候補枠が確定した時点で 1 クエリにまとめる（AC-5-10 の趣旨）。</p>
+     *
+     * @param userId   予約者ユーザーID
+     * @param slotIds  候補枠 ID 群
+     * @param statuses active と見なすステータス（PENDING / CONFIRMED）
+     * @return 既に予約済みの枠 ID
+     */
+    @Query("SELECT DISTINCT r.reservationSlotId FROM ReservationEntity r "
+            + "WHERE r.userId = :userId AND r.reservationSlotId IN :slotIds AND r.status IN :statuses")
+    List<Long> findSlotIdsAlreadyReservedByUser(
+            @Param("userId") Long userId,
+            @Param("slotIds") Collection<Long> slotIds,
+            @Param("statuses") List<ReservationStatus> statuses);
 
     /**
      * スロットIDとユーザーIDで有効な予約が存在するか確認する。
@@ -152,6 +204,34 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("userId") Long userId,
             @Param("today") LocalDate today,
             @Param("nowTime") LocalTime nowTime);
+
+    /**
+     * 司令塔第二弾（ADHD-UX戦役第四陣）: 個人ダッシュボード「今後の予定」統合用に、
+     * 指定ユーザーの CONFIRMED 予約（代表行のみ）を指定期間 {@code [fromDate, untilDate)} で取得する。
+     *
+     * <p>{@link #findUpcomingByUserId} は「現在時刻以降すべて」（上限なし）を返すのに対し、
+     * 本メソッドは日次ダッシュボードの表示ウィンドウ（days=N）に合わせた上限付き版。
+     * {@code reservations} × {@code reservation_slots} を 1 クエリで JOIN し、
+     * 呼び出し側の件数に関わらず固定 1 クエリで完結させる（N+1 回避・AC-B2-5）。</p>
+     *
+     * <p>返却は {@code Object[]}: {@code [id(Long), slotTitle(String), slotDate(LocalDate),
+     * startTime(LocalTime), endTime(LocalTime), teamId(Long)]}。並び順は日付→開始時刻の昇順。</p>
+     *
+     * @param userId    対象ユーザーID
+     * @param fromDate  取得期間の開始日（含む）
+     * @param untilDate 取得期間の終了日（含まない・排他的上限）
+     */
+    @Query("SELECT r.id, s.title, s.slotDate, s.startTime, s.endTime, r.teamId " +
+            "FROM ReservationEntity r, ReservationSlotEntity s " +
+            "WHERE r.reservationSlotId = s.id " +
+            "AND r.userId = :userId AND r.status = 'CONFIRMED' " +
+            "AND r.isGroupPrimary = TRUE " +
+            "AND s.slotDate >= :fromDate AND s.slotDate < :untilDate " +
+            "ORDER BY s.slotDate ASC, s.startTime ASC")
+    List<Object[]> findUpcomingByUserIdBetween(
+            @Param("userId") Long userId,
+            @Param("fromDate") LocalDate fromDate,
+            @Param("untilDate") LocalDate untilDate);
 
     /**
      * 指定期間内のチームの予約件数を取得する（代表行のみ・F03.4.3 §5.6 #4）。
@@ -294,4 +374,132 @@ public interface ReservationRepository extends JpaRepository<ReservationEntity, 
             @Param("blockedDate") LocalDate blockedDate,
             @Param("resourceId") Long resourceId,
             @Param("statuses") List<ReservationStatus> statuses);
+
+    @Query("SELECT r FROM ReservationEntity r, ReservationSlotEntity s " +
+            "WHERE r.reservationSlotId = s.id " +
+            "AND r.teamId = :teamId AND r.status IN :statuses " +
+            "AND s.slotDate IN :dates " +
+            "AND (:resourceId IS NULL OR s.staffUserId = :resourceId)")
+    List<ReservationEntity> findActiveReservationsOnDates(
+            @Param("teamId") Long teamId,
+            @Param("dates") List<LocalDate> dates,
+            @Param("resourceId") Long resourceId,
+            @Param("statuses") List<ReservationStatus> statuses);
+
+    /**
+     * F03.4.5 §4.3（W2-2）: 定期予約不可枠の409ガード/impactが用いる、日付レンジ内の active 予約を
+     * 枠情報付き projection（{@link ReservationRecurringOverlapRow}）で取得する。
+     *
+     * <p>曜日一致・時間帯 overlap の判定は Service 層（{@code ReservationUnavailabilityChecker} と
+     * 同一の半開区間・3文字曜日変換）で行うため、本クエリでは team・日付レンジ・ライン軸のみで絞り込む。
+     * ライン軸: {@code lineId=null}（ルールがチーム全体）は全 slot（共通枠含む）を対象、
+     * {@code lineId} 指定時はそのラインの slot のみ（共通枠 {@code s.lineId IS NULL} は対象外＝
+     * §4.2「ライン指定ルールの対象外」と同一規則）。</p>
+     *
+     * @param teamId   チームID
+     * @param from     判定horizon開始（通常は今日）
+     * @param to       判定horizon終了（通常は今日+90日）
+     * @param lineId   ルールの対象ライン（null = チーム全体・全 slot 対象）
+     * @param statuses active とみなすステータス（PENDING / CONFIRMED）
+     * @return 該当レンジ内の active 予約 × 枠情報のリスト（曜日・時間帯フィルタは呼び出し側で行う）
+     */
+    @Query("SELECT new com.mannschaft.app.reservation.repository.ReservationRecurringOverlapRow("
+            + "r.id, r.userId, s.id, s.slotDate, s.endDate, s.lineId, s.staffUserId, s.startTime, s.endTime, r.status) "
+            + "FROM ReservationEntity r, ReservationSlotEntity s "
+            + "WHERE r.reservationSlotId = s.id "
+            + "AND r.teamId = :teamId AND r.status IN :statuses "
+            + "AND s.slotDate BETWEEN :from AND :to "
+            + "AND (:lineId IS NULL OR s.lineId = :lineId)")
+    List<ReservationRecurringOverlapRow> findActiveReservationsInRangeForRecurringGuard(
+            @Param("teamId") Long teamId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("lineId") Long lineId,
+            @Param("statuses") List<ReservationStatus> statuses);
+
+    // ===== F03.4.5 §6.3（W2-6）: 仮押さえ(PENDING)の自動失効 =====
+
+    /**
+     * 自動失効の対象となる PENDING 予約を<b>代表行のみ・1 クエリ</b>で抽出する（§6.3・AC-6-17）。
+     *
+     * <p>slot と policy を join して抽出するため、対象件数に比例したクエリ（N+1）は発生しない。
+     * 抽出は {@code is_group_primary = TRUE} に絞る（<b>グループは代表行基準で判定</b>し、
+     * 兄弟行の一括失効は Service 側が {@link #findByGroupIdInAndStatus} で行う。単枠予約は
+     * 常に TRUE のため従来どおり全件が候補になる）。</p>
+     *
+     * <h2>失効条件（殿の裁定・2026-07-29）</h2>
+     * <p>チームの {@code pending_expire_hours} が有効（NULL でない）であることを前提に、以下の
+     * <b>いずれか</b>を満たす PENDING を対象とする:</p>
+     * <ol>
+     *   <li>(a) {@code booked_at} からチーム設定の時間数が経過している</li>
+     *   <li>(b) <b>枠の終了時刻を経過している</b>（＝予約日を過ぎても承認されなかった仮押さえ）</li>
+     * </ol>
+     * <p>設計書 §6.3 初版は (b) を「既存の自動 NO_SHOW バッチの管轄」として対象外にしていたが、
+     * 予約ドメインに NO_SHOW 自動バッチは実在しない（管理者手動の
+     * {@code POST /{reservationId}/no-show} のみ）。初版のままでは「承認されないまま予約日を過ぎた
+     * 仮押さえ」が永久に PENDING で残り、枠を塞ぎ続ける。よって (b) を対象に含める。</p>
+     *
+     * <h2>(a) の時刻演算について</h2>
+     * <p>{@code TIMESTAMPDIFF(HOUR, booked_at, now)} は時間単位で 0 方向へ切り捨てるため、
+     * 整数 H に対して {@code floor(経過時間) >= H} ⟺ {@code booked_at + H時間 <= now} と厳密に等価である
+     * （境界: 24h+1分 → 24 >= 24 で対象 / 23h59分 → 23 >= 24 で非対象。AC-6-3）。
+     * JPQL の {@code FUNCTION('TIMESTAMPDIFF', ...)} は
+     * {@code PersonalScheduleReminderRepository} に同形の先例がある。</p>
+     *
+     * <h2>ポリシー行が存在しないチームの扱い</h2>
+     * <p>{@code reservation_policies} は初回の設定変更で初めて行が作られるため、大半のチームは行を持たない。
+     * 行が無いチームは {@code LEFT JOIN} + {@code COALESCE(:defaultHours)} により
+     * <b>既定 24 時間として扱う</b>（設計書 §6.3「新規・既存とも既定 24 時間」／
+     * {@code ReservationPolicyService.getOrDefault} が GET で 24 と答えることとの一貫性）。
+     * 一方、行が存在して {@code pending_expire_hours IS NULL} のチーム（管理者が
+     * {@code clearPendingExpireHours} で明示的に無効化した状態）は (a)(b) とも対象外にする（AC-6-4）。</p>
+     *
+     * <h2>1 回あたりの実行量を上限化する理由（殿の裁定・2026-07-29）</h2>
+     * <p>本機能のデプロイ初回は、{@code COALESCE(24)}（ポリシー行なし＝既定 24h）と (b)（枠終了経過は
+     * 無条件失効）の組み合わせにより<b>過去の未承認 PENDING が一撃で全件 CANCELLED ＋ 全件通知</b>に
+     * なり得る。{@link Pageable} で 1 回あたりの単位数を上限化し「5 分ごとに最大 N 単位ずつ」へ
+     * 平滑化する。加えて、上限を設けることで 1 回の実行時間が {@code lockAtMostFor} を超えて
+     * ロックが失効し二重処理される窓（{@code ReservationEntity} に {@code @Version} が無いため、
+     * 定員 2 以上の枠で空きが 1 多く出る構造的リスク）も閉じる。</p>
+     *
+     * @param pendingStatus PENDING ステータス
+     * @param now           判定基準時刻（注入 {@code Clock} 由来）
+     * @param today         判定基準時刻の日付
+     * @param nowTime       判定基準時刻の時刻
+     * @param defaultHours  ポリシー行が無いチームに適用する既定時間数（24）
+     * @param pageable      1 回あたりの取得上限（実行量の平滑化）
+     * @return 失効対象の代表行（単枠予約＋グループ代表行）
+     */
+    @Query("SELECT r FROM ReservationEntity r "
+            + "JOIN ReservationSlotEntity s ON s.id = r.reservationSlotId "
+            + "LEFT JOIN ReservationPolicyEntity p ON p.teamId = r.teamId "
+            + "WHERE r.status = :pendingStatus "
+            + "AND r.isGroupPrimary = TRUE "
+            // 明示的に無効化（行あり かつ NULL）されたチームは失効させない
+            + "AND (p.id IS NULL OR p.pendingExpireHours IS NOT NULL) "
+            + "AND (FUNCTION('TIMESTAMPDIFF', HOUR, r.bookedAt, :now) "
+            + "        >= COALESCE(p.pendingExpireHours, :defaultHours) "
+            + "     OR s.slotDate < :today "
+            + "     OR (s.slotDate = :today AND s.endTime <= :nowTime)) "
+            + "ORDER BY r.id ASC")
+    List<ReservationEntity> findExpirablePendingPrimaryRows(
+            @Param("pendingStatus") ReservationStatus pendingStatus,
+            @Param("now") LocalDateTime now,
+            @Param("today") LocalDate today,
+            @Param("nowTime") LocalTime nowTime,
+            @Param("defaultHours") Integer defaultHours,
+            Pageable pageable);
+
+    /**
+     * 複数グループの兄弟行を指定ステータスで一括取得する（§6.3・N+1 回避）。
+     *
+     * <p>グループ予約の失効はグループ単位の原子操作であり、代表行だけを CANCELLED にすると
+     * 部分失効（同一グループに PENDING と CANCELLED が混在）が生じる。対象グループの兄弟行を
+     * 1 クエリでまとめて引き、全行を同時に失効させるために用いる（AC-6-6）。</p>
+     *
+     * @param groupIds 対象グループ ID 群
+     * @param status   絞り込みステータス（PENDING）
+     * @return 兄弟行（代表行を含む全行）
+     */
+    List<ReservationEntity> findByGroupIdInAndStatus(Collection<UUID> groupIds, ReservationStatus status);
 }

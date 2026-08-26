@@ -12,7 +12,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -60,7 +59,11 @@ class MyCorkboardPinServiceTest {
     @Mock
     private CorkboardMapper corkboardMapper;
 
-    @InjectMocks
+    /**
+     * 認可ゲートは実物を使う（判定対象のリポジトリは上のモックを流用する）。
+     * 所有者・スコープ判定の実体は {@code boardRepository.findByIdAndOwnerId} のままなので、
+     * 各テストのスタブはそのまま認可判定に効く。
+     */
     private MyCorkboardPinService service;
 
     /** ピン未設定・未アーカイブ・未削除の個人ボード所有カード。 */
@@ -71,6 +74,8 @@ class MyCorkboardPinServiceTest {
 
     @BeforeEach
     void setUp() {
+        service = new MyCorkboardPinService(cardRepository, corkboardMapper,
+                new CorkboardAccessGuard(boardRepository));
         personalBoard = CorkboardEntity.builder()
                 .scopeType("PERSONAL")
                 .ownerId(USER_ID)

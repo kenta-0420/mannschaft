@@ -1,5 +1,6 @@
 package com.mannschaft.app.parking.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.parking.ParkingErrorCode;
 import com.mannschaft.app.parking.ParkingMapper;
@@ -29,6 +30,13 @@ import java.util.Set;
 
 /**
  * 来場者予約サービス。予約の作成・承認・拒否・チェックイン・完了・空き確認を担当する。
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2B: getDetail/approve/reject/checkIn/complete/cancel は
+ * これまで {@code findById} でテナント串刺し取得していた（来場者氏名・ナンバープレートPIIが
+ * 他スコープから閲覧/操作可能なBOLA）。対象の {@link ParkingVisitorReservationEntity#getSpaceId()}
+ * から区画を scope 込みで fetch し、entity 由来の scopeType/scopeId で認可する。
+ * 閲覧は checkMembership、承認/拒否/チェックイン/完了は checkAdminOrAbove、
+ * cancel のみ予約者本人（{@code reservedBy}）によるセルフキャンセルを許容する。</p>
  */
 @Slf4j
 @Service
@@ -40,6 +48,7 @@ public class ParkingVisitorReservationService {
     private final ParkingSpaceRepository spaceRepository;
     private final ParkingSettingsRepository settingsRepository;
     private final ParkingMapper parkingMapper;
+    private final AccessControlService accessControlService;
 
     private static final List<VisitorReservationStatus> EXCLUDE_STATUSES = List.of(
             VisitorReservationStatus.CANCELLED, VisitorReservationStatus.REJECTED, VisitorReservationStatus.NO_SHOW);
@@ -63,9 +72,9 @@ public class ParkingVisitorReservationService {
     /**
      * 予約詳細を取得する。
      */
-    public VisitorReservationResponse getDetail(Long id) {
-        ParkingVisitorReservationEntity entity = reservationRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ParkingErrorCode.VISITOR_RESERVATION_NOT_FOUND));
+    public VisitorReservationResponse getDetail(String scopeType, Long scopeId, Long id, Long currentUserId) {
+        ParkingVisitorReservationEntity entity = findScopeReservationOrThrow(scopeType, scopeId, id);
+        accessControlService.checkMembership(currentUserId, scopeId, scopeType);
         return parkingMapper.toVisitorReservationResponse(entity);
     }
 
@@ -127,9 +136,9 @@ public class ParkingVisitorReservationService {
      * 予約を承認する。
      */
     @Transactional
-    public VisitorReservationResponse approve(Long id, Long approvedBy) {
-        ParkingVisitorReservationEntity entity = reservationRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ParkingErrorCode.VISITOR_RESERVATION_NOT_FOUND));
+    public VisitorReservationResponse approve(String scopeType, Long scopeId, Long id, Long approvedBy) {
+        ParkingVisitorReservationEntity entity = findScopeReservationOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(approvedBy, scopeId, scopeType);
         if (entity.getStatus() != VisitorReservationStatus.PENDING_APPROVAL) {
             throw new BusinessException(ParkingErrorCode.INVALID_VISITOR_STATUS);
         }
@@ -143,9 +152,9 @@ public class ParkingVisitorReservationService {
      * 予約を拒否する。
      */
     @Transactional
-    public VisitorReservationResponse reject(Long id, Long approvedBy, String adminComment) {
-        ParkingVisitorReservationEntity entity = reservationRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ParkingErrorCode.VISITOR_RESERVATION_NOT_FOUND));
+    public VisitorReservationResponse reject(String scopeType, Long scopeId, Long id, Long approvedBy, String adminComment) {
+        ParkingVisitorReservationEntity entity = findScopeReservationOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(approvedBy, scopeId, scopeType);
         if (entity.getStatus() != VisitorReservationStatus.PENDING_APPROVAL) {
             throw new BusinessException(ParkingErrorCode.INVALID_VISITOR_STATUS);
         }
@@ -159,9 +168,9 @@ public class ParkingVisitorReservationService {
      * チェックインする。
      */
     @Transactional
-    public VisitorReservationResponse checkIn(Long id) {
-        ParkingVisitorReservationEntity entity = reservationRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ParkingErrorCode.VISITOR_RESERVATION_NOT_FOUND));
+    public VisitorReservationResponse checkIn(String scopeType, Long scopeId, Long id, Long currentUserId) {
+        ParkingVisitorReservationEntity entity = findScopeReservationOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
         if (entity.getStatus() != VisitorReservationStatus.CONFIRMED) {
             throw new BusinessException(ParkingErrorCode.INVALID_VISITOR_STATUS);
         }
@@ -175,9 +184,9 @@ public class ParkingVisitorReservationService {
      * 完了にする。
      */
     @Transactional
-    public VisitorReservationResponse complete(Long id) {
-        ParkingVisitorReservationEntity entity = reservationRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ParkingErrorCode.VISITOR_RESERVATION_NOT_FOUND));
+    public VisitorReservationResponse complete(String scopeType, Long scopeId, Long id, Long currentUserId) {
+        ParkingVisitorReservationEntity entity = findScopeReservationOrThrow(scopeType, scopeId, id);
+        accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
         if (entity.getStatus() != VisitorReservationStatus.CHECKED_IN) {
             throw new BusinessException(ParkingErrorCode.INVALID_VISITOR_STATUS);
         }
@@ -188,12 +197,14 @@ public class ParkingVisitorReservationService {
     }
 
     /**
-     * 予約をキャンセルする。
+     * 予約をキャンセルする（予約者本人 または ADMIN 以上）。
      */
     @Transactional
-    public void cancel(Long id) {
-        ParkingVisitorReservationEntity entity = reservationRepository.findById(id)
-                .orElseThrow(() -> new BusinessException(ParkingErrorCode.VISITOR_RESERVATION_NOT_FOUND));
+    public void cancel(String scopeType, Long scopeId, Long id, Long currentUserId) {
+        ParkingVisitorReservationEntity entity = findScopeReservationOrThrow(scopeType, scopeId, id);
+        if (!entity.getReservedBy().equals(currentUserId)) {
+            accessControlService.checkAdminOrAbove(currentUserId, scopeId, scopeType);
+        }
         entity.cancel();
         reservationRepository.save(entity);
         log.info("来場者予約キャンセル: id={}", id);
@@ -232,5 +243,20 @@ public class ParkingVisitorReservationService {
                     space.getId(), space.getSpaceNumber(), !reservedSpaceIds.contains(space.getId())));
         }
         return new AvailabilityResponse(date, spaces);
+    }
+
+    /**
+     * 対象予約を scope 込みで取得する（他スコープの予約へのBOLA・PII越境防止）。
+     *
+     * <p>予約自体は scopeType/scopeId を保持しないため、紐づく区画を経由して
+     * 対象スコープに属するかを検証する。区画がスコープ外、または予約自体が
+     * 見つからない場合は同一の {@code VISITOR_RESERVATION_NOT_FOUND} を返し存在秘匿する。</p>
+     */
+    private ParkingVisitorReservationEntity findScopeReservationOrThrow(String scopeType, Long scopeId, Long id) {
+        ParkingVisitorReservationEntity entity = reservationRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ParkingErrorCode.VISITOR_RESERVATION_NOT_FOUND));
+        spaceRepository.findByIdAndScopeTypeAndScopeId(entity.getSpaceId(), scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(ParkingErrorCode.VISITOR_RESERVATION_NOT_FOUND));
+        return entity;
     }
 }

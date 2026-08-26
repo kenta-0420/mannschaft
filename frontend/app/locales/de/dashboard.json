@@ -77,7 +77,10 @@
       "toggle_today": "今日",
       "toggle_week": "今週",
       "empty_today": "今日の予定はありません",
-      "empty_week": "今週の予定はありません"
+      "empty_week": "今週の予定はありません",
+      "kind_event": "予定",
+      "kind_shift": "シフト",
+      "kind_reservation": "予約"
     },
     "personal": {
       "find_team_title": "Neues Team oder Organisation finden",
@@ -183,6 +186,25 @@
       "widget_notices_tab_platform": "Ankündigungen",
       "widget_notices_platform_empty": "Keine Ankündigungen"
     },
+    "commandCenter": {
+      "title": "Jetzt zu erledigen",
+      "unresolvedCount": "{count} offen",
+      "chipCirculation": "Umlaufmappe",
+      "chipSurvey": "Umfrage",
+      "chipAttendance": "Anwesenheit",
+      "chipOverdueTodo": "Überfällige Aufgaben",
+      "deadlineOverdue": "Überfällig",
+      "deadlineToday": "Heute",
+      "emptyTitle": "Nichts übersehen 🎉",
+      "emptyMessage": "Keine Elemente erfordern Ihre Aufmerksamkeit",
+      "partialLoadError": "Einige Daten konnten nicht geladen werden",
+      "todoCompleteAria": "Als erledigt markieren",
+      "todoCompleteSuccess": "Aufgabe erledigt",
+      "todoCompleteError": "Aufgabe konnte nicht abgeschlossen werden",
+      "adminSectionTitle": "Ausstehende Genehmigungen",
+      "adminUnresolvedCount": "{count} ausstehende Genehmigungen",
+      "adminLoadError": "Ausstehende Genehmigungen konnten nicht geladen werden"
+    },
     "myCorkboard": {
       "widgetTitle": "Meine Pinnwand",
       "viewAll": "Alle anzeigen",
@@ -196,6 +218,27 @@
       "unpinAction": "Diese Karte loslösen",
       "navigationFailed": "Auf die Referenz dieser Karte kann nicht zugegriffen werden",
       "colorLabelAria": "{color} Etikett"
+    },
+    "activity_feed": {
+      "post_created": "が投稿しました",
+      "event_created": "がイベントを作成しました",
+      "member_joined": "が参加しました",
+      "todo_completed": "がTODOを完了しました",
+      "bulletin_created": "がお知らせを投稿しました",
+      "poll_created": "がアンケートを作成しました",
+      "file_uploaded": "がファイルを共有しました",
+      "schedule_created": "が予定を作成しました",
+      "schedule_updated": "が予定を更新しました",
+      "schedule_cancelled": "が予定をキャンセルしました",
+      "schedule_rescheduled": "が予定の日程を変更しました",
+      "detail_start_at": "開始日時",
+      "detail_end_at": "終了日時",
+      "detail_is_all_day": "終日設定",
+      "detail_title": "タイトル",
+      "detail_location": "場所",
+      "detail_status": "ステータス",
+      "detail_description_changed": "詳細が更新されました",
+      "unknown": "アクションしました"
     }
   },
   "swipeWidgets": {

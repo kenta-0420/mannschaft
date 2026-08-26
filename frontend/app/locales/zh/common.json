@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "连接已断开。正在尝试重新连接…"
+    },
+    "mobile": {
+      "backToList": "返回频道列表",
+      "noChannels": "还没有频道",
+      "createChannel": "创建频道"
     }
   },
   "button": {
@@ -221,8 +226,12 @@
   "error": {
     "server": "服务器发生错误",
     "server_retry": "请稍后再试。",
+    "rate_limited": "操作过于频繁",
+    "rate_limited_detail": "短时间内操作过于频繁。请稍等片刻后再试。",
+    "rate_limited_retry_after": "短时间内操作过于频繁。请约 {seconds} 秒后再试。",
     "network": "网络错误",
     "unauthorized": "请先登录",
+    "section_load_failed": "该项目获取失败，请重新加载。",
     "unknown": "发生错误",
     "COMMON_001": "输入内容有误",
     "COMMON_002": "您没有执行此操作的权限",
@@ -239,7 +248,19 @@
     "AUTH_010": "当前密码不正确",
     "AUTH_011": "尚未设置密码",
     "AUTH_044": "请求过于频繁，请稍后再试",
-    "SURVEY_023": "匿名问卷无法启用团队明细"
+    "SURVEY_023": "匿名问卷无法启用团队明细",
+    "SCHEDULE_KEEP_001": "キープが見つかりません",
+    "SCHEDULE_KEEP_002": "タイトルを入力してください",
+    "SCHEDULE_KEEP_003": "候補日は最大10件です",
+    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
+    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
+    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
+    "SCHEDULE_KEEP_007": "この状態では編集できません",
+    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
+    "SCHEDULE_KEEP_009": "この操作はできません",
+    "SCHEDULE_KEEP_010": "キープの上限に達しました",
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "已达到隐藏上限（200 个）。请先取消一些不需要的隐藏。"
   },
   "annual_plan": {
     "title": "年度行事计划",
@@ -463,7 +484,46 @@
     "writeReply": "写回复",
     "replySubmit": "回复",
     "noReplies": "还没有回复",
-    "loadMoreReplies": "查看更多"
+    "loadMoreReplies": "查看更多",
+    "composerPlaceholder": {
+      "TEAM": "发布到团队...",
+      "VILLAGE": "发布到村子...",
+      "ORGANIZATION": "发布到组织...",
+      "PUBLIC": "在想什么？"
+    },
+    "submitLabel": "发布",
+    "pollOptionsCount": "{count}个选项",
+    "deliveryScope": {
+      "label": "投放范围",
+      "options": {
+        "DIRECT": "仅本团体的成员",
+        "CHILDREN": "包含下一级子团体",
+        "DESCENDANTS": "下属的所有团体"
+      },
+      "hints": {
+        "DIRECT": "仅显示在本团体成员的时间线上。",
+        "CHILDREN": "同时显示给本团体正下方子团体的成员。",
+        "DESCENDANTS": "显示给本团体下属所有团体的成员。"
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "隐藏该团队的帖子",
+        "ORGANIZATION": "隐藏该团体的帖子"
+      },
+      "targetType": {
+        "TEAM": "团队",
+        "ORGANIZATION": "团体"
+      },
+      "muted": "已隐藏 {name} 的帖子",
+      "undo": "撤销",
+      "unmuted": "已恢复显示",
+      "chip": "已隐藏：{count} 个",
+      "dialogTitle": "已隐藏的对象",
+      "emptyList": "没有已隐藏的对象。",
+      "unmuteAction": "恢复显示",
+      "unknownTarget": "{type}（ID: {id}）"
+    }
   },
   "gallery": {
     "title": "相册",
@@ -516,7 +576,8 @@
       "selfReviewEnd": "自我审阅结束时间",
       "selfReviewHelp": "设定的时间段将作为发布前的审阅期",
       "saveSettings": "保存设置",
-      "loadFailed": "无法加载文章"
+      "loadFailed": "无法加载文章",
+      "scheduledPublishUnavailable": "定时发布目前不可用。发布后文章将立即公开。"
     },
     "autoSave": {
       "label": "自动保存",
@@ -1265,6 +1326,16 @@
     "filter": {
       "allTeamsOrgs": "团队・组织（全部）",
       "selectScope": "选择创建目标"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "个人",
+        "unknown": "其他日程",
+        "loadError": {
+          "summary": "图层列表加载失败",
+          "detail": "团队・组织的显示切换暂时无法使用。日程仍会显示。请稍后重新加载。"
+        }
+      }
     }
   },
   "handoff": {
@@ -1431,7 +1502,13 @@
       "leave_action": "退出",
       "load_error_title": "无法获取信息",
       "load_error_body": "请稍后再试。如果没有权限，可能无法显示。",
-      "back_to_dashboard": "返回仪表板"
+      "back_to_dashboard": "返回仪表板",
+      "retry": "重试",
+      "slow_loading": "加载时间较长，请稍候"
+    },
+    "unsavedChanges": {
+      "title": "未保存的更改",
+      "confirmLeave": "您有未保存的更改。离开此页面将丢失已输入的内容。要继续吗？"
     }
   },
   "teamHub": {
@@ -1557,7 +1634,9 @@
       "betaRestriction": "测试版限制",
       "errorReports": "错误报告",
       "gdprPurge": "GDPR 清除状态",
-      "feedbackInbox": "意见箱（全体）"
+      "feedbackInbox": "意见箱（全体）",
+      "billing": "课金主数据管理",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "管理员伪装中: {label}",
@@ -1806,6 +1885,13 @@
     "mapEmbedUrlHelp": "在 Google Maps 中「分享 > 嵌入地图 > 复制 HTML」，然后粘贴 src= 的 URL",
     "mapEmbedUrlInvalidFormat": "必须为 Google Maps 嵌入 URL（https://www.google.com/maps/embed?...）格式",
     "mapEmbedUrlSaved": "店铺地图 URL 已保存",
+    "timezone": {
+      "label": "预约时区",
+      "help": "用于解释预约开始和结束时间的 IANA 时区。",
+      "placeholder": "例如：Asia/Tokyo",
+      "invalid": "请输入有效的 IANA 时区",
+      "saved": "预约时区已保存"
+    },
     "regionCode": {
       "label": "所在地（都道府县・市区町村）",
       "help": "选择都道府县和市区町村后，将用作地区搜索和发布的默认值。",
@@ -1823,6 +1909,7 @@
     "bulletinOpen": "在公告板上讨论"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "存储", "personal": "个人", "team": "团队", "organization": "组织", "details": "查看详情", "error": "无法加载存储", "retry": "重试", "unconfigured": "未设置容量", "not_available": "无存储数据", "meterLabel": "{scope}存储使用率", "meterValue": "使用率 {percent}%", "warningTitle": "存储空间即将用尽", "warningMessage": "{scope}已使用{percent}%。请考虑升级付费方案。", "viewPlans": "查看方案", "checkStorage": "检查存储", "cancel": "取消" },
     "tabs": {
       "personal": "个人",
       "team": "团队",
@@ -2076,5 +2163,31 @@
   "comingSoon": {
     "title": "即将推出",
     "description": "此功能目前正在开发中。请稍后再来查看。"
+  },
+  "transferOwnership": {
+    "sectionTitle": "转让所有者",
+    "sectionDescription": "将管理员（所有者）权限移交给其他成员。转让后您将成为副管理员，无法再执行仅限管理员的操作。",
+    "openButton": "转让所有者",
+    "dialogTitle": "转让所有者",
+    "warning": "此操作无法撤销。转让后管理员权限将归新所有者所有，只有新所有者才能再转回。",
+    "targetLabel": "新所有者",
+    "targetPlaceholder": "选择成员",
+    "noCandidates": "没有可转让的成员。",
+    "confirmLabel": "请输入“{name}”以确认",
+    "confirmMismatch": "名称不一致。",
+    "cancel": "取消",
+    "submit": "转让",
+    "successTitle": "已转让所有者",
+    "successDetail": "管理员权限已移交给新所有者。"
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "该功能尚未开放",
+      "body": "此功能当前不可用，将返回仪表板。"
+    },
+    "error": {
+      "fetchFailedTitle": "无法确认功能开放状态",
+      "fetchFailedBody": "由于网络错误，无法确认该功能是否已开放。请稍后重试。"
+    }
   }
 }

@@ -42,7 +42,8 @@ public class TeamCorkboardController {
     @Operation(summary = "チームコルクボード一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<CorkboardResponse>>> listBoards(@PathVariable Long teamId) {
-        List<CorkboardResponse> boards = corkboardService.listScopedBoards("TEAM", teamId);
+        Long userId = SecurityUtils.getCurrentUserId();
+        List<CorkboardResponse> boards = corkboardService.listScopedBoards("TEAM", teamId, userId);
         return ResponseEntity.ok(ApiResponse.of(boards));
     }
 
@@ -54,7 +55,8 @@ public class TeamCorkboardController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<CorkboardResponse>> createBoard(
             @PathVariable Long teamId, @Valid @RequestBody CreateCorkboardRequest request) {
-        CorkboardResponse response = corkboardService.createScopedBoard("TEAM", teamId, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        CorkboardResponse response = corkboardService.createScopedBoard("TEAM", teamId, userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -81,7 +83,8 @@ public class TeamCorkboardController {
     public ResponseEntity<ApiResponse<CorkboardResponse>> updateBoard(
             @PathVariable Long teamId, @PathVariable Long id,
             @Valid @RequestBody UpdateCorkboardRequest request) {
-        CorkboardResponse response = corkboardService.updateScopedBoard("TEAM", teamId, id, request);
+        Long userId = SecurityUtils.getCurrentUserId();
+        CorkboardResponse response = corkboardService.updateScopedBoard("TEAM", teamId, id, userId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -92,7 +95,8 @@ public class TeamCorkboardController {
     @Operation(summary = "チームコルクボード削除")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteBoard(@PathVariable Long teamId, @PathVariable Long id) {
-        corkboardService.deleteScopedBoard("TEAM", teamId, id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        corkboardService.deleteScopedBoard("TEAM", teamId, id, userId);
         return ResponseEntity.noContent().build();
     }
 }

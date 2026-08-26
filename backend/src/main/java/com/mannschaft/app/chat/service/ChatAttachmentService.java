@@ -1,12 +1,9 @@
 package com.mannschaft.app.chat.service;
 
-import com.mannschaft.app.chat.ChannelMemberRole;
 import com.mannschaft.app.chat.ChannelType;
 import com.mannschaft.app.chat.ChatErrorCode;
 import com.mannschaft.app.chat.entity.ChatChannelEntity;
-import com.mannschaft.app.chat.entity.ChatChannelMemberEntity;
 import com.mannschaft.app.chat.entity.ChatMessageAttachmentEntity;
-import com.mannschaft.app.chat.repository.ChatChannelMemberRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.storage.PresignedUploadResult;
 import com.mannschaft.app.common.storage.StorageService;
@@ -62,7 +59,7 @@ public class ChatAttachmentService {
 
     private final StorageQuotaService storageQuotaService;
     private final StorageService storageService;
-    private final ChatChannelMemberRepository chatChannelMemberRepository;
+    private final ChatChannelAccessGuard channelAccessGuard;
 
     /**
      * presign 直前のクォータ・UX ガード事前チェック。
@@ -237,16 +234,9 @@ public class ChatAttachmentService {
                                                           String contentType,
                                                           long fileSize,
                                                           String fileName) {
-        // 1. 認可チェック: OWNER / ADMIN のみアイコン変更可能
-        ChatChannelMemberEntity member = chatChannelMemberRepository
-                .findByChannelIdAndUserId(channel.getId(), currentUserId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED));
-        ChannelMemberRole role = member.getRole();
-        if (role != ChannelMemberRole.OWNER && role != ChannelMemberRole.ADMIN) {
-            log.info("チャンネルアイコン presign 拒否（権限不足）: channelId={}, userId={}, role={}",
-                    channel.getId(), currentUserId, role);
-            throw new BusinessException(ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
-        }
+        // 1. 認可: 当該チャンネルの OWNER / ADMIN のみアイコンを変更できる。
+        channelAccessGuard.requireChannelManagerRole(
+                channel.getId(), currentUserId, ChatErrorCode.CHANNEL_ICON_PERMISSION_DENIED);
 
         // 2. MIME ホワイトリスト
         String normalizedType = contentType == null ? "" : contentType.toLowerCase(Locale.ROOT);

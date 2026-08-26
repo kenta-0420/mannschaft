@@ -41,7 +41,10 @@ public class TeamFriendVisibilityService {
      * フレンド関係の公開設定（{@code is_public}）を変更する。
      *
      * <p>
-     * 認可: {@code teamId} チームの ADMIN のみ（DEPUTY_ADMIN 不可）。それ以外は 403。
+     * 認可: {@code teamId} チームの ADMIN のみ（DEPUTY_ADMIN 不可）。それ以外は 404。
+     * 拒否コード {@code FRIEND_VISIBILITY_ADMIN_ONLY} は不在の
+     * {@code FRIEND_RELATION_NOT_FOUND} と同じ 404 に写像しており、応答差から
+     * teamFriendId の実在を判別されること（存在オラクル）を防いでいる。
      * Phase 1 は単独承認型として、どちらかの ADMIN が {@code TRUE} に切り替えれば
      * 公開となる。Phase 3 で両チーム承認型に昇格予定。
      * </p>
@@ -67,7 +70,8 @@ public class TeamFriendVisibilityService {
                 .orElseThrow(() -> new BusinessException(SocialErrorCode.FRIEND_RELATION_NOT_FOUND));
 
         if (!friend.getTeamAId().equals(teamId) && !friend.getTeamBId().equals(teamId)) {
-            // 所有権のないリソースへの操作は設計書 §5 に従い 403 を返す
+            // 所有権のないリソースへの操作は、不在と同じ 404 で返して存在を秘匿する
+            // （FRIEND_VISIBILITY_ADMIN_ONLY は 404 に写像済み）。
             throw new BusinessException(SocialErrorCode.FRIEND_VISIBILITY_ADMIN_ONLY);
         }
 

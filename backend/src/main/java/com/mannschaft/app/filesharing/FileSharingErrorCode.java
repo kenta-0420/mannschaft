@@ -17,28 +17,28 @@ public enum FileSharingErrorCode implements ErrorCode {
     /** ファイルが見つからない */
     FILE_NOT_FOUND("FILE_SHARING_002", "ファイルが見つかりません", Severity.WARN),
 
-    /** ファイルバージョンが見つからない */
+    /** ファイルバージョンが見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     VERSION_NOT_FOUND("FILE_SHARING_003", "ファイルバージョンが見つかりません", Severity.WARN),
 
-    /** 権限が見つからない */
+    /** 権限が見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     PERMISSION_NOT_FOUND("FILE_SHARING_004", "権限が見つかりません", Severity.WARN),
 
-    /** スターが見つからない */
+    /** スターが見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     STAR_NOT_FOUND("FILE_SHARING_005", "スターが見つかりません", Severity.WARN),
 
-    /** コメントが見つからない */
+    /** コメントが見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     COMMENT_NOT_FOUND("FILE_SHARING_006", "コメントが見つかりません", Severity.WARN),
 
     /** 共有リンクが見つからない */
     LINK_NOT_FOUND("FILE_SHARING_007", "共有リンクが見つかりません", Severity.WARN),
 
-    /** タグが見つからない */
+    /** タグが見つからない（IDOR 秘匿 → 404 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     TAG_NOT_FOUND("FILE_SHARING_008", "タグが見つかりません", Severity.WARN),
 
-    /** スター重複 */
+    /** スター重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     STAR_ALREADY_EXISTS("FILE_SHARING_009", "既にスター済みです", Severity.WARN),
 
-    /** タグ重複 */
+    /** タグ重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     TAG_ALREADY_EXISTS("FILE_SHARING_010", "同名のタグが既に付与されています", Severity.WARN),
 
     /** 共有リンク期限切れ */
@@ -47,11 +47,11 @@ public enum FileSharingErrorCode implements ErrorCode {
     /** 共有リンクパスワード不正 */
     LINK_PASSWORD_INVALID("FILE_SHARING_012", "パスワードが正しくありません", Severity.WARN),
 
-    /** フォルダ名重複 */
+    /** フォルダ名重複（状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     FOLDER_NAME_DUPLICATE("FILE_SHARING_013", "同名のフォルダが既に存在します", Severity.WARN),
 
     /** ファイルサイズ超過 */
-    FILE_SIZE_EXCEEDED("FILE_SHARING_014", "ファイルサイズの上限を超えています", Severity.ERROR),
+    FILE_SIZE_EXCEEDED("FILE_SHARING_014", "ファイルサイズの上限を超えています", Severity.WARN),
 
     /** 権限不足 */
     INSUFFICIENT_PERMISSION("FILE_SHARING_015", "この操作を実行する権限がありません", Severity.WARN),

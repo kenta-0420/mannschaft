@@ -543,7 +543,9 @@ zh / ko / es / de は Phase β 着手時に翻訳。初版はすべて ja と同
 >
 > 下表の論点はすべて家老推奨案を採用とする。論点 10.11〜10.13 のうち家老推奨が明確でなかった項目については殿が安全側に倒した裁定を補記：
 >
-> - **§10.11（指名先承諾欠如）**: Phase β β-3 では既存 `transferOwnership`（事後通知のみ）で進める。指名先事前承諾フローは Phase β-2 リリース後の運用フェーズで利用者の声を見て**別軍議で判断**。案 C との論理整合は「ユーザーが UX で能動的に選択して指名する以上、自動承継（C 不採用理由）とは責任構造が異なる」と整理。
+> - **§10.11（指名先承諾欠如）**: ~~Phase β β-3 では既存 `transferOwnership`（事後通知のみ）で進める。指名先事前承諾フローは Phase β-2 リリース後の運用フェーズで利用者の声を見て**別軍議で判断**。~~ → **【解消・2026-07-18 マスター御裁可】** オーナー委譲を承諾型（オファー→承諾）に統一することを決定。指名相手のみが承諾でき（宛先照合 = IDOR 防止）、承諾があって初めて委譲を実行する。設計は [`F01.2/03_business_logic.md`「オーナー委譲 承諾フロー」](../features/F01.2_org_team_member_role/03_business_logic.md) ／ [`F01.2/02_api_design.md`](../features/F01.2_org_team_member_role/02_api_design.md)（`transfer-ownership-offers`）／新テーブル [`ownership_transfer_offers`](../features/F01.2_org_team_member_role/01_db_design.md) を参照。案 C（自動承継）との責任構造の違い（ユーザーが能動的に指名する点）は従来整理どおり。
+>
+>   **⚠️ 退会 purge 経路は承諾型化の対象外（承諾スキップの強制委譲）**: 承諾型2段は「通常のオーナー委譲」に適用する。**退会（アカウント purge）に伴う最後の ADMIN 承継は、承諾を待つと退会が詰まり（承継先が 2FA 未設定なら承諾不能＝退会不能）GDPR Art.17 の 30 日タイムリミットに抵触する**ため、**purge 経路に限り従来どおりシステム強制の即時委譲（承諾スキップ・2FA チェックなし）を残す**。強制委譲であることを audit に `forced=true` で記録する。本節の案 B（退会プレビューでの手動指名承継）が呼ぶのは通常の承諾型ではなく、この **強制委譲経路**（本人不在で即時完結）である。したがって「承諾待ちで `deletion-preview` が詰まる」ことはない。実装は承諾型 `acceptOffer` と purge 用 `forceTransferForPurge` を**別メソッドに分離**する（詳細: F01.2 03_business_logic「退会 purge 経由の承継は『承諾スキップの強制委譲』」）。
 > - **§10.12（archive 不可逆性）**: Phase β-4 で **SYSTEM_ADMIN 用 force-unarchive エンドポイント** を新設（`POST /api/v1/system-admin/{scope}/{id}/force-unarchive`、監査ログ必須）。残メンバー 0 archive 組織でも SYSTEM_ADMIN 介入で救済可能とする。
 > - **§10.13（Phase α 上限期間）**: 「Phase α 開始から **6 ヶ月以内** に Phase β 着手必着」をサーキットブレーカーとし、auto memory に運用ルールを記録。
 > - **§10.7（法務レビュー）**: 任意ではなく **Phase β リリース前に必須化**。

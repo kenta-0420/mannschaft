@@ -41,6 +41,8 @@ export function useActivityScopeId() {
       const org = (res.data ?? []).find((o) => o.slug === scopeRef)
       return org ? org.id : null
     } catch {
+      // 不通・未所属いずれも null に潰れる。取得失敗を沈黙させないためログに残す（呼び出し側は null ガード）。
+      console.warn('[useActivityScopeId] スコープID解決に失敗しました', { scopeType, scopeRef })
       return null
     }
   }

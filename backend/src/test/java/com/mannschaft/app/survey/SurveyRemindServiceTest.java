@@ -19,6 +19,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -66,8 +67,25 @@ class SurveyRemindServiceTest {
     @Mock
     private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
 
+    /** Issue #2715 CMP-055 lot C-5: newly added i18n dependencies. */
+    @Mock private MessageSource messageSource;
+
     @InjectMocks
     private SurveyRemindService remindService;
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     private static final Long SURVEY_ID = 100L;
     private static final Long SCOPE_ID = 1L;
@@ -165,10 +183,16 @@ class SurveyRemindServiceTest {
         assertThat(result.message()).contains("2");
         assertThat(survey.getManualRemindCount()).isEqualTo(1);
         assertThat(survey.getLastRemindedAt()).isNotNull();
-        verify(notificationHelper).notifyAllPreAuthorized(
-                eq(List.of(101L, 103L)), eq(SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name()),
-                anyString(), anyString(), eq("SURVEY"), eq(SURVEY_ID),
-                eq(NotificationScopeType.TEAM), eq(SCOPE_ID), anyString(), eq(USER_ID));
+        verify(notificationHelper).notifyAllPreAuthorizedLocalized(
+                    eq(List.of(101L, 103L)),
+                    eq(SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name()),
+                    eq("SURVEY"),
+                    eq(SURVEY_ID),
+                    eq(NotificationScopeType.TEAM),
+                    eq(SCOPE_ID),
+                    anyString(),
+                    eq(USER_ID),
+                    any());
     }
 
     @Test
@@ -190,10 +214,16 @@ class SurveyRemindServiceTest {
         // Then
         assertThat(result.remindedCount()).isEqualTo(1);
         assertThat(survey.getManualRemindCount()).isEqualTo(1);
-        verify(notificationHelper).notifyAllPreAuthorized(
-                anyList(), anyString(), anyString(), anyString(),
-                anyString(), anyLong(), any(NotificationScopeType.class),
-                anyLong(), anyString(), anyLong());
+        verify(notificationHelper).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
     }
 
     @Test
@@ -210,10 +240,16 @@ class SurveyRemindServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(SurveyErrorCode.REMIND_PERMISSION_DENIED));
-        verify(notificationHelper, never()).notifyAllPreAuthorized(
-                anyList(), anyString(), anyString(), anyString(),
-                anyString(), anyLong(), any(NotificationScopeType.class),
-                anyLong(), anyString(), anyLong());
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
         verify(surveyRepository, never()).save(any(SurveyEntity.class));
     }
 
@@ -229,10 +265,16 @@ class SurveyRemindServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(SurveyErrorCode.INVALID_SURVEY_STATUS));
-        verify(notificationHelper, never()).notifyAllPreAuthorized(
-                anyList(), anyString(), anyString(), anyString(),
-                anyString(), anyLong(), any(NotificationScopeType.class),
-                anyLong(), anyString(), anyLong());
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
     }
 
     @Test
@@ -266,10 +308,16 @@ class SurveyRemindServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(SurveyErrorCode.REMIND_COOLDOWN_NOT_ELAPSED));
-        verify(notificationHelper, never()).notifyAllPreAuthorized(
-                anyList(), anyString(), anyString(), anyString(),
-                anyString(), anyLong(), any(NotificationScopeType.class),
-                anyLong(), anyString(), anyLong());
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
     }
 
     @Test
@@ -287,10 +335,16 @@ class SurveyRemindServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                         .isEqualTo(SurveyErrorCode.REMIND_QUOTA_EXCEEDED));
-        verify(notificationHelper, never()).notifyAllPreAuthorized(
-                anyList(), anyString(), anyString(), anyString(),
-                anyString(), anyLong(), any(NotificationScopeType.class),
-                anyLong(), anyString(), anyLong());
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
     }
 
     @Test
@@ -368,10 +422,16 @@ class SurveyRemindServiceTest {
         // Then
         assertThat(result.remindedCount()).isEqualTo(0);
         assertThat(survey.getManualRemindCount()).isEqualTo(1);
-        verify(notificationHelper, never()).notifyAllPreAuthorized(
-                anyList(), anyString(), anyString(), anyString(),
-                anyString(), anyLong(), any(NotificationScopeType.class),
-                anyLong(), anyString(), anyLong());
+        verify(notificationHelper, never()).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    any(NotificationScopeType.class),
+                    anyLong(),
+                    anyString(),
+                    anyLong(),
+                    any());
     }
 
     @Test
@@ -392,10 +452,16 @@ class SurveyRemindServiceTest {
         // Then: targets ではなく user_roles 経由の母集団から未回答者を抽出する
         assertThat(result.remindedCount()).isEqualTo(3);
         assertThat(survey.getManualRemindCount()).isEqualTo(1);
-        verify(notificationHelper).notifyAllPreAuthorized(
-                eq(List.of(101L, 103L, 105L)), eq(SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name()),
-                anyString(), anyString(), eq("SURVEY"), eq(SURVEY_ID),
-                eq(NotificationScopeType.TEAM), eq(SCOPE_ID), anyString(), eq(USER_ID));
+        verify(notificationHelper).notifyAllPreAuthorizedLocalized(
+                    eq(List.of(101L, 103L, 105L)),
+                    eq(SurveyNotificationType.SURVEY_RESPONSE_REMINDER.name()),
+                    eq("SURVEY"),
+                    eq(SURVEY_ID),
+                    eq(NotificationScopeType.TEAM),
+                    eq(SCOPE_ID),
+                    anyString(),
+                    eq(USER_ID),
+                    any());
     }
 
     @Test
@@ -441,11 +507,16 @@ class SurveyRemindServiceTest {
         remindService.remind(SURVEY_ID, USER_ID);
 
         // Then
-        verify(notificationHelper).notifyAllPreAuthorized(
-                anyList(), anyString(), anyString(), anyString(),
-                anyString(), anyLong(),
-                eq(NotificationScopeType.ORGANIZATION), eq(SCOPE_ID),
-                anyString(), anyLong());
+        verify(notificationHelper).notifyAllPreAuthorizedLocalized(
+                    anyList(),
+                    anyString(),
+                    anyString(),
+                    anyLong(),
+                    eq(NotificationScopeType.ORGANIZATION),
+                    eq(SCOPE_ID),
+                    anyString(),
+                    anyLong(),
+                    any());
     }
 
     @Test

@@ -19,7 +19,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -58,7 +57,12 @@ class ReflectionEntryServiceTest {
     @Mock private UserTimezoneCache userTimezoneCache;
     @Mock private BlogPostService blogPostService;
 
-    @InjectMocks private ReflectionEntryService service;
+    /**
+     * 認可ゲートは実物を使う（判定対象のリポジトリは上のモックを流用する）。
+     * 所有者判定の実体は {@code themeRepository/entryRepository.findByIdAndUserId} のままなので、
+     * 各テストのスタブはそのまま認可判定に効く。
+     */
+    private ReflectionEntryService service;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -98,6 +102,9 @@ class ReflectionEntryServiceTest {
 
     @BeforeEach
     void stubCommon() {
+        service = new ReflectionEntryService(entryRepository, reminderService, contentSanitizer,
+                responseMapper, maskEvaluator, userTimezoneCache, blogPostService,
+                new ReflectionAccessGuard(themeRepository, entryRepository));
         lenient().when(userTimezoneCache.getTimezone(USER_ID)).thenReturn("Asia/Tokyo");
         lenient().when(contentSanitizer.sanitizeAndSerialize(any()))
                 .thenReturn("{\"main_theme\":\"二次関数\"}");

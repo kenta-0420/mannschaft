@@ -8,6 +8,7 @@ import com.mannschaft.app.auth.dto.LoginRequest;
 import com.mannschaft.app.auth.dto.LoginResponse;
 import com.mannschaft.app.auth.dto.MessageResponse;
 import com.mannschaft.app.auth.dto.RegisterRequest;
+import com.mannschaft.app.auth.dto.SessionResponse;
 import com.mannschaft.app.auth.dto.TokenResponse;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.auth.AuthErrorCode;
@@ -15,20 +16,31 @@ import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.ProxyInputContext;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doNothing;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
@@ -326,17 +338,91 @@ class AuthLoginControllerTest {
                 .andExpect(cookie().maxAge("refresh_token", 604800));
     }
 
+    // ──────────────────────────────────────────────
+    // POST /api/v1/auth/refresh — 失敗経路の HTTP ステータス契約
+    //
+    // AUTH_007（リフレッシュトークン無効／リボーク済み）は「認証情報が無効」の意味論であり、
+    // 401 Unauthorized を返さなければならない。AuthErrorCode の Severity.WARN 既定は 400 のため、
+    // GlobalExceptionHandler.ERROR_CODE_STATUS_MAP での明示上書きが必要
+    //（docs/security/06_business_logic_and_abuse_prevention.md §7.4 / §7.5）。
+    //
+    // AuthTokenRotationService の失敗経路（Cookie 欠落 / 不在トークン / 明示ログアウト済み /
+    // 期限切れ）はすべて AUTH_007 に収束するため、Controller 層の契約としては
+    // 「AUTH_007 が送出されたら 401」を経路ごとに固定する。
+    // 各分岐が実際に AUTH_007 を投げること自体は AuthTokenRotationServiceTest が検証する。
+    // ──────────────────────────────────────────────
+
     @Test
-    @DisplayName("POST /refresh — Cookie 無し（null）: 400 + AUTH_007 を返す（NPE→500 根治）")
-    void refresh_noCookie_returns400WithAuth007() throws Exception {
-        // Given: Cookie が存在しない場合、AuthService は AUTH_007 の BusinessException を投げる（実装後）
+    @DisplayName("POST /refresh — Cookie 無し（null）: 401 + AUTH_007 を返す（NPE→500 根治）")
+    void refresh_noCookie_returns401WithAuth007() throws Exception {
+        // Given: Cookie が存在しない場合、AuthService は AUTH_007 の BusinessException を投げる
         given(authService.refreshAccessToken(any(), any()))
                 .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
 
-        // When / Then: Cookie なしでアクセス → 400 + AUTH_007
+        // When / Then: Cookie なしでアクセス → 401 + AUTH_007
         mockMvc.perform(post("/api/v1/auth/refresh"))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error.code").value("AUTH_007"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — Cookie が空白のみ: 401 + AUTH_007 を返す")
+    void refresh_blankCookie_returns401WithAuth007() throws Exception {
+        given(authService.refreshAccessToken(any(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "   ")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_007"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — DB に存在しないトークン: 401 + AUTH_007 を返す")
+    void refresh_unknownToken_returns401WithAuth007() throws Exception {
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "not-in-db")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_007"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — 明示ログアウト済み（後継ポインタ無しの revoked）: 401 + AUTH_007 を返す")
+    void refresh_revokedWithoutSuccessor_returns401WithAuth007() throws Exception {
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "revoked-by-logout")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_007"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — 有効期限切れトークン: 401 + AUTH_007 を返す")
+    void refresh_expiredToken_returns401WithAuth007() throws Exception {
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_007));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "expired-token")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_007"));
+    }
+
+    @Test
+    @DisplayName("POST /refresh — 真リプレイ検出（AUTH_026）は従来どおり 401 のまま（挙動不変の確認）")
+    void refresh_replayDetected_stillReturns401WithAuth026() throws Exception {
+        given(authService.refreshAccessToken(anyString(), any()))
+                .willThrow(new BusinessException(AuthErrorCode.AUTH_026));
+
+        mockMvc.perform(post("/api/v1/auth/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("refresh_token", "replayed-token")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error.code").value("AUTH_026"));
     }
 
     // ──────────────────────────────────────────────
@@ -434,5 +520,63 @@ class AuthLoginControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.error.code").value("COMMON_001"));
+    }
+
+    // ──────────────────────────────────────────────
+    // 認可根治戦役 Wave5 ロットB — 自己スコープ契約テスト
+    // AuthLoginController#logoutAllDevices / AuthLoginController#getSessions
+    //
+    // SecurityContextHolder に userId=1 を設定し、Service へ渡る userId が
+    // 常にその値と一致すること（=リクエストパラメータで他人の userId を
+    // 指定する余地が無いこと）を厳密一致スタブで固定する。
+    // ──────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("自己スコープ契約（Wave5 ロットB）")
+    class SelfScopeContract {
+
+        private static final long SELF_USER_ID = 1L;
+
+        @BeforeEach
+        void setUpSecurityContext() {
+            SecurityContextHolder.getContext().setAuthentication(
+                    new UsernamePasswordAuthenticationToken(String.valueOf(SELF_USER_ID), null, List.of()));
+        }
+
+        @AfterEach
+        void clearSecurityContext() {
+            SecurityContextHolder.clearContext();
+        }
+
+        @Test
+        @DisplayName("DELETE /sessions — 無効化対象は認証主体の userId のみ"
+                + "（AuthLoginController#logoutAllDevices）")
+        void logoutAllDevices_targetsOnlyAuthenticatedUser() throws Exception {
+            doNothing().when(authService)
+                    .logoutAllDevices(eq(SELF_USER_ID), any(), any(), any(Boolean.class));
+
+            mockMvc.perform(delete("/api/v1/auth/sessions"))
+                    .andExpect(status().isNoContent());
+            // eq(SELF_USER_ID) スタブに一致した時点で、SecurityContext 以外から
+            // 対象ユーザーが決まらないことが確認できる（不一致なら Mockito が未スタブ呼び出しとして検知する）。
+        }
+
+        @Test
+        @DisplayName("GET /sessions — 返るのは認証主体自身のセッション一覧のみ"
+                + "（AuthLoginController#getSessions）")
+        void getSessions_returnsOnlyAuthenticatedUsersSessions() throws Exception {
+            var session = new SessionResponse(
+                    100L, "自分のPC", "DESKTOP", "127.0.0.1", "Mozilla/5.0",
+                    false, LocalDateTime.of(2026, 7, 1, 10, 0),
+                    LocalDateTime.of(2026, 8, 1, 10, 0),
+                    LocalDateTime.of(2026, 8, 8, 10, 0), true);
+            given(authService.getSessions(eq(SELF_USER_ID), any(), any()))
+                    .willReturn(ApiResponse.of(List.of(session)));
+
+            mockMvc.perform(get("/api/v1/auth/sessions"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data[0].id").value(100))
+                    .andExpect(jsonPath("$.data[0].deviceName").value("自分のPC"));
+        }
     }
 }

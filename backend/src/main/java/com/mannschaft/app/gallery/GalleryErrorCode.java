@@ -20,7 +20,7 @@ public enum GalleryErrorCode implements ErrorCode {
     /** 権限不足 */
     INSUFFICIENT_PERMISSION("GALLERY_003", "この操作に必要な権限がありません", Severity.WARN),
 
-    /** ダウンロード不許可 */
+    /** ダウンロード不許可（明確な認可拒否 → 403 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     DOWNLOAD_NOT_ALLOWED("GALLERY_004", "このアルバムのダウンロードは許可されていません", Severity.WARN),
 
     /** ファイルサイズ超過 */
@@ -50,7 +50,7 @@ public enum GalleryErrorCode implements ErrorCode {
     /** ストレージにオブジェクトが存在しない */
     MEDIA_NOT_FOUND_IN_STORAGE("GALLERY_013", "指定されたメディアがストレージに存在しません", Severity.WARN),
 
-    /** ストレージクォータ超過 */
+    /** ストレージクォータ超過（F13 統合クォータ機構。状態競合 → 409 を {@link com.mannschaft.app.common.GlobalExceptionHandler} で明示登録） */
     STORAGE_QUOTA_EXCEEDED("GALLERY_014", "ストレージ容量が不足しているためアップロードできません", Severity.WARN);
 
     private final String code;

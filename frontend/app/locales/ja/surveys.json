@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "下書き",
       "PUBLISHED": "受付中",
-      "CLOSED": "締切"
+      "CLOSED": "締切",
+      "ARCHIVED": "アーカイブ"
     },
     "questionType": {
       "SINGLE_CHOICE": "単一選択",
@@ -17,7 +18,8 @@
       "label": "結果の公開範囲",
       "CREATOR_ONLY": "作成者のみ",
       "RESPONDENTS": "回答者のみ",
-      "ALL_MEMBERS": "全メンバー"
+      "ALL_MEMBERS": "全メンバー",
+      "AFTER_CLOSE": "締切後に全メンバー"
     },
     "unrespondedVisibility": {
       "label": "未回答者の可視範囲",
@@ -65,7 +67,8 @@
         "questionsRequired": "設問を1つ以上追加してください",
         "questionTextRequired": "設問{index}の文章を入力してください",
         "optionsTooFew": "設問{index}の選択肢は2つ以上必要です",
-        "optionEmpty": "設問{index}の選択肢に空欄があります"
+        "optionEmpty": "設問{index}の選択肢に空欄があります",
+        "questionTypeUnsupported": "設問{index}: 日付設問は現在サポートされていません。種別を選び直してください。"
       },
       "questionEditor": {
         "empty": "設問がありません",
@@ -179,6 +182,18 @@
       "optionCount": "{count}件 ({percentage}%)",
       "noOptionData": "データがありません。",
       "noQuestionData": "集計対象の設問がありません。"
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "回答者が少ないため集計結果を伏せています",
+        "description": "匿名アンケートでは、回答直後の集計の変化から個人の回答が推測されるおそれがあります。回答者が{threshold}名以上になると集計結果を表示します。（現在 {count} 名）"
+      },
+      "respondCta": "このアンケートに回答する",
+      "editResponseCta": "回答を修正する",
+      "forbidden": {
+        "title": "このアンケートの結果を閲覧する権限がありません",
+        "description": "このアンケートは配信対象が限定されており、あなたは対象に含まれていません。心当たりがない場合は作成者にお問い合わせください。"
+      }
     }
   }
 }

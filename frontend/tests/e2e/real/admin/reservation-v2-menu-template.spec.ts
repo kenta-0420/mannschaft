@@ -37,7 +37,8 @@ import {
 } from '@playwright/test'
 import { waitForHydration } from '../../helpers/wait'
 
-const BE = 'http://localhost:8080'
+// 検証用 worktree では本陣（8080）とは別ポートの BE を建てるため、API_BASE_URL/BE_ORIGIN で上書き可能にする。
+const BE = process.env.API_BASE_URL ?? process.env.BE_ORIGIN ?? 'http://localhost:8080'
 const FE_ORIGIN = process.env.BASE_URL ?? 'http://localhost:3002'
 const ADMIN_EMAIL = process.env.TEST_ADMIN_EMAIL ?? 'e2e-admin@test.mannschaft.local'
 const ADMIN_PASSWORD = process.env.TEST_ADMIN_PASSWORD ?? 'TestPass2026!'
@@ -174,6 +175,37 @@ async function seedBrowserAuth(page: Page, me: MeProfile): Promise<void> {
 
 // === 日付ユーティリティ（Asia/Tokyo 前提・playwright.config の timezoneId と一致） ===
 const DAY_CODES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const
+const WEEKDAY_JA = ['日', '月', '火', '水', '木', '金', '土'] as const
+
+/** マトリックスの行ラベル "YYYY/MM/DD (ddd)"（SlotMatrixPicker の dayjs ja ロケール表記と一致）。 */
+function matrixRowDateLabel(iso: string): string {
+  return `${iso.replaceAll('-', '/')} (${WEEKDAY_JA[new Date(`${iso}T00:00:00Z`).getUTCDay()]})`
+}
+
+/** 正規表現メタ文字を含む行ラベルを安全に埋め込むためのエスケープ。 */
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * マトリックスは月曜起点の週表示のため、対象日を含む週まで週ナビを進める
+ * （明日が日曜→月曜またぎで翌週になるケースを取りこぼさない）。
+ * 写経元: reservation-v2-d-group.spec.ts の goToWeekContaining。
+ */
+async function openMatrixWeekContaining(page: Page, targetIso: string): Promise<void> {
+  const weekBtn = page.getByRole('button', { name: /^週 /, exact: false })
+  await expect(weekBtn).toBeVisible({ timeout: 20_000 })
+  const nextWeekBtn = page.locator('button').filter({ has: page.locator('.pi-angle-right') }).first()
+  for (let i = 0; i < 8; i++) {
+    const text = (await weekBtn.textContent()) ?? ''
+    const m = text.match(/(\d{4})\/(\d{2})\/(\d{2}) - (\d{4})\/(\d{2})\/(\d{2})/)
+    if (!m) throw new Error(`週ラベル取得失敗: "${text}"`)
+    if (targetIso >= `${m[1]}-${m[2]}-${m[3]}` && targetIso <= `${m[4]}-${m[5]}-${m[6]}`) return
+    await nextWeekBtn.click()
+    await page.waitForTimeout(400)
+  }
+  throw new Error(`週範囲内に ${targetIso} が見つからない`)
+}
 
 function tomorrowInfo(): { iso: string; slash: string; dayCode: (typeof DAY_CODES)[number] } {
   const d = new Date(Date.now() + 24 * 60 * 60 * 1000)
@@ -420,25 +452,24 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     await gotoReservations(page, tokens)
 
     await page.getByRole('tab', { name: '予約する' }).click()
-    // 【F03.4.5 W2-1第二隊 PR#2191/984279dcc 追従】「予約する」タブの既定表示は
-    // マトリックス表示（SlotMatrixPicker）に変更され、DatePicker(.p-datepicker-input)は
-    // リスト表示（SlotPicker）でのみ描画される。明示的にリスト表示へ切り替える。
-    await page.getByRole('button', { name: 'リスト表示' }).click()
-    // DatePicker を明日に変更（date-format yy/mm/dd）
-    const dateInput = page.locator('.p-datepicker-input').first()
-    await expect(dateInput).toBeVisible({ timeout: 15_000 })
-    await dateInput.fill(tmr.slash)
-    await dateInput.press('Enter')
+    // 【旧表示撤去 2026-08-04 追従】「予約する」タブはマトリックス表示（SlotMatrixPicker）一本になり、
+    // 旧リスト表示（SlotPicker）の DatePicker(.p-datepicker-input)は存在しない。
+    // 検証内容（明日に 10:00/10:30/11:00/11:30 の4枠が空きで出ること）はマトリックスのセルで確認する。
+    await expect(page.getByText('メニューで絞り込む')).toBeVisible({ timeout: 20_000 })
+    await openMatrixWeekContaining(page, tmr.iso)
 
-    // 4枠（10:00〜11:30 開始・30分刻み）が「空きあり」で表示されること
+    const dateLabel = matrixRowDateLabel(tmr.iso)
     for (const t of ['10:00', '10:30', '11:00', '11:30']) {
       await expect(
-        page.getByRole('button', { name: new RegExp(`${t}(:00)?\\s*-`) }),
-        `${t} 開始の枠が表示されること`,
+        page.getByRole('button', { name: `${dateLabel} ${t} 席A 空き`, exact: true }),
+        `${t} 開始のセルが「空き」で表示されること`,
       ).toBeVisible({ timeout: 15_000 })
     }
-    const availableCount = await page.getByText('空きあり').count()
-    console.log(`[STEP-5] 空きあり枠数=${availableCount}`)
+    // 明日の行（席A）の「空き」セル総数がちょうど4であること（枠は4件しか作っていない）
+    const availableCount = await page
+      .getByRole('button', { name: new RegExp(`^${escapeRegExp(dateLabel)} \\d{2}:\\d{2} 席A 空き$`) })
+      .count()
+    console.log(`[STEP-5] 明日の空きセル数=${availableCount}`)
     expect(availableCount, '明日の枠は4件のはず').toBe(4)
 
     await page.screenshot({ path: 'test-results/rsv-v2-05-slots-visible.png', fullPage: true })
@@ -452,25 +483,28 @@ test.describe('RSV-V2: メニュー管理＋週間テンプレート一括枠生
     await gotoReservations(page, tokens)
 
     await page.getByRole('tab', { name: '予約する' }).click()
-    // 既定表示はマトリックス表示のため、リスト表示（DatePicker/箇条書き枠）へ明示的に切り替える。
-    await page.getByRole('button', { name: 'リスト表示' }).click()
-    const dateInput = page.locator('.p-datepicker-input').first()
-    await expect(dateInput).toBeVisible({ timeout: 15_000 })
-    await dateInput.fill(tmr.slash)
-    await dateInput.press('Enter')
+    // 【旧表示撤去 2026-08-04 追従】マトリックスの30分セルは GroupBookingDialog（メニュー選択→
+    // プレビュー→確定）へルーティングされる。旧リスト表示の ReservationForm 経路は撤去済み。
+    await expect(page.getByText('メニューで絞り込む')).toBeVisible({ timeout: 20_000 })
+    await openMatrixWeekContaining(page, tmr.iso)
 
-    // 10:00 枠をクリック → 予約確認ダイアログ
-    const slotBtn = page.getByRole('button', { name: /10:00(:00)?\s*-/ }).first()
-    await expect(slotBtn).toBeVisible({ timeout: 15_000 })
-    await slotBtn.click()
+    const dateLabel = matrixRowDateLabel(tmr.iso)
+    const cell1000 = page.getByRole('button', { name: `${dateLabel} 10:00 席A 空き`, exact: true })
+    await expect(cell1000).toBeVisible({ timeout: 15_000 })
+    await cell1000.click()
 
-    // DatePicker のカレンダーオーバーレイも role=dialog（名前「日付を選択」）のため名前で特定する
-    const dialog = page.getByRole('dialog', { name: '予約確認' })
-    await expect(dialog, '予約確認ダイアログが開くこと').toBeVisible({ timeout: 10_000 })
-    await expect(dialog.getByText('席A')).toBeVisible()
+    const menuDialog = page.getByRole('dialog', { name: 'メニューを選ぶ' })
+    await expect(menuDialog, 'メニュー選択ダイアログが開くこと').toBeVisible({ timeout: 10_000 })
+    // 本 STEP は「1枠の予約が成立して一覧と実DBに反映される」ことの検証のため、
+    // メニュー無し（30分1枠）を選んで最短経路でプレビューへ進む。
+    await menuDialog.getByTestId('group-no-menu').click()
+
+    const previewDialog = page.getByRole('dialog', { name: 'この内容で予約します' })
+    await expect(previewDialog, '予約プレビューが開くこと').toBeVisible({ timeout: 10_000 })
+    await expect(previewDialog.getByText('席A')).toBeVisible()
     await page.screenshot({ path: 'test-results/rsv-v2-06a-reserve-dialog.png', fullPage: true })
 
-    await dialog.getByRole('button', { name: '予約する' }).click()
+    await previewDialog.getByTestId('group-confirm').click()
     await expect(
       page.getByText('予約が完了しました'),
       '予約成立トーストが出ること',

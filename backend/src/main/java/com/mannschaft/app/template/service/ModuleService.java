@@ -37,6 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +75,31 @@ public class ModuleService {
         return moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
                 .stream()
                 .filter(ModuleDefinitionEntity::getIsActive)
+                .map(this::toModuleResponse)
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
+                .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    /**
+     * SYSTEM_ADMIN 管理画面向けに全モジュールを取得する。
+     *
+     * <p>tenant 向けの {@link #getModuleCatalog()} が「OPTIONAL かつ is_active」に絞り込むのに対し、
+     * こちらは <b>DEFAULT/OPTIONAL・is_active の true/false を問わず全件</b>を moduleNumber 昇順で返す。
+     * これにより管理画面に DEFAULT モジュールも表示され、is_active=false へトグルした行も
+     * 一覧に残り続けて再有効化できる（無効化しても画面から消えない）。</p>
+     *
+     * <p>キャッシュは付けない。管理画面は低トラフィックで、有料要否/有効状態トグル直後の
+     * 反映を常に保証すべきため、常に最新を DB から読む。論理削除は
+     * {@code @SQLRestriction("deleted_at IS NULL")} により自動除外される。</p>
+     *
+     * @return 全モジュール詳細リスト（moduleNumber 昇順）
+     */
+    public List<ModuleResponse> getAllModulesForAdmin() {
+        return moduleDefinitionRepository.findAllByOrderByModuleNumberAsc()
+                .stream()
                 .map(this::toModuleResponse)
                 .toList();
     }
@@ -114,8 +140,11 @@ public class ModuleService {
                 })
                 .toList();
 
+        // 表示用「X/10 使用中」の使用数。上限強制カウントと同一定義に揃え、grandfather 行は数えない
+        // （表示層でも grandfather を除外しないと FE の追加ボタンが閉じ AC-3 が表示層で崩れるため）。
         long enabledCount = enabledByModuleId.values().stream()
                 .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                 .count();
 
         return TeamModuleCatalogResponse.builder()
@@ -160,8 +189,11 @@ public class ModuleService {
                 })
                 .toList();
 
+        // 表示用「X/10 使用中」の使用数。上限強制カウント（countBy...IsGrandfatheredFalse）と同一定義に
+        // 揃え、grandfather 行は数えない（表示層でも除外しないと AC-3 が表示層で崩れるため）。
         long enabledCount = enabledByModuleId.values().stream()
                 .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                 .count();
 
         return OrgModuleCatalogResponse.builder()
@@ -230,7 +262,11 @@ public class ModuleService {
                             tem.getTrialExpiresAt());
                 })
                 .filter(r -> r != null)
-                .toList();
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -264,9 +300,12 @@ public class ModuleService {
                 throw new BusinessException(TemplateErrorCode.TMPL_004);
             }
 
-            // 無料上限チェック
+            // 無料上限チェック。
+            // グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する
+            // （既存テナントが既得機能で無料枠を消費し新規有効化できなくなる事故の根治）。
             long enabledCount = teamEnabledModuleRepository.findByTeamId(teamId).stream()
-                    .filter(TeamEnabledModuleEntity::getIsEnabled)
+                    .filter(row -> Boolean.TRUE.equals(row.getIsEnabled()))
+                    .filter(row -> !Boolean.TRUE.equals(row.getIsGrandfathered()))
                     .count();
             if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
                 throw new BusinessException(TemplateErrorCode.TMPL_003);
@@ -416,7 +455,11 @@ public class ModuleService {
                             oem.getEnabledAt());
                 })
                 .filter(r -> r != null)
-                .toList();
+                // issue #2544 B 群: Stream#toList() の実体は java.util.ImmutableCollections$ListN であり、
+                // RedisConfig の activateDefaultTyping(EVERYTHING) が埋め込む具象型 ID から復元できない
+                // （既定コンストラクタが無い）。復元失敗は fail-open で WARN に握り潰され、
+                // 「毎回ミスするだけの効かないキャッシュ」に静かに戻る。可変の ArrayList に集めること。
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     /**
@@ -449,9 +492,19 @@ public class ModuleService {
                 });
 
         if (request.isEnabled()) {
-            // 無料上限チェック
+            // 有料プランチェック（チーム側 toggleTeamModule と対称・穴の根治）。
+            // 有料モジュールは premium entitlement（scope=ORG）を保持していなければ有効化不可。
+            // scope は組織なので EntitlementScopeKind.ORG + orgId を渡す（チーム側は TEAM + teamId）。
+            if (module.getRequiresPaidPlan() && !entitlementQueryService.isEntitled(
+                    EntitlementScopeKind.ORG, orgId, FeatureKeys.TEMPLATE_PREMIUM_MODULES)) {
+                throw new BusinessException(TemplateErrorCode.TMPL_004);
+            }
+
+            // 無料上限チェック。
+            // グランドファザリング行（is_grandfathered=1）は既得機能として上限カウントから除外する
+            // （既存テナントが既得機能で無料枠を消費し新規有効化できなくなる事故の根治）。
             long enabledCount = organizationEnabledModuleRepository
-                    .countByOrganizationIdAndIsEnabledTrue(orgId);
+                    .countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(orgId);
             if (enabledCount >= FREE_PLAN_MODULE_LIMIT) {
                 throw new BusinessException(TemplateErrorCode.TMPL_003);
             }
@@ -521,7 +574,9 @@ public class ModuleService {
                 .findByModuleId(module.getId()).stream()
                 .map(la -> new LevelAvailabilityResponse(
                         la.getLevel().name(), la.getIsAvailable(), la.getNote()))
-                .toList();
+                // issue #2544 B 群: 本ヘルパーの戻り値は moduleCatalog / moduleDetail キャッシュの
+                // 内側に入る。ImmutableCollections$ListN は復元できないため可変 ArrayList にする。
+                .collect(Collectors.toCollection(ArrayList::new));
 
         List<ModuleSummaryResponse> recs = moduleRecommendationRepository
                 .findByModuleId(module.getId()).stream()
@@ -529,7 +584,8 @@ public class ModuleService {
                 .filter(m -> m != null)
                 .map(m -> new ModuleSummaryResponse(
                         m.getId(), m.getName(), m.getSlug(), m.getModuleType().name()))
-                .toList();
+                // issue #2544 B 群: 同上（moduleCatalog は外側と要素内で二重に壊れていた）。
+                .collect(Collectors.toCollection(ArrayList::new));
 
         return new ModuleResponse(
                 module.getId(),

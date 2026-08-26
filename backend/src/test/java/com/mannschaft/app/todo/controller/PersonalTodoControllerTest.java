@@ -9,7 +9,9 @@ import com.mannschaft.app.todo.TodoStatus;
 import com.mannschaft.app.todo.dto.TodoResponse;
 import com.mannschaft.app.todo.dto.TodoStatusChangeRequest;
 import com.mannschaft.app.todo.dto.TodoStatusChangeResponse;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import com.mannschaft.app.todo.service.TodoGanttService;
+import com.mannschaft.app.todo.service.TodoCalendarService;
 import com.mannschaft.app.todo.service.TodoPersonalMemoService;
 import com.mannschaft.app.todo.service.TodoScheduleLinkService;
 import com.mannschaft.app.todo.service.TodoService;
@@ -70,10 +72,16 @@ class PersonalTodoControllerTest {
     private TodoGanttService ganttService;
 
     @Mock
+    private TodoCalendarService calendarService;
+
+    @Mock
     private TodoScheduleLinkService scheduleLinkService;
 
     @Mock
     private TodoPersonalMemoService personalMemoService;
+
+    @Mock
+    private TodoAccessGuard todoAccessGuard;
 
     @Mock
     private MessageSource messageSource;
@@ -181,6 +189,27 @@ class PersonalTodoControllerTest {
         }
     }
 
+    @Nested
+    @DisplayName("GET /api/v1/todos/my/calendar — マイカレンダー用TODO")
+    class MyCalendarTodos {
+
+        @Test
+        @DisplayName("PersonalTodoController#getMyCalendarTodos: 自己スコープのカレンダーTODOを200で返す")
+        void 自己スコープのカレンダーTODOを返す() throws Exception {
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(calendarService.getMyCalendarTodos(eq(USER_ID), any(), any())).willReturn(List.of());
+
+                mockMvc.perform(get("/api/v1/todos/my/calendar")
+                                .param("from", "2030-01-01")
+                                .param("to", "2030-01-31"))
+                        .andExpect(status().isOk());
+
+                verify(calendarService).getMyCalendarTodos(eq(USER_ID), any(), any());
+            }
+        }
+    }
+
     // ============================================================
     // POST /api/v1/todos/{id}/restore（AC-5 / AC-6）
     // ============================================================
@@ -195,15 +224,20 @@ class PersonalTodoControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
 
-                // assertDeletedTodoScope / restorePersonalTodo は void（正常系は例外なし）
+                // restorePersonalTodo は void（正常系は例外なし）。
+                // 認可は restorePersonalTodo 内の existsByTodoIdAndUserId で担保するため、
+                // コントローラーは assertDeletedTodoScope を呼ばない（本PRの根治対象。
+                // 個人TODOのscopeIdはuserIdで保存されるため、assertDeletedTodoScope(id, PERSONAL, null)は
+                // Objects.equals(userId, null)=false で常にTODO_NOT_FOUNDとなる誤りだった）。
                 given(todoService.getTodo(TODO_ID)).willReturn(ApiResponse.of(sampleTodo()));
 
                 mockMvc.perform(post("/api/v1/todos/{id}/restore", TODO_ID))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.data.id").value(TODO_ID));
 
-                verify(todoService).assertDeletedTodoScope(eq(TODO_ID), eq(TodoScopeType.PERSONAL), eq(null));
                 verify(todoService).restorePersonalTodo(TODO_ID, USER_ID);
+                verify(todoService, org.mockito.Mockito.never())
+                        .assertDeletedTodoScope(eq(TODO_ID), eq(TodoScopeType.PERSONAL), eq(null));
             }
         }
 

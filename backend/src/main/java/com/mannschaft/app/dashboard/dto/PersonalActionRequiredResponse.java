@@ -12,7 +12,7 @@ import java.util.List;
  * スコープ情報（scopeType/scopeSlug/scopeName）付きのフラットリストで返す。</p>
  *
  * <p>各アイテムには {@code scopeType}/{@code scopeSlug}/{@code scopeName}/{@code itemType}/
- * {@code itemId}/{@code title}/{@code deadline}/{@code startsAt} が含まれる（AC-15）。</p>
+ * {@code itemId}/{@code title}/{@code circulatedAt}/{@code deadline}/{@code startsAt} が含まれる（AC-15）。</p>
  *
  * <p>設計書: docs/features/F22.1_swipe_scope_dashboard / 個人横断「要対応」API 仕様</p>
  */
@@ -55,6 +55,9 @@ public record PersonalActionRequiredResponse(
 
             /** タイトル。 */
             @JsonProperty("title") String title,
+
+            /** 回覧日時（circulation のみ設定、他は null）。 */
+            @JsonProperty("circulated_at") LocalDateTime circulatedAt,
 
             /** 期限（nullable）。circulation の dueDate / survey の expiresAt。 */
             @JsonProperty("deadline") LocalDateTime deadline,

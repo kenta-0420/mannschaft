@@ -35,7 +35,7 @@ public class KbImageUploadEntity {
     @Column(nullable = false)
     private Long uploaderId;
 
-    @Column(nullable = false, length = 500, unique = true)
+    @Column(name = "s3_key", nullable = false, length = 500, unique = true)
     private String s3Key;
 
     @Column(nullable = false)
@@ -44,6 +44,7 @@ public class KbImageUploadEntity {
     @Column(nullable = false, length = 50)
     private String contentType;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

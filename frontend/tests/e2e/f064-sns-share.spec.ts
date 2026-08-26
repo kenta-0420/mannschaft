@@ -9,8 +9,12 @@ import { waitForHydration } from './helpers/wait'
  *
  * テストデータ:
  * - ID=1: PUBLIC な活動記録（テスト環境DBに投入済み）
+ *         title: '春季合宿2026' / 所属スコープ: TEAM 'FC東京U-18（テスト）'
  * - ID=2: MEMBERS_ONLY な活動記録（バックエンドが 404 を返す）
  * - ID=9999999: 存在しない ID
+ *
+ * NOTE: 公開 API（PublicActivityDetail）は御裁可済み 8 項目のみを返す。
+ * 開催場所（location）は禁則フィールドで返らないため、画面にも出ない。
  *
  * 認証:
  * - `/activity/[id].vue` は `definePageMeta({ auth: false })` のため
@@ -41,8 +45,15 @@ test.describe('SNS-001〜005: F06.4 SNS シェア機能（実機）', () => {
       timeout: 15_000,
     })
 
-    // 場所が表示されること
-    await expect(page.getByText('長野県・菅平高原')).toBeVisible({ timeout: 5_000 })
+    // 所属スコープ名が表示されること（BE: PublicScopeRef.scopeName）
+    // 旧版は開催場所を assert していたが、公開 DTO の禁則フィールドとなり返らなくなったため、
+    // 公開してよい項目のうち「記録の帰属が分かる」要素で守り直す。
+    await expect(page.getByText('FC東京U-18（テスト）')).toBeVisible({ timeout: 5_000 })
+
+    // 本文が表示されること（seed の description）
+    await expect(page.getByText('菅平高原での春季合宿。', { exact: false })).toBeVisible({
+      timeout: 5_000,
+    })
 
     // シェアパネルが表示されること（「シェアする」セクション）
     await expect(page.getByText('シェアする')).toBeVisible({ timeout: 5_000 })

@@ -27,6 +27,7 @@ import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -328,5 +329,79 @@ class GuardianshipProgressionNoticeBatchServiceTest {
                 ArgumentCaptor.forClass(GuardianshipTransitionNotificationEntity.class);
         verify(transitionNotificationRepository).save(rec.capture());
         assertThat(rec.getValue().getSealDate()).isEqualTo(LocalDate.of(2026, 5, 31));
+    }
+
+    // --- ページ上限打ち切りの検知（collectPairs） ---------------------------------------------
+
+    /** private {@code collectPairs(pairKeys, guardiansByChild, today)} を反射で呼ぶ。 */
+    private boolean invokeCollectPairs(LocalDate today) {
+        Boolean r = org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                newService(today), "collectPairs",
+                new java.util.LinkedHashSet<String>(), new java.util.LinkedHashMap<Long, java.util.Set<Long>>(), today);
+        return Boolean.TRUE.equals(r);
+    }
+
+    /** {@code PAGE_SIZE} 件ちょうどのペアリストを 1 ページ分作る（parentUserId/childUserId はページ番号でずらし衝突回避）。 */
+    private List<ParentalConsentService.ParentChildPair> fullConsentPage(int page) {
+        List<ParentalConsentService.ParentChildPair> pairs = new java.util.ArrayList<>();
+        for (int i = 0; i < GuardianshipProgressionNoticeBatchService.PAGE_SIZE; i++) {
+            long seed = (long) page * GuardianshipProgressionNoticeBatchService.PAGE_SIZE + i + 1;
+            pairs.add(new ParentalConsentService.ParentChildPair(seed, seed + 1_000_000L));
+        }
+        return pairs;
+    }
+
+    private List<CareLinkService.ParentChildPair> fullCareLinkPage(int page) {
+        List<CareLinkService.ParentChildPair> pairs = new java.util.ArrayList<>();
+        for (int i = 0; i < GuardianshipProgressionNoticeBatchService.PAGE_SIZE; i++) {
+            long seed = (long) page * GuardianshipProgressionNoticeBatchService.PAGE_SIZE + i + 1;
+            pairs.add(new CareLinkService.ParentChildPair(seed, seed + 2_000_000L));
+        }
+        return pairs;
+    }
+
+    @Test
+    @DisplayName("通常ケース（ページ上限未到達）では打ち切りを検知しない")
+    void collectPairsNotTruncatedWhenUnderPageLimit() {
+        when(parentalConsentService.listApprovedParentChildPairs(0, 500))
+                .thenReturn(List.of(new ParentalConsentService.ParentChildPair(GUARDIAN_ID, CHILD_ID)));
+        when(careLinkService.listActiveParentWatcherPairs(0, 500)).thenReturn(List.of());
+
+        boolean truncated = invokeCollectPairs(LocalDate.of(2026, 2, 1));
+
+        assertThat(truncated).isFalse();
+    }
+
+    @Test
+    @DisplayName("常に PAGE_SIZE 件を返し続けると MAX_PAGES で打ち切られ、取りこぼしを検知する")
+    void collectPairsTruncatedWhenAlwaysFullPage() {
+        when(parentalConsentService.listApprovedParentChildPairs(anyInt(), eq(500)))
+                .thenAnswer(inv -> fullConsentPage(inv.getArgument(0)));
+        when(careLinkService.listActiveParentWatcherPairs(0, 500)).thenReturn(List.of());
+
+        boolean truncated = invokeCollectPairs(LocalDate.of(2026, 2, 1));
+
+        assertThat(truncated).isTrue();
+        verify(parentalConsentService, org.mockito.Mockito.times(GuardianshipProgressionNoticeBatchService.MAX_PAGES))
+                .listApprovedParentChildPairs(anyInt(), eq(500));
+    }
+
+    @Test
+    @DisplayName("ちょうど PAGE_SIZE の倍数で終わる境界ケース（最終ページが満杯・次が空）では誤検知しない")
+    void collectPairsNotTruncatedWhenExactPageSizeMultiple() {
+        // 1ページ目は PAGE_SIZE 件ちょうど、2ページ目は空 → 正常終了（打ち切りではない）。
+        when(parentalConsentService.listApprovedParentChildPairs(0, 500))
+                .thenReturn(fullConsentPage(0));
+        when(parentalConsentService.listApprovedParentChildPairs(1, 500))
+                .thenReturn(List.of());
+        when(careLinkService.listActiveParentWatcherPairs(anyInt(), eq(500)))
+                .thenAnswer(inv -> {
+                    int page = inv.getArgument(0);
+                    return page == 0 ? fullCareLinkPage(0) : List.of();
+                });
+
+        boolean truncated = invokeCollectPairs(LocalDate.of(2026, 2, 1));
+
+        assertThat(truncated).isFalse();
     }
 }

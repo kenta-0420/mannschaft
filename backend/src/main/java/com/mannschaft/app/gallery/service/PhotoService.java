@@ -1,5 +1,6 @@
 package com.mannschaft.app.gallery.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.DomainEventPublisher;
 import com.mannschaft.app.common.storage.S3ObjectDeleteEvent;
@@ -59,6 +60,8 @@ public class PhotoService {
     private final DomainEventPublisher eventPublisher;
     /** F13 Phase 4-δ: 統合ストレージクォータサービス。 */
     private final StorageQuotaService storageQuotaService;
+    /** 認可根治戦役 Wave3-B5: 書込CRUD/DL の scope 認可用。 */
+    private final AccessControlService accessControlService;
 
     private static final long MAX_FILE_SIZE = 100L * 1024 * 1024; // 100MB（動画対応）
     private static final int MAX_BATCH_SIZE = 20;
@@ -69,8 +72,19 @@ public class PhotoService {
 
     /**
      * アルバム内メディアをページング取得する。
+     *
+     * <p><b>認可根治戦役 Wave3-B1b</b>: 従来 {@code PhotoService#listPhotos} は可視性検証ゼロで
+     * {@code photoRepository.findByAlbumId} を返すだけだった（対照的に {@code getAlbum} は
+     * {@code contentVisibilityChecker.assertCanView} を通していた）。entity 由来 scope（アルバムの
+     * teamId/organizationId）の {@link AccessControlService#checkMembership} で保護する
+     * （既存の同ドメイン {@link #getAlbumDownloadUrl}/{@link #getPhotoDownloadUrl} と同じ手本）。</p>
      */
-    public Page<PhotoResponse> listPhotos(Long albumId, String sort, Pageable pageable) {
+    public Page<PhotoResponse> listPhotos(Long albumId, String sort, Pageable pageable, Long userId) {
+        PhotoAlbumEntity album = albumService.findAlbumOrThrow(albumId);
+        accessControlService.checkMembership(userId,
+                PhotoAlbumService.resolveScopeId(album.getTeamId(), album.getOrganizationId()),
+                PhotoAlbumService.resolveScopeType(album.getTeamId()));
+
         Page<PhotoEntity> page;
         if ("taken_at".equals(sort)) {
             page = photoRepository.findByAlbumIdOrderByTakenAtDesc(albumId, pageable);
@@ -93,6 +107,17 @@ public class PhotoService {
         }
 
         PhotoAlbumEntity album = albumService.findAlbumOrThrow(albumId);
+
+        // 認可根治戦役 Wave3-B5: メンバーであること、かつ ADMIN/DEPUTY_ADMIN またはアルバムが
+        // allowMemberUpload=true であることを要求する（entity が保持する業務フラグを実効化）。
+        Long authzScopeId = PhotoAlbumService.resolveScopeId(album.getTeamId(), album.getOrganizationId());
+        String authzScopeType = PhotoAlbumService.resolveScopeType(album.getTeamId());
+        accessControlService.checkMembership(userId, authzScopeId, authzScopeType);
+        boolean canUpload = accessControlService.isAdminOrAbove(userId, authzScopeId, authzScopeType)
+                || Boolean.TRUE.equals(album.getAllowMemberUpload());
+        if (!canUpload) {
+            throw new BusinessException(GalleryErrorCode.UPLOAD_NOT_ALLOWED);
+        }
 
         // ファイルサイズチェック
         for (UploadPhotosRequest.PhotoItem item : request.getPhotos()) {
@@ -186,10 +211,18 @@ public class PhotoService {
 
     /**
      * 写真情報を更新する。
+     *
+     * <p><b>認可根治戦役 Wave3-B5</b>: 写真が属するアルバムの entity 由来 scope で
+     * ADMIN/DEPUTY_ADMIN のみ更新可（id 指定エンドポイントのため digest 等と同じ手本で
+     * 写真 → アルバムの順に fetch して scope を解決する）。</p>
      */
     @Transactional
-    public PhotoResponse updatePhoto(Long photoId, UpdatePhotoRequest request) {
+    public PhotoResponse updatePhoto(Long photoId, Long userId, UpdatePhotoRequest request) {
         PhotoEntity entity = findPhotoOrThrow(photoId);
+        PhotoAlbumEntity album = albumService.findAlbumOrThrow(entity.getAlbumId());
+        accessControlService.checkAdminOrAbove(userId,
+                PhotoAlbumService.resolveScopeId(album.getTeamId(), album.getOrganizationId()),
+                PhotoAlbumService.resolveScopeType(album.getTeamId()));
 
         Integer sortOrder = request.getSortOrder() != null ? request.getSortOrder() : entity.getSortOrder();
         entity.update(request.getCaption(), sortOrder);
@@ -204,10 +237,16 @@ public class PhotoService {
      *
      * <p><b>F13 Phase 4-δ</b>: DB 削除後に {@link StorageQuotaService#recordDeletion} で
      * 使用量を減算する。スコープはアルバムの teamId / organizationId で決定する。</p>
+     *
+     * <p><b>認可根治戦役 Wave3-B5</b>: entity 由来 scope の ADMIN/DEPUTY_ADMIN のみ削除可。</p>
      */
     @Transactional
-    public void deletePhoto(Long photoId) {
+    public void deletePhoto(Long photoId, Long userId) {
         PhotoEntity entity = findPhotoOrThrow(photoId);
+        PhotoAlbumEntity ownerAlbum = albumService.findAlbumOrThrow(entity.getAlbumId());
+        accessControlService.checkAdminOrAbove(userId,
+                PhotoAlbumService.resolveScopeId(ownerAlbum.getTeamId(), ownerAlbum.getOrganizationId()),
+                PhotoAlbumService.resolveScopeType(ownerAlbum.getTeamId()));
         Long fileSize = entity.getFileSize() != null ? entity.getFileSize() : 0L;
 
         // アルバムの写真カウントを減算（スコープ解決も兼ねる）
@@ -235,12 +274,19 @@ public class PhotoService {
 
     /**
      * 個別写真ダウンロード用の Pre-signed URL を生成する。
+     *
+     * <p><b>認可根治戦役 Wave3-B5</b>: entity 由来 scope のメンバーであることを要求する
+     * （ダウンロードは ADMIN 限定ではなく一般メンバーにも許可 — allow_download フラグで
+     * さらに絞り込む既存の業務ルールと整合させる）。</p>
      */
-    public DownloadResponse getPhotoDownloadUrl(Long photoId) {
+    public DownloadResponse getPhotoDownloadUrl(Long photoId, Long userId) {
         PhotoEntity entity = findPhotoOrThrow(photoId);
 
         // アルバムの allow_download チェック
         PhotoAlbumEntity album = albumService.findAlbumOrThrow(entity.getAlbumId());
+        accessControlService.checkMembership(userId,
+                PhotoAlbumService.resolveScopeId(album.getTeamId(), album.getOrganizationId()),
+                PhotoAlbumService.resolveScopeType(album.getTeamId()));
         if (!album.getAllowDownload()) {
             throw new BusinessException(GalleryErrorCode.DOWNLOAD_NOT_ALLOWED);
         }
@@ -253,9 +299,14 @@ public class PhotoService {
 
     /**
      * アルバム一括ダウンロード用の Pre-signed URL を生成する。
+     *
+     * <p><b>認可根治戦役 Wave3-B5</b>: entity 由来 scope のメンバーであることを要求する。</p>
      */
-    public DownloadResponse getAlbumDownloadUrl(Long albumId, List<Long> photoIds, int limit) {
+    public DownloadResponse getAlbumDownloadUrl(Long albumId, Long userId, List<Long> photoIds, int limit) {
         PhotoAlbumEntity album = albumService.findAlbumOrThrow(albumId);
+        accessControlService.checkMembership(userId,
+                PhotoAlbumService.resolveScopeId(album.getTeamId(), album.getOrganizationId()),
+                PhotoAlbumService.resolveScopeType(album.getTeamId()));
 
         if (!album.getAllowDownload()) {
             throw new BusinessException(GalleryErrorCode.DOWNLOAD_NOT_ALLOWED);

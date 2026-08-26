@@ -3,6 +3,7 @@ package com.mannschaft.app.village.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.MatchApplicationCreateRequest;
 import com.mannschaft.app.village.dto.MatchApplicationResponse;
@@ -70,12 +71,26 @@ import java.util.UUID;
  *   <li>クエリパラメータ検証（不正カテゴリ・不正ステータス）は Controller で受けて
  *       {@link VillageErrorCode#VILLAGE_FIELD_INVALID} を投げる。</li>
  * </ul>
+ *
+ * <h3>認可 Wave3（村ロットA）監査済マーカー</h3>
+ * <p>全 11 EP は {@link VillageMatchRecruitService} 内で現役メンバーシップ（
+ * {@code findActiveByVillageIdAndSubject}）を根拠に認可判定する（{@code AuthzControllerGuardArchTest}
+ * の白名簿クラスを介さない別方式）。本戦役で、判定基準を村内の標準の流儀へ揃えた箇所は次の 2 つ:</p>
+ * <ul>
+ *   <li>{@code list}: 一覧も詳細取得（{@code get}）と同じく村人限定とする。
+ *       {@code listRecruits} が {@code ensureVillager} で現役の村人であることを検証する。</li>
+ *   <li>{@code update}: 投稿者本人判定（{@code ensureAuthor}）は、{@code close}/{@code fulfill}/
+ *       {@code cancel}/応募審査が使う {@code ensureRecruitReviewer}（#2284）と同一の現役性述語
+ *       {@code findActiveByVillageIdAndSubject} を本人一致より先に評価する。更新系と状態遷移系は
+ *       同一基準で判定される。</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/v1/villages/{villageId}/match-recruits")
 @Tag(name = "村練習試合・審判募集 (F17.1)",
      description = "Phase 2: 練習試合・審判募集の CRUD と応募審査")
 @RequiredArgsConstructor
+@AuthorizedInService
 public class VillageMatchRecruitController {
 
     private final VillageMatchRecruitService matchRecruitService;
@@ -106,10 +121,11 @@ public class VillageMatchRecruitController {
                 @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(value = "page", defaultValue = "0") int page,
             @RequestParam(value = "size", defaultValue = "20") int size) {
+        Long actorUserId = SecurityUtils.getCurrentUserId();
         VillageMatchRecruitCategory categoryEnum = parseCategoryOrNull(category);
         VillageMatchRecruitStatus statusEnum = parseStatusOrNull(status);
         MatchRecruitListResponse response = matchRecruitService.listRecruits(
-                villageId, categoryEnum, statusEnum, fromDate, toDate, page, size);
+                villageId, categoryEnum, statusEnum, fromDate, toDate, page, size, actorUserId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 

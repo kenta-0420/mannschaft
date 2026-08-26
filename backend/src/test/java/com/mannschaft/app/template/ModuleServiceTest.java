@@ -7,6 +7,8 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.service.TeamPlanService;
 import com.mannschaft.app.template.dto.ModuleResponse;
+import com.mannschaft.app.template.dto.OrgModuleCatalogResponse;
+import com.mannschaft.app.template.dto.TeamModuleCatalogResponse;
 import com.mannschaft.app.template.dto.TeamModuleResponse;
 import com.mannschaft.app.template.dto.ToggleModuleRequest;
 import com.mannschaft.app.template.entity.ModuleDefinitionEntity;
@@ -142,6 +144,19 @@ class ModuleServiceTest {
                 .build();
     }
 
+    /** グランドファザリング行（is_enabled=true・is_grandfathered=true）を生成する。 */
+    private TeamEnabledModuleEntity createGrandfatheredModule(Long teamId, Long moduleId) {
+        return TeamEnabledModuleEntity.builder()
+                .teamId(teamId)
+                .moduleId(moduleId)
+                .isEnabled(true)
+                .isGrandfathered(true)
+                .enabledAt(LocalDateTime.now())
+                .enabledBy(null)
+                .trialUsed(false)
+                .build();
+    }
+
     // ========================================
     // getModuleCatalog
     // ========================================
@@ -188,6 +203,59 @@ class ModuleServiceTest {
             List<ModuleResponse> result = moduleService.getModuleCatalog();
 
             // Then
+            assertThat(result).isEmpty();
+        }
+    }
+
+    // ========================================
+    // getAllModulesForAdmin（管理一覧: DEFAULT+inactive 全件）
+    // ========================================
+
+    @Nested
+    @DisplayName("getAllModulesForAdmin")
+    class GetAllModulesForAdmin {
+
+        @Test
+        @DisplayName("取得_DEFAULTとinactiveを含む全件をリポジトリ順で返す")
+        void 取得_DEFAULTとinactiveを含む全件を返す() {
+            // Given: DEFAULT / 有効OPTIONAL / 無効OPTIONAL が moduleNumber 昇順で並ぶ
+            ModuleDefinitionEntity defaultModule = ModuleDefinitionEntity.builder()
+                    .name("メンバー管理").slug("member-management")
+                    .moduleType(ModuleDefinitionEntity.ModuleType.DEFAULT)
+                    .moduleNumber(1).requiresPaidPlan(false).isActive(true).build();
+            ModuleDefinitionEntity activeOptional = ModuleDefinitionEntity.builder()
+                    .name("予約管理").slug("reservation")
+                    .moduleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
+                    .moduleNumber(2).requiresPaidPlan(false).isActive(true).build();
+            ModuleDefinitionEntity inactiveOptional = ModuleDefinitionEntity.builder()
+                    .name("無効モジュール").slug("inactive")
+                    .moduleType(ModuleDefinitionEntity.ModuleType.OPTIONAL)
+                    .moduleNumber(3).requiresPaidPlan(false).isActive(false).build();
+
+            given(moduleDefinitionRepository.findAllByOrderByModuleNumberAsc())
+                    .willReturn(List.of(defaultModule, activeOptional, inactiveOptional));
+            given(moduleLevelAvailabilityRepository.findByModuleId(any())).willReturn(List.of());
+            given(moduleRecommendationRepository.findByModuleId(any())).willReturn(List.of());
+
+            // When
+            List<ModuleResponse> result = moduleService.getAllModulesForAdmin();
+
+            // Then: DEFAULT も inactive も除外されず、リポジトリの昇順をそのまま保持する
+            assertThat(result).hasSize(3);
+            assertThat(result).extracting(ModuleResponse::getName)
+                    .containsExactly("メンバー管理", "予約管理", "無効モジュール");
+            assertThat(result).extracting(ModuleResponse::getModuleType)
+                    .containsExactly("DEFAULT", "OPTIONAL", "OPTIONAL");
+            assertThat(result.get(2).getIsActive()).isFalse();
+        }
+
+        @Test
+        @DisplayName("取得_0件_空リスト返却")
+        void 取得_0件_空リスト返却() {
+            given(moduleDefinitionRepository.findAllByOrderByModuleNumberAsc()).willReturn(List.of());
+
+            List<ModuleResponse> result = moduleService.getAllModulesForAdmin();
+
             assertThat(result).isEmpty();
         }
     }
@@ -855,7 +923,7 @@ class ModuleServiceTest {
             given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
                     module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
                     .willReturn(Optional.empty());
-            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrue(ORG_ID))
+            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(ORG_ID))
                     .willReturn(0L);
 
             OrganizationEnabledModuleEntity existing = OrganizationEnabledModuleEntity.builder()
@@ -969,7 +1037,7 @@ class ModuleServiceTest {
             given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
                     module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
                     .willReturn(Optional.empty());
-            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrue(ORG_ID))
+            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(ORG_ID))
                     .willReturn(10L);
 
             ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
@@ -982,16 +1050,39 @@ class ModuleServiceTest {
         }
 
         @Test
-        @DisplayName("AC-C5: 組織側は requiresPaidPlan 判定を持たない（有料モジュールでも entitlement 未参照で有効化成功・無改変）")
-        void 有効化_有料モジュールでも組織は有料判定なし_成功() {
-            // Given: 組織側 toggleOrganizationModule は結線対象外。requiresPaidPlan=true でも
-            // TMPL_004 を投げず、entitlementQueryService.isEntitled も一切参照しないことを保証する。
+        @DisplayName("AC-6: 有料モジュールを premium 権利なし組織で有効化_TMPL004例外（穴の根治）")
+        void 有効化_有料モジュールでpremium権利なし_TMPL004例外() {
+            // Given: 組織側にもチーム側と対称の有料ゲートを敷設。scope=ORG の premium entitlement が
+            // 無ければ TMPL_004。以前は組織側にゲートが無く entitlement 無しでも有効化できる穴だった。
             ModuleDefinitionEntity module = createPaidModule();
             given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
             given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
                     module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
                     .willReturn(Optional.empty());
-            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrue(ORG_ID))
+            given(entitlementQueryService.isEntitled(EntitlementScopeKind.ORG, ORG_ID,
+                    FeatureKeys.TEMPLATE_PREMIUM_MODULES)).willReturn(false);
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When / Then
+            assertThatThrownBy(() -> moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TMPL_004"));
+        }
+
+        @Test
+        @DisplayName("AC-6: 有料モジュールを premium 権利あり組織で有効化_成功")
+        void 有効化_有料モジュールでpremium権利あり_成功() {
+            // Given: scope=ORG の premium entitlement 保持 → ゲート通過し有効化される。
+            ModuleDefinitionEntity module = createPaidModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.empty());
+            given(entitlementQueryService.isEntitled(EntitlementScopeKind.ORG, ORG_ID,
+                    FeatureKeys.TEMPLATE_PREMIUM_MODULES)).willReturn(true);
+            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(ORG_ID))
                     .willReturn(0L);
             given(organizationEnabledModuleRepository.findByOrganizationIdAndModuleId(ORG_ID, MODULE_ID))
                     .willReturn(Optional.empty());
@@ -1003,7 +1094,32 @@ class ModuleServiceTest {
             // When
             moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID);
 
-            // Then: 例外なく有効化され、entitlement 判定は呼ばれない。
+            // Then: 例外なく有効化される。
+            verify(organizationEnabledModuleRepository).save(any(OrganizationEnabledModuleEntity.class));
+        }
+
+        @Test
+        @DisplayName("AC-6: 無料モジュールは有料ゲートを通らず entitlement 未参照で有効化成功")
+        void 有効化_無料モジュールは有料ゲート不通過_成功() {
+            // Given: requiresPaidPlan=false なら短絡評価で isEntitled は呼ばれない（回帰防止）。
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.empty());
+            given(organizationEnabledModuleRepository.countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(ORG_ID))
+                    .willReturn(0L);
+            given(organizationEnabledModuleRepository.findByOrganizationIdAndModuleId(ORG_ID, MODULE_ID))
+                    .willReturn(Optional.empty());
+            given(organizationEnabledModuleRepository.save(any(OrganizationEnabledModuleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When
+            moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID);
+
+            // Then: 有効化され、無料モジュールでは entitlement 判定は呼ばれない。
             verify(organizationEnabledModuleRepository).save(any(OrganizationEnabledModuleEntity.class));
             verify(entitlementQueryService, never())
                     .isEntitled(any(EntitlementScopeKind.class), anyLong(), any(String.class));
@@ -1087,6 +1203,224 @@ class ModuleServiceTest {
 
             // Then
             assertThat(result).isFalse();
+        }
+    }
+
+    // ========================================
+    // 無料上限グランドファザリング除外（PR-A 難所の算術）
+    // ========================================
+
+    @Nested
+    @DisplayName("無料上限からのグランドファザリング除外")
+    class GrandfatherLimitExclusion {
+
+        private static final Long ORG_ID = 200L;
+
+        @Test
+        @DisplayName("チーム: グランドファザリング7本があっても通常10本で上限到達し11本目でTMPL003")
+        void チーム_グランドファザリング除外_通常10本で上限到達() {
+            // Given: 通常有効10本 + グランドファザリング7本 = 計17行。
+            // 上限カウントは grandfather を除外して 10 → 11本目（今回のトグル）で TMPL_003。
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.TEAM))
+                    .willReturn(Optional.empty());
+
+            List<TeamEnabledModuleEntity> rows = new java.util.ArrayList<>();
+            IntStream.rangeClosed(1, 10)
+                    .forEach(i -> rows.add(createEnabledModule(TEAM_ID, (long) (100 + i))));
+            IntStream.rangeClosed(1, 7)
+                    .forEach(i -> rows.add(createGrandfatheredModule(TEAM_ID, (long) (200 + i))));
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(rows);
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When / Then
+            assertThatThrownBy(() -> moduleService.toggleTeamModule(TEAM_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TMPL_003"));
+        }
+
+        @Test
+        @DisplayName("チーム: グランドファザリングのみ7本（通常0）なら上限に達さず有効化成功")
+        void チーム_グランドファザリングのみは上限未達_有効化成功() {
+            // Given: grandfather 7本のみ（通常0）。上限カウント=0 → 有効化できる。
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.TEAM))
+                    .willReturn(Optional.empty());
+
+            List<TeamEnabledModuleEntity> rows = IntStream.rangeClosed(1, 7)
+                    .mapToObj(i -> createGrandfatheredModule(TEAM_ID, (long) (200 + i)))
+                    .collect(java.util.stream.Collectors.toList());
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(rows);
+            given(teamEnabledModuleRepository.findByTeamIdAndModuleId(TEAM_ID, MODULE_ID))
+                    .willReturn(Optional.empty());
+            given(teamEnabledModuleRepository.save(any(TeamEnabledModuleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When
+            moduleService.toggleTeamModule(TEAM_ID, request, USER_ID);
+
+            // Then: 上限に達さず有効化される。
+            verify(teamEnabledModuleRepository).save(any(TeamEnabledModuleEntity.class));
+        }
+
+        @Test
+        @DisplayName("組織: 上限判定はグランドファザリング除外メソッドを使う（10で上限到達しTMPL003）")
+        void 組織_グランドファザリング除外メソッドで上限到達() {
+            // Given: 除外後カウント=10（grandfather はDB側で除外済み）→ TMPL_003。
+            // 除外していない旧 countByOrganizationIdAndIsEnabledTrue は呼ばれてはならない。
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.empty());
+            given(organizationEnabledModuleRepository
+                    .countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(ORG_ID))
+                    .willReturn(10L);
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When / Then
+            assertThatThrownBy(() -> moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TMPL_003"));
+            verify(organizationEnabledModuleRepository, never())
+                    .countByOrganizationIdAndIsEnabledTrue(anyLong());
+        }
+
+        @Test
+        @DisplayName("組織: 除外後カウント0（grandfitherのみ相当）なら上限未達で有効化成功")
+        void 組織_除外後0なら上限未達_有効化成功() {
+            // Given: 除外後カウント=0（有効行が grandfather のみでDB側で0に落ちた相当）→ 有効化できる。
+            ModuleDefinitionEntity module = createOptionalModule();
+            given(moduleDefinitionRepository.findById(MODULE_ID)).willReturn(Optional.of(module));
+            given(moduleLevelAvailabilityRepository.findByModuleIdAndLevel(
+                    module.getId(), ModuleLevelAvailabilityEntity.Level.ORGANIZATION))
+                    .willReturn(Optional.empty());
+            given(organizationEnabledModuleRepository
+                    .countByOrganizationIdAndIsEnabledTrueAndIsGrandfatheredFalse(ORG_ID))
+                    .willReturn(0L);
+            given(organizationEnabledModuleRepository.findByOrganizationIdAndModuleId(ORG_ID, MODULE_ID))
+                    .willReturn(Optional.empty());
+            given(organizationEnabledModuleRepository.save(any(OrganizationEnabledModuleEntity.class)))
+                    .willAnswer(invocation -> invocation.getArgument(0));
+
+            ToggleModuleRequest request = new ToggleModuleRequest(MODULE_ID, true);
+
+            // When
+            moduleService.toggleOrganizationModule(ORG_ID, request, USER_ID);
+
+            // Then
+            verify(organizationEnabledModuleRepository).save(any(OrganizationEnabledModuleEntity.class));
+            verify(organizationEnabledModuleRepository, never())
+                    .countByOrganizationIdAndIsEnabledTrue(anyLong());
+        }
+    }
+
+    // ========================================
+    // カタログ表示用 enabledCount のグランドファザリング除外
+    // （FE「X/10 使用中」表示・追加ボタン活性判定と上限強制の整合）
+    // ========================================
+
+    @Nested
+    @DisplayName("カタログ enabledCount のグランドファザリング除外")
+    class CatalogEnabledCountExclusion {
+
+        private static final Long ORG_ID = 200L;
+
+        @Test
+        @DisplayName("チームカタログ: enabledCount は grandfather を除外し通常有効化分のみ（3本＋grandfather5本→3）")
+        void チームカタログ_enabledCountはgrandfather除外() {
+            // Given: 通常有効3本 + grandfather5本。表示用 enabledCount は grandfather を数えず 3。
+            List<TeamEnabledModuleEntity> rows = new java.util.ArrayList<>();
+            IntStream.rangeClosed(1, 3)
+                    .forEach(i -> rows.add(createEnabledModule(TEAM_ID, (long) (10 + i))));
+            IntStream.rangeClosed(1, 5)
+                    .forEach(i -> rows.add(createGrandfatheredModule(TEAM_ID, (long) (50 + i))));
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(rows);
+            // カタログ母集合は本テストの関心外なので空にする（enabledCount は enable 行から算出される）。
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL))
+                    .willReturn(List.of());
+
+            // When
+            TeamModuleCatalogResponse resp = moduleService.getTeamModuleCatalog(TEAM_ID);
+
+            // Then: grandfather を除外した通常有効化分のみが使用数として表示される。
+            assertThat(resp.getEnabledCount())
+                    .as("grandfather 行は使用数に数えない")
+                    .isEqualTo(3L);
+            assertThat(resp.getPlanLimit()).isEqualTo(10);
+        }
+
+        @Test
+        @DisplayName("チームカタログ: grandfather のみ（通常0）なら enabledCount=0")
+        void チームカタログ_grandfatherのみはenabledCount0() {
+            List<TeamEnabledModuleEntity> rows = IntStream.rangeClosed(1, 7)
+                    .mapToObj(i -> createGrandfatheredModule(TEAM_ID, (long) (50 + i)))
+                    .collect(java.util.stream.Collectors.toList());
+            given(teamEnabledModuleRepository.findByTeamId(TEAM_ID)).willReturn(rows);
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL))
+                    .willReturn(List.of());
+
+            TeamModuleCatalogResponse resp = moduleService.getTeamModuleCatalog(TEAM_ID);
+
+            assertThat(resp.getEnabledCount())
+                    .as("grandfather のみなら使用数は 0（既得機能は枠を消費しない）")
+                    .isEqualTo(0L);
+        }
+
+        @Test
+        @DisplayName("組織カタログ: enabledCount は grandfather を除外し通常有効化分のみ（4本＋grandfather7本→4）")
+        void 組織カタログ_enabledCountはgrandfather除外() {
+            // Given: 通常有効4本 + grandfather7本。表示用 enabledCount は grandfather を数えず 4。
+            List<OrganizationEnabledModuleEntity> rows = new java.util.ArrayList<>();
+            IntStream.rangeClosed(1, 4)
+                    .forEach(i -> rows.add(OrganizationEnabledModuleEntity.builder()
+                            .organizationId(ORG_ID).moduleId((long) (10 + i))
+                            .isEnabled(true).enabledBy(USER_ID).build()));
+            IntStream.rangeClosed(1, 7)
+                    .forEach(i -> rows.add(OrganizationEnabledModuleEntity.builder()
+                            .organizationId(ORG_ID).moduleId((long) (50 + i))
+                            .isEnabled(true).isGrandfathered(true).enabledBy(null).build()));
+            given(organizationEnabledModuleRepository.findByOrganizationId(ORG_ID)).willReturn(rows);
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL))
+                    .willReturn(List.of());
+
+            // When
+            OrgModuleCatalogResponse resp = moduleService.getOrganizationModuleCatalog(ORG_ID);
+
+            // Then
+            assertThat(resp.getEnabledCount())
+                    .as("grandfather 行は使用数に数えない")
+                    .isEqualTo(4L);
+            assertThat(resp.getPlanLimit()).isEqualTo(10);
+        }
+
+        @Test
+        @DisplayName("組織カタログ: grandfather のみ（通常0）なら enabledCount=0")
+        void 組織カタログ_grandfatherのみはenabledCount0() {
+            List<OrganizationEnabledModuleEntity> rows = IntStream.rangeClosed(1, 7)
+                    .mapToObj(i -> OrganizationEnabledModuleEntity.builder()
+                            .organizationId(ORG_ID).moduleId((long) (50 + i))
+                            .isEnabled(true).isGrandfathered(true).enabledBy(null).build())
+                    .collect(java.util.stream.Collectors.toList());
+            given(organizationEnabledModuleRepository.findByOrganizationId(ORG_ID)).willReturn(rows);
+            given(moduleDefinitionRepository.findByModuleType(ModuleDefinitionEntity.ModuleType.OPTIONAL))
+                    .willReturn(List.of());
+
+            OrgModuleCatalogResponse resp = moduleService.getOrganizationModuleCatalog(ORG_ID);
+
+            assertThat(resp.getEnabledCount())
+                    .as("grandfather のみなら使用数は 0（既得機能は枠を消費しない）")
+                    .isEqualTo(0L);
         }
     }
 }

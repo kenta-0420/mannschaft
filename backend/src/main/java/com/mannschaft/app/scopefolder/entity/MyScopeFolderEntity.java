@@ -1,5 +1,7 @@
 package com.mannschaft.app.scopefolder.entity;
 
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;

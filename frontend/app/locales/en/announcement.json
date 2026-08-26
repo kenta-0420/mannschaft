@@ -25,6 +25,8 @@
     "empty": "No new announcements.",
     "pin_limit_reached": "You can pin up to 5 announcements.",
     "already_registered": "This content is already registered as an announcement.",
+    "no_longer_available": "This announcement is no longer available, so it has been removed from the list.",
+    "mark_all_read_partial": "Marked {count} announcements as read. Some unread ones remain — press again to continue.",
     "broadcast_button_team": "Team Announcement",
     "broadcast_button_org": "Organization Announcement",
     "wizard_title": "Send Announcement",

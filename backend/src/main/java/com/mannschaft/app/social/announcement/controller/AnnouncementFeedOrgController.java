@@ -5,11 +5,13 @@ import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.dashboard.ViewerRole;
 import com.mannschaft.app.dashboard.service.RoleResolver;
 import com.mannschaft.app.social.announcement.AnnouncementFeedService;
+import com.mannschaft.app.social.announcement.AnnouncementReadService;
 import com.mannschaft.app.social.announcement.AnnouncementScopeType;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedItemDto;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedMetaDto;
 import com.mannschaft.app.social.announcement.dto.AnnouncementFeedResponseDto;
+import com.mannschaft.app.social.announcement.dto.AnnouncementMarkAllReadResultDto;
 import com.mannschaft.app.social.announcement.dto.CreateAnnouncementRequestDto;
 import com.mannschaft.app.social.announcement.dto.PinAnnouncementRequestDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -214,7 +216,17 @@ public class AnnouncementFeedOrgController {
      * 既に既読の場合はノーオペレーション（200 OK を返す）。
      * </p>
      *
-     * @param orgId          組織 ID（パス整合性確認用）
+     * <p>
+     * <b>認可は可視性ベース（「見える＝既読にできる」・設計書 F02.6 §6.2.1）</b>。
+     * {@code orgId} は Service まで通し、(1) {@code announcementId} が当該組織に帰属すること、
+     * (2) そのお知らせが<b>当該組織の一覧でその閲覧者に見えること</b>の検証に用いる。
+     * 在籍（メンバーシップ）では判定しない — 一覧は非メンバーにも {@code PUBLIC} を返すため、
+     * 在籍で絞ると「見えているのに既読にできない」不整合が生じる。逆に在籍だけを見ると
+     * 応援者が一覧に出ない内輪限定を既読化できてしまう。配下チームのみ所属者は
+     * 組織スコープでは {@code PUBLIC} 可視となり、一覧・既読の集合が一致する。
+     * </p>
+     *
+     * @param orgId          組織 ID（スコープ帰属検証・可視性検証に使用。捨ててはならない）
      * @param announcementId お知らせフィード ID
      * @return 200 OK（既読結果）
      */
@@ -227,7 +239,7 @@ public class AnnouncementFeedOrgController {
             @PathVariable("id") Long announcementId) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        announcementFeedService.markAsRead(announcementId, userId);
+        announcementFeedService.markAsRead(AnnouncementScopeType.ORGANIZATION, orgId, announcementId, userId);
 
         return ResponseEntity.ok(ApiResponse.of(Map.of(
                 "id", announcementId,
@@ -241,19 +253,29 @@ public class AnnouncementFeedOrgController {
     /**
      * 組織スコープの全未読お知らせを一括既読にする。
      *
+     * <p><b>応答（#2530 ①）</b>: {@code markedCount} は<b>実際に既読化した件数</b>である
+     * （以前はハードコードの {@code 0} を返していた）。1 リクエストの防御上限
+     * （{@code 500 × 20 = 10,000 件}）で打ち切った場合は {@code hasMoreUnread=true} を返す。
+     * チームスコープ版（{@code AnnouncementFeedController}）と同一契約。</p>
+     *
      * @param orgId 組織 ID
-     * @return 200 OK（既読マーク件数）
+     * @return 200 OK（既読マーク件数と残余の有無）
      */
     @PostMapping("/read-all")
     @Operation(
             summary = "全件既読（組織）",
-            description = "組織スコープの全未読お知らせを一括既読にする。")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> markAllAsRead(
+            description = "組織スコープの全未読お知らせを一括既読にする。"
+                    + "1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread=true を返す。")
+    public ResponseEntity<ApiResponse<AnnouncementMarkAllReadResultDto>> markAllAsRead(
             @PathVariable Long orgId) {
 
         Long userId = SecurityUtils.getCurrentUserId();
-        announcementFeedService.markAllAsRead(AnnouncementScopeType.ORGANIZATION, orgId, userId);
+        AnnouncementReadService.MarkAllReadOutcome outcome =
+                announcementFeedService.markAllAsRead(AnnouncementScopeType.ORGANIZATION, orgId, userId);
 
-        return ResponseEntity.ok(ApiResponse.of(Map.of("markedCount", 0)));
+        return ResponseEntity.ok(ApiResponse.of(AnnouncementMarkAllReadResultDto.builder()
+                .markedCount(outcome.markedCount())
+                .hasMoreUnread(outcome.hasMoreUnread())
+                .build()));
     }
 }

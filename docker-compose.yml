@@ -15,10 +15,36 @@ services:
       # F10.5 Phase 10-α: スロークエリログをホスト側 `./logs/mysql-slow/` に永続化し、
       # 外部 APM や手元解析で吸い上げ可能にする（設計書 §3.3 / §5.1.3）
       - ./logs/mysql-slow:/var/log/mysql-slow
+    # --default-time-zone=+00:00 — DB 格納時刻の基準タイムゾーンを UTC に統一（Issue #2486）。
+    #   backend の spring.jpa.properties.hibernate.jdbc.time_zone: UTC ／
+    #   application-local.yml の serverTimezone=UTC と必ず一致させること。
+    #
+    #   ⚠️ 既存のローカル開発 DB（mysql-data ボリューム）には JST 壁時計で格納された行が残っている。
+    #      この変更以降に書かれる行は UTC 壁時計になるため、古い行と新しい行で基準が混在する。
+    #      生 SQL で時刻を直接読むと 9 時間ずれて見える行が混ざるが、開発環境のみの話であり許容する。
+    #      気になる場合は `docker compose down -v` でボリュームを破棄して作り直すこと
+    #      （本番環境は未構築＝既存データが無いため、この混在は本番には存在しない）。
+    #
+    # --collation-server=utf8mb4_0900_ai_ci — 本番 RDS の collation_server
+    #   （infra/terraform/modules/data/main.tf）と一致させる（Issue #2589）。
+    #
+    #   ⚠️ 以前はここが utf8mb4_unicode_ci で本番と食い違っていた。照合順序を宣言していない表は
+    #      サーバ既定を継承するため、ローカルと本番で同じ表の照合順序が変わり、
+    #      「ローカルでは通るのに本番だけ Illegal mix of collations で落ちる JOIN」が生まれていた。
+    #      V175 の migration がスキーマ全体を utf8mb4_0900_ai_ci へ統一し、
+    #      ALTER DATABASE でデータベース既定も固定したので実害は除去済みだが、
+    #      サーバ既定自体を本番へ揃えて「ローカルで再現しない本番障害」の温床を断つ。
+    #
+    #   ⚠️ 既存のローカル DB ボリュームには変更前の照合順序の表が残っているが、
+    #      V175 が起動時に information_schema を見て差分のある表だけ変換するため、
+    #      作り直さなくても収束する。
+    #
+    # ⚠️ 下の `command: >` は折り畳みスカラー。内部に # 行を書くとコメントではなく
+    #    起動引数の一部として MySQL に渡り、起動が失敗する。注釈は必ずこの位置に書くこと。
     command: >
       --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --default-time-zone=+09:00
+      --collation-server=utf8mb4_0900_ai_ci
+      --default-time-zone=+00:00
       --slow_query_log=ON
       --slow_query_log_file=/var/log/mysql-slow/mannschaft-slow.log
       --long_query_time=1.0

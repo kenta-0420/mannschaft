@@ -33,6 +33,7 @@ const userId = computed(() => authStore.currentUser?.id ?? null)
 const seals = ref<ElectronicSeal[]>([])
 const loadingSeals = ref(false)
 const stamping = ref(false)
+const { formatDate } = useDatetime()
 
 /** 印鑑が1つ以上あるか */
 const hasSeal = computed(() => seals.value.length > 0)
@@ -75,12 +76,11 @@ async function onConfirm() {
   }
 }
 
-function formatDate(dateStr: string | null): string {
-  if (!dateStr) return '-'
-  const d = new Date(dateStr)
-  return d.toLocaleDateString()
-}
-
+// immediate: true が必須。利用側（ScopeActionRequiredWidget / WidgetCommandCenter）は
+// v-if="item" と visible=true を同時にセットするため、初回マウント時に visible の
+// false→true 遷移が発生せず、immediate なしでは watch が不発になり印鑑ロードが走らない
+// （印鑑登録済みでも「印鑑が設定されていません」誤表示・実機E2Eで捕捉）。
+// visible=false でマウントされた場合は if (val) ガードによりロードしない。
 watch(
   () => props.visible,
   (val) => {
@@ -88,6 +88,7 @@ watch(
       loadSeals()
     }
   },
+  { immediate: true },
 )
 </script>
 

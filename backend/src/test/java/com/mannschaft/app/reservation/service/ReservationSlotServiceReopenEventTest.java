@@ -1,11 +1,13 @@
 package com.mannschaft.app.reservation.service;
 
 import com.mannschaft.app.reservation.ReservationMapper;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.SlotStatus;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.event.ReservationSlotReopenedEvent;
 import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationLineRepository;
+import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,11 +51,17 @@ class ReservationSlotServiceReopenEventTest {
     @Mock
     private ReservationBlockedTimeRepository blockedTimeRepository;
     @Mock
+    private ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
+    @Mock
     private ReservationUnavailabilityChecker unavailabilityChecker;
     @Mock
     private ReservationLineRepository lineRepository;
     @Mock
     private ApplicationEventPublisher eventPublisher;
+    @Mock
+    private ReservationViewAccessGuard viewAccessGuard;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     private ReservationSlotService service;
 
@@ -61,7 +69,8 @@ class ReservationSlotServiceReopenEventTest {
     void setUp() {
         service = new ReservationSlotService(
                 slotRepository, reservationRepository, reservationMapper, blockedTimeRepository,
-                unavailabilityChecker, lineRepository, Clock.systemUTC(), eventPublisher);
+                recurringBlockedTimeRepository, unavailabilityChecker, lineRepository,
+                Clock.systemUTC(), eventPublisher, viewAccessGuard, teamTimezoneResolver);
     }
 
     /**

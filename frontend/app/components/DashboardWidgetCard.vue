@@ -49,14 +49,14 @@ const collapsed = ref(false)
 <template>
   <div
     v-bind="$attrs"
-    class="relative flex flex-col rounded-xl border-[3px] bg-surface-0 p-4 shadow-sm transition-all hover:shadow-md focus-within:shadow-lg focus-within:-translate-y-0.5 dark:bg-surface-800"
+    class="relative flex flex-col rounded-xl border bg-surface-0 p-4 shadow-[var(--shadow-card)] transition-all hover:shadow-[var(--shadow-card-hover)] focus-within:shadow-[var(--shadow-card-hover)] focus-within:-translate-y-0.5 dark:bg-surface-800"
     :class="{
       'col-span-1': !colSpan || colSpan === 1,
       'md:col-span-2': colSpan === 2,
       'md:col-span-3': colSpan === 3,
       'opacity-40 shadow-none': isDragging,
       'border-primary border-t-[3px]': isDropTarget,
-      'border-surface-400 dark:border-surface-500': !isDropTarget,
+      'border-surface-200 dark:border-surface-700': !isDropTarget,
       'h-full': scrollable,
     }"
     :style="scrollable ? { maxHeight } : undefined"
@@ -76,11 +76,16 @@ const collapsed = ref(false)
       <NuxtLink
         v-if="to"
         :to="to"
-        class="group/title flex items-center gap-2 cursor-pointer hover:text-primary"
+        class="group/title flex items-center gap-2.5 cursor-pointer"
       >
-        <i v-if="icon" :class="icon" class="text-primary" />
+        <span
+          v-if="icon"
+          class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover/title:bg-primary/15 dark:bg-primary/15"
+        >
+          <i :class="icon" class="text-sm" />
+        </span>
         <h3
-          class="text-[22px] font-semibold text-surface-700 transition-colors group-hover/title:text-primary dark:text-surface-200"
+          class="text-sm font-semibold tracking-wide text-surface-600 transition-colors group-hover/title:text-primary dark:text-surface-300"
         >
           {{ title }}
         </h3>
@@ -88,13 +93,19 @@ const collapsed = ref(false)
           class="pi pi-external-link text-xs text-surface-400 opacity-0 transition-opacity group-hover/title:opacity-100"
         />
       </NuxtLink>
-      <div v-else class="flex items-center gap-2">
-        <i v-if="icon" :class="icon" class="text-primary" />
-        <h3 class="text-[22px] font-semibold text-surface-700 dark:text-surface-200">
+      <div v-else class="flex items-center gap-2.5">
+        <span
+          v-if="icon"
+          class="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary dark:bg-primary/15"
+        >
+          <i :class="icon" class="text-sm" />
+        </span>
+        <h3 class="text-sm font-semibold tracking-wide text-surface-600 dark:text-surface-300">
           {{ title }}
         </h3>
       </div>
       <div class="flex items-center gap-1">
+        <slot name="actions" />
         <Button
           v-if="refreshable"
           icon="pi pi-refresh"

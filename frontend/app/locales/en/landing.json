@@ -288,6 +288,7 @@
       "footer_legal": "Legal",
       "footer_terms": "Terms of Service",
       "footer_privacy": "Privacy Policy",
+      "footer_commerce": "Commercial Transactions Act Disclosure",
       "footer_contact": "Contact Us",
       "skip_to_content": "Skip to main content",
       "open_menu": "Open menu",
@@ -296,42 +297,7 @@
     "product": {
       "title": "Mannschaft Product",
       "desc": "An all-in-one management platform with everything your team or organization needs",
-      "features_heading": "Key Features",
-      "pricing_heading": "Pricing Plans",
-      "pricing": {
-        "free": {
-          "name": "Free",
-          "price": "$0",
-          "desc": "For individuals & small teams",
-          "features": [
-            "All basic features",
-            "Up to 10 members",
-            "1GB storage"
-          ]
-        },
-        "pro": {
-          "name": "Pro",
-          "price": "$9.80/mo",
-          "desc": "For growing teams",
-          "features": [
-            "All Free features",
-            "Unlimited members",
-            "50GB storage",
-            "Priority support"
-          ]
-        },
-        "enterprise": {
-          "name": "Enterprise",
-          "price": "Contact us",
-          "desc": "For large organizations",
-          "features": [
-            "All Pro features",
-            "Custom integrations",
-            "Dedicated support",
-            "SLA guarantee"
-          ]
-        }
-      }
+      "features_heading": "Key Features"
     },
     "legal": {
       "terms": {
@@ -567,6 +533,24 @@
         "section14_content": "We may update this Policy from time to time in response to legal changes or service updates.\n\n- Material changes (new purposes, new data collection, new third-party sharing, etc.) will be notified in advance via in-service notice or email\n- Minor changes will be indicated by updating the \"Last Updated\" date on this page\n- Your continued use of the Service after any revision constitutes your acceptance of the updated Policy",
         "section15_title": "Article 15: Contact Us",
         "section15_content": "For inquiries about personal information handling, advertising opt-out, or to exercise your rights, please contact us through the in-service inquiry form. We may ask you to provide your registered email address for identity verification."
+      },
+      "commerce": {
+        "title": "Commercial Transactions Act Disclosure",
+        "seo_description": "Mannschaft's disclosure under Japan's Act on Specified Commercial Transactions, including seller information, payment methods, and refund/cancellation policy.",
+        "items": {
+          "seller": { "label": "Seller", "value": "Mannschaft Operations Office" },
+          "manager": { "label": "Person in Charge of Operations", "value": "Disclosed without delay upon request from prospective customers" },
+          "address": { "label": "Address", "value": "Disclosed without delay upon request from prospective customers" },
+          "phone": { "label": "Phone Number", "value": "Disclosed without delay upon request from prospective customers" },
+          "contact": { "label": "Contact (How to Reach Us)", "value": "After logging in, please contact us via the \"Suggestion Box\" in the header at the top of the screen. Requests to disclose our address and phone number are also accepted through this channel." },
+          "price": { "label": "Selling Price", "value": "Prices follow those displayed on the purchase screen for each service, ticket, etc. (tax included)." },
+          "extraFee": { "label": "Additional Costs Besides the Selling Price", "value": "Internet connection fees and other communication charges are borne by the customer." },
+          "paymentMethod": { "label": "Payment Method", "value": "Credit card and other payment methods displayed on each purchase screen (payment processing is provided by Stripe, Inc.)." },
+          "paymentTiming": { "label": "Timing of Payment", "value": "Payment is finalized when the purchase procedure is completed. Subscriptions (recurring billing) are charged on each renewal date." },
+          "serviceTiming": { "label": "Timing of Service Provision", "value": "Available immediately after payment is completed." },
+          "refund": { "label": "Returns, Cancellations, and Refunds", "value": "Due to the nature of the service, refunds and cancellations after payment is completed are generally not accepted. However, for payments where a team or organization is the seller (tickets, membership fees, etc.), Mannschaft is a platform that provides the venue for the transaction, and whether a refund is available and its conditions are governed by the policy set by the relevant team or organization. Please contact the individual seller for details." },
+          "environment": { "label": "Operating Environment", "value": "The latest version of major browsers (Chrome / Safari / Edge / Firefox) is recommended." }
+        }
       }
     },
     "features_detail": {

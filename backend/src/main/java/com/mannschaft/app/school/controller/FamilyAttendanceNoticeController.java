@@ -2,6 +2,7 @@ package com.mannschaft.app.school.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.school.dto.FamilyAttendanceNoticeRequest;
 import com.mannschaft.app.school.dto.FamilyAttendanceNoticeResponse;
 import com.mannschaft.app.school.dto.FamilyNoticeListResponse;
@@ -51,6 +52,8 @@ public class FamilyAttendanceNoticeController {
     /**
      * 担任が当日の保護者連絡一覧を取得する。
      *
+     * <p>権限: 対象チームの ADMIN/DEPUTY_ADMIN（＝教員相当）のみ。Service 層で検証する。</p>
+     *
      * @param teamId クラスチームID
      * @param date   対象日（YYYY-MM-DD）
      * @return 連絡一覧（未確認件数付き）
@@ -60,7 +63,8 @@ public class FamilyAttendanceNoticeController {
     public ApiResponse<FamilyNoticeListResponse> getTeamNotices(
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return ApiResponse.of(noticeService.getTeamNotices(teamId, date));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(noticeService.getTeamNotices(teamId, date, currentUserId));
     }
 
     /**
@@ -76,7 +80,7 @@ public class FamilyAttendanceNoticeController {
             @PathVariable Long teamId,
             @PathVariable Long noticeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(noticeService.acknowledgeNotice(noticeId, currentUserId));
+        return ApiResponse.of(noticeService.acknowledgeNotice(teamId, noticeId, currentUserId));
     }
 
     /**
@@ -92,7 +96,7 @@ public class FamilyAttendanceNoticeController {
             @PathVariable Long teamId,
             @PathVariable Long noticeId) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(noticeService.applyToAttendanceRecord(noticeId, currentUserId));
+        return ApiResponse.of(noticeService.applyToAttendanceRecord(teamId, noticeId, currentUserId));
     }
 
     /**
@@ -102,6 +106,8 @@ public class FamilyAttendanceNoticeController {
      * @param to   終了日（YYYY-MM-DD）
      * @return 連絡送信履歴一覧
      */
+    @SelfScopedEndpoint("FamilyAttendanceNoticeService#getMyNotices が "
+            + "SecurityUtils.getCurrentUserId()（送信者ID）のみを検索条件に束縛する")
     @GetMapping("/me/attendance/notices")
     @Operation(summary = "保護者: 送信履歴取得", description = "保護者が自分が送信した連絡の履歴を取得する。期間指定で絞り込み可能。")
     public ApiResponse<List<FamilyAttendanceNoticeResponse>> getMyNotices(

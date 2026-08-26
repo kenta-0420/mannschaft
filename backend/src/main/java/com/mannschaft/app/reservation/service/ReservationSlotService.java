@@ -10,11 +10,14 @@ import com.mannschaft.app.reservation.dto.CreateSlotRequest;
 import com.mannschaft.app.reservation.dto.ReservationSlotResponse;
 import com.mannschaft.app.reservation.dto.UpdateSlotRequest;
 import com.mannschaft.app.reservation.entity.ReservationBlockedTimeEntity;
+import com.mannschaft.app.reservation.entity.ReservationRecurringBlockedTimeEntity;
 import com.mannschaft.app.reservation.entity.ReservationSlotEntity;
 import com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository;
+import com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository;
 import com.mannschaft.app.reservation.repository.ReservationRepository;
 import com.mannschaft.app.reservation.event.ReservationSlotReopenedEvent;
 import com.mannschaft.app.reservation.repository.ReservationSlotRepository;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.List;
 
 /**
@@ -40,7 +44,9 @@ public class ReservationSlotService {
     private final ReservationMapper reservationMapper;
     /** 機能B: 空き枠一覧から予約不可枠に該当する slot を除外するためのブロック時間参照。 */
     private final ReservationBlockedTimeRepository blockedTimeRepository;
-    /** 機能B: 予約不可枠の overlap 判定を共有する単一ユーティリティ（§5.B）。 */
+    /** F03.4.5 §4 W2-2: 定期予約不可枠（週次繰り返し）の active ルール参照。 */
+    private final ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
+    /** 機能B: 予約不可枠の overlap 判定を共有する単一ユーティリティ（§5.B / §4.2）。 */
     private final ReservationUnavailabilityChecker unavailabilityChecker;
     /** F03.4.2: 枠のライン軸（lineId）検証用のライン参照（同一 reservation ドメイン内）。 */
     private final com.mannschaft.app.reservation.repository.ReservationLineRepository lineRepository;
@@ -48,6 +54,9 @@ public class ReservationSlotService {
     private final Clock clock;
     /** F03.4.5 §6.1: 満席→空き復帰時にキャンセル待ち一斉通知を起動するためのイベント発行者。 */
     private final ApplicationEventPublisher eventPublisher;
+    /** 予約閲覧の view ゲート（会員 or 公開）。予約作成・グリッドと同一述語（§6 単一述語）。 */
+    private final ReservationViewAccessGuard viewAccessGuard;
+    private final TeamTimezoneResolver teamTimezoneResolver;
 
     /**
      * スロット削除ガードで「予約が紐づいている」と見なす active ステータス。
@@ -60,12 +69,17 @@ public class ReservationSlotService {
     /**
      * チームのスロット一覧を日付範囲で取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @param from   開始日
      * @param to     終了日
      * @return スロットレスポンスリスト
      */
-    public List<ReservationSlotResponse> listSlots(Long teamId, LocalDate from, LocalDate to) {
+    public List<ReservationSlotResponse> listSlots(Long teamId, Long userId, LocalDate from, LocalDate to) {
+        viewAccessGuard.assertCanView(teamId, userId);
         List<ReservationSlotEntity> slots =
                 slotRepository.findByTeamIdAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(teamId, from, to);
         return enrichLineNames(reservationMapper.toSlotResponseList(slots));
@@ -74,24 +88,32 @@ public class ReservationSlotService {
     /**
      * チームの利用可能なスロット一覧を日付範囲で取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @param from   開始日
      * @param to     終了日
      * @return 利用可能なスロットレスポンスリスト
      */
-    public List<ReservationSlotResponse> listAvailableSlots(Long teamId, LocalDate from, LocalDate to) {
+    public List<ReservationSlotResponse> listAvailableSlots(Long teamId, Long userId, LocalDate from, LocalDate to) {
+        viewAccessGuard.assertCanView(teamId, userId);
         List<ReservationSlotEntity> slots =
                 slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                         teamId, SlotStatus.AVAILABLE, from, to);
 
-        // 機能B（§5.B）: 予約不可枠に該当する slot を空き枠一覧から除外する。
+        // 機能B（§5.B）＋F03.4.5 §4.2: 単発/定期いずれかの予約不可枠に該当する slot を空き枠一覧から除外する。
         // 判定は createReservation / グリッドと共有の単一 overlap ユーティリティを用いる（別実装厳禁）。
         List<ReservationBlockedTimeEntity> blocks =
-                blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(teamId, from, to);
-        List<ReservationSlotEntity> visible = blocks.isEmpty()
+                blockedTimeRepository.findEffectiveBetween(teamId, from, to, from.minusDays(1));
+        List<ReservationRecurringBlockedTimeEntity> recurringRules =
+                recurringBlockedTimeRepository.findByTeamIdAndIsActiveTrue(teamId);
+        ZoneId teamZone = teamTimezoneResolver.resolveZone(teamId);
+        List<ReservationSlotEntity> visible = (blocks.isEmpty() && recurringRules.isEmpty())
                 ? slots
                 : slots.stream()
-                        .filter(slot -> !unavailabilityChecker.isBlockedByAny(slot, blocks))
+                        .filter(slot -> !unavailabilityChecker.isBlockedByAny(slot, blocks, recurringRules, teamZone))
                         .toList();
 
         return enrichLineNames(reservationMapper.toSlotResponseList(visible));
@@ -100,11 +122,17 @@ public class ReservationSlotService {
     /**
      * スロット詳細を取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。teamId と slotId の不一致は
+     * {@code findSlotOrThrow} が存在秘匿する。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @param slotId スロットID
      * @return スロットレスポンス
      */
-    public ReservationSlotResponse getSlot(Long teamId, Long slotId) {
+    public ReservationSlotResponse getSlot(Long teamId, Long userId, Long slotId) {
+        viewAccessGuard.assertCanView(teamId, userId);
         ReservationSlotEntity entity = findSlotOrThrow(teamId, slotId);
         return enrichLineNames(List.of(reservationMapper.toSlotResponse(entity))).get(0);
     }
@@ -286,12 +314,34 @@ public class ReservationSlotService {
     /**
      * スロットエンティティを取得する（内部利用）。
      *
+     * <p><b>teamId スコープなし。</b>呼び出し元がすでに teamId 検証済みの
+     * {@link com.mannschaft.app.reservation.entity.ReservationEntity#getReservationSlotId()} 等、
+     * 「自チームの予約行に紐づく slotId」であることが別経路で保証されている場合のみ使用可（Issue #2538）。
+     * リクエスト由来（利用者が任意に指定できる）の slotId には
+     * {@link #getSlotEntity(Long, Long)} を使うこと。</p>
+     *
      * @param slotId スロットID
      * @return スロットエンティティ
      */
     public ReservationSlotEntity getSlotEntity(Long slotId) {
         return slotRepository.findById(slotId)
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.SLOT_NOT_FOUND));
+    }
+
+    /**
+     * スロットエンティティを teamId スコープで取得する（内部利用）。
+     *
+     * <p>Issue #2538: リクエスト由来（呼び出し元の teamId とは無関係にユーザーが指定できる）の
+     * slotId を解決する経路は、必ずこちらを使うこと。{@code teamId} と slot の帰属が一致しない場合、
+     * 他チームの枠の存在を秘匿するため {@link ReservationErrorCode#SLOT_NOT_FOUND}（404 相当）で拒否する
+     * （403 だと枠の存在自体が漏れる）。</p>
+     *
+     * @param teamId 呼び出し元チームID
+     * @param slotId スロットID
+     * @return スロットエンティティ（当該チームに帰属するもののみ）
+     */
+    public ReservationSlotEntity getSlotEntity(Long teamId, Long slotId) {
+        return findSlotOrThrow(teamId, slotId);
     }
 
     /**

@@ -1,4 +1,5 @@
 import type { ActivityTemplateField } from '~/types/activity'
+import { toLocalDateString, toLocalDateTimeString } from '~/utils/localDate'
 
 /** 活動カスタムフィールドの入力値（DatePicker は Date を持つ）。 */
 export type ActivityFieldValue = string | number | boolean | Date | null | undefined
@@ -16,24 +17,25 @@ export function parseSelectOptions(
     if (!Array.isArray(parsed)) return []
     return parsed.map((o) => ({ label: String(o), value: String(o) }))
   } catch {
+    // eslint-disable-next-line no-restricted-syntax -- 設定 JSON（選択肢）の防御パース。パース不能は空選択肢が正しい（安全側・機能劣化なし）
     return []
   }
 }
 
 /**
  * Date をローカル日付の YYYY-MM-DD 文字列に整形する（UTC ズレを避ける）。
+ *
+ * 実体は共通ヘルパ {@link toLocalDateString}（`~/utils/localDate`）。
+ * 実装が二重化して片方だけ直る事故を防ぐため、ここでは委譲のみ行う。
  */
 export function toYmd(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return toLocalDateString(d)
 }
 
 /**
  * フィールドが入力済みか判定する（必須検証用）。
  * - NUMBER: null/undefined/'' は未入力（0 は入力済み）
- * - DATE: Date インスタンスのみ入力済み
+ * - DATE/DATETIME: Date インスタンスのみ入力済み
  * - CHECKBOX: 真偽値は常に値を持つため常に true（必須でもブロックしない）
  * - TEXT/TEXTAREA/SELECT: 空白除去後に文字があれば入力済み
  */
@@ -45,6 +47,7 @@ export function isActivityFieldFilled(
     case 'NUMBER':
       return value !== null && value !== undefined && value !== ''
     case 'DATE':
+    case 'DATETIME':
       return value instanceof Date
     case 'CHECKBOX':
       return true
@@ -68,6 +71,10 @@ export function buildActivityFieldValues(
     if (v === null || v === undefined) continue
     if (field.fieldType === 'DATE') {
       if (v instanceof Date) out[field.fieldKey] = toYmd(v)
+      continue
+    }
+    if (field.fieldType === 'DATETIME') {
+      if (v instanceof Date) out[field.fieldKey] = toLocalDateTimeString(v)
       continue
     }
     if (field.fieldType === 'CHECKBOX') {

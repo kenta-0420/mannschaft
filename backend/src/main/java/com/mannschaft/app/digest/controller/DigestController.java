@@ -65,7 +65,8 @@ public class DigestController {
     public ResponseEntity<ApiResponse<DigestPublishResponse>> publish(
             @PathVariable Long id,
             @Valid @RequestBody DigestPublishRequest request) {
-        DigestPublishResponse response = digestGenerationService.publish(id, request);
+        DigestPublishResponse response = digestGenerationService.publish(
+                id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -80,7 +81,8 @@ public class DigestController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) Long cursor,
             @RequestParam(required = false) Integer limit) {
-        DigestListResponse response = digestGenerationService.list(scopeType, scopeId, status, cursor, limit);
+        DigestListResponse response = digestGenerationService.list(
+                scopeType, scopeId, status, cursor, limit, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(response);
     }
 
@@ -90,7 +92,7 @@ public class DigestController {
     @GetMapping("/{id}")
     @Operation(summary = "ダイジェスト詳細取得")
     public ResponseEntity<ApiResponse<DigestDetailResponse>> getDetail(@PathVariable Long id) {
-        DigestDetailResponse response = digestGenerationService.getDetail(id);
+        DigestDetailResponse response = digestGenerationService.getDetail(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -100,7 +102,7 @@ public class DigestController {
     @DeleteMapping("/{id}")
     @Operation(summary = "ダイジェスト破棄")
     public ResponseEntity<ApiResponse<DigestDetailResponse>> discard(@PathVariable Long id) {
-        DigestDetailResponse response = digestGenerationService.discard(id);
+        DigestDetailResponse response = digestGenerationService.discard(id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -129,7 +131,8 @@ public class DigestController {
     public ResponseEntity<ApiResponse<DigestDetailResponse>> edit(
             @PathVariable Long id,
             @Valid @RequestBody DigestEditRequest request) {
-        DigestDetailResponse response = digestGenerationService.edit(id, request);
+        DigestDetailResponse response = digestGenerationService.edit(
+                id, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

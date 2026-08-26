@@ -15,6 +15,7 @@ import com.mannschaft.app.facility.dto.UpdateFacilityRequest;
 import com.mannschaft.app.facility.dto.UpdateTimeRatesRequest;
 import com.mannschaft.app.facility.dto.UpdateUsageRuleRequest;
 import com.mannschaft.app.facility.dto.UsageRuleResponse;
+import com.mannschaft.app.facility.service.FacilityAccessGuard;
 import com.mannschaft.app.facility.service.FacilityEquipmentService;
 import com.mannschaft.app.facility.service.FacilityRuleService;
 import com.mannschaft.app.facility.service.FacilityService;
@@ -55,6 +56,7 @@ public class OrgFacilityController {
     private final FacilityService facilityService;
     private final FacilityRuleService ruleService;
     private final FacilityEquipmentService equipmentService;
+    private final FacilityAccessGuard accessGuard;
 
     @GetMapping
     @Operation(summary = "施設一覧")
@@ -63,6 +65,7 @@ public class OrgFacilityController {
             @PathVariable Long organizationId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        accessGuard.requireScopeMember(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         Page<FacilityResponse> result = facilityService.listFacilities(SCOPE_TYPE, organizationId, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -75,6 +78,7 @@ public class OrgFacilityController {
     public ResponseEntity<ApiResponse<FacilityResponse>> createFacility(
             @PathVariable Long organizationId,
             @Valid @RequestBody CreateFacilityRequest request) {
+        accessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         FacilityResponse response = facilityService.createFacility(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -85,6 +89,7 @@ public class OrgFacilityController {
     public ResponseEntity<ApiResponse<List<FacilityResponse>>> bulkCreateFacilities(
             @PathVariable Long organizationId,
             @Valid @RequestBody BulkCreateFacilityRequest request) {
+        accessGuard.requireScopeAdmin(SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId());
         List<FacilityResponse> responses = facilityService.bulkCreateFacilities(
                 SCOPE_TYPE, organizationId, SecurityUtils.getCurrentUserId(), request.getFacilities());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(responses));
@@ -96,6 +101,7 @@ public class OrgFacilityController {
     public ResponseEntity<ApiResponse<FacilityDetailResponse>> getFacility(
             @PathVariable Long organizationId,
             @PathVariable Long facilityId) {
+        accessGuard.requireFacilityMember(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         FacilityDetailResponse response = facilityService.getFacility(SCOPE_TYPE, organizationId, facilityId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -107,6 +113,7 @@ public class OrgFacilityController {
             @PathVariable Long organizationId,
             @PathVariable Long facilityId,
             @Valid @RequestBody UpdateFacilityRequest request) {
+        accessGuard.requireFacilityAdmin(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         FacilityDetailResponse response = facilityService.updateFacility(SCOPE_TYPE, organizationId, facilityId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -117,6 +124,7 @@ public class OrgFacilityController {
     public ResponseEntity<Void> deleteFacility(
             @PathVariable Long organizationId,
             @PathVariable Long facilityId) {
+        accessGuard.requireFacilityAdmin(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         facilityService.deleteFacility(SCOPE_TYPE, organizationId, facilityId);
         return ResponseEntity.noContent().build();
     }
@@ -127,7 +135,7 @@ public class OrgFacilityController {
     public ResponseEntity<ApiResponse<UsageRuleResponse>> getUsageRule(
             @PathVariable Long organizationId,
             @PathVariable Long facilityId) {
-        facilityService.findFacilityOrThrow(SCOPE_TYPE, organizationId, facilityId);
+        accessGuard.requireFacilityMember(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         UsageRuleResponse response = ruleService.getUsageRule(facilityId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -139,7 +147,7 @@ public class OrgFacilityController {
             @PathVariable Long organizationId,
             @PathVariable Long facilityId,
             @Valid @RequestBody UpdateUsageRuleRequest request) {
-        facilityService.findFacilityOrThrow(SCOPE_TYPE, organizationId, facilityId);
+        accessGuard.requireFacilityAdmin(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         UsageRuleResponse response = ruleService.updateUsageRule(facilityId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -150,7 +158,7 @@ public class OrgFacilityController {
     public ResponseEntity<ApiResponse<List<TimeRateResponse>>> getTimeRates(
             @PathVariable Long organizationId,
             @PathVariable Long facilityId) {
-        facilityService.findFacilityOrThrow(SCOPE_TYPE, organizationId, facilityId);
+        accessGuard.requireFacilityMember(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         List<TimeRateResponse> responses = ruleService.getTimeRates(facilityId);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
@@ -162,7 +170,7 @@ public class OrgFacilityController {
             @PathVariable Long organizationId,
             @PathVariable Long facilityId,
             @Valid @RequestBody UpdateTimeRatesRequest request) {
-        facilityService.findFacilityOrThrow(SCOPE_TYPE, organizationId, facilityId);
+        accessGuard.requireFacilityAdmin(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         List<TimeRateResponse> responses = ruleService.replaceTimeRates(facilityId, request);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
@@ -173,7 +181,7 @@ public class OrgFacilityController {
     public ResponseEntity<ApiResponse<List<EquipmentResponse>>> listEquipment(
             @PathVariable Long organizationId,
             @PathVariable Long facilityId) {
-        facilityService.findFacilityOrThrow(SCOPE_TYPE, organizationId, facilityId);
+        accessGuard.requireFacilityMember(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         List<EquipmentResponse> responses = equipmentService.listEquipment(facilityId);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
@@ -185,7 +193,7 @@ public class OrgFacilityController {
             @PathVariable Long organizationId,
             @PathVariable Long facilityId,
             @Valid @RequestBody CreateEquipmentRequest request) {
-        facilityService.findFacilityOrThrow(SCOPE_TYPE, organizationId, facilityId);
+        accessGuard.requireFacilityAdmin(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         EquipmentResponse response = equipmentService.createEquipment(facilityId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
@@ -198,7 +206,7 @@ public class OrgFacilityController {
             @PathVariable Long facilityId,
             @PathVariable Long equipmentId,
             @Valid @RequestBody UpdateEquipmentRequest request) {
-        facilityService.findFacilityOrThrow(SCOPE_TYPE, organizationId, facilityId);
+        accessGuard.requireFacilityAdmin(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         EquipmentResponse response = equipmentService.updateEquipment(facilityId, equipmentId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -210,7 +218,7 @@ public class OrgFacilityController {
             @PathVariable Long organizationId,
             @PathVariable Long facilityId,
             @PathVariable Long equipmentId) {
-        facilityService.findFacilityOrThrow(SCOPE_TYPE, organizationId, facilityId);
+        accessGuard.requireFacilityAdmin(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         equipmentService.deleteEquipment(facilityId, equipmentId);
         return ResponseEntity.noContent().build();
     }
@@ -222,6 +230,7 @@ public class OrgFacilityController {
             @PathVariable Long organizationId,
             @PathVariable Long facilityId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        accessGuard.requireFacilityMember(SCOPE_TYPE, organizationId, facilityId, SecurityUtils.getCurrentUserId());
         AvailabilityResponse response = facilityService.getAvailability(SCOPE_TYPE, organizationId, facilityId, date);
         return ResponseEntity.ok(ApiResponse.of(response));
     }

@@ -160,7 +160,7 @@ public class ScheduleEventCategoryService {
                 .color(data.color())
                 .icon(data.icon())
                 .isDayOffCategory(data.isDayOffCategory())
-                .sortOrder(data.sortOrder())
+                .sortOrder(data.sortOrder() != null ? data.sortOrder() : 0)
                 .build();
 
         log.info("チームカテゴリ作成: teamId={}, name={}", teamId, data.name());
@@ -185,7 +185,7 @@ public class ScheduleEventCategoryService {
                 .color(data.color())
                 .icon(data.icon())
                 .isDayOffCategory(data.isDayOffCategory())
-                .sortOrder(data.sortOrder())
+                .sortOrder(data.sortOrder() != null ? data.sortOrder() : 0)
                 .build();
 
         log.info("組織カテゴリ作成: orgId={}, name={}", orgId, data.name());

@@ -10,6 +10,8 @@ import com.mannschaft.app.membership.dto.MembershipCreateRequest;
 import com.mannschaft.app.membership.entity.MembershipEntity;
 import com.mannschaft.app.membership.repository.MembershipRepository;
 import com.mannschaft.app.membership.service.MembershipService;
+import com.mannschaft.app.membership.query.MemberQueryDispatcher;
+import com.mannschaft.app.membership.service.ScopeMemberCalendarSettingService;
 import com.mannschaft.app.role.entity.RoleEntity;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.RoleRepository;
@@ -56,6 +58,8 @@ class TeamServiceTest {
     @Mock private MembershipRepository membershipRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private MediaUrlResolver mediaUrlResolver;
+    @Mock private MemberQueryDispatcher memberQueryDispatcher;
+    @Mock private ScopeMemberCalendarSettingService scopeMemberCalendarSettingService;
     @InjectMocks private TeamService service;
 
     private static final Long USER_ID = 1L;
@@ -117,6 +121,29 @@ class TeamServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TEAM_001"));
+        }
+
+        @Test
+        @DisplayName("F09.19.10: numericIdに内部BIGINT IDが返される(Spotlight scopeId解決用)")
+        void numericIdに内部BIGINT_IDが返される() {
+            // Given: slug は名称由来の非数値文字列（数値化不能な現実のケースを模す）
+            TeamEntity team = TeamEntity.builder()
+                    .slug(TEAM_SLUG).name("テストチーム").template("sports")
+                    .visibility(TeamEntity.Visibility.PUBLIC)
+                    .build();
+            org.springframework.test.util.ReflectionTestUtils.setField(team, "id", TEAM_ID);
+            given(teamRepository.findBySlugAndDeletedAtIsNull(TEAM_SLUG)).willReturn(Optional.of(team));
+            given(teamFriendRepository.countFriendsByTeamId(any())).willReturn(0L);
+            given(membershipRepository.countActiveByScopeAndRoleKind(any(), any(), any())).willReturn(0L);
+            given(userRoleRepository.countByTeamId(any())).willReturn(0L);
+
+            // When
+            TeamResponse res = service.getTeam(TEAM_SLUG).getData();
+
+            // Then
+            assertThat(res.getNumericId()).isEqualTo(TEAM_ID);
+            // id/slug は URL識別子のまま（正準はslug。numericIdはURLに使わない内部連携専用）
+            assertThat(res.getId()).isEqualTo(res.getSlug());
         }
     }
 

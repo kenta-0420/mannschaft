@@ -2,6 +2,7 @@ package com.mannschaft.app.market.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.market.dto.MarketListingResponse;
 import com.mannschaft.app.market.dto.MarketRegionNodeResponse;
 import com.mannschaft.app.market.dto.MarketSummaryResponse;
@@ -34,7 +35,31 @@ import java.util.List;
  *
  * <p>市の札立て・応募・取下げは既存 recruitment API が担う。本コントローラは
  * <strong>読み取り集約のみ</strong>（README §1）。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 5 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/market/listings"
+ * / "listings/*" / "regions" / "summary" / "categories").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F22.1 市（Market）の公開閲覧 API。<b>PII 抑制済みの公開出品情報・地域/カテゴリのマスタ・集計値のみ</b>
+ * を返す（設計書 04_security.md §1.6）。未ログインでの検索・閲覧が機能要件。レート制限あり。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/market/listings",
+        "/api/v1/public/market/listings/*",
+        "/api/v1/public/market/regions",
+        "/api/v1/public/market/summary",
+        "/api/v1/public/market/categories"
+})
 @RestController
 @RequestMapping("/api/v1/public/market")
 @Tag(name = "F22.1 市（Market）公開閲覧", description = "地域×ジャンルで束ねた募集の公開ビュー（未ログイン可・PII抑制）")

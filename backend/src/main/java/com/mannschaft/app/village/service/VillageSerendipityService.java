@@ -1,12 +1,14 @@
 package com.mannschaft.app.village.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.village.VillageErrorCode;
 import com.mannschaft.app.village.dto.VillageSerendipityRankingResponse;
 import com.mannschaft.app.village.dto.VillageSerendipityScoreResponse;
 import com.mannschaft.app.village.entity.VillageEntity;
 import com.mannschaft.app.village.entity.VillageSerendipityScoreEntity;
-import com.mannschaft.app.village.repository.VillageRepository;
+import com.mannschaft.app.village.entity.enums.VillageSubjectType;
+import com.mannschaft.app.village.repository.VillageMembershipRepository;
 import com.mannschaft.app.village.repository.VillageSerendipityScoreRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,7 +50,8 @@ public class VillageSerendipityService {
     private static final int DEFAULT_LIMIT = 10;
 
     private final VillageSerendipityScoreRepository serendipityRepository;
-    private final VillageRepository villageRepository;
+    private final VillageMembershipRepository membershipRepository;
+    private final VillageAccessGate accessGate;
 
     // ====================================================================
     // 読み取り API
@@ -61,7 +64,7 @@ public class VillageSerendipityService {
      * （初回バッチ実行前は 404、UI 側で「まだスコアがありません」と案内する想定）。</p>
      */
     public VillageSerendipityScoreResponse getMyScore(UUID villageId, Long userId) {
-        loadActiveVillage(villageId);
+        loadActiveVillage(villageId, userId);
         VillageSerendipityScoreEntity entity = serendipityRepository
                 .findByVillageIdAndUserId(villageId, userId)
                 .orElseThrow(() -> new BusinessException(VillageErrorCode.SERENDIPITY_NOT_FOUND));
@@ -70,13 +73,18 @@ public class VillageSerendipityService {
     }
 
     /**
-     * ご縁スコアランキング（上位 N 件）を返す。
+     * ご縁スコアランキング（上位 N 件）を返す。村人（現役メンバー）のみ閲覧可
+     * （他ユーザーの userId・スコアを含むため、非村人への開放は情報漏えいとなる）。
      *
-     * @param villageId 村 ID
-     * @param limit     上位件数（1〜100、超過時はクリップ）
+     * @param villageId   村 ID
+     * @param limit       上位件数（1〜100、超過時はクリップ）
+     * @param actorUserId 閲覧しようとするログイン済ユーザー ID
+     * @deprecated F17.2 §8.2 により表示廃止（相性表示へ置換）。撤去は次リリース。集計自体は推薦の内部信号として存置。
      */
-    public VillageSerendipityRankingResponse getRanking(UUID villageId, Integer limit) {
-        loadActiveVillage(villageId);
+    @Deprecated(since = "F17.2", forRemoval = true)
+    public VillageSerendipityRankingResponse getRanking(UUID villageId, Integer limit, Long actorUserId) {
+        loadActiveVillage(villageId, actorUserId);
+        requireVillager(villageId, actorUserId);
         int size = (limit == null || limit <= 0) ? DEFAULT_LIMIT : Math.min(limit, MAX_LIMIT);
         Pageable pageable = PageRequest.of(0, size);
         Page<VillageSerendipityScoreEntity> page =
@@ -141,13 +149,35 @@ public class VillageSerendipityService {
     // 共通ヘルパ
     // ====================================================================
 
-    private VillageEntity loadActiveVillage(UUID villageId) {
-        VillageEntity v = villageRepository.findById(villageId)
-                .orElseThrow(() -> new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND));
-        if (v.getDeletedAt() != null) {
-            throw new BusinessException(VillageErrorCode.VILLAGE_NOT_FOUND);
+    /**
+     * 閲覧可能かつ操作者に可視な村を取得する（判定は {@link VillageAccessGate} に一元化）。
+     *
+     * <p>従来の実装は不在・削除済みのみを 404 とし、<b>凍結済み村は素通りさせていた</b>
+     * （ご縁スコアの読み取り 2 本はいずれも read であり、凍結を意識していなかった）。
+     * ここで {@link VillageAccessGate#loadActiveVillage} を選ぶと凍結済み村に 409 が新設され、
+     * read 経路に「凍結された村がそこに在る」という新しい存在オラクルを作ってしまう。
+     * よって凍結も 404 に畳む {@link VillageAccessGate#loadReadableVillage} に委譲し、
+     * 同じく read で 404 統一を採っているピン・村内検索と流儀を揃える。</p>
+     *
+     * <p>加えて、非公開(UNLISTED)村を非村人が叩いた場合も実在しない村 ID と同一の
+     * {@code VILLAGE_NOT_FOUND} となり、村の存在が漏れなくなる。</p>
+     */
+    private VillageEntity loadActiveVillage(UUID villageId, Long actorUserId) {
+        return accessGate.loadReadableVillage(villageId, actorUserId);
+    }
+
+    /**
+     * 操作者が当該村の<strong>現役</strong>村人（役職不問）であることを検証する。
+     * 不足時は {@link VillageErrorCode#NOT_MEMBER}（IDOR 対策で 404 統一・
+     * {@code VillageRecruitCategoryService#requireVillager} と同じ粒度・エラーコード）。
+     */
+    private void requireVillager(UUID villageId, Long actorUserId) {
+        if (actorUserId == null) {
+            throw new BusinessException(CommonErrorCode.COMMON_000);
         }
-        return v;
+        membershipRepository
+                .findActiveByVillageIdAndSubject(villageId, VillageSubjectType.USER, actorUserId)
+                .orElseThrow(() -> new BusinessException(VillageErrorCode.NOT_MEMBER));
     }
 
     /**

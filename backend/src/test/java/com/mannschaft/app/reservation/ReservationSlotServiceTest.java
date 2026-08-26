@@ -1,6 +1,7 @@
 package com.mannschaft.app.reservation;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.timezone.TeamTimezoneResolver;
 import com.mannschaft.app.reservation.dto.CloseSlotRequest;
 import com.mannschaft.app.reservation.dto.CreateSlotRequest;
 import com.mannschaft.app.reservation.dto.ReservationSlotResponse;
@@ -56,9 +57,19 @@ class ReservationSlotServiceTest {
     @Mock
     private com.mannschaft.app.reservation.repository.ReservationBlockedTimeRepository blockedTimeRepository;
 
+    /** F03.4.5 §4 W2-2: 定期予約不可枠の active ルール参照。 */
+    @Mock
+    private com.mannschaft.app.reservation.repository.ReservationRecurringBlockedTimeRepository recurringBlockedTimeRepository;
+
     /** F03.4.2: 枠のライン軸（lineId）検証用のライン参照。 */
     @Mock
     private com.mannschaft.app.reservation.repository.ReservationLineRepository lineRepository;
+
+    /** 予約閲覧の view ゲート（会員 or 公開）。デフォルトのモック（void）は常に通過する。 */
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationViewAccessGuard viewAccessGuard;
+    @Mock
+    private TeamTimezoneResolver teamTimezoneResolver;
 
     /** 機能B: overlap 判定は純ロジックのため実インスタンスを注入（listAvailableSlots の除外挙動を実検証）。 */
     private final com.mannschaft.app.reservation.service.ReservationUnavailabilityChecker unavailabilityChecker =
@@ -71,6 +82,7 @@ class ReservationSlotServiceTest {
     // ========================================
 
     private static final Long TEAM_ID = 1L;
+    private static final Long USER_ID = 5L;
     private static final Long SLOT_ID = 10L;
     private static final Long STAFF_USER_ID = 50L;
     private static final Long CREATED_BY = 100L;
@@ -87,8 +99,10 @@ class ReservationSlotServiceTest {
         // @InjectMocks は Clock を mock で埋めてしまい LocalDate.now(clock) が NPE になるため、
         // 固定 Clock を明示注入してサービスを生成する。
         service = new ReservationSlotService(slotRepository, reservationRepository, reservationMapper,
-                blockedTimeRepository, unavailabilityChecker, lineRepository, FIXED_CLOCK,
-                org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class));
+                blockedTimeRepository, recurringBlockedTimeRepository, unavailabilityChecker, lineRepository,
+                FIXED_CLOCK,
+                org.mockito.Mockito.mock(org.springframework.context.ApplicationEventPublisher.class),
+                viewAccessGuard, teamTimezoneResolver);
     }
 
     private ReservationSlotEntity createSlotEntity() {
@@ -111,8 +125,7 @@ class ReservationSlotServiceTest {
                 .teamId(TEAM_ID)
                 .staffUserId(STAFF_USER_ID)
                 .basic(new ReservationSlotResponse.SlotBasicDto("テストスロット", SLOT_DATE, START_TIME, END_TIME))
-                .status(new ReservationSlotResponse.SlotStatusDto("AVAILABLE", 0, 1, false, null, "テストメモ"))
-                .recurrence(new ReservationSlotResponse.RecurrenceDto(null, null))
+                .status(new ReservationSlotResponse.SlotStatusDto("AVAILABLE", 0, 1, null, "テストメモ"))
                 .pricing(new ReservationSlotResponse.SlotPricingDto(new BigDecimal("1000")))
                 .policy(new ReservationSlotResponse.SlotPolicyDto(null))
                 .audit(new ReservationSlotResponse.SlotAuditDto(CREATED_BY, null, null))
@@ -140,7 +153,7 @@ class ReservationSlotServiceTest {
             given(reservationMapper.toSlotResponseList(entities)).willReturn(responses);
 
             // When
-            List<ReservationSlotResponse> result = service.listSlots(TEAM_ID, from, to);
+            List<ReservationSlotResponse> result = service.listSlots(TEAM_ID, USER_ID, from, to);
 
             // Then
             assertThat(result).hasSize(1);
@@ -169,7 +182,7 @@ class ReservationSlotServiceTest {
             given(reservationMapper.toSlotResponseList(entities)).willReturn(responses);
 
             // When
-            List<ReservationSlotResponse> result = service.listAvailableSlots(TEAM_ID, from, to);
+            List<ReservationSlotResponse> result = service.listAvailableSlots(TEAM_ID, USER_ID, from, to);
 
             // Then
             assertThat(result).hasSize(1);
@@ -208,8 +221,9 @@ class ReservationSlotServiceTest {
         private List<ReservationSlotEntity> captureVisibleSlots() {
             org.mockito.ArgumentCaptor<List<ReservationSlotEntity>> captor =
                     org.mockito.ArgumentCaptor.forClass(List.class);
+            given(teamTimezoneResolver.resolveZone(TEAM_ID)).willReturn(ZoneId.of("UTC"));
             given(reservationMapper.toSlotResponseList(captor.capture())).willReturn(List.of());
-            service.listAvailableSlots(TEAM_ID, from, to);
+            service.listAvailableSlots(TEAM_ID, USER_ID, from, to);
             return captor.getValue();
         }
 
@@ -222,8 +236,7 @@ class ReservationSlotServiceTest {
                     slot(null, LocalTime.of(12, 0), LocalTime.of(13, 0)));
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(slots);
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null, null, null)));
 
             assertThat(captureVisibleSlots()).isEmpty();
@@ -237,8 +250,7 @@ class ReservationSlotServiceTest {
             ReservationSlotEntity common = slot(null, LocalTime.of(10, 0), LocalTime.of(11, 0));
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(target, otherStaff, common));
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.STAFF, 50L, null, null)));
 
             assertThat(captureVisibleSlots()).containsExactly(otherStaff, common);
@@ -251,12 +263,12 @@ class ReservationSlotServiceTest {
             ReservationSlotEntity adjacent = slot(50L, LocalTime.of(11, 0), LocalTime.of(12, 0));
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(blocked, adjacent));
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null,
                             LocalTime.of(10, 0), LocalTime.of(11, 0))));
 
             assertThat(captureVisibleSlots()).containsExactly(adjacent);
+            verify(teamTimezoneResolver).resolveZone(TEAM_ID);
         }
 
         @Test
@@ -267,8 +279,7 @@ class ReservationSlotServiceTest {
             given(slotRepository.findByTeamIdAndSlotStatusAndSlotDateBetweenOrderBySlotDateAscStartTimeAsc(
                     TEAM_ID, SlotStatus.AVAILABLE, from, to)).willReturn(List.of(s1, s2));
             // ALTER 前データを模した TEAM/null 全日枠。
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(
-                    TEAM_ID, from, to)).willReturn(List.of(
+            given(blockedTimeRepository.findEffectiveBetween(TEAM_ID, from, to, from.minusDays(1))).willReturn(List.of(
                     block(com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null, null, null)));
 
             assertThat(captureVisibleSlots()).isEmpty();
@@ -293,7 +304,7 @@ class ReservationSlotServiceTest {
             given(reservationMapper.toSlotResponse(entity)).willReturn(response);
 
             // When
-            ReservationSlotResponse result = service.getSlot(TEAM_ID, SLOT_ID);
+            ReservationSlotResponse result = service.getSlot(TEAM_ID, USER_ID, SLOT_ID);
 
             // Then
             assertThat(result).isNotNull();
@@ -307,7 +318,7 @@ class ReservationSlotServiceTest {
             given(slotRepository.findByIdAndTeamId(SLOT_ID, TEAM_ID)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getSlot(TEAM_ID, SLOT_ID))
+            assertThatThrownBy(() -> service.getSlot(TEAM_ID, USER_ID, SLOT_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.SLOT_NOT_FOUND);
@@ -444,11 +455,12 @@ class ReservationSlotServiceTest {
             // When
             service.createSlot(TEAM_ID, request, CREATED_BY);
 
-            // Then: lineId=NULL（共通枠・既存互換）・recurrenceRule は常に NULL（新規保存停止・§3.3）
+            // Then: lineId=NULL（共通枠・既存互換）
+            // ※ recurrenceRule は F03.4.2 §3.3 のクリーンアップで列・フィールドごと撤去済み
+            //   （復活検出は ReservationSlotUnusedColumnRemovalTest が担う）
             ArgumentCaptor<ReservationSlotEntity> captor = ArgumentCaptor.forClass(ReservationSlotEntity.class);
             verify(slotRepository).save(captor.capture());
             assertThat(captor.getValue().getLineId()).isNull();
-            assertThat(captor.getValue().getRecurrenceRule()).isNull();
         }
 
         @Test

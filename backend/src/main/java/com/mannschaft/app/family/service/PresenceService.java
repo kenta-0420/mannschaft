@@ -1,5 +1,6 @@
 package com.mannschaft.app.family.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
@@ -32,10 +33,14 @@ import java.util.stream.Collectors;
 public class PresenceService {
 
     private static final int UNKNOWN_THRESHOLD_HOURS = 24;
+    private static final String SCOPE_TYPE_TEAM = "TEAM";
     private final PresenceEventRepository presenceEventRepository;
+    private final AccessControlService accessControlService;
 
     @Transactional
     public ApiResponse<PresenceEventResponse> sendHome(Long teamId, Long userId, PresenceHomeRequest request) {
+        // 認可根治 Wave2-2C: 非メンバーによる他チームへのプレゼンス送信を 403 で拒否する
+        accessControlService.checkMembership(userId, teamId, SCOPE_TYPE_TEAM);
         closeOpenGoingOut(teamId, userId);
         PresenceEventEntity event = PresenceEventEntity.builder()
                 .teamId(teamId).userId(userId).eventType(EventType.HOME)
@@ -45,6 +50,8 @@ public class PresenceService {
 
     @Transactional
     public ApiResponse<PresenceEventResponse> sendGoingOut(Long teamId, Long userId, PresenceGoingOutRequest request) {
+        // 認可根治 Wave2-2C: 非メンバーによる他チームへのプレゼンス送信を 403 で拒否する
+        accessControlService.checkMembership(userId, teamId, SCOPE_TYPE_TEAM);
         if (request.getExpectedReturnAt() != null && request.getExpectedReturnAt().isBefore(LocalDateTime.now())) {
             throw new BusinessException(FamilyErrorCode.FAMILY_001);
         }
@@ -56,6 +63,16 @@ public class PresenceService {
         return ApiResponse.of(toResponse(presenceEventRepository.save(event)));
     }
 
+    /**
+     * 帰ったよ通知を全所属チームへ一括送信する。
+     *
+     * <p><b>認可</b>: 送信元は {@code SecurityUtils.getCurrentUserId()} で確定した認証主体のみで、
+     * リクエストから送信元ユーザーや対象チームを指定する余地がない（自己スコープ）。
+     * 送信先は将来的にも「認証主体の所属チーム」に限定する。</p>
+     *
+     * <p><b>実装状況</b>: 所属チームの解決とイベント記録は未実装で、現状は通知を行わず空の結果を
+     * 返す。チーム指定版（{@link #sendHome}）はメンバーシップ判定を通して実装済み。</p>
+     */
     @Transactional
     public ApiResponse<PresenceBulkResponse> sendHomeBulk(Long userId) {
         List<PresenceBulkResponse.NotifiedTeam> notified = new ArrayList<>();
@@ -63,6 +80,15 @@ public class PresenceService {
         return ApiResponse.of(new PresenceBulkResponse(notified, skipped));
     }
 
+    /**
+     * お出かけ連絡を全所属チームへ一括送信する。
+     *
+     * <p><b>認可</b>: {@link #sendHomeBulk} と同様に送信元は認証主体のみで、リクエストから
+     * 送信元ユーザーや対象チームを指定する余地がない（自己スコープ）。</p>
+     *
+     * <p><b>実装状況</b>: 帰宅予定時刻の検証のみ実施し、所属チームの解決とイベント記録は未実装で
+     * 現状は空の結果を返す。チーム指定版（{@link #sendGoingOut}）は実装済み。</p>
+     */
     @Transactional
     public ApiResponse<PresenceBulkResponse> sendGoingOutBulk(Long userId, PresenceGoingOutRequest request) {
         if (request.getExpectedReturnAt() != null && request.getExpectedReturnAt().isBefore(LocalDateTime.now())) {
@@ -73,7 +99,9 @@ public class PresenceService {
         return ApiResponse.of(new PresenceBulkResponse(notified, skipped));
     }
 
-    public ApiResponse<List<PresenceStatusResponse>> getStatus(Long teamId) {
+    public ApiResponse<List<PresenceStatusResponse>> getStatus(Long teamId, Long actorUserId) {
+        // 認可根治 Wave2-2C: 在宅状況は行動パターン PII。非メンバーの閲覧を 403 で拒否する
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TYPE_TEAM);
         List<PresenceEventEntity> latestEvents = presenceEventRepository.findLatestByTeamId(teamId);
         LocalDateTime threshold = LocalDateTime.now().minusHours(UNKNOWN_THRESHOLD_HOURS);
         List<PresenceStatusResponse> responses = latestEvents.stream().map(event -> {
@@ -88,7 +116,10 @@ public class PresenceService {
         return ApiResponse.of(responses);
     }
 
-    public CursorPagedResponse<PresenceEventResponse> getHistory(Long teamId, Long userId, Long cursor, int limit) {
+    public CursorPagedResponse<PresenceEventResponse> getHistory(Long teamId, Long actorUserId,
+                                                                 Long userId, Long cursor, int limit) {
+        // 認可根治 Wave2-2C: 非メンバーの履歴閲覧を 403 で拒否する
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TYPE_TEAM);
         List<PresenceEventEntity> events = presenceEventRepository.findHistory(teamId, userId, cursor, PageRequest.of(0, limit + 1));
         boolean hasNext = events.size() > limit;
         List<PresenceEventEntity> page = hasNext ? events.subList(0, limit) : events;
@@ -97,7 +128,9 @@ public class PresenceService {
         return CursorPagedResponse.of(responses, new CursorPagedResponse.CursorMeta(nextCursor, hasNext, limit));
     }
 
-    public ApiResponse<PresenceStatsResponse> getStats(Long teamId, String period) {
+    public ApiResponse<PresenceStatsResponse> getStats(Long teamId, Long actorUserId, String period) {
+        // 認可根治 Wave2-2C: 統計は ADMIN 用 EP（既存仕様）のため checkAdminOrAbove
+        accessControlService.checkAdminOrAbove(actorUserId, teamId, SCOPE_TYPE_TEAM);
         int days = switch (period) { case "7d" -> 7; case "90d" -> 90; default -> 30; };
         LocalDateTime after = LocalDateTime.now().minusDays(days);
         List<PresenceEventEntity> events = presenceEventRepository.findByTeamIdAndCreatedAtAfterOrderByCreatedAtDesc(teamId, after);

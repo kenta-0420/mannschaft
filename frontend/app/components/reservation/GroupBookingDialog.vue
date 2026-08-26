@@ -38,6 +38,15 @@ export interface GroupBookingContext {
   /** メニューフィルターが有効な場合の事前絞り込みメニュー（menu選択ステップをスキップ）。 */
   preselectedMenuId?: string | null
   preselectedRequiredCellCount?: number | null
+  /**
+   * ドラッグ複数選択で確定した枠数（機能H）。指定時は `startIndex` を起点に この枠数ぶんを
+   * メニューなしで選択済みにし、menu ステップをスキップして即プレビューへ進む。
+   *
+   * メニューフィルター（`preselectedMenuId`）より優先する: 利用者が自分の指で選んだ範囲を
+   * メニュー既定長で上書きすると「ドラッグした範囲と違う予約が入る」ため。
+   * プレビューでは従来どおり「＋30分延長」で伸ばせる。
+   */
+  dragCellCount?: number | null
 }
 
 const props = defineProps<{
@@ -57,6 +66,41 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
+/** 静かなエラー記録（トーストは出さずバックエンドへ送信。WidgetAttendanceResults.vue 等と同一パターン）。 */
+const { captureQuiet } = useErrorReport()
+
+/** 呼称の動的差し込み（F03.4.5 §5.2）: 使い方ガイド本文の呼称箇所に使う。 */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
+
+/**
+ * 仮押さえ(PENDING)自動失効の会員向け注意書き（F03.4.5 §6.3 W2-6-FE）。
+ * GET /reservation-settings は ADMIN 限定ではなく view ゲート（会員/公開）のため会員側からも読める。
+ * approvalMode=MANUAL かつ pendingExpireHours が非 NULL のときのみ表示する（ReservationForm.vue と同一方針）。
+ */
+const pendingExpireApprovalMode = ref<'AUTO' | 'MANUAL' | undefined>(undefined)
+const pendingExpireHours = ref<number | null>(null)
+
+async function loadPendingExpireNotice() {
+  try {
+    const res = await reservationApi.getReservationSettings(props.teamId)
+    pendingExpireApprovalMode.value = res.data.approvalMode
+    pendingExpireHours.value = res.data.pendingExpireHours ?? null
+  }
+  catch (error) {
+    // 取得失敗は注意書きを出さない方向にフォールバック（予約確定の可否自体は BE が最終判定するため機能不全にはならない）。
+    // ただし完全に握りつぶすと恒常的な失敗が誰にも見えなくなるため、ユーザーには出さずバックエンドへ静かに記録する
+    // （captureQuiet・症状を隠さない。ReservationForm.vue と同一方針）。
+    captureQuiet(error, { context: 'GroupBookingDialog: 仮押さえ失効設定の取得に失敗' })
+    pendingExpireApprovalMode.value = undefined
+    pendingExpireHours.value = null
+  }
+}
+
+const showPendingExpireNotice = computed(
+  () => pendingExpireApprovalMode.value === 'MANUAL' && pendingExpireHours.value != null,
+)
+
+onMounted(() => { void loadResourceName() })
 
 type Step = 'menu' | 'preview'
 const step = ref<Step>('menu')
@@ -108,16 +152,25 @@ function close() {
   emit('update:visible', false)
 }
 
+// ダイアログを開くたびに仮押さえ失効設定を再取得する（検分是正・W2-6-FE §MUST⑥）。本ダイアログは
+// picker 配下に常設 mount＋KeepAlive のため、onMounted 一回 fetch だと管理者が設定を変えても
+// 画面遷移まで古い値を表示し続ける。ReservationForm.vue と同じ「開くたび再取得」に揃える。
 watch(() => props.visible, (v) => {
   if (v) {
     resetState()
+    void loadPendingExpireNotice()
+    // ドラッグ複数選択で入ってきた場合は、その枠数をメニューなしで確定して即プレビューへ
+    // （メニューフィルターより優先。利用者が指で選んだ範囲を既定長で上書きしない）。
+    if (props.context?.dragCellCount && props.context.dragCellCount > 0) {
+      applyMenuSelection(null, props.context.dragCellCount)
+    }
     // メニューフィルター事前絞り込み済みなら menu ステップをスキップして即プレビューへ
-    if (props.context?.preselectedMenuId && props.context.preselectedRequiredCellCount) {
+    else if (props.context?.preselectedMenuId && props.context.preselectedRequiredCellCount) {
       const menu = menuOptions.value.find(m => m.id === props.context?.preselectedMenuId)
       if (menu) applyMenuSelection(menu, props.context.preselectedRequiredCellCount)
     }
   }
-})
+}, { immediate: true })
 
 /** メニュー選択（null=メニューなし30分）を適用し、連続枠が取れればプレビューへ進む。 */
 function applyMenuSelection(menu: ReservationMenuResponse | null, count: number) {
@@ -154,13 +207,21 @@ const selectedSlotIds = computed<number[] | null>(() => {
 
 const canExtendNow = computed(() => {
   if (!props.context) return false
-  return canExtend(props.context.rowSlots, selectedIndices.value)
+  return selectedIndices.value.length < 16 && canExtend(props.context.rowSlots, selectedIndices.value)
 })
+
+const minimumCellCount = computed(() => selectedMenuId.value == null ? 1 : requiredCellCount.value)
+const canReduceNow = computed(() => selectedIndices.value.length > minimumCellCount.value)
 
 function extend() {
   if (!canExtendNow.value) return
   const last = Math.max(...selectedIndices.value)
   selectedIndices.value = [...selectedIndices.value, last + 1]
+}
+
+function reduce() {
+  if (!canReduceNow.value) return
+  selectedIndices.value = selectedIndices.value.slice(0, -1)
 }
 
 const previewTimeLabel = computed(() => {
@@ -244,6 +305,10 @@ async function confirm() {
         emit('reserved')
         close()
         break
+      case 'RESERVATION_053':
+        // 429=予約作成レートリミット（W2-6 §6.4）。汎用文言でなく専用文言で案内する。
+        notification.error(t('reservation.message.rate_limited'))
+        break
       default:
         notification.error(t('reservation.message.reserve_failed'))
     }
@@ -273,7 +338,7 @@ async function confirm() {
           </AccordionHeader>
           <AccordionContent>
             <p class="text-xs text-surface-600 dark:text-surface-300">
-              {{ t('reservation.matrix.help_body') }}
+              {{ t('reservation.matrix.help_body', { resourceName }) }}
             </p>
           </AccordionContent>
         </AccordionPanel>
@@ -324,7 +389,7 @@ async function confirm() {
         </div>
 
         <div v-if="isCommon">
-          <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line') }}</label>
+          <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.line', { resourceName }) }}</label>
           <Select
             v-model="selectedLineId"
             data-testid="group-line-select"
@@ -336,27 +401,32 @@ async function confirm() {
           />
         </div>
         <div v-else class="text-sm">
-          <span class="text-surface-500">{{ t('reservation.field.line') }}</span>
+          <span class="text-surface-500">{{ t('reservation.field.line', { resourceName }) }}</span>
           <span class="ml-2 font-medium">{{ context.columnLineName }}</span>
         </div>
 
         <Message v-if="lineWarning" severity="warn" :closable="false">{{ lineWarning }}</Message>
 
-        <Button
-          data-testid="group-extend"
-          :label="t('reservation.matrix.extend_30')"
-          icon="pi pi-plus"
-          text
-          size="small"
-          :disabled="!canExtendNow"
-          :title="!canExtendNow ? t('reservation.matrix.cannot_extend') : undefined"
-          @click="extend"
-        />
+        <div class="flex items-center justify-center gap-2" data-testid="group-slot-stepper">
+          <Button data-testid="group-reduce" icon="pi pi-minus" text rounded :disabled="!canReduceNow" @click="reduce" />
+          <span class="min-w-28 text-center text-sm font-medium">{{ t('reservation.group.slot_count', { n: selectedIndices.length }) }}（{{ selectedIndices.length * 30 }}分）</span>
+          <Button data-testid="group-extend" icon="pi pi-plus" text rounded :disabled="!canExtendNow" :title="!canExtendNow ? t('reservation.matrix.cannot_extend') : undefined" @click="extend" />
+        </div>
 
         <div>
           <label class="mb-1 block text-sm font-medium">{{ t('reservation.field.note') }}</label>
           <Textarea v-model="userNote" rows="2" class="w-full" :placeholder="t('reservation.placeholder.note')" />
         </div>
+
+        <!-- 仮押さえ(PENDING)自動失効の会員向け注意書き（F03.4.5 §6.3 W2-6-FE・ReservationForm.vue と同一方針） -->
+        <Message
+          v-if="showPendingExpireNotice"
+          severity="info"
+          :closable="false"
+          data-testid="pending-expire-notice"
+        >
+          {{ t('reservation.pending_expire_notice.form_note', { n: pendingExpireHours }) }}
+        </Message>
       </div>
     </div>
 

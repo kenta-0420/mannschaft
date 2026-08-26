@@ -1,10 +1,8 @@
 package com.mannschaft.app.safetycheck.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
-import com.mannschaft.app.notification.NotificationPriority;
-import com.mannschaft.app.notification.NotificationScopeType;
-import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.safetycheck.SafetyCheckErrorCode;
 import com.mannschaft.app.safetycheck.SafetyCheckMapper;
@@ -22,8 +20,10 @@ import com.mannschaft.app.safetycheck.repository.SafetyCheckRepository;
 import com.mannschaft.app.safetycheck.repository.SafetyCheckTemplateRepository;
 import com.mannschaft.app.safetycheck.repository.SafetyResponseRepository;
 import com.mannschaft.app.safetycheck.SafetyResponseStatus;
+import com.mannschaft.app.safetycheck.event.SafetyCheckReminderNotificationEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -50,7 +50,12 @@ public class SafetyCheckService {
     private final SafetyCheckMapper mapper;
     private final UserRoleRepository userRoleRepository;
     private final NameResolverService nameResolverService;
-    private final NotificationHelper notificationHelper;
+    private final AccessControlService accessControlService;
+    /**
+     * Issue #2834 / CMP-056: 付随通知は業務トランザクションの外（AFTER_COMMIT）で発火させるため、
+     * 業務メソッドはイベントを publish するだけに留める（backend/.claudecode.md 原則5）。
+     */
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 安否確認を発信する。
@@ -63,6 +68,9 @@ public class SafetyCheckService {
     // TODO: SafetycheckドメインとRoleドメイン・Notificationドメインをまたいでいる。将来はMemberCountResolvedEventとNotificationRequestedEventで分離予定
     public SafetyCheckResponse createSafetyCheck(CreateSafetyCheckRequest req, Long userId) {
         SafetyCheckScopeType scopeType = parseScopeType(req.getScopeType());
+
+        // 束3 AC-1-4: 安否確認の発信はスコープの ADMIN/DEPUTY_ADMIN のみ許可（生命安全の偽発信防止）
+        accessControlService.checkAdminOrAbove(userId, req.getScopeId(), scopeType.name());
 
         SafetyCheckEntity.SafetyCheckEntityBuilder builder = SafetyCheckEntity.builder()
                 .scopeType(scopeType)
@@ -105,16 +113,23 @@ public class SafetyCheckService {
     /**
      * 安否確認一覧を取得する。
      *
+     * <p><b>認可</b>: 安否確認の本文は災害時の機微情報を含むため、宣言スコープのメンバーのみ閲覧可
+     * （回答は非 ADMIN メンバーも行うため {@code checkMembership}。回答状況・未回答者一覧といった
+     * 個人の安否そのものは従来どおり {@link #getResults} / {@link #getUnrespondedUsers} 側で
+     * {@code checkAdminOrAbove} に限定される）。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param status    ステータス（null の場合は全件）
      * @param page      ページ番号
      * @param size      ページサイズ
+     * @param userId    操作者ID
      * @return 安否確認一覧
      */
     public Page<SafetyCheckResponse> listSafetyChecks(String scopeType, Long scopeId,
-                                                       String status, int page, int size) {
+                                                       String status, int page, int size, Long userId) {
         SafetyCheckScopeType scope = parseScopeType(scopeType);
+        requireScopeMember(userId, scope, scopeId);
         PageRequest pageRequest = PageRequest.of(page, size);
 
         Page<SafetyCheckEntity> entities;
@@ -133,11 +148,24 @@ public class SafetyCheckService {
     /**
      * 安否確認詳細を取得する。
      *
+     * <p><b>認可（BOLA 封鎖）</b>: URL にスコープを持たない bare id EP のため、
+     * まず entity を fetch し <b>entity 由来のスコープ</b>（{@code scopeType}/{@code scopeId}）で
+     * メンバーシップを判定する。権限が無い場合は 403 ではなく
+     * {@code SAFETY_CHECK_NOT_FOUND}（404）で存在を秘匿する。</p>
+     *
      * @param safetyCheckId 安否確認ID
+     * @param userId        操作者ID
      * @return 安否確認詳細
      */
-    public SafetyCheckResponse getSafetyCheck(Long safetyCheckId) {
+    public SafetyCheckResponse getSafetyCheck(Long safetyCheckId, Long userId) {
         SafetyCheckEntity entity = findSafetyCheckOrThrow(safetyCheckId);
+        // entity 由来スコープのメンバーでなければ存在秘匿（404）。番人テストの 2 ホップ制約のため
+        // accessControlService は本メソッドから直接呼ぶこと。
+        if (entity.getScopeType() == SafetyCheckScopeType.GROUP
+                || userId == null
+                || !accessControlService.isMember(userId, entity.getScopeId(), entity.getScopeType().name())) {
+            throw new BusinessException(SafetyCheckErrorCode.SAFETY_CHECK_NOT_FOUND);
+        }
         return mapper.toSafetyCheckResponse(entity);
     }
 
@@ -151,6 +179,8 @@ public class SafetyCheckService {
     @Transactional
     public SafetyCheckResponse closeSafetyCheck(Long safetyCheckId, Long userId) {
         SafetyCheckEntity entity = findSafetyCheckOrThrow(safetyCheckId);
+        // 束3 AC-1-4: クローズはスコープの ADMIN/DEPUTY_ADMIN のみ許可
+        accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
         validateActive(entity);
 
         entity.close(userId);
@@ -164,10 +194,13 @@ public class SafetyCheckService {
      * 安否確認の結果集計を取得する。
      *
      * @param safetyCheckId 安否確認ID
+     * @param userId        操作者ID（スコープ ADMIN/DEPUTY_ADMIN のみ閲覧可）
      * @return 結果集計
      */
-    public SafetyCheckResultsResponse getResults(Long safetyCheckId) {
+    public SafetyCheckResultsResponse getResults(Long safetyCheckId, Long userId) {
         SafetyCheckEntity check = findSafetyCheckOrThrow(safetyCheckId);
+        // 束3 AC-1-4: 回答状況（誰が安全/要支援か）はスコープ管理者のみ閲覧可
+        accessControlService.checkAdminOrAbove(userId, check.getScopeId(), check.getScopeType().name());
 
         List<SafetyResponseEntity> responses = safetyResponseRepository
                 .findBySafetyCheckIdOrderByRespondedAtAsc(safetyCheckId);
@@ -192,10 +225,13 @@ public class SafetyCheckService {
      * 未回答ユーザー一覧を取得する。
      *
      * @param safetyCheckId 安否確認ID
+     * @param actorUserId   操作者ID（スコープ ADMIN/DEPUTY_ADMIN のみ閲覧可）
      * @return 未回答ユーザー一覧
      */
-    public List<UnrespondedUserResponse> getUnrespondedUsers(Long safetyCheckId) {
+    public List<UnrespondedUserResponse> getUnrespondedUsers(Long safetyCheckId, Long actorUserId) {
         SafetyCheckEntity safetyCheck = findSafetyCheckOrThrow(safetyCheckId);
+        // 束3 AC-1-4: 未回答者（安否不明者）の氏名一覧はスコープ管理者のみ閲覧可
+        accessControlService.checkAdminOrAbove(actorUserId, safetyCheck.getScopeId(), safetyCheck.getScopeType().name());
 
         // 回答済みユーザーIDを取得
         Set<Long> respondedUserIds = new HashSet<>(
@@ -229,14 +265,18 @@ public class SafetyCheckService {
     /**
      * 安否確認履歴を取得する（クローズ済み）。
      *
+     * <p><b>認可</b>: {@link #listSafetyChecks} と同一（宣言スコープのメンバーのみ）。</p>
+     *
      * @param scopeType スコープ種別
      * @param scopeId   スコープID
      * @param page      ページ番号
      * @param size      ページサイズ
+     * @param userId    操作者ID
      * @return 履歴一覧
      */
-    public Page<SafetyCheckResponse> getHistory(String scopeType, Long scopeId, int page, int size) {
+    public Page<SafetyCheckResponse> getHistory(String scopeType, Long scopeId, int page, int size, Long userId) {
         SafetyCheckScopeType scope = parseScopeType(scopeType);
+        requireScopeMember(userId, scope, scopeId);
         PageRequest pageRequest = PageRequest.of(page, size);
 
         return safetyCheckRepository.findClosedByScopeOrderByClosedAtDesc(scope, scopeId, pageRequest)
@@ -250,9 +290,10 @@ public class SafetyCheckService {
      * @param userId        操作者ID
      */
     @Transactional
-    // TODO: SafetycheckドメインとNotificationドメインをまたいでいる。将来はReminderRequestedEventで分離予定
     public void sendReminder(Long safetyCheckId, Long userId) {
         SafetyCheckEntity entity = findSafetyCheckOrThrow(safetyCheckId);
+        // 束3 AC-1-4: リマインド送信はスコープの ADMIN/DEPUTY_ADMIN のみ許可
+        accessControlService.checkAdminOrAbove(userId, entity.getScopeId(), entity.getScopeType().name());
         validateActive(entity);
 
         // リマインド間隔チェック
@@ -267,13 +308,14 @@ public class SafetyCheckService {
         entity.updateLastReminderAt();
         safetyCheckRepository.save(entity);
 
-        // 未回答者にリマインド通知を送信
-        // NOTE: 全メンバーから回答済みを除いた未回答者への通知は、メンバー一覧取得実装後に拡張
-        notificationHelper.notify(userId, "SAFETY_CHECK_REMINDER", NotificationPriority.URGENT,
-                "安否確認リマインド", "安否確認に未回答です。至急回答をお願いします。",
-                "SAFETY_CHECK", safetyCheckId,
-                NotificationScopeType.valueOf(entity.getScopeType().name()), entity.getScopeId(),
-                "/safety-checks/" + safetyCheckId, userId);
+        // 未回答者にリマインド通知を送信（Issue #2834 / CMP-056 第1群ロットA）。
+        // NOTE: 全メンバーから回答済みを除いた未回答者への通知は、メンバー一覧取得実装後に拡張。
+        // createNotification を直接呼ばず、イベントを publish するだけに留める。実際の通知生成・配信は
+        // SafetyCheckReminderNotificationListener が AFTER_COMMIT で受け取ってから行うため、
+        // 通知側の DB 例外が本メソッドの業務トランザクション（last_reminder_at 更新）を巻き戻さない。
+        eventPublisher.publishEvent(new SafetyCheckReminderNotificationEvent(
+                safetyCheckId, userId, entity.getScopeType().name(), entity.getScopeId()));
+
         log.info("リマインド送信: safetyCheckId={}, sentBy={}", safetyCheckId, userId);
     }
 
@@ -285,6 +327,23 @@ public class SafetyCheckService {
     SafetyCheckEntity findSafetyCheckOrThrow(Long id) {
         return safetyCheckRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(SafetyCheckErrorCode.SAFETY_CHECK_NOT_FOUND));
+    }
+
+    /**
+     * 宣言スコープのメンバーであることを要求する（参照系の入口ガード）。
+     *
+     * <p>{@code GROUP} スコープは {@code scopeId} がチーム／組織 ID ではなくグループ ID を指し、
+     * {@code memberships} で所属解決ができない（{@code ScopeType.valueOf("GROUP")} は例外）。
+     * {@code SafetyCheckRepository#searchByKeyword} の既存方針と揃え <b>fail-closed</b> で拒否する。</p>
+     *
+     * <p>番人テスト {@code AuthzControllerGuardArchTest} は Controller 起点で 2 ホップまでしか
+     * 委譲を辿らないため、{@code accessControlService} は本メソッドから<b>直接</b>呼ぶこと。</p>
+     */
+    private void requireScopeMember(Long userId, SafetyCheckScopeType scope, Long scopeId) {
+        if (scope == SafetyCheckScopeType.GROUP || userId == null
+                || !accessControlService.isMember(userId, scopeId, scope.name())) {
+            throw new BusinessException(SafetyCheckErrorCode.ACCESS_DENIED);
+        }
     }
 
     /**

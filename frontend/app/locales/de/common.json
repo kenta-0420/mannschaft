@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…"
+    },
+    "mobile": {
+      "backToList": "Zurück zur Kanalliste",
+      "noChannels": "Noch keine Kanäle",
+      "createChannel": "Kanal erstellen"
     }
   },
   "button": {
@@ -221,8 +226,12 @@
   "error": {
     "server": "Ein Serverfehler ist aufgetreten",
     "server_retry": "Bitte versuchen Sie es spater erneut.",
+    "rate_limited": "Zu viele Anfragen",
+    "rate_limited_detail": "Sie haben in kurzer Zeit zu viele Anfragen gesendet. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+    "rate_limited_retry_after": "Sie haben in kurzer Zeit zu viele Anfragen gesendet. Bitte versuchen Sie es in etwa {seconds} Sekunden erneut.",
     "network": "Ein Netzwerkfehler ist aufgetreten",
     "unauthorized": "Bitte melden Sie sich an",
+    "section_load_failed": "Dieser Abschnitt konnte nicht geladen werden. Bitte neu laden.",
     "unknown": "Ein Fehler ist aufgetreten",
     "COMMON_001": "Die Eingaben sind fehlerhaft",
     "COMMON_002": "Sie haben keine Berechtigung fur diese Aktion",
@@ -239,7 +248,19 @@
     "AUTH_010": "Das aktuelle Passwort ist nicht korrekt",
     "AUTH_011": "Es wurde noch kein Passwort festgelegt",
     "AUTH_044": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut",
-    "SURVEY_023": "Die Team-Aufschluesselung kann bei anonymen Umfragen nicht aktiviert werden"
+    "SURVEY_023": "Die Team-Aufschluesselung kann bei anonymen Umfragen nicht aktiviert werden",
+    "SCHEDULE_KEEP_001": "キープが見つかりません",
+    "SCHEDULE_KEEP_002": "タイトルを入力してください",
+    "SCHEDULE_KEEP_003": "候補日は最大10件です",
+    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
+    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
+    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
+    "SCHEDULE_KEEP_007": "この状態では編集できません",
+    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
+    "SCHEDULE_KEEP_009": "この操作はできません",
+    "SCHEDULE_KEEP_010": "キープの上限に達しました",
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "Du hast das Limit von 200 Ausblendungen erreicht. Blende bitte etwas wieder ein."
   },
   "annual_plan": {
     "title": "Jahresveranstaltungsplan",
@@ -463,7 +484,46 @@
     "writeReply": "Antwort schreiben",
     "replySubmit": "Antworten",
     "noReplies": "Noch keine Antworten",
-    "loadMoreReplies": "Mehr anzeigen"
+    "loadMoreReplies": "Mehr anzeigen",
+    "composerPlaceholder": {
+      "TEAM": "Im Team posten...",
+      "VILLAGE": "Im Dorf posten...",
+      "ORGANIZATION": "In der Organisation posten...",
+      "PUBLIC": "Was gibt's Neues?"
+    },
+    "submitLabel": "Posten",
+    "pollOptionsCount": "{count} Optionen",
+    "deliveryScope": {
+      "label": "Zustellbereich",
+      "options": {
+        "DIRECT": "Nur Mitglieder dieser Organisation",
+        "CHILDREN": "Auch direkte untergeordnete Organisationen",
+        "DESCENDANTS": "Alle untergeordneten Organisationen"
+      },
+      "hints": {
+        "DIRECT": "Wird nur in den Timelines der Mitglieder dieser Organisation angezeigt.",
+        "CHILDREN": "Wird auch Mitgliedern der direkt untergeordneten Organisationen angezeigt.",
+        "DESCENDANTS": "Wird Mitgliedern aller untergeordneten Organisationen angezeigt."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Beiträge dieses Teams ausblenden",
+        "ORGANIZATION": "Beiträge dieser Organisation ausblenden"
+      },
+      "targetType": {
+        "TEAM": "Team",
+        "ORGANIZATION": "Organisation"
+      },
+      "muted": "Beiträge von {name} wurden ausgeblendet",
+      "undo": "Rückgängig",
+      "unmuted": "Beiträge werden wieder angezeigt",
+      "chip": "Ausgeblendet: {count}",
+      "dialogTitle": "Ausgeblendete Quellen",
+      "emptyList": "Du hast niemanden ausgeblendet.",
+      "unmuteAction": "Wieder anzeigen",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Galerie",
@@ -516,7 +576,8 @@
       "selfReviewEnd": "Endzeit der Selbstüberprüfung",
       "selfReviewHelp": "Der konfigurierte Zeitraum wird als Überprüfungsfenster vor der Veröffentlichung behandelt",
       "saveSettings": "Einstellungen speichern",
-      "loadFailed": "Artikel konnte nicht geladen werden"
+      "loadFailed": "Artikel konnte nicht geladen werden",
+      "scheduledPublishUnavailable": "Geplantes Veröffentlichen ist derzeit nicht verfügbar. Beim Veröffentlichen wird der Beitrag sofort sichtbar."
     },
     "autoSave": {
       "label": "Automatisch speichern",
@@ -1265,6 +1326,16 @@
     "filter": {
       "allTeamsOrgs": "Teams & Organisationen (alle)",
       "selectScope": "Ziel auswählen"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Privat",
+        "unknown": "Weitere Termine",
+        "loadError": {
+          "summary": "Ebenen konnten nicht geladen werden",
+          "detail": "Die Team-/Organisationsfilter sind vorübergehend nicht verfügbar. Termine werden weiterhin angezeigt. Bitte später erneut laden."
+        }
+      }
     }
   },
   "handoff": {
@@ -1431,7 +1502,13 @@
       "leave_action": "Verlassen",
       "load_error_title": "Informationen konnten nicht geladen werden",
       "load_error_body": "Bitte versuche es später erneut. Ohne Berechtigung ist die Anzeige evtl. nicht möglich.",
-      "back_to_dashboard": "Zurück zum Dashboard"
+      "back_to_dashboard": "Zurück zum Dashboard",
+      "retry": "Erneut versuchen",
+      "slow_loading": "Das Laden dauert länger als erwartet"
+    },
+    "unsavedChanges": {
+      "title": "Ungespeicherte Änderungen",
+      "confirmLeave": "Es gibt ungespeicherte Änderungen. Wenn Sie diese Seite verlassen, gehen Ihre Eingaben verloren. Fortfahren?"
     }
   },
   "teamHub": {
@@ -1557,7 +1634,9 @@
       "betaRestriction": "Beta-Einschränkung",
       "errorReports": "Fehlerberichte",
       "gdprPurge": "DSGVO Bereinigungsstatus",
-      "feedbackInbox": "Feedback-Posteingang (Global)"
+      "feedbackInbox": "Feedback-Posteingang (Global)",
+      "billing": "Abrechnungs-Stammdaten",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "Identitätswechsel: {label}",
@@ -1806,6 +1885,13 @@
     "mapEmbedUrlHelp": "In Google Maps auf \"Teilen > Karte einbetten > HTML kopieren\" klicken und die src= URL einfügen",
     "mapEmbedUrlInvalidFormat": "Muss eine Google Maps Einbettungs-URL sein (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "Standortkarten-URL gespeichert",
+    "timezone": {
+      "label": "Zeitzone für Reservierungen",
+      "help": "IANA-Zeitzone für die Start- und Endzeiten von Reservierungen.",
+      "placeholder": "z. B. Asia/Tokyo",
+      "invalid": "Geben Sie eine gültige IANA-Zeitzone ein",
+      "saved": "Zeitzone gespeichert"
+    },
     "regionCode": {
       "label": "Standort (Präfektur / Stadt)",
       "help": "Die Auswahl von Präfektur und Stadt legt die Standardwerte für regionale Suche und Inserate fest.",
@@ -1823,6 +1909,7 @@
     "bulletinOpen": "Im Forum diskutieren"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "Speicher", "personal": "Persönlich", "team": "Team", "organization": "Organisation", "details": "Details anzeigen", "error": "Speicher konnte nicht geladen werden", "retry": "Erneut versuchen", "unconfigured": "Kontingent nicht konfiguriert", "not_available": "Keine Speicherdaten", "meterLabel": "Speichernutzung {scope}", "meterValue": "Nutzung {percent}%", "warningTitle": "Speicherlimit wird erreicht", "warningMessage": "{scope} verwendet {percent}%. Erwägen Sie ein kostenpflichtiges Upgrade.", "viewPlans": "Tarife anzeigen", "checkStorage": "Speicher prüfen", "cancel": "Abbrechen" },
     "tabs": {
       "personal": "Persönlich",
       "team": "Team",
@@ -2076,5 +2163,31 @@
   "comingSoon": {
     "title": "Demnächst verfügbar",
     "description": "Diese Funktion befindet sich derzeit in der Entwicklung. Bitte schauen Sie später wieder vorbei."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Eigentum übertragen",
+    "sectionDescription": "Übergib die Rolle des Eigentümers (Administrator) an ein anderes Mitglied. Nach der Übertragung bist du stellvertretende:r Administrator:in und kannst administratorexklusive Aktionen nicht mehr ausführen.",
+    "openButton": "Eigentum übertragen",
+    "dialogTitle": "Eigentum übertragen",
+    "warning": "Diese Aktion kann nicht rückgängig gemacht werden. Die Administratorrechte gehen an die neue Eigentümerin bzw. den neuen Eigentümer über; nur diese Person kann sie zurückgeben.",
+    "targetLabel": "Neue:r Eigentümer:in",
+    "targetPlaceholder": "Mitglied auswählen",
+    "noCandidates": "Es gibt kein Mitglied, an das du das Eigentum übertragen kannst.",
+    "confirmLabel": "Gib zur Bestätigung „{name}“ ein",
+    "confirmMismatch": "Der Name stimmt nicht überein.",
+    "cancel": "Abbrechen",
+    "submit": "Übertragen",
+    "successTitle": "Eigentum übertragen",
+    "successDetail": "Die Administratorrechte wurden an die neue Eigentümerin bzw. den neuen Eigentümer übertragen."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Funktion nicht verfügbar",
+      "body": "Diese Funktion ist derzeit nicht verfügbar. Sie werden zum Dashboard zurückgeleitet."
+    },
+    "error": {
+      "fetchFailedTitle": "Verfügbarkeit der Funktion konnte nicht geprüft werden",
+      "fetchFailedBody": "Aufgrund eines Netzwerkfehlers konnte nicht geprüft werden, ob diese Funktion verfügbar ist. Bitte versuchen Sie es später erneut."
+    }
   }
 }

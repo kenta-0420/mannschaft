@@ -77,7 +77,10 @@
       "toggle_today": "今日",
       "toggle_week": "今週",
       "empty_today": "今日の予定はありません",
-      "empty_week": "今週の予定はありません"
+      "empty_week": "今週の予定はありません",
+      "kind_event": "予定",
+      "kind_shift": "シフト",
+      "kind_reservation": "予約"
     },
     "personal": {
       "find_team_title": "새로운 팀·조직 찾기",
@@ -183,6 +186,25 @@
       "widget_notices_tab_platform": "공지사항",
       "widget_notices_platform_empty": "현재 공지사항이 없습니다"
     },
+    "commandCenter": {
+      "title": "지금 할 일",
+      "unresolvedCount": "미처리 {count}건",
+      "chipCirculation": "회람판",
+      "chipSurvey": "설문",
+      "chipAttendance": "출석 확인",
+      "chipOverdueTodo": "기한 초과 TODO",
+      "deadlineOverdue": "기한 초과",
+      "deadlineToday": "오늘",
+      "emptyTitle": "놓친 항목 없음 🎉",
+      "emptyMessage": "처리가 필요한 항목이 없습니다",
+      "partialLoadError": "일부 데이터를 불러오지 못했습니다",
+      "todoCompleteAria": "완료로 표시",
+      "todoCompleteSuccess": "TODO를 완료했습니다",
+      "todoCompleteError": "TODO 완료에 실패했습니다",
+      "adminSectionTitle": "승인 대기",
+      "adminUnresolvedCount": "승인 대기 {count}건",
+      "adminLoadError": "승인 대기 항목을 불러오지 못했습니다"
+    },
     "myCorkboard": {
       "widgetTitle": "내 코르크보드",
       "viewAll": "전체 보기",
@@ -196,6 +218,27 @@
       "unpinAction": "이 카드의 고정을 해제",
       "navigationFailed": "이 카드의 참조 대상에 접근할 수 없습니다",
       "colorLabelAria": "{color} 라벨"
+    },
+    "activity_feed": {
+      "post_created": "が投稿しました",
+      "event_created": "がイベントを作成しました",
+      "member_joined": "が参加しました",
+      "todo_completed": "がTODOを完了しました",
+      "bulletin_created": "がお知らせを投稿しました",
+      "poll_created": "がアンケートを作成しました",
+      "file_uploaded": "がファイルを共有しました",
+      "schedule_created": "が予定を作成しました",
+      "schedule_updated": "が予定を更新しました",
+      "schedule_cancelled": "が予定をキャンセルしました",
+      "schedule_rescheduled": "が予定の日程を変更しました",
+      "detail_start_at": "開始日時",
+      "detail_end_at": "終了日時",
+      "detail_is_all_day": "終日設定",
+      "detail_title": "タイトル",
+      "detail_location": "場所",
+      "detail_status": "ステータス",
+      "detail_description_changed": "詳細が更新されました",
+      "unknown": "アクションしました"
     }
   },
   "swipeWidgets": {

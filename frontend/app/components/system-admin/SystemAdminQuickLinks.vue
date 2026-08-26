@@ -182,6 +182,22 @@ const quickLinks: QuickLink[] = [
     color: 'text-lime-500',
     bg: 'bg-lime-50 dark:bg-lime-900/20',
   },
+  // F20.1: 課金マスタ管理（プラン/機能カタログ/人数バンド/手動付与/契約横断検索）
+  {
+    label: t('admin.quickLinks.billing'),
+    icon: 'pi pi-credit-card',
+    to: '/system-admin/billing',
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
+  },
+  // F20.3 Phase3: ベータ特典 審査運用（付与一覧/付与候補/条件マスタ）
+  {
+    label: t('admin.quickLinks.betaPerks'),
+    icon: 'pi pi-gift',
+    to: '/system-admin/beta-perks',
+    color: 'text-fuchsia-500',
+    bg: 'bg-fuchsia-50 dark:bg-fuchsia-900/20',
+  },
 ]
 </script>
 

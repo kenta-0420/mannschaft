@@ -44,6 +44,7 @@ const statusOptions = computed<StatusOption[]>(() => [
   { label: t('systemAdmin.batches.status.failed'), value: 'FAILED' },
   { label: t('systemAdmin.batches.status.running'), value: 'RUNNING' },
   { label: t('systemAdmin.batches.status.skipped'), value: 'SKIPPED' },
+  { label: t('systemAdmin.batches.status.resumed'), value: 'RESUMED' },
 ])
 
 const filteredBatches = computed(() => {
@@ -155,6 +156,9 @@ function statusSeverity(status: string | null): 'success' | 'danger' | 'info' | 
       return 'info'
     case 'SKIPPED':
       return 'warn'
+    case 'RESUMED':
+      // 実行そのものではなく「停止から復帰した」境界の目印なので、成功とは色を分ける。
+      return 'info'
     default:
       return 'secondary'
   }

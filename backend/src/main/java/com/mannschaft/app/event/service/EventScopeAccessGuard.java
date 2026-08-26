@@ -78,6 +78,87 @@ public class EventScopeAccessGuard {
     public void requireScopeAdmin(Long userId, EventScopeType scopeType, Long scopeId, Long eventId) {
         EventEntity event = eventService.findEventOrThrow(eventId);
         assertEventBelongsToScope(event, scopeType, scopeId);
+        assertAdmin(userId, scopeType, scopeId);
+    }
+
+    /**
+     * イベントのフラットなサブリソース Controller（{@code /api/v1/events/{eventId}/...} 形。
+     * URL パスに scopeId を含まない）向けの閲覧系認可検証。
+     *
+     * <p>{@link #requireScopeMember} は URL パスの scopeId とイベント帰属の一致を要求するが、
+     * checkin / registration / ticket / invite-tokens / ticket-types / timetable / channel など
+     * eventId のみを path に持つサブリソースには照合対象の URL scopeId が存在しない。
+     * 本メソッドはイベント自身の {@code scopeType}/{@code scopeId} を信頼できる帰属源として、
+     * 当該スコープのメンバー（または SYSTEM_ADMIN）であることのみを検証する。</p>
+     *
+     * @param userId  操作者ユーザー ID
+     * @param eventId URL パス由来のイベント ID
+     * @return 検証済みイベントエンティティ（呼び出し側が eventId 再取得を省略できるよう返す）
+     * @throws BusinessException イベント不在（EVENT_NOT_FOUND / 404）・非メンバー（COMMON_002 / 403）
+     */
+    public EventEntity requireMemberByEventId(Long userId, Long eventId) {
+        EventEntity event = eventService.findEventOrThrow(eventId);
+        assertMember(userId, event.getScopeType(), event.getScopeId());
+        return event;
+    }
+
+    /**
+     * {@link #requireMemberByEventId} の書き込み系版。イベント自身のスコープの ADMIN/DEPUTY_ADMIN
+     * （または SYSTEM_ADMIN）であることを検証する。
+     *
+     * @param userId  操作者ユーザー ID
+     * @param eventId URL パス由来のイベント ID
+     * @return 検証済みイベントエンティティ
+     * @throws BusinessException イベント不在（EVENT_NOT_FOUND / 404）・権限不足（COMMON_002 / 403）
+     */
+    public EventEntity requireAdminByEventId(Long userId, Long eventId) {
+        EventEntity event = eventService.findEventOrThrow(eventId);
+        assertAdmin(userId, event.getScopeType(), event.getScopeId());
+        return event;
+    }
+
+    /**
+     * {@link #requireMemberByEventId} の非スロー版（真偽返却）。
+     *
+     * <p>chat ドメインの {@code EVENT_CHAT} 閲覧・投稿認可のように、越境呼出し側が自ドメインの
+     * エラーコード（例: {@code CHANNEL_ACCESS_DENIED}）で拒否したい場合に、
+     * 「当該イベントスコープのメンバー（または SYSTEM_ADMIN）か」を真偽で返す越境窓口。
+     * village ドメインの {@code PostingIdentityService#isUserVillageMember} と同じ思想
+     * （プリミティブのみ返却・ドメイン境界原則1／エンティティを他ドメインへ漏らさない）。</p>
+     *
+     * <p>イベント不在（{@code EVENT_NOT_FOUND}）・引数 {@code null} は非メンバー扱い（{@code false}）とし、
+     * イベントの存在を漏らさない（IDOR 秘匿）。判定本体は既存基盤
+     * {@link AccessControlService} に委譲し、独自の認可述語を発明しない。</p>
+     *
+     * @param userId  操作者ユーザー ID
+     * @param eventId 対象イベント ID
+     * @return 当該イベントスコープのメンバー（または SYSTEM_ADMIN）なら {@code true}
+     */
+    public boolean isEventScopeMember(Long userId, Long eventId) {
+        if (userId == null || eventId == null) {
+            return false;
+        }
+        EventEntity event;
+        try {
+            event = eventService.findEventOrThrow(eventId);
+        } catch (BusinessException e) {
+            // イベント不在は非メンバー扱い（存在秘匿）。想定外のエラーコードは握り潰さず再送出する。
+            if (e.getErrorCode() == EventErrorCode.EVENT_NOT_FOUND) {
+                return false;
+            }
+            throw e;
+        }
+        if (accessControlService.isSystemAdmin(userId)) {
+            return true;
+        }
+        return accessControlService.isMember(userId, event.getScopeId(), event.getScopeType().name());
+    }
+
+    /**
+     * 操作者が当該スコープの ADMIN/DEPUTY_ADMIN（または SYSTEM_ADMIN）であることを検証する。
+     * 非該当は 403 COMMON_002。
+     */
+    private void assertAdmin(Long userId, EventScopeType scopeType, Long scopeId) {
         if (userId != null && accessControlService.isSystemAdmin(userId)) {
             return;
         }

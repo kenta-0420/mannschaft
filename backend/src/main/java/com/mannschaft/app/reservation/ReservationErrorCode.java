@@ -11,22 +11,22 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ReservationErrorCode implements ErrorCode {
 
-    /** 予約ラインが見つからない */
+    /** 予約ラインが見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     LINE_NOT_FOUND("RESERVATION_001", "予約ラインが見つかりません", Severity.WARN),
 
-    /** 予約スロットが見つからない */
+    /** 予約スロットが見つからない → 404 */
     SLOT_NOT_FOUND("RESERVATION_002", "予約スロットが見つかりません", Severity.WARN),
 
-    /** 予約が見つからない */
+    /** 予約が見つからない（本人以外の予約IDも同一コードで存在秘匿 → 404） */
     RESERVATION_NOT_FOUND("RESERVATION_003", "予約が見つかりません", Severity.WARN),
 
-    /** スロットが満席 */
+    /** スロットが満席（GROUP_SLOT_UNAVAILABLE と同型の確保失敗 → 409） */
     SLOT_FULL("RESERVATION_004", "このスロットは満席です", Severity.WARN),
 
-    /** スロットがクローズ済み */
+    /** スロットがクローズ済み（GROUP_SLOT_UNAVAILABLE と同型の確保失敗 → 409） */
     SLOT_CLOSED("RESERVATION_005", "このスロットは受付終了しています", Severity.WARN),
 
-    /** 予約ステータス不正 */
+    /** 予約ステータス不正（確定/キャンセル不可な状態での操作という状態遷移違反 → 409） */
     INVALID_RESERVATION_STATUS("RESERVATION_006", "この操作は現在の予約ステータスでは実行できません", Severity.WARN),
 
     /** 開始時刻と終了時刻の整合性エラー（入力不正なので 400） */
@@ -38,13 +38,13 @@ public enum ReservationErrorCode implements ErrorCode {
     /** ブロック時間帯 */
     BLOCKED_TIME_CONFLICT("RESERVATION_009", "ブロックされた時間帯と重複しています", Severity.WARN),
 
-    /** 営業時間が見つからない */
+    /** 営業時間が見つからない（未使用: 現状 throw 元なし。既定 400 のまま） */
     BUSINESS_HOURS_NOT_FOUND("RESERVATION_010", "営業時間設定が見つかりません", Severity.WARN),
 
-    /** ブロック時間が見つからない */
+    /** ブロック時間が見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     BLOCKED_TIME_NOT_FOUND("RESERVATION_011", "ブロック時間が見つかりません", Severity.WARN),
 
-    /** リマインダーが見つからない */
+    /** リマインダーが見つからない → 404 */
     REMINDER_NOT_FOUND("RESERVATION_012", "リマインダーが見つかりません", Severity.WARN),
 
     /** 予約重複 */
@@ -54,12 +54,12 @@ public enum ReservationErrorCode implements ErrorCode {
     PAST_DATE_RESERVATION("RESERVATION_014", "過去の日付には予約できません", Severity.WARN),
 
     /** リマインダー上限超過 */
-    MAX_REMINDERS_EXCEEDED("RESERVATION_015", "リマインダーは最大3件です", Severity.ERROR),
+    MAX_REMINDERS_EXCEEDED("RESERVATION_015", "リマインダーは最大3件です", Severity.WARN),
 
-    /** 臨時休業が見つからない */
+    /** 臨時休業が見つからない（他チームの ID を指した越境も同一コードで存在秘匿 → 404） */
     CLOSURE_NOT_FOUND("RESERVATION_016", "臨時休業が見つかりません", Severity.WARN),
 
-    /** 臨時休業確認レコードが見つからない */
+    /** 臨時休業確認レコードが見つからない → 404 */
     CLOSURE_CONFIRMATION_NOT_FOUND("RESERVATION_017", "臨時休業確認レコードが見つかりません", Severity.WARN),
 
     /** 臨時休業の日付範囲が不正（入力不正なので 400） */
@@ -323,8 +323,10 @@ public enum ReservationErrorCode implements ErrorCode {
     // 採番: enum 実物の現最大（RESERVATION_045）の次から連番で確定した（2026-07-08）。
     // 設計書 §10 は 048〜053 を仮置きしていたが、§10 注記「D 群着手時に enum 実物の最大値から再採番」に
     // 従い 046 起点で確定する（W2-4 が ErrorCode を追記する唯一の隊・マージ直前に再確認済み）。
-    // 052（RECURRING_RESERVATION_LIMIT_EXCEEDED）・053（RESERVATION_CREATE_RATE_LIMITED）は
-    // W2-5/W2-6 着手時にそれぞれ実物の最大値から再採番する。
+    // 052 は W2-2（定期予約不可枠の上限）が消費済み。
+    // 053（RESERVATION_CREATE_RATE_LIMITED）は W2-6 が消費した（2026-07-29・実 enum 最大 052 の次を採番）。
+    // 054（RECURRING_RESERVATION_LIMIT_EXCEEDED）は W2-5 が消費した（2026-07-30・実 enum 最大 053 の次を採番）。
+    // 次に ErrorCode を採番する隊は 055 から。着手時に必ず enum 実物の最大値を再確認すること。
 
     /**
      * キャンセル待ちエントリ不存在（本人取消の対象なし・IDOR 秘匿含む・404）。
@@ -366,7 +368,61 @@ public enum ReservationErrorCode implements ErrorCode {
      * 予約バケットを消費させない）。{@code GlobalExceptionHandler} の個別マッピングで 429。</p>
      */
     WAITLIST_RATE_LIMITED("RESERVATION_050",
-            "操作が早すぎます。1分ほど待ってからやり直してください", Severity.WARN);
+            "操作が早すぎます。1分ほど待ってからやり直してください", Severity.WARN),
+
+    // ===== F03.4.5 §4 W2-2: 定期予約不可枠（週次繰り返し・事由ラベル・公開可否）=====
+    //
+    // 採番: enum 実物の現最大（RESERVATION_050）の次から連番で確定した（feedback_flyway_version_sort_after_global_max
+    // と同じ「実物最大値から採番」の作法を ErrorCode にも適用・2026-07-10）。
+
+    /**
+     * 定期予約不可枠が見つからない（PATCH/DELETE 対象不在・IDOR 秘匿含む・404）。
+     *
+     * <p>§4.6: {@code findByIdAndTeamId} で解決できない場合に throw する。他チームの ruleId を掴んだ
+     * 場合も同一の 404 で秘匿する。{@code GlobalExceptionHandler} の個別マッピングで 404。</p>
+     */
+    RECURRING_BLOCKED_TIME_NOT_FOUND("RESERVATION_051", "定期予約不可枠が見つかりません", Severity.WARN),
+
+    /**
+     * 定期予約不可枠の上限（1チーム50行）超過（入力上限超過なので400）。
+     *
+     * <p>§4.1: Service 層（{@code ReservationRecurringBlockedTimeService.createRule}）で担保する。
+     * Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
+     */
+    RECURRING_BLOCKED_TIME_LIMIT_EXCEEDED("RESERVATION_052",
+            "定期予約不可枠はチームあたり最大50件までです", Severity.WARN),
+
+    // ===== F03.4.5 §6.4 W2-6: 予約作成のレートリミット =====
+    //
+    // 採番: enum 実物の現最大（RESERVATION_052）の次で確定した（2026-07-29）。
+
+    /**
+     * 予約作成のレートリミット超過（429 Too Many Requests）。
+     *
+     * <p>§6.4: 単枠 {@code POST /reservations} とグループ {@code POST /reservation-groups} を
+     * <b>同一 zone {@code reservation-create}</b>（1 ユーザー 1 分 5 回）で数える。別バケットにすると
+     * 単枠 5 回＋グループ 5 回の買い占めが可能になるため。044（generate・チーム軸）とは
+     * 意味論が異なるため共用しない。キャンセル待ち登録は別 zone {@code reservation-waitlist}
+     * （050・1 分 10 回）のまま本バケットを消費しない。
+     * {@code GlobalExceptionHandler} の個別マッピングで 429。</p>
+     */
+    RESERVATION_CREATE_RATE_LIMITED("RESERVATION_053",
+            "操作が早すぎます。1分ほど待ってからやり直してください", Severity.WARN),
+
+    // ===== F03.4.5 §6.2 W2-5: 定期予約（毎週繰り返し）=====
+    //
+    // 採番: enum 実物の現最大（RESERVATION_053）の次で確定した（2026-07-30）。
+
+    /**
+     * 定期予約の繰り返し週数が上限（12 週）を超えている（入力上限超過なので 400）。
+     *
+     * <p>§6.2: {@code repeatWeeks} は省略/1 = 従来どおり・2〜<b>12</b> が有効範囲で、13 以上は本コードで拒否する
+     * （買い占め防止の資源保護・§7）。上限は枠の生成 horizon（28 日 rolling）との兼ね合いで
+     * 「12 週指定の後半は構造的にスキップされる」ことを FE が段階開示で正直に伝える前提の値
+     * （設計書 §6.2）。Severity.WARN のため既定マッピングで 400（個別 map 不要）。</p>
+     */
+    RECURRING_RESERVATION_LIMIT_EXCEEDED("RESERVATION_054",
+            "毎週の繰り返しは最大12週までです", Severity.WARN);
 
     private final String code;
     private final String message;

@@ -8,6 +8,7 @@ const { t } = useI18n()
 const router = useRouter()
 const scheduleApi = useScheduleApi()
 const ganttApi = useTodoGantt()
+const notification = useNotification()
 
 type CalendarTab = 'calendar' | 'gantt'
 const route = useRoute()
@@ -28,8 +29,13 @@ const selectedEventIsPersonal = ref(false)
 const showDayPanel = ref(false)
 const showEventPanel = ref(false)
 
+// 是正1: 通知リンク（?scheduleId=&commentId=）からの遷移先ハイライト対象（設計書 §6.4）。
+const linkedCommentId = ref<string | null>(null)
+
 interface EventDetail {
   id: number
+  /** 親 schedules 行の ID（BE CalendarEntryResponse.scheduleId・設計書 §1.5 / AC-07(b)）。null ならコメント欄非表示。 */
+  scheduleId?: number | null
   title: string
   description: string | null
   location: string | null
@@ -48,6 +54,9 @@ interface EventDetail {
   status?: string
   categoryName?: string | null
   categoryColor?: string | null
+  targetMode?: 'ALL_MEMBERS' | 'SELECTED_MEMBERS'
+  targetCount?: number
+  targets?: Array<{ userId: number; displayName: string; avatarUrl: string | null; calendarColor: string | null }>
 }
 
 interface PersonalScheduleRaw {
@@ -71,7 +80,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const {
   currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
   onPrevMonth: calPrevMonth, onNextMonth: calNextMonth,
-  extendedEvents, availableScopes, allScopeOptions, selectedScopes,
+  extendedEvents, todosFailed, layersFailed, availableScopes, allScopeOptions, selectedScopes,
   filteredEvents, toggleScope, multiSelectScopes, initStorage,
 } = useMyCalendarData()
 
@@ -127,6 +136,9 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const d = res.data as PersonalScheduleRaw
       selectedEvent.value = {
         id: d.id,
+        // 個人予定はコメント機能の対象外（設計書 §AC-17。本人からの全 API も 404）。
+        // scheduleId を渡すとコメント欄の表示ガードを通過し、空のコメント欄とエラー通知が出る。
+        scheduleId: null,
         title: d.content?.title ?? '',
         description: d.content?.description ?? null,
         location: d.content?.location ?? null,
@@ -144,17 +156,23 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const ext = extendedEvents.value.find(e => e.id === eventId && !e.isPersonal)
       if (!ext) return
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
-      const sid = ext.scopeId ?? ''
+      // P1修繕: 詳細API・画面URLは公開スコープID（slug）を要求する。ext.scopeId は
+      // レイヤーキー照合用の数値IDに変わったため、詳細取得には ext.scopeRouteId を使う。
+      const sid = ext.scopeRouteId ?? ''
       const res = await scheduleApi.getSchedule(st, sid, eventId)
       const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
       selectedEvent.value = {
         ...d,
+        scheduleId: ext.scheduleId ?? null,
         scopeType: ext.scopeType,
-        scopeId: ext.scopeId,
+        scopeId: ext.scopeRouteId,
         scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
         scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
         createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
         myAttendance: d.myAttendanceStatus ?? null,
+        targetMode: d.targetMode ?? ext.targetMode,
+        targetCount: d.targetCount ?? ext.targetCount,
+        targets: d.targets ?? ext.targets,
       }
     }
     showEventPanel.value = true
@@ -180,7 +198,8 @@ async function onDeleteEvent() {
       const ext = extendedEvents.value.find(e => e.id === selectedEventId.value && !e.isPersonal)
       if (!ext) return
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
-      const sid = ext.scopeId ?? ''
+      // P1修繕: 削除APIも公開スコープID（slug）が必要（詳細取得と同じ経路）。
+      const sid = ext.scopeRouteId ?? ''
       await scheduleApi.deleteSchedule(st, sid, selectedEventId.value)
     }
     showEventPanel.value = false
@@ -284,6 +303,7 @@ function prefetchAdjacentMonths(year: number, month: number) {
     if (!ganttCache.has(ganttCacheKey(y, m))) {
       // 隣接月の先読み（prefetch）。失敗してもユーザーがその月へ移動した際に
       // 再取得されるため、ここでのエラーは非クリティカルとして握りつぶす。
+      // eslint-disable-next-line no-restricted-syntax -- 隣接月の先読み。失敗は移動時に再取得されるため握りつぶすのが正しい（ベストエフォート）
       fetchGanttMonth(y, m).catch(() => {})
     }
   }
@@ -348,13 +368,57 @@ function onNextMonth() {
   if (activeTab.value === 'gantt') loadGantt()
 }
 
-onMounted(() => {
-  initStorage()
-  loadEvents()
+/**
+ * 是正1【P1】: 通知リンク（`/calendar?scheduleId=<id>&commentId=<uuid>`・
+ * {@link ScheduleCommentNotifier#actionUrl} 生成、設計書 §6.4）から遷移した際、該当予定を選択状態にして
+ * サイドパネルを開く。既存の {@link onEventClick}（selectedEvent まわり）の流れに倣う（新規の仕組みを作らない）。
+ *
+ * 対象は現在ロード済みの月（当月）の中から探す。見つからない場合は §6.4 の3項目目に従い、
+ * 黙って無視せずトーストで知らせる（症状を隠さない）。ハイライト自体・commentId クエリの除去は
+ * {@link ScheduleCommentSection}（`highlighted` イベント）に委譲する（4項目目）。
+ */
+async function openLinkedScheduleFromQuery() {
+  const rawScheduleId = route.query.scheduleId
+  if (!rawScheduleId) return
+  const targetScheduleId = Number(Array.isArray(rawScheduleId) ? rawScheduleId[0] : rawScheduleId)
+  if (!Number.isFinite(targetScheduleId)) return
+
+  const rawCommentId = route.query.commentId
+  const targetCommentId = Array.isArray(rawCommentId) ? (rawCommentId[0] ?? null) : (rawCommentId ?? null)
+
+  const ext = extendedEvents.value.find(e => !e.isPersonal && e.scheduleId === targetScheduleId)
+  if (!ext) {
+    // 当月に無い（別月・削除済み・権限なし）場合の解決手段が今のところ無いため、
+    // 見つからない旨をそのまま通知する（黙って通常のカレンダーを開くだけにしない）。
+    notification.error(t('schedule.comment.error.notFound'))
+    await clearLinkedQuery()
+    return
+  }
+
+  linkedCommentId.value = targetCommentId
+  await onEventClick(ext.id, false)
+  if (!targetCommentId) {
+    await clearLinkedQuery()
+  }
+}
+
+/** ハイライト完了後（見つかった／見つからなかった双方）に commentId クエリを除去する（設計書 §6.4 の4項目目）。 */
+async function clearLinkedQuery() {
+  linkedCommentId.value = null
+  const rest = { ...route.query }
+  delete rest.scheduleId
+  delete rest.commentId
+  await router.replace({ query: rest })
+}
+
+onMounted(async () => {
+  await initStorage()
+  await loadEvents()
   // クエリパラメータ ?tab=gantt で直接ガントタブを開いた場合は初期読み込みを行う
   if (activeTab.value === 'gantt') {
     loadGantt()
   }
+  await openLinkedScheduleFromQuery()
 })
 </script>
 
@@ -378,6 +442,18 @@ onMounted(() => {
         </div>
       </template>
     </PageHeader>
+
+    <!-- Issue #2637: TODO レイヤの取得失敗を明示（カレンダー本体は継続表示） -->
+    <Message v-if="todosFailed" severity="warn" :closable="false" class="mb-4">
+      <span class="font-medium">{{ t('schedule.todo_load_error.summary') }}</span>
+      <span class="ml-2">{{ t('schedule.todo_load_error.detail') }}</span>
+    </Message>
+
+    <!-- F03.19 P2修繕: レイヤー一覧の取得失敗を明示（予定本体は独立取得のため継続表示） -->
+    <Message v-if="layersFailed" severity="warn" :closable="false" class="mb-4">
+      <span class="font-medium">{{ t('schedule.calendar.layer.loadError.summary') }}</span>
+      <span class="ml-2">{{ t('schedule.calendar.layer.loadError.detail') }}</span>
+    </Message>
 
     <!-- タブ切替 -->
     <div class="mb-4 flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700 w-fit">
@@ -480,6 +556,7 @@ onMounted(() => {
             <EventDetailPanel
               :event="{
                 id: selectedEvent.id,
+                scheduleId: selectedEvent.scheduleId ?? null,
                 title: selectedEvent.title,
                 description: selectedEvent.description,
                 location: selectedEvent.location,
@@ -493,6 +570,9 @@ onMounted(() => {
                 attendanceRequired: selectedEvent.attendanceRequired ?? false,
                 myAttendance: selectedEvent.myAttendance ?? null,
                 attendanceStats: selectedEvent.attendanceStats ?? null,
+                targetMode: selectedEvent.targetMode,
+                targetCount: selectedEvent.targetCount,
+                targets: selectedEvent.targets,
               }"
               :scope-type="selectedEventIsPersonal ? 'team' : ((selectedEvent.scopeType ?? '').toLowerCase() as 'team' | 'organization')"
               :scope-id="selectedEvent.scopeId ?? ''"
@@ -500,9 +580,12 @@ onMounted(() => {
               :skip-delegations="selectedEventIsPersonal"
               :scope-name="selectedEvent.scopeName ?? null"
               :scope-icon-url="selectedEvent.scopeIconUrl ?? null"
+              :show-audience="!selectedEventIsPersonal"
+              :highlight-comment-id="linkedCommentId"
               @edit="onEditEvent"
               @delete="onDeleteEvent"
               @responded="refresh"
+              @comment-highlighted="clearLinkedQuery"
             />
           </SectionCard>
 

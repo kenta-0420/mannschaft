@@ -80,7 +80,7 @@ class LegalFilingControllerTest {
     @DisplayName("GET 一覧 正常系: 200 OK でレスポンスを返す")
     void get_list_by_organization_200() throws Exception {
         LegalFilingEntity entity = buildEntity(UUID.randomUUID(), "ABSENTEE_PROPERTY_MANAGER");
-        given(legalFilingService.listByOrganization(ORG_ID)).willReturn(List.of(entity));
+        given(legalFilingService.listByOrganization(ORG_ID, USER_ID)).willReturn(List.of(entity));
 
         mockMvc.perform(get("/api/v1/organizations/" + ORG_ID + "/succession/legal-filings"))
                 .andExpect(status().isOk())
@@ -92,7 +92,7 @@ class LegalFilingControllerTest {
     @DisplayName("GET 詳細 異常系: 存在しない id は 例外（404 相当）")
     void get_by_id_not_found() throws Exception {
         UUID legalFilingId = UUID.randomUUID();
-        given(legalFilingService.getById(legalFilingId, ORG_ID))
+        given(legalFilingService.getById(legalFilingId, ORG_ID, USER_ID))
                 .willThrow(new BusinessException(SuccessionErrorCode.LEGAL_FILING_NOT_FOUND));
 
         // GlobalExceptionHandler 不在の standalone setup では Servlet 例外として伝搬する。
@@ -102,7 +102,7 @@ class LegalFilingControllerTest {
                                 + "/succession/legal-filings/" + legalFilingId)))
                 .hasCauseInstanceOf(BusinessException.class);
 
-        verify(legalFilingService).getById(legalFilingId, ORG_ID);
+        verify(legalFilingService).getById(legalFilingId, ORG_ID, USER_ID);
     }
 
     @Test

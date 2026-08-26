@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +37,9 @@ public class TagUsageCountReconcileBatchService {
 
     @BatchEndpoint(name = "quickmemo-tag-usage-reconcile-daily", description = "タグ usage_count と実リンク数の不整合を毎日 03:30 に検出・修正する")
     @Scheduled(cron = "0 30 3 * * *")
+    // 起動間隔は日次 03:30。全タグの usage_count と実リンク数を突き合わせるためタグ数に比例する。
+    // 余裕を取り 1 時間を上限とする。
+    @SchedulerLock(name = "quickmemoTagUsageReconcileDaily", lockAtLeastFor = "PT1M", lockAtMostFor = "PT1H")
     @Transactional
     public void execute() {
         log.info("タグ整合性バッチ開始");

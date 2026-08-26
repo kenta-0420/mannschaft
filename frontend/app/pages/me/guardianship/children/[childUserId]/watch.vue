@@ -31,7 +31,7 @@ const { t, te } = useI18n()
 const guardianshipApi = useGuardianshipApi()
 const notification = useNotification()
 const { captureQuiet } = useErrorReport()
-const { formatDateTime, formatTime } = useDatetime()
+const { formatDateTime, formatTime, userTimezone } = useDatetime()
 
 const childUserId = computed(() => Number(route.params.childUserId))
 // switch.vue の子一覧からのリンクに displayName を渡している場合のみ表示（専用の名前解決 API は持たない）。
@@ -89,12 +89,14 @@ async function load() {
   forbiddenReason.value = null
   loadFailed.value = false
   try {
-    // ①今後の予定: 本日〜30日後。②出欠状況: 直近90日〜本日（schedule 系既存 EP と同一のナイーブ LocalDateTime 文字列）。
-    const now = dayjs()
-    const scheduleFrom = now.startOf('day').format('YYYY-MM-DDTHH:mm:ss')
-    const scheduleTo = now.add(30, 'day').endOf('day').format('YYYY-MM-DDTHH:mm:ss')
-    const statsFrom = now.subtract(90, 'day').startOf('day').format('YYYY-MM-DDTHH:mm:ss')
-    const statsTo = now.endOf('day').format('YYYY-MM-DDTHH:mm:ss')
+    // ①今後の予定: 本日〜30日後。②出欠状況: 直近90日〜本日。
+    // 基準はブラウザTZではなくユーザーTZ（users.timezone）とし、BE が解釈を誤らないよう
+    // オフセット付き ISO-8601 で送る（Issue #2508 / BE は PR #2596 でオフセット付きを受理）。
+    const now = dayjs().tz(userTimezone.value)
+    const scheduleFrom = now.startOf('day').format()
+    const scheduleTo = now.add(30, 'day').endOf('day').format()
+    const statsFrom = now.subtract(90, 'day').startOf('day').format()
+    const statsTo = now.endOf('day').format()
 
     const [schedulesRes, statsRes, membershipsRes, announcementsRes, proxyRes] = await Promise.all([
       guardianshipApi.getChildSchedules(childUserId.value, scheduleFrom, scheduleTo),

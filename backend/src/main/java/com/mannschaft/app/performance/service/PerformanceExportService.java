@@ -1,5 +1,6 @@
 package com.mannschaft.app.performance.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.performance.entity.PerformanceMetricEntity;
 import com.mannschaft.app.performance.entity.PerformanceRecordEntity;
 import com.mannschaft.app.performance.repository.PerformanceRecordRepository;
@@ -25,19 +26,29 @@ public class PerformanceExportService {
 
     private final PerformanceRecordRepository recordRepository;
     private final PerformanceMetricService metricService;
+    private final AccessControlService accessControlService;
+
+    /** F00.5 メンバーシップ・ロール判定のスコープ種別（チーム）。 */
+    private static final String SCOPE_TEAM = "TEAM";
 
     /**
      * エクスポート対象件数を取得する。
      */
-    public long countExportRecords(Long teamId, Long metricId, Long userId, LocalDate dateFrom, LocalDate dateTo) {
+    public long countExportRecords(Long teamId, Long actorUserId, Long metricId, Long userId,
+                                    LocalDate dateFrom, LocalDate dateTo) {
+        // 閲覧系（export）: checkMembership。teamId はエクスポート対象スコープそのもの（path由来で正当）。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
         return recordRepository.countForExport(teamId, metricId, userId, dateFrom, dateTo);
     }
 
     /**
      * 同期的にCSVを書き出す（1,000件以下）。
      */
-    public void exportCsv(PrintWriter writer, Long teamId, Long metricId, Long userId,
+    public void exportCsv(PrintWriter writer, Long teamId, Long actorUserId, Long metricId, Long userId,
                            LocalDate dateFrom, LocalDate dateTo) {
+        // 閲覧系（export）: checkMembership。teamId はエクスポート対象スコープそのもの（path由来で正当）。
+        accessControlService.checkMembership(actorUserId, teamId, SCOPE_TEAM);
+
         List<PerformanceRecordEntity> records = recordRepository.findForExport(teamId, metricId, userId, dateFrom, dateTo);
         List<PerformanceMetricEntity> metrics = metricService.getActiveMetrics(teamId);
         Map<Long, PerformanceMetricEntity> metricMap = metrics.stream()

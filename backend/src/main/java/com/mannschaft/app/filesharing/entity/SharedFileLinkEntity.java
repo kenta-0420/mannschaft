@@ -67,6 +67,7 @@ public class SharedFileLinkEntity {
 
     private Long createdBy;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

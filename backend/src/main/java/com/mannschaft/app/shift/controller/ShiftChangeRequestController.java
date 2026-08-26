@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.AuthorizedInService;
 
 import java.util.List;
 
@@ -51,25 +52,38 @@ public class ShiftChangeRequestController {
 
     /**
      * 変更依頼一覧を取得する（scheduleId クエリパラメータ必須）。
-     * ADMIN は全件、MEMBER は自分の依頼のみ返す。
+     * 当該チームの管理者は全件、一般メンバーは自分の依頼のみ返す。
+     *
+     * <p><b>認可（認可根治 Wave6）:</b> 旧実装は {@code @RequestParam String role} を受け取り
+     * その値で返却範囲を分岐していたため、<b>認可の判断材料がクライアント入力</b>という
+     * 権限昇格の穴になっていた。本 API から {@code role} を撤廃し、返却範囲は
+     * {@code ShiftChangeRequestService#list} 内でサーバー側のロール判定により決定する
+     *（scope は {@code scheduleId} から解決したチーム）。</p>
+     *
+     * <p>scope がパス変数でなくスケジュール実体由来のため {@code @accessGuard} の SpEL では
+     * 表現できない。よって宣言は {@code isAuthenticated()} に留め、真の強制点は Service 内に置く。</p>
      */
     @GetMapping
     @Operation(summary = "変更依頼一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<List<ChangeRequestResponse>>> listChangeRequests(
-            @RequestParam Long scheduleId,
-            @RequestParam(defaultValue = "MEMBER") String role) {
+            @RequestParam Long scheduleId) {
         List<ChangeRequestResponse> responses = changeRequestService.list(
-                scheduleId, SecurityUtils.getCurrentUserId(), role);
+                scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
     /**
      * 変更依頼詳細を取得する。
+     *
+     * <p><b>認可（認可根治 Wave6）:</b> 依頼者本人または当該チーム管理者のみ閲覧可。
+     * 真の強制点は {@code ShiftChangeRequestService#get}（越境は 404 で存在秘匿）。</p>
      */
     @GetMapping("/{id}")
     @Operation(summary = "変更依頼詳細取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<ChangeRequestResponse>> getChangeRequest(
             @PathVariable Long id) {
         ChangeRequestResponse response = changeRequestService.get(id, SecurityUtils.getCurrentUserId());
@@ -100,6 +114,9 @@ public class ShiftChangeRequestController {
     /**
      * 変更依頼を取り下げる（依頼者のみ、OPEN のもの）。
      */
+    // ShiftChangeRequestService#withdraw が依頼エンティティの requesterUserId と
+    // SecurityUtils.getCurrentUserId() の一致を検証してから取下げる（依頼者本人以外は拒否）。
+    @AuthorizedInService
     @DeleteMapping("/{id}")
     @Operation(summary = "変更依頼取下")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "取下成功")

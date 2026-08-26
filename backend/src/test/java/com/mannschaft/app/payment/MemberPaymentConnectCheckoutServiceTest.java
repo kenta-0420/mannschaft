@@ -68,6 +68,11 @@ class MemberPaymentConnectCheckoutServiceTest {
     @Mock private AccessControlService accessControlService;
     @Mock private com.mannschaft.app.payment.service.PaymentBeneficiarySettingService paymentBeneficiarySettingService;
     @Mock private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
+    // Issue #2715 ロットA: 通知本文の i18n 化で MemberPaymentService に追加した依存。
+    // このテストクラスは sendRemind を呼ばないため未使用だが、@InjectMocks が null を注入するのを防ぐため
+    // （将来ここで sendRemind 経路を検証する際の NPE 罠回避）宣言しておく。
+    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock private org.springframework.context.MessageSource messageSource;
 
     @InjectMocks
     private MemberPaymentService service;

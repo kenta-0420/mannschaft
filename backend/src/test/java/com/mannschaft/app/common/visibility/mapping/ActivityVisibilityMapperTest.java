@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
+import java.util.Set;
+
 /**
  * {@link ActivityVisibilityMapper} の単体テスト。
  *
@@ -39,5 +41,40 @@ class ActivityVisibilityMapperTest {
         // 挙動変更: SUPPORTER は MEMBERS_ONLY の活動記録を閲覧できなくなる。
         assertThat(ActivityVisibilityMapper.toStandard(ActivityVisibility.MEMBERS_ONLY))
             .isEqualTo(StandardVisibility.MEMBERS_AND_ABOVE);
+    }
+
+    /**
+     * CMP-028 Phase B: 逆写像 {@code toFunctional} が forward mapping の単射性に基づいて
+     * 正しく機能側 enum を復元することを検証する。実装ミスで PUBLIC/MEMBERS_ONLY の
+     * 対応が入れ替わったり、片方が漏れたりすると red になる。
+     */
+    @Test
+    @DisplayName("toFunctional: PUBLIC のみ → ActivityVisibility.PUBLIC のみ")
+    void toFunctional_PUBLICのみ() {
+        assertThat(ActivityVisibilityMapper.toFunctional(Set.of(StandardVisibility.PUBLIC)))
+                .containsExactly(ActivityVisibility.PUBLIC);
+    }
+
+    @Test
+    @DisplayName("toFunctional: PUBLIC + MEMBERS_AND_ABOVE → 両方")
+    void toFunctional_両方() {
+        assertThat(ActivityVisibilityMapper.toFunctional(
+                Set.of(StandardVisibility.PUBLIC, StandardVisibility.MEMBERS_AND_ABOVE)))
+                .containsExactlyInAnyOrder(ActivityVisibility.PUBLIC, ActivityVisibility.MEMBERS_ONLY);
+    }
+
+    @Test
+    @DisplayName("toFunctional: 行依存値（CUSTOM 等）は無視される（対応する ActivityVisibility が無いため）")
+    void toFunctional_行依存値は無視() {
+        assertThat(ActivityVisibilityMapper.toFunctional(
+                Set.of(StandardVisibility.PUBLIC, StandardVisibility.CUSTOM)))
+                .containsExactly(ActivityVisibility.PUBLIC);
+    }
+
+    @Test
+    @DisplayName("toFunctional: 空集合 → 空集合")
+    void toFunctional_空集合() {
+        assertThat(ActivityVisibilityMapper.toFunctional(Set.of())).isEmpty();
+        assertThat(ActivityVisibilityMapper.toFunctional(null)).isEmpty();
     }
 }

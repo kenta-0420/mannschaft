@@ -68,7 +68,7 @@ public class MatchProposalController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         // 応募者一覧は募集を出したチームの私的情報。path に teamId が無いため、対象募集のチームに対する
-        // 所属判定を Service 内で行う（非所属は 403）。
+        // 所属判定を Service 内で行う（非所属は存在秘匿のため 404）。
         Long currentUserId = SecurityUtils.getCurrentUserId();
         Page<ProposalResponse> result = proposalService.listProposals(id, currentUserId, PageRequest.of(page, Math.min(size, 50)));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(

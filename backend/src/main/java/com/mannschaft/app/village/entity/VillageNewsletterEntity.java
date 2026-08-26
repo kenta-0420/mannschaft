@@ -62,6 +62,22 @@ public class VillageNewsletterEntity extends UuidV7Entity {
     @Column(name = "next_scheduled_at")
     private LocalDateTime nextScheduledAt;
 
+    /**
+     * 集計日（F17.1 ②-1 で追加）。frequency により意味が変わる:
+     * WEEKLY は曜日（1=月 … 7=日）、MONTHLY は日付（1〜28、{@code 0}=月末の番兵値）。
+     * 月末は月ごとに日数が違うため固定日で表せず {@code 0} で表現する（設計書 §4.3）。
+     */
+    @Column(name = "aggregate_day", nullable = false)
+    private Integer aggregateDay;
+
+    /** 配信日（F17.1 ②-1 で追加）。意味は {@link #aggregateDay} と同じ（曜日 or 日付・月末=0）。 */
+    @Column(name = "dispatch_day", nullable = false)
+    private Integer dispatchDay;
+
+    /** 配信時刻（UTC 時・0〜23。既定 18）。F17.1 ②-1 で追加。 */
+    @Column(name = "dispatch_hour", nullable = false)
+    private Integer dispatchHour;
+
     /** 論理削除。 */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
@@ -85,6 +101,18 @@ public class VillageNewsletterEntity extends UuidV7Entity {
         this.updatedAt = now;
         if (this.isEnabled == null) {
             this.isEnabled = Boolean.TRUE;
+        }
+        // 集計日/配信日の既定は frequency により決める（既存挙動を保存・設計書 §4.3）。
+        // WEEKLY: 集計=月曜(1)/配信=金曜(5)、MONTHLY: 集計=月末(0)/配信=月末(0)。
+        boolean weekly = this.frequency == VillageNewsletterFrequency.WEEKLY;
+        if (this.aggregateDay == null) {
+            this.aggregateDay = weekly ? 1 : 0;
+        }
+        if (this.dispatchDay == null) {
+            this.dispatchDay = weekly ? 5 : 0;
+        }
+        if (this.dispatchHour == null) {
+            this.dispatchHour = 18;
         }
     }
 

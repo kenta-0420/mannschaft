@@ -91,8 +91,7 @@ class ReservationControllerTest {
                 .teamId(TEAM_ID)
                 .staffUserId(USER_ID)
                 .basic(new ReservationSlotResponse.SlotBasicDto("相談枠", LocalDate.now(), LocalTime.of(10, 0), LocalTime.of(11, 0)))
-                .status(new ReservationSlotResponse.SlotStatusDto("OPEN", 0, 1, false, null, null))
-                .recurrence(new ReservationSlotResponse.RecurrenceDto(null, null))
+                .status(new ReservationSlotResponse.SlotStatusDto("OPEN", 0, 1, null, null))
                 .pricing(new ReservationSlotResponse.SlotPricingDto(BigDecimal.ZERO))
                 .audit(new ReservationSlotResponse.SlotAuditDto(USER_ID, LocalDateTime.now(), LocalDateTime.now()))
                 .build();
@@ -144,6 +143,13 @@ class ReservationControllerTest {
 
         @Mock
         private ReservationReminderService reminderService;
+
+        /**
+         * F03.4.5 §6.2 W2-5: 定期予約のオーケストレーター（@InjectMocks の供給漏れ防止）。
+         * 本クラスの既存テストは {@code repeatWeeks} 省略の従来経路のみを踏むため呼ばれない。
+         */
+        @Mock
+        private com.mannschaft.app.reservation.service.ReservationRecurringService recurringService;
 
         @InjectMocks
         private TeamReservationController controller;
@@ -198,7 +204,7 @@ class ReservationControllerTest {
         void 予約作成_正常_201返却() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null);
+                CreateReservationRequest request = new CreateReservationRequest(SLOT_ID, LINE_ID, null, null);
                 given(reservationService.createReservation(TEAM_ID, USER_ID, request))
                         .willReturn(createReservationResponse());
 
@@ -212,11 +218,12 @@ class ReservationControllerTest {
         @Test
         @DisplayName("予約確定_正常_200返却")
         void 予約確定_正常_200返却() {
-            given(reservationService.confirmReservation(TEAM_ID, RESERVATION_ID))
+            // F03.4.5 §6.2 W2-5: scope（SERIES 一括承認）を additive 追加。省略（null）は従来の単票承認。
+            given(reservationService.confirmReservation(TEAM_ID, RESERVATION_ID, null))
                     .willReturn(createReservationResponse());
 
             ResponseEntity<ApiResponse<ReservationResponse>> result =
-                    controller.confirmReservation(TEAM_ID, RESERVATION_ID);
+                    controller.confirmReservation(TEAM_ID, RESERVATION_ID, null);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         }
@@ -224,7 +231,7 @@ class ReservationControllerTest {
         @Test
         @DisplayName("予約キャンセル_管理者_正常_200返却")
         void 予約キャンセル_管理者_正常_200返却() {
-            CancelReservationRequest request = new CancelReservationRequest("都合により");
+            CancelReservationRequest request = new CancelReservationRequest("都合により", null);
             given(reservationService.cancelByAdmin(TEAM_ID, RESERVATION_ID, request))
                     .willReturn(createReservationResponse());
 
@@ -347,26 +354,32 @@ class ReservationControllerTest {
         @Test
         @DisplayName("スロット一覧取得_正常_200返却")
         void スロット一覧取得_正常_200返却() {
-            given(slotService.listSlots(TEAM_ID, from, to))
-                    .willReturn(List.of(createSlotResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(slotService.listSlots(TEAM_ID, USER_ID, from, to))
+                        .willReturn(List.of(createSlotResponse()));
 
-            ResponseEntity<ApiResponse<List<ReservationSlotResponse>>> result =
-                    controller.listSlots(TEAM_ID, from, to);
+                ResponseEntity<ApiResponse<List<ReservationSlotResponse>>> result =
+                        controller.listSlots(TEAM_ID, from, to);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
         @DisplayName("利用可能スロット一覧取得_正常_200返却")
         void 利用可能スロット一覧取得_正常_200返却() {
-            given(slotService.listAvailableSlots(TEAM_ID, from, to))
-                    .willReturn(List.of(createSlotResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(slotService.listAvailableSlots(TEAM_ID, USER_ID, from, to))
+                        .willReturn(List.of(createSlotResponse()));
 
-            ResponseEntity<ApiResponse<List<ReservationSlotResponse>>> result =
-                    controller.listAvailableSlots(TEAM_ID, from, to);
+                ResponseEntity<ApiResponse<List<ReservationSlotResponse>>> result =
+                        controller.listAvailableSlots(TEAM_ID, from, to);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+            }
         }
 
         @Test
@@ -375,37 +388,37 @@ class ReservationControllerTest {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
                 LocalDate date = LocalDate.of(2026, 4, 1);
-                List<Long> staffUserIds = List.of(50L, 60L);
                 com.mannschaft.app.reservation.dto.ReservationGridResponse grid =
                         com.mannschaft.app.reservation.dto.ReservationGridResponse.builder()
                                 .date(date)
                                 .columns(List.of())
                                 .build();
-                // F03.4.4 で Controller は拡張シグネチャ（from/to/axis/menuId 追加）へ委譲する。
-                // 従来呼び（date 単独）は追加パラメータすべて null（機械的な引数追加のみ・アサーション変更ゼロ）。
-                given(gridService.getGrid(TEAM_ID, USER_ID, date, null, null, null, null, staffUserIds))
-                        .willReturn(grid);
+                // #2575 で axis/staffUserIds を撤去。Controller は date/from/to/menuId のみ委譲する。
+                given(gridService.getGrid(TEAM_ID, USER_ID, date, null, null, null)).willReturn(grid);
 
                 ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationGridResponse>> result =
-                        controller.getGrid(TEAM_ID, date, null, null, null, null, staffUserIds);
+                        controller.getGrid(TEAM_ID, date, null, null, null);
 
                 assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
                 assertThat(result.getBody().getData().getDate()).isEqualTo(date);
                 // コントローラは SecurityUtils の userId を Service へ委譲する（view ゲートの主体）。
-                verify(gridService).getGrid(TEAM_ID, USER_ID, date, null, null, null, null, staffUserIds);
+                verify(gridService).getGrid(TEAM_ID, USER_ID, date, null, null, null);
             }
         }
 
         @Test
         @DisplayName("スロット詳細取得_正常_200返却")
         void スロット詳細取得_正常_200返却() {
-            given(slotService.getSlot(TEAM_ID, SLOT_ID)).willReturn(createSlotResponse());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(slotService.getSlot(TEAM_ID, USER_ID, SLOT_ID)).willReturn(createSlotResponse());
 
-            ResponseEntity<ApiResponse<ReservationSlotResponse>> result =
-                    controller.getSlot(TEAM_ID, SLOT_ID);
+                ResponseEntity<ApiResponse<ReservationSlotResponse>> result =
+                        controller.getSlot(TEAM_ID, SLOT_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData().getId()).isEqualTo(SLOT_ID);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().getId()).isEqualTo(SLOT_ID);
+            }
         }
 
         @Test
@@ -493,14 +506,17 @@ class ReservationControllerTest {
         @Test
         @DisplayName("予約ライン一覧取得_正常_200返却")
         void 予約ライン一覧取得_正常_200返却() {
-            given(lineService.listLines(TEAM_ID))
-                    .willReturn(List.of(createLineResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(lineService.listLines(TEAM_ID, USER_ID))
+                        .willReturn(List.of(createLineResponse()));
 
-            ResponseEntity<ApiResponse<List<ReservationLineResponse>>> result =
-                    controller.listLines(TEAM_ID);
+                ResponseEntity<ApiResponse<List<ReservationLineResponse>>> result =
+                        controller.listLines(TEAM_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
@@ -560,6 +576,13 @@ class ReservationControllerTest {
         @Mock
         private com.mannschaft.app.reservation.service.ReservationSlotTemplateService templateService;
 
+        @Mock
+        private com.mannschaft.app.reservation.service.ReservationViewAccessGuard viewAccessGuard;
+
+        /** F03.4.5 §6.3: pending_expire 設定変更の監査ログ記録用（@InjectMocks の供給漏れ防止）。 */
+        @Mock
+        private com.mannschaft.app.auth.service.AuditLogService auditLogService;
+
         @InjectMocks
         private ReservationBusinessHourController controller;
 
@@ -572,14 +595,17 @@ class ReservationControllerTest {
         @Test
         @DisplayName("営業時間取得_正常_200返却")
         void 営業時間取得_正常_200返却() {
-            given(businessHourService.getBusinessHours(TEAM_ID))
-                    .willReturn(List.of(createBusinessHourResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(businessHourService.getBusinessHours(TEAM_ID, USER_ID))
+                        .willReturn(List.of(createBusinessHourResponse()));
 
-            ResponseEntity<ApiResponse<List<BusinessHourResponse>>> result =
-                    controller.getBusinessHours(TEAM_ID);
+                ResponseEntity<ApiResponse<List<BusinessHourResponse>>> result =
+                        controller.getBusinessHours(TEAM_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
@@ -640,16 +666,19 @@ class ReservationControllerTest {
         @Test
         @DisplayName("ブロック時間一覧取得_正常_200返却")
         void ブロック時間一覧取得_正常_200返却() {
-            LocalDate from = LocalDate.now();
-            LocalDate to = LocalDate.now().plusDays(30);
-            given(businessHourService.listBlockedTimes(TEAM_ID, from, to))
-                    .willReturn(List.of(createBlockedTimeResponse()));
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                LocalDate from = LocalDate.now();
+                LocalDate to = LocalDate.now().plusDays(30);
+                given(businessHourService.listBlockedTimes(TEAM_ID, USER_ID, from, to))
+                        .willReturn(List.of(createBlockedTimeResponse()));
 
-            ResponseEntity<ApiResponse<List<BlockedTimeResponse>>> result =
-                    controller.listBlockedTimes(TEAM_ID, from, to);
+                ResponseEntity<ApiResponse<List<BlockedTimeResponse>>> result =
+                        controller.listBlockedTimes(TEAM_ID, from, to);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData()).hasSize(1);
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData()).hasSize(1);
+            }
         }
 
         @Test
@@ -705,150 +734,169 @@ class ReservationControllerTest {
         @Test
         @DisplayName("予約設定取得_正常_200返却_公開フラグ含む")
         void 予約設定概要取得_正常_200返却() {
-            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(true);
-            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
-                    com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
-                            .teamId(TEAM_ID)
-                            .allowPublicReservation(true)
-                            .build());
-            given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(true);
+                given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
+                        com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
+                                .teamId(TEAM_ID)
+                                .allowPublicReservation(true)
+                                .build());
+                given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
 
-            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
-                    controller.getSettings(TEAM_ID);
+                ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
+                        controller.getSettings(TEAM_ID);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
-            assertThat(data.getTeamId()).isEqualTo(TEAM_ID);
-            assertThat(data.isHasBusinessHours()).isTrue();
-            assertThat(data.isAllowPublicReservation()).isTrue();
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
+                assertThat(data.getTeamId()).isEqualTo(TEAM_ID);
+                assertThat(data.isHasBusinessHours()).isTrue();
+                assertThat(data.isAllowPublicReservation()).isTrue();
+            }
         }
 
         @Test
         @DisplayName("予約設定取得_policy無し_既定値AUTO/24/24,1を返す")
         void 予約設定取得_policy無し_既定値() {
-            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
-            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(defaultTeamSetting());
-            // getOrDefault は policy 無しでも既定値の未永続エンティティを返す。
-            given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
+                given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(defaultTeamSetting());
+                // getOrDefault は policy 無しでも既定値の未永続エンティティを返す。
+                given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
 
-            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
-                    controller.getSettings(TEAM_ID);
+                ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
+                        controller.getSettings(TEAM_ID);
 
-            com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
-            assertThat(data.getApprovalMode()).isEqualTo(com.mannschaft.app.reservation.ApprovalMode.AUTO);
-            assertThat(data.getCancelDeadlineHours()).isEqualTo(24);
-            assertThat(data.getRemindBeforeHours()).isEqualTo("24,1");
+                com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
+                assertThat(data.getApprovalMode()).isEqualTo(com.mannschaft.app.reservation.ApprovalMode.AUTO);
+                assertThat(data.getCancelDeadlineHours()).isEqualTo(24);
+                assertThat(data.getRemindBeforeHours()).isEqualTo("24,1");
+            }
         }
 
         @Test
         @DisplayName("予約設定取得_team_setting無し_既定値resourceNameType=DEFAULT_customはnullを返す")
         void 予約設定取得_呼称既定値() {
-            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
-            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(defaultTeamSetting());
-            given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
+                given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(defaultTeamSetting());
+                given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
 
-            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
-                    controller.getSettings(TEAM_ID);
+                ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
+                        controller.getSettings(TEAM_ID);
 
-            com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
-            assertThat(data.getResourceNameType())
-                    .isEqualTo(com.mannschaft.app.reservation.ReservationResourceNameType.DEFAULT);
-            assertThat(data.getResourceNameCustom()).isNull();
+                com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
+                assertThat(data.getResourceNameType())
+                        .isEqualTo(com.mannschaft.app.reservation.ReservationResourceNameType.DEFAULT);
+                assertThat(data.getResourceNameCustom()).isNull();
+            }
         }
 
         @Test
         @DisplayName("予約設定更新_公開フラグのみ_upsert委譲_policyと呼称は触らない")
         void 予約公開設定更新_正常_200返却() {
-            com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
-                    new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
-                            true, null, null, null, null, null);
-            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
-            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
-                    com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
-                            .teamId(TEAM_ID)
-                            .allowPublicReservation(true)
-                            .build());
-            given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
+                        new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
+                                true, null, null, null, null, null, null, null);
+                given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
+                given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
+                        com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
+                                .teamId(TEAM_ID)
+                                .allowPublicReservation(true)
+                                .build());
+                given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
 
-            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
-                    controller.updateReservationSetting(TEAM_ID, request);
+                ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
+                        controller.updateReservationSetting(TEAM_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            assertThat(result.getBody().getData().isAllowPublicReservation()).isTrue();
-            verify(teamSettingService).updateAllowPublic(TEAM_ID, true);
-            // policy フィールドが全て null なので updatePolicy は呼ばれない（据え置き）。
-            org.mockito.Mockito.verify(policyService, org.mockito.Mockito.never())
-                    .updatePolicy(any(), any(), any(), any());
-            // 呼称フィールドが全て null なので updateResourceName は呼ばれない（据え置き）。
-            org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
-                    .updateResourceName(any(), any(), any());
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                assertThat(result.getBody().getData().isAllowPublicReservation()).isTrue();
+                verify(teamSettingService).updateAllowPublic(TEAM_ID, true);
+                // policy フィールドが全て null なので updatePolicy は呼ばれない（据え置き）。
+                org.mockito.Mockito.verify(policyService, org.mockito.Mockito.never())
+                        .updatePolicy(any(), any(), any(), any(), any(), any());
+                // 呼称フィールドが全て null なので updateResourceName は呼ばれない（据え置き）。
+                org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
+                        .updateResourceName(any(), any(), any());
+            }
         }
 
         @Test
         @DisplayName("予約設定更新_承認モード等_policyへupsert委譲しGETに反映")
         void 予約設定更新_ポリシー更新_委譲() {
-            com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
-                    new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
-                            null, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1", null, null);
-            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
-            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(defaultTeamSetting());
-            given(policyService.getOrDefault(TEAM_ID)).willReturn(
-                    com.mannschaft.app.reservation.entity.ReservationPolicyEntity.builder()
-                            .teamId(TEAM_ID)
-                            .approvalMode(com.mannschaft.app.reservation.ApprovalMode.MANUAL)
-                            .cancelDeadlineHours(48)
-                            .remindBeforeHours("72,24,1")
-                            .build());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
+                        new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
+                                null, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1",
+                                null, null, null, null);
+                given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
+                given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(defaultTeamSetting());
+                given(policyService.getOrDefault(TEAM_ID)).willReturn(
+                        com.mannschaft.app.reservation.entity.ReservationPolicyEntity.builder()
+                                .teamId(TEAM_ID)
+                                .approvalMode(com.mannschaft.app.reservation.ApprovalMode.MANUAL)
+                                .cancelDeadlineHours(48)
+                                .remindBeforeHours("72,24,1")
+                                .build());
 
-            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
-                    controller.updateReservationSetting(TEAM_ID, request);
+                ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
+                        controller.updateReservationSetting(TEAM_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
-            assertThat(data.getApprovalMode()).isEqualTo(com.mannschaft.app.reservation.ApprovalMode.MANUAL);
-            assertThat(data.getCancelDeadlineHours()).isEqualTo(48);
-            assertThat(data.getRemindBeforeHours()).isEqualTo("72,24,1");
-            verify(policyService).updatePolicy(
-                    TEAM_ID, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1");
-            // 公開フラグ null なので allow_public は触らない。
-            org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
-                    .updateAllowPublic(org.mockito.ArgumentMatchers.anyLong(),
-                            org.mockito.ArgumentMatchers.anyBoolean());
-            // 呼称フィールドも null なので updateResourceName は呼ばれない。
-            org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
-                    .updateResourceName(any(), any(), any());
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
+                assertThat(data.getApprovalMode()).isEqualTo(com.mannschaft.app.reservation.ApprovalMode.MANUAL);
+                assertThat(data.getCancelDeadlineHours()).isEqualTo(48);
+                assertThat(data.getRemindBeforeHours()).isEqualTo("72,24,1");
+                verify(policyService).updatePolicy(
+                        TEAM_ID, com.mannschaft.app.reservation.ApprovalMode.MANUAL, 48, "72,24,1", null, null);
+                // 公開フラグ null なので allow_public は触らない。
+                org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
+                        .updateAllowPublic(org.mockito.ArgumentMatchers.anyLong(),
+                                org.mockito.ArgumentMatchers.anyBoolean());
+                // 呼称フィールドも null なので updateResourceName は呼ばれない。
+                org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
+                        .updateResourceName(any(), any(), any());
+            }
         }
 
         @Test
         @DisplayName("予約設定更新_呼称指定_updateResourceNameへ委譲しGETに反映")
         void 予約設定更新_呼称更新_委譲() {
-            com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
-                    new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
-                            null, null, null, null,
-                            com.mannschaft.app.reservation.ReservationResourceNameType.SEAT, null);
-            given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
-            given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
-            given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
-                    com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
-                            .teamId(TEAM_ID)
-                            .resourceNameType(com.mannschaft.app.reservation.ReservationResourceNameType.SEAT)
-                            .build());
+            try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
+                mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest request =
+                        new com.mannschaft.app.reservation.dto.UpdateReservationSettingRequest(
+                                null, null, null, null,
+                                com.mannschaft.app.reservation.ReservationResourceNameType.SEAT, null, null, null);
+                given(businessHourService.hasBusinessHours(TEAM_ID)).willReturn(false);
+                given(policyService.getOrDefault(TEAM_ID)).willReturn(defaultPolicy());
+                given(teamSettingService.getOrDefault(TEAM_ID)).willReturn(
+                        com.mannschaft.app.reservation.entity.ReservationTeamSettingEntity.builder()
+                                .teamId(TEAM_ID)
+                                .resourceNameType(com.mannschaft.app.reservation.ReservationResourceNameType.SEAT)
+                                .build());
 
-            ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
-                    controller.updateReservationSetting(TEAM_ID, request);
+                ResponseEntity<ApiResponse<com.mannschaft.app.reservation.dto.ReservationSettingsResponse>> result =
+                        controller.updateReservationSetting(TEAM_ID, request);
 
-            assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
-            com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
-            assertThat(data.getResourceNameType())
-                    .isEqualTo(com.mannschaft.app.reservation.ReservationResourceNameType.SEAT);
-            verify(teamSettingService).updateResourceName(
-                    TEAM_ID, com.mannschaft.app.reservation.ReservationResourceNameType.SEAT, null);
-            // allow_public/policy は触らない。
-            org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
-                    .updateAllowPublic(org.mockito.ArgumentMatchers.anyLong(),
-                            org.mockito.ArgumentMatchers.anyBoolean());
-            org.mockito.Mockito.verify(policyService, org.mockito.Mockito.never())
-                    .updatePolicy(any(), any(), any(), any());
+                assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+                com.mannschaft.app.reservation.dto.ReservationSettingsResponse data = result.getBody().getData();
+                assertThat(data.getResourceNameType())
+                        .isEqualTo(com.mannschaft.app.reservation.ReservationResourceNameType.SEAT);
+                verify(teamSettingService).updateResourceName(
+                        TEAM_ID, com.mannschaft.app.reservation.ReservationResourceNameType.SEAT, null);
+                // allow_public/policy は触らない。
+                org.mockito.Mockito.verify(teamSettingService, org.mockito.Mockito.never())
+                        .updateAllowPublic(org.mockito.ArgumentMatchers.anyLong(),
+                                org.mockito.ArgumentMatchers.anyBoolean());
+                org.mockito.Mockito.verify(policyService, org.mockito.Mockito.never())
+                        .updatePolicy(any(), any(), any(), any(), any(), any());
+            }
         }
 
         @Test
@@ -919,7 +967,7 @@ class ReservationControllerTest {
         void マイ予約キャンセル_正常_200返却() {
             try (MockedStatic<SecurityUtils> mocked = mockStatic(SecurityUtils.class)) {
                 mocked.when(SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
-                CancelReservationRequest request = new CancelReservationRequest("都合により");
+                CancelReservationRequest request = new CancelReservationRequest("都合により", null);
                 given(reservationService.cancelByUser(USER_ID, RESERVATION_ID, request))
                         .willReturn(createReservationResponse());
 

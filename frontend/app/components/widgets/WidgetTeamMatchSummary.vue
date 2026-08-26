@@ -58,8 +58,11 @@ async function load(): Promise<void> {
       inProgressMatch.value = null
       return
     }
+    const statsRequest = ctx.orgId === null
+      ? Promise.resolve(null)
+      : analytics.getTeamStats(ctx.orgId, ctx.teamId)
     const [statsResult, inProgressResult] = await Promise.allSettled([
-      analytics.getTeamStats(ctx.orgId, ctx.teamId),
+      statsRequest,
       matchApi.listMatches(ctx.orgId, ctx.teamId, { status: 'IN_PROGRESS', size: 1 }),
     ])
     stats.value = statsResult.status === 'fulfilled' ? statsResult.value : null

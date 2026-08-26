@@ -76,13 +76,19 @@
       "timeline": "Cronología",
       "lobby": "Vestíbulo",
       "members": "Lista de miembros",
-      "settings": "Configuración",
-      "reports": "Denuncias",
       "calendar": "Calendario",
       "festival": "Festival",
       "matchRecruit": "Reclutamiento de partidos",
       "meetup": "Reunión",
-      "chronicle": "Crónica de la aldea"
+      "chronicle": "Crónica de la aldea",
+      "charter": "Carta de la aldea"
+    },
+    "systemPost": {
+      "authorName": "Aviso de eventos de la aldea",
+      "eventCreated": "Se creó un evento",
+      "eventUpcoming": "Un evento se acerca",
+      "meetupConfirmed": "Se confirmó la fecha de la reunión",
+      "festivalStarted": "El festival ha comenzado"
     },
     "lobby": {
       "title": "Vestíbulo",
@@ -197,7 +203,28 @@
       "rejected": "Rechazado",
       "withdrawn": "Retirado",
       "reviewComment": "Comentario de revisión",
-      "empty": "No hay solicitudes de ingreso"
+      "empty": "No hay solicitudes de ingreso",
+      "description": "Esta aldea requiere aprobación. Te conviertes en aldeano cuando el jefe o un anciano aprueba tu solicitud. Añadir un mensaje aumenta tus posibilidades.",
+      "formTitle": "Solicitar unirse",
+      "messagePlaceholder": "Cuenta qué quieres hacer en esta aldea y por qué quieres unirte (opcional, máximo 500 caracteres)",
+      "submittedTitle": "Tu solicitud enviada",
+      "submittedBody": "Espera a que el jefe o un anciano la revise. Mientras esté pendiente, puedes retirarla desde esta pantalla en cualquier momento.",
+      "withdrawSuccess": "Solicitud de ingreso retirada",
+      "approveSuccess": "Solicitud de ingreso aprobada",
+      "rejectSuccess": "Solicitud de ingreso rechazada",
+      "rejectCommentRequired": "Se requiere un comentario de revisión para rechazar",
+      "reviewCommentPlaceholder": "Escribe un comentario para el solicitante (máximo 500 caracteres)",
+      "reviewDescription": "Revisa las solicitudes de ingreso a esta aldea. Al aprobar una, el solicitante se convierte en aldeano.",
+      "column": {
+        "requester": "Solicitante",
+        "message": "Mensaje",
+        "status": "Estado",
+        "actions": "Acciones"
+      },
+      "confirm": {
+        "approve": "¿Aprobar esta solicitud de ingreso? El solicitante se convertirá en aldeano.",
+        "reject": "¿Rechazar esta solicitud de ingreso?"
+      }
     },
     "feed": {
       "title": "Feed de la aldea",
@@ -238,7 +265,17 @@
       "empty": "No hay miembros",
       "banned": "Expulsado",
       "you": "Tú",
-      "filterRole": "Filtrar por rol"
+      "filterRole": "Filtrar por rol",
+      "soloHeadmanHint": "Cuando otros miembros se unan a esta aldea, podrás nombrarlos ancianos aquí."
+    },
+    "profile": {
+      "title": "Perfil del aldeano",
+      "villages": {
+        "title": "Aldeas a las que pertenece",
+        "empty": "No hay aldeas para mostrar",
+        "publicToggle": "Mostrar esta aldea en mi lista de aldeas",
+        "publicToggleHint": "Al activarlo, las personas que comparten una aldea contigo podrán ver esta aldea en tu lista de aldeas."
+      }
     },
     "postingIdentity": {
       "title": "Publicar como",
@@ -273,7 +310,7 @@
       "VILLAGE_007": "No eres miembro de esta aldea",
       "VILLAGE_008": "Ese apodo ya está en uso",
       "VILLAGE_009": "Límite de denuncias alcanzado (10 por hora)",
-      "VILLAGE_010": "Límite de solicitudes de creación de aldea alcanzado (3 por día, máx. 10 pendientes)",
+      "VILLAGE_010": "Se alcanzó el límite de creación de aldeas. Espere un momento e inténtelo de nuevo.",
       "VILLAGE_011": "El apodo solo puede cambiarse 3 veces por mes",
       "VILLAGE_012": "Has alcanzado el número máximo de aldeas en las que puedes unirte (100)",
       "VILLAGE_013": "Has alcanzado el número máximo de aldeas favoritas (30)",
@@ -304,9 +341,13 @@
       "VILLAGE_042": "Denuncia no encontrada",
       "VILLAGE_043": "Esta denuncia ya ha sido procesada",
       "VILLAGE_044": "Aldea favorita fijada no encontrada",
+      "VILLAGE_052": "Delegación de representante no encontrada",
+      "VILLAGE_053": "Esta combinación de membresía/usuario ya ha sido delegada como representante",
+      "VILLAGE_054": "La membresía objetivo no es un equipo ni una organización",
+      "VILLAGE_055": "El usuario delegado no es miembro del equipo/organización objetivo",
       "generic": "Se produjo un error en la función de la aldea",
       "backToList": "Volver a la lista de aldeas",
-      "headmanOnly": "Solo el jefe del pueblo puede modificar esta configuración"
+      "moderatorOnly": "Solo el jefe del pueblo y los ancianos pueden modificar esta configuración"
     },
     "placeholder": {
       "bulletinComingSoon": "El tablón de anuncios de la aldea está previsto para la Fase 2",
@@ -330,7 +371,15 @@
     "monsho": {
       "title": "Escudo de la aldea",
       "upload": "Subir escudo de la aldea",
-      "remove": "Eliminar escudo de la aldea"
+      "remove": "Eliminar escudo de la aldea",
+      "label": "Escudo de la aldea (emblema / logo)",
+      "change": "Cambiar escudo",
+      "uploading": "Subiendo…",
+      "hint": "JPG / PNG / WebP, hasta 5MB",
+      "errorMime": "Solo se admiten imágenes JPG, PNG y WebP",
+      "errorSize": "El tamaño del archivo debe ser de 5MB o menos",
+      "uploadSuccess": "Escudo de la aldea subido",
+      "removeSuccess": "Escudo de la aldea eliminado"
     },
     "calendar": {
       "title": "Calendario de la aldea",
@@ -354,7 +403,26 @@
       "deleteSuccess": "Evento eliminado",
       "empty": "No hay eventos registrados",
       "noEventsInMonth": "No hay eventos este mes",
-      "loadFailed": "Error al cargar el calendario"
+      "loadFailed": "Error al cargar el calendario",
+      "log": {
+        "title": "Cómo fue el año pasado",
+        "lastYear": "Cómo fue en {year}",
+        "addLog": "Registrar el momento",
+        "year": "Año",
+        "note": "Nota breve",
+        "notePlaceholder": "Cuéntanos brevemente cómo fue",
+        "photoKey": "Foto (clave R2, opcional)",
+        "photoKeyHint": "La subida de imágenes llegará próximamente. Si ya tienes una clave registrada en R2, puedes indicarla",
+        "submit": "Guardar",
+        "delete": "Eliminar",
+        "empty": "Todavía no hay registros",
+        "loadFailed": "Error al cargar los registros",
+        "addSuccess": "Registro guardado",
+        "addFailed": "Error al agregar el registro",
+        "deleteConfirm": "¿Eliminar este registro?",
+        "deleteSuccess": "Registro eliminado",
+        "deleteFailed": "Error al eliminar el registro"
+      }
     },
     "festival": {
       "title": "Festival",
@@ -376,12 +444,38 @@
       "saveSuccess": "Festival guardado",
       "cancelSuccess": "Festival cancelado",
       "loadFailed": "Error al cargar la lista de festivales",
+      "invalidDateTime": "La fecha/hora de inicio o fin no es válida. Vuelva a introducirla.",
       "filterAll": "Todos",
       "status": {
         "SCHEDULED": "Programado",
         "ACTIVE": "En curso",
         "ENDED": "Finalizado",
         "CANCELLED": "Cancelado"
+      },
+      "rsvp": {
+        "title": "Confirmación de asistencia",
+        "going": "Voy a ir",
+        "maybe": "Tal vez vaya",
+        "roleLabel": "Rol",
+        "roleLabelPlaceholder": "Rol (opcional, p. ej. puesto de venta)",
+        "submit": "Enviar",
+        "cancel": "Retirar confirmación",
+        "empty": "Nadie ha confirmado asistencia todavía",
+        "loadFailed": "Error al cargar la lista de asistentes",
+        "saveSuccess": "Confirmación de asistencia guardada",
+        "saveFailed": "Error al guardar la confirmación de asistencia",
+        "cancelSuccess": "Confirmación de asistencia retirada",
+        "cancelFailed": "Error al retirar la confirmación de asistencia"
+      },
+      "live": {
+        "title": "Actualizaciones en vivo",
+        "tagAsLive": "Escribe algo para publicar como actualización en vivo",
+        "submit": "Publicar como actualización en vivo",
+        "empty": "Aún no hay actualizaciones en vivo",
+        "viewPost": "Ver publicación",
+        "loadFailed": "Error al cargar las actualizaciones en vivo",
+        "tagSuccess": "Publicado como actualización en vivo",
+        "tagFailed": "Error al publicar la actualización en vivo"
       }
     },
     "matchRecruit": {
@@ -450,11 +544,22 @@
     },
     "representative": {
       "title": "Delegación de representante",
+      "subtitle": "Delega el derecho a publicar como representante a un usuario individual, en nombre de una membresía de equipo/organización de esta aldea.",
       "grant": "Delegar como representante",
       "revoke": "Revocar delegación",
       "empty": "No hay representantes delegados",
       "grantedBy": "Delegado por",
-      "note": "Nota"
+      "grantedAt": "Delegado el",
+      "note": "Nota",
+      "target": "Objetivo (equipo/organización)",
+      "targetPlaceholder": "Selecciona un equipo/organización para delegar",
+      "noTargets": "No hay membresías de equipo/organización disponibles para delegar",
+      "unknownTarget": "Objetivo desconocido",
+      "representativeUser": "Usuario representante",
+      "loadFailed": "No se pudieron cargar las delegaciones de representante",
+      "confirmRevokeTitle": "¿Revocar esta delegación?",
+      "confirmRevokeBody": "Se revocará la delegación de representante de {name}. ¿Estás seguro?",
+      "revokeSuccess": "Delegación revocada"
     },
     "meetup": {
       "title": "Reunión",
@@ -463,38 +568,82 @@
       "editTitle": "Editar reunión",
       "meetupTitle": "Nombre de la reunión",
       "description": "Descripción",
-      "venue": "Lugar",
+      "location": "Lugar",
       "candidateDates": "Fechas candidatas",
       "addCandidateDate": "Agregar fecha candidata",
       "removeCandidateDate": "Eliminar fecha candidata",
       "candidateDate": "Fecha candidata",
-      "candidateTimeStart": "Hora de inicio",
-      "candidateTimeEnd": "Hora de fin",
+      "candidateTime": "Hora",
+      "allDay": "Todo el día",
+      "timeOptionalHint": "La hora es opcional (déjala vacía para todo el día)",
       "vote": "Votar",
-      "voteComment": "Comentario (opcional)",
-      "voteSubmit": "Enviar voto",
       "confirm": "Confirmar esta fecha",
       "confirmedDate": "Fecha confirmada",
       "cancel": "Cancelar reunión",
       "confirmCancel": "¿Cancelar esta reunión?",
       "empty": "No hay reuniones planificadas",
-      "participantCount": "Asistentes esperados",
       "saveSuccess": "Reunión guardada",
       "voteSuccess": "Voto enviado",
       "confirmSuccess": "Fecha confirmada",
       "cancelSuccess": "Reunión cancelada",
       "loadFailed": "Error al cargar las reuniones",
       "voteType": {
-        "YES": "Asistiré",
-        "NO": "No asistiré",
-        "MAYBE": "Indeciso"
+        "AVAILABLE": "Puedo asistir",
+        "MAYBE": "Quizás",
+        "UNAVAILABLE": "No puedo asistir"
       },
       "status": {
-        "DRAFT": "Borrador",
-        "OPEN": "Votación abierta",
+        "PLANNING": "Votación abierta",
         "CONFIRMED": "Confirmado",
-        "CANCELLED": "Cancelado",
-        "CLOSED": "Cerrado"
+        "CANCELLED": "Cancelado"
+      },
+      "attendance": {
+        "title": "Asistencia",
+        "going": "Voy",
+        "maybe": "Quizás voy",
+        "absent": "No voy",
+        "notConfirmedHint": "Podrás registrar tu asistencia cuando se confirme la fecha",
+        "empty": "Todavía nadie ha respondido",
+        "unknownMember": "Aldeano",
+        "saveSuccess": "Asistencia registrada",
+        "saveFailed": "Error al registrar la asistencia"
+      },
+      "comment": {
+        "title": "Comentarios",
+        "placeholder": "Escribe un comentario",
+        "submit": "Publicar",
+        "empty": "Todavía no hay comentarios",
+        "delete": "Eliminar",
+        "postFailed": "Error al publicar el comentario",
+        "deleteConfirm": "¿Eliminar este comentario?",
+        "deleteSuccess": "Comentario eliminado",
+        "deleteFailed": "Error al eliminar el comentario"
+      },
+      "decisions": {
+        "title": "Decisiones",
+        "placeholder": "Anota lo que se decidió, qué llevar, etc.",
+        "edit": "Editar",
+        "empty": "Todavía no se ha decidido nada",
+        "saveSuccess": "Decisiones guardadas",
+        "saveFailed": "Error al guardar las decisiones"
+      },
+      "todo": {
+        "title": "Tareas pendientes",
+        "titlePlaceholder": "¿Qué hay que hacer? (p. ej., comprar snacks)",
+        "add": "Agregar",
+        "claim": "Yo me encargo",
+        "complete": "Marcar como hecho",
+        "release": "Dejar la tarea",
+        "unassigned": "Sin asignar",
+        "empty": "Todavía no hay tareas pendientes",
+        "alreadyClaimed": "Esta tarea ya tiene una persona responsable",
+        "addSuccess": "Tarea agregada",
+        "addFailed": "Error al agregar la tarea",
+        "claimSuccess": "Te has hecho cargo de esta tarea",
+        "completeSuccess": "Marcada como hecha",
+        "completeFailed": "Error al actualizar el estado",
+        "releaseSuccess": "Tarea liberada",
+        "releaseFailed": "Error al dejar la tarea"
       }
     },
     "chronicle": {
@@ -509,9 +658,71 @@
       "loadFailed": "Error al cargar las crónicas",
       "viewDetail": "Ver detalle"
     },
+    "archive": {
+      "title": "Crónica",
+      "subtitle": "Registro de los festivales, eventos del calendario y reuniones de la aldea",
+      "empty": "Aún no hay entradas en la crónica",
+      "loadFailed": "Error al cargar la crónica",
+      "archivedAt": "Registrado el",
+      "filterAll": "Todos",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Evento del calendario",
+        "meetup": "Reunión"
+      }
+    },
+    "charter": {
+      "title": "Carta de la aldea",
+      "subtitle": "Las promesas compartidas de la aldea",
+      "empty": "Todavía no se ha establecido la carta de esta aldea",
+      "enactedAt": "Fecha de promulgación",
+      "lastRevisedAt": "Última revisión",
+      "article": {
+        "label": "Artículo {n}",
+        "add": "+ Añadir artículo",
+        "bodyPlaceholder": "Escribe el texto del artículo",
+        "bodyRequired": "Escribe el texto del artículo",
+        "delete": "Eliminar artículo",
+        "deleteConfirm": "¿Eliminar este artículo?"
+      },
+      "supplement": {
+        "add": "+ Añadir anexo",
+        "label": "Anexo",
+        "placeholder": "Escribe un anexo (opcional)"
+      },
+      "reorder": {
+        "hint": "Usa los botones de subir/bajar para reordenar los artículos",
+        "up": "Subir",
+        "down": "Bajar"
+      },
+      "drafters": {
+        "title": "Redactores",
+        "add": "+ Añadir redactor",
+        "empty": "Todavía no hay redactores registrados",
+        "delete": "Quitar redactor",
+        "deleteConfirm": "¿Quitar a \"{name}\" de los redactores?",
+        "selectPlaceholder": "Selecciona un aldeano",
+        "loadMembersFailed": "No se pudo cargar la lista de habitantes, por lo que no se pueden añadir redactores.",
+        "reloadMembers": "Recargar"
+      },
+      "revision": {
+        "confirm": "Confirmar revisión",
+        "confirmHint": "Esto registra el momento actual como una revisión (no cambia la visibilidad de ningún artículo).",
+        "confirmSuccess": "Revisión confirmada",
+        "notePlaceholder": "Nota de la revisión (opcional)",
+        "history": "Historial de revisiones",
+        "historyEmpty": "Todavía no hay revisiones"
+      },
+      "error": {
+        "loadFailed": "No se pudo cargar la carta de la aldea",
+        "mutationFailed": "La operación falló",
+        "versionConflict": "Otro jefe de aldea editó esto al mismo tiempo. Vuelve a cargar la versión más reciente.",
+        "drafterDuplicate": "Este aldeano ya es redactor"
+      }
+    },
     "serendipity": {
       "title": "Puntuación de afinidad",
-      "subtitle": "Compatibilidad contigo",
+      "subtitle": "Encuentros acumulados en esta aldea",
       "rank": "Posición",
       "score": "Puntuación",
       "myScore": "Tu puntuación",
@@ -519,6 +730,26 @@
       "lastComputedAt": "Última actualización",
       "empty": "La puntuación de afinidad aún no se ha calculado",
       "loadFailed": "Error al cargar la puntuación de afinidad"
+    },
+    "affinity": {
+      "title": "Pista de compatibilidad",
+      "subtitle": "Mira si esta aldea puede encajar contigo antes de unirte",
+      "categoryMatch": "Cercana a tus intereses y categorías",
+      "hidden": "Ahora mismo no hay ninguna pista de compatibilidad",
+      "sharedVillagers": {
+        "hidden": "Aún no se puede mostrar",
+        "few": "Unas pocas personas",
+        "many": "10 o más personas"
+      },
+      "reason": {
+        "categoryMatch": "Esta aldea está cerca de tus intereses",
+        "sharedVillagers": "Hay aldeanos con los que ya tienes conexión",
+        "pioneer": "Puedes unirte ahora como miembro fundador"
+      },
+      "pioneer": {
+        "title": "¡Puedes convertirte en miembro fundador!",
+        "body": "Esta todavía es una aldea pequeña. Si te unes ahora, serás uno de los miembros fundadores que ayudan a construirla juntos."
+      }
     },
     "pilgrimage": {
       "title": "Peregrinación de la aldea",
@@ -535,23 +766,32 @@
     },
     "newsletter": {
       "title": "Boletín",
-      "subtitle": "Notificaciones de actualizaciones de la aldea",
-      "settings": "Configuración del boletín",
-      "frequency": "Frecuencia",
+      "subtitle": "Novedades del pueblo",
+      "settings": "Ajustes del boletín",
       "lastSentAt": "Último envío",
-      "nextScheduledAt": "Próximo envío programado",
-      "optOut": "Cancelar suscripción",
-      "optIn": "Reanudar suscripción",
-      "optedOut": "Actualmente estás suscripción cancelada",
-      "saveSuccess": "Configuración del boletín guardada",
+      "saveSuccess": "Ajustes del boletín guardados",
       "optOutSuccess": "Suscripción cancelada",
       "optInSuccess": "Suscripción reanudada",
-      "loadFailed": "Error al cargar la configuración del boletín",
-      "frequencyOption": {
-        "DAILY": "Diario",
-        "WEEKLY": "Semanal",
-        "MONTHLY": "Mensual",
-        "NEVER": "Nunca"
+      "loadFailed": "No se pudieron cargar los ajustes del boletín",
+      "manageOnlyHint": "Solo el jefe y los ancianos pueden cambiar los ajustes de envío del pueblo.",
+      "comingSoonNote": "El envío del boletín estará disponible pronto. Puedes guardar los ajustes, pero los boletines aún no se envían.",
+      "villageSection": {
+        "title": "Ajustes de envío del pueblo",
+        "subtitle": "Activa o desactiva de forma independiente el boletín semanal y el mensual."
+      },
+      "weekly": {
+        "label": "Boletín semanal",
+        "timing": "Se envía cada viernes"
+      },
+      "monthly": {
+        "label": "Boletín mensual",
+        "timing": "Se envía a fin de mes"
+      },
+      "personalSection": {
+        "title": "Tu suscripción",
+        "toggleLabel": "Recibir el boletín de este pueblo",
+        "receivingHint": "Actualmente recibes este boletín.",
+        "stoppedHint": "Has dejado de recibir este boletín."
       }
     },
     "slug": {
@@ -704,6 +944,231 @@
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
         }
+      },
+      "charter": {
+        "title": "Deja constancia de las promesas de la aldea en la carta",
+        "body": "El jefe de la aldea o los ancianos pueden definir las reglas de la aldea (artículos) y publicarlas incluso a quienes no son miembros (las aldeas públicas las muestran también a los futuros miembros).",
+        "steps": {
+          "step1": "Abre la pestaña \"Carta de la aldea\".",
+          "step2": "El jefe de la aldea o los ancianos pueden escribir artículos con \"+ Añadir artículo\" y adjuntar un anexo opcional.",
+          "step3": "Reordenar y eliminar se aplican de inmediato. Usa \"Confirmar revisión\" para registrarlo en el historial."
+        }
+      }
+    },
+    "joinRequestGuide": {
+      "page_title": "Cómo usar las solicitudes de ingreso",
+      "description": "Explica cómo solicitar el ingreso a una aldea con aprobación y cómo el jefe y los ancianos revisan las solicitudes.",
+      "apply": {
+        "title": "Solicitar unirse",
+        "body": "No puedes unirte directamente a una aldea con aprobación. Envía una solicitud y espera a que el jefe o un anciano la apruebe. El mensaje es opcional, pero aumenta tus posibilidades.",
+        "steps": {
+          "step1": "Escribe en el mensaje qué quieres hacer en la aldea y por qué quieres unirte (opcional, máximo 500 caracteres).",
+          "step2": "Pulsa Enviar para que la solicitud llegue al jefe y a los ancianos.",
+          "step3": "Justo después de enviarla puedes cancelarla con el botón Retirar."
+        }
+      },
+      "status": {
+        "title": "Consultar el estado de la revisión",
+        "body": "La solicitud empieza como Pendiente de revisión y el jefe o un anciano la marca como Aprobada o Rechazada. Al aprobarse te conviertes en aldeano y se desbloquean todas las funciones.",
+        "steps": {
+          "step1": "Justo después de enviarla, el estado aparece como Pendiente de revisión.",
+          "step2": "Al aprobarse te conviertes en aldeano y se abren todas las pestañas de la aldea.",
+          "step3": "Si la rechazan, el comentario de revisión explica el motivo. Léelo y vuelve a solicitarlo si procede."
+        }
+      },
+      "review": {
+        "title": "Revisar solicitudes (jefe y ancianos)",
+        "body": "El jefe y los ancianos ven en esta pantalla la lista de solicitudes de ingreso. Lee cada mensaje y decide si aprobarla o rechazarla.",
+        "steps": {
+          "step1": "Usa las pestañas para cambiar entre Pendiente de revisión, Aprobada, Rechazada y Retirada.",
+          "step2": "Pulsa Aprobar para que la persona solicitante se convierta en aldeano. El comentario es opcional.",
+          "step3": "Al pulsar Rechazar es obligatorio un comentario de revisión para explicar el motivo."
+        }
+      }
+    },
+    "admin": {
+      "title": "Gestión de la aldea",
+      "subtitle": "Menú de gestión para el jefe de aldea y los ancianos",
+      "cards": {
+        "recruitCategories": {
+          "title": "Categorías de convocatoria",
+          "desc": "Añade, edita y reordena las categorías de convocatoria."
+        },
+        "newsletter": {
+          "title": "Configuración del boletín",
+          "desc": "Configura la frecuencia de envío y la exclusión."
+        },
+        "members": {
+          "title": "Miembros y roles",
+          "desc": "Gestiona a los aldeanos, cambia roles y expulsa (BAN)."
+        },
+        "representatives": {
+          "title": "Delegación de representante",
+          "desc": "Delega y gestiona los usuarios que pueden publicar como representante de una membresía de equipo/organización."
+        },
+        "joinRequests": {
+          "title": "Revisar solicitudes de ingreso",
+          "desc": "Revisa y aprueba o rechaza las solicitudes de ingreso."
+        },
+        "reports": {
+          "title": "Gestión de denuncias",
+          "desc": "Revisa y gestiona las denuncias (próximamente)."
+        },
+        "settings": {
+          "title": "Configuración básica de la aldea",
+          "desc": "Edita el nombre, la descripción y otra información básica de la aldea."
+        }
+      },
+      "comingSoon": "Próximamente",
+      "accessDenied": "Solo el jefe de aldea y los ancianos pueden acceder a esta pantalla."
+    },
+    "adminGuide": {
+      "page_title": "Cómo usar la gestión de la aldea",
+      "description": "Un menú de gestión para el jefe de aldea y los ancianos. Cada tarjeta te lleva a la pantalla que necesitas para la operación diaria.",
+      "open": {
+        "title": "Abrir la gestión de la aldea",
+        "body": "Ábrela desde el botón con el icono de engranaje \"Gestión de la aldea\" en el encabezado de la aldea. Este botón solo se muestra al jefe de aldea y a los ancianos.",
+        "steps": {
+          "step1": "Pulsa el botón \"Gestión de la aldea\" en la parte superior derecha del encabezado de la aldea.",
+          "step2": "Aparece una lista de tarjetas. Pulsa una tarjeta para ir a esa pantalla."
+        }
+      },
+      "cards": {
+        "title": "Qué puedes hacer con cada tarjeta",
+        "body": "Puedes acceder a las categorías de convocatoria, la configuración del boletín, miembros y roles, la revisión de solicitudes de ingreso, las denuncias y la configuración básica de la aldea.",
+        "steps": {
+          "step1": "\"Categorías de convocatoria\" te permite añadir, editar y reordenar categorías como festivales o partidos de práctica.",
+          "step2": "\"Miembros y roles\" y \"Revisar solicitudes de ingreso\" te permiten gestionar a los aldeanos y revisar a los nuevos solicitantes.",
+          "step3": "\"Configuración básica de la aldea\" solo puede abrirla el jefe de aldea. Edita el nombre, la descripción y más."
+        }
+      },
+      "permissions": {
+        "title": "Diferencia entre el jefe de aldea y los ancianos",
+        "body": "La mayoría de las tarjetas pueden usarlas tanto el jefe de aldea como los ancianos, pero la configuración básica de la aldea (y actualmente la del boletín) solo puede abrirla el jefe de aldea.",
+        "steps": {
+          "step1": "Los ancianos pueden usar las tarjetas de categorías de convocatoria, miembros, solicitudes de ingreso y denuncias.",
+          "step2": "Solo el jefe de aldea puede editar la configuración básica de la aldea."
+        }
+      }
+    },
+    "recruitCategory": {
+      "title": "Categorías de convocatoria",
+      "subtitle": "Define libremente las categorías de convocatoria según cómo funcione realmente tu aldea.",
+      "add": "Añadir categoría",
+      "edit": "Editar categoría",
+      "name": "Nombre de la categoría",
+      "namePlaceholder": "p. ej. Buscamos participantes",
+      "description": "Descripción (opcional)",
+      "descriptionPlaceholder": "Explica para qué se usa esta categoría",
+      "color": "Color (opcional)",
+      "displayOrder": "Orden de visualización",
+      "preset": "Predeterminada",
+      "usage": "Convocatorias en uso",
+      "usageCount": "{count}",
+      "empty": "Aún no hay categorías. Usa \"Añadir categoría\" para crear una.",
+      "reorder": "Reordenar",
+      "moveUp": "Subir",
+      "moveDown": "Bajar",
+      "reorderSaved": "Orden guardado",
+      "created": "Categoría añadida",
+      "updated": "Categoría actualizada",
+      "deleted": "Categoría eliminada",
+      "confirmDelete": "¿Eliminar esta categoría?",
+      "confirmDeleteBody": "Se eliminará \"{name}\". Las categorías usadas por una convocatoria no se pueden eliminar.",
+      "limitNote": "Hasta {max} categorías por aldea (actualmente {count}).",
+      "error": {
+        "VILLAGE_083": "Categoría de convocatoria no encontrada",
+        "VILLAGE_084": "Ya existe una categoría de convocatoria con el mismo nombre",
+        "VILLAGE_085": "Puedes tener como máximo {max} categorías de convocatoria",
+        "VILLAGE_086": "Esta categoría la usa una convocatoria y no se puede eliminar",
+        "loadFailed": "No se pudieron cargar las categorías de convocatoria"
+      },
+      "validation": {
+        "nameRequired": "El nombre de la categoría es obligatorio",
+        "nameMax": "El nombre debe tener como máximo {max} caracteres",
+        "descriptionMax": "La descripción debe tener como máximo {max} caracteres"
+      },
+      "clearColor": "Quitar color"
+    },
+    "recruitCategoryGuide": {
+      "page_title": "Cómo usar las categorías de convocatoria",
+      "description": "Define por aldea las categorías con las que se clasifican las convocatorias. El jefe de aldea y los ancianos pueden editarlas.",
+      "manage": {
+        "title": "Añadir y editar categorías",
+        "body": "Usa \"Añadir categoría\" para crear una nueva. Puedes ponerle el nombre que quieras y añadir descripción y color.",
+        "steps": {
+          "step1": "Pulsa el botón \"Añadir categoría\".",
+          "step2": "Introduce un nombre (obligatorio, máximo 40 caracteres). La descripción y el color son opcionales.",
+          "step3": "Pulsa Guardar para añadirla a la lista. Puedes editarla en cualquier momento con el icono del lápiz."
+        }
+      },
+      "preset": {
+        "title": "Las categorías predeterminadas también se pueden cambiar",
+        "body": "Las categorías creadas junto con tu aldea (participantes, colaboradores, otros) son solo datos. Si no encajan con tu aldea, renómbralas o elimínalas.",
+        "steps": {
+          "step1": "Aunque tengan la etiqueta \"Predeterminada\", no hay ninguna restricción para editarlas o eliminarlas.",
+          "step2": "Si un nombre no encaja con tu aldea, simplemente reescríbelo."
+        }
+      },
+      "order": {
+        "title": "Orden y eliminación",
+        "body": "Reordenar con las flechas también cambia el orden que se muestra al crear y filtrar convocatorias. Las categorías en uso no se pueden eliminar, para proteger las convocatorias existentes.",
+        "steps": {
+          "step1": "Reordenar con las flechas arriba/abajo se guarda inmediatamente.",
+          "step2": "Las categorías con cero \"Convocatorias en uso\" se pueden eliminar con el icono de papelera.",
+          "step3": "Para eliminar una categoría en uso, cambia primero la categoría de esas convocatorias."
+        }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "Cómo usar el boletín",
+      "description": "El boletín del pueblo agrupa las novedades del pueblo en una sola notificación. El semanal y el mensual se activan de forma independiente, y cada miembro elige si desea recibirlo.",
+      "toggles": {
+        "title": "Activa el semanal y el mensual por separado",
+        "body": "En los ajustes de envío del pueblo puedes cambiar el semanal y el mensual por separado. Puedes activar solo uno.",
+        "steps": {
+          "step1": "Usa el interruptor «Boletín semanal» para activar o desactivar el envío semanal.",
+          "step2": "Usa el interruptor «Boletín mensual» para activar o desactivar el envío mensual.",
+          "step3": "Los cambios se guardan al instante al cambiar un interruptor (sin botón de guardar)."
+        }
+      },
+      "timing": {
+        "title": "Momento de envío",
+        "body": "El semanal se envía cada viernes; el mensual, a fin de cada mes."
+      },
+      "permission": {
+        "title": "Quién puede cambiarlo",
+        "body": "Solo el jefe y los ancianos pueden cambiar los «ajustes de envío del pueblo». Los demás miembros ven los ajustes actuales como solo lectura."
+      },
+      "personal": {
+        "title": "Tu suscripción",
+        "body": "Cada miembro elige si desea recibir el boletín. La recepción está activada de forma predeterminada.",
+        "steps": {
+          "step1": "Desactiva el interruptor «Tu suscripción» para dejar de recibir el boletín de este pueblo.",
+          "step2": "Vuelve a activarlo para reanudar la recepción."
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ El envío del boletín estará disponible pronto. Puedes guardar los ajustes, pero los boletines aún no se envían realmente."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "Cómo usarlo",
+      "what": {
+        "title": "Qué es el mini perfil del aldeano",
+        "body": "Toca un nombre en la lista de miembros para abrir el perfil sencillo de ese aldeano. Puedes ver su rol y las aldeas que ha elegido mostrar."
+      },
+      "villages": {
+        "title": "Cómo leer la lista de aldeas",
+        "body": "Solo aparecen las aldeas que el aldeano ha hecho visibles. Se muestra el nombre de la aldea, el emblema y la categoría, nunca un apodo. Toca una tarjeta para ir a la página principal de esa aldea."
+      },
+      "toggle": {
+        "title": "Cuando abres tu propio perfil",
+        "body": "Tu propio mini perfil muestra un interruptor «Mostrar esta aldea en mi lista de aldeas». Al activarlo, las personas que comparten una aldea contigo podrán ver esta aldea en tu lista. Se puede configurar por cada aldea."
+      },
+      "privacy": {
+        "title": "Sobre la privacidad",
+        "body": "La lista de aldeas solo se muestra cuando tú y la otra persona compartís al menos una aldea. Si no hay nada que mostrar, aparece de forma neutral «No hay aldeas para mostrar», sin revelar si compartís una aldea."
       }
     }
   }

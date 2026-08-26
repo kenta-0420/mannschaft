@@ -29,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -62,14 +63,21 @@ public class ReservationBusinessHourService {
     private final ReservationSlotRepository slotRepository;
     private final NameResolverService nameResolverService;
     private final ReservationMapper reservationMapper;
+    /** 予約閲覧の view ゲート（会員 or 公開）。予約作成・グリッドと同一述語（§6 単一述語）。 */
+    private final ReservationViewAccessGuard viewAccessGuard;
 
     /**
      * チームの営業時間設定を取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @return 営業時間レスポンスリスト
      */
-    public List<BusinessHourResponse> getBusinessHours(Long teamId) {
+    public List<BusinessHourResponse> getBusinessHours(Long teamId, Long userId) {
+        viewAccessGuard.assertCanView(teamId, userId);
         List<ReservationBusinessHourEntity> hours = businessHourRepository.findByTeamIdOrderByIdAsc(teamId);
         return reservationMapper.toBusinessHourResponseList(hours);
     }
@@ -93,9 +101,9 @@ public class ReservationBusinessHourService {
         Set<ReservationDayOfWeek> changedDays = new LinkedHashSet<>();
 
         for (BusinessHourEntry entry : request.getHours()) {
-            if (entry.getIsOpen() && entry.getOpenTime() != null && entry.getCloseTime() != null
-                    && !entry.getOpenTime().isBefore(entry.getCloseTime())) {
-                throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE);
+            if (entry.getIsOpen() && entry.getOpenTime() != null && entry.getCloseTime() != null) {
+                SlotTimeValidator.validateTimeRange(entry.getOpenTime(), entry.getCloseTime(),
+                        Boolean.TRUE.equals(entry.getEndsNextDay()));
             }
 
             Optional<ReservationBusinessHourEntity> existingOpt =
@@ -107,8 +115,10 @@ public class ReservationBusinessHourService {
                 // 保存（mutate）前に現行値と突合して差分判定する。
                 changed = !Objects.equals(existing.getIsOpen(), entry.getIsOpen())
                         || !Objects.equals(existing.getOpenTime(), entry.getOpenTime())
-                        || !Objects.equals(existing.getCloseTime(), entry.getCloseTime());
-                existing.updateHours(entry.getIsOpen(), entry.getOpenTime(), entry.getCloseTime());
+                        || !Objects.equals(existing.getCloseTime(), entry.getCloseTime())
+                        || !Objects.equals(existing.getEndsNextDay(), entry.getEndsNextDay());
+                existing.updateHours(entry.getIsOpen(), entry.getOpenTime(), entry.getCloseTime(),
+                        entry.getEndsNextDay());
                 entity = existing;
             } else {
                 // 新規行は「変更あり」として生成対象にする（初回設定で枠を埋める・§3.2 初回体験）。
@@ -119,6 +129,7 @@ public class ReservationBusinessHourService {
                         .isOpen(entry.getIsOpen())
                         .openTime(entry.getOpenTime())
                         .closeTime(entry.getCloseTime())
+                        .endsNextDay(Boolean.TRUE.equals(entry.getEndsNextDay()))
                         .build();
             }
 
@@ -159,19 +170,24 @@ public class ReservationBusinessHourService {
      */
     public List<BlockedTimeResponse> getBlockedTimes(Long teamId, LocalDate date) {
         List<ReservationBlockedTimeEntity> blockedTimes =
-                blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(teamId, date);
+                blockedTimeRepository.findEffectiveOnDate(teamId, date, date.minusDays(1));
         return enrichWithResourceNames(blockedTimes);
     }
 
     /**
      * チームのブロック時間を日付範囲で取得する。
      *
+     * <p>閲覧可否は {@link ReservationViewAccessGuard#assertCanView}（会員 or 公開。予約作成・グリッドと
+     * 同一述語）。非許可は 403（RESERVATION_021）。</p>
+     *
      * @param teamId チームID
+     * @param userId 閲覧ユーザーID
      * @param from   開始日
      * @param to     終了日
      * @return ブロック時間レスポンスリスト
      */
-    public List<BlockedTimeResponse> listBlockedTimes(Long teamId, LocalDate from, LocalDate to) {
+    public List<BlockedTimeResponse> listBlockedTimes(Long teamId, Long userId, LocalDate from, LocalDate to) {
+        viewAccessGuard.assertCanView(teamId, userId);
         List<ReservationBlockedTimeEntity> blockedTimes =
                 blockedTimeRepository.findByTeamIdAndBlockedDateBetweenOrderByBlockedDateAscStartTimeAsc(teamId, from, to);
         return enrichWithResourceNames(blockedTimes);
@@ -191,13 +207,13 @@ public class ReservationBusinessHourService {
      */
     @Transactional
     public BlockedTimeResponse createBlockedTime(Long teamId, BlockedTimeRequest request, Long createdBy) {
-        validateTimeRange(request.getStartTime(), request.getEndTime());
+        validateTimeRange(request.getStartTime(), request.getEndTime(), Boolean.TRUE.equals(request.getEndsNextDay()));
         ReservationBlockedResourceType resourceType = resolveResourceType(request.getResourceType());
         Long resourceId = resolveResourceId(resourceType, request.getResourceId());
 
         // 409 ガード: overlap する active 予約が 1 件以上なら拒否（副作用ゼロ）。
         guardNoActiveOverlap(teamId, request.getBlockedDate(), resourceType, resourceId,
-                request.getStartTime(), request.getEndTime());
+                request.getStartTime(), request.getEndTime(), Boolean.TRUE.equals(request.getEndsNextDay()));
 
         ReservationBlockedTimeEntity entity = ReservationBlockedTimeEntity.builder()
                 .teamId(teamId)
@@ -207,6 +223,7 @@ public class ReservationBusinessHourService {
                 .reason(request.getReason())
                 .resourceType(resourceType)
                 .resourceId(resourceId)
+                .endsNextDay(Boolean.TRUE.equals(request.getEndsNextDay()))
                 .createdBy(createdBy)
                 .build();
 
@@ -229,16 +246,16 @@ public class ReservationBusinessHourService {
         ReservationBlockedTimeEntity entity = blockedTimeRepository.findByIdAndTeamId(blockedId, teamId)
                 .orElseThrow(() -> new BusinessException(ReservationErrorCode.BLOCKED_TIME_NOT_FOUND));
 
-        validateTimeRange(request.getStartTime(), request.getEndTime());
+        validateTimeRange(request.getStartTime(), request.getEndTime(), Boolean.TRUE.equals(request.getEndsNextDay()));
         ReservationBlockedResourceType resourceType = resolveResourceType(request.getResourceType());
         Long resourceId = resolveResourceId(resourceType, request.getResourceId());
 
         // 更新後の枠に対しても 409 ガードを適用する（新しい対象軸/時間帯で overlap する active 予約を弾く）。
         guardNoActiveOverlap(teamId, request.getBlockedDate(), resourceType, resourceId,
-                request.getStartTime(), request.getEndTime());
+                request.getStartTime(), request.getEndTime(), Boolean.TRUE.equals(request.getEndsNextDay()));
 
         entity.update(request.getBlockedDate(), request.getStartTime(), request.getEndTime(),
-                request.getReason(), resourceType, resourceId);
+                request.getReason(), resourceType, resourceId, request.getEndsNextDay());
         ReservationBlockedTimeEntity saved = blockedTimeRepository.save(entity);
         log.info("予約不可枠更新: teamId={}, blockedId={}, resourceType={}, resourceId={}",
                 teamId, blockedId, resourceType, resourceId);
@@ -279,12 +296,21 @@ public class ReservationBusinessHourService {
             Long teamId, LocalDate date, ReservationBlockedResourceType resourceType, Long resourceId,
             LocalTime startTime, LocalTime endTime) {
 
-        validateTimeRange(startTime, endTime);
+        return getBlockedTimeImpact(teamId, date, resourceType, resourceId, startTime, endTime,
+                endTime != null && startTime != null && endTime.isBefore(startTime));
+    }
+
+    public BlockedTimeImpactResponse getBlockedTimeImpact(
+            Long teamId, LocalDate date, ReservationBlockedResourceType resourceType, Long resourceId,
+            LocalTime startTime, LocalTime endTime, boolean endsNextDay) {
+
+        validateTimeRange(startTime, endTime, endsNextDay);
         ReservationBlockedResourceType type = resolveResourceType(resourceType);
         Long resolvedResourceId = resolveResourceId(type, resourceId);
 
         List<ReservationEntity> overlapping =
-                findActiveOverlappingReservations(teamId, date, type, resolvedResourceId, startTime, endTime);
+                findActiveOverlappingReservations(teamId, date, type, resolvedResourceId, startTime, endTime,
+                        endsNextDay);
 
         // 枠情報（担当スタッフ）を一括取得（N+1 回避）。
         Set<Long> slotIds = overlapping.stream()
@@ -352,7 +378,19 @@ public class ReservationBusinessHourService {
         }
     }
 
+    private void validateTimeRange(LocalTime startTime, LocalTime endTime, boolean endsNextDay) {
+        if (endsNextDay && startTime == null && endTime == null) {
+            throw new BusinessException(ReservationErrorCode.INVALID_TIME_RANGE);
+        }
+        if (endsNextDay) {
+            SlotTimeValidator.validateTimeRange(startTime, endTime, true);
+        } else {
+            validateTimeRange(startTime, endTime);
+        }
+    }
+
     /** {@code resourceType} を正規化する（未指定＝null → TEAM）。 */
+
     private ReservationBlockedResourceType resolveResourceType(ReservationBlockedResourceType raw) {
         return raw != null ? raw : ReservationBlockedResourceType.TEAM;
     }
@@ -375,9 +413,11 @@ public class ReservationBusinessHourService {
      * 提案枠と overlap する active 予約が 1 件以上あれば {@code RESERVATION_027}（409）で拒否する。
      */
     private void guardNoActiveOverlap(Long teamId, LocalDate date, ReservationBlockedResourceType type,
-                                      Long resourceId, LocalTime startTime, LocalTime endTime) {
+                                      Long resourceId, LocalTime startTime, LocalTime endTime,
+                                      boolean endsNextDay) {
         List<ReservationEntity> overlapping =
-                findActiveOverlappingReservations(teamId, date, type, resourceId, startTime, endTime);
+                findActiveOverlappingReservations(teamId, date, type, resourceId, startTime, endTime,
+                        endsNextDay);
         if (!overlapping.isEmpty()) {
             throw new BusinessException(ReservationErrorCode.UNAVAILABILITY_HAS_ACTIVE_RESERVATIONS);
         }
@@ -398,13 +438,36 @@ public class ReservationBusinessHourService {
      */
     private List<ReservationEntity> findActiveOverlappingReservations(
             Long teamId, LocalDate date, ReservationBlockedResourceType type, Long resourceId,
-            LocalTime startTime, LocalTime endTime) {
+            LocalTime startTime, LocalTime endTime, boolean endsNextDay) {
         // TEAM 軸は全 slot 対象（resourceId=null）、STAFF 軸は resourceId で絞る。
         Long queryResourceId = (type == ReservationBlockedResourceType.STAFF) ? resourceId : null;
         // 全日ブロック（両 NULL）は時刻トリックを使わず、日付＋軸一致でその日の active 予約を引く。
         if (startTime == null && endTime == null) {
             return reservationRepository.findActiveReservationsOnDate(
                     teamId, date, queryResourceId, ACTIVE_STATUSES);
+        }
+        if (endsNextDay) {
+            List<ReservationEntity> candidates = reservationRepository.findActiveReservationsOnDates(
+                    teamId, List.of(date.minusDays(1), date, date.plusDays(1)), queryResourceId, ACTIVE_STATUSES);
+            if (candidates == null || candidates.isEmpty()) {
+                return List.of();
+            }
+            List<ReservationSlotEntity> candidateSlots = slotRepository.findAllById(candidates.stream()
+                    .map(ReservationEntity::getReservationSlotId).distinct().toList());
+            if (candidateSlots == null || candidateSlots.isEmpty()) {
+                return List.of();
+            }
+            Map<Long, ReservationSlotEntity> slots = candidateSlots.stream()
+                    .collect(Collectors.toMap(ReservationSlotEntity::getId, s -> s));
+            LocalDateTime blockStart = LocalDateTime.of(date, startTime);
+            LocalDateTime blockEnd = LocalDateTime.of(date.plusDays(1), endTime);
+            return candidates.stream().filter(r -> {
+                ReservationSlotEntity slot = slots.get(r.getReservationSlotId());
+                if (slot == null) return false;
+                LocalDate endDate = slot.getEndDate() == null ? slot.getSlotDate() : slot.getEndDate();
+                return LocalDateTime.of(slot.getSlotDate(), slot.getStartTime()).isBefore(blockEnd)
+                        && blockStart.isBefore(LocalDateTime.of(endDate, slot.getEndTime()));
+            }).toList();
         }
         // 部分ブロックは半開区間 overlap で判定する（従来クエリ維持）。
         return reservationRepository.findActiveReservationsOverlappingUnavailability(

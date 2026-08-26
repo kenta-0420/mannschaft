@@ -41,6 +41,36 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 
 `.authenticated()` 反転後も**認証不要**で到達できる必要があるエンドポイント。これ以外は全て認証必須。
 
+### 3.0 公開根拠の引用規約 — `@IntentionallyPublic` は **matcher 式**を引用する（2026-07-30 改訂）
+
+`permitAll` の EP には監査済マーカー `@IntentionallyPublic` を付与し、**根拠となる matcher 式（パス文字列）を注釈の属性に列挙する**。
+
+```java
+@IntentionallyPublic("/api/v1/public/stats")            // 単一
+@IntentionallyPublic({                                   // 複数
+        "/api/v1/public/teams/*/faqs",
+        "/api/v1/public/organizations/*/faqs"
+})
+```
+
+**なぜ行番号引用をやめたか（実測に基づく規約変更）:**
+
+旧規約は `SecurityConfig.java:88 — requestMatchers(...)` のように **行番号**で permitAll 登録箇所を引用していた。しかし `SecurityConfig` に 1 行挿入されるだけで以降の引用がすべてずれる。2026-07-30 に全件突き合わせを実測した結果、**`@IntentionallyPublic` の行番号引用 35 件のうち 34 件が既に別の行を指していた**（唯一正しかったのは直前の PR で追加された 1 件のみ）。「なぜこの EP が公開されているのか」を追う唯一の手掛かりが、誰にも気づかれないまま嘘になっていた。
+
+matcher 式は行挿入で腐らず、`SecurityConfig` を Ctrl+F すれば人間もすぐ辿れる。さらに文字列であるため**番人が機械的に突き合わせられる**。
+
+**番人:** `IntentionallyPublicMatcherGuardTest`（`backend/src/test/java/com/mannschaft/app/common/architecture/`）が以下を機械検証する。
+
+- 各 `@IntentionallyPublic` が matcher 式を宣言していること（空宣言は違反）
+- 列挙された各パターンが `SecurityConfig` に**実在し、かつ permitAll されている**こと
+- `@IntentionallyPublic` を持つファイルに行番号引用（`SecurityConfig.java:NNN`）が残っていないこと
+
+引用が腐れば静かに嘘になるのではなく **ビルドが赤くなる**。CORS プリフライト（`OPTIONS "/**"`）は「公開の根拠」にならないため番人の permitAll 集合から除外している（`/**` を引用するだけで番人を通す抜け道を塞ぐため）。
+
+> **注**: 公開してよいと判断した**理由の記述（Javadoc）は本体であり、引用形式の変更後も必ず残すこと。** 理由なき付与は「認可漏れの永久凍結」と区別がつかない。
+>
+> **追記（2026-08-05）**: 姉妹マーカー `@AuthorizedByPathConfig` も同じ行番号引用規約で腐っていた（実測 42 箇所全件が実物より一律 +31 行ずれ）。**matcher 式を `value()` 属性へ申告する規約へ移行済み**（対象 37 箇所・34 ファイル）。番人 `AuthorizedByPathConfigMatcherGuardTest` が新設され、申告された matcher が `SecurityConfig` に実在し、かつ `permitAll()` **ではない**こと（誤って permitAll へ「認可済み」と偽装付与する事故の検知が本丸）を機械検証する。`SecurityConfig` の走査ロジックは `SecurityConfigRules` へ共通化し `IntentionallyPublicMatcherGuardTest` と共有している。突き合わせの結果、対応する認可規則が存在しない・permitAll だった箇所は無かった。
+
 ### 3.1 インフラ・ドキュメント
 | パターン | メソッド | 公開理由 |
 |---|---|---|
@@ -63,6 +93,73 @@ SecurityFilterChain は「最低限のゲート」、所有権の最終判定は
 > - 旧 `GET /api/v1/recruitment-categories` は認証必須のまま維持（廃止予定なし・既存ロジックを温存）
 > - FE の市一覧ページは `/public/market/categories` を使用するよう修正済み
 > POST/DELETE（コメント投稿・削除など）は **認証必須**（許可リストに入れず `.authenticated()` が制御）。
+
+#### F06.4 公開活動記録（2026-07-29 追加）
+
+チーム / 組織が対外的に活動実績を見せる機能であり、未ログインの閲覧（保護者候補・スポンサー・検索エンジン）が要件そのもの。SSR / SNS シェア用に以下 5 EP を permitAll する（`SecurityConfig.java` の `/api/v1/public/activities/*` 以下 5 行）。
+
+| パターン | メソッド | コントローラ | 公開理由・ガード |
+|---|---|---|---|
+| `/api/v1/public/activities/*` | GET | `activity/ActivityPublicController#getPublicActivityById` | SNS シェア URL `/activity/{id}` から ID 直引き（スコープ不問） |
+| `/api/v1/public/teams/*/activities` | GET | 〃 `#listTeamPublicActivities` | チーム公開活動記録一覧 |
+| `/api/v1/public/teams/*/activities/*` | GET | 〃 `#getTeamPublicActivity` | チーム公開活動記録詳細 |
+| `/api/v1/public/organizations/*/activities` | GET | 〃 `#listOrgPublicActivities` | 組織公開活動記録一覧 |
+| `/api/v1/public/organizations/*/activities/*` | GET | 〃 `#getOrgPublicActivity` | 組織公開活動記録詳細 |
+
+安全性は `PublicActivityQueryService`（匿名公開経路の唯一の入口）が以下 5 点で担保する:
+
+1. **親スコープが PUBLIC** かつ未凍結・未削除であること（非公開チーム / 組織配下は一律 404）
+2. **記録自身が `visibility=PUBLIC` かつ `status=PUBLISHED`** であること（下書き・会員限定・論理削除済みは 404）
+3. **F00 正準の可視性判定**（`ContentVisibilityChecker`・未認証 `userId=null`）を通ること。独自ラダーは作らない
+4. **パス変数と実スコープの一致**（スコープ詐称 IDOR の拒否）
+5. **返却は公開専用 DTO の 8 項目のみ** — `PublicActivityDetail` / `PublicActivitySummary`（`id` / `title` / `activityDate` / `activityTimeStart` / `activityTimeEnd` / `description` / `scopeRef` / `createdAt`）。`location` / `fieldValues` / `attachments` / `createdBy` / `visibility` / `status` / `templateId` / `venueId` / `scheduleId` / `updatedAt` は**禁則フィールド**として一切含めない
+
+##### 一覧経路における門2 と 門3 の適用形（2026-07-30 改訂）
+
+**一覧（`listTeamPublicActivities` / `listOrgPublicActivities`）でも門2 は必ず適用される。** ただし詳細経路と適用**層**が異なる:
+
+| 門 | 詳細（単件） | 一覧 |
+|---|---|---|
+| 門2（`visibility=PUBLIC` かつ `status=PUBLISHED`） | `ActivityResultRepository#findByIdAndVisibilityAndStatus`（SQL） | **`ActivityResultRepository#findPublicByScopeTypeAndScopeId`（SQL 述語）** |
+| 門3（F00 `ContentVisibilityChecker`） | 判定の主体（唯一の門） | **第二の門（乖離検知）**。SQL が通した行を再確認し、落ちた行は返さない（fail-closed）うえで `log.warn` で乖離を記録する |
+
+- **なぜ一覧だけ SQL 述語なのか**: 一覧は 1 ページ分を取得してからメモリでフィルタすると、落ちた分が補充されず **ページング歯抜け**（`limit=20` でも 20 件返らない）と **総件数の破綻** が起きる。絞り込みは SQL 段に降ろさなければ構造的に直らない。
+- **これは「二つ目の判定器」ではない**: 匿名（`userId=null`）では `MembershipBatchQueryService#snapshotForUser` が `UserScopeRoleSnapshot.empty()` を返してラダーが縮退し、`StandardVisibility.PUBLIC` の Javadoc が「未認証時は PUBLIC かつ PUBLISHED のときのみ true、それ以外はすべて fail-closed」と明文で宣言している。SQL 述語はこの宣言の**機械的な転写**である。
+- **先例**: F19.1 `BlogPostRepository#findPublicPostsByTeamId`（`PublicActivityQueryService` 自身が「金型」と明記する `PublicPostQueryService` の実体）、`TournamentService#listPublicTournaments`、`AnnouncementFeedVisibilityResolver`（「一覧は SQL 述語・単件は F00 Resolver」の併存を公式に容認）。設計書 `docs/features/F02.6_announcement_widget.md` は「検証は Repository 層の `@Query` レベルで WHERE 句に入れる（Service 層の if 文に依存しない）」と規定している。
+- **等価性の担保**: 「SQL 述語の集合 S」と「F00 の `filterAccessible(..., null)` の集合 F」が **`S == F`** であることを、契約テスト `ActivityPublicContractIT` の **AC-32（等価性番人）** が `visibility × status × deleted` の全 8 組合せで機械的に固定する。片方だけを変更すると必ず落ちる。`ActivityVisibility` に第 3 の値を追加する際も最初にここが落ちる。
+
+> **認証済み一覧（`GET /api/v1/activities`）の既知の残務**: 認証済み経路は依然「1 ページ取得 → F00 でメモリフィルタ」であり **歯抜けが残っている**（総件数のページ内件数への化けのみ 2026-07-30 に是正済み）。認証済みでは F00 のラダーが縮退しないため SQL 化すると本物の独自述語になってしまう。厳密化には F00 側に「単一スコープに対する閲覧者の可視レベル解決 API」を新設し、それを SQL 述語へ翻訳する必要がある（後続戦役）。
+
+##### 明文化した 3 つの契約（2026-07-30 追加・従来は未検査だった）
+
+いずれも「実装はそう動いていたが受け入れ条件も契約テストも無かった」ものであり、`ActivityPublicContractIT` で機械的に固定した。
+
+| # | 契約 | 現在の挙動 | 番人 |
+|---|---|---|---|
+| 1 | **COMMITTEE スコープは公開 EP から一律 404**（fail-closed） | `PublicActivityQueryService#resolvePublicScopeRefOrThrow` の `case COMMITTEE -> Optional.empty()` により、`visibility=PUBLIC` かつ `status=PUBLISHED` でも 404（ボディも「存在しない ID」と同一） | **AC-37** |
+| 2 | **非数値パス変数は 400 のまま**（404 に倒さない） | `/api/v1/public/activities/abc` は Spring の型変換段で失敗し `400 + COMMON_001`。ボディは定数で、入力値・例外クラス名・スタックを一切含まない | **AC-38** |
+| 3 | **公開 EP の応答は閲覧者に依存しない** | `PublicActivityQueryService` が `canView(..., null)` / `filterAccessible(..., null)` と **userId を null 固定**で呼ぶため、ログイン済み（かつ当該チームの ACTIVE メンバー）でも `MEMBERS_ONLY` / `DRAFT` は公開 EP から見えず、ボディは匿名時と 1 バイトも変わらない | **AC-39 / AC-39b** |
+
+> **#2 が AC-18（存在秘匿）の穴でない理由**: AC-18 が封じるのは「**ID として妥当な値**を投げたとき、その記録が実在するかを学べてしまう」こと。`abc` はそもそも ID ではなく、型変換がコントローラ到達**前**に失敗するため activity_results への問い合わせが一度も起きない。よって 400 と 404 の差は**入力領域の違い（ID か否か）**であり、**リソースの存在有無の違いではない**。挙動を 404 に倒しても得るものは無く、型エラーの診断可能性だけを失う。
+
+> **#3 が重要な理由**: 公開 EP は SSR / CDN / リバースプロキシでキャッシュされうる。閲覧者によって内容が変わる公開 URL は**キャッシュ汚染**（あるユーザー向けの応答が他人へ配られる）と意図しない露出の温床になる。AC-39b は「認証済みと匿名でボディが完全一致」を固定し、誰かが `null` 固定を `SecurityUtils.getCurrentUserIdOrNull()` に差し替えた瞬間に落ちる。
+
+> **【判断済み・2026-08-04 確定】slug の実在は非機密として扱う — エラーコード差は意図して残す（統一するな）**
+>
+> `/api/v1/public/teams/{slug}/**` 系では、**存在しない slug** を渡すと `ScopeSlugIdConverter`（`config/ScopeSlugIdConverter.java`）が 404 `COMMON_005` を返し、**存在するが非公開なチームの slug** を渡すと 404 `PUBLIC_001` / `PUBLIC_013` を返す。ステータスはいずれも 404 だがボディのエラーコードが異なるため、**slug が実在するかどうかの 1 ビット**は判別できる。この差は activity 固有ではなく同コンバータを通す全経路に共通する。
+>
+> **この差は「不整合」ではなく設計上の確定事項である。将来これを見つけて「統一すべき」と善意で潰しにかからないこと。** 理由は次の 4 点:
+>
+> 1. **同じ 1 ビットを専用 EP が公然と配っている**。`GET /api/v1/public/teams/slug-resolve?slug=xxx` は permitAll（`PublicSlugResolveController` に `@IntentionallyPublic` 付与）であり、**未ログインかつ非公開チームでも** `CURRENT` / `MOVED` / `NOT_FOUND` を返す。実装 `TeamService#resolveSlug` は `existsBySlugAndDeletedAtIsNull` だけを見ており**可視性を判定していない**（組織側も同型）。
+> 2. **それは事故ではなく意図的な設計**であり、認可根治戦役 Wave5 で監査済み。`PublicSlugResolveController` のクラス javadoc が「slug → slug の対応自体は非機密として扱う」と明記している。旧 URL からの 301 リダイレクト（ブックマーク・被リンクの保全）と SEO のために未ログイン到達が必要、という判断に基づく。
+> 3. **差を潰しても列挙は止まらず、失うものだけが残る**。上記のとおり実在の 1 ビットは専用 EP から取れるため、エラーコードを揃えても防御力は増えない。一方で `COMMON_005` ＝「**経路そのものが存在しない**」という開発時の診断手段を失う。FE のユニットテスト（`frontend/tests/unit/composables/village/useVillageFeatureApi.spec.ts` ほか）は「`COMMON_005` なら BE に経路が無い／それ以外なら経路はあり ID で弾かれた」という意味の差にコメントで依拠している。
+> 4. **実データは引き続き守られている**。非公開チーム / 組織の実データ取得は `PublicTeamQueryService` 等が `PUBLIC_001` で 404 に倒して防ぐ。漏れるのは「その slug が実在する」という 1 ビットのみで、名前・メンバー・投稿といった中身は一切返らない。
+>
+> 上表（存在秘匿の 3 契約）に**追記していないのは意図的**である。本項には対応する番人（自動テスト）が無く、番人を伴わない契約を表へ足すと「機械的に守られている」と誤読されるため、注記として残す。将来この差に番人を付けるなら、そのとき初めて契約表へ昇格させること。
+
+失敗はすべて `PUBLIC_013` → **404** に正規化する（403 は「存在するが権限がない」を漏らす存在オラクルになるため使わない）。未認証の ID 総当りは `PublicApiRateLimitFilter` の PUBLIC_API バケット（60 req/min/IP・200 req/min/user）で抑止する。書込（POST/PUT/PATCH/DELETE）は permitAll せず `.authenticated()` に落とす。IDOR 面を最小化するため `*`（1 階層厳格）で限定し `/**`（再帰）は使わない。
+
+> **DTO に項目を足すときは permitAll の妥当性が崩れうる**。契約テスト `ActivityPublicContractIT`（ホワイトリスト方式）と `SecurityConfigAuthorizationTest` が機械的に守っているため、追加時は必ず両テストと本節を更新すること。設計書: `docs/features/F06.4_activity_records.md`
 
 ### 3.4 広告（F09.7 / F09.17・IP レート制限あり）
 `POST /api/v1/ads/*/click`、`GET/POST /api/v1/ads/unsubscribe`、`GET /api/v1/ads/pixels/open`。
@@ -183,3 +280,5 @@ deny-by-default 反転は以下を実装時に確認してから行う（いず�
 | 2026-05-26 | 新規作成。deny-by-default 移行設計、webhook 許可リスト、system-admin 包括ルールを定義 |
 | 2026-06-02 | §5 に WebSocket 二層認証モデル（ハンドシェイク層 permitAll／STOMP CONNECT JWT 必須）と `setAllowedOriginPatterns` の本番ドメイン限定要件を追記。§3.6 の Stripe webhook 許可リスト記述を `/**` 再帰禁止・両パス明示に修正。§3.3 の根治記録に `/public/market/categories` 新設・旧 API 維持・FE 修正済みの詳細を追記 |
 | 2026-06-13 | §3.6: SES バウンス/苦情通知を HTTP webhook（`/api/v1/webhooks/ses`・permitAll・SNS 署名検証なし）から SQS 内部認証方式（SES→SNS→SQS→@SqsListener）へ移行（F09.6 Phase 8a）。HTTP 受け口廃止・permitAll 撤去・SSRF/偽造注入の構造的排除。webhook 系統を 4→3（Stripe/LINE/incoming）に更新 |
+| 2026-07-18 | **認可根治 早馬（todo コメント・越境 BOLA/IDOR 閉塞）**: `TeamTodoController`/`OrgTodoController` のコメント EP（`listComments`/`addComment`/`updateComment`）が受け取った path の teamId/organizationId を Service へ渡さず、`TodoCommentService` は `verifyTodoExists`（存在確認のみ）しか行っていなかったため、TODO の内部 id を知る認証ユーザーが所属外チーム/組織のコメントを read/write できる BOLA/IDOR が Team/Org 両側で成立していた。**根治は Service 層の scope 非束縛を潰す方針**: Controller は path scope（`TodoScopeType` + 内部 teamId/orgId）を Service へ渡し、`TodoCommentService.verifyScopeAndMembership` が (1) 対象 TODO が path scope に属することを束縛（不一致は `TODO_010 NOT_FOUND`→404 で存在秘匿）、(2) `accessControlService.checkMembership`（`ScopeType` 単位）で非メンバーを 403（`COMMON_002`）にする、の二段で認可する。兄弟 `addAssignee` は `assertTodoScope`（scope 束縛）だけで membership を検証しないため、scope 束縛のみでは非メンバーが正しい teamId/orgId を推測すると通ってしまう（※ `TeamTodoController`/`OrgTodoController` の他の TODO 系 EP も同様に membership 未検証の残穴があり、本早馬の対象外。別途 Wave で棚卸し要）。`deleteComment` は `isAdminOrAbove` で認可済みのため対象外。**番人（`AuthzControllerGuardArchTest`）との関係**: 本修正は認可を **Service 層**で行い、Controller 側は引き続き `commentService.*`（`*AccessService`/`*AccessGuard` でない）を直接呼ぶだけなので、番人の認可シグナル（Controller から `AccessControlService`/`*AccessGuard`/`*AccessService` への直接呼び出し）には該当しない。したがって当該 6 EP は凍結ストア（`archunit_store`）から外れず **凍結継続（Ph3 のまま）**。BOLA は実効的に閉塞するが「Controller に認可到達マーカーが立つ」わけではない点に注意（凍結解除したい場合は将来 Controller 側で `*AccessGuard` 経由に寄せる Ph3 マーカー付与が必要）。契約テスト `TodoCommentScopeContractIT`（Team/Org 各: 非メンバー 403／別 scope メンバー 403／越境 id 404 秘匿／正当 200-201 の各象限）＋`TodoCommentServiceTest`（scope 不一致 404・非メンバー 403）で担保 |
+| 2026-07-17 | **認可根治 Wave5 早馬（facility ドメイン・重大 BOLA/IDOR 根治）**: `FacilityBookingService`/`FacilityService` 等が `AccessControlService` を注入すらしておらず、F09.5 共用施設予約の全 EP（施設 CRUD・予約 CRUD/承認/取消/チェックイン/PDF・設定・統計・ルール/料金/備品・支払い）で認可が皆無だった（任意ログインユーザーが `bookingId`/`facilityId` 総当りで他組織・他チームの予約者 ID・利用目的・料金・支払を read/承認/取消/削除できた）。`FacilityAccessGuard` を新設し全 Controller の public 入口で認可を敷いた（`feedback_authz_gate_on_public_entry_not_shared_method` 準拠。内部 finder は非対象）。**entity 由来 scope**（予約は `booking → facilityId → SharedFacilityEntity.scopeType/scopeId` を辿る）で認可し、URL パスの scope と食い違う越境 id は 404（`FACILITY_001`/`FACILITY_006`）で存在秘匿（`GlobalExceptionHandler` へ 404 マップ追加。従来 WARN 既定 400 で存在漏洩していた欠陥も是正）。粒度は read=`checkMembership`／write=`checkAdminOrAbove`／予約の更新・取消のみ `checkOwnerOrAdmin`（本人操作温存）。**機微データはさらに締める**（マスター御裁可）: 統計 `/stats`（売上・プラットフォーム手数料）は **ADMIN 限定**（`checkAdminOrAbove`）、予約単位の支払い取得 `/bookings/{id}/payment`（支払額・方法）は **予約者本人 or ADMIN**（`checkOwnerOrAdmin`）。チェックイン/完了は当面 ADMIN 限定の安全既定を維持（「設定で選べる」は設定トグル＋DDL＋FE を要する別機能ゆえ後日フォローアップで正規実装）。契約テスト `FacilityScopeContractIT`（非メンバー 403／越境 404／正当 200 の 3 象限）で担保 |

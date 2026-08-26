@@ -17,13 +17,17 @@ import dayjs from 'dayjs'
 import type { components } from '~/types/generated'
 import type { BlockedResourceType } from '~/composables/useReservationApi'
 
-type BlockedTimeResponse = components['schemas']['BlockedTimeResponse']
+type BlockedTimeResponse = components['schemas']['BlockedTimeResponse'] & {
+  endsNextDay?: boolean
+  timeSlot?: NonNullable<components['schemas']['BlockedTimeResponse']['timeSlot']> & { endsNextDay?: boolean }
+}
 type BlockedTimeImpactResponse = components['schemas']['BlockedTimeImpactResponse']
 type ReservationLineResponse = components['schemas']['ReservationLineResponse']
 type BusinessHourResponse = components['schemas']['BusinessHourResponse']
 
 const props = defineProps<{
   teamId: string
+  teamTimezone?: string
   disabled?: boolean
 }>()
 
@@ -31,7 +35,15 @@ const { t } = useI18n()
 const reservationApi = useReservationApi()
 const notification = useNotification()
 const { handleApiError } = useErrorHandler()
-const { userTimezone } = useDatetime()
+const teamTimezone = computed(() => props.teamTimezone ?? 'Asia/Tokyo')
+
+/**
+ * 呼称の動的差し込み（F03.4.5 §5.2・要確認事項の判断）: targetLabel() の STAFF フォールバック
+ * （resource.resourceName 未設定時の表示）に使う。scope.staff（「担当者」固定文言）自体は対象スコープ
+ * 選択の意味論として残すが、一覧表示上の「呼称の欠落を埋める」フォールバックとしては動的呼称のほうが
+ * 一貫する（家老指摘・殿の判断: 含める）。
+ */
+const { resourceName, load: loadResourceName } = useResourceName(computed(() => props.teamId))
 
 // === テンプレート種別 ===
 type TemplateKey = 'FULL_DAY' | 'LATE' | 'EARLY_LEAVE' | 'MIDDAY' | 'CUSTOM'
@@ -46,10 +58,34 @@ const businessHours = ref<BusinessHourResponse[]>([])
 // フォーム
 const scope = ref<BlockedResourceType>('TEAM')
 const selectedLineId = ref<number | null>(null)
-const blockedDate = ref<Date | null>(new Date())
+const teamTodayCalendar = () => dayjs().tz(teamTimezone.value).format('YYYY-MM-DD')
+/** DatePickerにはteam midnightのInstantではなく、ブラウザ内の正午でcalendar dateを渡す。 */
+const calendarDateForPicker = (date: string) => {
+  const parts = date.split('-')
+  if (parts.length !== 3) {
+    throw new RangeError(`Invalid calendar date: ${date}`)
+  }
+
+  const [yearPart, monthPart, dayPart] = parts
+  const year = Number(yearPart)
+  const month = Number(monthPart)
+  const day = Number(dayPart)
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+    throw new RangeError(`Invalid calendar date: ${date}`)
+  }
+
+  const result = new Date(year, month - 1, day, 12, 0, 0, 0)
+  if (result.getFullYear() !== year || result.getMonth() !== month - 1 || result.getDate() !== day) {
+    throw new RangeError(`Invalid calendar date: ${date}`)
+  }
+
+  return result
+}
+const blockedDate = ref<Date | null>(calendarDateForPicker(teamTodayCalendar()))
 const template = ref<TemplateKey>('FULL_DAY')
 const startTime = ref<string | null>(null)
 const endTime = ref<string | null>(null)
+const endsNextDay = ref(false)
 const reason = ref<string>('')
 
 /** 営業時間が取れずテンプレを算出できなかった場合の注意フラグ */
@@ -116,13 +152,13 @@ function toHm(value?: string | null): string {
 }
 
 function formatDate(date: Date): string {
-  return dayjs(date).tz(userTimezone.value).format('YYYY-MM-DD')
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 /** 選択日の曜日に対応する営業時間（is_open のみ） */
 function businessHoursForSelectedDate(): { open: string; close: string } | null {
   if (!blockedDate.value) return null
-  const dow = WEEKDAY[blockedDate.value.getDay()]
+  const dow = WEEKDAY[dayjs.tz(formatDate(blockedDate.value), teamTimezone.value).day()]
   const bh = businessHours.value.find(b => b.businessStatus?.dayOfWeek === dow)
   if (!bh?.businessStatus?.isOpen || !bh.businessStatus.openTime || !bh.businessStatus.closeTime) {
     return null
@@ -140,6 +176,7 @@ function applyTemplate(key: TemplateKey) {
   if (key === 'FULL_DAY') {
     startTime.value = null
     endTime.value = null
+    endsNextDay.value = false
     return
   }
   if (key === 'MIDDAY') {
@@ -185,13 +222,14 @@ const effectiveRequest = computed(() => {
   const hasEnd = !!endTime.value
   // 片側だけの時刻は無効（BE も 400）
   if (hasStart !== hasEnd) return null
-  if (hasStart && hasEnd && startTime.value! >= endTime.value!) return null
+  if (hasStart && hasEnd && !endsNextDay.value && startTime.value! >= endTime.value!) return null
   return {
     date: formatDate(blockedDate.value),
     resourceType: scope.value,
     resourceId: scope.value === 'STAFF' ? resolvedStaffUserId.value ?? undefined : undefined,
     startTime: startTime.value ?? undefined,
     endTime: endTime.value ?? undefined,
+    endsNextDay: endsNextDay.value || undefined,
   }
 })
 
@@ -235,8 +273,8 @@ async function loadBlockedTimes() {
   loading.value = true
   try {
     // 今日〜1年先の予約不可枠を取得（過去日は作成不可なので今日起点で十分）
-    const from = dayjs().tz(userTimezone.value).format('YYYY-MM-DD')
-    const to = dayjs().tz(userTimezone.value).add(365, 'day').format('YYYY-MM-DD')
+    const from = dayjs().tz(teamTimezone.value).format('YYYY-MM-DD')
+    const to = dayjs().tz(teamTimezone.value).add(365, 'day').format('YYYY-MM-DD')
     const res = await reservationApi.listBlockedTimes(props.teamId, { from, to })
     blockedTimes.value = res.data ?? []
   }
@@ -278,6 +316,7 @@ async function submit() {
       blockedDate: req.date,
       startTime: req.startTime,
       endTime: req.endTime,
+      endsNextDay: req.endsNextDay,
       reason: reason.value.trim() || undefined,
       resourceType: req.resourceType,
       resourceId: req.resourceId,
@@ -329,7 +368,7 @@ async function remove(item: BlockedTimeResponse) {
 // === 表示ヘルパー ===
 function targetLabel(item: BlockedTimeResponse): string {
   if (item.resource?.resourceType === 'STAFF') {
-    return item.resource.resourceName ?? t('reservation.unavailability.scope.staff')
+    return item.resource.resourceName ?? resourceName.value
   }
   return t('reservation.unavailability.scope.team')
 }
@@ -338,12 +377,13 @@ function timeRangeLabel(item: BlockedTimeResponse): string {
   const s = toHm(item.timeSlot?.startTime)
   const e = toHm(item.timeSlot?.endTime)
   if (!s && !e) return t('reservation.unavailability.list.all_day')
-  return `${s} - ${e}`
+  const nextDay = item.endsNextDay ?? item.timeSlot?.endsNextDay
+  return nextDay ? `${s} - ${t('reservation.template.next_day_time', { time: e })}` : `${s} - ${e}`
 }
 
 onMounted(async () => {
   loading.value = true
-  await Promise.all([loadBlockedTimes(), loadLines(), loadBusinessHours()])
+  await Promise.all([loadBlockedTimes(), loadLines(), loadBusinessHours(), loadResourceName()])
   applyTemplate(template.value)
   await refreshImpact()
 })
@@ -401,7 +441,7 @@ onMounted(async () => {
         <DatePicker
           v-model="blockedDate"
           date-format="yy/mm/dd"
-          :min-date="new Date()"
+          :min-date="calendarDateForPicker(teamTodayCalendar())"
           class="w-full sm:w-56"
           :disabled="disabled || submitting"
         />
@@ -454,6 +494,10 @@ onMounted(async () => {
             :disabled="disabled || submitting"
           />
         </div>
+        <label class="mt-2 flex items-center gap-2 text-sm">
+          <Checkbox v-model="endsNextDay" binary :disabled="disabled || submitting" />
+          <span>{{ t('reservation.template.ends_next_day') }}</span>
+        </label>
         <p class="mt-1 text-xs text-surface-500">
           {{ t('reservation.unavailability.field.time_range_hint') }}
         </p>

@@ -248,6 +248,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/recruit-categories/{categoryId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 募集カテゴリ更新（村長/長老） */
+        put: operations["update"];
+        post?: never;
+        /** 募集カテゴリ論理削除（村長/長老） */
+        delete: operations["delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/recruit-categories/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 募集カテゴリ一括並び替え（村長/長老） */
+        put: operations["reorder"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/newsletter": {
         parameters: {
             query?: never;
@@ -255,10 +290,79 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 村のニュースレター設定を取得する */
+        /** 村のニュースレター設定を取得する（掲示板と同一の閲覧認可） */
         get: operations["getSettings"];
         /** 村のニュースレター設定を upsert（HEADMAN / ELDER のみ） */
         put: operations["updateSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/tags/{tagId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 村のニュースレタータグを更新（HEADMAN / ELDER・楽観ロック） */
+        put: operations["updateTag"];
+        post?: never;
+        /** 村のニュースレタータグを削除（HEADMAN / ELDER・使用中は不可） */
+        delete: operations["deleteTag"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}/visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 村ニュースレター号の公開範囲を切替（HEADMAN / ELDER・楽観ロック） */
+        put: operations["updateIssueVisibility"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 村ニュースレター号にタグを付ける（HEADMAN / ELDER・楽観ロック・置き換え式） */
+        put: operations["updateIssueTags"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}/comment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 村ニュースレター号にコメントを保存（HEADMAN / ELDER・楽観ロック・凍結後も可） */
+        put: operations["updateIssueComment"];
         post?: never;
         delete?: never;
         options?: never;
@@ -275,10 +379,10 @@ export interface paths {
         };
         get?: never;
         /** 村紋設定（HEADMAN/SYSTEM_ADMIN）— 既に R2 にアップロード済みの r2Key を登録 */
-        put: operations["update"];
+        put: operations["update_1"];
         post?: never;
         /** 村紋削除（HEADMAN/SYSTEM_ADMIN） */
-        delete: operations["delete"];
+        delete: operations["delete_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -296,6 +400,59 @@ export interface paths {
         put: operations["castVote"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/attendance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 自分の出欠を登録/更新する（村人・CONFIRMED のみ・冪等 upsert） */
+        put: operations["upsertAttendance"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/festivals/{festivalId}/rsvp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 自分の参加表明を登録/更新する（村人・SCHEDULED/ACTIVE のみ・冪等 upsert） */
+        put: operations["upsertRsvp"];
+        post?: never;
+        /** 自分の参加表明を取り消す（村人本人・SCHEDULED/ACTIVE のみ） */
+        delete: operations["deleteRsvp"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter/articles/{articleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 条の本文/付則を更新する（層1 楽観ロック・§7） */
+        put: operations["updateArticle"];
+        post?: never;
+        /** 条を論理削除し残る条を再連番する（悲観ロック直列化・409 なし・§6.3） */
+        delete: operations["deleteArticle"];
         options?: never;
         head?: never;
         patch?: never;
@@ -375,10 +532,10 @@ export interface paths {
         };
         get?: never;
         /** 車両更新 */
-        put: operations["update_1"];
+        put: operations["update_2"];
         post?: never;
         /** 車両削除 */
-        delete: operations["delete_1"];
+        delete: operations["delete_2"];
         options?: never;
         head?: never;
         patch?: never;
@@ -393,10 +550,10 @@ export interface paths {
         };
         get?: never;
         /** 個人ステータスラベル更新 */
-        put: operations["update_2"];
+        put: operations["update_3"];
         post?: never;
         /** 個人ステータスラベル削除 */
-        delete: operations["delete_2"];
+        delete: operations["delete_3"];
         options?: never;
         head?: never;
         patch?: never;
@@ -451,7 +608,7 @@ export interface paths {
         put: operations["commit"];
         post?: never;
         /** ユーザープロフィールメディア削除 */
-        delete: operations["delete_3"];
+        delete: operations["delete_4"];
         options?: never;
         head?: never;
         patch?: never;
@@ -776,10 +933,10 @@ export interface paths {
         };
         get?: never;
         /** チームステータスラベル更新（ADMIN のみ） */
-        put: operations["update_3"];
+        put: operations["update_4"];
         post?: never;
         /** チームステータスラベル削除（ADMIN のみ） */
-        delete: operations["delete_4"];
+        delete: operations["delete_5"];
         options?: never;
         head?: never;
         patch?: never;
@@ -988,10 +1145,10 @@ export interface paths {
         };
         get?: never;
         /** プリセット更新 */
-        put: operations["update_4"];
+        put: operations["update_5"];
         post?: never;
         /** プリセット削除 */
-        delete: operations["delete_5"];
+        delete: operations["delete_6"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1024,10 +1181,10 @@ export interface paths {
         };
         get?: never;
         /** 居住者更新 */
-        put: operations["update_5"];
+        put: operations["update_6"];
         post?: never;
         /** 居住者削除 */
-        delete: operations["delete_6"];
+        delete: operations["delete_7"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1061,10 +1218,10 @@ export interface paths {
         /** 物件詳細 */
         get: operations["get"];
         /** 物件更新 */
-        put: operations["update_6"];
+        put: operations["update_7"];
         post?: never;
         /** 物件削除 */
-        delete: operations["delete_7"];
+        delete: operations["delete_8"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1080,10 +1237,10 @@ export interface paths {
         /** プロモーション詳細 */
         get: operations["get_1"];
         /** プロモーション更新 */
-        put: operations["update_7"];
+        put: operations["update_8"];
         post?: never;
         /** プロモーション削除 */
-        delete: operations["delete_8"];
+        delete: operations["delete_9"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1138,7 +1295,7 @@ export interface paths {
         put: operations["commit_1"];
         post?: never;
         /** チームプロフィールメディア削除 */
-        delete: operations["delete_9"];
+        delete: operations["delete_10"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1226,10 +1383,10 @@ export interface paths {
         /** チームサブリース詳細 */
         get: operations["getDetail"];
         /** チームサブリース更新 */
-        put: operations["update_8"];
+        put: operations["update_9"];
         post?: never;
         /** チームサブリース削除 */
-        delete: operations["delete_10"];
+        delete: operations["delete_11"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1282,10 +1439,10 @@ export interface paths {
         /** チーム譲渡希望詳細 */
         get: operations["getDetail_1"];
         /** チーム譲渡希望更新 */
-        put: operations["update_9"];
+        put: operations["update_10"];
         post?: never;
         /** チーム譲渡希望削除 */
-        delete: operations["delete_11"];
+        delete: operations["delete_12"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1420,9 +1577,9 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["update_10"];
+        put: operations["update_11"];
         post?: never;
-        delete: operations["delete_12"];
+        delete: operations["delete_13"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1436,7 +1593,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_2"];
-        put: operations["update_11"];
+        put: operations["update_12"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1452,9 +1609,9 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["update_12"];
+        put: operations["update_13"];
         post?: never;
-        delete: operations["delete_13"];
+        delete: operations["delete_14"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1597,10 +1754,10 @@ export interface paths {
         /** 居室詳細 */
         get: operations["get_3"];
         /** 居室更新 */
-        put: operations["update_13"];
+        put: operations["update_14"];
         post?: never;
         /** 居室削除 */
-        delete: operations["delete_14"];
+        delete: operations["delete_15"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1670,10 +1827,10 @@ export interface paths {
         /** クーポン詳細 */
         get: operations["get_4"];
         /** クーポン更新 */
-        put: operations["update_14"];
+        put: operations["update_15"];
         post?: never;
         /** クーポン削除 */
-        delete: operations["delete_15"];
+        delete: operations["delete_16"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1707,10 +1864,10 @@ export interface paths {
         };
         get?: never;
         /** 確認通知テンプレート更新 */
-        put: operations["update_15"];
+        put: operations["update_16"];
         post?: never;
         /** 確認通知テンプレート削除（論理削除） */
-        delete: operations["delete_16"];
+        delete: operations["delete_17"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1971,9 +2128,9 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_5"];
-        put: operations["update_16"];
+        put: operations["update_17"];
         post?: never;
-        delete: operations["delete_17"];
+        delete: operations["delete_18"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2003,9 +2160,25 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_6"];
-        put: operations["update_17"];
+        put: operations["update_18"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/advertiser/ad-campaigns/{campaignId}/creatives/{adId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["update_19"];
+        post?: never;
+        delete: operations["delete_19"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2313,13 +2486,13 @@ export interface paths {
          * ナビ項目更新
          * @description ナビ項目を更新する。is_fixed=TRUEの項目のfixedをFALSEには変更不可。
          */
-        put: operations["update_18"];
+        put: operations["update_20"];
         post?: never;
         /**
          * ナビ項目削除
          * @description ナビ項目を削除する。is_fixed=TRUEの項目は削除不可。
          */
-        delete: operations["delete_18"];
+        delete: operations["delete_20"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2389,10 +2562,10 @@ export interface paths {
         /** 障害告知バナー詳細取得 */
         get: operations["get_7"];
         /** 障害告知バナー更新 */
-        put: operations["update_19"];
+        put: operations["update_21"];
         post?: never;
         /** 障害告知バナー削除 */
-        delete: operations["delete_19"];
+        delete: operations["delete_21"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2414,7 +2587,7 @@ export interface paths {
          * 手数料パターン更新
          * @description 率・固定額・enabled・説明を更新する。改定は新規徴収のみ反映（遡及しない）。DEFAULT の無効化は不可。
          */
-        put: operations["update_20"];
+        put: operations["update_22"];
         post?: never;
         /**
          * 手数料パターン無効化
@@ -2565,6 +2738,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/beta-perks/criteria/{betaPhase}/{grantKind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 条件マスタ取得
+         * @description 未定義は 404。
+         */
+        get: operations["getCriteria"];
+        /**
+         * 条件マスタ upsert
+         * @description 全指標 NULL は 400（無条件付与の防止）。
+         */
+        put: operations["upsertCriteria"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/announcements/{id}": {
         parameters: {
             query?: never;
@@ -2607,9 +2804,9 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["update_21"];
+        put: operations["update_23"];
         post?: never;
-        delete: operations["delete_20"];
+        delete: operations["delete_22"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3152,10 +3349,10 @@ export interface paths {
         /** 組織サブリース詳細 */
         get: operations["getDetail_2"];
         /** 組織サブリース更新 */
-        put: operations["update_22"];
+        put: operations["update_24"];
         post?: never;
         /** 組織サブリース削除 */
-        delete: operations["delete_21"];
+        delete: operations["delete_23"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3208,10 +3405,10 @@ export interface paths {
         /** 組織譲渡希望詳細 */
         get: operations["getDetail_3"];
         /** 組織譲渡希望更新 */
-        put: operations["update_23"];
+        put: operations["update_25"];
         post?: never;
         /** 組織譲渡希望削除 */
-        delete: operations["delete_22"];
+        delete: operations["delete_24"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3316,9 +3513,9 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["update_24"];
+        put: operations["update_26"];
         post?: never;
-        delete: operations["delete_23"];
+        delete: operations["delete_25"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3332,9 +3529,9 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_9"];
-        put: operations["update_25"];
+        put: operations["update_27"];
         post?: never;
-        delete: operations["delete_24"];
+        delete: operations["delete_26"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3348,9 +3545,9 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_10"];
-        put: operations["update_26"];
+        put: operations["update_28"];
         post?: never;
-        delete: operations["delete_25"];
+        delete: operations["delete_27"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3380,7 +3577,7 @@ export interface paths {
             cookie?: never;
         };
         get: operations["get_11"];
-        put: operations["update_27"];
+        put: operations["update_29"];
         post?: never;
         delete?: never;
         options?: never;
@@ -3396,9 +3593,9 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        put: operations["update_28"];
+        put: operations["update_30"];
         post?: never;
-        delete: operations["delete_26"];
+        delete: operations["delete_28"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3555,10 +3752,10 @@ export interface paths {
         };
         get?: never;
         /** 組織ステータスラベル更新（ADMIN のみ） */
-        put: operations["update_29"];
+        put: operations["update_31"];
         post?: never;
         /** 組織ステータスラベル削除（ADMIN のみ） */
-        delete: operations["delete_27"];
+        delete: operations["delete_29"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3662,10 +3859,10 @@ export interface paths {
         };
         get?: never;
         /** プリセット更新 */
-        put: operations["update_30"];
+        put: operations["update_32"];
         post?: never;
         /** プリセット削除 */
-        delete: operations["delete_28"];
+        delete: operations["delete_30"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3680,10 +3877,10 @@ export interface paths {
         };
         get?: never;
         /** 居住者更新 */
-        put: operations["update_31"];
+        put: operations["update_33"];
         post?: never;
         /** 居住者削除 */
-        delete: operations["delete_29"];
+        delete: operations["delete_31"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3733,10 +3930,10 @@ export interface paths {
         /** 物件詳細 */
         get: operations["get_12"];
         /** 物件更新 */
-        put: operations["update_32"];
+        put: operations["update_34"];
         post?: never;
         /** 物件削除 */
-        delete: operations["delete_30"];
+        delete: operations["delete_32"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3752,10 +3949,10 @@ export interface paths {
         /** プロモーション詳細 */
         get: operations["get_13"];
         /** プロモーション更新 */
-        put: operations["update_33"];
+        put: operations["update_35"];
         post?: never;
         /** プロモーション削除 */
-        delete: operations["delete_31"];
+        delete: operations["delete_33"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3773,7 +3970,7 @@ export interface paths {
         put: operations["commit_2"];
         post?: never;
         /** 組織プロフィールメディア削除 */
-        delete: operations["delete_32"];
+        delete: operations["delete_34"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3929,10 +4126,10 @@ export interface paths {
         /** 居室詳細 */
         get: operations["get_14"];
         /** 居室更新 */
-        put: operations["update_34"];
+        put: operations["update_36"];
         post?: never;
         /** 居室削除 */
-        delete: operations["delete_33"];
+        delete: operations["delete_35"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3984,10 +4181,10 @@ export interface paths {
         /** クーポン詳細 */
         get: operations["get_15"];
         /** クーポン更新 */
-        put: operations["update_35"];
+        put: operations["update_37"];
         post?: never;
         /** クーポン削除 */
-        delete: operations["delete_34"];
+        delete: operations["delete_36"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4002,10 +4199,10 @@ export interface paths {
         };
         get?: never;
         /** 確認通知テンプレート更新（組織） */
-        put: operations["update_36"];
+        put: operations["update_38"];
         post?: never;
         /** 確認通知テンプレート削除（論理削除）（組織） */
-        delete: operations["delete_35"];
+        delete: operations["delete_37"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4139,9 +4336,9 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getById"];
-        put: operations["update_37"];
+        put: operations["update_39"];
         post?: never;
-        delete: operations["delete_36"];
+        delete: operations["delete_38"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4316,6 +4513,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/return-stay-plans/{planId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_16"];
+        put: operations["update_40"];
+        post?: never;
+        delete: operations["delete_39"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/reflections/settings": {
         parameters: {
             query?: never;
@@ -4395,9 +4608,9 @@ export interface paths {
             cookie?: never;
         };
         /** 設定取得（未存在時はデフォルトで作成） */
-        get: operations["get_16"];
+        get: operations["get_17"];
         /** 設定更新（UPSERT・部分更新） */
-        put: operations["update_38"];
+        put: operations["update_41"];
         post?: never;
         delete?: never;
         options?: never;
@@ -4907,10 +5120,10 @@ export interface paths {
         };
         get?: never;
         /** タグ更新 */
-        put: operations["updateTag"];
+        put: operations["updateTag_1"];
         post?: never;
         /** タグ削除 */
-        delete: operations["deleteTag"];
+        delete: operations["deleteTag_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -5062,9 +5275,9 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getById_1"];
-        put: operations["update_39"];
+        put: operations["update_42"];
         post?: never;
-        delete: operations["delete_37"];
+        delete: operations["delete_40"];
         options?: never;
         head?: never;
         patch?: never;
@@ -5101,7 +5314,7 @@ export interface paths {
          * 年齢区分設定更新
          * @description 指定した年齢区分の機能設定・テーマ設定を更新する（SYSTEM_ADMIN のみ）
          */
-        put: operations["update_40"];
+        put: operations["update_43"];
         post?: never;
         delete?: never;
         options?: never;
@@ -6346,7 +6559,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 村代表委任一覧（任意：取消し済みも含む） */
+        /** 村代表委任一覧（村人のみ・任意で取消し済みも含む） */
         get: operations["list_3"];
         put?: never;
         /** 村代表委任の付与（HEADMAN/ELDER） */
@@ -6392,6 +6605,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/recruit-categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 募集カテゴリ一覧（村人） */
+        get: operations["list_5"];
+        put?: never;
+        /** 募集カテゴリ作成（村長/長老） */
+        post: operations["create_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 村のニュースレタータグ一覧（表示順） */
+        get: operations["listTags"];
+        put?: never;
+        /** 村のニュースレタータグを作成（HEADMAN / ELDER） */
+        post: operations["createTag"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/newsletter/opt-out": {
         parameters: {
             query?: never;
@@ -6410,6 +6659,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/monsho/upload-url": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 村紋アップロード用 presigned PUT URL 発行（HEADMAN/SYSTEM_ADMIN）— #2355 */
+        post: operations["generateUploadUrl"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/memberships": {
         parameters: {
             query?: never;
@@ -6418,7 +6684,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村メンバー一覧を取得（村人のみ） */
-        get: operations["list_5"];
+        get: operations["list_6"];
         put?: never;
         /** 村に参加する（FREE 村のみ即時参加可） */
         post: operations["join"];
@@ -6453,10 +6719,79 @@ export interface paths {
             cookie?: never;
         };
         /** 村の寄合一覧を取得する */
-        get: operations["list_6"];
+        get: operations["list_7"];
         put?: never;
         /** 寄合を作成する（村人なら誰でも可、作成者が幹事になる） */
-        post: operations["create_3"];
+        post: operations["create_4"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 宿題一覧を取得する（村人） */
+        get: operations["listTodos"];
+        put?: never;
+        /** 宿題を作成する（幹事＋村長/長老） */
+        post: operations["createTodo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos/{todoId}/release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 宿題を手放す（未割当へ戻す・本人のみ） */
+        post: operations["releaseTodo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos/{todoId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 宿題を完了にする（手挙げ者本人＋幹事のみ） */
+        post: operations["completeTodo"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/todos/{todoId}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 未割当の宿題を自分に割り当てる（手挙げ・村人本人） */
+        post: operations["claimTodo"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6474,6 +6809,24 @@ export interface paths {
         put?: never;
         /** 寄合の開催日を確定する（幹事のみ） */
         post: operations["confirm_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** コメント一覧を取得する（村人・作成日昇順） */
+        get: operations["listComments_1"];
+        put?: never;
+        /** コメントを投稿する（村人） */
+        post: operations["createComment_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6522,10 +6875,10 @@ export interface paths {
             cookie?: never;
         };
         /** 練習試合・審判募集一覧（category / status / 試合日範囲フィルタ可） */
-        get: operations["list_7"];
+        get: operations["list_8"];
         put?: never;
         /** 練習試合・審判募集を作成（村人） */
-        post: operations["create_4"];
+        post: operations["create_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6643,10 +6996,10 @@ export interface paths {
             cookie?: never;
         };
         /** 村の参加申請一覧（村長/長老） */
-        get: operations["list_8"];
+        get: operations["list_9"];
         put?: never;
         /** 村参加申請を行う（APPROVAL 村のみ） */
-        post: operations["create_5"];
+        post: operations["create_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6712,10 +7065,28 @@ export interface paths {
             cookie?: never;
         };
         /** 村のお祭り一覧を取得する */
-        get: operations["list_9"];
+        get: operations["list_10"];
         put?: never;
         /** 村のお祭りを作成する（HEADMAN / ELDER のみ） */
-        post: operations["create_6"];
+        post: operations["create_7"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/festivals/{festivalId}/live-posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 実況投稿一覧を取得する（村人・削除済み投稿は除外） */
+        get: operations["listLivePosts"];
+        put?: never;
+        /** 実況タグを付ける（村人・ACTIVE 中のみ・二重タグは 409） */
+        post: operations["tagLivePost"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6739,6 +7110,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/charter/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 改正を確定する（改定日・改定履歴を刻む里程標・条文の可視性は変えない・§8.2） */
+        post: operations["addRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter/drafters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 策定者を追加する（村ニックネームを焼き付け・§5.2） */
+        post: operations["addDrafter"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter/articles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 条を末尾に追加する（初回は憲章を自動生成し制定日をセット・§4.5） */
+        post: operations["addArticle"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/calendar-events": {
         parameters: {
             query?: never;
@@ -6746,11 +7168,29 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 指定月の歳時記イベント一覧を取得する */
+        /** 指定月の歳時記イベント一覧を取得する（村人のみ） */
         get: operations["listByMonth"];
         put?: never;
         /** 歳時記イベントを作成する（HEADMAN / ELDER のみ） */
-        post: operations["create_7"];
+        post: operations["create_8"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/calendar-events/{eventId}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 年輪（その年の様子）一覧を取得する（村人・year 降順・?year= 絞り込み可） */
+        get: operations["listLogs"];
+        put?: never;
+        /** 年輪を追加する（村人・同一 year 複数件可） */
+        post: operations["addLog"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6783,8 +7223,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 村作成申請を行う */
-        post: operations["create_8"];
+        /** 村作成申請を行う（OFFICIAL は SYSTEM_ADMIN のみ） */
+        post: operations["create_9"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6954,10 +7394,10 @@ export interface paths {
             cookie?: never;
         };
         /** 車両一覧 */
-        get: operations["list_10"];
+        get: operations["list_11"];
         put?: never;
         /** 車両登録 */
-        post: operations["create_9"];
+        post: operations["create_10"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6972,10 +7412,10 @@ export interface paths {
             cookie?: never;
         };
         /** 個人ステータスラベル一覧（SYSTEM 既定 + 個人スコープ） */
-        get: operations["list_11"];
+        get: operations["list_12"];
         put?: never;
         /** 個人ステータスラベル作成 */
-        post: operations["create_10"];
+        post: operations["create_11"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7045,7 +7485,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** ユーザープロフィールメディアアップロードURL発行 */
-        post: operations["generateUploadUrl"];
+        post: operations["generateUploadUrl_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7670,6 +8110,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チームキープ一覧 */
+        get: operations["list_13"];
+        put?: never;
+        /** チームキープ作成 */
+        post: operations["create_12"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームキープの変換取消 */
+        post: operations["revert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームキープのアーカイブ解除 */
+        post: operations["restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームキープを予定へ変換 */
+        post: operations["convert"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームキープをアーカイブ */
+        post: operations["archive_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** チームキープの並び替え */
+        post: operations["reorder_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/translations": {
         parameters: {
             query?: never;
@@ -7726,10 +8269,10 @@ export interface paths {
             cookie?: never;
         };
         /** TODO一覧 */
-        get: operations["listTodos"];
+        get: operations["listTodos_1"];
         put?: never;
         /** TODO作成 */
-        post: operations["createTodo"];
+        post: operations["createTodo_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -7814,7 +8357,7 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_1"];
+        get: operations["listComments_2"];
         put?: never;
         /** コメント追加 */
         post: operations["addComment"];
@@ -7849,10 +8392,10 @@ export interface paths {
             cookie?: never;
         };
         /** チームステータスラベル一覧（SYSTEM 既定 + チームスコープ） */
-        get: operations["list_12"];
+        get: operations["list_14"];
         put?: never;
         /** チームステータスラベル作成（ADMIN/DEPUTY_ADMIN） */
-        post: operations["create_11"];
+        post: operations["create_13"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8159,7 +8702,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["generateUploadUrl_1"];
+        post: operations["generateUploadUrl_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8315,7 +8858,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** アップロードURL発行 */
-        post: operations["generateUploadUrl_2"];
+        post: operations["generateUploadUrl_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8383,10 +8926,10 @@ export interface paths {
             cookie?: never;
         };
         /** プリセット一覧 */
-        get: operations["list_13"];
+        get: operations["list_15"];
         put?: never;
         /** プリセット作成 */
-        post: operations["create_12"];
+        post: operations["create_14"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8486,7 +9029,7 @@ export interface paths {
             cookie?: never;
         };
         /** 書類一覧 */
-        get: operations["list_14"];
+        get: operations["list_16"];
         put?: never;
         /** 書類アップロード */
         post: operations["upload"];
@@ -8760,6 +9303,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/reservation-recurring-blocked-times": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 定期予約不可枠一覧 */
+        get: operations["listRules"];
+        put?: never;
+        /** 定期予約不可枠作成 */
+        post: operations["createRule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/reservation-notification-recipients": {
         parameters: {
             query?: never;
@@ -8949,10 +9510,10 @@ export interface paths {
             cookie?: never;
         };
         /** サブカテゴリ一覧 */
-        get: operations["list_15"];
+        get: operations["list_17"];
         put?: never;
         /** サブカテゴリ作成 */
-        post: operations["create_13"];
+        post: operations["create_15"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8969,7 +9530,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** サブカテゴリ削除 (論理削除) */
-        post: operations["archive_2"];
+        post: operations["archive_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8984,10 +9545,10 @@ export interface paths {
             cookie?: never;
         };
         /** チーム募集枠一覧 */
-        get: operations["list_16"];
+        get: operations["list_18"];
         put?: never;
         /** チーム募集枠作成 (DRAFT で作成) */
-        post: operations["create_14"];
+        post: operations["create_16"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9145,10 +9706,10 @@ export interface paths {
             cookie?: never;
         };
         /** 物件一覧 */
-        get: operations["list_17"];
+        get: operations["list_19"];
         put?: never;
         /** 物件掲示作成 */
-        post: operations["create_15"];
+        post: operations["create_17"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9181,10 +9742,10 @@ export interface paths {
             cookie?: never;
         };
         /** プロモーション一覧 */
-        get: operations["list_18"];
+        get: operations["list_20"];
         put?: never;
         /** プロモーション作成 */
-        post: operations["create_16"];
+        post: operations["create_18"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9322,7 +9883,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** チームプロフィールメディアアップロードURL発行 */
-        post: operations["generateUploadUrl_3"];
+        post: operations["generateUploadUrl_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9491,10 +10052,10 @@ export interface paths {
             cookie?: never;
         };
         /** チームウォッチリスト一覧 */
-        get: operations["list_19"];
+        get: operations["list_21"];
         put?: never;
         /** チームウォッチリスト追加 */
-        post: operations["create_17"];
+        post: operations["create_19"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9545,10 +10106,10 @@ export interface paths {
             cookie?: never;
         };
         /** チームサブリース一覧 */
-        get: operations["list_20"];
+        get: operations["list_22"];
         put?: never;
         /** チームサブリース作成 */
-        post: operations["create_18"];
+        post: operations["create_20"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9683,10 +10244,10 @@ export interface paths {
             cookie?: never;
         };
         /** チーム譲渡希望一覧 */
-        get: operations["list_21"];
+        get: operations["list_23"];
         put?: never;
         /** チーム譲渡希望作成 */
-        post: operations["create_19"];
+        post: operations["create_21"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9718,10 +10279,10 @@ export interface paths {
             cookie?: never;
         };
         /** チーム申請一覧 */
-        get: operations["list_22"];
+        get: operations["list_24"];
         put?: never;
         /** チーム区画申請 */
-        post: operations["create_20"];
+        post: operations["create_22"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9752,9 +10313,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_23"];
+        get: operations["list_25"];
         put?: never;
-        post: operations["create_21"];
+        post: operations["create_23"];
         delete?: never;
         options?: never;
         head?: never;
@@ -9877,6 +10438,42 @@ export interface paths {
         put?: never;
         /** NGチーム追加 */
         post: operations["addNgTeam"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ） */
+        get: operations["listMatches"];
+        put?: never;
+        /** 試合作成 */
+        post: operations["createMatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ） */
+        get: operations["listMatches_1"];
+        put?: never;
+        /** 試合作成 */
+        post: operations["createMatch_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10052,9 +10649,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_24"];
+        get: operations["list_26"];
         put?: never;
-        post: operations["create_22"];
+        post: operations["create_24"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10068,9 +10665,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_25"];
+        get: operations["list_27"];
         put?: never;
-        post: operations["create_23"];
+        post: operations["create_25"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10531,10 +11128,10 @@ export interface paths {
             cookie?: never;
         };
         /** 居室一覧 */
-        get: operations["list_26"];
+        get: operations["list_28"];
         put?: never;
         /** 居室作成 */
-        post: operations["create_24"];
+        post: operations["create_26"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10552,7 +11149,7 @@ export interface paths {
         get: operations["listByUnit"];
         put?: never;
         /** 居住者登録 */
-        post: operations["create_25"];
+        post: operations["create_27"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10740,10 +11337,10 @@ export interface paths {
             cookie?: never;
         };
         /** クーポン一覧 */
-        get: operations["list_27"];
+        get: operations["list_29"];
         put?: never;
         /** クーポン作成 */
-        post: operations["create_26"];
+        post: operations["create_28"];
         delete?: never;
         options?: never;
         head?: never;
@@ -10776,7 +11373,7 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知一覧取得 */
-        get: operations["list_28"];
+        get: operations["list_30"];
         put?: never;
         /** 確認通知送信 */
         post: operations["send"];
@@ -10828,10 +11425,10 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知テンプレート一覧取得 */
-        get: operations["list_29"];
+        get: operations["list_31"];
         put?: never;
         /** 確認通知テンプレート作成 */
-        post: operations["create_27"];
+        post: operations["create_29"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11056,10 +11653,10 @@ export interface paths {
             cookie?: never;
         };
         /** チームのキャンセルポリシー一覧 */
-        get: operations["list_30"];
+        get: operations["list_32"];
         put?: never;
         /** キャンセルポリシー作成 (テンプレート用 or 募集用) */
-        post: operations["create_28"];
+        post: operations["create_30"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11073,9 +11670,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_31"];
+        get: operations["list_33"];
         put?: never;
-        post: operations["create_29"];
+        post: operations["create_31"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11352,7 +11949,7 @@ export interface paths {
         put?: never;
         /**
          * 全件既読
-         * @description チームスコープの全未読お知らせを一括既読にする。
+         * @description チームスコープの全未読お知らせを一括既読にする。1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread=true を返す。
          */
         post: operations["markAllAsRead"];
         delete?: never;
@@ -11403,6 +12000,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/advertiser/report-schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listReportSchedules"];
+        put?: never;
+        post: operations["createReportSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/advertiser/register": {
         parameters: {
             query?: never;
@@ -11419,6 +12032,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/advertiser/credit-limit-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listCreditLimitRequests"];
+        put?: never;
+        post: operations["createCreditLimitRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/advertiser/campaigns/messaging": {
         parameters: {
             query?: never;
@@ -11426,9 +12055,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_32"];
+        get: operations["list_34"];
         put?: never;
-        post: operations["create_30"];
+        post: operations["create_32"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11570,9 +12199,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_33"];
+        get: operations["list_35"];
         put?: never;
-        post: operations["create_31"];
+        post: operations["create_33"];
         delete?: never;
         options?: never;
         head?: never;
@@ -11643,6 +12272,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/advertiser/ad-campaigns/{campaignId}/creatives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_36"];
+        put?: never;
+        post: operations["create_34"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/teams/{slug}/transfer-ownership": {
         parameters: {
             query?: never;
@@ -11652,7 +12297,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** オーナー譲渡 */
+        /** オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定） */
         post: operations["transferOwnership"];
         delete?: never;
         options?: never;
@@ -11718,7 +12363,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 権限グループ一覧 */
+        /** 権限グループ一覧（ADMIN/DEPUTY のみ） */
         get: operations["getPermissionGroups"];
         put?: never;
         /** 権限グループ作成 */
@@ -12279,7 +12924,7 @@ export interface paths {
          * セキュリティインシデント登録
          * @description 新規セキュリティインシデントを登録する。
          */
-        post: operations["create_32"];
+        post: operations["create_35"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12339,7 +12984,7 @@ export interface paths {
          * ナビ項目追加
          * @description 新しいナビ項目を追加する。key は ^[a-z0-9\-]+$ のみ可。
          */
-        post: operations["create_33"];
+        post: operations["create_36"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12406,10 +13051,10 @@ export interface paths {
             cookie?: never;
         };
         /** 障害告知バナー一覧取得 */
-        get: operations["list_34"];
+        get: operations["list_37"];
         put?: never;
         /** 障害告知バナー作成 */
-        post: operations["create_34"];
+        post: operations["create_37"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12498,13 +13143,13 @@ export interface paths {
          * 手数料パターン割当一覧
          * @description 未削除の割当一覧（source_kind＋sub_key → policy_key）を作成順で返す。
          */
-        get: operations["list_35"];
+        get: operations["list_38"];
         put?: never;
         /**
          * 手数料パターン割当作成
          * @description 割当を作成する。参照先 policy 不在は 404・無効は 422。同条件の既存割当は 409。割当変更は新規課金のみ反映（既存取引は焼き付け済みで不変）。
          */
-        post: operations["create_35"];
+        post: operations["create_38"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12522,13 +13167,13 @@ export interface paths {
          * 手数料パターン一覧
          * @description 全パターンを返す（enabled=false 含む全件・policy_key 昇順・割当数付き）。
          */
-        get: operations["list_36"];
+        get: operations["list_39"];
         put?: never;
         /**
          * 手数料パターン新規
          * @description 新しいパターンを作成する。既存キーは 409（更新は PUT）。率・固定額の業務制約あり。
          */
-        post: operations["create_36"];
+        post: operations["create_39"];
         delete?: never;
         options?: never;
         head?: never;
@@ -12682,6 +13327,110 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/system-admin/beta-perks/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 付与一覧
+         * @description grantKind/betaPhase/reviewFlag/scopeKind/scopeId で絞り込み・grantedAt 降順。
+         */
+        get: operations["listGrants"];
+        put?: never;
+        /**
+         * 手動付与
+         * @description TEAM_ORG の正規経路（INDIVIDUAL も可）。organizationId は本層で解決して渡す。
+         */
+        post: operations["createGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 取消
+         * @description reason=TERMS_VIOLATION|ACCOUNT_TRANSFER|OTHER（WITHDRAWAL 不可）。
+         */
+        post: operations["revokeGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/resolve-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 審査解決
+         * @description review_flag=true の grant のみ（問題なし）。
+         */
+        post: operations["resolveReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/flag-review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 審査フラグ設定
+         * @description review_reason=MANUAL 固定。取消済みは 409。
+         */
+        post: operations["flagReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/grants/{grantId}/extend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 延長
+         * @description TEAM_ORG のみ。extensionMonths 1〜24。
+         */
+        post: operations["extendGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/system-admin/batch/{name}/trigger": {
         parameters: {
             query?: never;
@@ -12772,9 +13521,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_37"];
+        get: operations["list_40"];
         put?: never;
-        post: operations["create_37"];
+        post: operations["create_40"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13700,7 +14449,7 @@ export interface paths {
          * スケジュールメディアアップロード URL 発行
          * @description IMAGE → Presigned PUT URL 発行。VIDEO → Multipart Upload 開始。
          */
-        post: operations["generateUploadUrl_4"];
+        post: operations["generateUploadUrl_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -13718,13 +14467,31 @@ export interface paths {
          * 代理一覧（ADMIN）
          * @description F03.10 §4.1: 管理者が代理委任の一覧を取得する
          */
-        get: operations["list_38"];
+        get: operations["list_41"];
         put?: never;
         /**
          * 代理指定
          * @description F03.10 §4.1: 委任者が代理人を指定する
          */
-        post: operations["create_38"];
+        post: operations["create_41"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedules/{scheduleId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** コメント一覧 */
+        get: operations["listComments_3"];
+        put?: never;
+        /** コメント投稿 */
+        post: operations["createComment_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14040,7 +14807,27 @@ export interface paths {
         get?: never;
         put?: never;
         /** 募集枠 論理削除 */
-        post: operations["archive_3"];
+        post: operations["archive_4"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recruitment-cancellation-records/{recordId}/waive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * キャンセル料の免除
+         * @description 受取先側の管理者または運営管理者がキャンセル料の請求を取り消す。免除は債権の放棄を必ず行うが、そのユーザーに他の未払いが残っている場合は募集への申込制限は解除されない。
+         */
+        post: operations["waive"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14338,10 +15125,10 @@ export interface paths {
             cookie?: never;
         };
         /** 議案コメント一覧 */
-        get: operations["listComments_2"];
+        get: operations["listComments_4"];
         put?: never;
         /** コメント投稿 */
-        post: operations["createComment_1"];
+        post: operations["createComment_3"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14668,7 +15455,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** オーナー譲渡 */
+        /** オーナー譲渡（ADMIN/DEPUTY のみ・最終判定は ADMIN 限定） */
         post: operations["transferOwnership_1"];
         delete?: never;
         options?: never;
@@ -14770,7 +15557,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 権限グループ一覧 */
+        /** 権限グループ一覧（ADMIN/DEPUTY のみ） */
         get: operations["getPermissionGroups_1"];
         put?: never;
         /** 権限グループ作成 */
@@ -14879,10 +15666,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織ウォッチリスト一覧 */
-        get: operations["list_39"];
+        get: operations["list_42"];
         put?: never;
         /** 組織ウォッチリスト追加 */
-        post: operations["create_39"];
+        post: operations["create_42"];
         delete?: never;
         options?: never;
         head?: never;
@@ -14933,10 +15720,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織サブリース一覧 */
-        get: operations["list_40"];
+        get: operations["list_43"];
         put?: never;
         /** 組織サブリース作成 */
-        post: operations["create_40"];
+        post: operations["create_43"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15071,10 +15858,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織譲渡希望一覧 */
-        get: operations["list_41"];
+        get: operations["list_44"];
         put?: never;
         /** 組織譲渡希望作成 */
-        post: operations["create_41"];
+        post: operations["create_44"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15106,10 +15893,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織申請一覧 */
-        get: operations["list_42"];
+        get: operations["list_45"];
         put?: never;
         /** 組織区画申請 */
-        post: operations["create_42"];
+        post: operations["create_45"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15231,7 +16018,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["create_43"];
+        post: operations["create_46"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15261,9 +16048,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_43"];
+        get: operations["list_46"];
         put?: never;
-        post: operations["create_44"];
+        post: operations["create_47"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15309,9 +16096,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_44"];
+        get: operations["list_47"];
         put?: never;
-        post: operations["create_45"];
+        post: operations["create_48"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15453,9 +16240,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_45"];
+        get: operations["list_48"];
         put?: never;
-        post: operations["create_46"];
+        post: operations["create_49"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15533,9 +16320,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_46"];
+        get: operations["list_49"];
         put?: never;
-        post: operations["create_47"];
+        post: operations["create_50"];
         delete?: never;
         options?: never;
         head?: never;
@@ -15588,6 +16375,109 @@ export interface paths {
         put?: never;
         /** 組織スケジュールキャンセル */
         post: operations["cancelSchedule_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織キープ一覧 */
+        get: operations["list_50"];
+        put?: never;
+        /** 組織キープ作成 */
+        post: operations["create_51"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織キープの変換取消 */
+        post: operations["revert_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織キープのアーカイブ解除 */
+        post: operations["restore_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織キープを予定へ変換 */
+        post: operations["convert_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織キープをアーカイブ */
+        post: operations["archive_5"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 組織キープの並び替え */
+        post: operations["reorder_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16101,10 +16991,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織TODO一覧 */
-        get: operations["listTodos_1"];
+        get: operations["listTodos_2"];
         put?: never;
         /** 組織TODO作成 */
-        post: operations["createTodo_1"];
+        post: operations["createTodo_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16189,7 +17079,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織TODOコメント一覧 */
-        get: operations["listComments_3"];
+        get: operations["listComments_5"];
         put?: never;
         /** 組織TODOコメント追加 */
         post: operations["addComment_2"];
@@ -16224,10 +17114,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織ステータスラベル一覧（SYSTEM 既定 + 組織スコープ） */
-        get: operations["list_47"];
+        get: operations["list_51"];
         put?: never;
         /** 組織ステータスラベル作成（ADMIN/DEPUTY_ADMIN） */
-        post: operations["create_48"];
+        post: operations["create_52"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16246,24 +17136,6 @@ export interface paths {
         put?: never;
         /** 組織学期作成 */
         post: operations["createOrgTerm"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** チーム試合一覧（メンバー以上・ページング・kind/status/期間フィルタ） */
-        get: operations["listMatches"];
-        put?: never;
-        /** 試合作成 */
-        post: operations["createMatch"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16501,10 +17373,10 @@ export interface paths {
             cookie?: never;
         };
         /** プリセット一覧 */
-        get: operations["list_48"];
+        get: operations["list_52"];
         put?: never;
         /** プリセット作成 */
-        post: operations["create_49"];
+        post: operations["create_53"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16570,7 +17442,7 @@ export interface paths {
             cookie?: never;
         };
         /** 書類一覧 */
-        get: operations["list_49"];
+        get: operations["list_53"];
         put?: never;
         /** 書類アップロード */
         post: operations["upload_1"];
@@ -16682,10 +17554,10 @@ export interface paths {
             cookie?: never;
         };
         /** 組織募集枠一覧 */
-        get: operations["list_50"];
+        get: operations["list_54"];
         put?: never;
         /** 組織募集枠作成 (DRAFT で作成) */
-        post: operations["create_50"];
+        post: operations["create_54"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16755,10 +17627,10 @@ export interface paths {
             cookie?: never;
         };
         /** 物件一覧 */
-        get: operations["list_51"];
+        get: operations["list_55"];
         put?: never;
         /** 物件掲示作成 */
-        post: operations["create_51"];
+        post: operations["create_55"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16791,10 +17663,10 @@ export interface paths {
             cookie?: never;
         };
         /** プロモーション一覧 */
-        get: operations["list_52"];
+        get: operations["list_56"];
         put?: never;
         /** プロモーション作成 */
-        post: operations["create_52"];
+        post: operations["create_56"];
         delete?: never;
         options?: never;
         head?: never;
@@ -16896,7 +17768,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 組織プロフィールメディアアップロードURL発行 */
-        post: operations["generateUploadUrl_5"];
+        post: operations["generateUploadUrl_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17003,10 +17875,10 @@ export interface paths {
             cookie?: never;
         };
         /** 協会の発行請求一覧（status フィルタ・ページング） */
-        get: operations["list_53"];
+        get: operations["list_57"];
         put?: never;
         /** 協会請求の発行（DRAFT） */
-        post: operations["create_53"];
+        post: operations["create_57"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17020,9 +17892,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_54"];
+        get: operations["list_58"];
         put?: never;
-        post: operations["create_54"];
+        post: operations["create_58"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17062,7 +17934,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{orgId}/matches/{matchId}/events": {
+    "/api/v1/teams/{teamId}/matches/{matchId}/events": {
         parameters: {
             query?: never;
             header?: never;
@@ -17074,6 +17946,24 @@ export interface paths {
         put?: never;
         /** イベント記録 */
         post: operations["recordEvent_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/matches/{matchId}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 試合内タイムライン取得（スコア整合警告込み） */
+        get: operations["listEvents_2"];
+        put?: never;
+        /** イベント記録 */
+        post: operations["recordEvent_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17106,7 +17996,7 @@ export interface paths {
             cookie?: never;
         };
         /** 局面写真一覧（閲覧可視性・作成日時昇順） */
-        get: operations["list_55"];
+        get: operations["list_59"];
         put?: never;
         /** 局面写真の確定（メタデータ登録・記録権限） */
         post: operations["confirm_3"];
@@ -17197,7 +18087,7 @@ export interface paths {
             cookie?: never;
         };
         /** 組織イベント一覧 */
-        get: operations["listEvents_2"];
+        get: operations["listEvents_3"];
         put?: never;
         /** イベント作成 */
         post: operations["createEvent_1"];
@@ -17405,10 +18295,10 @@ export interface paths {
             cookie?: never;
         };
         /** 居室一覧 */
-        get: operations["list_56"];
+        get: operations["list_60"];
         put?: never;
         /** 居室作成 */
-        post: operations["create_55"];
+        post: operations["create_59"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17426,7 +18316,7 @@ export interface paths {
         get: operations["listByUnit_1"];
         put?: never;
         /** 居住者登録 */
-        post: operations["create_56"];
+        post: operations["create_60"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17596,10 +18486,10 @@ export interface paths {
             cookie?: never;
         };
         /** クーポン一覧 */
-        get: operations["list_57"];
+        get: operations["list_61"];
         put?: never;
         /** クーポン作成 */
-        post: operations["create_57"];
+        post: operations["create_61"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17632,7 +18522,7 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知一覧取得（組織） */
-        get: operations["list_58"];
+        get: operations["list_62"];
         put?: never;
         /** 確認通知送信（組織） */
         post: operations["send_1"];
@@ -17684,10 +18574,10 @@ export interface paths {
             cookie?: never;
         };
         /** 確認通知テンプレート一覧取得（組織） */
-        get: operations["list_59"];
+        get: operations["list_63"];
         put?: never;
         /** 確認通知テンプレート作成（組織） */
-        post: operations["create_58"];
+        post: operations["create_62"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17771,9 +18661,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_60"];
+        get: operations["list_64"];
         put?: never;
-        post: operations["create_59"];
+        post: operations["create_63"];
         delete?: never;
         options?: never;
         head?: never;
@@ -17899,7 +18789,7 @@ export interface paths {
         put?: never;
         /**
          * 全件既読（組織）
-         * @description 組織スコープの全未読お知らせを一括既読にする。
+         * @description 組織スコープの全未読お知らせを一括既読にする。1 リクエストの上限（500 件 × 20 チャンク）で打ち切った場合は hasMoreUnread=true を返す。
          */
         post: operations["markAllAsRead_1"];
         delete?: never;
@@ -18044,7 +18934,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["archive_4"];
+        post: operations["archive_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18381,10 +19271,10 @@ export interface paths {
             cookie?: never;
         };
         /** カスタム項目一覧 */
-        get: operations["list_61"];
+        get: operations["list_65"];
         put?: never;
         /** カスタム項目作成（最大10件） */
-        post: operations["create_60"];
+        post: operations["create_64"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18491,6 +19381,125 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/schedule-keeps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 個人キープ一覧 */
+        get: operations["list_66"];
+        put?: never;
+        /** 個人キープ作成 */
+        post: operations["create_65"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/{keepId}/revert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人キープの変換取消 */
+        post: operations["revert_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/{keepId}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人キープのアーカイブ解除 */
+        post: operations["restore_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/{keepId}/convert": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人キープを予定へ変換 */
+        post: operations["convert_2"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/{keepId}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人キープをアーカイブ */
+        post: operations["archive_7"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/reorder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 個人キープの並び替え */
+        post: operations["reorder_3"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/return-stay-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_67"];
+        put?: never;
+        post: operations["create_66"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/reflections/themes": {
         parameters: {
             query?: never;
@@ -18585,10 +19594,10 @@ export interface paths {
             cookie?: never;
         };
         /** 個人時間割一覧（自分） */
-        get: operations["list_62"];
+        get: operations["list_68"];
         put?: never;
         /** 個人時間割作成（DRAFT） */
-        post: operations["create_61"];
+        post: operations["create_67"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18603,7 +19612,7 @@ export interface paths {
             cookie?: never;
         };
         /** 共有先一覧（自分の個人時間割） */
-        get: operations["list_63"];
+        get: operations["list_69"];
         put?: never;
         /** 共有先追加（最大3、家族チームのみ） */
         post: operations["add"];
@@ -18675,7 +19684,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** 個人時間割をアーカイブ（ACTIVE → ARCHIVED） */
-        post: operations["archive_5"];
+        post: operations["archive_8"];
         delete?: never;
         options?: never;
         head?: never;
@@ -18978,7 +19987,7 @@ export interface paths {
          * 広告を通報する
          * @description campaignId（メッセージ型）/ operationalCampaignId（運用型）を XOR で指定する。両方指定・両方 null は 400 / AD_032、不存在対象は 404。
          */
-        post: operations["create_62"];
+        post: operations["create_68"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19385,7 +20394,7 @@ export interface paths {
          * アーカイブ
          * @description 通知を保管庫へ退避する（時間復帰なし）。
          */
-        post: operations["archive_6"];
+        post: operations["archive_9"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19489,7 +20498,7 @@ export interface paths {
             cookie?: never;
         };
         /** タグ一覧 */
-        get: operations["listTags"];
+        get: operations["listTags_1"];
         put?: never;
         /** タグ追加 */
         post: operations["addTag"];
@@ -19543,10 +20552,10 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_4"];
+        get: operations["listComments_6"];
         put?: never;
         /** コメント作成 */
-        post: operations["createComment_2"];
+        post: operations["createComment_4"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19877,13 +20886,13 @@ export interface paths {
          * 代理一覧（ADMIN）
          * @description F03.10 §4.2: 管理者が代理委任の一覧を取得する
          */
-        get: operations["list_64"];
+        get: operations["list_70"];
         put?: never;
         /**
          * 代理指定
          * @description F03.10 §4.2: 委任者が代理人を指定する
          */
-        post: operations["create_63"];
+        post: operations["create_69"];
         delete?: never;
         options?: never;
         head?: never;
@@ -19954,7 +20963,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** エラーレポート送信 */
-        post: operations["create_64"];
+        post: operations["create_70"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20443,10 +21452,10 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_5"];
+        get: operations["listComments_7"];
         put?: never;
         /** コメント作成 */
-        post: operations["createComment_3"];
+        post: operations["createComment_5"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20647,7 +21656,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** アップロードURL発行 */
-        post: operations["generateUploadUrl_6"];
+        post: operations["generateUploadUrl_7"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20916,7 +21925,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** ポリシー論理削除 */
-        post: operations["archive_7"];
+        post: operations["archive_10"];
         delete?: never;
         options?: never;
         head?: never;
@@ -20986,7 +21995,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** スレッドアーカイブ状態変更（グローバル） */
-        post: operations["archive_8"];
+        post: operations["archive_11"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21155,7 +22164,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        post: operations["create_65"];
+        post: operations["create_71"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21251,7 +22260,7 @@ export interface paths {
         };
         get: operations["listByFiscalYear_2"];
         put?: never;
-        post: operations["create_66"];
+        post: operations["create_72"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21282,10 +22291,10 @@ export interface paths {
             cookie?: never;
         };
         /** タグ一覧 */
-        get: operations["listTags_1"];
+        get: operations["listTags_2"];
         put?: never;
         /** タグ作成 */
-        post: operations["createTag"];
+        post: operations["createTag_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21411,7 +22420,7 @@ export interface paths {
          * メディアアップロード URL 発行
          * @description IMAGE → Presigned PUT URL 発行。VIDEO → Multipart Upload 開始。
          */
-        post: operations["generateUploadUrl_7"];
+        post: operations["generateUploadUrl_8"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21867,9 +22876,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listReportSchedules"];
+        get: operations["listReportSchedules_1"];
         put?: never;
-        post: operations["createReportSchedule"];
+        post: operations["createReportSchedule_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -21899,9 +22908,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listCreditLimitRequests"];
+        get: operations["listCreditLimitRequests_1"];
         put?: never;
-        post: operations["createCreditLimitRequest"];
+        post: operations["createCreditLimitRequest_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22394,7 +23403,7 @@ export interface paths {
          * 同義語新規登録
          * @description synonymDisplay をサーバー側で正規化して保存。正規化キー UNIQUE 違反時は 409 SYNONYM_DUPLICATE。
          */
-        post: operations["create_67"];
+        post: operations["create_73"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22445,7 +23454,7 @@ export interface paths {
         };
         get: operations["listAll_2"];
         put?: never;
-        post: operations["create_68"];
+        post: operations["create_74"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22672,10 +23681,10 @@ export interface paths {
             cookie?: never;
         };
         /** コメント一覧 */
-        get: operations["listComments_6"];
+        get: operations["listComments_8"];
         put?: never;
         /** コメント投稿 */
-        post: operations["createComment_4"];
+        post: operations["createComment_6"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22810,10 +23819,10 @@ export interface paths {
             cookie?: never;
         };
         /** タグ一覧取得 */
-        get: operations["listTags_2"];
+        get: operations["listTags_3"];
         put?: never;
         /** タグ作成 */
-        post: operations["createTag_1"];
+        post: operations["createTag_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -22934,15 +23943,15 @@ export interface paths {
             cookie?: never;
         };
         /** 計画項目取得 */
-        get: operations["get_17"];
+        get: operations["get_18"];
         put?: never;
         post?: never;
         /** 計画項目削除（ADMIN/DEPUTY_ADMIN、If-Match 必須） */
-        delete: operations["delete_38"];
+        delete: operations["delete_41"];
         options?: never;
         head?: never;
         /** 計画項目更新（ADMIN/DEPUTY_ADMIN、If-Match 必須） */
-        patch: operations["update_41"];
+        patch: operations["update_44"];
         trace?: never;
     };
     "/api/v1/{scopeType}/{scopeId}/bulletin/archive/threads/{threadId}/folder": {
@@ -22987,15 +23996,15 @@ export interface paths {
             cookie?: never;
         };
         /** 村詳細取得 */
-        get: operations["get_18"];
+        get: operations["get_19"];
         put?: never;
         post?: never;
         /** 村論理削除（HEADMAN / SYSTEM_ADMIN） */
-        delete: operations["delete_39"];
+        delete: operations["delete_42"];
         options?: never;
         head?: never;
         /** 村更新（HEADMAN / SYSTEM_ADMIN） */
-        patch: operations["update_42"];
+        patch: operations["update_45"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/memberships/{membershipId}/role": {
@@ -23015,6 +24024,23 @@ export interface paths {
         patch: operations["changeRole"];
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/memberships/me/profile-visibility": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 自分の所属村一覧公開トグルを切り替える（本人のみ） */
+        patch: operations["updateMyProfileVisibility"];
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/meetups/{meetupId}": {
         parameters: {
             query?: never;
@@ -23023,14 +24049,14 @@ export interface paths {
             cookie?: never;
         };
         /** 寄合詳細を取得する（候補日込み） */
-        get: operations["get_19"];
+        get: operations["get_20"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 寄合を部分更新する（幹事のみ） */
-        patch: operations["update_43"];
+        patch: operations["update_46"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/match-recruits/{recruitId}": {
@@ -23041,14 +24067,14 @@ export interface paths {
             cookie?: never;
         };
         /** 練習試合・審判募集の詳細（村人のみ） */
-        get: operations["get_20"];
+        get: operations["get_21"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 練習試合・審判募集を更新（投稿者本人のみ） */
-        patch: operations["update_44"];
+        patch: operations["update_47"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/festivals/{festivalId}": {
@@ -23059,14 +24085,31 @@ export interface paths {
             cookie?: never;
         };
         /** 村のお祭り詳細を取得する */
-        get: operations["get_21"];
+        get: operations["get_22"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 村のお祭りを部分更新する（HEADMAN / ELDER のみ） */
-        patch: operations["update_45"];
+        patch: operations["update_48"];
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter/articles/order": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 条の並び順を一括更新する（層2 楽観ロック・charterVersion 同送・§7） */
+        patch: operations["reorderArticles"];
         trace?: never;
     };
     "/api/v1/villages/{villageId}/calendar-events/{eventId}": {
@@ -23076,16 +24119,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 歳時記イベントの詳細を取得する */
-        get: operations["get_22"];
+        /** 歳時記イベントの詳細を取得する（村人のみ） */
+        get: operations["get_23"];
         put?: never;
         post?: never;
         /** 歳時記イベントを論理削除する（HEADMAN / ELDER のみ） */
-        delete: operations["delete_40"];
+        delete: operations["delete_43"];
         options?: never;
         head?: never;
         /** 歳時記イベントを部分更新する（HEADMAN / ELDER のみ） */
-        patch: operations["update_46"];
+        patch: operations["update_49"];
         trace?: never;
     };
     "/api/v1/users/me/public-profile": {
@@ -23547,6 +24590,41 @@ export interface paths {
         patch: operations["bulkUpdateAttendances"];
         trace?: never;
     };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/{keepId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** チームキープ詳細 */
+        get: operations["get_24"];
+        put?: never;
+        post?: never;
+        /** チームキープ削除 */
+        delete: operations["delete_44"];
+        options?: never;
+        head?: never;
+        /** チームキープ更新 */
+        patch: operations["update_50"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/members/{memberUserId}/calendar-color": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["reset_1"];
+        options?: never;
+        head?: never;
+        patch: operations["override"];
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/translations/{id}/status": {
         parameters: {
             query?: never;
@@ -23906,6 +24984,24 @@ export interface paths {
         head?: never;
         /** ブロック時間更新 */
         patch: operations["updateBlockedTime"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-recurring-blocked-times/{ruleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 定期予約不可枠削除 */
+        delete: operations["deleteRule"];
+        options?: never;
+        head?: never;
+        /** 定期予約不可枠更新 */
+        patch: operations["updateRule"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/reservation-notification-recipients/{recipientId}": {
@@ -24356,6 +25452,146 @@ export interface paths {
         patch: operations["approve_9"];
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** status 遷移（COMPLETED で確定再計算） */
+        patch: operations["changeStatus_4"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/{matchId}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** status 遷移（COMPLETED で確定再計算） */
+        patch: operations["changeStatus_5"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/{matchId}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 最終スコア確定 */
+        patch: operations["finalizeScore"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 最終スコア確定 */
+        patch: operations["finalizeScore_1"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/recording-mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 記録モード切替（公式戦⇔共同記録） */
+        patch: operations["changeRecordingMode"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/{matchId}/recording-mode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** 記録モード切替（公式戦⇔共同記録） */
+        patch: operations["changeRecordingMode_1"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 試合詳細 */
+        get: operations["getMatch"];
+        put?: never;
+        post?: never;
+        /** 試合論理削除 */
+        delete: operations["deleteMatch"];
+        options?: never;
+        head?: never;
+        /** 試合メタ更新 */
+        patch: operations["updateMatch"];
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/{matchId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 試合詳細 */
+        get: operations["getMatch_1"];
+        put?: never;
+        post?: never;
+        /** 試合論理削除 */
+        delete: operations["deleteMatch_1"];
+        options?: never;
+        head?: never;
+        /** 試合メタ更新 */
+        patch: operations["updateMatch_1"];
+        trace?: never;
+    };
     "/api/v1/teams/{teamId}/knowledge-base/templates/{templateId}": {
         parameters: {
             query?: never;
@@ -24743,13 +25979,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_23"];
+        get: operations["get_25"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update_47"];
+        patch: operations["update_51"];
         trace?: never;
     };
     "/api/v1/teams/{teamId}/attendance/periods/{recordId}": {
@@ -24809,6 +26045,22 @@ export interface paths {
         patch: operations["togglePin_3"];
         trace?: never;
     };
+    "/api/v1/teams/{teamId}/advertiser/account": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getAccount"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateAccount"];
+        trace?: never;
+    };
     "/api/v1/teams/{slug}": {
         parameters: {
             query?: never;
@@ -24820,11 +26072,11 @@ export interface paths {
         get: operations["getTeam"];
         put?: never;
         post?: never;
-        /** チーム削除 */
+        /** チーム削除（ADMIN/DEPUTY のみ） */
         delete: operations["deleteTeam"];
         options?: never;
         head?: never;
-        /** チーム更新 */
+        /** チーム更新（ADMIN/DEPUTY のみ） */
         patch: operations["updateTeam"];
         trace?: never;
     };
@@ -24841,7 +26093,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** チームアーカイブ解除 */
+        /** チームアーカイブ解除（ADMIN/DEPUTY のみ） */
         patch: operations["unarchiveTeam"];
         trace?: never;
     };
@@ -24852,14 +26104,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** チームシフト設定取得 */
+        /** チームシフト設定取得（メンバー限定） */
         get: operations["getSettings_16"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        /** チームシフト設定更新 */
+        /** チームシフト設定更新（ADMIN/DEPUTY のみ） */
         patch: operations["updateSettings_14"];
         trace?: never;
     };
@@ -24999,7 +26251,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** チームアーカイブ */
+        /** チームアーカイブ（ADMIN/DEPUTY のみ） */
         patch: operations["archiveTeam"];
         trace?: never;
     };
@@ -25073,7 +26325,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 公開ステータス変更 */
-        patch: operations["changeStatus_4"];
+        patch: operations["changeStatus_6"];
         trace?: never;
     };
     "/api/v1/team/members/reorder": {
@@ -25215,7 +26467,7 @@ export interface paths {
          * セキュリティインシデント更新
          * @description ステータス変更・DPA 通知記録を行う。
          */
-        patch: operations["update_48"];
+        patch: operations["update_52"];
         trace?: never;
     };
     "/api/v1/system-admin/safety-checks/templates/{templateId}": {
@@ -25254,6 +26506,23 @@ export interface paths {
         patch: operations["updatePreset_4"];
         trace?: never;
     };
+    "/api/v1/system-admin/modules/{id}/paid-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** モジュール有料プラン要否更新 */
+        patch: operations["updatePaidPlan"];
+        trace?: never;
+    };
     "/api/v1/system-admin/modules/{id}/level-availability": {
         parameters: {
             query?: never;
@@ -25269,6 +26538,23 @@ export interface paths {
         head?: never;
         /** レベル別利用可否更新 */
         patch: operations["updateLevelAvailability"];
+        trace?: never;
+    };
+    "/api/v1/system-admin/modules/{id}/active": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** モジュール有効/無効更新 */
+        patch: operations["updateActive"];
         trace?: never;
     };
     "/api/v1/system-admin/maintenance-schedules/{id}/complete": {
@@ -25330,14 +26616,14 @@ export interface paths {
             cookie?: never;
         };
         /** エラーレポート詳細取得 */
-        get: operations["get_24"];
+        get: operations["get_26"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** エラーレポート更新 */
-        patch: operations["update_49"];
+        patch: operations["update_53"];
         trace?: never;
     };
     "/api/v1/system-admin/error-reports/{id}/workflow-stage": {
@@ -25876,6 +27162,41 @@ export interface paths {
         patch: operations["updateMedia"];
         trace?: never;
     };
+    "/api/v1/schedules/{scheduleId}/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** コメント削除 */
+        delete: operations["deleteComment_4"];
+        options?: never;
+        head?: never;
+        /** コメント編集 */
+        patch: operations["updateComment_4"];
+        trace?: never;
+    };
+    "/api/v1/schedules/{scheduleId}/comments/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** スレッド開閉 */
+        patch: operations["updateSettings_15"];
+        trace?: never;
+    };
     "/api/v1/schedule-delegations/{delegationId}/reject": {
         parameters: {
             query?: never;
@@ -26000,14 +27321,14 @@ export interface paths {
             cookie?: never;
         };
         /** 募集枠詳細取得 */
-        get: operations["get_25"];
+        get: operations["get_27"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** 募集枠編集 (§5.7) */
-        patch: operations["update_50"];
+        patch: operations["update_54"];
         trace?: never;
     };
     "/api/v1/quick-memos/{id}/restore": {
@@ -26281,11 +27602,11 @@ export interface paths {
         get: operations["getOrganization"];
         put?: never;
         post?: never;
-        /** 組織削除 */
+        /** 組織削除（ADMIN/DEPUTY のみ） */
         delete: operations["deleteOrganization"];
         options?: never;
         head?: never;
-        /** 組織更新 */
+        /** 組織更新（ADMIN/DEPUTY のみ） */
         patch: operations["updateOrganization"];
         trace?: never;
     };
@@ -26302,7 +27623,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 組織アーカイブ解除 */
+        /** 組織アーカイブ解除（ADMIN/DEPUTY のみ） */
         patch: operations["unarchiveOrganization"];
         trace?: never;
     };
@@ -26493,7 +27814,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** 組織アーカイブ */
+        /** 組織アーカイブ（ADMIN/DEPUTY のみ） */
         patch: operations["archiveOrganization"];
         trace?: never;
     };
@@ -26823,6 +28144,41 @@ export interface paths {
         patch: operations["updateSchedule_4"];
         trace?: never;
     };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/{keepId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 組織キープ詳細 */
+        get: operations["get_28"];
+        put?: never;
+        post?: never;
+        /** 組織キープ削除 */
+        delete: operations["delete_45"];
+        options?: never;
+        head?: never;
+        /** 組織キープ更新 */
+        patch: operations["update_55"];
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgPublicId}/members/{memberUserId}/calendar-color": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["reset_2"];
+        options?: never;
+        head?: never;
+        patch: operations["override_1"];
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/translations/{id}/status": {
         parameters: {
             query?: never;
@@ -26912,7 +28268,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** ステータス変更 */
-        patch: operations["changeStatus_5"];
+        patch: operations["changeStatus_7"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/tournaments/{tId}/matches/{matchId}/status": {
@@ -27035,7 +28391,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 組織TODOステータス変更 */
-        patch: operations["changeStatus_6"];
+        patch: operations["changeStatus_8"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/todos/{id}/progress": {
@@ -27087,76 +28443,6 @@ export interface paths {
         head?: never;
         /** 組織TODO一括ステータス変更 */
         patch: operations["bulkChangeStatus_1"];
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 試合詳細 */
-        get: operations["getMatch"];
-        put?: never;
-        post?: never;
-        /** 試合論理削除 */
-        delete: operations["deleteMatch"];
-        options?: never;
-        head?: never;
-        /** 試合メタ更新 */
-        patch: operations["updateMatch"];
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** status 遷移（COMPLETED で確定再計算） */
-        patch: operations["changeStatus_7"];
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/score": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** 最終スコア確定 */
-        patch: operations["finalizeScore"];
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/{matchId}/recording-mode": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** 記録モード切替（公式戦⇔共同記録） */
-        patch: operations["changeRecordingMode"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/residents/{id}/verify": {
@@ -27252,7 +28538,7 @@ export interface paths {
         patch: operations["cancel_12"];
         trace?: never;
     };
-    "/api/v1/organizations/{orgId}/matches/{matchId}/events/{eventId}": {
+    "/api/v1/teams/{teamId}/matches/{matchId}/events/{eventId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -27270,6 +28556,24 @@ export interface paths {
         patch: operations["updateEvent_1"];
         trace?: never;
     };
+    "/api/v1/organizations/{orgId}/matches/{matchId}/events/{eventId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** イベント削除 */
+        delete: operations["deleteEvent_2"];
+        options?: never;
+        head?: never;
+        /** イベント更新 */
+        patch: operations["updateEvent_2"];
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/events/{eventId}": {
         parameters: {
             query?: never;
@@ -27282,11 +28586,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** イベント削除 */
-        delete: operations["deleteEvent_2"];
+        delete: operations["deleteEvent_3"];
         options?: never;
         head?: never;
         /** イベント更新 */
-        patch: operations["updateEvent_2"];
+        patch: operations["updateEvent_3"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/equipment/{id}/return": {
@@ -27383,13 +28687,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_26"];
+        get: operations["get_29"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["update_51"];
+        patch: operations["update_56"];
         trace?: never;
     };
     "/api/v1/organizations/{orgId}/announcements/{id}/pin": {
@@ -27496,7 +28800,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** ピン並び替え */
-        patch: operations["reorder"];
+        patch: operations["reorder_4"];
         trace?: never;
     };
     "/api/v1/me/timetable-slot-note-fields/{fieldId}": {
@@ -27510,11 +28814,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** カスタム項目削除 */
-        delete: operations["delete_41"];
+        delete: operations["delete_46"];
         options?: never;
         head?: never;
         /** カスタム項目更新 */
-        patch: operations["update_52"];
+        patch: operations["update_57"];
         trace?: never;
     };
     "/api/v1/me/schedules/{id}": {
@@ -27534,6 +28838,25 @@ export interface paths {
         head?: never;
         /** 個人スケジュール更新 */
         patch: operations["updateSchedule_5"];
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/{keepId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 個人キープ詳細 */
+        get: operations["get_30"];
+        put?: never;
+        post?: never;
+        /** 個人キープ削除 */
+        delete: operations["delete_47"];
+        options?: never;
+        head?: never;
+        /** 個人キープ更新 */
+        patch: operations["update_58"];
         trace?: never;
     };
     "/api/v1/me/reflections/themes/{themeId}": {
@@ -27597,15 +28920,15 @@ export interface paths {
             cookie?: never;
         };
         /** 個人時間割詳細 */
-        get: operations["get_27"];
+        get: operations["get_31"];
         put?: never;
         post?: never;
         /** 個人時間割論理削除 */
-        delete: operations["delete_42"];
+        delete: operations["delete_48"];
         options?: never;
         head?: never;
         /** 個人時間割メタ情報更新 */
-        patch: operations["update_53"];
+        patch: operations["update_59"];
         trace?: never;
     };
     "/api/v1/me/favorites/reorder": {
@@ -27623,7 +28946,7 @@ export interface paths {
         head?: never;
         /**
          * お気に入り並び替え
-         * @description orderedIds の順序でお気に入りの displayOrder を一括更新する。リストに含まれていないIDは変更されない。
+         * @description orderedIds の順序でお気に入りの displayOrder を一括更新する。リストに含まれていないIDは変更されない。並び替え対象は認証ユーザー自身のお気に入りに限られ、自分の登録に無いIDは404。
          */
         patch: operations["reorderFavorites"];
         trace?: never;
@@ -27644,6 +28967,24 @@ export interface paths {
         head?: never;
         /** ケアリンク通知設定更新 */
         patch: operations["updateNotifySettings"];
+        trace?: never;
+    };
+    "/api/v1/me/calendar-layers/{scopeType}/{scopeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** カレンダーレイヤー設定の削除（自動色へ戻す） */
+        delete: operations["deleteMyCalendarLayer"];
+        options?: never;
+        head?: never;
+        /** カレンダーレイヤー設定の部分更新 */
+        patch: operations["updateMyCalendarLayer"];
         trace?: never;
     };
     "/api/v1/matching/proposals/{id}/withdraw": {
@@ -27763,7 +29104,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["changeStatus_8"];
+        patch: operations["changeStatus_9"];
         trace?: never;
     };
     "/api/v1/files/{fileId}": {
@@ -27796,11 +29137,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** コメント削除 */
-        delete: operations["deleteComment_4"];
+        delete: operations["deleteComment_5"];
         options?: never;
         head?: never;
         /** コメント更新 */
-        patch: operations["updateComment_4"];
+        patch: operations["updateComment_5"];
         trace?: never;
     };
     "/api/v1/events/{eventId}/timetable/{itemId}": {
@@ -28055,7 +29396,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** チャンネル個人設定 */
-        patch: operations["updateSettings_15"];
+        patch: operations["updateSettings_16"];
         trace?: never;
     };
     "/api/v1/chat/channels/{channelId}/members/{userId}/role": {
@@ -28141,14 +29482,14 @@ export interface paths {
             cookie?: never;
         };
         /** ポリシー詳細 (段階含む) */
-        get: operations["get_28"];
+        get: operations["get_32"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
         /** ポリシー編集 (is_template_policy=true のみ) */
-        patch: operations["update_54"];
+        patch: operations["update_60"];
         trace?: never;
     };
     "/api/v1/bulletin/threads/{threadId}/priority": {
@@ -28212,10 +29553,10 @@ export interface paths {
         get: operations["getById_2"];
         put?: never;
         post?: never;
-        delete: operations["delete_43"];
+        delete: operations["delete_49"];
         options?: never;
         head?: never;
-        patch: operations["update_55"];
+        patch: operations["update_61"];
         trace?: never;
     };
     "/api/v1/budget/categories/{categoryId}": {
@@ -28228,10 +29569,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["delete_44"];
+        delete: operations["delete_50"];
         options?: never;
         head?: never;
-        patch: operations["update_56"];
+        patch: operations["update_62"];
         trace?: never;
     };
     "/api/v1/blog/posts/{id}/publish": {
@@ -28248,7 +29589,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 公開ステータス変更 */
-        patch: operations["changeStatus_9"];
+        patch: operations["changeStatus_10"];
         trace?: never;
     };
     "/api/v1/blog/posts/{id}/public-visible": {
@@ -28355,14 +29696,14 @@ export interface paths {
          * 出席要件規程削除
          * @description 指定IDの出席要件規程を削除する。
          */
-        delete: operations["deleteRule"];
+        delete: operations["deleteRule_1"];
         options?: never;
         head?: never;
         /**
          * 出席要件規程更新
          * @description 指定IDの出席要件規程を部分更新する。
          */
-        patch: operations["updateRule"];
+        patch: operations["updateRule_1"];
         trace?: never;
     };
     "/api/v1/appeals/{id}/submit": {
@@ -28389,13 +29730,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getAccount"];
+        get: operations["getAccount_1"];
         put?: never;
         post?: never;
         delete?: never;
         options?: never;
         head?: never;
-        patch: operations["updateAccount"];
+        patch: operations["updateAccount_1"];
         trace?: never;
     };
     "/api/v1/admin/warning-re-reviews/{id}/review": {
@@ -28639,14 +29980,14 @@ export interface paths {
          * 同義語削除
          * @description 物理削除。削除後にキャッシュリビルド。
          */
-        delete: operations["delete_45"];
+        delete: operations["delete_51"];
         options?: never;
         head?: never;
         /**
          * 同義語編集
          * @description synonymDisplay 指定時は再正規化と重複チェックを行う。
          */
-        patch: operations["update_57"];
+        patch: operations["update_63"];
         trace?: never;
     };
     "/api/v1/admin/permission-groups/{id}/unassign/{userId}": {
@@ -28821,11 +30162,11 @@ export interface paths {
         put?: never;
         post?: never;
         /** タグ削除（論理削除） */
-        delete: operations["deleteTag_1"];
+        delete: operations["deleteTag_2"];
         options?: never;
         head?: never;
         /** タグ更新 */
-        patch: operations["updateTag_1"];
+        patch: operations["updateTag_2"];
         trace?: never;
     };
     "/api/v1/action-memo-settings": {
@@ -28843,7 +30184,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** 行動メモ設定更新 */
-        patch: operations["updateSettings_16"];
+        patch: operations["updateSettings_17"];
         trace?: never;
     };
     "/sitemap.xml": {
@@ -29339,7 +30680,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** ご縁スコアの上位ランキングを取得する（最大100件） */
+        /**
+         * 【廃止予定】ご縁スコアの上位ランキングを取得する（村人のみ・F17.2 §8.2 で相性表示へ置換）
+         * @deprecated
+         */
         get: operations["getRanking"];
         put?: never;
         post?: never;
@@ -29373,7 +30717,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 村内横断検索（投稿・メッセージ・メンバー） */
+        /** 村内横断検索（投稿・メッセージ・メンバー／村人のみ） */
         get: operations["search"];
         put?: never;
         post?: never;
@@ -29390,8 +30734,42 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 指定頻度のニュースレター配信履歴を取得する */
+        /** 指定頻度のニュースレター配信履歴を取得する（HEADMAN / ELDER のみ） */
         get: operations["listSendLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 村ニュースレター号の一覧（新しい順・?tagId= でタグ絞り込み可） */
+        get: operations["listIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/newsletter/issues/{issueId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 村ニュースレター号の詳細（凍結ダイジェスト＋コメント＋タグ） */
+        get: operations["getIssue"];
         put?: never;
         post?: never;
         delete?: never;
@@ -29409,6 +30787,23 @@ export interface paths {
         };
         /** 寄合の投票集計を取得する（村人のみ） */
         get: operations["getVoteSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/attendances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 出欠一覧を取得する（村人・村ニックネーム表示） */
+        get: operations["listAttendances"];
         put?: never;
         post?: never;
         delete?: never;
@@ -29485,6 +30880,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/join-requests/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自分の村参加申請一覧（申請者本人） */
+        get: operations["listMine"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/festivals/{festivalId}/rsvps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 参加者一覧を取得する（村人・村ニックネーム表示・ページング） */
+        get: operations["listRsvps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/event-archives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 村史（行事アーカイブ）一覧を取得する（archived_at 降順・sourceType 絞り込み可） */
+        get: operations["list_71"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/chronicles": {
         parameters: {
             query?: never;
@@ -29493,7 +30939,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村の村史一覧（月次ダイジェスト）を取得する */
-        get: operations["list_65"];
+        get: operations["list_72"];
         put?: never;
         post?: never;
         delete?: never;
@@ -29510,7 +30956,41 @@ export interface paths {
             cookie?: never;
         };
         /** 指定月の村史を取得する（YYYY-MM-DD 形式） */
-        get: operations["get_29"];
+        get: operations["get_33"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 村憲章を取得する（read 公開ゲート・PUBLIC は非メンバー可・UNLISTED はメンバー/SYSTEM_ADMIN） */
+        get: operations["get_34"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/affinity/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 加入前相性表示を取得する（PUBLIC 村のみ・非メンバー可・identity 非返却） */
+        get: operations["getMyAffinity"];
         put?: never;
         post?: never;
         delete?: never;
@@ -29577,6 +31057,23 @@ export interface paths {
             cookie?: never;
         };
         get: operations["suggest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{userId}/villages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 対象村人の所属村一覧を取得する（同居者限定・公開ON∩PUBLIC のみ・ニックネーム非返却） */
+        get: operations["getUserVillages"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30118,6 +31615,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/todos/my/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自分担当TODOのマイカレンダー表示用一覧（全スコープ横断） */
+        get: operations["getMyCalendarTodos"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/todos/gantt": {
         parameters: {
             query?: never;
@@ -30313,7 +31827,7 @@ export interface paths {
             cookie?: never;
         };
         /** ダイジェスト履歴一覧取得 */
-        get: operations["list_66"];
+        get: operations["list_73"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30399,6 +31913,23 @@ export interface paths {
         };
         /** チーム出欠CSVエクスポート */
         get: operations["exportAttendancesCsv"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamPublicId}/schedule-keeps/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予定から由来キープを逆引き */
+        get: operations["getByConvertedSchedule"];
         put?: never;
         post?: never;
         delete?: never;
@@ -30948,7 +32479,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 空きグリッド（複数予約対象・ライン軸/日付レンジ/メニューフィルター対応） */
+        /** 空きグリッド（ライン軸・日付レンジ/メニューフィルター対応） */
         get: operations["getGrid"];
         put?: never;
         post?: never;
@@ -30984,6 +32515,23 @@ export interface paths {
         };
         /** 予約不可枠 登録前の影響プレビュー */
         get: operations["getBlockedTimeImpact"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/reservation-recurring-blocked-times/impact": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 定期予約不可枠 登録前の影響プレビュー */
+        get: operations["getImpact"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31291,7 +32839,7 @@ export interface paths {
             cookie?: never;
         };
         /** 受信した協会請求の一覧 */
-        get: operations["list_67"];
+        get: operations["list_74"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31342,7 +32890,7 @@ export interface paths {
             cookie?: never;
         };
         /** 立替/精算記録の一覧 */
-        get: operations["list_68"];
+        get: operations["list_75"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31478,7 +33026,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_69"];
+        get: operations["list_76"];
         put?: never;
         post?: never;
         delete?: never;
@@ -31751,6 +33299,74 @@ export interface paths {
         };
         /** チームのキャンセル履歴一覧 */
         get: operations["getCancellationHistory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** カレンダー予定から既存試合を解決（入口④・二重起票防止） */
+        get: operations["resolveBySchedule"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** カレンダー予定から既存試合を解決（入口④・二重起票防止） */
+        get: operations["resolveBySchedule_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/matches/by-fixture/{fixtureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 大会の対戦カードから既存試合を解決（入口①・二重起票防止） */
+        get: operations["resolveByFixture"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-fixture/{fixtureId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 大会の対戦カードから既存試合を解決（入口①・二重起票防止） */
+        get: operations["resolveByFixture_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32611,7 +34227,27 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_70"];
+        get: operations["list_77"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/beta-perks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * チームのベータ特典
+         * @description メンバー以上が閲覧可。審査系フィールドは返さない。
+         */
+        get: operations["getTeamBetaPerks"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32896,14 +34532,14 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{teamId}/advertiser/report-schedules": {
+    "/api/v1/teams/{teamId}/advertiser/overview": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["listReportSchedules_1"];
+        get: operations["overview"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32928,14 +34564,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/teams/{teamId}/advertiser/credit-limit-requests": {
+    "/api/v1/teams/{teamId}/advertiser/invoices/{invoiceId}": {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        get: operations["listCreditLimitRequests_1"];
+        get: operations["getInvoice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/advertiser/invoices/{invoiceId}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["downloadInvoicePdf"];
         put?: never;
         post?: never;
         delete?: never;
@@ -32952,6 +34604,54 @@ export interface paths {
             cookie?: never;
         };
         get: operations["getCampaignPerformance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/advertiser/campaigns/{campaignId}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["exportCampaignPerformance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/advertiser/campaigns/{campaignId}/creatives": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCreativeComparison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/advertiser/campaigns/{campaignId}/breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getBreakdown"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33088,6 +34788,38 @@ export interface paths {
         };
         /** チームメンバー一覧 */
         get: operations["getMembers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{slug}/members/{memberId}/return-stay-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listForMember"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{slug}/members/return-stay-plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listForMembers"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33268,7 +35000,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** チーム検索 */
+        /** チーム検索（PUBLIC かつ未アーカイブのチームのみ） */
         get: operations["searchTeams"];
         put?: never;
         post?: never;
@@ -33445,7 +35177,7 @@ export interface paths {
             cookie?: never;
         };
         /** 課金状況一覧 */
-        get: operations["list_71"];
+        get: operations["list_78"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33695,7 +35427,7 @@ export interface paths {
             cookie?: never;
         };
         /** エラーレポート一覧取得 */
-        get: operations["list_72"];
+        get: operations["list_79"];
         put?: never;
         post?: never;
         delete?: never;
@@ -33986,6 +35718,26 @@ export interface paths {
          * @description scopeKind / scopeId / status は任意フィルタ・contracted_at 降順。
          */
         get: operations["searchContracts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/system-admin/beta-perks/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 付与候補 dry-run
+         * @description 未付与かつ充足のスコープ抽出（付与はしない）。Phase 1 は TEAM_ORG のみ。
+         */
+        get: operations["listCandidates"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34313,7 +36065,7 @@ export interface paths {
          * 通報一覧
          * @description status / reasonCode で任意に絞り込んだ通報を created_at DESC で取得する。campaignId（メッセージ型）/ operationalCampaignId（運用型）を併記する。
          */
-        get: operations["list_73"];
+        get: operations["list_80"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34361,7 +36113,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_74"];
+        get: operations["list_81"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34397,7 +36149,7 @@ export interface paths {
          * 審査キュー一覧
          * @description 運用型キャンペーンを status フィルタ（既定 PENDING_REVIEW）・created_at DESC で取得する。
          */
-        get: operations["list_75"];
+        get: operations["list_82"];
         put?: never;
         post?: never;
         delete?: never;
@@ -34916,7 +36668,7 @@ export interface paths {
             cookie?: never;
         };
         /** 失敗イベント一覧を取得 (status で絞り込み可、新しい順) */
-        get: operations["list_76"];
+        get: operations["list_83"];
         put?: never;
         post?: never;
         delete?: never;
@@ -35118,6 +36870,57 @@ export interface paths {
          * @description F03.10 §4.1: 委任者が自分の代理を取り消す
          */
         delete: operations["withdraw_3"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedules/{scheduleId}/comments/{commentId}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 返信一覧 */
+        get: operations["listReplies_2"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedules/{scheduleId}/comments/meta": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** スレッド状態 */
+        get: operations["getMeta"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/schedules/{scheduleId}/comments/mention-candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** メンション候補 */
+        get: operations["mentionCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -35373,6 +37176,26 @@ export interface paths {
          * @description i18n キー込みで全アクティブカテゴリを表示順で返す
          */
         get: operations["listCategories_8"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/recruitment-cancellation-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * キャンセル料記録の一覧
+         * @description 受取先側の管理者・受取先本人・運営管理者が、自分が受け取るべきキャンセル料の記録を一覧する（免除対象を選ぶための一覧）。ページングはカーソル方式で、続きは meta.nextCursor を cursor に渡して取得する。
+         */
+        get: operations["list_84"];
         put?: never;
         post?: never;
         delete?: never;
@@ -36374,6 +38197,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/payment-items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 支払い項目取得（Issue #2657） */
+        get: operations["getPaymentItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/parental-consent/parents": {
         parameters: {
             query?: never;
@@ -36540,7 +38380,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 組織配下全メンバー一覧（カスケード通知用） */
+        /** 組織配下全メンバー一覧（カスケード通知用・ADMIN/DEPUTY のみ） */
         get: operations["getAllMembers"];
         put?: never;
         post?: never;
@@ -37002,6 +38842,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/organizations/{orgPublicId}/schedule-keeps/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予定から由来キープを逆引き */
+        get: operations["getByConvertedSchedule_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/organizations/{orgId}/users/{userId}/teams/{teamId}/match-stats": {
         parameters: {
             query?: never;
@@ -37233,7 +39090,7 @@ export interface paths {
             cookie?: never;
         };
         /** 試合詳細 */
-        get: operations["getMatch_1"];
+        get: operations["getMatch_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37421,40 +39278,6 @@ export interface paths {
         };
         /** 組織TODOガントバー一覧 */
         get: operations["getGanttTodos_2"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-schedule/{scheduleId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** カレンダー予定から既存試合を解決（入口④・二重起票防止） */
-        get: operations["resolveBySchedule"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/organizations/{orgId}/teams/{teamId}/matches/by-fixture/{fixtureId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** 大会の対戦カードから既存試合を解決（入口①・二重起票防止） */
-        get: operations["resolveByFixture"];
         put?: never;
         post?: never;
         delete?: never;
@@ -37918,7 +39741,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_77"];
+        get: operations["list_85"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38012,7 +39835,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/organizations/{orgId}/matches/{matchId}/appearances": {
+    "/api/v1/teams/{teamId}/matches/{matchId}/appearances": {
         parameters: {
             query?: never;
             header?: never;
@@ -38021,6 +39844,23 @@ export interface paths {
         };
         /** 試合内出場記録一覧（computed_minutes 込み） */
         get: operations["listAppearances"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/matches/{matchId}/appearances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 試合内出場記録一覧（computed_minutes 込み） */
+        get: operations["listAppearances_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38296,7 +40136,27 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_78"];
+        get: operations["list_86"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/organizations/{orgId}/beta-perks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 組織のベータ特典
+         * @description メンバー以上が閲覧可。審査系フィールドは返さない。
+         */
+        get: operations["getOrgBetaPerks"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38414,7 +40274,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 組織検索 */
+        /** 組織検索（PUBLIC かつ未アーカイブの組織のみ） */
         get: operations["searchOrganizations_1"];
         put?: never;
         post?: never;
@@ -38447,7 +40307,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_79"];
+        get: operations["list_87"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38534,6 +40394,40 @@ export interface paths {
         };
         /** 通知クレジットパッケージ一覧 */
         get: operations["listPackages_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/newsletter/public": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開ニュースレター号の村横断一覧（新しい順） */
+        get: operations["listPublicIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/newsletter/public/{issueId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開ニュースレター号の詳細（PUBLIC 以外は 404 秘匿） */
+        get: operations["getPublicIssue"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38777,7 +40671,7 @@ export interface paths {
             cookie?: never;
         };
         /** 村でなれる投稿主体一覧を取得する（村人のみ） */
-        get: operations["list_80"];
+        get: operations["list_88"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38810,7 +40704,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** ピン留め村の最新動きをダッシュボード向けに集約取得 */
+        /** ピン留め村の最新動きをダッシュボード向けに集約取得（本文は村人である村のみ） */
         get: operations["feed"];
         put?: never;
         post?: never;
@@ -38828,7 +40722,7 @@ export interface paths {
             cookie?: never;
         };
         /** 自分の村作成申請一覧 */
-        get: operations["listMine"];
+        get: operations["listMine_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -38845,7 +40739,7 @@ export interface paths {
             cookie?: never;
         };
         /** メモ添付一覧 */
-        get: operations["list_81"];
+        get: operations["list_89"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39008,6 +40902,23 @@ export interface paths {
          * @description 未分類フォルダを取得する。存在しない場合は lazy 生成して返す
          */
         get: operations["getDefaultFolder"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/schedule-keeps/by-schedule/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 予定から由来キープを逆引き */
+        get: operations["getByConvertedSchedule_2"];
         put?: never;
         post?: never;
         delete?: never;
@@ -39769,6 +41680,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/me/calendar-layers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** カレンダーレイヤー一覧（合成ビュー） */
+        get: operations["getMyCalendarLayers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me/beta-perks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 自分のベータ特典
+         * @description 本人固定（scopeId を受けない）。eligibility は criteria 未定義時 null。
+         */
+        get: operations["getMyBetaPerks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me/attendance/timeline": {
         parameters: {
             query?: never;
@@ -40037,7 +41985,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["listComments_7"];
+        get: operations["listComments_9"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40206,6 +42154,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feature-flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 公開フィーチャーフラグ一覧取得 */
+        get: operations["getPublicFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/families/{teamId}/members/{userId}/personal-timetables": {
         parameters: {
             query?: never;
@@ -40214,7 +42179,7 @@ export interface paths {
             cookie?: never;
         };
         /** 家族メンバーの個人時間割一覧（status=ACTIVE のみ、共有設定済みのみ） */
-        get: operations["list_82"];
+        get: operations["list_90"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40494,7 +42459,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_30"];
+        get: operations["get_35"];
         put?: never;
         post?: never;
         delete?: never;
@@ -40548,7 +42513,7 @@ export interface paths {
         };
         /**
          * 直近イベント
-         * @description 今後N日間のイベント + 出欠状況を横断取得
+         * @description 今後N日間のイベント + 本人のシフト + 本人の予約を横断統合し、開始日時昇順で返す（kind: EVENT/SHIFT/RESERVATION）
          */
         get: operations["getUpcomingEvents"];
         put?: never;
@@ -41059,6 +43024,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/dashboard/admin-action-required": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 個人横断「承認待ち」集計
+         * @description ADMIN/DEPUTY_ADMIN として管理する全チーム・組織の予約承認/シフトリクエスト/マッチング応募/未収請求の承認待ちアイテムをスコープ情報付きで返す。1スコープがエラーでも他スコープは返す縮退設計（AC-B1-4）。認証必須（未認証は401）。管理スコープを持たないユーザーは空配列200（AC-B1-3）。
+         */
+        get: operations["getPersonalAdminActionRequired"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/dashboard/activity": {
         parameters: {
             query?: never;
@@ -41549,7 +43534,7 @@ export interface paths {
         get: operations["getById_7"];
         put?: never;
         post?: never;
-        delete: operations["delete_46"];
+        delete: operations["delete_52"];
         options?: never;
         head?: never;
         patch?: never;
@@ -41871,7 +43856,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["overview"];
+        get: operations["overview_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41903,7 +43888,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getInvoice"];
+        get: operations["getInvoice_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41919,7 +43904,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["downloadInvoicePdf"];
+        get: operations["downloadInvoicePdf_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41951,7 +43936,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["exportCampaignPerformance"];
+        get: operations["exportCampaignPerformance_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -41967,7 +43952,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getCreativeComparison"];
+        get: operations["getCreativeComparison_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42015,7 +44000,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["getBreakdown"];
+        get: operations["getBreakdown_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -42816,6 +44801,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/villages/{villageId}/meetups/{meetupId}/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** コメントを論理削除する（投稿者本人＋村長/長老のみ） */
+        delete: operations["deleteComment_6"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/villages/{villageId}/meetups/{meetupId}/candidate-dates/{candidateDateId}": {
         parameters: {
             query?: never;
@@ -42828,6 +44830,40 @@ export interface paths {
         post?: never;
         /** 寄合の候補日を削除する（幹事のみ、投票も連動削除） */
         delete: operations["removeCandidateDate"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/charter/drafters/{drafterId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 策定者を削除する（更新後の憲章全体を返す・再連番・AC-16b） */
+        delete: operations["removeDrafter"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/villages/{villageId}/calendar-events/{eventId}/logs/{logId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 年輪を論理削除する（投稿者本人＋村長/長老のみ） */
+        delete: operations["deleteLog"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43016,7 +45052,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 書類削除 */
-        delete: operations["delete_47"];
+        delete: operations["delete_53"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43050,7 +45086,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** チームウォッチリスト削除 */
-        delete: operations["delete_48"];
+        delete: operations["delete_54"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43139,6 +45175,22 @@ export interface paths {
          * @description お知らせウィジェットからコンテンツを解除する（元コンテンツは残る）。著者本人または ADMIN/DEPUTY_ADMIN のみ可。
          */
         delete: operations["deleteAnnouncement_1"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teams/{teamId}/advertiser/report-schedules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteReportSchedule"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43303,7 +45355,7 @@ export interface paths {
          * 手数料パターン割当解除
          * @description 割当を解除する（論理削除）。既存課金には影響しない（焼き付け済みで不変）。
          */
-        delete: operations["delete_49"];
+        delete: operations["delete_55"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43443,7 +45495,7 @@ export interface paths {
          * 公開投稿コメント削除（ログイン必須）
          * @description 投稿者本人または ADMIN（hasRole('ADMIN') or hasRole('SYSTEM_ADMIN')）のみ実行可能。 コメントが存在しない場合は 404（PUBLIC_009）。 権限がない場合は 403（PUBLIC_010）。 未ログインの場合は 401。
          */
-        delete: operations["deleteComment_5"];
+        delete: operations["deleteComment_7"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43460,7 +45512,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** コメント削除 */
-        delete: operations["deleteComment_6"];
+        delete: operations["deleteComment_8"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43639,7 +45691,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 組織ウォッチリスト削除 */
-        delete: operations["delete_50"];
+        delete: operations["delete_56"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43797,7 +45849,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 書類削除 */
-        delete: operations["delete_51"];
+        delete: operations["delete_57"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43814,7 +45866,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 局面写真の削除（記録権限・R2 ベストエフォート削除） */
-        delete: operations["delete_52"];
+        delete: operations["delete_58"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43885,7 +45937,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 個人メモ削除（論理） */
-        delete: operations["delete_53"];
+        delete: operations["delete_59"];
         options?: never;
         head?: never;
         patch?: never;
@@ -43902,7 +45954,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** 添付削除（論理） */
-        delete: operations["delete_54"];
+        delete: operations["delete_60"];
         options?: never;
         head?: never;
         patch?: never;
@@ -44160,7 +46212,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** コメント削除 */
-        delete: operations["deleteComment_7"];
+        delete: operations["deleteComment_9"];
         options?: never;
         head?: never;
         patch?: never;
@@ -44260,7 +46312,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        delete: operations["deleteReportSchedule"];
+        delete: operations["deleteReportSchedule_1"];
         options?: never;
         head?: never;
         patch?: never;
@@ -45065,6 +47117,40 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        VillageRecruitCategoryUpdateRequest: {
+            color?: string;
+            description?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            name?: string;
+        };
+        ApiResponseVillageRecruitCategoryResponse: {
+            data?: components["schemas"]["VillageRecruitCategoryResponse"];
+        };
+        VillageRecruitCategoryResponse: {
+            color?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            description?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            /** Format: uuid */
+            id?: string;
+            isPreset?: boolean;
+            name?: string;
+            /** Format: int64 */
+            recruitCount?: number;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: uuid */
+            villageId?: string;
+        };
+        VillageRecruitCategoryOrderRequest: {
+            orderedCategoryIds?: string[];
+        };
+        ApiResponseListVillageRecruitCategoryResponse: {
+            data?: components["schemas"]["VillageRecruitCategoryResponse"][];
+        };
         NewsletterSettingUpdateRequest: {
             /** @enum {string} */
             frequency: "WEEKLY" | "MONTHLY";
@@ -45092,6 +47178,100 @@ export interface components {
             /** Format: uuid */
             villageId?: string;
         };
+        NewsletterTagUpdateRequest: {
+            color?: string;
+            name?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+            /** Format: int64 */
+            version: number;
+        };
+        ApiResponseNewsletterTagResponse: {
+            data?: components["schemas"]["NewsletterTagResponse"];
+        };
+        NewsletterTagResponse: {
+            color?: string;
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+            /** Format: int64 */
+            version?: number;
+            /** Format: uuid */
+            villageId?: string;
+        };
+        NewsletterVisibilityUpdateRequest: {
+            /** Format: int64 */
+            version: number;
+            /** @enum {string} */
+            visibility: "VILLAGE_MEMBERS" | "PUBLIC";
+        };
+        ApiResponseNewsletterIssueDetailResponse: {
+            data?: components["schemas"]["NewsletterIssueDetailResponse"];
+        };
+        NewsletterIssueDetailResponse: {
+            /** Format: date-time */
+            aggregatedAt?: string;
+            /** Format: date-time */
+            commentUpdatedAt?: string;
+            /** Format: int64 */
+            commentUpdatedBy?: number;
+            /** Format: int32 */
+            digestFestivalCount?: number;
+            /** Format: int32 */
+            digestMeetupCount?: number;
+            /** Format: int32 */
+            digestNewMemberCount?: number;
+            /** Format: int32 */
+            digestPostCount?: number;
+            /** Format: int32 */
+            digestRecruitCount?: number;
+            /** Format: int32 */
+            digestTopic1Count?: number;
+            digestTopic1Name?: string;
+            /** Format: int32 */
+            digestTopic2Count?: number;
+            digestTopic2Name?: string;
+            /** Format: int32 */
+            digestTopic3Count?: number;
+            digestTopic3Name?: string;
+            /** @enum {string} */
+            frequency?: "WEEKLY" | "MONTHLY";
+            headmanComment?: string;
+            /** Format: uuid */
+            id?: string;
+            /** @enum {string} */
+            issueType?: "REGULAR" | "EXTRA";
+            /** Format: date-time */
+            periodEnd?: string;
+            /** Format: date-time */
+            periodStart?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            /** Format: date-time */
+            scheduledPublishAt?: string;
+            /** @enum {string} */
+            status?: "AGGREGATED" | "FROZEN" | "PUBLISHED" | "CANCELED";
+            tags?: components["schemas"]["NewsletterTagResponse"][];
+            title?: string;
+            /** Format: int64 */
+            version?: number;
+            /** Format: uuid */
+            villageId?: string;
+            /** @enum {string} */
+            visibility?: "VILLAGE_MEMBERS" | "PUBLIC";
+        };
+        NewsletterIssueTagsUpdateRequest: {
+            tagIds: string[];
+            /** Format: int64 */
+            version: number;
+        };
+        NewsletterCommentUpdateRequest: {
+            comment?: string;
+            /** Format: int64 */
+            version: number;
+        };
         VillageMonshoUpdateRequest: {
             r2Key?: string;
         };
@@ -45106,6 +47286,88 @@ export interface components {
         MeetupVoteRequest: {
             /** @enum {string} */
             voteType: "AVAILABLE" | "MAYBE" | "UNAVAILABLE";
+        };
+        MeetupAttendanceUpsertRequest: {
+            /** @enum {string} */
+            status: "GOING" | "MAYBE" | "ABSENT";
+        };
+        ApiResponseMeetupAttendanceResponse: {
+            data?: components["schemas"]["MeetupAttendanceResponse"];
+        };
+        MeetupAttendanceResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            displayName?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            meetupId?: string;
+            /** @enum {string} */
+            status?: "GOING" | "MAYBE" | "ABSENT";
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        FestivalRsvpUpsertRequest: {
+            roleLabel?: string;
+            /** @enum {string} */
+            status: "GOING" | "MAYBE";
+        };
+        ApiResponseFestivalRsvpResponse: {
+            data?: components["schemas"]["FestivalRsvpResponse"];
+        };
+        FestivalRsvpResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            displayName?: string;
+            /** Format: uuid */
+            festivalId?: string;
+            /** Format: uuid */
+            id?: string;
+            roleLabel?: string;
+            /** @enum {string} */
+            status?: "GOING" | "MAYBE";
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        CharterArticleUpdateRequest: {
+            /** @description 条文（必須・最大2000字） */
+            body: string;
+            /** @description 付則（任意・最大2000字） */
+            supplement?: string;
+            /**
+             * Format: int64
+             * @description 条単位の楽観ロックversion（層1・必須）
+             */
+            version: number;
+        };
+        ApiResponseCharterArticleResponse: {
+            data?: components["schemas"]["CharterArticleResponse"];
+        };
+        /** @description 村憲章の条（自動採番・sortOrder非露出・§18.1） */
+        CharterArticleResponse: {
+            /**
+             * Format: int32
+             * @description 導出された条番号（第N条・sort_order昇順のindex+1・§6.1）
+             */
+            articleNumber: number;
+            /** @description 条文（必須） */
+            body: string;
+            /**
+             * Format: uuid
+             * @description 条ID（UUID）
+             */
+            id: string;
+            /** @description 付則（任意・未設定時null） */
+            supplement?: string;
+            /**
+             * Format: int64
+             * @description 条単位の楽観ロックversion（層1・PUTに同送）
+             */
+            version: number;
         };
         UpdateSealRequest: {
             displayText?: string;
@@ -46470,6 +48732,7 @@ export interface components {
             /** @example 14:30:00 */
             closeTime?: string;
             dayOfWeek?: string;
+            endsNextDay?: boolean;
             isOpen: boolean;
             /** @example 14:30:00 */
             openTime?: string;
@@ -46495,6 +48758,8 @@ export interface components {
             /** @example 14:30:00 */
             closeTime?: string;
             dayOfWeek?: string;
+            /** @description 終了時刻が翌日 */
+            endsNextDay?: boolean;
             isOpen?: boolean;
             /** @example 14:30:00 */
             openTime?: string;
@@ -47838,6 +50103,8 @@ export interface components {
              * @example 2
              */
             bandNoSnapshot?: number;
+            /** @description 決済フロー時の Stripe Checkout URL（無償フロー・解約時は null） */
+            checkoutUrl?: string;
             /** @description 契約 ID（UUID） */
             contractId?: string;
             /**
@@ -47850,6 +50117,11 @@ export interface components {
              * @description 契約日時（ISO-8601）
              */
             contractedAt?: string;
+            /**
+             * Format: date-time
+             * @description 現サイクル終了（有償解約の利用可能期限・ISO-8601）
+             */
+            currentPeriodEnd?: string;
             /**
              * @description 機能キー（PLAN 時 null）
              * @example ads.hide
@@ -48077,6 +50349,42 @@ export interface components {
             /** Format: date-time */
             updatedAt?: string;
         };
+        UpdateAdCreativeRequest: {
+            altText?: string;
+            destinationUrl?: string;
+            /** Format: int32 */
+            height?: number;
+            imageUrl?: string;
+            /** @enum {string} */
+            placement?: "SIDEBAR_RIGHT" | "BANNER_FOOTER" | "BANNER_HEADER" | "IN_FEED" | "DASHBOARD_TILE";
+            title?: string;
+            /** Format: int32 */
+            width?: number;
+        };
+        AdCreativeResponse: {
+            altText?: string;
+            /** Format: int64 */
+            campaignId?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            destinationUrl?: string;
+            /** Format: int32 */
+            height?: number;
+            /** Format: int64 */
+            id?: number;
+            imageUrl?: string;
+            /** @enum {string} */
+            placement?: "SIDEBAR_RIGHT" | "BANNER_FOOTER" | "BANNER_HEADER" | "IN_FEED" | "DASHBOARD_TILE";
+            status?: string;
+            title?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int32 */
+            width?: number;
+        };
+        ApiResponseAdCreativeResponse: {
+            data?: components["schemas"]["AdCreativeResponse"];
+        };
         ToggleModuleRequest: {
             enabled?: boolean;
             /** Format: int64 */
@@ -48124,9 +50432,13 @@ export interface components {
             id?: string;
             location?: components["schemas"]["TeamLocationDto"];
             metadata?: components["schemas"]["TeamMetadataDto"];
+            /** Format: int64 */
+            numericId?: number;
             slug?: string;
             social?: components["schemas"]["TeamSocialDto"];
             timestamps?: components["schemas"]["TeamTimestampsDto"];
+            /** @description チームのIANAタイムゾーン */
+            timezone?: string;
             visibility?: components["schemas"]["TeamVisibilityDto"];
         };
         TeamSocialDto: {
@@ -48733,6 +51045,77 @@ export interface components {
             maxTeamId?: number;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        /** @description F20.3 シスアド ベータ特典 条件マスタ upsert */
+        BetaPerkCriteriaUpsertRequest: {
+            /** @example true */
+            enabled: boolean;
+            /**
+             * Format: int32
+             * @example 30
+             */
+            evaluationWindowDays: number;
+            /**
+             * Format: int32
+             * @example 14
+             */
+            minActiveDays?: number;
+            /**
+             * Format: int32
+             * @example 5
+             */
+            minActiveMembers?: number;
+            /**
+             * Format: int32
+             * @example 30
+             */
+            minMembershipTenureDays?: number;
+        };
+        ApiResponseBetaPerkCriteriaResponse: {
+            data?: components["schemas"]["BetaPerkCriteriaResponse"];
+        };
+        /** @description F20.3 ベータ特典 条件マスタ */
+        BetaPerkCriteriaResponse: {
+            /**
+             * Format: int32
+             * @description ベータ段階
+             * @example 2
+             */
+            betaPhase?: number;
+            /**
+             * @description 有効フラグ
+             * @example true
+             */
+            enabled?: boolean;
+            /**
+             * Format: int32
+             * @description activeDays の評価ウィンドウ（日）
+             * @example 30
+             */
+            evaluationWindowDays?: number;
+            /**
+             * @description 付与種別（INDIVIDUAL / TEAM_ORG）
+             * @example INDIVIDUAL
+             */
+            grantKind?: string;
+            /**
+             * Format: int32
+             * @description アクティブ日数の下限（null=評価しない）
+             * @example 14
+             */
+            minActiveDays?: number;
+            /**
+             * Format: int32
+             * @description アクティブ人数の下限（TEAM_ORG のみ・null=評価しない）
+             * @example 5
+             */
+            minActiveMembers?: number;
+            /**
+             * Format: int32
+             * @description 所属経過日数の下限（null=評価しない）
+             * @example 30
+             */
+            minMembershipTenureDays?: number;
         };
         UpdateAnnouncementRequest: {
             body?: string;
@@ -49539,6 +51922,8 @@ export interface components {
             id?: string;
             location?: components["schemas"]["OrgLocationDto"];
             metadata?: components["schemas"]["OrgMetadataDto"];
+            /** Format: int64 */
+            numericId?: number;
             slug?: string;
             timestamps?: components["schemas"]["OrgTimestampsDto"];
             visibility?: components["schemas"]["OrgVisibilityDto"];
@@ -49634,42 +52019,6 @@ export interface components {
             updatedBy?: number;
             /** Format: int64 */
             version?: number;
-        };
-        UpdateAdCreativeRequest: {
-            altText?: string;
-            destinationUrl?: string;
-            /** Format: int32 */
-            height?: number;
-            imageUrl?: string;
-            /** @enum {string} */
-            placement?: "SIDEBAR_RIGHT" | "BANNER_FOOTER" | "BANNER_HEADER" | "IN_FEED" | "DASHBOARD_TILE";
-            title?: string;
-            /** Format: int32 */
-            width?: number;
-        };
-        AdCreativeResponse: {
-            altText?: string;
-            /** Format: int64 */
-            campaignId?: number;
-            /** Format: date-time */
-            createdAt?: string;
-            destinationUrl?: string;
-            /** Format: int32 */
-            height?: number;
-            /** Format: int64 */
-            id?: number;
-            imageUrl?: string;
-            /** @enum {string} */
-            placement?: "SIDEBAR_RIGHT" | "BANNER_FOOTER" | "BANNER_HEADER" | "IN_FEED" | "DASHBOARD_TILE";
-            status?: string;
-            title?: string;
-            /** Format: date-time */
-            updatedAt?: string;
-            /** Format: int32 */
-            width?: number;
-        };
-        ApiResponseAdCreativeResponse: {
-            data?: components["schemas"]["AdCreativeResponse"];
         };
         EntryMemberItem: {
             /** Format: int32 */
@@ -50287,6 +52636,43 @@ export interface components {
         };
         ReorderFoldersRequest: {
             orderedIds: number[];
+        };
+        Location: {
+            countryCode?: string;
+            prefectureCode?: string;
+            regionName?: string;
+        };
+        ReturnStayPlanCreateRequest: {
+            /** Format: date */
+            endDate: string;
+            isPublished: boolean;
+            location: components["schemas"]["Location"];
+            planType?: string;
+            /** Format: date */
+            startDate: string;
+            teamIds: number[];
+        };
+        ApiResponseOwnPlan: {
+            data?: components["schemas"]["OwnPlan"];
+        };
+        OwnPlan: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: date */
+            endDate?: string;
+            /** Format: uuid */
+            id?: string;
+            isPublished?: boolean;
+            location?: components["schemas"]["Location"];
+            planType?: string;
+            /** Format: date */
+            startDate?: string;
+            teamIds?: number[];
+            timezone?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+            /** Format: int64 */
+            version?: number;
         };
         UpdateReflectionSettingsRequest: {
             /** Format: int32 */
@@ -51279,7 +53665,7 @@ export interface components {
             title?: string;
             visibility?: string;
         };
-        ActivityResultEntity: {
+        ActivityRecordResponse: {
             /** Format: date */
             activityDate?: string;
             /** @example 14:30:00 */
@@ -51291,22 +53677,17 @@ export interface components {
             createdAt?: string;
             /** Format: int64 */
             createdBy?: number;
-            /** Format: date-time */
-            deletedAt?: string;
             description?: string;
             fieldValues?: string;
             /** Format: int64 */
             id?: number;
             location?: string;
-            publishable?: boolean;
             /** Format: int64 */
             scheduleId?: number;
             /** Format: int64 */
             scopeId?: number;
-            /** @enum {string} */
-            scopeType?: "TEAM" | "ORGANIZATION" | "COMMITTEE";
-            /** @enum {string} */
-            status?: "DRAFT" | "PUBLISHED";
+            scopeType?: string;
+            status?: string;
             /** Format: int64 */
             templateId?: number;
             title?: string;
@@ -51314,11 +53695,10 @@ export interface components {
             updatedAt?: string;
             /** Format: int64 */
             venueId?: number;
-            /** @enum {string} */
-            visibility?: "PUBLIC" | "MEMBERS_ONLY";
+            visibility?: string;
         };
-        ApiResponseActivityResultEntity: {
-            data?: components["schemas"]["ActivityResultEntity"];
+        ApiResponseActivityRecordResponse: {
+            data?: components["schemas"]["ActivityRecordResponse"];
         };
         ActivityCommentResponse: {
             /** Format: int64 */
@@ -51436,7 +53816,8 @@ export interface components {
             maxSelections?: number;
             options?: components["schemas"]["CreateOptionRequest"][];
             questionText?: string;
-            questionType?: string;
+            /** @enum {string} */
+            questionType: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT" | "SCALE";
             /** Format: int32 */
             scaleMax?: number;
             scaleMaxLabel?: string;
@@ -51448,7 +53829,8 @@ export interface components {
             allowMultipleSubmissions: boolean;
             autoPostToTimeline?: boolean;
             description?: string;
-            distributionMode?: string;
+            /** @enum {string} */
+            distributionMode: "ALL" | "TARGETED";
             /** Format: date-time */
             expiresAt?: string;
             includeSupporters?: boolean;
@@ -51456,14 +53838,16 @@ export interface components {
             questions?: components["schemas"]["CreateQuestionRequest"][];
             remindBeforeHours?: number[];
             resultViewerUserIds?: number[];
-            resultsVisibility?: string;
+            /** @enum {string} */
+            resultsVisibility: "AFTER_RESPONSE" | "AFTER_CLOSE" | "ADMINS_ONLY" | "VIEWERS_ONLY" | "ALWAYS";
             seriesId?: string;
             /** Format: date-time */
             startsAt?: string;
             targetUserIds?: number[];
             teamBreakdownEnabled?: boolean;
             title?: string;
-            unrespondedVisibility?: string;
+            /** @enum {string} */
+            unrespondedVisibility?: "HIDDEN" | "CREATOR_AND_ADMIN" | "ALL_MEMBERS";
         };
         ApiResponseSurveyDetailResponse: {
             data?: components["schemas"]["SurveyDetailResponse"];
@@ -51492,7 +53876,8 @@ export interface components {
             /** Format: int64 */
             id?: number;
             options?: components["schemas"]["OptionResponse"][];
-            questionType?: string;
+            /** @enum {string} */
+            questionType?: "SINGLE_CHOICE" | "MULTIPLE_CHOICE" | "FREE_TEXT" | "SCALE";
             scaleConfig?: components["schemas"]["QuestionScaleConfigDto"];
             /** Format: int64 */
             surveyId?: number;
@@ -51520,12 +53905,28 @@ export interface components {
             title?: string;
         };
         SurveyDetailResponse: {
+            audit?: components["schemas"]["SurveyAuditDto"];
+            content?: components["schemas"]["SurveyContentDto"];
+            distribution?: components["schemas"]["SurveyDistributionDto"];
+            /** Format: int64 */
+            id?: number;
+            policy?: components["schemas"]["SurveyPolicyDto"];
             questions?: components["schemas"]["QuestionResponse"][];
-            survey?: components["schemas"]["SurveyResponse"];
+            schedule?: components["schemas"]["SurveyScheduleDto"];
+            scope?: components["schemas"]["SurveyScopeDto"];
+            stats?: components["schemas"]["SurveyStatsDto"];
+            /** @enum {string} */
+            status?: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
+            /**
+             * @description この閲覧者がアンケート結果を閲覧できるか。true なら結果取得 API は 200、false なら 403 を返す（結果取得の 403 プローブは不要）
+             * @example true
+             */
+            viewerCanViewResults?: boolean;
         };
         SurveyDistributionDto: {
             autoPostToTimeline?: boolean;
-            distributionMode?: string;
+            /** @enum {string} */
+            distributionMode?: "ALL" | "TARGETED";
             includeSupporters?: boolean;
             /** Format: int32 */
             manualRemindCount?: number;
@@ -51535,20 +53936,10 @@ export interface components {
         SurveyPolicyDto: {
             allowMultipleSubmissions?: boolean;
             isAnonymous?: boolean;
-            resultsVisibility?: string;
-            unrespondedVisibility?: string;
-        };
-        SurveyResponse: {
-            audit?: components["schemas"]["SurveyAuditDto"];
-            content?: components["schemas"]["SurveyContentDto"];
-            distribution?: components["schemas"]["SurveyDistributionDto"];
-            /** Format: int64 */
-            id?: number;
-            policy?: components["schemas"]["SurveyPolicyDto"];
-            schedule?: components["schemas"]["SurveyScheduleDto"];
-            scope?: components["schemas"]["SurveyScopeDto"];
-            stats?: components["schemas"]["SurveyStatsDto"];
-            status?: string;
+            /** @enum {string} */
+            resultsVisibility?: "AFTER_RESPONSE" | "AFTER_CLOSE" | "ADMINS_ONLY" | "VIEWERS_ONLY" | "ALWAYS";
+            /** @enum {string} */
+            unrespondedVisibility?: "HIDDEN" | "CREATOR_AND_ADMIN" | "ALL_MEMBERS";
         };
         SurveyScheduleDto: {
             /** Format: date-time */
@@ -51576,6 +53967,19 @@ export interface components {
         };
         ApiResponseSurveyResponse: {
             data?: components["schemas"]["SurveyResponse"];
+        };
+        SurveyResponse: {
+            audit?: components["schemas"]["SurveyAuditDto"];
+            content?: components["schemas"]["SurveyContentDto"];
+            distribution?: components["schemas"]["SurveyDistributionDto"];
+            /** Format: int64 */
+            id?: number;
+            policy?: components["schemas"]["SurveyPolicyDto"];
+            schedule?: components["schemas"]["SurveyScheduleDto"];
+            scope?: components["schemas"]["SurveyScopeDto"];
+            stats?: components["schemas"]["SurveyStatsDto"];
+            /** @enum {string} */
+            status?: "DRAFT" | "PUBLISHED" | "CLOSED" | "ARCHIVED";
         };
         ExtendDeadlineRequest: {
             /** Format: date-time */
@@ -52130,8 +54534,6 @@ export interface components {
         };
         EvaluateVisibilityRequest: {
             /** Format: int64 */
-            ownerUserId: number;
-            /** Format: int64 */
             targetUserId: number;
         };
         ApiResponseEvaluateVisibilityResponse: {
@@ -52168,12 +54570,12 @@ export interface components {
             /** @enum {string} */
             bulletinVisibility?: "PUBLIC" | "MEMBERS_ONLY";
             category?: string;
-            coverR2Key?: string;
+            coverUrl?: string;
             /** Format: date-time */
             createdAt?: string;
             description?: string;
             guidelineMd?: string;
-            iconR2Key?: string;
+            iconUrl?: string;
             /** Format: uuid */
             id?: string;
             isMember?: boolean;
@@ -52183,6 +54585,7 @@ export interface components {
             joinPolicy?: "FREE" | "APPROVAL";
             /** Format: int64 */
             memberCount?: number;
+            monshoUrl?: string;
             /** @enum {string} */
             myRole?: "HEADMAN" | "ELDER" | "VILLAGER" | "VISITOR";
             name?: string;
@@ -52258,6 +54661,33 @@ export interface components {
             /** @enum {string} */
             resolution: "PENDING" | "REVIEWING" | "RESOLVED" | "DISMISSED";
         };
+        VillageRecruitCategoryCreateRequest: {
+            color?: string;
+            description?: string;
+            /** Format: int32 */
+            displayOrder?: number;
+            name?: string;
+        };
+        NewsletterTagCreateRequest: {
+            color?: string;
+            name?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+        };
+        MonshoUploadUrlRequest: {
+            contentType?: string;
+            /** Format: int64 */
+            fileSize?: number;
+        };
+        ApiResponseMonshoUploadUrlResponse: {
+            data?: components["schemas"]["MonshoUploadUrlResponse"];
+        };
+        MonshoUploadUrlResponse: {
+            /** Format: int64 */
+            expiresInSeconds?: number;
+            r2Key?: string;
+            uploadUrl?: string;
+        };
         MembershipJoinRequest: {
             /** Format: int64 */
             subjectId: number;
@@ -52285,8 +54715,16 @@ export interface components {
         MembershipBanRequest: {
             reason?: string;
         };
+        MeetupCandidateDateInput: {
+            /** Format: date */
+            date: string;
+            /** @example 14:30:00 */
+            time?: string;
+        };
         MeetupCreateRequest: {
-            candidateDates?: string[];
+            candidateDates?: components["schemas"]["MeetupCandidateDateInput"][];
+            /** Format: int32 */
+            capacity?: number;
             description?: string;
             location?: string;
             title?: string;
@@ -52297,6 +54735,8 @@ export interface components {
         MeetupCandidateDateResponse: {
             /** Format: date */
             candidateDate?: string;
+            /** @example 14:30:00 */
+            candidateTime?: string;
             /** Format: uuid */
             id?: string;
             /** Format: uuid */
@@ -52306,29 +54746,82 @@ export interface components {
         };
         MeetupResponse: {
             candidateDates?: components["schemas"]["MeetupCandidateDateResponse"][];
+            /** Format: int32 */
+            capacity?: number;
             /** Format: date */
             confirmedDate?: string;
+            /** @example 14:30:00 */
+            confirmedTime?: string;
             /** Format: date-time */
             createdAt?: string;
+            decisionsNote?: string;
             description?: string;
+            /** Format: int64 */
+            goingCount?: number;
             /** Format: uuid */
             id?: string;
             location?: string;
             /** Format: int64 */
             organizerUserId?: number;
+            /** Format: int32 */
+            remainingSlots?: number;
             /** @enum {string} */
             status?: "PLANNING" | "CONFIRMED" | "CANCELLED";
             title?: string;
             /** Format: uuid */
             villageId?: string;
         };
+        MeetupTodoCreateRequest: {
+            /** Format: int64 */
+            assigneeUserId?: number;
+            title?: string;
+        };
+        ApiResponseMeetupTodoResponse: {
+            data?: components["schemas"]["MeetupTodoResponse"];
+        };
+        MeetupTodoResponse: {
+            assigneeDisplayName?: string;
+            /** Format: int64 */
+            assigneeUserId?: number;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int64 */
+            createdBy?: number;
+            /** Format: date-time */
+            doneAt?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            meetupId?: string;
+            title?: string;
+        };
         MeetupConfirmRequest: {
             /** Format: uuid */
             candidateDateId: string;
         };
+        MeetupCommentCreateRequest: {
+            body?: string;
+        };
+        ApiResponseMeetupCommentResponse: {
+            data?: components["schemas"]["MeetupCommentResponse"];
+        };
+        MeetupCommentResponse: {
+            /** Format: int64 */
+            authorUserId?: number;
+            body?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            displayName?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: uuid */
+            meetupId?: string;
+        };
         MeetupCandidateDateAddRequest: {
             /** Format: date */
             candidateDate: string;
+            /** @example 14:30:00 */
+            candidateTime?: string;
             /** Format: int32 */
             sortOrder?: number;
         };
@@ -52343,7 +54836,7 @@ export interface components {
             contactMethod?: string;
             description?: string;
             /** Format: date */
-            matchDate: string;
+            matchDate?: string;
             /** @example 14:30:00 */
             matchTimeEnd?: string;
             /** @example 14:30:00 */
@@ -52472,7 +54965,7 @@ export interface components {
             data?: components["schemas"]["FestivalResponse"];
         };
         FestivalResponse: {
-            bannerR2Key?: string;
+            bannerUrl?: string;
             /** Format: date-time */
             createdAt?: string;
             createdByDisplayName?: string;
@@ -52491,6 +54984,104 @@ export interface components {
             title?: string;
             /** Format: uuid */
             villageId?: string;
+        };
+        FestivalLivePostTagRequest: {
+            /** Format: int64 */
+            timelinePostId: number;
+        };
+        ApiResponseFestivalLivePostResponse: {
+            data?: components["schemas"]["FestivalLivePostResponse"];
+        };
+        FestivalLivePostResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: uuid */
+            festivalId?: string;
+            /** Format: int64 */
+            timelinePostId?: number;
+        };
+        CharterRevisionCreateRequest: {
+            /** @description 改定メモ（任意・最大200字） */
+            note?: string;
+        };
+        ApiResponseVillageCharterResponse: {
+            data?: components["schemas"]["VillageCharterResponse"];
+        };
+        /** @description 村憲章の策定者（村ニックネーム焼付・userId非露出・G4） */
+        CharterDrafterResponse: {
+            /** @description 表示名（焼き付けた村ニックネーム・実名ではない） */
+            displayName: string;
+            /**
+             * Format: uuid
+             * @description 策定者ID（UUID）
+             */
+            id: string;
+            /**
+             * Format: int32
+             * @description 表示順（0始まり）
+             */
+            sortOrder: number;
+        };
+        /** @description 村憲章の改定履歴（日付＋任意メモの軽量履歴・§8.3） */
+        CharterRevisionResponse: {
+            /**
+             * Format: uuid
+             * @description 改定履歴ID（UUID）
+             */
+            id: string;
+            /** @description 改定メモ（任意・未設定時null） */
+            note?: string;
+            /**
+             * Format: date-time
+             * @description 改定日時（「改正を確定」時刻）
+             */
+            revisedAt: string;
+        };
+        /** @description 村憲章の全体（メタ＋条＋策定者＋改定履歴・§18.1） */
+        VillageCharterResponse: {
+            /** @description 条一覧（自動採番済み・articleNumber昇順） */
+            articles: components["schemas"]["CharterArticleResponse"][];
+            /** @description 閲覧者が現役HEADMAN/ELDERか（FEの編集UI出し分け） */
+            canEdit: boolean;
+            /** @description 策定者一覧（sortOrder昇順） */
+            drafters: components["schemas"]["CharterDrafterResponse"][];
+            /**
+             * Format: date-time
+             * @description 制定日（未制定はnull）
+             */
+            enactedAt?: string;
+            /** @description 憲章が制定済みか（未制定はfalse・§12.2） */
+            hasCharter: boolean;
+            /**
+             * Format: date-time
+             * @description 改定日（未改正はnull）
+             */
+            lastRevisedAt?: string;
+            /** @description 改定履歴（revisedAt降順） */
+            revisions: components["schemas"]["CharterRevisionResponse"][];
+            /**
+             * Format: int64
+             * @description 親charterの楽観ロックversion（層2）。PATCH orderにcharterVersionとして同送。POST/DELETEには同送不要（悲観ロック直列化・§6.3）。未制定はnull
+             */
+            version?: number;
+            /**
+             * Format: uuid
+             * @description 村ID（UUID）
+             */
+            villageId: string;
+        };
+        CharterDrafterCreateRequest: {
+            /**
+             * Format: int64
+             * @description 策定者に加えるユーザーID（村ニックネームはサーバが焼付）
+             */
+            userId: number;
+        };
+        CharterArticleCreateRequest: {
+            /** @description 条文（必須・最大2000字） */
+            body: string;
+            /** @description 付則（任意・最大2000字） */
+            supplement?: string;
         };
         CalendarEventCreateRequest: {
             colorHex?: string;
@@ -52525,6 +55116,30 @@ export interface components {
             title?: string;
             /** Format: uuid */
             villageId?: string;
+        };
+        CalendarEventLogCreateRequest: {
+            note?: string;
+            photoR2Key?: string;
+            /** Format: int32 */
+            year: number;
+        };
+        ApiResponseCalendarEventLogResponse: {
+            data?: components["schemas"]["CalendarEventLogResponse"];
+        };
+        CalendarEventLogResponse: {
+            /** Format: uuid */
+            calendarEventId?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            createdByDisplayName?: string;
+            /** Format: int64 */
+            createdByUserId?: number;
+            /** Format: uuid */
+            id?: string;
+            note?: string;
+            photoUrl?: string;
+            /** Format: int32 */
+            year?: number;
         };
         VillageCreationRequestCreateRequest: {
             category?: string;
@@ -52992,6 +55607,10 @@ export interface components {
         CreatePostRequest: {
             attachments?: components["schemas"]["CreateAttachmentRequest"][];
             content?: string;
+            /** @enum {string} */
+            deliveryScope?: "DIRECT" | "CHILDREN" | "DESCENDANTS";
+            /** @enum {string} */
+            deliveryScopeOrDefault?: "DIRECT" | "CHILDREN" | "DESCENDANTS";
             /** Format: int64 */
             parentId?: number;
             poll?: components["schemas"]["CreatePollRequest"];
@@ -53013,6 +55632,42 @@ export interface components {
         };
         ApiResponsePostResponse: {
             data?: components["schemas"]["PostResponse"];
+        };
+        AttachmentFileDto: {
+            fileKey?: string;
+            /** Format: int64 */
+            fileSize?: number;
+            mimeType?: string;
+            originalFilename?: string;
+        };
+        AttachmentImageDto: {
+            /** Format: int32 */
+            imageHeight?: number;
+            /** Format: int32 */
+            imageWidth?: number;
+            thumbnailUrl?: string;
+            url?: string;
+        };
+        AttachmentLinkDto: {
+            linkUrl?: string;
+            ogDescription?: string;
+            ogImageUrl?: string;
+            ogSiteName?: string;
+            ogTitle?: string;
+        };
+        AttachmentVideoDto: {
+            videoCodec?: string;
+            /** Format: int32 */
+            videoDurationSeconds?: number;
+            /** Format: int32 */
+            videoHeight?: number;
+            videoProcessingStatus?: string;
+            videoThumbnailKey?: string;
+            videoThumbnailUrl?: string;
+            videoTitle?: string;
+            videoUrl?: string;
+            /** Format: int32 */
+            videoWidth?: number;
         };
         PostAuditDto: {
             /** Format: date-time */
@@ -53051,6 +55706,7 @@ export interface components {
             type?: string;
         };
         PostResponse: {
+            attachments?: components["schemas"]["TimelineAttachmentResponse"][];
             audit?: components["schemas"]["PostAuditDto"];
             author?: components["schemas"]["PostAuthorDto"];
             content?: components["schemas"]["PostContentDto"];
@@ -53059,6 +55715,11 @@ export interface components {
             postedAs?: components["schemas"]["PostPostedAsDto"];
             scope?: components["schemas"]["PostScopeDto"];
             stats?: components["schemas"]["PostStatsDto"];
+            /**
+             * @description システム自動投稿の種別（村行事の還流）。非nullなら村の行事案内名義のシステム投稿。通常投稿はnull。
+             * @enum {string}
+             */
+            systemPostType?: "EVENT_CREATED" | "EVENT_UPCOMING" | "MEETUP_CONFIRMED" | "FESTIVAL_STARTED";
             user?: components["schemas"]["PostUserDto"];
         };
         PostScopeDto: {
@@ -53085,6 +55746,17 @@ export interface components {
             displayName?: string;
             /** Format: int64 */
             id?: number;
+        };
+        TimelineAttachmentResponse: {
+            attachmentType?: string;
+            file?: components["schemas"]["AttachmentFileDto"];
+            /** Format: int64 */
+            id?: number;
+            image?: components["schemas"]["AttachmentImageDto"];
+            link?: components["schemas"]["AttachmentLinkDto"];
+            /** Format: int32 */
+            sortOrder?: number;
+            video?: components["schemas"]["AttachmentVideoDto"];
         };
         ApiResponseReactionResponse: {
             data?: components["schemas"]["ReactionResponse"];
@@ -53294,6 +55966,8 @@ export interface components {
             /** Format: date-time */
             startAt: string;
             surveys?: components["schemas"]["CreateSurveyRequest"][];
+            targetMode?: string;
+            targetUserIds?: number[];
             teamBreakdownEnabled?: boolean;
             title?: string;
             visibility?: string;
@@ -53378,6 +56052,10 @@ export interface components {
             reminders?: components["schemas"]["ReminderResponse"][];
             scheduledTasks?: components["schemas"]["ScheduledTaskResponse"][];
             scope?: components["schemas"]["ScheduleScopeDto"];
+            /** Format: int32 */
+            targetCount?: number;
+            targetMode?: string;
+            targets?: components["schemas"]["TargetMember"][];
             time?: components["schemas"]["ScheduleTimeDto"];
         };
         ScheduleScopeDto: {
@@ -53399,6 +56077,13 @@ export interface components {
             scheduledAt?: string;
             status?: string;
             taskType?: string;
+        };
+        TargetMember: {
+            avatarUrl?: string;
+            calendarColor?: string;
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
         };
         CrossInviteRequest: {
             message?: string;
@@ -53433,6 +56118,66 @@ export interface components {
             /** Format: int64 */
             targetScheduleId?: number;
             targetType?: string;
+        };
+        CreateScheduleKeepRequest: {
+            candidateDates?: string[];
+            memo?: string;
+            title?: string;
+        };
+        ApiResponseScheduleKeepResponse: {
+            data?: components["schemas"]["ScheduleKeepResponse"];
+        };
+        CreatedByDto: {
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        ScheduleKeepResponse: {
+            candidateDates?: string[];
+            /** Format: int64 */
+            convertedScheduleId?: number;
+            convertedScheduleState?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            createdBy?: components["schemas"]["CreatedByDto"];
+            id?: string;
+            memo?: string;
+            organizationPublicId?: string;
+            scopeType?: string;
+            /** Format: int32 */
+            sortOrder?: number;
+            status?: string;
+            teamPublicId?: string;
+            title?: string;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
+        ConvertScheduleKeepRequest: {
+            allDay?: boolean;
+            /** Format: date-time */
+            endAt?: string;
+            /** Format: date-time */
+            startAt?: string;
+        };
+        ApiResponseConvertScheduleKeepResponse: {
+            data?: components["schemas"]["ConvertScheduleKeepResponse"];
+        };
+        ConvertScheduleKeepResponse: {
+            keep?: components["schemas"]["ScheduleKeepResponse"];
+            schedule?: components["schemas"]["ConvertedScheduleDto"];
+        };
+        ConvertedScheduleDto: {
+            allDay?: boolean;
+            /** Format: date-time */
+            endAt?: string;
+            /** Format: int64 */
+            id?: number;
+            /** Format: date-time */
+            startAt?: string;
+            title?: string;
+        };
+        ReorderScheduleKeepsRequest: {
+            orderedIds?: string[];
         };
         CreateTranslationRequest: {
             body?: string;
@@ -53999,6 +56744,8 @@ export interface components {
         CreateReservationRequest: {
             /** Format: int64 */
             lineId: number;
+            /** Format: int32 */
+            repeatWeeks?: number;
             /** Format: int64 */
             reservationSlotId: number;
             userNote?: string;
@@ -54025,6 +56772,42 @@ export interface components {
             adminNote?: string;
             userNote?: string;
         };
+        RecurringCancelDto: {
+            /** Format: int32 */
+            cancelledCount?: number;
+            cancelledWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+            /** Format: uuid */
+            seriesId?: string;
+            skippedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+        };
+        RecurringConfirmDto: {
+            /** Format: int32 */
+            confirmedCount?: number;
+            confirmedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+            /** Format: uuid */
+            seriesId?: string;
+            skippedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+        };
+        RecurringSeriesDto: {
+            /** Format: int32 */
+            createdCount?: number;
+            createdWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+            /** Format: int32 */
+            repeatWeeks?: number;
+            /** Format: uuid */
+            seriesId?: string;
+            /** Format: int32 */
+            skippedCount?: number;
+            skippedWeeks?: components["schemas"]["RecurringWeekOutcomeDto"][];
+        };
+        RecurringWeekOutcomeDto: {
+            /** Format: date */
+            date?: string;
+            /** @enum {string} */
+            reason?: "NOT_GENERATED" | "FULL" | "CLOSED" | "BLOCKED" | "ALREADY_RESERVED" | "UNAVAILABLE" | "NOT_CANCELLABLE" | "CANCEL_DEADLINE_PASSED" | "NOT_PENDING";
+            /** Format: int64 */
+            reservationId?: number;
+        };
         ReservationAuditDto: {
             /** Format: date-time */
             createdAt?: string;
@@ -54050,6 +56833,11 @@ export interface components {
             id?: number;
             identifier?: components["schemas"]["ReservationIdentifierDto"];
             notes?: components["schemas"]["NotesDto"];
+            recurring?: components["schemas"]["RecurringSeriesDto"];
+            recurringCancel?: components["schemas"]["RecurringCancelDto"];
+            recurringConfirm?: components["schemas"]["RecurringConfirmDto"];
+            /** Format: uuid */
+            recurringSeriesId?: string;
             slot?: components["schemas"]["SlotSummaryDto"];
             status?: components["schemas"]["ReservationStatusDto"];
         };
@@ -54081,6 +56869,8 @@ export interface components {
         };
         CancelReservationRequest: {
             reason?: string;
+            /** @enum {string} */
+            scope?: "THIS_ONLY" | "THIS_AND_FOLLOWING";
         };
         CreateSlotRequest: {
             /** @enum {string} */
@@ -54104,11 +56894,6 @@ export interface components {
         ApiResponseReservationSlotResponse: {
             data?: components["schemas"]["ReservationSlotResponse"];
         };
-        RecurrenceDto: {
-            /** Format: int64 */
-            parentSlotId?: number;
-            recurrenceRule?: string;
-        };
         ReservationSlotResponse: {
             audit?: components["schemas"]["SlotAuditDto"];
             basic?: components["schemas"]["SlotBasicDto"];
@@ -54119,7 +56904,6 @@ export interface components {
             lineName?: string;
             policy?: components["schemas"]["SlotPolicyDto"];
             pricing?: components["schemas"]["SlotPricingDto"];
-            recurrence?: components["schemas"]["RecurrenceDto"];
             /** Format: int64 */
             staffUserId?: number;
             status?: components["schemas"]["SlotStatusDto"];
@@ -54137,9 +56921,17 @@ export interface components {
             updatedAt?: string;
         };
         SlotBasicDto: {
+            /**
+             * Format: date
+             * @description 枠終了日
+             */
+            endDate?: string;
             /** @example 14:30:00 */
             endTime?: string;
-            /** Format: date */
+            /**
+             * Format: date
+             * @description 枠開始日
+             */
             slotDate?: string;
             /** @example 14:30:00 */
             startTime?: string;
@@ -54157,7 +56949,6 @@ export interface components {
             /** Format: int32 */
             capacity?: number;
             closedReason?: string;
-            isException?: boolean;
             note?: string;
             slotStatus?: string;
         };
@@ -54194,6 +56985,7 @@ export interface components {
             dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime: string;
+            endsNextDay?: boolean;
             /** Format: int64 */
             lineId?: number;
             name?: string;
@@ -54218,6 +57010,8 @@ export interface components {
             dayOfWeek?: string;
             /** @example 14:30:00 */
             endTime?: string;
+            /** @description 終了時刻が翌日 */
+            endsNextDay?: boolean;
             /** Format: uuid */
             id?: string;
             isActive?: boolean;
@@ -54271,6 +57065,7 @@ export interface components {
             blockedDate: string;
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             reason?: string;
             /** Format: int64 */
             resourceId?: number;
@@ -54293,6 +57088,8 @@ export interface components {
         };
         BlockedTimeResponse: {
             audit?: components["schemas"]["BlockedAuditDto"];
+            /** @description 終了時刻が翌日 */
+            endsNextDay?: boolean;
             /** Format: int64 */
             id?: number;
             resource?: components["schemas"]["ResourceDto"];
@@ -54313,6 +57110,48 @@ export interface components {
             endTime?: string;
             /** @example 14:30:00 */
             startTime?: string;
+        };
+        CreateRecurringBlockedTimeRequest: {
+            /** @enum {string} */
+            dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
+            /** @example 14:30:00 */
+            endTime: string;
+            endsNextDay?: boolean;
+            forceCancelConflicting?: boolean;
+            isPublic?: boolean;
+            /** Format: int64 */
+            lineId?: number;
+            reason?: string;
+            /** @example 14:30:00 */
+            startTime: string;
+        };
+        ApiResponseRecurringBlockedTimeResponse: {
+            data?: components["schemas"]["RecurringBlockedTimeResponse"];
+        };
+        RecurringBlockedTimeResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            dayOfWeek?: string;
+            /** @example 14:30:00 */
+            endTime?: string;
+            /** @description 終了時刻が翌日 */
+            endsNextDay?: boolean;
+            /** Format: int32 */
+            forceCancelledCount?: number;
+            /** Format: uuid */
+            id?: string;
+            isActive?: boolean;
+            isPublic?: boolean;
+            /** Format: int64 */
+            lineId?: number;
+            lineName?: string;
+            reason?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
+            /** Format: int64 */
+            teamId?: number;
+            /** Format: date-time */
+            updatedAt?: string;
         };
         CreateNotificationRecipientRequest: {
             email?: string;
@@ -55402,6 +58241,31 @@ export interface components {
             blockedTeamId?: number;
             /** Format: date-time */
             createdAt?: string;
+        };
+        CreateMatchRequest: {
+            /** Format: int32 */
+            durationMinutes?: number;
+            hasScorekeeper?: boolean;
+            /** @enum {string} */
+            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
+            /** Format: date-time */
+            kickoffAt?: string;
+            /** @enum {string} */
+            kind: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
+            notes?: string;
+            opponentName?: string;
+            /** Format: int64 */
+            opponentTeamId?: number;
+            periodFormat?: string;
+            /** Format: int64 */
+            scheduleId?: number;
+            /** Format: int64 */
+            scorekeeperUserId?: number;
+            /** @enum {string} */
+            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
+            /** Format: int64 */
+            tournamentFixtureId?: number;
+            venue?: string;
         };
         TestMessageRequest: {
             lineUserId?: string;
@@ -56726,6 +59590,43 @@ export interface components {
                 [key: string]: Record<string, never>;
             };
         };
+        /** @description 一括既読の結果 */
+        AnnouncementMarkAllReadResultDto: {
+            /**
+             * @description 打ち切りにより未読が残っているか（true ならもう一度実行すると続きが処理される）
+             * @example false
+             */
+            hasMoreUnread?: boolean;
+            /**
+             * Format: int32
+             * @description このリクエストで新たに既読化した件数
+             * @example 8
+             */
+            markedCount?: number;
+        };
+        ApiResponseAnnouncementMarkAllReadResultDto: {
+            data?: components["schemas"]["AnnouncementMarkAllReadResultDto"];
+        };
+        CreateReportScheduleRequest: {
+            /** @enum {string} */
+            frequency: "WEEKLY" | "MONTHLY";
+            includeCampaigns?: number[];
+            recipients?: string[];
+        };
+        ApiResponseReportScheduleResponse: {
+            data?: components["schemas"]["ReportScheduleResponse"];
+        };
+        ReportScheduleResponse: {
+            enabled?: boolean;
+            /** @enum {string} */
+            frequency?: "WEEKLY" | "MONTHLY";
+            /** Format: int64 */
+            id?: number;
+            includeCampaigns?: number[];
+            /** Format: date-time */
+            lastSentAt?: string;
+            recipients?: string[];
+        };
         RegisterAdvertiserRequest: {
             /** @enum {string} */
             billingMethod: "STRIPE" | "INVOICE";
@@ -56753,6 +59654,27 @@ export interface components {
         };
         ApiResponseAdvertiserAccountResponse: {
             data?: components["schemas"]["AdvertiserAccountResponse"];
+        };
+        CreateCreditLimitRequest: {
+            reason?: string;
+            requestedLimit: number;
+        };
+        ApiResponseCreditLimitRequestResponse: {
+            data?: components["schemas"]["CreditLimitRequestResponse"];
+        };
+        CreditLimitRequestResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            currentLimit?: number;
+            /** Format: int64 */
+            id?: number;
+            reason?: string;
+            requestedLimit?: number;
+            reviewNote?: string;
+            /** Format: date-time */
+            reviewedAt?: string;
+            /** @enum {string} */
+            status?: "PENDING" | "APPROVED" | "REJECTED";
         };
         CreateCampaignRequest: {
             /** Format: date-time */
@@ -56788,6 +59710,18 @@ export interface components {
         };
         ApiResponseListAudienceSegmentResponse: {
             data?: components["schemas"]["AudienceSegmentResponse"][];
+        };
+        CreateAdCreativeRequest: {
+            altText?: string;
+            destinationUrl?: string;
+            /** Format: int32 */
+            height?: number;
+            imageUrl?: string;
+            /** @enum {string} */
+            placement: "SIDEBAR_RIGHT" | "BANNER_FOOTER" | "BANNER_HEADER" | "IN_FEED" | "DASHBOARD_TILE";
+            title?: string;
+            /** Format: int32 */
+            width?: number;
         };
         BulkApproveRequest: {
             applicationIds?: number[];
@@ -57477,6 +60411,159 @@ export interface components {
             scopeId: number;
             /** @example TEAM */
             scopeKind: string;
+        };
+        /** @description F20.3 シスアド ベータ特典 手動付与 */
+        BetaPerkCreateGrantRequest: {
+            /**
+             * Format: int32
+             * @example 2
+             */
+            betaPhase: number;
+            /**
+             * @example TEAM_ORG
+             * @enum {string}
+             */
+            grantKind: "INDIVIDUAL" | "TEAM_ORG";
+            /** @example 第2期 パイロット団体 */
+            note?: string;
+            /**
+             * Format: int64
+             * @example 123
+             */
+            scopeId: number;
+            /**
+             * @example TEAM
+             * @enum {string}
+             */
+            scopeKind: "USER" | "TEAM" | "ORG";
+            /**
+             * @description criteria 未達でも付与する例外運用（既定 false）
+             * @example false
+             */
+            skipCriteriaCheck?: boolean;
+        };
+        ApiResponseBetaPerkGrantDetail: {
+            data?: components["schemas"]["BetaPerkGrantDetail"];
+        };
+        /** @description F20.3 シスアド向け ベータ特典 付与詳細 */
+        BetaPerkGrantDetail: {
+            /**
+             * Format: int32
+             * @description 付与時アクティブ人数スナップショット（INDIVIDUAL は null）
+             */
+            activeMemberCountSnapshot?: number;
+            /**
+             * Format: int32
+             * @description ベータ段階
+             * @example 2
+             */
+            betaPhase?: number;
+            /** @description 付与時の実測値/閾値の焼き付け（JSON 相当） */
+            criteriaSnapshot?: Record<string, never>;
+            /** @description 付与された機能キー集合 */
+            featureKeys?: string[];
+            /** @description 付与 ID（UUID） */
+            grantId?: string;
+            /**
+             * @description 付与種別（INDIVIDUAL / TEAM_ORG）
+             * @example TEAM_ORG
+             */
+            grantKind?: string;
+            /**
+             * Format: date-time
+             * @description 付与日時（ISO-8601）
+             */
+            grantedAt?: string;
+            /**
+             * Format: int64
+             * @description 付与操作者 userId（自動付与バッチは null=SYSTEM）
+             */
+            grantedBy?: number;
+            /**
+             * @description 付与操作者の表示名（grantedBy が null=自動付与バッチなら null・FE側でSYSTEM表示）
+             * @example 山田太郎
+             */
+            grantedByName?: string;
+            /**
+             * Format: int64
+             * @description テナント組織 ID（USER は null）
+             * @example 45
+             */
+            organizationId?: number;
+            /**
+             * @description 審査待ちフラグ
+             * @example false
+             */
+            reviewFlag?: boolean;
+            /**
+             * Format: date-time
+             * @description 審査フラグ設定日時
+             */
+            reviewFlaggedAt?: string;
+            /**
+             * @description 審査フラグ事由（未フラグは null）
+             * @example MANUAL
+             */
+            reviewReason?: string;
+            /**
+             * Format: date-time
+             * @description 審査解決日時
+             */
+            reviewResolvedAt?: string;
+            /**
+             * @description 取消事由（未取消は null）
+             * @example TERMS_VIOLATION
+             */
+            revokeReason?: string;
+            /**
+             * Format: date-time
+             * @description 取消日時（未取消は null）
+             */
+            revokedAt?: string;
+            /**
+             * @description スコープ表示名（USER=ユーザー表示名/TEAM=チーム名/ORG=組織名。解決不能なら null）
+             * @example 第一少年野球部
+             */
+            scopeDisplayName?: string;
+            /**
+             * Format: int64
+             * @description スコープ ID
+             * @example 123
+             */
+            scopeId?: number;
+            /**
+             * @description スコープ種別（USER / TEAM / ORG）
+             * @example TEAM
+             */
+            scopeKind?: string;
+            /**
+             * Format: date-time
+             * @description 有効期限（INDIVIDUAL は null）
+             */
+            validUntil?: string;
+        };
+        /** @description F20.3 シスアド ベータ特典 取消 */
+        BetaPerkRevokeGrantRequest: {
+            /** @example 規約第17条違反のため取消 */
+            note?: string;
+            /**
+             * @example TERMS_VIOLATION
+             * @enum {string}
+             */
+            reason: "TERMS_VIOLATION" | "ACCOUNT_TRANSFER" | "OTHER";
+        };
+        /** @description F20.3 シスアド ベータ特典 審査フラグ設定 */
+        BetaPerkFlagReviewRequest: {
+            /** @example オーナー変更の疑いのため手動フラグ */
+            note?: string;
+        };
+        /** @description F20.3 シスアド ベータ特典 延長 */
+        BetaPerkExtendGrantRequest: {
+            /**
+             * Format: int32
+             * @example 12
+             */
+            extensionMonths: number;
         };
         ApiResponseBatchTriggerResponse: {
             data?: components["schemas"]["BatchTriggerResponse"];
@@ -58542,6 +61629,55 @@ export interface components {
             scheduleId?: number;
             status?: string;
         };
+        CreateScheduleCommentRequest: {
+            body?: string;
+            mentionedUserIds?: number[];
+            parentId?: string;
+        };
+        ApiResponseScheduleCommentResponse: {
+            data?: components["schemas"]["ScheduleCommentResponse"];
+        };
+        CommentAuthorResponse: {
+            /** @description アバター画像URL。未設定のユーザーは null */
+            avatarUrl?: string;
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        ScheduleCommentResponse: {
+            /** @description 投稿者。削除済み・退会/匿名化済みユーザーは null */
+            author?: components["schemas"]["CommentAuthorResponse"];
+            /** @description 本文。削除済み（isDeleted=true）は null（本文を送らない・§5.3） */
+            body?: string;
+            canDelete?: boolean;
+            canEdit?: boolean;
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int32 */
+            depth?: number;
+            /** Format: uuid */
+            id?: string;
+            isDeleted?: boolean;
+            isEdited?: boolean;
+            /**
+             * Format: uuid
+             * @description 返信先コメントID。トップレベルコメントは null
+             */
+            parentId?: string;
+            /** @description 同梱される返信（最大3件）。返信自体（depth=1）は常に null */
+            replies?: components["schemas"]["ScheduleCommentResponse"][];
+            /** Format: int32 */
+            replyCount?: number;
+            /**
+             * Format: uuid
+             * @description スレッド根のコメントID。トップレベルコメントは null
+             */
+            rootId?: string;
+            /** Format: int64 */
+            scheduleId?: number;
+            /** Format: date-time */
+            updatedAt?: string;
+        };
         CreateSafetyCheckRequest: {
             isDrill?: boolean;
             message?: string;
@@ -58672,6 +61808,9 @@ export interface components {
             teamId?: number;
         };
         CancelRecruitmentListingRequest: {
+            reason?: string;
+        };
+        WaiveCancellationFeeRequest: {
             reason?: string;
         };
         CreateQuickMemoRequest: {
@@ -59135,18 +62274,6 @@ export interface components {
             templateId?: number;
             templateVersionSnapshot?: string;
             warnings?: string[];
-        };
-        CreateAdCreativeRequest: {
-            altText?: string;
-            destinationUrl?: string;
-            /** Format: int32 */
-            height?: number;
-            imageUrl?: string;
-            /** @enum {string} */
-            placement: "SIDEBAR_RIGHT" | "BANNER_FOOTER" | "BANNER_HEADER" | "IN_FEED" | "DASHBOARD_TILE";
-            title?: string;
-            /** Format: int32 */
-            width?: number;
         };
         CreateTournamentRequest: {
             bonusPointRules?: string;
@@ -59713,31 +62840,6 @@ export interface components {
         };
         ApiResponseLeagueTransferResponse: {
             data?: components["schemas"]["LeagueTransferResponse"];
-        };
-        CreateMatchRequest: {
-            /** Format: int32 */
-            durationMinutes?: number;
-            hasScorekeeper?: boolean;
-            /** @enum {string} */
-            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
-            /** Format: date-time */
-            kickoffAt?: string;
-            /** @enum {string} */
-            kind: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-            notes?: string;
-            opponentName?: string;
-            /** Format: int64 */
-            opponentTeamId?: number;
-            periodFormat?: string;
-            /** Format: int64 */
-            scheduleId?: number;
-            /** Format: int64 */
-            scorekeeperUserId?: number;
-            /** @enum {string} */
-            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
-            /** Format: int64 */
-            tournamentFixtureId?: number;
-            venue?: string;
         };
         CreateEntryTemplateRequest: {
             description?: string;
@@ -60572,6 +63674,8 @@ export interface components {
         };
         PersonalContentDto: {
             color?: string;
+            /** @enum {string} */
+            colorSource?: "LAYER_USER" | "SCHEDULE" | "CATEGORY" | "LAYER_AUTO";
             description?: string;
             eventType?: string;
             location?: string;
@@ -62546,47 +65650,6 @@ export interface components {
         RejectApplicationRequest: {
             reason?: string;
         };
-        CreateReportScheduleRequest: {
-            /** @enum {string} */
-            frequency: "WEEKLY" | "MONTHLY";
-            includeCampaigns?: number[];
-            recipients?: string[];
-        };
-        ApiResponseReportScheduleResponse: {
-            data?: components["schemas"]["ReportScheduleResponse"];
-        };
-        ReportScheduleResponse: {
-            enabled?: boolean;
-            /** @enum {string} */
-            frequency?: "WEEKLY" | "MONTHLY";
-            /** Format: int64 */
-            id?: number;
-            includeCampaigns?: number[];
-            /** Format: date-time */
-            lastSentAt?: string;
-            recipients?: string[];
-        };
-        CreateCreditLimitRequest: {
-            reason?: string;
-            requestedLimit: number;
-        };
-        ApiResponseCreditLimitRequestResponse: {
-            data?: components["schemas"]["CreditLimitRequestResponse"];
-        };
-        CreditLimitRequestResponse: {
-            /** Format: date-time */
-            createdAt?: string;
-            currentLimit?: number;
-            /** Format: int64 */
-            id?: number;
-            reason?: string;
-            requestedLimit?: number;
-            reviewNote?: string;
-            /** Format: date-time */
-            reviewedAt?: string;
-            /** @enum {string} */
-            status?: "PENDING" | "APPROVED" | "REJECTED";
-        };
         RecordAdClickRequest: {
             /** Format: int64 */
             campaignId: number;
@@ -63214,11 +66277,13 @@ export interface components {
             includeSupporters?: boolean;
             isAnonymous?: boolean;
             remindBeforeHours?: number[];
-            resultsVisibility?: string;
+            /** @enum {string} */
+            resultsVisibility?: "AFTER_RESPONSE" | "AFTER_CLOSE" | "ADMINS_ONLY" | "VIEWERS_ONLY" | "ALWAYS";
             /** Format: date-time */
             startsAt?: string;
             title?: string;
-            unrespondedVisibility?: string;
+            /** @enum {string} */
+            unrespondedVisibility?: "HIDDEN" | "CREATOR_AND_ADMIN" | "ALL_MEMBERS";
         };
         UpdateKanbanRequest: {
             /** Format: date-time */
@@ -63291,7 +66356,28 @@ export interface components {
             /** @enum {string} */
             role: "HEADMAN" | "ELDER" | "VILLAGER" | "VISITOR";
         };
+        /** @description 所属村一覧の公開トグル切替リクエスト */
+        ProfileVisibilityUpdateRequest: {
+            /** @description この村所属を所属村一覧に公開するか（true=公開/false=非公開） */
+            profilePublic: boolean;
+        };
+        ApiResponseProfileVisibilityResponse: {
+            data?: components["schemas"]["ProfileVisibilityResponse"];
+        };
+        /** @description 所属村一覧の公開トグル切替結果 */
+        ProfileVisibilityResponse: {
+            /** @description 切替後の公開状態 */
+            profilePublic: boolean;
+            /**
+             * Format: uuid
+             * @description 対象の村ID
+             */
+            villageId: string;
+        };
         MeetupUpdateRequest: {
+            /** Format: int32 */
+            capacity?: number;
+            decisionsNote?: string;
             description?: string;
             location?: string;
             title?: string;
@@ -63325,6 +66411,15 @@ export interface components {
             startsAt?: string;
             themeColorHex?: string;
             title?: string;
+        };
+        CharterArticleOrderUpdateRequest: {
+            /** @description 非削除条の完全集合を並べ替えたid列（過不足・重複は400） */
+            articleIds: string[];
+            /**
+             * Format: int64
+             * @description 親charterの楽観ロックversion（層2・必須）
+             */
+            charterVersion: number;
         };
         CalendarEventUpdateRequest: {
             colorHex?: string;
@@ -63523,6 +66618,8 @@ export interface components {
             scheduledSurveys?: components["schemas"]["ScheduledSurveyRequest"][];
             /** Format: date-time */
             startAt?: string;
+            targetMode?: string;
+            targetUserIds?: number[];
             title?: string;
             updateScope?: string;
             visibility?: string;
@@ -63535,6 +66632,18 @@ export interface components {
         };
         BulkAttendanceRequest: {
             attendances?: components["schemas"]["BulkAttendanceItem"][];
+        };
+        UpdateMemberCalendarColorRequest: {
+            calendarColor?: string;
+        };
+        ApiResponseMemberCalendarColorResponse: {
+            data?: components["schemas"]["MemberCalendarColorResponse"];
+        };
+        MemberCalendarColorResponse: {
+            calendarColor?: string;
+            overridden?: boolean;
+            /** Format: int64 */
+            userId?: number;
         };
         BulkStatusChangeRequest: {
             status?: string;
@@ -63620,6 +66729,7 @@ export interface components {
             dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
             /** @example 14:30:00 */
             endTime?: string;
+            endsNextDay?: boolean;
             isActive?: boolean;
             /** Format: int64 */
             lineId?: number;
@@ -63649,6 +66759,17 @@ export interface components {
              * @example 24
              */
             cancelDeadlineHours?: number;
+            /**
+             * @description 仮押さえ自動失効を無効化するか（true=自動失効しない。pendingExpireHours より優先）
+             * @example false
+             */
+            clearPendingExpireHours?: boolean;
+            /**
+             * Format: int32
+             * @description 仮押さえ(PENDING)を自動キャンセルするまでの時間数（1〜168 / null=据え置き）
+             * @example 24
+             */
+            pendingExpireHours?: number;
             /**
              * @description リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列（null=据え置き）
              * @example 24,1
@@ -63694,6 +66815,12 @@ export interface components {
              */
             hasBusinessHours?: boolean;
             /**
+             * Format: int32
+             * @description 仮押さえ(PENDING)を自動キャンセルするまでの時間数（null=自動失効しない）
+             * @example 24
+             */
+            pendingExpireHours?: number;
+            /**
              * @description リマインド送信タイミング（予約開始の何時間前か）の CSV 文字列
              * @example 24,1
              */
@@ -63715,6 +66842,22 @@ export interface components {
              * @example 10
              */
             teamId?: number;
+        };
+        UpdateRecurringBlockedTimeRequest: {
+            clearLineId?: boolean;
+            /** @enum {string} */
+            dayOfWeek?: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
+            /** @example 14:30:00 */
+            endTime?: string;
+            endsNextDay?: boolean;
+            forceCancelConflicting?: boolean;
+            isActive?: boolean;
+            isPublic?: boolean;
+            /** Format: int64 */
+            lineId?: number;
+            reason?: string;
+            /** @example 14:30:00 */
+            startTime?: string;
         };
         UpdateNotificationRecipientRequest: {
             isEnabled?: boolean;
@@ -63861,6 +67004,39 @@ export interface components {
             transferredAt?: string;
             /** Format: date-time */
             updatedAt?: string;
+        };
+        MatchChangeStatusRequest: {
+            /** @enum {string} */
+            status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
+        };
+        FinalizeScoreRequest: {
+            /** Format: int32 */
+            awayPenaltyScore?: number;
+            /** Format: int32 */
+            awayScore?: number;
+            /** Format: int32 */
+            homePenaltyScore?: number;
+            /** Format: int32 */
+            homeScore?: number;
+        };
+        ChangeRecordingModeRequest: {
+            hasScorekeeper?: boolean;
+            /** Format: int64 */
+            scorekeeperUserId?: number;
+        };
+        UpdateMatchRequest: {
+            /** Format: int32 */
+            durationMinutes?: number;
+            /** @enum {string} */
+            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
+            /** Format: date-time */
+            kickoffAt?: string;
+            notes?: string;
+            opponentName?: string;
+            /** Format: int64 */
+            opponentTeamId?: number;
+            periodFormat?: string;
+            venue?: string;
         };
         UpdateKbTemplateRequest: {
             body?: string;
@@ -64213,6 +67389,10 @@ export interface components {
         PinAnnouncementRequestDto: {
             pinned?: boolean;
         };
+        UpdateAdvertiserAccountRequest: {
+            companyName?: string;
+            contactEmail?: string;
+        };
         UpdateTeamRequest: {
             city?: string;
             cityCode?: string;
@@ -64225,6 +67405,8 @@ export interface components {
             prefectureCode?: string;
             supporterEnabled?: boolean;
             template?: string;
+            /** @description チームのIANAタイムゾーン */
+            timezone?: string;
             /** Format: int64 */
             version: number;
             visibility?: string;
@@ -64336,9 +67518,15 @@ export interface components {
             /** @enum {string} */
             status?: "OPEN" | "INVESTIGATING" | "CONTAINED" | "CLOSED";
         };
+        UpdateModulePaidPlanRequest: {
+            requiresPaidPlan: boolean;
+        };
         UpdateLevelAvailabilityRequest: {
             available?: boolean;
             level?: string;
+        };
+        UpdateModuleActiveRequest: {
+            isActive: boolean;
         };
         FeedbackStatusRequest: {
             status?: string;
@@ -64647,6 +67835,20 @@ export interface components {
             /** Format: int64 */
             uploaderId?: number;
             url?: string;
+        };
+        UpdateScheduleCommentRequest: {
+            body?: string;
+        };
+        ThreadSettingsRequest: {
+            commentsEnabled?: boolean;
+        };
+        ApiResponseThreadSettingsResponse: {
+            data?: components["schemas"]["ThreadSettingsResponse"];
+        };
+        ThreadSettingsResponse: {
+            commentsEnabled?: boolean;
+            /** Format: int64 */
+            scheduleId?: number;
         };
         FollowupUpdateRequest: {
             /** Format: int64 */
@@ -64978,39 +68180,6 @@ export interface components {
             seed?: number;
             status?: string;
         };
-        UpdateMatchRequest: {
-            /** Format: int32 */
-            durationMinutes?: number;
-            /** @enum {string} */
-            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
-            /** Format: date-time */
-            kickoffAt?: string;
-            notes?: string;
-            opponentName?: string;
-            /** Format: int64 */
-            opponentTeamId?: number;
-            periodFormat?: string;
-            venue?: string;
-        };
-        MatchChangeStatusRequest: {
-            /** @enum {string} */
-            status: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
-        };
-        FinalizeScoreRequest: {
-            /** Format: int32 */
-            awayPenaltyScore?: number;
-            /** Format: int32 */
-            awayScore?: number;
-            /** Format: int32 */
-            homePenaltyScore?: number;
-            /** Format: int32 */
-            homeScore?: number;
-        };
-        ChangeRecordingModeRequest: {
-            hasScorekeeper?: boolean;
-            /** Format: int64 */
-            scorekeeperUserId?: number;
-        };
         UpdateOrgProviderRequest: {
             brandColor?: string;
             cardNumberLengthHint?: string;
@@ -65110,6 +68279,64 @@ export interface components {
             notifyOnCheckout?: boolean;
             notifyOnDismissal?: boolean;
             notifyOnRsvp?: boolean;
+        };
+        /** @description カレンダーレイヤー設定の部分更新（null/未指定 = 変更しない） */
+        CalendarLayerUpdateRequest: {
+            /**
+             * @description ユーザー指定色（#RRGGBB。null/未指定 = 変更しない）
+             * @example #DC2626
+             */
+            color?: string;
+            /**
+             * @description 既定で非表示にするか（null/未指定 = 変更しない）
+             * @example true
+             */
+            hidden?: boolean;
+        };
+        ApiResponseCalendarLayerResponse: {
+            data?: components["schemas"]["CalendarLayerResponse"];
+        };
+        /** @description カレンダーレイヤー（所属スコープ＋解決済み色＋表示可否） */
+        CalendarLayerResponse: {
+            /**
+             * @description 解決済み表示色（#RRGGBB 大文字）
+             * @example #059669
+             */
+            color?: string;
+            /**
+             * @description 色の由来。本 API は LAYER_USER / LAYER_AUTO のみ返す
+             * @enum {string}
+             */
+            colorSource?: "LAYER_USER" | "SCHEDULE" | "CATEGORY" | "LAYER_AUTO";
+            /**
+             * @description 既定で非表示にするか
+             * @example false
+             */
+            hidden?: boolean;
+            /** @description アイコン表示URL（未設定は null） */
+            scopeIconUrl?: string;
+            /**
+             * Format: int64
+             * @description レイヤー対象ID（PERSONAL は常に 0）
+             * @example 42
+             */
+            scopeId?: number;
+            /**
+             * @description 表示名（PERSONAL は i18n キーを FE が翻訳するためのプレースホルダ）
+             * @example 青葉FC
+             */
+            scopeName?: string;
+            /**
+             * @description PERSONAL のみ非 null の i18n キー。TEAM/ORGANIZATION は null
+             * @example schedule.calendar.layer.personal
+             */
+            scopeNameKey?: string;
+            /**
+             * @description レイヤー種別
+             * @example TEAM
+             * @enum {string}
+             */
+            scopeType?: "PERSONAL" | "TEAM" | "ORGANIZATION";
         };
         StatusReasonRequest: {
             statusReason?: string;
@@ -65403,10 +68630,6 @@ export interface components {
         SubmitAppealRequest: {
             appealReason?: string;
             token?: string;
-        };
-        UpdateAdvertiserAccountRequest: {
-            companyName?: string;
-            contactEmail?: string;
         };
         SupporterNameDisclosurePatchRequest: {
             confirmed?: boolean;
@@ -65865,6 +69088,9 @@ export interface components {
             /** Format: uuid */
             villageId?: string;
         };
+        ApiResponseListNewsletterTagResponse: {
+            data?: components["schemas"]["NewsletterTagResponse"][];
+        };
         ApiResponseListNewsletterSendLogResponse: {
             data?: components["schemas"]["NewsletterSendLogResponse"][];
         };
@@ -65881,6 +69107,45 @@ export interface components {
             sentAt?: string;
             /** Format: int32 */
             successCount?: number;
+        };
+        ApiResponseNewsletterIssuePageResponse: {
+            data?: components["schemas"]["NewsletterIssuePageResponse"];
+        };
+        NewsletterIssuePageResponse: {
+            content?: components["schemas"]["NewsletterIssueSummaryResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+        };
+        NewsletterIssueSummaryResponse: {
+            /** Format: date-time */
+            createdAt?: string;
+            /** Format: int32 */
+            digestNewMemberCount?: number;
+            /** Format: int32 */
+            digestPostCount?: number;
+            /** @enum {string} */
+            frequency?: "WEEKLY" | "MONTHLY";
+            hasComment?: boolean;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            periodEnd?: string;
+            /** Format: date-time */
+            periodStart?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            /** @enum {string} */
+            status?: "AGGREGATED" | "FROZEN" | "PUBLISHED" | "CANCELED";
+            tags?: components["schemas"]["NewsletterTagResponse"][];
+            title?: string;
+            /** Format: uuid */
+            villageId?: string;
+            /** @enum {string} */
+            visibility?: "VILLAGE_MEMBERS" | "PUBLIC";
         };
         ApiResponseMembershipListResponse: {
             data?: components["schemas"]["MembershipListResponse"];
@@ -65909,6 +69174,8 @@ export interface components {
             candidateDate?: string;
             /** Format: uuid */
             candidateDateId?: string;
+            /** @example 14:30:00 */
+            candidateTime?: string;
             /** Format: int32 */
             maybeCount?: number;
             /** Format: int32 */
@@ -65918,6 +69185,15 @@ export interface components {
             candidates?: components["schemas"]["CandidateDateSummary"][];
             /** Format: uuid */
             meetupId?: string;
+        };
+        ApiResponseListMeetupTodoResponse: {
+            data?: components["schemas"]["MeetupTodoResponse"][];
+        };
+        ApiResponseListMeetupCommentResponse: {
+            data?: components["schemas"]["MeetupCommentResponse"][];
+        };
+        ApiResponseListMeetupAttendanceResponse: {
+            data?: components["schemas"]["MeetupAttendanceResponse"][];
         };
         ApiResponseMatchRecruitListResponse: {
             data?: components["schemas"]["MatchRecruitListResponse"];
@@ -66022,8 +69298,54 @@ export interface components {
             sorted?: boolean;
             unsorted?: boolean;
         };
+        ApiResponseListJoinRequestResponse: {
+            data?: components["schemas"]["JoinRequestResponse"][];
+        };
         ApiResponseListFestivalResponse: {
             data?: components["schemas"]["FestivalResponse"][];
+        };
+        ApiResponseListFestivalRsvpResponse: {
+            data?: components["schemas"]["FestivalRsvpResponse"][];
+        };
+        ApiResponseListFestivalLivePostResponse: {
+            data?: components["schemas"]["FestivalLivePostResponse"][];
+        };
+        ApiResponseListVillageEventArchiveResponse: {
+            data?: components["schemas"]["VillageEventArchiveResponse"][];
+        };
+        /** @description 村史（行事アーカイブ）の1件（祭/歳時記/寄合の確定記録・実名非返却・§7.2） */
+        VillageEventArchiveResponse: {
+            /**
+             * Format: date-time
+             * @description 編纂時刻
+             */
+            archivedAt: string;
+            /**
+             * Format: uuid
+             * @description 村史エントリID（UUID）
+             */
+            id: string;
+            /**
+             * Format: uuid
+             * @description 元行事のUUID（ID参照のみ）
+             */
+            sourceId: string;
+            /**
+             * @description 元行事の種別（FESTIVAL/CALENDAR_EVENT/MEETUP）
+             * @enum {string}
+             */
+            sourceType: "FESTIVAL" | "CALENDAR_EVENT" | "MEETUP";
+            /** @description 編纂サマリ（RSVP集計・実況件数等をテキスト化・未設定時null） */
+            summary?: string;
+            /** @description 代表画像の署名付き表示URL（未設定/解決失敗時null） */
+            thumbnailUrl?: string;
+            /** @description 編纂時に焼き付けた表題 */
+            title: string;
+            /**
+             * Format: uuid
+             * @description 村ID（UUID）
+             */
+            villageId: string;
         };
         ApiResponseListChronicleResponse: {
             data?: components["schemas"]["ChronicleResponse"][];
@@ -66061,6 +69383,31 @@ export interface components {
             /** Format: int32 */
             year?: number;
         };
+        ApiResponseListCalendarEventLogResponse: {
+            data?: components["schemas"]["CalendarEventLogResponse"][];
+        };
+        ApiResponseVillageAffinityResponse: {
+            data?: components["schemas"]["VillageAffinityResponse"];
+        };
+        /** @description 加入前相性表示（相性のヒント）。正確な人数・identity は返さない（§8.3/§8.4） */
+        VillageAffinityResponse: {
+            /** @description 自分の関心カテゴリと村カテゴリが一致するか */
+            categoryMatch: boolean;
+            /**
+             * Format: int64
+             * @description 村の総現役メンバー数（公開情報。アピール判定の根拠・匿名重なりとは別軸）
+             */
+            memberCount: number;
+            /** @description 小規模村の「草分けアピール」を出すか（未参加×総現役メンバー10人以下・§8.8） */
+            pioneerAppeal: boolean;
+            /** @description 相性の根拠一言の i18n キー配列（FE で翻訳・空配列可） */
+            reasonKeys: string[];
+            /**
+             * @description 自分と重なる匿名村人数のバケット（HIDDEN/FEW/MANY・正確人数は非返却）
+             * @enum {string}
+             */
+            sharedVillagerBucket: "HIDDEN" | "FEW" | "MANY";
+        };
         VillageSearchResponse: {
             content?: components["schemas"]["VillageResponse"][];
             /** Format: int32 */
@@ -66083,6 +69430,23 @@ export interface components {
             source?: string;
             /** Format: int64 */
             venueId?: number;
+        };
+        ApiResponseListUserVillageSummaryResponse: {
+            data?: components["schemas"]["UserVillageSummaryResponse"][];
+        };
+        /** @description 所属村一覧の1件（村名・村紋・カテゴリ・村IDのみ。ニックネームは返さない・§9.3） */
+        UserVillageSummaryResponse: {
+            /** @description 村カテゴリ（未設定なら null） */
+            category?: string;
+            /**
+             * Format: uuid
+             * @description 村ID（UUID）
+             */
+            villageId: string;
+            /** @description 村紋の署名付き URL（未設定なら null） */
+            villageMonshoUrl?: string;
+            /** @description 村名（表示用） */
+            villageName: string;
         };
         CursorMeta: {
             hasNext?: boolean;
@@ -66558,6 +69922,29 @@ export interface components {
         MyTournamentFeesResponse: {
             fees?: components["schemas"]["MyTournamentFeeItem"][];
         };
+        ApiResponseListCalendarTodoResponse: {
+            data?: components["schemas"]["CalendarTodoResponse"][];
+        };
+        CalendarTodoResponse: {
+            /** Format: date */
+            dueDate?: string;
+            /** @example 14:30:00 */
+            dueTime?: string;
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            linkedScheduleId?: number;
+            priority?: string;
+            /** Format: int64 */
+            scopeId?: number;
+            scopeName?: string;
+            scopeSlug?: string;
+            scopeType?: string;
+            /** Format: date */
+            startDate?: string;
+            status?: string;
+            title?: string;
+        };
         ApiResponseListGanttTodoResponse: {
             data?: components["schemas"]["GanttTodoResponse"][];
         };
@@ -66608,7 +69995,7 @@ export interface components {
             data?: components["schemas"]["PostDetailResponse"];
         };
         PostDetailResponse: {
-            attachments?: components["schemas"]["AttachmentResponse"][];
+            attachments?: components["schemas"]["TimelineAttachmentResponse"][];
             audit?: components["schemas"]["PostAuditDto"];
             author?: components["schemas"]["PostAuthorDto"];
             content?: components["schemas"]["PostContentDto"];
@@ -66682,6 +70069,9 @@ export interface components {
         };
         ApiResponseListAttendanceResponse: {
             data?: components["schemas"]["AttendanceResponse"][];
+        };
+        ApiResponseListScheduleKeepResponse: {
+            data?: components["schemas"]["ScheduleKeepResponse"][];
         };
         ApiResponseListWallpaperResponse: {
             data?: components["schemas"]["WallpaperResponse"][];
@@ -67153,25 +70543,34 @@ export interface components {
             data?: components["schemas"]["ReservationGridResponse"];
         };
         GridCellDto: {
+            /**
+             * Format: date
+             * @description 枠終了日
+             */
+            endDate?: string;
             /** @example 14:30:00 */
             endTime?: string;
             price?: number;
+            /** @description 現在のユーザーが有効予約を持つ枠か */
+            reservedByCurrentUser?: boolean;
+            /**
+             * Format: date
+             * @description 枠開始日
+             */
+            slotDate?: string;
             /** Format: int64 */
             slotId?: number;
             /** @example 14:30:00 */
             startTime?: string;
             /** @enum {string} */
             state?: "AVAILABLE" | "BOOKED" | "CLOSED" | "UNAVAILABLE";
+            unavailableReason?: string;
         };
         GridColumnDto: {
             cells?: components["schemas"]["GridCellDto"][];
             /** Format: int64 */
             lineId?: number;
-            lineIds?: number[];
             lineName?: string;
-            staffName?: string;
-            /** Format: int64 */
-            staffUserId?: number;
         };
         GridDayDto: {
             columns?: components["schemas"]["GridColumnDto"][];
@@ -67188,7 +70587,6 @@ export interface components {
             requiredCellCount?: number;
         };
         ReservationGridResponse: {
-            axis?: string;
             columns?: components["schemas"]["GridColumnDto"][];
             /** Format: date */
             date?: string;
@@ -67236,6 +70634,17 @@ export interface components {
             /** Format: int64 */
             userId?: number;
             userName?: string;
+        };
+        ApiResponseListRecurringBlockedTimeResponse: {
+            data?: components["schemas"]["RecurringBlockedTimeResponse"][];
+        };
+        ApiResponseRecurringBlockedTimeImpactResponse: {
+            data?: components["schemas"]["RecurringBlockedTimeImpactResponse"];
+        };
+        RecurringBlockedTimeImpactResponse: {
+            /** Format: int32 */
+            affectedCount?: number;
+            reservations?: components["schemas"]["ImpactedReservationDto"][];
         };
         ApiResponseNotificationRecipientListResponse: {
             data?: components["schemas"]["NotificationRecipientListResponse"];
@@ -67927,6 +71336,41 @@ export interface components {
             cancellations?: components["schemas"]["CancellationResponse"][];
             /** Format: int64 */
             teamId?: number;
+        };
+        ApiResponseMatchSummaryResponse: {
+            data?: components["schemas"]["MatchSummaryResponse"];
+        };
+        MatchSummaryResponse: {
+            /** Format: int32 */
+            awayPenaltyScore?: number;
+            /** Format: int32 */
+            awayScore?: number;
+            /** Format: int32 */
+            durationMinutes?: number;
+            /** @enum {string} */
+            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
+            /** Format: int32 */
+            homePenaltyScore?: number;
+            /** Format: int32 */
+            homeScore?: number;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            kickoffAt?: string;
+            /** @enum {string} */
+            kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
+            opponentName?: string;
+            /** Format: int64 */
+            opponentTeamId?: number;
+            /** @enum {string} */
+            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
+            /** @enum {string} */
+            status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
+            venue?: string;
+        };
+        PagedResponseMatchSummaryResponse: {
+            data?: components["schemas"]["MatchSummaryResponse"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         LineMessageLogResponse: {
             contentSummary?: string;
@@ -68680,6 +72124,48 @@ export interface components {
         ApiResponseListFiscalYearResponse: {
             data?: components["schemas"]["FiscalYearResponse"][];
         };
+        ApiResponseListBetaPerkGrantItem: {
+            data?: components["schemas"]["BetaPerkGrantItem"][];
+        };
+        /** @description F20.3 利用者向け ベータ特典 付与項目 */
+        BetaPerkGrantItem: {
+            /**
+             * Format: int32
+             * @description 付与時アクティブ人数スナップショット（INDIVIDUAL は null）
+             * @example 34
+             */
+            activeMemberCountSnapshot?: number;
+            /**
+             * Format: int32
+             * @description ベータ段階
+             * @example 2
+             */
+            betaPhase?: number;
+            /** @description 付与された機能キー集合 */
+            featureKeys?: string[];
+            /** @description 付与 ID（UUID） */
+            grantId?: string;
+            /**
+             * @description 付与種別（INDIVIDUAL / TEAM_ORG）
+             * @example INDIVIDUAL
+             */
+            grantKind?: string;
+            /**
+             * Format: date-time
+             * @description 付与日時（ISO-8601）
+             */
+            grantedAt?: string;
+            /**
+             * Format: date-time
+             * @description 取消日時（未取消は null）
+             */
+            revokedAt?: string;
+            /**
+             * Format: date-time
+             * @description 有効期限（INDIVIDUAL は null＝サービス提供期間中無償）
+             */
+            validUntil?: string;
+        };
         ApiResponseTransitionAlertListResponse: {
             data?: components["schemas"]["TransitionAlertListResponse"];
         };
@@ -68891,9 +72377,74 @@ export interface components {
         ApiResponseListReportScheduleResponse: {
             data?: components["schemas"]["ReportScheduleResponse"][];
         };
+        AdvertiserOverviewResponse: {
+            /** Format: int32 */
+            activeCampaigns?: number;
+            avgCtr?: number;
+            campaigns?: components["schemas"]["CampaignSummary"][];
+            creditLimit?: number;
+            monthlyBudgetUsedPct?: number;
+            period?: components["schemas"]["Period"];
+            /** Format: int32 */
+            totalCampaigns?: number;
+            /** Format: int64 */
+            totalClicks?: number;
+            totalCost?: number;
+            /** Format: int64 */
+            totalImpressions?: number;
+        };
+        ApiResponseAdvertiserOverviewResponse: {
+            data?: components["schemas"]["AdvertiserOverviewResponse"];
+        };
+        CampaignSummary: {
+            /** Format: int64 */
+            campaignId?: number;
+            campaignName?: string;
+            /** Format: int64 */
+            clicks?: number;
+            cost?: number;
+            ctr?: number;
+            /** Format: int64 */
+            impressions?: number;
+            status?: string;
+        };
         PagedResponseInvoiceSummaryResponse: {
             data?: components["schemas"]["InvoiceSummaryResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponseInvoiceDetailResponse: {
+            data?: components["schemas"]["InvoiceDetailResponse"];
+        };
+        InvoiceDetailResponse: {
+            /** Format: date */
+            dueDate?: string;
+            /** Format: int64 */
+            id?: number;
+            invoiceMonth?: string;
+            invoiceNumber?: string;
+            /** Format: date-time */
+            issuedAt?: string;
+            items?: components["schemas"]["InvoiceItemResponse"][];
+            note?: string;
+            /** @enum {string} */
+            status?: "DRAFT" | "ISSUED" | "PAID" | "OVERDUE";
+            taxAmount?: number;
+            taxRate?: number;
+            totalAmount?: number;
+            totalWithTax?: number;
+        };
+        InvoiceItemResponse: {
+            /** Format: int64 */
+            campaignId?: number;
+            campaignName?: string;
+            /** Format: int64 */
+            clicks?: number;
+            /** Format: int64 */
+            impressions?: number;
+            /** @enum {string} */
+            pricingModel?: "CPM" | "CPC";
+            subtotal?: number;
+            unitPrice?: number;
         };
         ApiResponseListCreditLimitRequestResponse: {
             data?: components["schemas"]["CreditLimitRequestResponse"][];
@@ -68943,6 +72494,53 @@ export interface components {
             /** Format: int64 */
             totalImpressions?: number;
         };
+        ApiResponseCreativeComparisonResponse: {
+            data?: components["schemas"]["CreativeComparisonResponse"];
+        };
+        CreativeComparisonResponse: {
+            /** Format: int64 */
+            campaignId?: number;
+            creatives?: components["schemas"]["CreativeStats"][];
+            winner?: components["schemas"]["Winner"];
+        };
+        CreativeStats: {
+            /** Format: int64 */
+            adId?: number;
+            /** Format: int64 */
+            clicks?: number;
+            /** Format: int32 */
+            conversionRank?: number;
+            cost?: number;
+            ctr?: number;
+            /** Format: int64 */
+            impressions?: number;
+            title?: string;
+        };
+        Winner: {
+            /** Format: int64 */
+            adId?: number;
+            reason?: string;
+        };
+        ApiResponseBreakdownResponse: {
+            data?: components["schemas"]["BreakdownResponse"];
+        };
+        BreakdownItem: {
+            /** Format: int64 */
+            clicks?: number;
+            cost?: number;
+            ctr?: number;
+            /** Format: int64 */
+            impressions?: number;
+            prefecture?: string;
+            template?: string;
+            unitPrice?: number;
+        };
+        BreakdownResponse: {
+            breakdownBy?: string;
+            /** Format: int64 */
+            campaignId?: number;
+            items?: components["schemas"]["BreakdownItem"][];
+        };
         CampaignListItemResponse: {
             /** Format: int64 */
             consumedBudgetYen?: number;
@@ -68974,6 +72572,9 @@ export interface components {
         PagedResponseOperationalCampaignResponse: {
             data?: components["schemas"]["OperationalCampaignResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponseListAdCreativeResponse: {
+            data?: components["schemas"]["AdCreativeResponse"][];
         };
         AdminModuleItem: {
             enabled?: boolean;
@@ -69091,9 +72692,47 @@ export interface components {
              */
             trialExpiresAt?: string;
         };
-        PagedResponseMemberResponse: {
-            data?: components["schemas"]["MemberResponse"][];
+        PagedResponseScopeMemberResponse: {
+            data?: components["schemas"]["ScopeMemberResponse"][];
             meta?: components["schemas"]["PageMeta"];
+        };
+        ScopeMemberResponse: {
+            avatarUrl?: string;
+            calendarColor?: string;
+            displayName?: string;
+            /** Format: date-time */
+            joinedAt?: string;
+            roleName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
+        ApiResponseListTeamPlanView: {
+            data?: components["schemas"]["TeamPlanView"][];
+        };
+        TeamPlanView: {
+            /** Format: date */
+            endDate?: string;
+            /** Format: uuid */
+            id?: string;
+            location?: components["schemas"]["Location"];
+            ownerAvatarUrl?: string;
+            ownerDisplayName?: string;
+            planType?: string;
+            /** Format: date */
+            startDate?: string;
+            status?: string;
+            timezone?: string;
+        };
+        ApiResponseMemberPlanItems: {
+            data?: components["schemas"]["MemberPlanItems"];
+        };
+        MemberPlanItem: {
+            /** Format: int64 */
+            memberId?: number;
+            plans?: components["schemas"]["TeamPlanView"][];
+        };
+        MemberPlanItems: {
+            items?: components["schemas"]["MemberPlanItem"][];
         };
         ApiResponseEffectivePermissionsResponse: {
             data?: components["schemas"]["EffectivePermissionsResponse"];
@@ -69856,11 +73495,11 @@ export interface components {
             /** Format: int64 */
             totalUsers?: number;
         };
-        ApiResponsePageUserEntity: {
-            data?: components["schemas"]["PageUserEntity"];
+        ApiResponsePageSystemAdminUserSummaryResponse: {
+            data?: components["schemas"]["PageSystemAdminUserSummaryResponse"];
         };
-        PageUserEntity: {
-            content?: components["schemas"]["UserEntity"][];
+        PageSystemAdminUserSummaryResponse: {
+            content?: components["schemas"]["SystemAdminUserSummaryResponse"][];
             empty?: boolean;
             first?: boolean;
             last?: boolean;
@@ -69877,82 +73516,30 @@ export interface components {
             /** Format: int32 */
             totalPages?: number;
         };
-        UserEntity: {
-            /** Format: int64 */
-            accountCreatedByWatcherUserId?: number;
+        SystemAdminUserSummaryResponse: {
             /** Format: date-time */
             archivedAt?: string;
-            avatarUrl?: string;
-            bannerUrl?: string;
-            birthDate?: string;
-            birthDateHash?: string;
-            /** Format: int32 */
-            birthYear?: number;
-            /** @enum {string} */
-            careCategory?: "MINOR" | "ELDERLY" | "DISABILITY_SUPPORT" | "GENERAL_FAMILY";
-            careNotificationEnabled?: boolean;
-            cityCode?: string;
-            cityCodeHash?: string;
-            contactApprovalRequired?: boolean;
             contactHandle?: string;
-            countryCode?: string;
             /** Format: date-time */
             createdAt?: string;
-            /** Format: date-time */
-            deletedAt?: string;
             displayName?: string;
-            /** @enum {string} */
-            dmReceiveFrom?: "ANYONE" | "TEAM_MEMBERS_ONLY" | "CONTACTS_ONLY";
             email?: string;
-            /** Format: int32 */
-            encryptionKeyVersion?: number;
-            firstName?: string;
-            firstNameHash?: string;
-            firstNameKana?: string;
-            /** @enum {string} */
-            followListVisibility?: "PUBLIC" | "FRIENDS_ONLY" | "PRIVATE";
-            gender?: string;
-            genderHash?: string;
-            handleSearchable?: boolean;
             /** Format: int64 */
             id?: number;
-            isSearchable?: boolean;
             /** Format: date-time */
             lastLoginAt?: string;
-            lastName?: string;
-            lastNameHash?: string;
-            lastNameKana?: string;
             locale?: string;
-            nickname2?: string;
-            offlineOnly?: boolean;
-            /** @enum {string} */
-            onlineVisibility?: "NOBODY" | "CONTACTS_ONLY" | "EVERYONE";
-            passwordHash?: string;
-            phoneNumber?: string;
-            phoneNumberHash?: string;
-            postalCode?: string;
-            prefectureCode?: string;
-            prefectureCodeHash?: string;
-            /** Format: date-time */
-            privacyPolicyAcceptedAt?: string;
-            privacyPolicyVersion?: string;
-            publicProfileEnabled?: boolean;
-            /** Format: date-time */
-            purgedAt?: string;
-            /** Format: date-time */
-            reminderSentAt?: string;
-            reportingRestricted?: boolean;
             /** @enum {string} */
             status?: "PENDING_VERIFICATION" | "PENDING_PARENTAL_CONSENT" | "ACTIVE" | "FROZEN" | "ARCHIVED" | "DECEASED" | "RELOCATED";
             timezone?: string;
             /** Format: date-time */
             updatedAt?: string;
         };
-        ApiResponsePageTeamEntity: {
-            data?: components["schemas"]["PageTeamEntity"];
+        ApiResponsePageSystemAdminTeamSummaryResponse: {
+            data?: components["schemas"]["PageSystemAdminTeamSummaryResponse"];
         };
-        PageTeamEntity: {
-            content?: components["schemas"]["TeamEntity"][];
+        PageSystemAdminTeamSummaryResponse: {
+            content?: components["schemas"]["SystemAdminTeamSummaryResponse"][];
             empty?: boolean;
             first?: boolean;
             last?: boolean;
@@ -69969,72 +73556,60 @@ export interface components {
             /** Format: int32 */
             totalPages?: number;
         };
-        TeamEntity: {
+        SystemAdminTeamSummaryResponse: {
             /** Format: date-time */
             archivedAt?: string;
-            bannerUrl?: string;
             city?: string;
-            cityCode?: string;
             /** Format: date-time */
             createdAt?: string;
-            /** Format: date-time */
-            deletedAt?: string;
-            /** Format: date */
-            establishedDate?: string;
-            /** @enum {string} */
-            establishedDatePrecision?: "YEAR" | "YEAR_MONTH" | "FULL";
-            homepageUrl?: string;
-            iconUrl?: string;
             /** Format: int64 */
             id?: number;
-            mapEmbedUrl?: string;
             /** Format: int64 */
             memberCount?: number;
             name?: string;
             nameKana?: string;
             nickname1?: string;
             nickname2?: string;
-            philosophy?: string;
             prefecture?: string;
-            prefectureCode?: string;
-            profileVisibility?: components["schemas"]["ProfileVisibility"];
-            publicEventsEnabled?: boolean;
             slug?: string;
             supporterEnabled?: boolean;
-            /** @enum {string} */
-            supporterNameDisclosure?: "DISPLAY_NAME" | "REAL_NAME";
             template?: string;
-            timelinePostsPublic?: boolean;
             /** Format: date-time */
             updatedAt?: string;
-            /** Format: int64 */
-            version?: number;
             /** @enum {string} */
             visibility?: "PUBLIC" | "GUESTS_AND_ABOVE" | "SUPPORTERS_AND_ABOVE" | "MEMBERS_AND_ABOVE";
         };
-        ApiResponsePageOrganizationEntity: {
-            data?: components["schemas"]["PageOrganizationEntity"];
+        ApiResponsePageSystemAdminOrganizationSummaryResponse: {
+            data?: components["schemas"]["PageSystemAdminOrganizationSummaryResponse"];
         };
-        OrganizationEntity: {
+        PageSystemAdminOrganizationSummaryResponse: {
+            content?: components["schemas"]["SystemAdminOrganizationSummaryResponse"][];
+            empty?: boolean;
+            first?: boolean;
+            last?: boolean;
+            /** Format: int32 */
+            number?: number;
+            /** Format: int32 */
+            numberOfElements?: number;
+            pageable?: components["schemas"]["PageableObject"];
+            /** Format: int32 */
+            size?: number;
+            sort?: components["schemas"]["SortObject"];
+            /** Format: int64 */
+            totalElements?: number;
+            /** Format: int32 */
+            totalPages?: number;
+        };
+        SystemAdminOrganizationSummaryResponse: {
             /** Format: date-time */
             archivedAt?: string;
-            bannerUrl?: string;
             city?: string;
             /** Format: date-time */
             createdAt?: string;
-            /** Format: date-time */
-            deletedAt?: string;
-            /** Format: date */
-            establishedDate?: string;
-            /** @enum {string} */
-            establishedDatePrecision?: "YEAR" | "YEAR_MONTH" | "FULL";
             /** @enum {string} */
             hierarchyVisibility?: "NONE" | "BASIC" | "FULL";
-            homepageUrl?: string;
-            iconUrl?: string;
             /** Format: int64 */
             id?: number;
-            mapEmbedUrl?: string;
             name?: string;
             nameKana?: string;
             nickname1?: string;
@@ -70043,39 +73618,13 @@ export interface components {
             orgType?: "GOVERNMENT" | "MUNICIPALITY" | "COMPANY" | "HOSPITAL" | "ASSOCIATION" | "SCHOOL" | "NPO" | "COMMUNITY" | "OTHER";
             /** Format: int64 */
             parentOrganizationId?: number;
-            philosophy?: string;
             prefecture?: string;
-            profileVisibility?: components["schemas"]["ProfileVisibility"];
-            publicEventsEnabled?: boolean;
             slug?: string;
             supporterEnabled?: boolean;
-            /** @enum {string} */
-            supporterNameDisclosure?: "DISPLAY_NAME" | "REAL_NAME";
-            timelinePostsPublic?: boolean;
             /** Format: date-time */
             updatedAt?: string;
-            /** Format: int64 */
-            version?: number;
             /** @enum {string} */
             visibility?: "PUBLIC" | "PRIVATE";
-        };
-        PageOrganizationEntity: {
-            content?: components["schemas"]["OrganizationEntity"][];
-            empty?: boolean;
-            first?: boolean;
-            last?: boolean;
-            /** Format: int32 */
-            number?: number;
-            /** Format: int32 */
-            numberOfElements?: number;
-            pageable?: components["schemas"]["PageableObject"];
-            /** Format: int32 */
-            size?: number;
-            sort?: components["schemas"]["SortObject"];
-            /** Format: int64 */
-            totalElements?: number;
-            /** Format: int32 */
-            totalPages?: number;
         };
         ApiResponseListBillingPlanAdminResponse: {
             data?: components["schemas"]["BillingPlanAdminResponse"][];
@@ -70108,6 +73657,76 @@ export interface components {
              * @example 42
              */
             totalElements?: number;
+        };
+        ApiResponseBetaPerkGrantPageResponse: {
+            data?: components["schemas"]["BetaPerkGrantPageResponse"];
+        };
+        /** @description F20.3 シスアド ベータ特典 付与一覧（ページング） */
+        BetaPerkGrantPageResponse: {
+            /** @description 付与一覧（当該ページ） */
+            content?: components["schemas"]["BetaPerkGrantDetail"][];
+            /**
+             * Format: int32
+             * @description 現在ページ番号（0 始まり）
+             * @example 0
+             */
+            page?: number;
+            /**
+             * Format: int32
+             * @description ページサイズ
+             * @example 20
+             */
+            size?: number;
+            /**
+             * Format: int64
+             * @description 総件数
+             * @example 42
+             */
+            totalElements?: number;
+        };
+        ApiResponseListBetaPerkCandidate: {
+            data?: components["schemas"]["BetaPerkCandidate"][];
+        };
+        /** @description F20.3 ベータ特典 付与候補（dry-run） */
+        BetaPerkCandidate: {
+            /**
+             * @description 表示名（チーム名 / 組織名 / ユーザー名）
+             * @example サンプルチーム
+             */
+            displayName?: string;
+            /** @description 充足した指標の進捗 */
+            metrics?: components["schemas"]["BetaPerkMetricProgress"][];
+            /**
+             * Format: int64
+             * @description スコープ ID
+             * @example 123
+             */
+            scopeId?: number;
+            /**
+             * @description スコープ種別（USER / TEAM / ORG）
+             * @example TEAM
+             */
+            scopeKind?: string;
+        };
+        /** @description F20.3 付与条件の指標進捗 */
+        BetaPerkMetricProgress: {
+            /**
+             * Format: int64
+             * @description 実測値
+             * @example 9
+             */
+            actual?: number;
+            /**
+             * @description 指標キー
+             * @example activeDays
+             */
+            metricKey?: string;
+            /**
+             * Format: int64
+             * @description 閾値（この値以上で達成）
+             * @example 14
+             */
+            required?: number;
         };
         ApiResponseListBatchEndpointSummary: {
             data?: components["schemas"]["BatchEndpointSummary"][];
@@ -70510,9 +74129,6 @@ export interface components {
         PagedResponseCreditLimitRequestDetailResponse: {
             data?: components["schemas"]["CreditLimitRequestDetailResponse"][];
             meta?: components["schemas"]["PageMeta"];
-        };
-        ApiResponseListAdCreativeResponse: {
-            data?: components["schemas"]["AdCreativeResponse"][];
         };
         PagedResponseReviewQueueItemResponse: {
             data?: components["schemas"]["ReviewQueueItemResponse"][];
@@ -71029,6 +74645,31 @@ export interface components {
             asDelegate?: components["schemas"]["ScheduleDelegationResponse"];
             asDelegator?: components["schemas"]["ScheduleDelegationResponse"];
         };
+        PagedResponseScheduleCommentResponse: {
+            data?: components["schemas"]["ScheduleCommentResponse"][];
+            meta?: components["schemas"]["PageMeta"];
+        };
+        ApiResponseThreadMetaResponse: {
+            data?: components["schemas"]["ThreadMetaResponse"];
+        };
+        ThreadMetaResponse: {
+            canPost?: boolean;
+            /** @description canPost=false の理由（CLOSED/CANCELLED/ROLE）。canPost=true は null */
+            canPostReason?: string;
+            commentsEnabled?: boolean;
+            /** Format: int64 */
+            scheduleId?: number;
+        };
+        ApiResponseListMentionCandidateResponse: {
+            data?: components["schemas"]["MentionCandidateResponse"][];
+        };
+        MentionCandidateResponse: {
+            /** @description アバター画像URL。未設定のユーザーは null */
+            avatarUrl?: string;
+            displayName?: string;
+            /** Format: int64 */
+            userId?: number;
+        };
         PagedResponseSafetyCheckResponse: {
             data?: components["schemas"]["SafetyCheckResponse"][];
             meta?: components["schemas"]["PageMeta"];
@@ -71141,6 +74782,28 @@ export interface components {
             id?: number;
             isActive?: boolean;
             nameI18nKey?: string;
+        };
+        CursorPagedResponseRecruitmentCancellationRecordSummaryResponse: {
+            data?: components["schemas"]["RecruitmentCancellationRecordSummaryResponse"][];
+            meta?: components["schemas"]["CursorMeta"];
+        };
+        RecruitmentCancellationRecordSummaryResponse: {
+            /** Format: date-time */
+            cancelledAt?: string;
+            /** Format: int32 */
+            feeAmount?: number;
+            /** Format: int32 */
+            hoursBeforeStart?: number;
+            /** Format: int64 */
+            id?: number;
+            /** Format: int64 */
+            listingId?: number;
+            listingTitle?: string;
+            /** Format: int64 */
+            participantId?: number;
+            paymentStatus?: string;
+            /** Format: int64 */
+            userId?: number;
         };
         PagedResponseQuickMemoResponse: {
             data?: components["schemas"]["QuickMemoResponse"][];
@@ -71303,8 +74966,41 @@ export interface components {
             venueAddress?: string;
             venueName?: string;
         };
-        ApiResponseListActivityResultEntity: {
-            data?: components["schemas"]["ActivityResultEntity"][];
+        ApiResponseListPublicActivitySummary: {
+            data?: components["schemas"]["PublicActivitySummary"][];
+        };
+        PublicActivitySummary: {
+            /** Format: date */
+            activityDate?: string;
+            /** @example 14:30:00 */
+            activityTimeEnd?: string;
+            /** @example 14:30:00 */
+            activityTimeStart?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            description?: string;
+            /** Format: int64 */
+            id?: number;
+            scopeRef?: components["schemas"]["PublicScopeRef"];
+            title?: string;
+        };
+        ApiResponsePublicActivityDetail: {
+            data?: components["schemas"]["PublicActivityDetail"];
+        };
+        PublicActivityDetail: {
+            /** Format: date */
+            activityDate?: string;
+            /** @example 14:30:00 */
+            activityTimeEnd?: string;
+            /** @example 14:30:00 */
+            activityTimeStart?: string;
+            /** Format: date-time */
+            createdAt?: string;
+            description?: string;
+            /** Format: int64 */
+            id?: number;
+            scopeRef?: components["schemas"]["PublicScopeRef"];
+            title?: string;
         };
         TeamPublicDetailResponse: {
             bannerUrl?: string;
@@ -72314,41 +76010,6 @@ export interface components {
             data?: components["schemas"]["TemplateResponse"][];
             meta?: components["schemas"]["PageMeta"];
         };
-        MatchSummaryResponse: {
-            /** Format: int32 */
-            awayPenaltyScore?: number;
-            /** Format: int32 */
-            awayScore?: number;
-            /** Format: int32 */
-            durationMinutes?: number;
-            /** @enum {string} */
-            homeAway?: "HOME" | "AWAY" | "NEUTRAL";
-            /** Format: int32 */
-            homePenaltyScore?: number;
-            /** Format: int32 */
-            homeScore?: number;
-            /** Format: uuid */
-            id?: string;
-            /** Format: date-time */
-            kickoffAt?: string;
-            /** @enum {string} */
-            kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-            opponentName?: string;
-            /** Format: int64 */
-            opponentTeamId?: number;
-            /** @enum {string} */
-            sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
-            /** @enum {string} */
-            status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
-            venue?: string;
-        };
-        PagedResponseMatchSummaryResponse: {
-            data?: components["schemas"]["MatchSummaryResponse"][];
-            meta?: components["schemas"]["PageMeta"];
-        };
-        ApiResponseMatchSummaryResponse: {
-            data?: components["schemas"]["MatchSummaryResponse"];
-        };
         ApiResponseTeamMatchStatsResponse: {
             data?: components["schemas"]["TeamMatchStatsResponse"];
         };
@@ -72872,6 +76533,53 @@ export interface components {
             name?: string;
             priceJpy?: number;
         };
+        ApiResponsePublicNewsletterIssuePageResponse: {
+            data?: components["schemas"]["PublicNewsletterIssuePageResponse"];
+        };
+        PublicNewsletterIssuePageResponse: {
+            content?: components["schemas"]["PublicNewsletterIssueResponse"][];
+            /** Format: int32 */
+            page?: number;
+            /** Format: int32 */
+            size?: number;
+            /** Format: int64 */
+            totalElements?: number;
+        };
+        PublicNewsletterIssueResponse: {
+            /** Format: int32 */
+            digestFestivalCount?: number;
+            /** Format: int32 */
+            digestMeetupCount?: number;
+            /** Format: int32 */
+            digestNewMemberCount?: number;
+            /** Format: int32 */
+            digestPostCount?: number;
+            /** Format: int32 */
+            digestRecruitCount?: number;
+            /** Format: int32 */
+            digestTopic1Count?: number;
+            digestTopic1Name?: string;
+            /** Format: int32 */
+            digestTopic2Count?: number;
+            digestTopic2Name?: string;
+            /** Format: int32 */
+            digestTopic3Count?: number;
+            digestTopic3Name?: string;
+            /** @enum {string} */
+            frequency?: "WEEKLY" | "MONTHLY";
+            headmanComment?: string;
+            /** Format: uuid */
+            id?: string;
+            /** Format: date-time */
+            publishedAt?: string;
+            tags?: components["schemas"]["NewsletterTagResponse"][];
+            title?: string;
+            /** Format: uuid */
+            villageId?: string;
+        };
+        ApiResponsePublicNewsletterIssueResponse: {
+            data?: components["schemas"]["PublicNewsletterIssueResponse"];
+        };
         MyReceiptResponse: {
             amount?: number;
             description?: string;
@@ -72928,6 +76636,10 @@ export interface components {
             data?: components["schemas"]["CalendarEntryResponse"][];
         };
         CalendarContentDto: {
+            categoryColor?: string;
+            color?: string;
+            /** @enum {string} */
+            colorSource?: "LAYER_USER" | "SCHEDULE" | "CATEGORY" | "LAYER_AUTO";
             eventType?: string;
             referenceKind?: string;
             referenceUuid?: string;
@@ -72939,7 +76651,13 @@ export interface components {
             /** Format: int64 */
             id?: number;
             myAttendanceStatus?: string;
+            /** Format: int64 */
+            scheduleId?: number;
             scope?: components["schemas"]["CalendarScopeDto"];
+            /** Format: int32 */
+            targetCount?: number;
+            targetMode?: string;
+            targets?: components["schemas"]["TargetMember"][];
             time?: components["schemas"]["CalendarTimeDto"];
         };
         CalendarScopeDto: {
@@ -72947,6 +76665,7 @@ export interface components {
             /** Format: int64 */
             scopeId?: number;
             scopeName?: string;
+            scopeSlug?: string;
             scopeType?: string;
         };
         CalendarTimeDto: {
@@ -73057,7 +76776,7 @@ export interface components {
             pinnedVillages?: components["schemas"]["VillagePinnedSummaryResponse"][];
         };
         VillagePinnedSummaryResponse: {
-            iconR2Key?: string;
+            iconUrl?: string;
             /** Format: uuid */
             id?: string;
             name?: string;
@@ -73207,6 +76926,10 @@ export interface components {
         };
         ApiResponseListPersonalScheduleResponse: {
             data?: components["schemas"]["PersonalScheduleResponse"][];
+        };
+        PagedResponseOwnPlan: {
+            data?: components["schemas"]["OwnPlan"][];
+            meta?: components["schemas"]["PageMeta"];
         };
         ApiResponseReflectionTodayResponse: {
             data?: components["schemas"]["ReflectionTodayResponse"];
@@ -73706,6 +77429,35 @@ export interface components {
             scopeName?: string;
             scopeType?: string;
         };
+        ApiResponseListCalendarLayerResponse: {
+            data?: components["schemas"]["CalendarLayerResponse"][];
+        };
+        ApiResponseBetaPerkMyPerksResponse: {
+            data?: components["schemas"]["BetaPerkMyPerksResponse"];
+        };
+        /** @description F20.3 付与条件の充足状況 */
+        BetaPerkEligibilityStatus: {
+            /**
+             * Format: int32
+             * @description 評価対象のベータ段階
+             * @example 2
+             */
+            betaPhase?: number;
+            /**
+             * @description 全ての定義済み指標を満たすか
+             * @example false
+             */
+            eligible?: boolean;
+            /** @description 指標ごとの進捗（定義済み指標のみ） */
+            metrics?: components["schemas"]["BetaPerkMetricProgress"][];
+        };
+        /** @description F20.3 自分のベータ特典 */
+        BetaPerkMyPerksResponse: {
+            /** @description 現行フェーズの充足状況（criteria 未定義時は null） */
+            eligibility?: components["schemas"]["BetaPerkEligibilityStatus"];
+            /** @description 自分に付与された特典一覧（空配列可） */
+            grants?: components["schemas"]["BetaPerkGrantItem"][];
+        };
         ApiResponseStudentTimelineResponse: {
             data?: components["schemas"]["StudentTimelineResponse"];
         };
@@ -74041,6 +77793,22 @@ export interface components {
         };
         ApiResponseListPermissionResponse: {
             data?: components["schemas"]["PermissionResponse"][];
+        };
+        ApiResponseListPublicFeatureFlagResponse: {
+            data?: components["schemas"]["PublicFeatureFlagResponse"][];
+        };
+        /** @description 公開フィーチャーフラグ */
+        PublicFeatureFlagResponse: {
+            /**
+             * @description 有効フラグ
+             * @example true
+             */
+            enabled?: boolean;
+            /**
+             * @description フラグキー
+             * @example FEATURE_NEW_UI
+             */
+            flagKey?: string;
         };
         ApiResponseListFamilyPersonalTimetableResponse: {
             data?: components["schemas"]["FamilyPersonalTimetableResponse"][];
@@ -74577,10 +78345,41 @@ export interface components {
             severity?: string;
             title?: string;
         };
+        ApiResponsePersonalAdminActionRequiredResponse: {
+            data?: components["schemas"]["PersonalAdminActionRequiredResponse"];
+        };
+        PersonalAdminActionRequiredItem: {
+            detail_route?: string;
+            domain?: string;
+            item_id?: string;
+            /** Format: date-time */
+            requested_at?: string;
+            requested_by?: string;
+            /** Format: int64 */
+            scope_id?: number;
+            scope_name?: string;
+            scope_slug?: string;
+            scope_type?: string;
+            title?: string;
+        };
+        PersonalAdminActionRequiredResponse: {
+            items?: components["schemas"]["PersonalAdminActionRequiredItem"][];
+            /** Format: int64 */
+            total_pending?: number;
+        };
+        /** @description アクティビティフィードの1ページ */
+        ActivityFeedPageResponse: {
+            /** @description このページのアクティビティ一覧 */
+            items?: components["schemas"]["ActivityFeedResponse"][];
+            /** @description 次ページの起点となるアクティビティID（文字列）。続きが無い場合は null */
+            nextCursor?: string;
+        };
         ActivityFeedResponse: {
             actor?: components["schemas"]["ActorSummary"];
             /** Format: date-time */
             createdAt?: string;
+            /** @description 変更差分（SCHEDULE系のみ非null） */
+            detail?: Record<string, never>;
             /** Format: int64 */
             id?: number;
             /** Format: int64 */
@@ -74599,10 +78398,12 @@ export interface components {
             /** Format: int64 */
             id?: number;
         };
-        ApiResponseListActivityFeedResponse: {
-            data?: components["schemas"]["ActivityFeedResponse"][];
+        ApiResponseActivityFeedPageResponse: {
+            data?: components["schemas"]["ActivityFeedPageResponse"];
         };
         ActionItem: {
+            /** Format: date-time */
+            circulated_at?: string;
             /** Format: date-time */
             deadline?: string;
             item_id?: string;
@@ -75110,98 +78911,6 @@ export interface components {
             targetTemplate?: string;
             unitPrice?: number;
         };
-        AdvertiserOverviewResponse: {
-            /** Format: int32 */
-            activeCampaigns?: number;
-            avgCtr?: number;
-            campaigns?: components["schemas"]["CampaignSummary"][];
-            creditLimit?: number;
-            monthlyBudgetUsedPct?: number;
-            period?: components["schemas"]["Period"];
-            /** Format: int32 */
-            totalCampaigns?: number;
-            /** Format: int64 */
-            totalClicks?: number;
-            totalCost?: number;
-            /** Format: int64 */
-            totalImpressions?: number;
-        };
-        ApiResponseAdvertiserOverviewResponse: {
-            data?: components["schemas"]["AdvertiserOverviewResponse"];
-        };
-        CampaignSummary: {
-            /** Format: int64 */
-            campaignId?: number;
-            campaignName?: string;
-            /** Format: int64 */
-            clicks?: number;
-            cost?: number;
-            ctr?: number;
-            /** Format: int64 */
-            impressions?: number;
-            status?: string;
-        };
-        ApiResponseInvoiceDetailResponse: {
-            data?: components["schemas"]["InvoiceDetailResponse"];
-        };
-        InvoiceDetailResponse: {
-            /** Format: date */
-            dueDate?: string;
-            /** Format: int64 */
-            id?: number;
-            invoiceMonth?: string;
-            invoiceNumber?: string;
-            /** Format: date-time */
-            issuedAt?: string;
-            items?: components["schemas"]["InvoiceItemResponse"][];
-            note?: string;
-            /** @enum {string} */
-            status?: "DRAFT" | "ISSUED" | "PAID" | "OVERDUE";
-            taxAmount?: number;
-            taxRate?: number;
-            totalAmount?: number;
-            totalWithTax?: number;
-        };
-        InvoiceItemResponse: {
-            /** Format: int64 */
-            campaignId?: number;
-            campaignName?: string;
-            /** Format: int64 */
-            clicks?: number;
-            /** Format: int64 */
-            impressions?: number;
-            /** @enum {string} */
-            pricingModel?: "CPM" | "CPC";
-            subtotal?: number;
-            unitPrice?: number;
-        };
-        ApiResponseCreativeComparisonResponse: {
-            data?: components["schemas"]["CreativeComparisonResponse"];
-        };
-        CreativeComparisonResponse: {
-            /** Format: int64 */
-            campaignId?: number;
-            creatives?: components["schemas"]["CreativeStats"][];
-            winner?: components["schemas"]["Winner"];
-        };
-        CreativeStats: {
-            /** Format: int64 */
-            adId?: number;
-            /** Format: int64 */
-            clicks?: number;
-            /** Format: int32 */
-            conversionRank?: number;
-            cost?: number;
-            ctr?: number;
-            /** Format: int64 */
-            impressions?: number;
-            title?: string;
-        };
-        Winner: {
-            /** Format: int64 */
-            adId?: number;
-            reason?: string;
-        };
         AdConversionResponse: {
             /** Format: int64 */
             adId?: number;
@@ -75240,26 +78949,6 @@ export interface components {
         };
         ApiResponseAdConversionSummaryResponse: {
             data?: components["schemas"]["AdConversionSummaryResponse"];
-        };
-        ApiResponseBreakdownResponse: {
-            data?: components["schemas"]["BreakdownResponse"];
-        };
-        BreakdownItem: {
-            /** Format: int64 */
-            clicks?: number;
-            cost?: number;
-            ctr?: number;
-            /** Format: int64 */
-            impressions?: number;
-            prefecture?: string;
-            template?: string;
-            unitPrice?: number;
-        };
-        BreakdownResponse: {
-            breakdownBy?: string;
-            /** Format: int64 */
-            campaignId?: number;
-            items?: components["schemas"]["BreakdownItem"][];
         };
         ActiveAdResponse: {
             altText?: string;
@@ -75464,11 +79153,11 @@ export interface components {
         ApiResponseAdminDashboardResponse: {
             data?: components["schemas"]["AdminDashboardResponse"];
         };
-        ApiResponsePageUserRoleEntity: {
-            data?: components["schemas"]["PageUserRoleEntity"];
+        ApiResponsePageScopeUserRoleResponse: {
+            data?: components["schemas"]["PageScopeUserRoleResponse"];
         };
-        PageUserRoleEntity: {
-            content?: components["schemas"]["UserRoleEntity"][];
+        PageScopeUserRoleResponse: {
+            content?: components["schemas"]["ScopeUserRoleResponse"][];
             empty?: boolean;
             first?: boolean;
             last?: boolean;
@@ -75485,7 +79174,7 @@ export interface components {
             /** Format: int32 */
             totalPages?: number;
         };
-        UserRoleEntity: {
+        ScopeUserRoleResponse: {
             /** Format: date-time */
             createdAt?: string;
             /** Format: int64 */
@@ -75496,7 +79185,6 @@ export interface components {
             organizationId?: number;
             /** Format: int64 */
             roleId?: number;
-            scopeKey?: string;
             /** Format: int64 */
             teamId?: number;
             /** Format: date-time */
@@ -75547,6 +79235,9 @@ export interface components {
         };
         ApiResponseListActivityTemplateResponse: {
             data?: components["schemas"]["ActivityTemplateResponse"][];
+        };
+        ApiResponseListActivityRecordResponse: {
+            data?: components["schemas"]["ActivityRecordResponse"][];
         };
         ApiResponseListActivityCommentResponse: {
             data?: components["schemas"]["ActivityCommentResponse"][];
@@ -76680,6 +80371,80 @@ export interface operations {
             };
         };
     };
+    update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VillageRecruitCategoryUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageRecruitCategoryResponse"];
+                };
+            };
+        };
+    };
+    delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                categoryId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    reorder: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VillageRecruitCategoryOrderRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListVillageRecruitCategoryResponse"];
+                };
+            };
+        };
+    };
     getSettings: {
         parameters: {
             query?: never;
@@ -76728,7 +80493,136 @@ export interface operations {
             };
         };
     };
-    update: {
+    updateTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsletterTagUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterTagResponse"];
+                };
+            };
+        };
+    };
+    deleteTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                tagId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateIssueVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                issueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsletterVisibilityUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterIssueDetailResponse"];
+                };
+            };
+        };
+    };
+    updateIssueTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                issueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsletterIssueTagsUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterIssueDetailResponse"];
+                };
+            };
+        };
+    };
+    updateIssueComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                issueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsletterCommentUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterIssueDetailResponse"];
+                };
+            };
+        };
+    };
+    update_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -76754,7 +80648,7 @@ export interface operations {
             };
         };
     };
-    delete: {
+    delete_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -76799,6 +80693,131 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    upsertAttendance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetupAttendanceUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupAttendanceResponse"];
+                };
+            };
+        };
+    };
+    upsertRsvp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                festivalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FestivalRsvpUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFestivalRsvpResponse"];
+                };
+            };
+        };
+    };
+    deleteRsvp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                festivalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                articleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharterArticleUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCharterArticleResponse"];
+                };
+            };
+        };
+    };
+    deleteArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                articleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
             };
         };
     };
@@ -76989,7 +81008,7 @@ export interface operations {
             };
         };
     };
-    update_1: {
+    update_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -77015,7 +81034,7 @@ export interface operations {
             };
         };
     };
-    delete_1: {
+    delete_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -77035,7 +81054,7 @@ export interface operations {
             };
         };
     };
-    update_2: {
+    update_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -77061,7 +81080,7 @@ export interface operations {
             };
         };
     };
-    delete_2: {
+    delete_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -77223,7 +81242,7 @@ export interface operations {
             };
         };
     };
-    delete_3: {
+    delete_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -78246,7 +82265,7 @@ export interface operations {
             };
         };
     };
-    update_3: {
+    update_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -78273,7 +82292,7 @@ export interface operations {
             };
         };
     };
-    delete_4: {
+    delete_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -78895,7 +82914,7 @@ export interface operations {
             };
         };
     };
-    update_4: {
+    update_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -78922,7 +82941,7 @@ export interface operations {
             };
         };
     };
-    delete_5: {
+    delete_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -78991,7 +83010,7 @@ export interface operations {
             };
         };
     };
-    update_5: {
+    update_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -79018,7 +83037,7 @@ export interface operations {
             };
         };
     };
-    delete_6: {
+    delete_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -79110,7 +83129,7 @@ export interface operations {
             };
         };
     };
-    update_6: {
+    update_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -79137,7 +83156,7 @@ export interface operations {
             };
         };
     };
-    delete_7: {
+    delete_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -79181,7 +83200,7 @@ export interface operations {
             };
         };
     };
-    update_7: {
+    update_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -79208,7 +83227,7 @@ export interface operations {
             };
         };
     };
-    delete_8: {
+    delete_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -79377,7 +83396,7 @@ export interface operations {
             };
         };
     };
-    delete_9: {
+    delete_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -79613,7 +83632,7 @@ export interface operations {
             };
         };
     };
-    update_8: {
+    update_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -79640,7 +83659,7 @@ export interface operations {
             };
         };
     };
-    delete_10: {
+    delete_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -79803,7 +83822,7 @@ export interface operations {
             };
         };
     };
-    update_9: {
+    update_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -79830,7 +83849,7 @@ export interface operations {
             };
         };
     };
-    delete_11: {
+    delete_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -80207,7 +84226,7 @@ export interface operations {
             };
         };
     };
-    update_10: {
+    update_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -80234,7 +84253,7 @@ export interface operations {
             };
         };
     };
-    delete_12: {
+    delete_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -80277,7 +84296,7 @@ export interface operations {
             };
         };
     };
-    update_11: {
+    update_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -80303,7 +84322,7 @@ export interface operations {
             };
         };
     };
-    update_12: {
+    update_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -80330,7 +84349,7 @@ export interface operations {
             };
         };
     };
-    delete_13: {
+    delete_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -80741,7 +84760,7 @@ export interface operations {
             };
         };
     };
-    update_13: {
+    update_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -80768,7 +84787,7 @@ export interface operations {
             };
         };
     };
-    delete_14: {
+    delete_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -80958,7 +84977,7 @@ export interface operations {
             };
         };
     };
-    update_14: {
+    update_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -80985,7 +85004,7 @@ export interface operations {
             };
         };
     };
-    delete_15: {
+    delete_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -81077,7 +85096,7 @@ export interface operations {
             };
         };
     };
-    update_15: {
+    update_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -81104,7 +85123,7 @@ export interface operations {
             };
         };
     };
-    delete_16: {
+    delete_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -81803,7 +85822,7 @@ export interface operations {
             };
         };
     };
-    update_16: {
+    update_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -81830,7 +85849,7 @@ export interface operations {
             };
         };
     };
-    delete_17: {
+    delete_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -81924,7 +85943,7 @@ export interface operations {
             };
         };
     };
-    update_17: {
+    update_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -81948,6 +85967,56 @@ export interface operations {
                 content: {
                     "*/*": components["schemas"]["ApiResponseOperationalCampaignResponse"];
                 };
+            };
+        };
+    };
+    update_19: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                campaignId: number;
+                adId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdCreativeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdCreativeResponse"];
+                };
+            };
+        };
+    };
+    delete_19: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                campaignId: number;
+                adId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -82615,7 +86684,7 @@ export interface operations {
             };
         };
     };
-    update_18: {
+    update_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -82641,7 +86710,7 @@ export interface operations {
             };
         };
     };
-    delete_18: {
+    delete_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -82823,7 +86892,7 @@ export interface operations {
             };
         };
     };
-    update_19: {
+    update_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -82849,7 +86918,7 @@ export interface operations {
             };
         };
     };
-    delete_19: {
+    delete_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -82893,7 +86962,7 @@ export interface operations {
             };
         };
     };
-    update_20: {
+    update_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -83245,6 +87314,56 @@ export interface operations {
             };
         };
     };
+    getCriteria: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                betaPhase: number;
+                grantKind: "INDIVIDUAL" | "TEAM_ORG";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkCriteriaResponse"];
+                };
+            };
+        };
+    };
+    upsertCriteria: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                betaPhase: number;
+                grantKind: "INDIVIDUAL" | "TEAM_ORG";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaPerkCriteriaUpsertRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkCriteriaResponse"];
+                };
+            };
+        };
+    };
     updateAnnouncement: {
         parameters: {
             query?: never;
@@ -83337,7 +87456,7 @@ export interface operations {
             };
         };
     };
-    update_21: {
+    update_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -83363,7 +87482,7 @@ export interface operations {
             };
         };
     };
-    delete_20: {
+    delete_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -84793,7 +88912,7 @@ export interface operations {
             };
         };
     };
-    update_22: {
+    update_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -84820,7 +88939,7 @@ export interface operations {
             };
         };
     };
-    delete_21: {
+    delete_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -84983,7 +89102,7 @@ export interface operations {
             };
         };
     };
-    update_23: {
+    update_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -85010,7 +89129,7 @@ export interface operations {
             };
         };
     };
-    delete_22: {
+    delete_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -85300,7 +89419,7 @@ export interface operations {
             };
         };
     };
-    update_24: {
+    update_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -85327,7 +89446,7 @@ export interface operations {
             };
         };
     };
-    delete_23: {
+    delete_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -85371,7 +89490,7 @@ export interface operations {
             };
         };
     };
-    update_25: {
+    update_27: {
         parameters: {
             query?: never;
             header?: never;
@@ -85398,7 +89517,7 @@ export interface operations {
             };
         };
     };
-    delete_24: {
+    delete_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -85442,7 +89561,7 @@ export interface operations {
             };
         };
     };
-    update_26: {
+    update_28: {
         parameters: {
             query?: never;
             header?: never;
@@ -85469,7 +89588,7 @@ export interface operations {
             };
         };
     };
-    delete_25: {
+    delete_27: {
         parameters: {
             query?: never;
             header?: never;
@@ -85563,7 +89682,7 @@ export interface operations {
             };
         };
     };
-    update_27: {
+    update_29: {
         parameters: {
             query?: never;
             header?: never;
@@ -85590,7 +89709,7 @@ export interface operations {
             };
         };
     };
-    update_28: {
+    update_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -85618,7 +89737,7 @@ export interface operations {
             };
         };
     };
-    delete_26: {
+    delete_28: {
         parameters: {
             query?: never;
             header?: never;
@@ -86109,7 +90228,7 @@ export interface operations {
             };
         };
     };
-    update_29: {
+    update_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -86136,7 +90255,7 @@ export interface operations {
             };
         };
     };
-    delete_27: {
+    delete_29: {
         parameters: {
             query?: never;
             header?: never;
@@ -86423,7 +90542,7 @@ export interface operations {
             };
         };
     };
-    update_30: {
+    update_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -86450,7 +90569,7 @@ export interface operations {
             };
         };
     };
-    delete_28: {
+    delete_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -86471,7 +90590,7 @@ export interface operations {
             };
         };
     };
-    update_31: {
+    update_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -86498,7 +90617,7 @@ export interface operations {
             };
         };
     };
-    delete_29: {
+    delete_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -86596,7 +90715,7 @@ export interface operations {
             };
         };
     };
-    update_32: {
+    update_34: {
         parameters: {
             query?: never;
             header?: never;
@@ -86623,7 +90742,7 @@ export interface operations {
             };
         };
     };
-    delete_30: {
+    delete_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -86667,7 +90786,7 @@ export interface operations {
             };
         };
     };
-    update_33: {
+    update_35: {
         parameters: {
             query?: never;
             header?: never;
@@ -86694,7 +90813,7 @@ export interface operations {
             };
         };
     };
-    delete_31: {
+    delete_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -86742,7 +90861,7 @@ export interface operations {
             };
         };
     };
-    delete_32: {
+    delete_34: {
         parameters: {
             query?: never;
             header?: never;
@@ -87182,7 +91301,7 @@ export interface operations {
             };
         };
     };
-    update_34: {
+    update_36: {
         parameters: {
             query?: never;
             header?: never;
@@ -87209,7 +91328,7 @@ export interface operations {
             };
         };
     };
-    delete_33: {
+    delete_35: {
         parameters: {
             query?: never;
             header?: never;
@@ -87351,7 +91470,7 @@ export interface operations {
             };
         };
     };
-    update_35: {
+    update_37: {
         parameters: {
             query?: never;
             header?: never;
@@ -87378,7 +91497,7 @@ export interface operations {
             };
         };
     };
-    delete_34: {
+    delete_36: {
         parameters: {
             query?: never;
             header?: never;
@@ -87399,7 +91518,7 @@ export interface operations {
             };
         };
     };
-    update_36: {
+    update_38: {
         parameters: {
             query?: never;
             header?: never;
@@ -87426,7 +91545,7 @@ export interface operations {
             };
         };
     };
-    delete_35: {
+    delete_37: {
         parameters: {
             query?: never;
             header?: never;
@@ -87763,7 +91882,7 @@ export interface operations {
             };
         };
     };
-    update_37: {
+    update_39: {
         parameters: {
             query?: never;
             header?: never;
@@ -87789,7 +91908,7 @@ export interface operations {
             };
         };
     };
-    delete_36: {
+    delete_38: {
         parameters: {
             query?: never;
             header?: never;
@@ -88178,6 +92297,76 @@ export interface operations {
             };
         };
     };
+    get_16: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOwnPlan"];
+                };
+            };
+        };
+    };
+    update_40: {
+        parameters: {
+            query: {
+                version: number;
+            };
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnStayPlanCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOwnPlan"];
+                };
+            };
+        };
+    };
+    delete_39: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                planId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     getSettings_12: {
         parameters: {
             query?: never;
@@ -88346,7 +92535,7 @@ export interface operations {
             };
         };
     };
-    get_16: {
+    get_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -88366,7 +92555,7 @@ export interface operations {
             };
         };
     };
-    update_38: {
+    update_41: {
         parameters: {
             query?: never;
             header?: never;
@@ -89580,7 +93769,7 @@ export interface operations {
             };
         };
     };
-    updateTag: {
+    updateTag_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -89606,7 +93795,7 @@ export interface operations {
             };
         };
     };
-    deleteTag: {
+    deleteTag_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -89980,7 +94169,7 @@ export interface operations {
             };
         };
     };
-    update_39: {
+    update_42: {
         parameters: {
             query?: never;
             header?: never;
@@ -90006,7 +94195,7 @@ export interface operations {
             };
         };
     };
-    delete_37: {
+    delete_40: {
         parameters: {
             query?: never;
             header?: never;
@@ -90094,7 +94283,7 @@ export interface operations {
             };
         };
     };
-    update_40: {
+    update_43: {
         parameters: {
             query?: never;
             header?: never;
@@ -90252,7 +94441,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -90278,7 +94467,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -92729,6 +96918,102 @@ export interface operations {
             };
         };
     };
+    list_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListVillageRecruitCategoryResponse"];
+                };
+            };
+        };
+    };
+    create_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VillageRecruitCategoryCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageRecruitCategoryResponse"];
+                };
+            };
+        };
+    };
+    listTags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListNewsletterTagResponse"];
+                };
+            };
+        };
+    };
+    createTag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewsletterTagCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterTagResponse"];
+                };
+            };
+        };
+    };
     optOut: {
         parameters: {
             query?: never;
@@ -92769,7 +97054,33 @@ export interface operations {
             };
         };
     };
-    list_5: {
+    generateUploadUrl: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MonshoUploadUrlRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMonshoUploadUrlResponse"];
+                };
+            };
+        };
+    };
+    list_6: {
         parameters: {
             query?: {
                 page?: number;
@@ -92847,7 +97158,7 @@ export interface operations {
             };
         };
     };
-    list_6: {
+    list_7: {
         parameters: {
             query?: {
                 status?: "PLANNING" | "CONFIRMED" | "CANCELLED";
@@ -92873,7 +97184,7 @@ export interface operations {
             };
         };
     };
-    create_3: {
+    create_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -92895,6 +97206,131 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMeetupResponse"];
+                };
+            };
+        };
+    };
+    listTodos: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMeetupTodoResponse"];
+                };
+            };
+        };
+    };
+    createTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetupTodoCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupTodoResponse"];
+                };
+            };
+        };
+    };
+    releaseTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+                todoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupTodoResponse"];
+                };
+            };
+        };
+    };
+    completeTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+                todoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupTodoResponse"];
+                };
+            };
+        };
+    };
+    claimTodo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+                todoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupTodoResponse"];
                 };
             };
         };
@@ -92922,6 +97358,59 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMeetupResponse"];
+                };
+            };
+        };
+    };
+    listComments_1: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMeetupCommentResponse"];
+                };
+            };
+        };
+    };
+    createComment_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetupCommentCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMeetupCommentResponse"];
                 };
             };
         };
@@ -92976,7 +97465,7 @@ export interface operations {
             };
         };
     };
-    list_7: {
+    list_8: {
         parameters: {
             query?: {
                 category?: string;
@@ -93005,7 +97494,7 @@ export interface operations {
             };
         };
     };
-    create_4: {
+    create_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -93202,7 +97691,7 @@ export interface operations {
             };
         };
     };
-    list_8: {
+    list_9: {
         parameters: {
             query?: {
                 status?: "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
@@ -93228,7 +97717,7 @@ export interface operations {
             };
         };
     };
-    create_5: {
+    create_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -93331,7 +97820,7 @@ export interface operations {
             };
         };
     };
-    list_9: {
+    list_10: {
         parameters: {
             query?: {
                 status?: "SCHEDULED" | "ACTIVE" | "ENDED" | "CANCELLED";
@@ -93357,7 +97846,7 @@ export interface operations {
             };
         };
     };
-    create_6: {
+    create_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -93383,6 +97872,59 @@ export interface operations {
             };
         };
     };
+    listLivePosts: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                festivalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListFestivalLivePostResponse"];
+                };
+            };
+        };
+    };
+    tagLivePost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                festivalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FestivalLivePostTagRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFestivalLivePostResponse"];
+                };
+            };
+        };
+    };
     cancel_2: {
         parameters: {
             query?: never;
@@ -93402,6 +97944,84 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseFestivalResponse"];
+                };
+            };
+        };
+    };
+    addRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharterRevisionCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
+            };
+        };
+    };
+    addDrafter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharterDrafterCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
+            };
+        };
+    };
+    addArticle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharterArticleCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
                 };
             };
         };
@@ -93431,7 +98051,7 @@ export interface operations {
             };
         };
     };
-    create_7: {
+    create_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -93453,6 +98073,60 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCalendarEventResponse"];
+                };
+            };
+        };
+    };
+    listLogs: {
+        parameters: {
+            query?: {
+                year?: number;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListCalendarEventLogResponse"];
+                };
+            };
+        };
+    };
+    addLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalendarEventLogCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCalendarEventLogResponse"];
                 };
             };
         };
@@ -93483,7 +98157,7 @@ export interface operations {
             };
         };
     };
-    create_8: {
+    create_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -93766,7 +98440,7 @@ export interface operations {
             };
         };
     };
-    list_10: {
+    list_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -93786,7 +98460,7 @@ export interface operations {
             };
         };
     };
-    create_9: {
+    create_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -93810,7 +98484,7 @@ export interface operations {
             };
         };
     };
-    list_11: {
+    list_12: {
         parameters: {
             query?: never;
             header?: never;
@@ -93830,7 +98504,7 @@ export interface operations {
             };
         };
     };
-    create_10: {
+    create_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -93970,7 +98644,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl: {
+    generateUploadUrl_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -95126,6 +99800,178 @@ export interface operations {
             };
         };
     };
+    list_13: {
+        parameters: {
+            query?: {
+                status?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    create_12: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    revert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 復帰成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    convert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 変換成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseConvertScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    archive_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description アーカイブ成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    reorder_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderScheduleKeepsRequest"];
+            };
+        };
+        responses: {
+            /** @description 並び替え成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listTeamTranslations: {
         parameters: {
             query?: {
@@ -95255,7 +100101,7 @@ export interface operations {
             };
         };
     };
-    listTodos: {
+    listTodos_1: {
         parameters: {
             query?: {
                 status?: string;
@@ -95282,7 +100128,7 @@ export interface operations {
             };
         };
     };
-    createTodo: {
+    createTodo_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -95457,7 +100303,7 @@ export interface operations {
             };
         };
     };
-    listComments_1: {
+    listComments_2: {
         parameters: {
             query?: {
                 page?: number;
@@ -95537,7 +100383,7 @@ export interface operations {
             };
         };
     };
-    list_12: {
+    list_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -95559,7 +100405,7 @@ export interface operations {
             };
         };
     };
-    create_11: {
+    create_13: {
         parameters: {
             query?: never;
             header?: never;
@@ -96133,7 +100979,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_1: {
+    generateUploadUrl_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -96490,7 +101336,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_2: {
+    generateUploadUrl_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -96641,7 +101487,7 @@ export interface operations {
             };
         };
     };
-    list_13: {
+    list_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -96663,7 +101509,7 @@ export interface operations {
             };
         };
     };
-    create_12: {
+    create_14: {
         parameters: {
             query?: never;
             header?: never;
@@ -96807,7 +101653,7 @@ export interface operations {
             };
         };
     };
-    list_14: {
+    list_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -97011,7 +101857,9 @@ export interface operations {
     };
     confirmReservation: {
         parameters: {
-            query?: never;
+            query?: {
+                scope?: "THIS_ONLY" | "SERIES";
+            };
             header?: never;
             path: {
                 teamId: number;
@@ -97374,6 +102222,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBlockedTimeResponse"];
+                };
+            };
+        };
+    };
+    listRules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListRecurringBlockedTimeResponse"];
+                };
+            };
+        };
+    };
+    createRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRecurringBlockedTimeRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecurringBlockedTimeResponse"];
                 };
             };
         };
@@ -97747,7 +102643,7 @@ export interface operations {
             };
         };
     };
-    list_15: {
+    list_17: {
         parameters: {
             query?: {
                 categoryId?: number;
@@ -97771,7 +102667,7 @@ export interface operations {
             };
         };
     };
-    create_13: {
+    create_15: {
         parameters: {
             query?: never;
             header?: never;
@@ -97797,7 +102693,7 @@ export interface operations {
             };
         };
     };
-    archive_2: {
+    archive_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -97818,7 +102714,7 @@ export interface operations {
             };
         };
     };
-    list_16: {
+    list_18: {
         parameters: {
             query?: {
                 status?: string;
@@ -97844,7 +102740,7 @@ export interface operations {
             };
         };
     };
-    create_14: {
+    create_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -98174,7 +103070,7 @@ export interface operations {
             };
         };
     };
-    list_17: {
+    list_19: {
         parameters: {
             query?: {
                 status?: string;
@@ -98201,7 +103097,7 @@ export interface operations {
             };
         };
     };
-    create_15: {
+    create_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -98277,7 +103173,7 @@ export interface operations {
             };
         };
     };
-    list_18: {
+    list_20: {
         parameters: {
             query?: {
                 status?: string;
@@ -98303,7 +103199,7 @@ export interface operations {
             };
         };
     };
-    create_16: {
+    create_18: {
         parameters: {
             query?: never;
             header?: never;
@@ -98553,7 +103449,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_3: {
+    generateUploadUrl_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -98832,7 +103728,7 @@ export interface operations {
             };
         };
     };
-    list_19: {
+    list_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -98854,7 +103750,7 @@ export interface operations {
             };
         };
     };
-    create_17: {
+    create_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -98980,7 +103876,7 @@ export interface operations {
             };
         };
     };
-    list_20: {
+    list_22: {
         parameters: {
             query?: {
                 status?: string;
@@ -99006,7 +103902,7 @@ export interface operations {
             };
         };
     };
-    create_18: {
+    create_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -99241,7 +104137,7 @@ export interface operations {
             };
         };
     };
-    list_21: {
+    list_23: {
         parameters: {
             query?: {
                 status?: string;
@@ -99267,7 +104163,7 @@ export interface operations {
             };
         };
     };
-    create_19: {
+    create_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -99320,7 +104216,7 @@ export interface operations {
             };
         };
     };
-    list_22: {
+    list_24: {
         parameters: {
             query?: {
                 status?: string;
@@ -99346,7 +104242,7 @@ export interface operations {
             };
         };
     };
-    create_20: {
+    create_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -99396,7 +104292,7 @@ export interface operations {
             };
         };
     };
-    list_23: {
+    list_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -99418,7 +104314,7 @@ export interface operations {
             };
         };
     };
-    create_21: {
+    create_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -99705,6 +104601,120 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseNgTeamResponse"];
+                };
+            };
+        };
+    };
+    listMatches: {
+        parameters: {
+            query?: {
+                kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
+                status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
+                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
+                from?: string;
+                to?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    createMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    listMatches_1: {
+        parameters: {
+            query?: {
+                kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
+                status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
+                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
+                from?: string;
+                to?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    createMatch_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
                 };
             };
         };
@@ -100061,7 +105071,7 @@ export interface operations {
             };
         };
     };
-    list_24: {
+    list_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -100083,7 +105093,7 @@ export interface operations {
             };
         };
     };
-    create_22: {
+    create_24: {
         parameters: {
             query?: never;
             header?: never;
@@ -100109,7 +105119,7 @@ export interface operations {
             };
         };
     };
-    list_25: {
+    list_27: {
         parameters: {
             query?: never;
             header?: never;
@@ -100131,7 +105141,7 @@ export interface operations {
             };
         };
     };
-    create_23: {
+    create_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -101044,7 +106054,7 @@ export interface operations {
             };
         };
     };
-    list_26: {
+    list_28: {
         parameters: {
             query?: {
                 page?: number;
@@ -101069,7 +106079,7 @@ export interface operations {
             };
         };
     };
-    create_24: {
+    create_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -101118,7 +106128,7 @@ export interface operations {
             };
         };
     };
-    create_25: {
+    create_27: {
         parameters: {
             query?: never;
             header?: never;
@@ -101471,7 +106481,7 @@ export interface operations {
             };
         };
     };
-    list_27: {
+    list_29: {
         parameters: {
             query?: {
                 page?: number;
@@ -101496,7 +106506,7 @@ export interface operations {
             };
         };
     };
-    create_26: {
+    create_28: {
         parameters: {
             query?: never;
             header?: never;
@@ -101570,7 +106580,7 @@ export interface operations {
             };
         };
     };
-    list_28: {
+    list_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -101660,7 +106670,7 @@ export interface operations {
             };
         };
     };
-    list_29: {
+    list_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -101682,7 +106692,7 @@ export interface operations {
             };
         };
     };
-    create_27: {
+    create_29: {
         parameters: {
             query?: never;
             header?: never;
@@ -102167,7 +107177,7 @@ export interface operations {
             };
         };
     };
-    list_30: {
+    list_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -102189,7 +107199,7 @@ export interface operations {
             };
         };
     };
-    create_28: {
+    create_30: {
         parameters: {
             query?: never;
             header?: never;
@@ -102215,7 +107225,7 @@ export interface operations {
             };
         };
     };
-    list_31: {
+    list_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -102237,7 +107247,7 @@ export interface operations {
             };
         };
     };
-    create_29: {
+    create_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -102664,7 +107674,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMapStringObject"];
+                    "*/*": components["schemas"]["ApiResponseAnnouncementMarkAllReadResultDto"];
                 };
             };
         };
@@ -102765,6 +107775,54 @@ export interface operations {
             };
         };
     };
+    listReportSchedules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListReportScheduleResponse"];
+                };
+            };
+        };
+    };
+    createReportSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateReportScheduleRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseReportScheduleResponse"];
+                };
+            };
+        };
+    };
     register: {
         parameters: {
             query?: never;
@@ -102791,7 +107849,55 @@ export interface operations {
             };
         };
     };
-    list_32: {
+    listCreditLimitRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListCreditLimitRequestResponse"];
+                };
+            };
+        };
+    };
+    createCreditLimitRequest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCreditLimitRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCreditLimitRequestResponse"];
+                };
+            };
+        };
+    };
+    list_34: {
         parameters: {
             query: {
                 status?: "DRAFT" | "REVIEW" | "APPROVED" | "SCHEDULED" | "DELIVERING" | "PAUSED" | "COMPLETED" | "BLOCKED" | "CANCELLED";
@@ -102816,7 +107922,7 @@ export interface operations {
             };
         };
     };
-    create_30: {
+    create_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -103034,7 +108140,7 @@ export interface operations {
             };
         };
     };
-    list_33: {
+    list_35: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -103060,7 +108166,7 @@ export interface operations {
             };
         };
     };
-    create_31: {
+    create_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -103178,6 +108284,56 @@ export interface operations {
             };
         };
     };
+    list_36: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                campaignId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListAdCreativeResponse"];
+                };
+            };
+        };
+    };
+    create_34: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                campaignId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAdCreativeRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdCreativeResponse"];
+                };
+            };
+        };
+    };
     transferOwnership: {
         parameters: {
             query: {
@@ -103193,6 +108349,13 @@ export interface operations {
         responses: {
             /** @description 譲渡成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -103279,6 +108442,15 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPermissionGroupResponse"];
+                };
+            };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -103425,6 +108597,24 @@ export interface operations {
         responses: {
             /** @description 申請/承認成功 */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFollowStatusResponse"];
+                };
+            };
+            /** @description 可視性レベル未満（当該チームを閲覧できない）/ サポーター受け入れが無効 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFollowStatusResponse"];
+                };
+            };
+            /** @description チームが存在しない / 論理削除済み */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -104410,7 +109600,7 @@ export interface operations {
             };
         };
     };
-    create_32: {
+    create_35: {
         parameters: {
             query?: never;
             header?: never;
@@ -104542,7 +109732,7 @@ export interface operations {
             };
         };
     };
-    create_33: {
+    create_36: {
         parameters: {
             query?: never;
             header?: never;
@@ -104656,7 +109846,7 @@ export interface operations {
             };
         };
     };
-    list_34: {
+    list_37: {
         parameters: {
             query?: {
                 page?: number;
@@ -104679,7 +109869,7 @@ export interface operations {
             };
         };
     };
-    create_34: {
+    create_37: {
         parameters: {
             query?: never;
             header?: never;
@@ -104794,7 +109984,7 @@ export interface operations {
             };
         };
     };
-    list_35: {
+    list_38: {
         parameters: {
             query?: never;
             header?: never;
@@ -104814,7 +110004,7 @@ export interface operations {
             };
         };
     };
-    create_35: {
+    create_38: {
         parameters: {
             query?: never;
             header?: never;
@@ -104838,7 +110028,7 @@ export interface operations {
             };
         };
     };
-    list_36: {
+    list_39: {
         parameters: {
             query?: never;
             header?: never;
@@ -104858,7 +110048,7 @@ export interface operations {
             };
         };
     };
-    create_36: {
+    create_39: {
         parameters: {
             query?: never;
             header?: never;
@@ -105105,6 +110295,158 @@ export interface operations {
             };
         };
     };
+    listGrants: {
+        parameters: {
+            query?: {
+                grantKind?: "INDIVIDUAL" | "TEAM_ORG";
+                betaPhase?: number;
+                reviewFlag?: boolean;
+                scopeKind?: "USER" | "TEAM" | "ORG";
+                scopeId?: number;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantPageResponse"];
+                };
+            };
+        };
+    };
+    createGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaPerkCreateGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantDetail"];
+                };
+            };
+        };
+    };
+    revokeGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaPerkRevokeGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantDetail"];
+                };
+            };
+        };
+    };
+    resolveReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantDetail"];
+                };
+            };
+        };
+    };
+    flagReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaPerkFlagReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantDetail"];
+                };
+            };
+        };
+    };
+    extendGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BetaPerkExtendGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkGrantDetail"];
+                };
+            };
+        };
+    };
     trigger: {
         parameters: {
             query?: {
@@ -105305,7 +110647,7 @@ export interface operations {
             };
         };
     };
-    list_37: {
+    list_40: {
         parameters: {
             query: {
                 pageable: components["schemas"]["Pageable"];
@@ -105327,7 +110669,7 @@ export interface operations {
             };
         };
     };
-    create_37: {
+    create_40: {
         parameters: {
             query?: never;
             header?: never;
@@ -106041,7 +111383,8 @@ export interface operations {
     };
     listSwapRequests: {
         parameters: {
-            query?: {
+            query: {
+                teamId: number;
                 status?: string;
             };
             header?: never;
@@ -106595,7 +111938,6 @@ export interface operations {
         parameters: {
             query: {
                 scheduleId: number;
-                role?: string;
             };
             header?: never;
             path?: never;
@@ -107003,7 +112345,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_4: {
+    generateUploadUrl_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -107029,7 +112371,7 @@ export interface operations {
             };
         };
     };
-    list_38: {
+    list_41: {
         parameters: {
             query?: {
                 page?: number;
@@ -107054,7 +112396,7 @@ export interface operations {
             };
         };
     };
-    create_38: {
+    create_41: {
         parameters: {
             query?: never;
             header?: never;
@@ -107076,6 +112418,58 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseScheduleDelegationResponse"];
+                };
+            };
+        };
+    };
+    listComments_3: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseScheduleCommentResponse"];
+                };
+            };
+        };
+    };
+    createComment_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleCommentResponse"];
                 };
             };
         };
@@ -107581,7 +112975,7 @@ export interface operations {
             };
         };
     };
-    archive_3: {
+    archive_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -107591,6 +112985,30 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    waive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                recordId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WaiveCancellationFeeRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {
@@ -108130,7 +113548,7 @@ export interface operations {
             };
         };
     };
-    listComments_2: {
+    listComments_4: {
         parameters: {
             query?: {
                 page?: number;
@@ -108155,7 +113573,7 @@ export interface operations {
             };
         };
     };
-    createComment_1: {
+    createComment_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -108632,6 +114050,24 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
                 };
             };
+            /** @description 指定した親組織の ADMIN/DEPUTY 権限がない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
+                };
+            };
+            /** @description 指定した親組織が存在しない / 論理削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
+                };
+            };
         };
     };
     transferOwnership_1: {
@@ -108649,6 +114085,13 @@ export interface operations {
         responses: {
             /** @description 譲渡成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -108844,6 +114287,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseListPermissionGroupResponse"];
                 };
             };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPermissionGroupResponse"];
+                };
+            };
         };
     };
     createPermissionGroup_1: {
@@ -108990,6 +114442,24 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseFollowStatusResponse"];
                 };
             };
+            /** @description 可視性レベル未満（当該組織を閲覧できない）/ サポーター受け入れが無効 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFollowStatusResponse"];
+                };
+            };
+            /** @description 組織が存在しない / 論理削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseFollowStatusResponse"];
+                };
+            };
         };
     };
     unfollowOrganization: {
@@ -109110,7 +114580,7 @@ export interface operations {
             };
         };
     };
-    list_39: {
+    list_42: {
         parameters: {
             query?: never;
             header?: never;
@@ -109132,7 +114602,7 @@ export interface operations {
             };
         };
     };
-    create_39: {
+    create_42: {
         parameters: {
             query?: never;
             header?: never;
@@ -109258,7 +114728,7 @@ export interface operations {
             };
         };
     };
-    list_40: {
+    list_43: {
         parameters: {
             query?: {
                 status?: string;
@@ -109284,7 +114754,7 @@ export interface operations {
             };
         };
     };
-    create_40: {
+    create_43: {
         parameters: {
             query?: never;
             header?: never;
@@ -109519,7 +114989,7 @@ export interface operations {
             };
         };
     };
-    list_41: {
+    list_44: {
         parameters: {
             query?: {
                 status?: string;
@@ -109545,7 +115015,7 @@ export interface operations {
             };
         };
     };
-    create_41: {
+    create_44: {
         parameters: {
             query?: never;
             header?: never;
@@ -109598,7 +115068,7 @@ export interface operations {
             };
         };
     };
-    list_42: {
+    list_45: {
         parameters: {
             query?: {
                 status?: string;
@@ -109624,7 +115094,7 @@ export interface operations {
             };
         };
     };
-    create_42: {
+    create_45: {
         parameters: {
             query?: never;
             header?: never;
@@ -109901,7 +115371,7 @@ export interface operations {
             };
         };
     };
-    create_43: {
+    create_46: {
         parameters: {
             query?: never;
             header?: never;
@@ -109954,7 +115424,7 @@ export interface operations {
             };
         };
     };
-    list_43: {
+    list_46: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "READY" | "EXPORTED";
@@ -109980,7 +115450,7 @@ export interface operations {
             };
         };
     };
-    create_44: {
+    create_47: {
         parameters: {
             query?: never;
             header?: never;
@@ -110060,7 +115530,7 @@ export interface operations {
             };
         };
     };
-    list_44: {
+    list_47: {
         parameters: {
             query: {
                 status?: "DRAFT" | "REVIEW" | "APPROVED" | "SCHEDULED" | "DELIVERING" | "PAUSED" | "COMPLETED" | "BLOCKED" | "CANCELLED";
@@ -110085,7 +115555,7 @@ export interface operations {
             };
         };
     };
-    create_45: {
+    create_48: {
         parameters: {
             query?: never;
             header?: never;
@@ -110303,7 +115773,7 @@ export interface operations {
             };
         };
     };
-    list_45: {
+    list_48: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -110329,7 +115799,7 @@ export interface operations {
             };
         };
     };
-    create_46: {
+    create_49: {
         parameters: {
             query?: never;
             header?: never;
@@ -110447,7 +115917,7 @@ export interface operations {
             };
         };
     };
-    list_46: {
+    list_49: {
         parameters: {
             query?: never;
             header?: never;
@@ -110470,7 +115940,7 @@ export interface operations {
             };
         };
     };
-    create_47: {
+    create_50: {
         parameters: {
             query?: never;
             header?: never;
@@ -110588,6 +116058,178 @@ export interface operations {
         responses: {
             /** @description キャンセル成功 */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_50: {
+        parameters: {
+            query?: {
+                status?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                orgPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    create_51: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    revert_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    restore_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 復帰成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    convert_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 変換成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseConvertScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    archive_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description アーカイブ成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    reorder_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderScheduleKeepsRequest"];
+            };
+        };
+        responses: {
+            /** @description 並び替え成功 */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -111598,7 +117240,7 @@ export interface operations {
             };
         };
     };
-    listTodos_1: {
+    listTodos_2: {
         parameters: {
             query?: {
                 status?: string;
@@ -111625,7 +117267,7 @@ export interface operations {
             };
         };
     };
-    createTodo_1: {
+    createTodo_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -111800,7 +117442,7 @@ export interface operations {
             };
         };
     };
-    listComments_3: {
+    listComments_5: {
         parameters: {
             query?: {
                 page?: number;
@@ -111880,7 +117522,7 @@ export interface operations {
             };
         };
     };
-    list_47: {
+    list_51: {
         parameters: {
             query?: never;
             header?: never;
@@ -111902,7 +117544,7 @@ export interface operations {
             };
         };
     };
-    create_48: {
+    create_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -111972,64 +117614,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseTimetableTermResponse"];
-                };
-            };
-        };
-    };
-    listMatches: {
-        parameters: {
-            query?: {
-                kind?: "PRACTICE" | "FRIENDLY" | "TOURNAMENT" | "LEAGUE";
-                status?: "SCHEDULED" | "IN_PROGRESS" | "COMPLETED" | "POSTPONED" | "CANCELLED";
-                sport?: "SOCCER" | "FUTSAL" | "BASKETBALL" | "VOLLEYBALL" | "SHOGI" | "GO" | "FIGURE_SKATING" | "GYMNASTICS";
-                from?: string;
-                to?: string;
-                page?: number;
-                size?: number;
-            };
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["PagedResponseMatchSummaryResponse"];
-                };
-            };
-        };
-    };
-    createMatch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CreateMatchRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
                 };
             };
         };
@@ -112481,7 +118065,7 @@ export interface operations {
             };
         };
     };
-    list_48: {
+    list_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -112503,7 +118087,7 @@ export interface operations {
             };
         };
     };
-    create_49: {
+    create_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -112599,7 +118183,7 @@ export interface operations {
             };
         };
     };
-    list_49: {
+    list_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -112848,7 +118432,7 @@ export interface operations {
             };
         };
     };
-    list_50: {
+    list_54: {
         parameters: {
             query?: {
                 status?: string;
@@ -112874,7 +118458,7 @@ export interface operations {
             };
         };
     };
-    create_50: {
+    create_54: {
         parameters: {
             query?: never;
             header?: never;
@@ -112996,7 +118580,7 @@ export interface operations {
             };
         };
     };
-    list_51: {
+    list_55: {
         parameters: {
             query?: {
                 status?: string;
@@ -113023,7 +118607,7 @@ export interface operations {
             };
         };
     };
-    create_51: {
+    create_55: {
         parameters: {
             query?: never;
             header?: never;
@@ -113099,7 +118683,7 @@ export interface operations {
             };
         };
     };
-    list_52: {
+    list_56: {
         parameters: {
             query?: {
                 status?: string;
@@ -113125,7 +118709,7 @@ export interface operations {
             };
         };
     };
-    create_52: {
+    create_56: {
         parameters: {
             query?: never;
             header?: never;
@@ -113273,7 +118857,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_5: {
+    generateUploadUrl_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -113476,7 +119060,7 @@ export interface operations {
             };
         };
     };
-    list_53: {
+    list_57: {
         parameters: {
             query?: {
                 status?: ("DRAFT" | "SENT" | "VIEWED" | "PAID" | "OVERDUE" | "CANCELLED")[];
@@ -113502,7 +119086,7 @@ export interface operations {
             };
         };
     };
-    create_53: {
+    create_57: {
         parameters: {
             query?: never;
             header?: never;
@@ -113528,7 +119112,7 @@ export interface operations {
             };
         };
     };
-    list_54: {
+    list_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -113550,7 +119134,7 @@ export interface operations {
             };
         };
     };
-    create_54: {
+    create_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -113629,7 +119213,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
+                teamId: number;
                 matchId: string;
             };
             cookie?: never;
@@ -113648,6 +119232,56 @@ export interface operations {
         };
     };
     recordEvent_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchEventResponse"];
+                };
+            };
+        };
+    };
+    listEvents_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchEventsResponse"];
+                };
+            };
+        };
+    };
+    recordEvent_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -113724,7 +119358,7 @@ export interface operations {
             };
         };
     };
-    list_55: {
+    list_59: {
         parameters: {
             query?: never;
             header?: never;
@@ -113871,7 +119505,7 @@ export interface operations {
             };
         };
     };
-    listEvents_2: {
+    listEvents_3: {
         parameters: {
             query?: {
                 status?: string;
@@ -114276,7 +119910,7 @@ export interface operations {
             };
         };
     };
-    list_56: {
+    list_60: {
         parameters: {
             query?: {
                 page?: number;
@@ -114301,7 +119935,7 @@ export interface operations {
             };
         };
     };
-    create_55: {
+    create_59: {
         parameters: {
             query?: never;
             header?: never;
@@ -114350,7 +119984,7 @@ export interface operations {
             };
         };
     };
-    create_56: {
+    create_60: {
         parameters: {
             query?: never;
             header?: never;
@@ -114655,7 +120289,7 @@ export interface operations {
             };
         };
     };
-    list_57: {
+    list_61: {
         parameters: {
             query?: {
                 page?: number;
@@ -114680,7 +120314,7 @@ export interface operations {
             };
         };
     };
-    create_57: {
+    create_61: {
         parameters: {
             query?: never;
             header?: never;
@@ -114754,7 +120388,7 @@ export interface operations {
             };
         };
     };
-    list_58: {
+    list_62: {
         parameters: {
             query?: never;
             header?: never;
@@ -114844,7 +120478,7 @@ export interface operations {
             };
         };
     };
-    list_59: {
+    list_63: {
         parameters: {
             query?: never;
             header?: never;
@@ -114866,7 +120500,7 @@ export interface operations {
             };
         };
     };
-    create_58: {
+    create_62: {
         parameters: {
             query?: never;
             header?: never;
@@ -115041,7 +120675,7 @@ export interface operations {
             };
         };
     };
-    list_60: {
+    list_64: {
         parameters: {
             query?: never;
             header?: never;
@@ -115063,7 +120697,7 @@ export interface operations {
             };
         };
     };
-    create_59: {
+    create_63: {
         parameters: {
             query?: never;
             header?: never;
@@ -115284,7 +120918,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseMapStringObject"];
+                    "*/*": components["schemas"]["ApiResponseAnnouncementMarkAllReadResultDto"];
                 };
             };
         };
@@ -115538,7 +121172,7 @@ export interface operations {
             };
         };
     };
-    archive_4: {
+    archive_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -116016,7 +121650,7 @@ export interface operations {
             };
         };
     };
-    list_61: {
+    list_65: {
         parameters: {
             query?: never;
             header?: never;
@@ -116036,7 +121670,7 @@ export interface operations {
             };
         };
     };
-    create_60: {
+    create_64: {
         parameters: {
             query?: never;
             header?: never;
@@ -116256,6 +121890,216 @@ export interface operations {
             };
         };
     };
+    list_66: {
+        parameters: {
+            query?: {
+                status?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    create_65: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 作成成功 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    revert_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取消成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    restore_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 復帰成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    convert_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConvertScheduleKeepRequest"];
+            };
+        };
+        responses: {
+            /** @description 変換成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseConvertScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    archive_7: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description アーカイブ成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    reorder_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReorderScheduleKeepsRequest"];
+            };
+        };
+        responses: {
+            /** @description 並び替え成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    list_67: {
+        parameters: {
+            query?: {
+                includeEnded?: boolean;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseOwnPlan"];
+                };
+            };
+        };
+    };
+    create_66: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReturnStayPlanCreateRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOwnPlan"];
+                };
+            };
+        };
+    };
     listThemes: {
         parameters: {
             query?: never;
@@ -116398,7 +122242,7 @@ export interface operations {
             };
         };
     };
-    list_62: {
+    list_68: {
         parameters: {
             query?: never;
             header?: never;
@@ -116418,7 +122262,7 @@ export interface operations {
             };
         };
     };
-    create_61: {
+    create_67: {
         parameters: {
             query?: never;
             header?: never;
@@ -116442,7 +122286,7 @@ export interface operations {
             };
         };
     };
-    list_63: {
+    list_69: {
         parameters: {
             query?: never;
             header?: never;
@@ -116588,7 +122432,7 @@ export interface operations {
             };
         };
     };
-    archive_5: {
+    archive_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -117075,7 +122919,7 @@ export interface operations {
             };
         };
     };
-    create_62: {
+    create_68: {
         parameters: {
             query?: never;
             header?: never;
@@ -117786,7 +123630,7 @@ export interface operations {
             };
         };
     };
-    archive_6: {
+    archive_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -118037,7 +123881,7 @@ export interface operations {
             };
         };
     };
-    listTags: {
+    listTags_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -118175,7 +124019,7 @@ export interface operations {
             };
         };
     };
-    listComments_4: {
+    listComments_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -118197,7 +124041,7 @@ export interface operations {
             };
         };
     };
-    createComment_2: {
+    createComment_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -118821,7 +124665,7 @@ export interface operations {
             };
         };
     };
-    list_64: {
+    list_70: {
         parameters: {
             query?: {
                 page?: number;
@@ -118846,7 +124690,7 @@ export interface operations {
             };
         };
     };
-    create_63: {
+    create_69: {
         parameters: {
             query?: never;
             header?: never;
@@ -118943,7 +124787,7 @@ export interface operations {
             };
         };
     };
-    create_64: {
+    create_70: {
         parameters: {
             query?: never;
             header?: never;
@@ -119783,7 +125627,7 @@ export interface operations {
             };
         };
     };
-    listComments_5: {
+    listComments_7: {
         parameters: {
             query?: {
                 page?: number;
@@ -119808,7 +125652,7 @@ export interface operations {
             };
         };
     };
-    createComment_3: {
+    createComment_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -120131,7 +125975,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_6: {
+    generateUploadUrl_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -120600,7 +126444,7 @@ export interface operations {
             };
         };
     };
-    archive_7: {
+    archive_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -120746,7 +126590,7 @@ export interface operations {
             };
         };
     };
-    archive_8: {
+    archive_11: {
         parameters: {
             query?: never;
             header?: never;
@@ -121064,7 +126908,7 @@ export interface operations {
             };
         };
     };
-    create_65: {
+    create_71: {
         parameters: {
             query?: never;
             header?: never;
@@ -121259,7 +127103,7 @@ export interface operations {
             };
         };
     };
-    create_66: {
+    create_72: {
         parameters: {
             query: {
                 scopeId: number;
@@ -121309,7 +127153,7 @@ export interface operations {
             };
         };
     };
-    listTags_1: {
+    listTags_2: {
         parameters: {
             query?: {
                 teamId?: number;
@@ -121332,7 +127176,7 @@ export interface operations {
             };
         };
     };
-    createTag: {
+    createTag_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -121589,7 +127433,7 @@ export interface operations {
             };
         };
     };
-    generateUploadUrl_7: {
+    generateUploadUrl_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -122212,7 +128056,7 @@ export interface operations {
             };
         };
     };
-    listReportSchedules: {
+    listReportSchedules_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -122234,7 +128078,7 @@ export interface operations {
             };
         };
     };
-    createReportSchedule: {
+    createReportSchedule_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -122286,7 +128130,7 @@ export interface operations {
             };
         };
     };
-    listCreditLimitRequests: {
+    listCreditLimitRequests_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -122308,7 +128152,7 @@ export interface operations {
             };
         };
     };
-    createCreditLimitRequest: {
+    createCreditLimitRequest_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -123156,7 +129000,7 @@ export interface operations {
             };
         };
     };
-    create_67: {
+    create_73: {
         parameters: {
             query?: never;
             header?: never;
@@ -123272,7 +129116,7 @@ export interface operations {
             };
         };
     };
-    create_68: {
+    create_74: {
         parameters: {
             query?: never;
             header?: never;
@@ -123557,6 +129401,7 @@ export interface operations {
                 scope_id: number;
                 template_id?: number;
                 limit?: number;
+                page?: number;
             };
             header?: never;
             path?: never;
@@ -123570,7 +129415,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseListActivityRecordResponse"];
                 };
             };
         };
@@ -123597,7 +129442,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -123619,7 +129464,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -123697,12 +129542,12 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
     };
-    listComments_6: {
+    listComments_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -123724,7 +129569,7 @@ export interface operations {
             };
         };
     };
-    createComment_4: {
+    createComment_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -123772,7 +129617,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseActivityRecordResponse"];
                 };
             };
         };
@@ -123952,7 +129797,7 @@ export interface operations {
             };
         };
     };
-    listTags_2: {
+    listTags_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -123972,7 +129817,7 @@ export interface operations {
             };
         };
     };
-    createTag_1: {
+    createTag_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -124249,7 +130094,7 @@ export interface operations {
             };
         };
     };
-    get_17: {
+    get_18: {
         parameters: {
             query?: never;
             header: {
@@ -124275,7 +130120,7 @@ export interface operations {
             };
         };
     };
-    delete_38: {
+    delete_41: {
         parameters: {
             query?: never;
             header: {
@@ -124300,7 +130145,7 @@ export interface operations {
             };
         };
     };
-    update_41: {
+    update_44: {
         parameters: {
             query?: never;
             header: {
@@ -124385,7 +130230,7 @@ export interface operations {
             };
         };
     };
-    get_18: {
+    get_19: {
         parameters: {
             query?: never;
             header?: never;
@@ -124407,7 +130252,7 @@ export interface operations {
             };
         };
     };
-    delete_39: {
+    delete_42: {
         parameters: {
             query?: never;
             header?: never;
@@ -124427,7 +130272,7 @@ export interface operations {
             };
         };
     };
-    update_42: {
+    update_45: {
         parameters: {
             query?: never;
             header?: {
@@ -124482,7 +130327,33 @@ export interface operations {
             };
         };
     };
-    get_19: {
+    updateMyProfileVisibility: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProfileVisibilityUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseProfileVisibilityResponse"];
+                };
+            };
+        };
+    };
+    get_20: {
         parameters: {
             query?: never;
             header?: never;
@@ -124505,7 +130376,7 @@ export interface operations {
             };
         };
     };
-    update_43: {
+    update_46: {
         parameters: {
             query?: never;
             header?: never;
@@ -124532,7 +130403,7 @@ export interface operations {
             };
         };
     };
-    get_20: {
+    get_21: {
         parameters: {
             query?: never;
             header?: never;
@@ -124555,7 +130426,7 @@ export interface operations {
             };
         };
     };
-    update_44: {
+    update_47: {
         parameters: {
             query?: never;
             header?: never;
@@ -124582,7 +130453,7 @@ export interface operations {
             };
         };
     };
-    get_21: {
+    get_22: {
         parameters: {
             query?: never;
             header?: never;
@@ -124605,7 +130476,7 @@ export interface operations {
             };
         };
     };
-    update_45: {
+    update_48: {
         parameters: {
             query?: never;
             header?: never;
@@ -124632,7 +130503,33 @@ export interface operations {
             };
         };
     };
-    get_22: {
+    reorderArticles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharterArticleOrderUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
+            };
+        };
+    };
+    get_23: {
         parameters: {
             query?: never;
             header?: never;
@@ -124655,7 +130552,7 @@ export interface operations {
             };
         };
     };
-    delete_40: {
+    delete_43: {
         parameters: {
             query?: never;
             header?: never;
@@ -124676,7 +130573,7 @@ export interface operations {
             };
         };
     };
-    update_46: {
+    update_49: {
         parameters: {
             query?: never;
             header?: never;
@@ -125526,6 +131423,129 @@ export interface operations {
             };
         };
     };
+    get_24: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    delete_44: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_50: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: Record<string, never>;
+                };
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    reset_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                memberUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberCalendarColorResponse"];
+                };
+            };
+        };
+    };
+    override: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                memberUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMemberCalendarColorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberCalendarColorResponse"];
+                };
+            };
+        };
+    };
     changeTeamTranslationStatus: {
         parameters: {
             query?: never;
@@ -126209,6 +132229,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBlockedTimeResponse"];
+                };
+            };
+        };
+    };
+    deleteRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateRule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                ruleId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRecurringBlockedTimeRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecurringBlockedTimeResponse"];
                 };
             };
         };
@@ -126999,6 +133067,316 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseApplicationResponse"];
+                };
+            };
+        };
+    };
+    changeStatus_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchChangeStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    changeStatus_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchChangeStatusRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    finalizeScore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinalizeScoreRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    finalizeScore_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinalizeScoreRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    changeRecordingMode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeRecordingModeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    changeRecordingMode_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangeRecordingModeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    getMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    deleteMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateMatch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    getMatch_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
+                };
+            };
+        };
+    };
+    deleteMatch_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateMatch_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMatchRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
                 };
             };
         };
@@ -127811,7 +134189,7 @@ export interface operations {
             };
         };
     };
-    get_23: {
+    get_25: {
         parameters: {
             query?: never;
             header?: never;
@@ -127833,7 +134211,7 @@ export interface operations {
             };
         };
     };
-    update_47: {
+    update_51: {
         parameters: {
             query?: never;
             header?: never;
@@ -127940,6 +134318,54 @@ export interface operations {
             };
         };
     };
+    getAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdvertiserAccountResponse"];
+                };
+            };
+        };
+    };
+    updateAccount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAdvertiserAccountRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseAdvertiserAccountResponse"];
+                };
+            };
+        };
+    };
     getTeam: {
         parameters: {
             query?: never;
@@ -127998,6 +134424,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     updateTeam: {
@@ -128017,6 +134450,15 @@ export interface operations {
         responses: {
             /** @description 更新成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseTeamResponse"];
+                };
+            };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -128044,6 +134486,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     getSettings_16: {
@@ -128059,6 +134508,15 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TeamShiftSettingsResponse"];
+                };
+            };
+            /** @description 当該チームのメンバーでない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -128092,6 +134550,15 @@ export interface operations {
                     "*/*": components["schemas"]["TeamShiftSettingsResponse"];
                 };
             };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["TeamShiftSettingsResponse"];
+                };
+            };
         };
     };
     restoreTeam: {
@@ -128107,6 +134574,13 @@ export interface operations {
         responses: {
             /** @description 復元成功 */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description SYSTEM_ADMIN でない（当該チームの ADMIN であっても不可） */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -128374,6 +134848,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該チームの ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     deletePaymentItem: {
@@ -128499,7 +134980,7 @@ export interface operations {
             };
         };
     };
-    changeStatus_4: {
+    changeStatus_6: {
         parameters: {
             query?: never;
             header?: never;
@@ -128763,7 +135244,7 @@ export interface operations {
             };
         };
     };
-    update_48: {
+    update_52: {
         parameters: {
             query?: never;
             header?: never;
@@ -128881,6 +135362,30 @@ export interface operations {
             };
         };
     };
+    updatePaidPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateModulePaidPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     updateLevelAvailability: {
         parameters: {
             query?: never;
@@ -128893,6 +135398,30 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["UpdateLevelAvailabilityRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateActive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateModuleActiveRequest"];
             };
         };
         responses: {
@@ -128979,7 +135508,7 @@ export interface operations {
             };
         };
     };
-    get_24: {
+    get_26: {
         parameters: {
             query?: never;
             header?: never;
@@ -129001,7 +135530,7 @@ export interface operations {
             };
         };
     };
-    update_49: {
+    update_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -129960,6 +136489,80 @@ export interface operations {
             };
         };
     };
+    deleteComment_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateComment_4: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateScheduleCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleCommentResponse"];
+                };
+            };
+        };
+    };
+    updateSettings_15: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ThreadSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseThreadSettingsResponse"];
+                };
+            };
+        };
+    };
     reject_7: {
         parameters: {
             query?: never;
@@ -130149,7 +136752,7 @@ export interface operations {
             };
         };
     };
-    get_25: {
+    get_27: {
         parameters: {
             query?: never;
             header?: never;
@@ -130171,7 +136774,7 @@ export interface operations {
             };
         };
     };
-    update_50: {
+    update_54: {
         parameters: {
             query?: never;
             header?: never;
@@ -130672,6 +137275,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     updateOrganization: {
@@ -130691,6 +137301,15 @@ export interface operations {
         responses: {
             /** @description 更新成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseOrganizationResponse"];
+                };
+            };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -130718,6 +137337,13 @@ export interface operations {
                 };
                 content?: never;
             };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
         };
     };
     restoreOrganization: {
@@ -130733,6 +137359,13 @@ export interface operations {
         responses: {
             /** @description 復元成功 */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description SYSTEM_ADMIN でない（当該組織の ADMIN であっても不可） */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -131065,6 +137698,13 @@ export interface operations {
         responses: {
             /** @description アーカイブ成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -131645,6 +138285,129 @@ export interface operations {
             };
         };
     };
+    get_28: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    delete_45: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_55: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: Record<string, never>;
+                };
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    reset_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                memberUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberCalendarColorResponse"];
+                };
+            };
+        };
+    };
+    override_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                memberUserId: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMemberCalendarColorRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberCalendarColorResponse"];
+                };
+            };
+        };
+    };
     changeOrgTranslationStatus: {
         parameters: {
             query?: never;
@@ -131816,7 +138579,7 @@ export interface operations {
             };
         };
     };
-    changeStatus_5: {
+    changeStatus_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -132098,7 +138861,7 @@ export interface operations {
             };
         };
     };
-    changeStatus_6: {
+    changeStatus_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -132201,164 +138964,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListTodoStatusChangeResponse"];
-                };
-            };
-        };
-    };
-    getMatch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
-                };
-            };
-        };
-    };
-    deleteMatch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-        };
-    };
-    updateMatch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["UpdateMatchRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
-                };
-            };
-        };
-    };
-    changeStatus_7: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MatchChangeStatusRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
-                };
-            };
-        };
-    };
-    finalizeScore: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FinalizeScoreRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
-                };
-            };
-        };
-    };
-    changeRecordingMode: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                matchId: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ChangeRecordingModeRequest"];
-            };
-        };
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchDetailResponse"];
                 };
             };
         };
@@ -132531,7 +139136,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                orgId: number;
+                teamId: number;
                 matchId: string;
                 eventId: string;
             };
@@ -132549,6 +139154,56 @@ export interface operations {
         };
     };
     updateEvent_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchEventRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchEventResponse"];
+                };
+            };
+        };
+    };
+    deleteEvent_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                matchId: string;
+                eventId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateEvent_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -132599,7 +139254,7 @@ export interface operations {
             };
         };
     };
-    deleteEvent_2: {
+    deleteEvent_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -132620,7 +139275,7 @@ export interface operations {
             };
         };
     };
-    updateEvent_2: {
+    updateEvent_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -132816,7 +139471,7 @@ export interface operations {
             };
         };
     };
-    get_26: {
+    get_29: {
         parameters: {
             query?: never;
             header?: never;
@@ -132838,7 +139493,7 @@ export interface operations {
             };
         };
     };
-    update_51: {
+    update_56: {
         parameters: {
             query?: never;
             header?: never;
@@ -133037,7 +139692,7 @@ export interface operations {
             };
         };
     };
-    reorder: {
+    reorder_4: {
         parameters: {
             query?: never;
             header?: never;
@@ -133061,7 +139716,7 @@ export interface operations {
             };
         };
     };
-    delete_41: {
+    delete_46: {
         parameters: {
             query?: never;
             header?: never;
@@ -133081,7 +139736,7 @@ export interface operations {
             };
         };
     };
-    update_52: {
+    update_57: {
         parameters: {
             query?: never;
             header?: never;
@@ -133173,6 +139828,76 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponsePersonalScheduleResponse"];
+                };
+            };
+        };
+    };
+    get_30: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
+    delete_47: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_58: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                keepId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: Record<string, never>;
+                };
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
                 };
             };
         };
@@ -133289,7 +140014,7 @@ export interface operations {
             };
         };
     };
-    get_27: {
+    get_31: {
         parameters: {
             query?: never;
             header?: never;
@@ -133311,7 +140036,7 @@ export interface operations {
             };
         };
     };
-    delete_42: {
+    delete_48: {
         parameters: {
             query?: never;
             header?: never;
@@ -133331,7 +140056,7 @@ export interface operations {
             };
         };
     };
-    update_53: {
+    update_59: {
         parameters: {
             query?: never;
             header?: never;
@@ -133391,8 +140116,8 @@ export interface operations {
                 };
                 content?: never;
             };
-            /** @description 他ユーザーのお気に入りが含まれている */
-            403: {
+            /** @description 自分のお気に入りに存在しないIDが含まれている */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -133442,6 +140167,54 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCareLinkResponse"];
+                };
+            };
+        };
+    };
+    deleteMyCalendarLayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 削除成功 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    updateMyCalendarLayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scopeType: string;
+                scopeId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CalendarLayerUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description 更新成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCalendarLayerResponse"];
                 };
             };
         };
@@ -133640,7 +140413,7 @@ export interface operations {
             };
         };
     };
-    changeStatus_8: {
+    changeStatus_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -133734,7 +140507,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_4: {
+    deleteComment_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -133755,7 +140528,7 @@ export interface operations {
             };
         };
     };
-    updateComment_4: {
+    updateComment_5: {
         parameters: {
             query?: never;
             header?: never;
@@ -134317,7 +141090,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_15: {
+    updateSettings_16: {
         parameters: {
             query?: never;
             header?: never;
@@ -134488,7 +141261,7 @@ export interface operations {
             };
         };
     };
-    get_28: {
+    get_32: {
         parameters: {
             query?: never;
             header?: never;
@@ -134510,7 +141283,7 @@ export interface operations {
             };
         };
     };
-    update_54: {
+    update_60: {
         parameters: {
             query?: never;
             header?: never;
@@ -134636,7 +141409,7 @@ export interface operations {
             };
         };
     };
-    delete_43: {
+    delete_49: {
         parameters: {
             query?: never;
             header?: never;
@@ -134656,7 +141429,7 @@ export interface operations {
             };
         };
     };
-    update_55: {
+    update_61: {
         parameters: {
             query?: never;
             header?: never;
@@ -134682,7 +141455,7 @@ export interface operations {
             };
         };
     };
-    delete_44: {
+    delete_50: {
         parameters: {
             query: {
                 scopeId: number;
@@ -134705,7 +141478,7 @@ export interface operations {
             };
         };
     };
-    update_56: {
+    update_62: {
         parameters: {
             query: {
                 scopeId: number;
@@ -134734,7 +141507,7 @@ export interface operations {
             };
         };
     };
-    changeStatus_9: {
+    changeStatus_10: {
         parameters: {
             query?: never;
             header?: never;
@@ -134930,7 +141703,7 @@ export interface operations {
             };
         };
     };
-    deleteRule: {
+    deleteRule_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -134950,7 +141723,7 @@ export interface operations {
             };
         };
     };
-    updateRule: {
+    updateRule_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -135002,7 +141775,7 @@ export interface operations {
             };
         };
     };
-    getAccount: {
+    getAccount_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -135024,7 +141797,7 @@ export interface operations {
             };
         };
     };
-    updateAccount: {
+    updateAccount_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -135362,7 +142135,7 @@ export interface operations {
             };
         };
     };
-    delete_45: {
+    delete_51: {
         parameters: {
             query?: never;
             header?: never;
@@ -135382,7 +142155,7 @@ export interface operations {
             };
         };
     };
-    update_57: {
+    update_63: {
         parameters: {
             query?: never;
             header?: never;
@@ -135676,7 +142449,7 @@ export interface operations {
             };
         };
     };
-    deleteTag_1: {
+    deleteTag_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -135696,7 +142469,7 @@ export interface operations {
             };
         };
     };
-    updateTag_1: {
+    updateTag_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -135742,7 +142515,7 @@ export interface operations {
             };
         };
     };
-    updateSettings_16: {
+    updateSettings_17: {
         parameters: {
             query?: never;
             header?: never;
@@ -136403,9 +143176,7 @@ export interface operations {
     };
     getResolvedMembers: {
         parameters: {
-            query: {
-                ownerUserId: number;
-            };
+            query?: never;
             header?: never;
             path: {
                 id: number;
@@ -136522,6 +143293,55 @@ export interface operations {
             };
         };
     };
+    listIssues: {
+        parameters: {
+            query?: {
+                tagId?: string;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterIssuePageResponse"];
+                };
+            };
+        };
+    };
+    getIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                issueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseNewsletterIssueDetailResponse"];
+                };
+            };
+        };
+    };
     getVoteSummary: {
         parameters: {
             query?: never;
@@ -136541,6 +143361,32 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseMeetupVoteSummaryResponse"];
+                };
+            };
+        };
+    };
+    listAttendances: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMeetupAttendanceResponse"];
                 };
             };
         };
@@ -136636,7 +143482,81 @@ export interface operations {
             };
         };
     };
-    list_65: {
+    listMine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListJoinRequestResponse"];
+                };
+            };
+        };
+    };
+    listRsvps: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+                festivalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListFestivalRsvpResponse"];
+                };
+            };
+        };
+    };
+    list_71: {
+        parameters: {
+            query?: {
+                sourceType?: "FESTIVAL" | "CALENDAR_EVENT" | "MEETUP";
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListVillageEventArchiveResponse"];
+                };
+            };
+        };
+    };
+    list_72: {
         parameters: {
             query?: never;
             header?: never;
@@ -136658,7 +143578,7 @@ export interface operations {
             };
         };
     };
-    get_29: {
+    get_33: {
         parameters: {
             query?: never;
             header?: never;
@@ -136677,6 +143597,50 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseChronicleResponse"];
+                };
+            };
+        };
+    };
+    get_34: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
+            };
+        };
+    };
+    getMyAffinity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageAffinityResponse"];
                 };
             };
         };
@@ -136768,6 +143732,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListVenueSuggestionResponse"];
+                };
+            };
+        };
+    };
+    getUserVillages: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                userId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListUserVillageSummaryResponse"];
                 };
             };
         };
@@ -137478,6 +144464,29 @@ export interface operations {
             };
         };
     };
+    getMyCalendarTodos: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListCalendarTodoResponse"];
+                };
+            };
+        };
+    };
     getGanttTodos: {
         parameters: {
             query: {
@@ -137732,7 +144741,7 @@ export interface operations {
             };
         };
     };
-    list_66: {
+    list_73: {
         parameters: {
             query: {
                 scopeType: string;
@@ -137864,6 +144873,29 @@ export interface operations {
                 };
                 content: {
                     "*/*": string;
+                };
+            };
+        };
+    };
+    getByConvertedSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamPublicId: string;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
                 };
             };
         };
@@ -138632,11 +145664,8 @@ export interface operations {
                 from?: string;
                 /** @description 日付レンジ終了日 */
                 to?: string;
-                /** @description 列軸（既定 STAFF） */
-                axis?: "STAFF" | "LINE";
-                /** @description メニューフィルター（axis=LINE のときのみ有効） */
+                /** @description メニューフィルター（提供可能ラインで列を絞る） */
                 menuId?: string;
-                staffUserIds?: number[];
             };
             header?: never;
             path: {
@@ -138690,6 +145719,7 @@ export interface operations {
                 resourceId?: number;
                 startTime?: string;
                 endTime?: string;
+                endsNextDay?: boolean;
             };
             header?: never;
             path: {
@@ -138706,6 +145736,33 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBlockedTimeImpactResponse"];
+                };
+            };
+        };
+    };
+    getImpact: {
+        parameters: {
+            query: {
+                dayOfWeek: "MON" | "TUE" | "WED" | "THU" | "FRI" | "SAT" | "SUN";
+                startTime: string;
+                endTime: string;
+                lineId?: number;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseRecurringBlockedTimeImpactResponse"];
                 };
             };
         };
@@ -139154,7 +146211,7 @@ export interface operations {
             };
         };
     };
-    list_67: {
+    list_74: {
         parameters: {
             query?: never;
             header?: never;
@@ -139222,7 +146279,7 @@ export interface operations {
             };
         };
     };
-    list_68: {
+    list_75: {
         parameters: {
             query?: never;
             header?: never;
@@ -139434,7 +146491,7 @@ export interface operations {
             };
         };
     };
-    list_69: {
+    list_76: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -139848,6 +146905,100 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCancellationSummaryResponse"];
+                };
+            };
+        };
+    };
+    resolveBySchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    resolveBySchedule_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    resolveByFixture: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                fixtureId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
+                };
+            };
+        };
+    };
+    resolveByFixture_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+                teamId: number;
+                fixtureId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
                 };
             };
         };
@@ -141016,7 +148167,7 @@ export interface operations {
             };
         };
     };
-    list_70: {
+    list_77: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -141037,6 +148188,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PagedResponseTransactionResponse"];
+                };
+            };
+        };
+    };
+    getTeamBetaPerks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBetaPerkGrantItem"];
                 };
             };
         };
@@ -141412,7 +148585,7 @@ export interface operations {
             };
         };
     };
-    listReportSchedules_1: {
+    overview: {
         parameters: {
             query?: never;
             header?: never;
@@ -141429,7 +148602,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListReportScheduleResponse"];
+                    "*/*": components["schemas"]["ApiResponseAdvertiserOverviewResponse"];
                 };
             };
         };
@@ -141459,12 +148632,13 @@ export interface operations {
             };
         };
     };
-    listCreditLimitRequests_1: {
+    getInvoice: {
         parameters: {
             query?: never;
             header?: never;
             path: {
                 teamId: number;
+                invoiceId: number;
             };
             cookie?: never;
         };
@@ -141476,7 +148650,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListCreditLimitRequestResponse"];
+                    "*/*": components["schemas"]["ApiResponseInvoiceDetailResponse"];
+                };
+            };
+        };
+    };
+    downloadInvoicePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                invoiceId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
                 };
             };
         };
@@ -141503,6 +148700,85 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseCampaignPerformanceResponse"];
+                };
+            };
+        };
+    };
+    exportCampaignPerformance: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+                campaignId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": string;
+                };
+            };
+        };
+    };
+    getCreativeComparison: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+                campaignId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseCreativeComparisonResponse"];
+                };
+            };
+        };
+    };
+    getBreakdown: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                breakdownBy?: string;
+            };
+            header?: never;
+            path: {
+                teamId: number;
+                campaignId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBreakdownResponse"];
                 };
             };
         };
@@ -141620,6 +148896,24 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseListTeamOrgSummaryResponse"];
                 };
             };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListTeamOrgSummaryResponse"];
+                };
+            };
+            /** @description チームが存在しない / 論理削除済み */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListTeamOrgSummaryResponse"];
+                };
+            };
         };
     };
     getTeamModules: {
@@ -141685,7 +148979,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
             /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
@@ -141694,7 +148988,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
             /** @description チームが存在しない / 論理削除済み */
@@ -141703,7 +148997,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
+                };
+            };
+        };
+    };
+    listForMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+                memberId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListTeamPlanView"];
+                };
+            };
+        };
+    };
+    listForMembers: {
+        parameters: {
+            query: {
+                memberIds: number[];
+            };
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseMemberPlanItems"];
                 };
             };
         };
@@ -141745,6 +149086,24 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListFollowResponse"];
+                };
+            };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListFollowResponse"];
+                };
+            };
+            /** @description チームが存在しない / 論理削除済み */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -142144,7 +149503,7 @@ export interface operations {
             };
         };
     };
-    list_71: {
+    list_78: {
         parameters: {
             query?: {
                 billingStatus?: string;
@@ -142449,7 +149808,7 @@ export interface operations {
             };
         };
     };
-    list_72: {
+    list_79: {
         parameters: {
             query?: {
                 status?: string;
@@ -142708,7 +150067,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponsePageUserEntity"];
+                    "*/*": components["schemas"]["ApiResponsePageSystemAdminUserSummaryResponse"];
                 };
             };
         };
@@ -142730,7 +150089,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponsePageTeamEntity"];
+                    "*/*": components["schemas"]["ApiResponsePageSystemAdminTeamSummaryResponse"];
                 };
             };
         };
@@ -142752,7 +150111,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponsePageOrganizationEntity"];
+                    "*/*": components["schemas"]["ApiResponsePageSystemAdminOrganizationSummaryResponse"];
                 };
             };
         };
@@ -142819,6 +150178,31 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseBillingPagedContractResponse"];
+                };
+            };
+        };
+    };
+    listCandidates: {
+        parameters: {
+            query: {
+                grantKind: "INDIVIDUAL" | "TEAM_ORG";
+                betaPhase: number;
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBetaPerkCandidate"];
                 };
             };
         };
@@ -143282,7 +150666,7 @@ export interface operations {
             };
         };
     };
-    list_73: {
+    list_80: {
         parameters: {
             query?: {
                 status?: "NEW" | "REVIEWING" | "RESOLVED" | "DISMISSED";
@@ -143355,7 +150739,7 @@ export interface operations {
             };
         };
     };
-    list_74: {
+    list_81: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -143400,7 +150784,7 @@ export interface operations {
             };
         };
     };
-    list_75: {
+    list_82: {
         parameters: {
             query?: {
                 status?: "DRAFT" | "PENDING_REVIEW" | "ACTIVE" | "PAUSED" | "ENDED";
@@ -144109,7 +151493,7 @@ export interface operations {
             };
         };
     };
-    list_76: {
+    list_83: {
         parameters: {
             query?: {
                 status?: "PENDING" | "RETRYING" | "SUCCEEDED" | "EXHAUSTED" | "MANUAL_RESOLVED";
@@ -144430,6 +151814,80 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    listReplies_2: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+                sort?: string;
+            };
+            header?: never;
+            path: {
+                scheduleId: number;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["PagedResponseScheduleCommentResponse"];
+                };
+            };
+        };
+    };
+    getMeta: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseThreadMetaResponse"];
+                };
+            };
+        };
+    };
+    mentionCandidates: {
+        parameters: {
+            query?: {
+                q?: string;
+                size?: number;
+            };
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListMentionCandidateResponse"];
+                };
             };
         };
     };
@@ -144765,6 +152223,30 @@ export interface operations {
             };
         };
     };
+    list_84: {
+        parameters: {
+            query?: {
+                status?: ("NOT_REQUIRED" | "PENDING" | "PAID" | "WAIVED" | "FAILED" | "UNCOLLECTIBLE")[];
+                cursor?: string;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseRecruitmentCancellationRecordSummaryResponse"];
+                };
+            };
+        };
+    };
     listTrash: {
         parameters: {
             query?: {
@@ -144980,6 +152462,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                page?: number;
             };
             header?: never;
             path: {
@@ -144995,7 +152478,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
+                };
+            };
+            /** @description チームが存在しない / 非公開（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
                 };
             };
         };
@@ -145018,7 +152510,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
+                };
+            };
+            /** @description 非公開 / 不在 / スコープ不一致（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
                 };
             };
         };
@@ -145382,6 +152883,7 @@ export interface operations {
         parameters: {
             query?: {
                 limit?: number;
+                page?: number;
             };
             header?: never;
             path: {
@@ -145397,7 +152899,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
+                };
+            };
+            /** @description 組織が存在しない / 非公開（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicActivitySummary"];
                 };
             };
         };
@@ -145420,7 +152931,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
+                };
+            };
+            /** @description 非公開 / 不在 / スコープ不一致（区別しない） */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
                 };
             };
         };
@@ -145636,16 +153156,16 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
                 };
             };
-            /** @description 存在しないまたは非公開 */
+            /** @description 存在しない / 非公開 / 下書き / 削除済み / 親スコープが非公開（区別しない） */
             404: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseActivityResultEntity"];
+                    "*/*": components["schemas"]["ApiResponsePublicActivityDetail"];
                 };
             };
         };
@@ -146034,6 +153554,28 @@ export interface operations {
             };
         };
     };
+    getPaymentItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePaymentItemResponse"];
+                };
+            };
+        };
+    };
     getParents: {
         parameters: {
             query?: never;
@@ -146087,6 +153629,24 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListOrgTeamSummaryResponse"];
+                };
+            };
+            /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListOrgTeamSummaryResponse"];
+                };
+            };
+            /** @description 組織が存在しない / 論理削除済み */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -146230,7 +153790,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
             /** @description 可視性レベル未満（非メンバー等）でアクセス不可 */
@@ -146239,7 +153799,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
             /** @description 組織が存在しない / 論理削除済み */
@@ -146248,7 +153808,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["PagedResponseMemberResponse"];
+                    "*/*": components["schemas"]["PagedResponseScopeMemberResponse"];
                 };
             };
         };
@@ -146269,6 +153829,15 @@ export interface operations {
         responses: {
             /** @description 取得成功 */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["CursorPagedResponseOrgAllMembersResponse"];
+                };
+            };
+            /** @description 当該組織の ADMIN/DEPUTY でない */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -146973,6 +154542,29 @@ export interface operations {
             };
         };
     };
+    getByConvertedSchedule_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgPublicId: string;
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
+                };
+            };
+        };
+    };
     getUserTeamStats: {
         parameters: {
             query?: {
@@ -147309,7 +154901,7 @@ export interface operations {
             };
         };
     };
-    getMatch_1: {
+    getMatch_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -147590,54 +155182,6 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListGanttTodoResponse"];
-                };
-            };
-        };
-    };
-    resolveBySchedule: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                scheduleId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
-                };
-            };
-        };
-    };
-    resolveByFixture: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                orgId: number;
-                teamId: number;
-                fixtureId: number;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description OK */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "*/*": components["schemas"]["ApiResponseMatchSummaryResponse"];
                 };
             };
         };
@@ -148231,7 +155775,7 @@ export interface operations {
             };
         };
     };
-    list_77: {
+    list_85: {
         parameters: {
             query: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -148378,6 +155922,29 @@ export interface operations {
         };
     };
     listAppearances: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                matchId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPlayerAppearanceResponse"];
+                };
+            };
+        };
+    };
+    listAppearances_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -148755,7 +156322,7 @@ export interface operations {
             };
         };
     };
-    list_78: {
+    list_86: {
         parameters: {
             query: {
                 fiscalYearId: number;
@@ -148776,6 +156343,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["PagedResponseTransactionResponse"];
+                };
+            };
+        };
+    };
+    getOrgBetaPerks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListBetaPerkGrantItem"];
                 };
             };
         };
@@ -148972,7 +156561,7 @@ export interface operations {
             };
         };
     };
-    list_79: {
+    list_87: {
         parameters: {
             query?: {
                 status?: "IN_PROGRESS" | "COMPLETED" | "SKIPPED";
@@ -149098,6 +156687,51 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseListNotificationCreditPackageResponse"];
+                };
+            };
+        };
+    };
+    listPublicIssues: {
+        parameters: {
+            query?: {
+                page?: number;
+                size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicNewsletterIssuePageResponse"];
+                };
+            };
+        };
+    };
+    getPublicIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                issueId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePublicNewsletterIssueResponse"];
                 };
             };
         };
@@ -149409,7 +157043,7 @@ export interface operations {
             };
         };
     };
-    list_80: {
+    list_88: {
         parameters: {
             query?: never;
             header?: never;
@@ -149473,7 +157107,7 @@ export interface operations {
             };
         };
     };
-    listMine: {
+    listMine_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -149493,7 +157127,7 @@ export interface operations {
             };
         };
     };
-    list_81: {
+    list_89: {
         parameters: {
             query?: never;
             header?: never;
@@ -149716,6 +157350,28 @@ export interface operations {
                 };
                 content: {
                     "*/*": components["schemas"]["ApiResponseScopeFolderResponse"];
+                };
+            };
+        };
+    };
+    getByConvertedSchedule_2: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scheduleId: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseScheduleKeepResponse"];
                 };
             };
         };
@@ -150764,6 +158420,46 @@ export interface operations {
             };
         };
     };
+    getMyCalendarLayers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListCalendarLayerResponse"];
+                };
+            };
+        };
+    };
+    getMyBetaPerks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseBetaPerkMyPerksResponse"];
+                };
+            };
+        };
+    };
     getStudentDailyTimeline: {
         parameters: {
             query: {
@@ -151110,7 +158806,7 @@ export interface operations {
             };
         };
     };
-    listComments_7: {
+    listComments_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -151357,7 +159053,27 @@ export interface operations {
             };
         };
     };
-    list_82: {
+    getPublicFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 取得成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseListPublicFeatureFlagResponse"];
+                };
+            };
+        };
+    };
+    list_90: {
         parameters: {
             query?: never;
             header?: never;
@@ -151759,7 +159475,7 @@ export interface operations {
             };
         };
     };
-    get_30: {
+    get_35: {
         parameters: {
             query: {
                 organizationId: number;
@@ -152453,6 +160169,26 @@ export interface operations {
             };
         };
     };
+    getPersonalAdminActionRequired: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponsePersonalAdminActionRequiredResponse"];
+                };
+            };
+        };
+    };
     getActivity_1: {
         parameters: {
             query?: {
@@ -152471,7 +160207,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponseListActivityFeedResponse"];
+                    "*/*": components["schemas"]["ApiResponseActivityFeedPageResponse"];
                 };
             };
         };
@@ -152888,6 +160624,15 @@ export interface operations {
                     "*/*": components["schemas"]["ApiResponseDownloadUrlResponse"];
                 };
             };
+            /** @description 閲覧権限なし */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseDownloadUrlResponse"];
+                };
+            };
         };
     };
     getActiveThreads: {
@@ -153124,7 +160869,7 @@ export interface operations {
             };
         };
     };
-    delete_46: {
+    delete_52: {
         parameters: {
             query: {
                 scopeId: number;
@@ -153586,7 +161331,7 @@ export interface operations {
             };
         };
     };
-    overview: {
+    overview_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -153632,7 +161377,7 @@ export interface operations {
             };
         };
     };
-    getInvoice: {
+    getInvoice_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -153656,7 +161401,7 @@ export interface operations {
             };
         };
     };
-    downloadInvoicePdf: {
+    downloadInvoicePdf_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -153706,7 +161451,7 @@ export interface operations {
             };
         };
     };
-    exportCampaignPerformance: {
+    exportCampaignPerformance_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -153732,7 +161477,7 @@ export interface operations {
             };
         };
     };
-    getCreativeComparison: {
+    getCreativeComparison_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -153810,7 +161555,7 @@ export interface operations {
             };
         };
     };
-    getBreakdown: {
+    getBreakdown_1: {
         parameters: {
             query: {
                 organizationId: number;
@@ -154376,7 +162121,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "*/*": components["schemas"]["ApiResponsePageUserRoleEntity"];
+                    "*/*": components["schemas"]["ApiResponsePageScopeUserRoleResponse"];
                 };
             };
         };
@@ -154896,6 +162641,28 @@ export interface operations {
             };
         };
     };
+    deleteComment_6: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                meetupId: string;
+                commentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     removeCandidateDate: {
         parameters: {
             query?: never;
@@ -154904,6 +162671,51 @@ export interface operations {
                 villageId: string;
                 meetupId: string;
                 candidateDateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    removeDrafter: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                drafterId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "*/*": components["schemas"]["ApiResponseVillageCharterResponse"];
+                };
+            };
+        };
+    };
+    deleteLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                villageId: string;
+                eventId: string;
+                logId: string;
             };
             cookie?: never;
         };
@@ -155136,7 +162948,7 @@ export interface operations {
             };
         };
     };
-    delete_47: {
+    delete_53: {
         parameters: {
             query?: never;
             header?: never;
@@ -155179,7 +162991,7 @@ export interface operations {
             };
         };
     };
-    delete_48: {
+    delete_54: {
         parameters: {
             query?: never;
             header?: never;
@@ -155298,6 +163110,27 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteReportSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: number;
+                id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -155476,7 +163309,7 @@ export interface operations {
             };
         };
     };
-    delete_49: {
+    delete_55: {
         parameters: {
             query?: never;
             header?: never;
@@ -155643,7 +163476,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_5: {
+    deleteComment_7: {
         parameters: {
             query?: never;
             header?: never;
@@ -155664,7 +163497,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_6: {
+    deleteComment_8: {
         parameters: {
             query?: never;
             header?: never;
@@ -155880,7 +163713,7 @@ export interface operations {
             };
         };
     };
-    delete_50: {
+    delete_56: {
         parameters: {
             query?: never;
             header?: never;
@@ -156080,7 +163913,7 @@ export interface operations {
             };
         };
     };
-    delete_51: {
+    delete_57: {
         parameters: {
             query?: never;
             header?: never;
@@ -156102,7 +163935,7 @@ export interface operations {
             };
         };
     };
-    delete_52: {
+    delete_58: {
         parameters: {
             query?: never;
             header?: never;
@@ -156188,7 +164021,7 @@ export interface operations {
             };
         };
     };
-    delete_53: {
+    delete_59: {
         parameters: {
             query?: never;
             header?: never;
@@ -156208,7 +164041,7 @@ export interface operations {
             };
         };
     };
-    delete_54: {
+    delete_60: {
         parameters: {
             query?: never;
             header?: never;
@@ -156515,7 +164348,7 @@ export interface operations {
             };
         };
     };
-    deleteComment_7: {
+    deleteComment_9: {
         parameters: {
             query?: never;
             header?: never;
@@ -156639,7 +164472,7 @@ export interface operations {
             };
         };
     };
-    deleteReportSchedule: {
+    deleteReportSchedule_1: {
         parameters: {
             query: {
                 organizationId: number;

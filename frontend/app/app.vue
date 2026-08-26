@@ -22,6 +22,7 @@ useHead(() => ({
   <ConfirmDialog />
   <DynamicDialog />
   <ErrorReportModal />
+  <PaywallModal />
 </template>
 
 <style>

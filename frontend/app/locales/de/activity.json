@@ -44,6 +44,7 @@
       "TEXT": "Text",
       "NUMBER": "Zahl",
       "DATE": "Datum",
+      "DATETIME": "Datum & Uhrzeit",
       "SELECT": "Auswahl",
       "CHECKBOX": "Kontrollkästchen",
       "TEXTAREA": "Textbereich"

@@ -319,6 +319,79 @@ class AbstractContentVisibilityResolverTest {
         }
 
         @Test
+        @DisplayName("CMP-017b: ADMINS_AND_ABOVE は DEPUTY_ADMIN を弾く（設計書の『ADMIN/DEPUTY_ADMIN 包含』は誤記だった）")
+        void adminsAndAbove_はDEPUTY_ADMINを弾く() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.ADMINS_AND_ABOVE);
+            resolver.projections = List.of(p);
+            ScopeKey scope = new ScopeKey("TEAM", 100L);
+            when(membershipBatchQueryService.snapshotForUser(eq(3L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "DEPUTY_ADMIN"), Map.of(), Set.of(), Set.of()));
+
+            // priority(DEPUTY_ADMIN)=3 <= priority(ADMIN)=2 は偽 → 不可視
+            assertThat(resolver.filterAccessible(List.of(1L), 3L)).isEmpty();
+        }
+
+        @Test
+        @DisplayName("CMP-017b: DEPUTY_ADMINS_AND_ABOVE は ADMIN/DEPUTY_ADMIN 可視・MEMBER 以下は不可視")
+        void deputyAdminsAndAbove() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.DEPUTY_ADMINS_AND_ABOVE);
+            resolver.projections = List.of(p);
+            ScopeKey scope = new ScopeKey("TEAM", 100L);
+            // ADMIN(2) / DEPUTY_ADMIN(3) は可視
+            when(membershipBatchQueryService.snapshotForUser(eq(2L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "ADMIN"), Map.of(), Set.of(), Set.of()));
+            when(membershipBatchQueryService.snapshotForUser(eq(3L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "DEPUTY_ADMIN"), Map.of(), Set.of(), Set.of()));
+            // MEMBER(4) / SUPPORTER(5) は不可視
+            when(membershipBatchQueryService.snapshotForUser(eq(4L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "MEMBER"), Map.of(), Set.of(), Set.of()));
+            when(membershipBatchQueryService.snapshotForUser(eq(5L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "SUPPORTER"), Map.of(), Set.of(), Set.of()));
+            // SystemAdmin は高速パスで可視
+            when(membershipBatchQueryService.snapshotForUser(eq(1L), anySet(), anySet()))
+                    .thenReturn(UserScopeRoleSnapshot.forSystemAdmin());
+
+            assertThat(resolver.filterAccessible(List.of(1L), 2L)).containsExactly(1L);
+            assertThat(resolver.filterAccessible(List.of(1L), 3L)).containsExactly(1L);
+            assertThat(resolver.filterAccessible(List.of(1L), 4L)).isEmpty();
+            assertThat(resolver.filterAccessible(List.of(1L), 5L)).isEmpty();
+            assertThat(resolver.filterAccessible(List.of(1L), 1L)).containsExactly(1L);
+        }
+
+        @Test
+        @DisplayName("CMP-017b: DEPUTY_ADMINS_AND_ABOVE の deny は閾値軸として INSUFFICIENT_ROLE / NOT_A_MEMBER に分類される")
+        void deputyAdminsAndAbove_denyReason分類() {
+            FakeProjection p = projection(1L, "TEAM", 100L, 999L,
+                    FakeVisibility.DEPUTY_ADMINS_AND_ABOVE);
+            resolver.projections = List.of(p);
+            ScopeKey scope = new ScopeKey("TEAM", 100L);
+            // スコープに居るが役職不足 → INSUFFICIENT_ROLE
+            when(membershipBatchQueryService.snapshotForUser(eq(4L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(scope, "MEMBER"), Map.of(), Set.of(), Set.of()));
+            // 非所属 → NOT_A_MEMBER
+            when(membershipBatchQueryService.snapshotForUser(eq(9L), anySet(), anySet()))
+                    .thenReturn(new UserScopeRoleSnapshot(false,
+                            Map.of(), Map.of(), Set.of(), Set.of()));
+
+            VisibilityDecision insufficient = resolver.decide(1L, 4L);
+            assertThat(insufficient.allowed()).isFalse();
+            assertThat(insufficient.denyReason()).isEqualTo(DenyReason.INSUFFICIENT_ROLE);
+            assertThat(insufficient.resolvedLevel())
+                    .isEqualTo(StandardVisibility.DEPUTY_ADMINS_AND_ABOVE);
+
+            VisibilityDecision notMember = resolver.decide(1L, 9L);
+            assertThat(notMember.denyReason()).isEqualTo(DenyReason.NOT_A_MEMBER);
+        }
+
+        @Test
         @DisplayName("SCOPE_AFFILIATED は所属者なら SUPPORTER/GUEST も可視・JOBBER 並行ロールは不可視（旧 MEMBERS_ONLY と同挙動）")
         void scopeAffiliated() {
             FakeProjection p = projection(1L, "TEAM", 100L, 999L,
@@ -814,7 +887,9 @@ class AbstractContentVisibilityResolverTest {
         PUBLIC, SUPPORTERS_AND_ABOVE, PRIVATE,
         FOLLOWERS_ONLY, CUSTOM_TEMPLATE, ORGANIZATION_WIDE, CUSTOM,
         // 新ラダー 3 値（旧 MEMBERS_ONLY/ADMINS_ONLY は W6 Contract で撤去済）
-        MEMBERS_AND_ABOVE, ADMINS_AND_ABOVE, SCOPE_AFFILIATED
+        MEMBERS_AND_ABOVE, ADMINS_AND_ABOVE, SCOPE_AFFILIATED,
+        // CMP-017b 追加段（DEPUTY_ADMIN 以上）
+        DEPUTY_ADMINS_AND_ABOVE
     }
 
     /** テスト用の Projection 実装（フィールドアクセスで簡潔に組み立てる）。 */
@@ -875,6 +950,7 @@ class AbstractContentVisibilityResolverTest {
                 case MEMBERS_AND_ABOVE -> StandardVisibility.MEMBERS_AND_ABOVE;
                 case ADMINS_AND_ABOVE -> StandardVisibility.ADMINS_AND_ABOVE;
                 case SCOPE_AFFILIATED -> StandardVisibility.SCOPE_AFFILIATED;
+                case DEPUTY_ADMINS_AND_ABOVE -> StandardVisibility.DEPUTY_ADMINS_AND_ABOVE;
             };
         }
 

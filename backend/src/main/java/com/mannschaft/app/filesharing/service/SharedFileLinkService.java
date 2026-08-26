@@ -53,7 +53,7 @@ public class SharedFileLinkService {
      */
     public List<LinkResponse> listLinks(Long fileId) {
         // PR-D 発行認可是正: 公開リンクの一覧はスコープの管理者（ADMIN/DEPUTY・PERSONAL は所有者）限定。
-        // 従来は大会フォルダ以外で認可 no-op（素通り）だった穴を是正する（PR-A と同型）。
+        // 大会フォルダ以外のスコープでもこの認可ゲートを一貫して適用する（PR-A と同型）。
         folderQueryService.authorizeLinkManageByFileId(fileId, SecurityUtils.getCurrentUserIdOrNull());
         List<SharedFileLinkEntity> links = linkRepository.findByFileIdOrderByCreatedAtDesc(fileId);
         return fileSharingMapper.toLinkResponseList(links);

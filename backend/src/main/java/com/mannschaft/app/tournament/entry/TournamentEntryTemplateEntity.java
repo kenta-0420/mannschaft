@@ -50,7 +50,9 @@ public class TournamentEntryTemplateEntity extends UuidV7Entity {
     /** 論理削除日時（nullの場合は有効） */
     private LocalDateTime deletedAt;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @PrePersist

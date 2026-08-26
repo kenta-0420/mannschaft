@@ -2,8 +2,10 @@ package com.mannschaft.app.social.announcement.adapter;
 
 import com.mannschaft.app.social.announcement.AnnouncementContentRequest;
 import com.mannschaft.app.social.announcement.AnnouncementSourceType;
+import com.mannschaft.app.survey.DistributionMode;
 import com.mannschaft.app.survey.QuestionType;
 import com.mannschaft.app.survey.ResultsVisibility;
+import com.mannschaft.app.survey.UnrespondedVisibility;
 import com.mannschaft.app.survey.dto.CreateQuestionRequest;
 import com.mannschaft.app.survey.dto.CreateSurveyRequest;
 import com.mannschaft.app.survey.dto.SurveyDetailResponse;
@@ -54,7 +56,7 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
         // 既定設問（自由記述・任意回答）を 1 問同梱する。これが無いと publishSurvey が
         // NO_QUESTIONS で失敗し、DRAFT のまま「告知したのに回答不可」になる。
         CreateQuestionRequest defaultQuestion = new CreateQuestionRequest(
-                QuestionType.FREE_TEXT.name(), // questionType（自由記述）
+                QuestionType.FREE_TEXT, // questionType（自由記述）
                 DEFAULT_QUESTION_TEXT,         // questionText（既定文言・ja）
                 false,               // isRequired（任意回答）
                 0,                   // displayOrder（先頭）
@@ -71,9 +73,9 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
                 content.getDescription(),   // description
                 false,               // isAnonymous（デフォルト false）
                 false,               // allowMultipleSubmissions（デフォルト false）
-                ResultsVisibility.AFTER_RESPONSE.name(), // resultsVisibility（回答後に結果を閲覧可）
-                "ALL",               // distributionMode（全メンバー対象）
-                "CREATOR_AND_ADMIN", // unrespondedVisibility
+                ResultsVisibility.AFTER_RESPONSE, // resultsVisibility（回答後に結果を閲覧可）
+                DistributionMode.ALL,                       // distributionMode（全メンバー対象）
+                UnrespondedVisibility.CREATOR_AND_ADMIN,    // unrespondedVisibility
                 false,               // autoPostToTimeline
                 null,                // seriesId
                 null,                // remindBeforeHours
@@ -89,7 +91,7 @@ public class SurveyAnnouncementAdapter implements AnnouncementChannelAdapter {
         SurveyDetailResponse response = surveyService.createSurvey(
                 scopeType, scopeId, userId, request);
 
-        Long surveyId = response.getSurvey().getId();
+        Long surveyId = response.getId();
 
         // 作成直後に公開し PUBLISHED 化する（設問 1 問を同梱済みなので NO_QUESTIONS を通過）。
         // これで受信者は告知直後からそのまま回答できる。publish の失敗は握りつぶさず伝播させ、

@@ -85,6 +85,14 @@ const cards: MyPageCard[] = [
     icon: 'pi pi-wallet',
     to: '/me/recruitment-payments',
   },
+  {
+    // F03.11.1 キャンセル料の免除（受取先側の精算管理者・受取先本人・SYSTEM_ADMIN）。
+    // 受取側の金銭を扱う画面であるため、謝礼の受け取り（/me/recruitment-payments）の隣に置く。
+    label: t('recruitment.cancellationFeeWaive.pageTitle'),
+    description: t('recruitment.cancellationFeeWaive.pageDescription'),
+    icon: 'pi pi-ban',
+    to: '/me/recruitment-cancellation-fees',
+  },
 ]
 
 onMounted(async () => {

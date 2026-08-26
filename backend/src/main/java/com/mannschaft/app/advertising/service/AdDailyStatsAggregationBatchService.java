@@ -1,5 +1,6 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.PricingModel;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity;
 import com.mannschaft.app.advertising.entity.AdRateCardEntity;
@@ -71,6 +72,8 @@ public class AdDailyStatsAggregationBatchService {
             name = "adDailyStatsAggregation",
             lockAtMostFor = "PT30M",
             lockAtLeastFor = "PT1M")
+    @BatchEndpoint(name = "ad-daily-stats-aggregation",
+            description = "前日分の運用型広告インプレッション・クリックをキャンペーン×広告単位で集計し、日次統計へ毎日01:30に反映する")
     public void runDailyAggregation() {
         LocalDate targetDate = LocalDate.now(ZONE).minusDays(1);
         aggregate(targetDate);

@@ -15,9 +15,9 @@ const notRegistered = ref(false)
 async function load() {
   loading.value = true
   try {
-    const res = await advertiserApi.getAccount(orgSlug)
+    const res = await advertiserApi.getAccount('ORGANIZATION', orgSlug)
     account.value = res.data
-    const ovRes = await advertiserApi.getOverview(orgSlug)
+    const ovRes = await advertiserApi.getOverview('ORGANIZATION', orgSlug)
     overview.value = ovRes.data
   }
   catch (e: unknown) {
@@ -50,7 +50,7 @@ function openEditDialog() {
 async function saveAccount() {
   savingAccount.value = true
   try {
-    const res = await advertiserApi.updateAccount(orgSlug, {
+    const res = await advertiserApi.updateAccount('ORGANIZATION', orgSlug, {
       companyName: editForm.value.companyName,
       contactEmail: editForm.value.contactEmail,
     })

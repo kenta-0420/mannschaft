@@ -31,13 +31,15 @@ class ScheduleRecurrenceServiceTest {
 
     @Mock
     private ScheduleRepository scheduleRepository;
+    @Mock
+    private ScheduleTargetService scheduleTargetService;
 
     private ScheduleRecurrenceService service;
 
     @BeforeEach
     void setUp() {
         ObjectMapper objectMapper = new ObjectMapper().registerModule(new JavaTimeModule());
-        service = new ScheduleRecurrenceService(scheduleRepository, objectMapper);
+        service = new ScheduleRecurrenceService(scheduleRepository, scheduleTargetService, objectMapper);
     }
 
     private ScheduleEntity buildParent(LocalDateTime startAt, String recurrenceRuleJson) {

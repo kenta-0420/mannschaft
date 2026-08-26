@@ -1,6 +1,7 @@
 package com.mannschaft.app.schedule.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.schedule.dto.AttendanceRequest;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
 import com.mannschaft.app.schedule.dto.AttendanceStatsResponse;
@@ -66,7 +67,8 @@ public class ScheduleCommonController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<AttendanceSummaryResponse>> getAttendanceStats(
             @PathVariable Long scheduleId) {
-        AttendanceSummaryResponse response = attendanceService.getAttendanceSummary(scheduleId);
+        AttendanceSummaryResponse response = attendanceService.getAttendanceSummary(
+                scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -78,6 +80,9 @@ public class ScheduleCommonController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "送信成功")
     public ResponseEntity<Void> sendReminder(
             @PathVariable Long scheduleId) {
+        // 認可根治 Wave6: 対象スコープ全員へ通知を飛ばす操作のため、entity 由来 scope の
+        // ADMIN/DEPUTY_ADMIN のみ実行可（duplicateSchedule と同じく public 入口で強制する）。
+        scheduleService.checkScopeAdminAccess(scheduleId, SecurityUtils.getCurrentUserId());
         reminderService.sendReminder(scheduleId);
         return ResponseEntity.noContent().build();
     }
@@ -85,6 +90,11 @@ public class ScheduleCommonController {
     /**
      * ユーザーの横断カレンダーを取得する。個人・チーム・組織スコープのスケジュールを統合して返す。
      */
+    @SelfScopedEndpoint("横断カレンダーの収集起点が認証主体の userId に束縛される"
+            + "（ScheduleQueryService#getMyCalendar は個人予定を findByUserId... で引き、"
+            + "チーム／組織予定も UserRoleRepository が返した自分の所属スコープに限って集め、"
+            + "さらに ContentVisibilityChecker で可視分だけに絞る。"
+            + "リクエストは期間のみでスコープ ID もユーザー ID も受け取らない）")
     @GetMapping("/my/calendar")
     @Operation(summary = "横断カレンダー")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
@@ -107,7 +117,7 @@ public class ScheduleCommonController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         List<AttendanceStatsResponse> responses = attendanceService.getTeamAttendanceStats(
-                teamId, from, to);
+                teamId, from, to, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -122,7 +132,7 @@ public class ScheduleCommonController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         List<AttendanceStatsResponse> stats = attendanceService.getTeamAttendanceStats(
-                teamId, from, to);
+                teamId, from, to, SecurityUtils.getCurrentUserId());
         String csv = buildAttendanceStatsCsv(stats);
         byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         return ResponseEntity.ok()
@@ -142,7 +152,7 @@ public class ScheduleCommonController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         List<AttendanceStatsResponse> responses = attendanceService.getOrgAttendanceStats(
-                orgId, from, to);
+                orgId, from, to, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
@@ -157,7 +167,7 @@ public class ScheduleCommonController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to) {
         List<AttendanceStatsResponse> stats = attendanceService.getOrgAttendanceStats(
-                orgId, from, to);
+                orgId, from, to, SecurityUtils.getCurrentUserId());
         String csv = buildAttendanceStatsCsv(stats);
         byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         return ResponseEntity.ok()
@@ -169,6 +179,11 @@ public class ScheduleCommonController {
     /**
      * 個人の出席率統計を取得する。
      */
+    @SelfScopedEndpoint("集計対象の出欠行が認証主体の userId に束縛される"
+            + "（ScheduleAttendanceService#getMyAttendanceStats は UserRoleRepository が返した"
+            + "自分の所属スコープの予定のみを走査し、出欠は "
+            + "findByScheduleIdAndUserId(scheduleId, userId) で自分の行だけを読む。"
+            + "リクエストは期間のみで対象ユーザーを指定できない）")
     @GetMapping("/me/attendance-stats")
     @Operation(summary = "個人出席率統計")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")

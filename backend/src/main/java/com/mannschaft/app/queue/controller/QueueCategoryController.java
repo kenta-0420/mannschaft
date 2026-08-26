@@ -5,6 +5,8 @@ import com.mannschaft.app.queue.QueueScopeType;
 import com.mannschaft.app.queue.dto.CategoryResponse;
 import com.mannschaft.app.queue.dto.CreateCategoryRequest;
 import com.mannschaft.app.queue.dto.UpdateCategoryRequest;
+import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.queue.service.QueueAccessGuard;
 import com.mannschaft.app.queue.service.QueueCategoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +26,9 @@ import java.util.List;
 
 /**
  * 順番待ちカテゴリコントローラー。カテゴリのCRUD APIを提供する。
+ *
+ * <p>認可根治戦役 Wave5: 一覧・詳細は membership、作成・更新は ADMIN を {@link QueueAccessGuard} で要求する。
+ * 詳細・更新は Service 側の {@code findByIdAndScopeTypeAndScopeId} が越境 ID を 404（QUEUE_001）で秘匿する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/queue/categories")
@@ -32,6 +37,7 @@ import java.util.List;
 public class QueueCategoryController {
 
     private final QueueCategoryService categoryService;
+    private final QueueAccessGuard accessGuard;
 
     /**
      * カテゴリ一覧を取得する。
@@ -41,6 +47,7 @@ public class QueueCategoryController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<CategoryResponse>>> listCategories(
             @PathVariable Long teamId) {
+        accessGuard.requireScopeMember(QueueScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId());
         List<CategoryResponse> categories = categoryService.listCategories(
                 QueueScopeType.TEAM, teamId);
         return ResponseEntity.ok(ApiResponse.of(categories));
@@ -55,6 +62,7 @@ public class QueueCategoryController {
     public ResponseEntity<ApiResponse<CategoryResponse>> getCategory(
             @PathVariable Long teamId,
             @PathVariable Long categoryId) {
+        accessGuard.requireScopeMember(QueueScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId());
         CategoryResponse category = categoryService.getCategory(
                 categoryId, QueueScopeType.TEAM, teamId);
         return ResponseEntity.ok(ApiResponse.of(category));
@@ -69,6 +77,7 @@ public class QueueCategoryController {
     public ResponseEntity<ApiResponse<CategoryResponse>> createCategory(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateCategoryRequest request) {
+        accessGuard.requireScopeAdmin(QueueScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId());
         CategoryResponse category = categoryService.createCategory(
                 request, QueueScopeType.TEAM, teamId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(category));
@@ -84,6 +93,7 @@ public class QueueCategoryController {
             @PathVariable Long teamId,
             @PathVariable Long categoryId,
             @Valid @RequestBody UpdateCategoryRequest request) {
+        accessGuard.requireScopeAdmin(QueueScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId());
         CategoryResponse category = categoryService.updateCategory(
                 categoryId, request, QueueScopeType.TEAM, teamId);
         return ResponseEntity.ok(ApiResponse.of(category));

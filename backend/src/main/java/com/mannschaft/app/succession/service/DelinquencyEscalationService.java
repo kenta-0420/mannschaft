@@ -1,5 +1,6 @@
 package com.mannschaft.app.succession.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.resident.service.ResidentRegistryService;
 import com.mannschaft.app.succession.SuccessionErrorCode;
@@ -31,6 +32,14 @@ import java.util.UUID;
  * </ol>
  *
  * <p>テナント分離: 全メソッドで {@code organizationId} による絞り込みを維持する。
+ *
+ * <p>認可（認可根治戦役 Wave 2 トランシェ2A #3）: Controller から到達可能な操作
+ * （{@link #listActive} / {@link #getById(UUID, Long, Long)} / {@link #freeze} / {@link #resolve}）は
+ * {@link AccessControlService#checkAdminOrAbove} で ADMIN/DEPUTY_ADMIN 以上を要求する。
+ * {@link #createEscalation} / {@link #advanceStage} は {@link DelinquencyEscalationListener}（イベント）
+ * / {@link DelinquencyEscalationBatchService}（日次バッチ）からのみ呼ばれる内部専用処理であり、
+ * HTTP 入口が存在せず操作ユーザーが存在しないため、ユーザー認可の対象外
+ * （台帳の capability 経路除外と同種: システム内部トリガーのみ）。
  */
 @Slf4j
 @Service
@@ -38,10 +47,14 @@ import java.util.UUID;
 @Transactional(readOnly = true)
 public class DelinquencyEscalationService {
 
+    /** 認可スコープ種別。succession は組織単位（管理組合）で完結するドメインのため固定。 */
+    private static final String SCOPE_TYPE = "ORGANIZATION";
+
     private final DelinquencyEscalationRepository escalationRepository;
     // TODO: residentドメイン → successionドメインのクロスドメイン呼び出し。将来は
     //       DelinquencyReachedStage4Event を発火してresidentドメインがサブスクライブする形に分離予定。
     private final ResidentRegistryService residentRegistryService;
+    private final AccessControlService accessControlService;
 
     /**
      * 滞納エスカレーションを新規作成する（F08.2 イベント受信時に呼ぶ）。
@@ -136,14 +149,16 @@ public class DelinquencyEscalationService {
      *
      * <p>凍結中のエスカレーションはバッチによる自動昇格や手動操作の対象外となる。
      *
-     * @param escalationId   エスカレーション ID
-     * @param organizationId 組織 ID（テナント分離）
-     * @param reason         凍結理由（自由記述）
+     * @param escalationId     エスカレーション ID
+     * @param organizationId   組織 ID（テナント分離）
+     * @param reason           凍結理由（自由記述）
+     * @param requestingUserId 操作ユーザー ID（ADMIN/DEPUTY_ADMIN 以上のみ）
      * @throws BusinessException ESCALATION_NOT_FOUND / ESCALATION_ALREADY_RESOLVED /
      *                           ESCALATION_FROZEN
      */
     @Transactional
-    public void freeze(UUID escalationId, Long organizationId, String reason) {
+    public void freeze(UUID escalationId, Long organizationId, String reason, Long requestingUserId) {
+        accessControlService.checkAdminOrAbove(requestingUserId, organizationId, SCOPE_TYPE);
         DelinquencyEscalationEntity entity = getValidEscalation(escalationId, organizationId);
         entity.setFrozenAt(LocalDateTime.now());
         entity.setFrozenReason(reason);
@@ -154,14 +169,16 @@ public class DelinquencyEscalationService {
     /**
      * エスカレーションを解決済みにする（支払い完了・死亡確定・手動クローズ等）。
      *
-     * @param escalationId   エスカレーション ID
-     * @param organizationId 組織 ID（テナント分離）
-     * @param resolvedReason 解決理由（PAID / DEATH_CONFIRMED / MANUAL_CLOSE 等）
+     * @param escalationId     エスカレーション ID
+     * @param organizationId   組織 ID（テナント分離）
+     * @param resolvedReason   解決理由（PAID / DEATH_CONFIRMED / MANUAL_CLOSE 等）
+     * @param requestingUserId 操作ユーザー ID（ADMIN/DEPUTY_ADMIN 以上のみ）
      * @throws BusinessException ESCALATION_NOT_FOUND / ESCALATION_ALREADY_RESOLVED
      */
     @Transactional
-    public void resolve(UUID escalationId, Long organizationId, String resolvedReason) {
-        DelinquencyEscalationEntity entity = getById(escalationId, organizationId);
+    public void resolve(UUID escalationId, Long organizationId, String resolvedReason, Long requestingUserId) {
+        accessControlService.checkAdminOrAbove(requestingUserId, organizationId, SCOPE_TYPE);
+        DelinquencyEscalationEntity entity = fetchEntity(escalationId, organizationId);
 
         // 解決済みチェック（凍結中でも解決は許容する）
         if (entity.getResolvedAt() != null) {
@@ -178,28 +195,34 @@ public class DelinquencyEscalationService {
     }
 
     /**
-     * 組織内の未解決エスカレーション一覧を取得する（理事長ダッシュボード用）。
+     * 組織内の未解決エスカレーション一覧を取得する（理事長ダッシュボード用・ADMIN 以上）。
      *
-     * @param organizationId 組織 ID
+     * @param organizationId   組織 ID
+     * @param requestingUserId 閲覧ユーザー ID
      * @return 未解決エスカレーションのリスト（削除済みを除く）
      */
-    public List<DelinquencyEscalationEntity> listActive(Long organizationId) {
+    public List<DelinquencyEscalationEntity> listActive(Long organizationId, Long requestingUserId) {
+        accessControlService.checkAdminOrAbove(requestingUserId, organizationId, SCOPE_TYPE);
         return escalationRepository
                 .findByOrganizationIdAndResolvedAtIsNullAndDeletedAtIsNull(organizationId);
     }
 
     /**
-     * 組織内の特定エスカレーションを取得する。
+     * 組織内の特定エスカレーションを取得する（ADMIN 以上）。
      *
-     * @param escalationId   エスカレーション ID
-     * @param organizationId 組織 ID（テナント分離）
+     * <p>{@code (escalationId, organizationId)} の複合キーで取得するため、path の
+     * organizationId に対する認可はエンティティ由来 scope の認可と必ず一致する（BOLA 安全）。
+     * 別テナントの ID を指定した場合は認可の成否に関わらず {@code ESCALATION_NOT_FOUND}（存在秘匿）。
+     *
+     * @param escalationId     エスカレーション ID
+     * @param organizationId   組織 ID（テナント分離）
+     * @param requestingUserId 閲覧ユーザー ID
      * @return エスカレーションエンティティ
      * @throws BusinessException ESCALATION_NOT_FOUND
      */
-    public DelinquencyEscalationEntity getById(UUID escalationId, Long organizationId) {
-        return escalationRepository
-                .findByIdAndOrganizationIdAndDeletedAtIsNull(escalationId, organizationId)
-                .orElseThrow(() -> new BusinessException(SuccessionErrorCode.ESCALATION_NOT_FOUND));
+    public DelinquencyEscalationEntity getById(UUID escalationId, Long organizationId, Long requestingUserId) {
+        accessControlService.checkAdminOrAbove(requestingUserId, organizationId, SCOPE_TYPE);
+        return fetchEntity(escalationId, organizationId);
     }
 
     /**
@@ -224,10 +247,11 @@ public class DelinquencyEscalationService {
 
     /**
      * 有効な（解決済みでなく・凍結中でもない）エスカレーションを取得する。
-     * 各種操作の前段チェックで使用する。
+     * 各種操作の前段チェックで使用する。呼び出し元（advanceStage / freeze）で
+     * 認可済みであることを前提とする内部ヘルパー。
      */
     private DelinquencyEscalationEntity getValidEscalation(UUID escalationId, Long organizationId) {
-        DelinquencyEscalationEntity entity = getById(escalationId, organizationId);
+        DelinquencyEscalationEntity entity = fetchEntity(escalationId, organizationId);
 
         if (entity.getResolvedAt() != null) {
             throw new BusinessException(SuccessionErrorCode.ESCALATION_ALREADY_RESOLVED);
@@ -236,5 +260,19 @@ public class DelinquencyEscalationService {
             throw new BusinessException(SuccessionErrorCode.ESCALATION_FROZEN);
         }
         return entity;
+    }
+
+    /**
+     * テナント分離済みのエンティティ取得（認可なし・内部専用）。
+     *
+     * <p>{@link #advanceStage}（内部バッチ専用・操作ユーザーが存在しない）と
+     * {@link #getById(UUID, Long, Long)} / {@link #freeze} / {@link #resolve}（呼び出し元で
+     * 認可済み）からのみ呼ばれる。Controller から直接到達不可能な private ヘルパーであり、
+     * 誤って認可なしに公開しないよう private のまま維持すること（BOLA 再混入防止）。
+     */
+    private DelinquencyEscalationEntity fetchEntity(UUID escalationId, Long organizationId) {
+        return escalationRepository
+                .findByIdAndOrganizationIdAndDeletedAtIsNull(escalationId, organizationId)
+                .orElseThrow(() -> new BusinessException(SuccessionErrorCode.ESCALATION_NOT_FOUND));
     }
 }

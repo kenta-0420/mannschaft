@@ -1,0 +1,322 @@
+title = "Mannschaft gitleaks 設定"
+
+# =============================================================================
+# gitleaks 設定 — 秘密情報混入の機械的防止
+# =============================================================================
+# 既定ルールセット（gitleaks 標準の各種秘密パターン）を継承したうえで、
+# 本リポジトリ固有の既知の偽陽性のみを allowlist で除外する。
+#
+# 【方針】ファイル単位の paths まるごと除外は行わない（そのファイルに将来
+# 本物の秘密が混じっても永久に検知できなくなるため）。実測した「ダミー値
+# そのもの」を regexes で狙い撃ちにする。値が短い／汎用的で他所と衝突しうる
+# 場合は condition = "AND" で paths と組み合わせ、「このパスの、この値だけ」
+# に限定する。値が十分に長く固有（プレースホルダ専用の命名規則・サフィックス
+# 付き等）で衝突可能性が無視できる場合のみ regexes 単独（グローバル）とする。
+# paths 単独除外は settings.local.json の commits 併用（下記参照）を除き使用しない。
+#
+# 検証（実測。gitleaks 8.28.0、前景実行）:
+#   - `--no-git`（現ワーキングツリー全体、約111MB）: no leaks found
+#   - フル履歴（--source . 、全コミット。7,066コミット/約295MB）: no leaks found
+#     （1m44s で完走。実行コマンド:
+#      gitleaks detect --source . --config .gitleaks.toml --redact
+#        --report-format json --report-path <path> --exit-code 0）
+#
+# 2026-08-12: 初版作成
+# 2026-08-12: 検分差し戻し対応（1回目）— paths丸ごと除外を全廃し値ベースへ
+#             組み替え。gitleaksを8.21.2→8.28.0に引き上げ
+# 2026-08-12: 検分差し戻し対応（2回目）— 「[extend]useDefault=true実行時、
+#             ディレクトリに.gitleaks.tomlが存在するとgitleaksが自動読込し
+#             --configなしのつもりのベースライン測定が実は旧allowlist込みだった」
+#             という測定バグが発覚。素の最小構成ファイルで取り直したところ
+#             現ワーキングツリーだけで51件の偽陽性が判明（旧48件+3件）。
+#             全件を実査し値ベースの規則へ全面組み替え
+# 2026-08-12: 検分差し戻し対応（3回目）— フル履歴スキャンで7件残存が発覚
+#             （現ツリーの行内容に合わせてregexを書いたため、履歴上の古い版の
+#             行内容とは一致していなかった）。git show <commit>:<path> で
+#             各コミット時点の実際のSecret値を確認し、regexをその値に合わせて
+#             修正（BrandedQrImageWriterTest/TicketQrService/V9.063migration/
+#             poc script/PhotoEntity旧フィールド名thumbnailS3Key）。
+#             bootRun.logの1件は値が起動毎に変わる非決定的UUIDのためregexでは
+#             狙い撃ちできず、settings.local.jsonと同じcommits+paths ANDへ変更。
+#             前景実行でフル履歴7,066コミット完走・0件を実測（1m44s）
+# =============================================================================
+
+[extend]
+useDefault = true
+
+# -----------------------------------------------------------------------------
+# ドキュメントAPIレスポンス例のプレースホルダ値
+# -----------------------------------------------------------------------------
+# いずれも docs/features/ 配下の設計ドキュメントに記載されたリクエスト/レスポンス
+# 例で使われる固定サンプル値。実際のAPIやDBの値ではない。過去の旧ファイル名
+# （backend/docs/features/配下、リネーム前）にも同一の値が含まれるため、
+# regexesのみ（パス不問）で全履歴・現ツリー両方をカバーする。
+
+[[allowlists]]
+description = "イベント/デジタルサイネージAPIドキュメントのプレースホルダUUID（qr_token/invite_token/token例。実測: docs/features/F03.8_event_management.md, F09.10_digital_signage.md、旧名 backend/docs/features/F11.5_event_management.md, F11.11_digital_signage.md）"
+regexes = [
+  '''a1b2c3d4-e5f6-7890-abcd-ef1234567890''',
+]
+
+[[allowlists]]
+description = "ブログ/ギャラリーのpreview_tokenプレースホルダ（末尾...で明示的に省略された例示値。実測: docs/features/F06.1_cms_blog.md, F06.2_member_gallery.md、旧名 backend/docs/features/F06_cms_blog.md, F06_member_gallery.md）"
+regexes = [
+  '''a1b2c3d4e5f6\.\.\.''',
+]
+
+[[allowlists]]
+description = "会計CSVインポートAPIドキュメントのimport_tokenプレースホルダ（実測: docs/features/F08.6_budget_accounting.md、旧名 backend/docs/features/F11.2_budget_accounting.md）"
+regexes = [
+  '''imp_abc123def456''',
+]
+
+[[allowlists]]
+description = "webhook APIドキュメントのapi_keyプレースホルダ（実測: docs/features/F09.9_webhook_api.md、旧名 backend/docs/features/F11.7_webhook_api.md）"
+regexes = [
+  '''mk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6''',
+]
+
+[[allowlists]]
+description = "webhook APIドキュメントのsigning_secretプレースホルダ（base64デコードすると\"this is a secret key...\"という例示文になる固定サンプル。実測: docs/features/F09.9_webhook_api.md、旧名 backend/docs/features/F11.7_webhook_api.md）"
+regexes = [
+  '''dGhpcyBpcyBhIHNlY3JldCBrZXk\.\.\.''',
+]
+
+[[allowlists]]
+description = "Googleカレンダー連携（iCal）ドキュメントのtokenプレースホルダ（実測: docs/features/F03.3_google_calendar.md、旧名 backend/docs/features/F08_external_integration.md）"
+regexes = [
+  '''a3f8c2e1d4b7\.\.\.''',
+]
+
+[[allowlists]]
+description = "QR会員証ドキュメントのqr_tokenプレースホルダ（実測: docs/features/F02.1_qr_membership.md）"
+regexes = [
+  '''eyJjYXJkX2NvZGUiOiIxMjM0NTY3OC0\.\.\.''',
+]
+
+[[allowlists]]
+description = "チャット招待APIドキュメントのtokenプレースホルダUUID（実測: docs/features/F04.12_chat_membership_invite.md）"
+regexes = [
+  '''b2f7c0e2-1a3d-4c5e-8f9a-0b1c2d3e4f50''',
+]
+
+[[allowlists]]
+description = "RFC6455 Sec-WebSocket-Key 検証手順の定型サンプルnonce（\"the sample nonce\"のbase64。RFC本文に掲載されている既知の非秘密定数。実測: infra/terraform/bootstrap/README.md）"
+regexes = [
+  '''dGhlIHNhbXBsZSBub25jZQ==''',
+]
+
+[[allowlists]]
+description = "スキマバイトQRトークンのJWT/nonceプレースホルダ。JWTヘッダ部分\"eyJhbGciOiJIUzI1NiIs\"は実物のHS256 JWTにも出現しうる汎用文字列のため、pathとANDで当該ドキュメント1件に限定する（実測: docs/features/F13.1_short_term_job_matching/02_api_design.md、旧版 docs/features/F13.1_short_term_job_matching.md）"
+condition = "AND"
+paths = [
+  '''(^|/)docs/features/F13\.1_short_term_job_matching(\.md|/02_api_design\.md)$''',
+]
+regexes = [
+  '''eyJhbGciOiJIUzI1NiIsImtpZCI6InYxIn0\.eyJjaWQiOjEyMywid2lkIjo0NTYsInR5cCI6IklOIiwibm9uY2UiOiJiNGE3YmU4Yi0''',
+  '''eyJhbGciOiJIUzI1NiIs\.\.\.''',
+]
+
+# -----------------------------------------------------------------------------
+# FE E2E/ユニットテストのモックトークン
+# -----------------------------------------------------------------------------
+# 実APIには送られない、Playwrightのroute.fulfill等でモックされる固定文字列。
+# "placeholder_for_e2e" 等の識別用サフィックスが付いており実トークンとの
+# 衝突可能性が無視できるため regexes のみ（パス不問）とする。
+
+[[allowlists]]
+description = "FE E2Eテストのモックaccess/refreshトークン（Playwright route.fulfillで返す固定値。実測: frontend/tests/e2e/{helpers,repair-plan,residence-status,succession,surveys,teams}配下）"
+regexes = [
+  '''eyJhbGciOiJIUzM4NCJ9\.e2UyZV90ZXN0X3VzZXJ9\.placeholder_for_e2e''',
+]
+
+[[allowlists]]
+description = "スキマバイトF13.1 E2Eテストのモックトークン（実測: frontend/tests/e2e/F13.1_job_matching/_helpers.ts）"
+regexes = [
+  '''eyJhbGciOiJIUzM4NCJ9\.e2V4YW1wbGVfanddGh9\.placeholder''',
+]
+
+[[allowlists]]
+description = "決済ユニットテストのclientSecretスタブ値（実測: frontend/tests/unit/composables/useMarketPaymentApi.spec.ts）。'pi_'始まりの短い固定文字列で他所と衝突しうるためpathとAND"
+condition = "AND"
+paths = [
+  '''frontend/tests/unit/composables/useMarketPaymentApi\.spec\.ts''',
+]
+regexes = [
+  '''pi_123_secret_abc''',
+]
+
+# -----------------------------------------------------------------------------
+# BE テストフィクスチャ・CI固定値
+# -----------------------------------------------------------------------------
+
+[[allowlists]]
+description = "BrandedQrImageWriterTestの擬似トークン生成コード。gitleaksが実際に切り出すSecretは\"a1b2c3d4e5f6\"の12文字部分のみ（続く+\"9\".repeat(68)は静的解析されず含まれない）。この文字列自体は他のドキュメント同様のプレースホルダ規則であり秘密値ではない"
+condition = "AND"
+paths = [
+  '''backend/src/test/java/com/mannschaft/app/common/qr/BrandedQrImageWriterTest\.java''',
+]
+regexes = [
+  '''a1b2c3d4e5f6''',
+]
+
+[[allowlists]]
+description = "PushSubscriptionServiceTestのWeb Push VAPID風固定テスト値（P256DH_KEY/AUTH_KEY。実運用のプッシュ購読とは無関係な固定文字列）"
+condition = "AND"
+paths = [
+  '''backend/src/test/java/com/mannschaft/app/notification/PushSubscriptionServiceTest\.java''',
+]
+regexes = [
+  '''BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8p8QfEdSk''',
+  '''tBHItJI5svbpC7-Nn8ziHA''',
+]
+
+[[allowlists]]
+description = "PaymentCheckoutControllerTestのIdempotency-Keyヘッダ固定値（実測: fixedKey変数）"
+condition = "AND"
+paths = [
+  '''backend/src/test/java/com/mannschaft/app/payment/controller/PaymentCheckoutControllerTest\.java''',
+]
+regexes = [
+  '''idem-key-from-header-001''',
+]
+
+[[allowlists]]
+description = "ポイントカードのシェアトークンE2E/契約テストで使う連番プレースホルダUUID（0-9の単純連番で作為的に生成された非乱数値。実測: OrgPointCardResolveControllerTest.java, PointCardControllerTest.java）"
+regexes = [
+  '''01234567-89ab-4cde-8fed-cba987654321''',
+]
+
+[[allowlists]]
+description = "F18残高凍結機能のE2E/CIテスト共通暗号化鍵（application-ci.ymlとE2Eシードスクリプト間で意図的に同一値を共有する固定テスト鍵。本番Secrets Managerの値とは無関係）"
+regexes = [
+  '''pE8ozQmki8gdQ1nCFC86zcK1SSNJuVRLd7uhdpO4ihc=''',
+]
+
+[[allowlists]]
+description = "CI用JWT HMAC鍵（application-ci.yml固定値。GitHub Actions実行時のみ使用され本番鍵とは独立）"
+condition = "AND"
+paths = [
+  '''backend/src/main/resources/application-ci\.yml''',
+]
+regexes = [
+  '''Y2ktaG1hYy1naXRodWItYWN0aW9ucy1rZXktZml4ZWQ=''',
+]
+
+[[allowlists]]
+description = "テスト用暗号化鍵/HMAC鍵（application-test.yml固定値。テスト決定性のためのダミー値）"
+condition = "AND"
+paths = [
+  '''backend/src/test/resources/application-test\.yml''',
+]
+regexes = [
+  '''dGVzdC1lbmNyeXB0aW9uLWtleS0xMjM0NTY3ODkwYWI=''',
+  '''dGVzdC1obWFjLWtleS0tLTEyMzQ1Njc4OTBhYmNkZWY=''',
+]
+
+# -----------------------------------------------------------------------------
+# 本番コードの識別子名への誤反応
+# -----------------------------------------------------------------------------
+# 値ではなく変数名・定数名・カラム名がエントロピー判定に引っかかるケース。
+# 識別子名は言語上そもそも「値」になり得ないため、この単語自体を含む文字列を
+# 全面的に許可しても実秘密を見逃すリスクは無い。
+
+[[allowlists]]
+description = "R2/S3オブジェクトキーのフィールド・変数名（値ではなく *R2Key/*S3Key という識別子名への誤反応）。実測: BlogMediaUploadEntity/PhotoEntity/ScheduleMediaUploadEntity/VillageEditDialog.vue(旧: monshoR2Key)。thumbnailS3Keyはリネーム移行(V9.063)前の旧フィールド名（PhotoEntity）"
+regexes = [
+  '''\bthumbnailR2Key\b''',
+  '''\bthumbnailS3Key\b''',
+  '''\bmonshoR2Key\b''',
+  '''\biconR2Key\b''',
+]
+
+[[allowlists]]
+description = "BudgetTransactionService.generateUploadUrl の添付ファイルパス生成プレフィックス（マッチした\"秘密\"は動的パス文字列の固定プレフィックス部分であり秘密値ではない）"
+condition = "AND"
+paths = [
+  '''backend/src/main/java/com/mannschaft/app/budget/service/BudgetTransactionService\.java''',
+]
+regexes = [
+  '''budget/attachments/''',
+]
+
+[[allowlists]]
+description = "TicketQrServiceのTOKEN_CHARS定数値（QRトークン生成に使う許容文字集合の実値。gitleaksが切り出すSecretは識別子名TOKEN_CHARSではなく代入値\"abcdef0123456789\"そのもの）。短い16進数風文字列で他所と衝突しうるためpathとAND"
+condition = "AND"
+paths = [
+  '''backend/src/main/java/com/mannschaft/app/ticket/service/TicketQrService\.java''',
+]
+regexes = [
+  '''abcdef0123456789''',
+]
+
+[[allowlists]]
+description = "photosテーブルのカラムリネームDDL（s3_key→r2_key はカラム名であり秘密値ではない）。gitleaksが切り出すSecretは行全体ではなくカラム名リテラル（thumbnail_s3_key等）そのもの"
+regexes = [
+  '''\bthumbnail_s3_key\b''',
+  '''\bs3_key\b''',
+  '''\bthumbnail_r2_key\b''',
+  '''\br2_key\b''',
+]
+
+# -----------------------------------------------------------------------------
+# その他の個別偽陽性
+# -----------------------------------------------------------------------------
+
+[[allowlists]]
+description = "Stripe決済PoCスクリプトのcurl -u 認証。値は環境変数参照 ${STRIPE_SECRET_KEY} でありリテラルな秘密値ではない。gitleaksが切り出すSecretは引用符込みの \"${STRIPE_SECRET_KEY}:\" （-uの前置部分は含まない）。curl-auth-userルールは -u user:pass の実値検出用のため、変数参照のみに限定してAND除外する"
+condition = "AND"
+paths = [
+  '''scripts/poc/f089_p5_invoice_fee_override_poc\.sh''',
+]
+regexes = [
+  '''"\$\{STRIPE_SECRET_KEY\}:"''',
+]
+
+[[allowlists]]
+description = "Spring Bootの起動時自動生成デフォルトパスワードログ（UserDetailsServiceAutoConfiguration、起動ごとにランダムなUUIDが生成される開発用ダミー値。本番では使用されず、値自体が非決定的なためregexで狙い撃ちできない）。過去に足軽worktreeのビルドログが誤ってコミットされた事故の残骸（実測: .claude/worktrees/agent-aa831a5eab8baec4d/backend/logs/bootRun.log、コミット dfc46cf123 の当該行1件のみ）。.gitignoreの.claude/worktrees/除外により再発はしない。commits+pathsのANDで単一コミット・単一ファイルに限定する（settings.local.jsonと同じ考え方）"
+condition = "AND"
+commits = [
+  "dfc46cf1237075689396ccb99c2053f7c1e99324",
+]
+paths = [
+  '''^\.claude/worktrees/agent-aa831a5eab8baec4d/backend/logs/bootRun\.log$''',
+]
+
+# -----------------------------------------------------------------------------
+# 既知の混入（2コミット・要ローテーション）
+# -----------------------------------------------------------------------------
+# 開発用の署名鍵が過去に2コミットで公開履歴へ入った。既に .gitignore 済みで現ツリーには
+# 残っておらず、本番鍵は Secrets Manager から注入される構成のため、マスターの裁可した
+# 対処方針は「履歴書き換えはせずローテーションで無力化」である（裁可 2026-08-12）。
+# 詳細な所在（行番号等）は本リポジトリが公開運用のためここには書かない。
+# 本番前チェックリスト側に「本番鍵は必ず新規生成する」として記録済み。
+#
+# gitleaks 8.28.0 の設定スキーマ（config/allowlist.go, config/config.go を実査）には
+# フィンガープリント単位のallowlistフィールドは存在しない（Commits/Paths/RegexTarget/
+# Regexes/StopWords/Conditionのみ。フィンガープリントはレポート同士の重複排除
+# ---baseline-pathで使う概念であり、.gitleaks.toml側のallowlist構文には無い）。
+# 「1コミットの1ファイル」という粒度は commits + paths の condition = "AND" で
+# 表現でき、実質的にフィンガープリント指定と同じ効果が得られるため、これを採用する。
+# 下の commits はこの機構の動作に必須であり、削除すると除外が壊れる。
+# -----------------------------------------------------------------------------
+
+[[allowlists]]
+description = "2026-06-24混入分（コミットaaf2d7c2）: ルート.claude/settings.local.jsonの当該コミットのみ除外。ローテーション方針は上記コメント参照"
+condition = "AND"
+commits = [
+  "aaf2d7c2f04667b43261d8357843a4acecc48e27",
+]
+paths = [
+  '''^\.claude/settings\.local\.json$''',
+]
+
+[[allowlists]]
+description = "2026-03-30混入分（コミット6b3a2922）: backend/.claude/settings.local.jsonの当該コミットのみ除外。ローテーション方針は上記コメント参照"
+condition = "AND"
+commits = [
+  "6b3a2922d7c83d9f191b0567d0e8a0363d9ec38f",
+]
+paths = [
+  '''^backend/\.claude/settings\.local\.json$''',
+]

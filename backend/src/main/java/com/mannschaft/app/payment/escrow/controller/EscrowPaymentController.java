@@ -3,6 +3,7 @@ package com.mannschaft.app.payment.escrow.controller;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.payment.connect.ScopeKind;
 import com.mannschaft.app.payment.escrow.ConnectChargeService;
 import com.mannschaft.app.payment.escrow.EscrowSourceKind;
@@ -51,10 +52,17 @@ public class EscrowPaymentController {
      * {@code clientSecret} は支払者本人 × {@code PENDING_CONFIRMATION} 時のみ非 null。受取側 ADMIN は状態/金額のみ、
      * 無関係者は 404 秘匿。</p>
      *
+     * <p><b>認可の所在</b>: {@code ConnectChargeService.buildPaymentView}
+     * （{@code payment/escrow/ConnectChargeService.java:406}）が escrow の {@code payer_scope} と
+     * 照会者を照合し、支払者本人でなければ {@code authorizePayeeAdminForView}（同 {@code :443}）で
+     * 受取側スコープの権限を {@code AccessControlService} 経由で検証する。いずれにも該当しない照会者は
+     * {@code PAYMENT_RESOURCE_NOT_FOUND}（404）で存在ごと秘匿する。</p>
+     *
      * @param listingId     札 ID（escrow の source_id）
      * @param participantId 応募 ID（escrow の source_participant_id）
      * @return 決済確認ビュー
      */
+    @AuthorizedInService
     @GetMapping("/recruitment/{listingId}/{participantId}/payment-intent")
     @Operation(summary = "札主の決済確認（謝礼エスクローの clientSecret＋手数料内訳・支払者本人のみ clientSecret）")
     public ResponseEntity<ApiResponse<RecruitmentPaymentResponse>> getRecruitmentPaymentIntent(
@@ -72,9 +80,15 @@ public class EscrowPaymentController {
      * <p>認可で出し分け: 支払者本人→{@code clientSecret} 含む（PENDING_CONFIRMATION 時）、受取側 ADMIN→状態/金額のみ、
      * 無関係者→404 秘匿。</p>
      *
+     * <p><b>認可の所在</b>: {@code ConnectChargeService.buildPaymentView}
+     * （{@code payment/escrow/ConnectChargeService.java:406}）／
+     * {@code authorizePayeeAdminForView}（同 {@code :443}）。支払者本人でも受取側スコープの
+     * 権限保有者でもない照会者は {@code PAYMENT_RESOURCE_NOT_FOUND}（404）で秘匿する。</p>
+     *
      * @param id エスクロー取引 ID
      * @return 照会ビュー
      */
+    @AuthorizedInService
     @GetMapping("/{id}")
     @Operation(summary = "エスクロー状態照会（支払者本人=clientSecret 含む / 受取側 ADMIN=状態・金額のみ）")
     public ResponseEntity<ApiResponse<RecruitmentPaymentResponse>> getEscrow(@PathVariable UUID id) {

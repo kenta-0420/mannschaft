@@ -1,5 +1,6 @@
 package com.mannschaft.app.member;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.member.dto.CreateFieldRequest;
 import com.mannschaft.app.member.dto.FieldResponse;
@@ -28,6 +29,7 @@ class MemberProfileFieldServiceTest {
 
     @Mock private MemberProfileFieldRepository fieldRepository;
     @Mock private MemberMapper memberMapper;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private MemberProfileFieldService service;
 
     @Nested
@@ -46,7 +48,7 @@ class MemberProfileFieldServiceTest {
                             null, false, 0, true, null, null));
 
             // When
-            FieldResponse result = service.createField(req);
+            FieldResponse result = service.createField(999L, req);
 
             // Then
             assertThat(result.getFieldName()).isEqualTo("ポジション");
@@ -65,7 +67,7 @@ class MemberProfileFieldServiceTest {
             given(fieldRepository.findById(1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.deactivateField(1L))
+            assertThatThrownBy(() -> service.deactivateField(999L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBER_004"));

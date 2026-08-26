@@ -28,6 +28,7 @@ import com.mannschaft.app.advertising.service.InvoicePdfService;
 import com.mannschaft.app.advertising.service.RateSimulatorService;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 import com.mannschaft.app.membership.domain.ScopeType;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
@@ -119,7 +120,14 @@ public class AdvertiserDashboardController {
      * 料金シミュレーションを実行する。
      * <p>
      * 認証必須だが広告主登録は不要。
+     *
+     * <p><b>認可方式（{@link AuthorizedByPathConfig} メソッド付与）</b>:
+     * {@code SecurityConfig の .anyRequest().authenticated()}。
+     * 応答は全ユーザー共通（ユーザー固有データを含まない）。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/rate-simulator")
     public ApiResponse<RateSimulatorResponse> rateSimulator(
             @RequestParam(required = false) String prefecture,
@@ -136,7 +144,14 @@ public class AdvertiserDashboardController {
      * 公開料金カード一覧を取得する。
      * <p>
      * 認証必須だが広告主登録は不要。
+     *
+     * <p><b>認可方式（{@link AuthorizedByPathConfig} メソッド付与）</b>:
+     * {@code SecurityConfig の .anyRequest().authenticated()}。
+     * 応答は全ユーザー共通（ユーザー固有データを含まない）。</p>
+     *
+     * <p>認可根治戦役 Wave6 監査済。</p>
      */
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/rate-cards")
     public ApiResponse<List<PublicRateCardResponse>> rateCards(
             @RequestParam(required = false) PricingModel pricingModel,

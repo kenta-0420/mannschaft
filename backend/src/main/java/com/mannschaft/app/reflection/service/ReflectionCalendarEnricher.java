@@ -183,6 +183,7 @@ public class ReflectionCalendarEnricher implements CalendarEnricher {
         LocalDateTime startOfDay = entry.getTargetDate().atStartOfDay();
         return CalendarEntryResponse.builder()
                 .id(null) // UUID 主キーゆえ Long id は持たない（§6.2・referenceUuid で識別）
+                .scheduleId(null) // 親 schedules 行を持たないため常に null（§1.5 / AC-07(b)）
                 .content(new CalendarEntryResponse.CalendarContentDto(
                         themeTitle,               // title = theme タイトル（本文は載せない）
                         EVENT_TYPE_ENTRY,         // eventType
@@ -208,6 +209,7 @@ public class ReflectionCalendarEnricher implements CalendarEnricher {
         LocalDateTime startOfDay = reminder.getRemindAt().toLocalDate().atStartOfDay();
         return CalendarEntryResponse.builder()
                 .id(null) // UUID 主キードメインゆえ Long id は持たない（§6.2・referenceUuid で識別）
+                .scheduleId(null) // 親 schedules 行を持たないため常に null（§1.5 / AC-07(b)）
                 .content(new CalendarEntryResponse.CalendarContentDto(
                         themeTitle,     // title = theme タイトル（本文は載せない）
                         referenceKind,  // eventType（REFLECTION_RECALL / REFLECTION_PRE_EXAM）

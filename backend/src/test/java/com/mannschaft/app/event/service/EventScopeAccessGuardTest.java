@@ -180,4 +180,89 @@ class EventScopeAccessGuardTest {
             // 例外を投げなければ成功
         }
     }
+
+    /**
+     * {@link EventScopeAccessGuard#requireMemberByEventId} / {@link EventScopeAccessGuard#requireAdminByEventId}
+     * のテスト（Wave3-B12event: eventId のみを path に持つフラットなサブリソース Controller 向け）。
+     */
+    @Nested
+    @DisplayName("requireMemberByEventId / requireAdminByEventId（フラットサブリソース向け）")
+    class RequireByEventId {
+
+        @Test
+        @DisplayName("requireMemberByEventId: 非メンバーは403（イベント自身のスコープを信頼源とする）")
+        void requireMemberByEventId_notMember_throws403() {
+            given(eventService.findEventOrThrow(EVENT_ID)).willReturn(teamEvent(TEAM_ID));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+            assertThatThrownBy(() -> guard.requireMemberByEventId(USER_ID, EVENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("requireMemberByEventId: メンバーは通過（検証済みイベントを返す）")
+        void requireMemberByEventId_member_passes() {
+            EventEntity event = teamEvent(TEAM_ID);
+            given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.isMember(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            EventEntity result = guard.requireMemberByEventId(USER_ID, EVENT_ID);
+
+            assertThat(result).isSameAs(event);
+        }
+
+        @Test
+        @DisplayName("requireMemberByEventId: イベント不在は404 EVENT_NOT_FOUND")
+        void requireMemberByEventId_eventNotFound_throws404() {
+            given(eventService.findEventOrThrow(EVENT_ID))
+                    .willThrow(new BusinessException(EventErrorCode.EVENT_NOT_FOUND));
+
+            assertThatThrownBy(() -> guard.requireMemberByEventId(USER_ID, EVENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(EventErrorCode.EVENT_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("requireAdminByEventId: 非ADMINメンバーは403")
+        void requireAdminByEventId_memberButNotAdmin_throws403() {
+            given(eventService.findEventOrThrow(EVENT_ID)).willReturn(teamEvent(TEAM_ID));
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(false);
+
+            assertThatThrownBy(() -> guard.requireAdminByEventId(USER_ID, EVENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(CommonErrorCode.COMMON_002);
+        }
+
+        @Test
+        @DisplayName("requireAdminByEventId: ADMIN/DEPUTY_ADMINは通過")
+        void requireAdminByEventId_admin_passes() {
+            EventEntity event = teamEvent(TEAM_ID);
+            given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(false);
+            given(accessControlService.isAdminOrAbove(USER_ID, TEAM_ID, "TEAM")).willReturn(true);
+
+            EventEntity result = guard.requireAdminByEventId(USER_ID, EVENT_ID);
+
+            assertThat(result).isSameAs(event);
+        }
+
+        @Test
+        @DisplayName("requireAdminByEventId: SYSTEM_ADMINは常に通過")
+        void requireAdminByEventId_systemAdmin_passes() {
+            EventEntity event = teamEvent(TEAM_ID);
+            given(eventService.findEventOrThrow(EVENT_ID)).willReturn(event);
+            given(accessControlService.isSystemAdmin(USER_ID)).willReturn(true);
+
+            EventEntity result = guard.requireAdminByEventId(USER_ID, EVENT_ID);
+
+            assertThat(result).isSameAs(event);
+        }
+    }
 }

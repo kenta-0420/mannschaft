@@ -169,12 +169,21 @@
       "book": "予約する",
       "list": "予約一覧",
       "my_reservations": "自分の予約",
-      "line_manage": "予約対象の管理",
+      "line_manage": "{resourceName}の管理",
       "emergency_closure": "緊急休業",
       "team_page": "予約"
     },
     "management": {
-      "section_count": "{label} ({n})"
+      "section_count": "{label} ({n})",
+      "card_help": "{label}の使い方",
+      "cards": {
+        "business_hours": { "title": "営業時間", "description": "予約受付時間を設定" },
+        "lines": { "title": "予約対象", "description": "{n}件の予約対象を管理" },
+        "menus": { "title": "メニュー", "description": "{n}件のメニューを管理" },
+        "weekly_schedule": { "title": "週間スケジュール", "description": "{n}件の枠・定期設定" },
+        "exception_day": { "title": "例外日", "description": "特定日の営業を調整" },
+        "advanced": { "title": "詳細設定", "description": "公開範囲や通知を設定" }
+      }
     },
     "column": {
       "datetime": "日時",
@@ -189,7 +198,7 @@
     },
     "field": {
       "date": "日付",
-      "line": "予約対象",
+      "line": "{resourceName}",
       "name": "名前",
       "description": "説明",
       "display_order": "表示順",
@@ -213,8 +222,8 @@
       "full": "満席"
     },
     "button": {
-      "add_line": "予約対象を追加",
-      "add_line_long": "予約対象を追加",
+      "add_line": "{resourceName}を追加",
+      "add_line_long": "{resourceName}を追加",
       "save": "保存",
       "cancel": "キャンセル",
       "reserve": "予約する",
@@ -228,8 +237,8 @@
       "title": "確認",
       "line_create": "予約対象を作成",
       "line_edit": "予約対象を編集",
-      "line_create_long": "予約対象を追加",
-      "line_edit_long": "予約対象を編集",
+      "line_create_long": "{resourceName}を追加",
+      "line_edit_long": "{resourceName}を編集",
       "reserve_confirm": "予約確認",
       "cancel_confirm": "この予約をキャンセルしますか？",
       "line_delete_confirm": "この予約対象を削除しますか？",
@@ -262,7 +271,8 @@
       "template_delete_success": "テンプレートを削除しました",
       "template_save_failed": "保存に失敗しました",
       "template_load_failed": "テンプレートの取得に失敗しました",
-      "cancel_deadline_passed": "キャンセル期限を過ぎているため、この予約はキャンセルできませんでした。変更が必要な場合はチームの管理者にご相談ください"
+      "cancel_deadline_passed": "キャンセル期限を過ぎているため、この予約はキャンセルできませんでした。変更が必要な場合はチームの管理者にご相談ください",
+      "rate_limited": "予約作成の間隔が短すぎます。しばらく待ってから再度お試しください"
     },
     "empty": {
       "no_reservations": "予約はありません",
@@ -273,17 +283,29 @@
       "book": {
         "admin_no_lines": "予約対象がまだありません",
         "admin_no_lines_hint": "「予約対象の管理」で予約対象と枠を作成すると、ここに予約枠が表示されます",
-        "admin_no_slots": "この日は空き枠がありません",
-        "admin_no_slots_hint": "「予約対象の管理」から枠を追加できます",
+        "admin_no_slots": "この週は空き枠がありません",
+        "admin_no_slots_hint": "「週間スケジュール」で枠を作成すると、ここに予約枠が表示されます",
         "member_no_lines": "予約の受付準備中です",
         "member_no_lines_hint": "管理者が予約枠を用意するまでお待ちください",
-        "member_no_slots": "この日は空き枠がありません",
-        "member_no_slots_hint": "別の日を選んでお試しください"
+        "member_no_slots": "この週は空き枠がありません",
+        "member_no_slots_hint": "別の週を選んでお試しください"
       }
     },
-    "line_manage_title": "予約対象の管理",
+    "line_manage_title": "{resourceName}の管理",
     "line": {
       "delete_guide": "削除すると、このラインの枠テンプレートは停止し、予約のない未来の枠は自動削除されます。有効な予約がある場合は先に振替/キャンセルしてください。"
+    },
+    "resource_name": {
+      "DEFAULT": "予約対象",
+      "STAFF": "担当スタッフ",
+      "SEAT": "席",
+      "COURT": "コート",
+      "BED": "ベッド",
+      "LANE": "レーン",
+      "setting_title": "予約対象の呼び方",
+      "custom_label": "自由入力の呼称",
+      "custom_required": "自由入力の呼称を入力してください",
+      "deputy_hint": "副管理者は予約対象の呼び方のみ変更できます。ライン・メニューなどの管理は管理者が行います。"
     },
     "settings": {
       "advanced": {
@@ -320,6 +342,14 @@
           "placeholder": "例: 24,1",
           "error_empty": "1つ以上の値を入力してください",
           "error_invalid": "0〜8760の整数をカンマ区切りで入力してください"
+        },
+        "pending_expire": {
+          "label": "仮押さえ(PENDING)の自動失効",
+          "hint": "承認待ちの仮押さえ予約を、指定時間の経過後に自動的にキャンセルします（1〜168時間・7日以内）",
+          "unit": " 時間で自動キャンセル",
+          "no_expire_toggle": "自動キャンセルしない",
+          "no_expire_warning": "現在「自動キャンセルしない」設定です。承認制（MANUAL）のチームでは、仮押さえの予約は自動で取り消されません。管理者が個別に対応してください",
+          "error_range": "1〜168の範囲で入力してください"
         }
       }
     },
@@ -441,6 +471,43 @@
         "all_day": "終日"
       }
     },
+    "recurring": {
+      "toggle_label": "この予約を毎週繰り返す",
+      "weeks_option": "{n}週",
+      "weeks_more": "もっと長く（5〜12週）",
+      "weeks_label": "週数",
+      "horizon_hint": "枠は28日先までしか自動作成されないため、それより先の週は枠ができ次第の手動予約が必要になる場合があります",
+      "close_button": "閉じる",
+      "badge": "定期",
+      "result": {
+        "summary": "{created}件を予約しました（{skipped}件はスキップ）",
+        "skipped_list_title": "スキップした回",
+        "all_skipped_notice": "指定した週の枠がすべて確保できず、予約は作成されませんでした。下記の理由をご確認のうえ、必要な週は個別に予約してください"
+      },
+      "skip_reason": {
+        "NOT_GENERATED": "その週の枠がまだ作成されていません",
+        "FULL": "満席でした",
+        "CLOSED": "受付が停止されていました",
+        "BLOCKED": "予約不可の時間帯でした",
+        "ALREADY_RESERVED": "その枠にすでに予約済みでした",
+        "UNAVAILABLE": "予約できない状態でした",
+        "NOT_CANCELLABLE": "キャンセルできない状態でした",
+        "CANCEL_DEADLINE_PASSED": "キャンセル期限を過ぎていました",
+        "NOT_PENDING": "承認待ちの状態ではありませんでした"
+      },
+      "cancel_scope": {
+        "dialog_title": "キャンセル範囲の選択",
+        "this_only": "この回だけ",
+        "this_and_following": "この回以降すべて",
+        "result_summary": "{cancelled}件をキャンセルしました（{skipped}件は対象外でした）",
+        "all_skipped_notice": "対象の回はすべてキャンセルできませんでした。下記の理由をご確認ください"
+      },
+      "confirm_series": {
+        "button": "まとめて承認する（定期予約）",
+        "confirm_message": "この定期予約シリーズの保留中の予約をすべて承認しますか？",
+        "success": "{confirmed}件を承認しました（{skipped}件はスキップ）"
+      }
+    },
     "notify_recipients": {
       "section_label": "予約通知メール宛先",
       "help": "予約が成立するたびにメールでお知らせする宛先を登録します。店舗の代表アドレスなど、アプリ利用者でないメールも登録できます。無料プランは3件まで、4件目以降は有料プランが必要です（最大10件）。",
@@ -509,6 +576,9 @@
       "line_not_available": "このメニューは選択した予約対象では提供されていません",
       "duration_minutes_label": "{m}分"
     },
+    "weekly_schedule": {
+      "section_title": "週間スケジュール"
+    },
     "template": {
       "title": "週間テンプレート",
       "add": "テンプレートを追加",
@@ -517,6 +587,8 @@
       "delete_confirm": "このテンプレートを削除しますか？（生成済みの枠は残ります）",
       "day_of_week": "曜日",
       "time_range": "時間帯",
+      "ends_next_day": "終了は翌日",
+      "next_day_time": "翌 {time}",
       "line": "予約対象",
       "line_common": "共通枠",
       "capacity": "定員",
@@ -540,11 +612,53 @@
       "auto_generated": "保存し、{days}日先までの枠を{generated}件作成しました",
       "auto_generated_partial": "{total}曜日中{failed}曜日で枠の作成に失敗しました（保存済みの曜日は有効です）",
       "need_business_hours_hint": "先に営業時間を設定してください",
-      "generated_zero_hint": "枠は作成されませんでした（営業時間外/定休日のため）。営業時間を確認してください"
+      "generated_zero_hint": "枠は作成されませんでした（営業時間外/定休日のため）。営業時間を確認してください",
+      "grid": {
+        "title": "ドラッグで枠を作成",
+        "hint": "グリッドをなぞると、その範囲の枠をまとめて作成できます（左右にまたげば複数曜日を一度に）。スマートフォンやキーボードでは、始点のセルと終点のセルを順にタップ／Enterしてください。Escで取り消せます",
+        "legend_existing": "登録済み",
+        "legend_selected": "選択中",
+        "blocked": "選択した範囲に登録済みの枠が含まれています。空いている範囲を選んでください",
+        "confirm_title": "枠を作成",
+        "create": "作成"
+      }
+    },
+    "recurring_block": {
+      "title": "毎週の予約不可",
+      "add": "予約不可を追加",
+      "edit": "予約不可を編集",
+      "delete_confirm": "この定期予約不可枠を削除しますか？",
+      "reason": "事由",
+      "reason_no_pii": "事由に個人名やお客様情報を含めないでください（会員全員に公開されます）",
+      "reason_placeholder": "例: 研修・スクール・清掃・メンテナンス",
+      "is_public": "会員に事由を表示する",
+      "is_public_note": "ONにすると空き状況にこのラベルが表示されます",
+      "line_all": "チーム全体",
+      "limit_reached": "定期予約不可枠は最大50件までです",
+      "full_day_hint": "終日休みにする場合は営業時間で定休日に設定してください",
+      "impact_warning": "今後90日間に重複する予約が {n} 件あります",
+      "day_empty": "この曜日の予約不可枠はありません",
+      "message": {
+        "load_failed": "定期予約不可枠の取得に失敗しました",
+        "create_success": "定期予約不可枠を登録しました",
+        "update_success": "定期予約不可枠を更新しました",
+        "delete_success": "定期予約不可枠を削除しました"
+      },
+      "error": {
+        "toggle_conflict": "一時停止/再開に失敗しました。この時間帯に重複する予約があるため操作できません"
+      },
+      "force_cancel": {
+        "button": "衝突する予約をキャンセルして登録する",
+        "confirm_title": "強行登録の確認",
+        "confirm_message": "{n}件の予約がキャンセルされ、申込者に通知が送られます。よろしいですか？",
+        "confirm_ok": "キャンセルして登録する",
+        "result_notice": "{n}件の予約をキャンセルして登録しました"
+      }
     },
     "business_hours": {
       "title": "営業時間",
       "day_open": "営業する",
+      "ends_next_day": "終了は翌日",
       "save_success": "保存し、枠を{generated}件更新しました",
       "generating": "枠を更新しています…",
       "generation_failed": "営業時間は保存しましたが、枠の自動更新に失敗しました。明朝に自動で追い付きます",
@@ -568,36 +682,19 @@
       "advanced_label": "個別の枠を手動管理（例外操作）"
     },
     "grid": {
-      "title": "空きグリッド",
-      "help": "縦は時間帯、横は予約対象です。緑の「空き」をタップすると予約に進めます。灰色・斜線の枠は予約できません。「週」タブで7日分をまとめて確認できます。",
-      "display_toggle": {
-        "list": "リスト表示",
-        "grid": "グリッド表示"
-      },
       "view": {
-        "single": "単日",
         "week": "週"
       },
-      "axis": {
-        "label": "軸",
-        "time_rows": "時間を縦",
-        "time_cols": "時間を横"
-      },
       "column": {
-        "common": "共通",
-        "time": "時間"
-      },
-      "staff_filter": {
-        "label": "予約対象で絞り込む",
-        "placeholder": "すべての予約対象"
+        "common": "共通"
       },
       "state": {
         "available": "空き",
         "booked": "埋まっている",
+        "reserved": "予約済み",
         "closed": "受付終了",
         "unavailable": "予約不可"
       },
-      "empty": "この日の枠はありません",
       "load_error": "グリッドの取得に失敗しました"
     },
     "matrix": {
@@ -615,12 +712,12 @@
       "no_menu_single": "メニューなしで30分だけ予約",
       "preview_title": "この内容で予約します",
       "extend_30": "＋30分延長",
-      "view_matrix": "マトリックス表示",
-      "view_list": "リスト表示",
-      "view_staff_grid": "スタッフ別グリッド",
-      "date_line_header": "日付・予約対象",
+      "open_all": "すべて表示",
+      "close_all": "すべて閉じる",
+      "open_day_hint": "日付を選ぶと予約枠を表示します",
+      "date_line_header": "日付・{resourceName}",
       "help_toggle": "使い方を見る",
-      "help_body": "空いている時間（緑）をタップし、メニューを選ぶと必要な枠数が自動で選ばれます。「＋30分延長」でさらに枠を追加できます。共通枠を選んだ場合は予約対象を選んでください。",
+      "help_body": "空いている時間（緑）をタップし、メニューを選ぶと必要な枠数が自動で選ばれます。「＋30分延長」でさらに枠を追加できます。共通枠を選んだ場合は{resourceName}を選んでください。",
       "slot_unavailable_conflict": "選択した時間帯は予約を受け付けていません。別の時間帯をお試しください"
     },
     "group": {
@@ -640,14 +737,35 @@
       "deadline_passed": "キャンセル締切を過ぎているためキャンセルできません",
       "own_overlap": "選択した時間帯にあなたの別の予約があります。時間帯をご確認ください"
     },
+    "waitlist": {
+      "register_button": "キャンセル待ちに登録",
+      "cancel_button": "キャンセル待ちを取消",
+      "registered_badge": "待機中",
+      "dialog_title": "キャンセル待ち",
+      "notice": "空きが出たら通知でお知らせします。順番の保証はなく、早い者勝ちで予約できます",
+      "register_success": "キャンセル待ちに登録しました",
+      "cancel_success": "キャンセル待ちを取消しました",
+      "admin_count": "キャンセル待ち {n} 人",
+      "already_registered": "すでにキャンセル待ちに登録されています",
+      "not_found": "キャンセル待ちが見つかりません（既に取消・変換済みの可能性があります）",
+      "limit_exceeded": "キャンセル待ちの登録上限に達しています",
+      "rate_limited": "操作が早すぎます。1分ほど待ってからやり直してください",
+      "slot_not_full": "空きが出ました。そのまま予約できます",
+      "my_list_title": "自分のキャンセル待ち",
+      "no_entries": "キャンセル待ち中の予約はありません",
+      "aria_hint_register": "押すとキャンセル待ちに登録できます",
+      "aria_hint_cancel": "押すとキャンセル待ちを取消せます"
+    },
+    "pending_expire_notice": {
+      "form_note": "{n}時間以内に承認されない場合は自動的にキャンセルされます"
+    },
     "team_guide": {
       "title": "予約の使い方",
       "help_button": "使い方",
-      "event_link": "イベント募集を見る",
       "book": {
         "matrix_title": "マトリックスの見方",
         "matrix_steps": {
-          "0": "縦に「日付×予約対象」、横に「時間」が並びます。",
+          "0": "縦に「日付×{resourceName}」、横に「時間」が並びます。",
           "1": "色の意味: 緑の「空き」＝予約できる枠／「埋まっている」＝予約済み／斜線＝予約不可／薄いグレー＝受付終了です。"
         },
         "filter_title": "メニューで絞り込む",
@@ -664,7 +782,7 @@
         },
         "conflict_title": "満席・競合したときは",
         "conflict_steps": {
-          "0": "グレーの枠（埋まっている・受付終了・予約不可）は選べません。別の時間や予約対象を選んでください。",
+          "0": "グレーの枠（埋まっている・受付終了・予約不可）は選べません。別の時間や{resourceName}を選んでください。",
           "1": "確定の直前に他の人が同じ枠を取ってしまった場合はエラーになり、画面が最新の空き状況に自動更新されます。もう一度空いている枠を選び直してください。"
         }
       },
@@ -697,15 +815,15 @@
           "0": "「営業時間」で曜日ごとに営業する時間帯を設定します。ここが予約枠のもとになります。",
           "1": "保存すると、その場で28日先までの枠が自動で作成されます。"
         },
-        "setup1_title": "② 予約対象を作る",
+        "setup1_title": "② {resourceName}を作る",
         "setup1_steps": {
-          "0": "このタブ上部の「予約対象を追加」から、席・スタッフ・窓口など予約を受け付ける対象を登録します。",
-          "1": "予約対象がないと、利用者の「予約する」タブに何も表示されません。"
+          "0": "このタブ上部の「{resourceName}を追加」から、席・スタッフ・窓口など予約を受け付ける対象を登録します。",
+          "1": "{resourceName}がないと、利用者の「予約する」タブに何も表示されません。"
         },
         "setup2_title": "③ メニューを作る",
         "setup2_steps": {
           "0": "下の「メニュー管理」で、所要時間（30分単位）を持つメニューを登録します。",
-          "1": "特定の予約対象だけに絞りたい場合は「予約対象」で「選んだ予約対象のみ」を選びます（既定は全ての予約対象で提供されます）。"
+          "1": "特定の{resourceName}だけに絞りたい場合は「{resourceName}」で「選んだ{resourceName}のみ」を選びます（既定は全ての{resourceName}で提供されます）。"
         },
         "setup3_title": "④ 週間スケジュールを作る",
         "setup3_steps": {
@@ -722,7 +840,7 @@
         "exception_steps": {
           "0": "特定の日を休業・臨時営業にしたい場合は、例外日カレンダーの「この日を休業にする」「臨時営業する」を使います。個別の枠を細かく調整したい場合は、詳細設定の「個別の枠を手動管理」で作成・編集・クローズ（受付終了）できます。",
           "1": "特定の時間帯だけ予約を受け付けたくない場合は、詳細設定の「予約不可枠」を使います。",
-          "2": "予約対象を削除すると、そのテンプレートは停止し、予約のない未来の枠は自動削除されます。有効な予約が残っている場合は先に振替・キャンセルしてください。"
+          "2": "{resourceName}を削除すると、そのテンプレートは停止し、予約のない未来の枠は自動削除されます。有効な予約が残っている場合は先に振替・キャンセルしてください。"
         }
       },
       "emergency_closure": {

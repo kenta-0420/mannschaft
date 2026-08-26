@@ -266,17 +266,47 @@ public class GuardianshipSwitchService {
     /**
      * 後見切替セッションを終了する（本人へ復帰・02_api_design §2.2）。
      *
-     * <p>サーバ側ステートレスのため終了は監査記録のみ（解除すべきサーバ状態はない・クライアントが
-     * {@code X-Proxy-For-User-Id} ヘッダの付与を止める）。再認可は行わない（既に封印されていても
-     * 「終了」操作自体は妨げない＝安全側）。</p>
+     * <p>サーバ側ステートレスのため解除すべきサーバ状態はない（クライアントが
+     * {@code X-Proxy-For-User-Id} ヘッダの付与を止める）。ただし {@code childUserId} は
+     * 監査ログ（{@code audit_logs}）の {@code targetUserId} と metadata に記録されるため、
+     * <b>一切の関係がない第三者が任意の childUserId を指定して事実と異なる監査記録を
+     * 作れてはならない</b>。本メソッドは呼出ユーザーと childUserId の間に保護者リンクが
+     * 過去に一度でも存在したこと（{@link #hasEverBeenLinked}）を実データで検証してから記録する。</p>
+     *
+     * <p><b>年齢封印・現在 REVOKED でも許容する理由</b>: {@link #evaluateSwitch}（現在有効なリンク＋
+     * 年齢ゲート）ではなく、より緩い「過去に一度でも当該組でリンクが存在したか」で判定する。
+     * 切替セッション中にリンクが解除された、または年齢到達で封印された正当な保護者が
+     * 「切替を終了できない」状態に陥ると、代理コンテキストがクライアント側に残留し続ける
+     * （より有害・02_api_design §2.2「終了：代理コンテキスト解除・監査記録」の趣旨に反する）
+     * ため、終了操作そのものは安全側に倒して常に許容する。一方で当該組み合わせのリンク行が
+     * 一度も作成されていない（＝一切の関係がない）場合のみ 403 で拒否する。</p>
      *
      * @param guardianUserId 保護者（認証ユーザー）のユーザーID
      * @param childUserId    切替を終了する子のユーザーID
+     * @throws BusinessException 呼出ユーザーと childUserId の間にリンクが一度も存在しない
+     *         （{@code GUARDIANSHIP_LINK_NOT_FOUND} / 403・IDOR 防止）
      */
     @Transactional
     public void endSwitch(Long guardianUserId, Long childUserId) {
+        if (!hasEverBeenLinked(guardianUserId, childUserId)) {
+            log.warn("後見切替終了拒否: guardianUserId={} と childUserId={} の間にリンクが一度も存在しない"
+                    + "（IDOR 防止）", guardianUserId, childUserId);
+            throw new BusinessException(MembershipBillingErrorCode.GUARDIANSHIP_LINK_NOT_FOUND);
+        }
         recordAudit(AuditEventType.GUARDIANSHIP_SWITCH_ENDED, guardianUserId, childUserId, null);
         log.info("後見切替終了: guardianUserId={} → childUserId={}", guardianUserId, childUserId);
+    }
+
+    /**
+     * 保護者候補と子の間に、<b>ステータスを問わず</b>保護者リンクが一度でも存在したことがあるかを判定する。
+     * {@link #endSwitch} 専用の緩い存在チェック（現在有効性は問わない）。
+     */
+    private boolean hasEverBeenLinked(Long guardianUserId, Long childUserId) {
+        if (guardianUserId == null || childUserId == null) {
+            return false;
+        }
+        return parentalConsentService.hasEverBeenGuardian(guardianUserId, childUserId)
+                || careLinkService.hasEverBeenParentWatcher(guardianUserId, childUserId);
     }
 
     /**

@@ -131,7 +131,8 @@
       "noDate": "未设置日期",
       "colDate": "日期",
       "colSlots": "时段",
-      "editDialogTitle": "编辑班次"
+      "editDialogTitle": "编辑班次",
+      "accessDeniedRedirect": "您无权查看此页面"
     },
     "slot": {
       "createTitle": "创建时段",
@@ -322,6 +323,7 @@
     },
     "myShift": {
       "confirmedTitle": "确定排班",
+      "upcomingTitle": "即将到来的确定排班",
       "teamFilter": {
         "all": "所有团队",
         "label": "按团队筛选"

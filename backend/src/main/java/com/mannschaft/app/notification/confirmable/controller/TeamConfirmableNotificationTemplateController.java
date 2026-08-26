@@ -1,12 +1,15 @@
 package com.mannschaft.app.notification.confirmable.controller;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.membership.ScopeType;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationTemplateCreateRequest;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationTemplateResponse;
 import com.mannschaft.app.notification.confirmable.dto.ConfirmableNotificationTemplateUpdateRequest;
 import com.mannschaft.app.notification.confirmable.entity.ConfirmableNotificationTemplateEntity;
+import com.mannschaft.app.notification.confirmable.error.ConfirmableNotificationErrorCode;
 import com.mannschaft.app.notification.confirmable.mapper.ConfirmableNotificationMapper;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationTemplateService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,15 +42,20 @@ public class TeamConfirmableNotificationTemplateController {
 
     private final ConfirmableNotificationTemplateService templateService;
     private final ConfirmableNotificationMapper mapper;
+    private final AccessControlService accessControlService;
 
     /**
      * チームの確認通知テンプレート一覧を取得する（論理削除済み除外）。
+     *
+     * <p>認可根治戦役 Wave7: 閲覧系のため {@code checkMembership}（兄弟の通知一覧取得と同じ粒度）。</p>
      */
     @GetMapping
     @Operation(summary = "確認通知テンプレート一覧取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ConfirmableNotificationTemplateResponse>>> list(
             @PathVariable Long teamId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkMembership(currentUserId, teamId, ScopeType.TEAM.name());
         List<ConfirmableNotificationTemplateEntity> entities =
                 templateService.findAll(ScopeType.TEAM, teamId);
         return ResponseEntity.ok(ApiResponse.of(mapper.toTemplateResponseList(entities)));
@@ -55,6 +63,8 @@ public class TeamConfirmableNotificationTemplateController {
 
     /**
      * 確認通知テンプレートを作成する。
+     *
+     * <p>認可根治戦役 Wave7: 管理操作のため {@code checkAdminOrAbove}（兄弟の通知送信と同じ粒度）。</p>
      */
     @PostMapping
     @Operation(summary = "確認通知テンプレート作成")
@@ -63,6 +73,7 @@ public class TeamConfirmableNotificationTemplateController {
             @PathVariable Long teamId,
             @Valid @RequestBody ConfirmableNotificationTemplateCreateRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
+        accessControlService.checkAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name());
         ConfirmableNotificationTemplateEntity entity = templateService.create(
                 ScopeType.TEAM,
                 teamId,
@@ -77,6 +88,11 @@ public class TeamConfirmableNotificationTemplateController {
 
     /**
      * 確認通知テンプレートを更新する。
+     *
+     * <p>認可根治戦役 Wave7: 認可に用いるスコープは URL のパス変数ではなく<b>テンプレート実体
+     * （{@code scope_type}/{@code scope_id}）由来</b>で確定する。パス変数のスコープと実体のスコープが
+     * 一致しない場合は {@code TEMPLATE_NOT_FOUND}（404）を返して<b>存在を秘匿</b>する
+     * （403 を返すと当該 ID のテンプレートが実在することを漏らすため）。</p>
      */
     @PutMapping("/{templateId}")
     @Operation(summary = "確認通知テンプレート更新")
@@ -85,6 +101,12 @@ public class TeamConfirmableNotificationTemplateController {
             @PathVariable Long teamId,
             @PathVariable Long templateId,
             @Valid @RequestBody ConfirmableNotificationTemplateUpdateRequest request) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationTemplateEntity existing = templateService.findById(templateId);
+        if (!ScopeType.TEAM.equals(existing.getScopeType()) || !teamId.equals(existing.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.TEMPLATE_NOT_FOUND);
+        }
+        accessControlService.checkAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name());
         ConfirmableNotificationTemplateEntity entity = templateService.update(
                 templateId,
                 request.getName(),
@@ -98,6 +120,9 @@ public class TeamConfirmableNotificationTemplateController {
      * 確認通知テンプレートを論理削除する。
      *
      * <p>物理削除は行わない。削除後も確認通知の template_id 参照が壊れない。</p>
+     *
+     * <p>認可根治戦役 Wave7: {@link #update} と同じくテンプレート実体由来のスコープ突合を行い、
+     * 不一致は {@code TEMPLATE_NOT_FOUND}（404・存在秘匿）とする。</p>
      */
     @DeleteMapping("/{templateId}")
     @Operation(summary = "確認通知テンプレート削除（論理削除）")
@@ -105,6 +130,12 @@ public class TeamConfirmableNotificationTemplateController {
     public ResponseEntity<Void> delete(
             @PathVariable Long teamId,
             @PathVariable Long templateId) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        ConfirmableNotificationTemplateEntity existing = templateService.findById(templateId);
+        if (!ScopeType.TEAM.equals(existing.getScopeType()) || !teamId.equals(existing.getScopeId())) {
+            throw new BusinessException(ConfirmableNotificationErrorCode.TEMPLATE_NOT_FOUND);
+        }
+        accessControlService.checkAdminOrAbove(currentUserId, teamId, ScopeType.TEAM.name());
         templateService.softDelete(templateId);
         return ResponseEntity.noContent().build();
     }

@@ -191,12 +191,19 @@ class WebSocketRelayMultiNodeIntegrationTest {
     void broadcast_crossNode_reaches() throws Exception {
         BlockingQueue<Object> inbox = new LinkedBlockingQueue<>();
         StompSession sessionA = connect(nodeAPort, null);
-        sessionA.subscribe("/topic/channels/999", frameHandler(inbox));
+        // AC-1 は「任意の /topic ブロードキャストが relay で跨ノード到達する」ことの検証であり、
+        // 宛先は SUBSCRIBE 認可インターセプタ（ChatChannelSubscriptionInterceptor 等）の
+        // 認可対象でない中立トピックを用いる。Publisher/Subscriber は /topic 始まりを一律 BROADCAST
+        // 中継するため（§4.2.1(i)）、中立トピックでも relay 経路の到達性は同値に検証できる。
+        // 注記: 従来は /topic/channels/999 を用いていたが、後続の #2228（AC-11・§2.6）で
+        // /topic/channels/{id} 宛の未認証 SUBSCRIBE が正しく拒否されるようになり、
+        // relay 到達以前に購読自体が不成立となって恒常 fail していた（本修正で中立トピックへ変更）。
+        sessionA.subscribe("/topic/relay-broadcast-test", frameHandler(inbox));
         Thread.sleep(300); // SUBSCRIBE 伝播待ち
 
         // ノード B（別コンテキスト）から配信
         SimpMessagingTemplate templateB = nodeBContext.getBean(SimpMessagingTemplate.class);
-        templateB.convertAndSend("/topic/channels/999", Map.of("type", "MESSAGE_CREATED", "text", "跨ノード"));
+        templateB.convertAndSend("/topic/relay-broadcast-test", Map.of("type", "MESSAGE_CREATED", "text", "跨ノード"));
 
         assertThat(inbox.poll(4, TimeUnit.SECONDS))
                 .as("ノード B 発のブロードキャストがノード A のクライアントに届くこと（relay 実装後に成立）")

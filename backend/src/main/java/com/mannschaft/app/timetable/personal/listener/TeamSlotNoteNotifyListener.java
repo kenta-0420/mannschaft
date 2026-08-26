@@ -1,5 +1,6 @@
 package com.mannschaft.app.timetable.personal.listener;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationScopeType;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.timetable.event.TimetableSlotNoteUpdatedEvent;
@@ -8,6 +9,7 @@ import com.mannschaft.app.timetable.personal.repository.PersonalTimetableSetting
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.MessageSource;
 import org.springframework.context.event.EventListener;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
@@ -16,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -41,15 +45,22 @@ public class TeamSlotNoteNotifyListener {
 
     private final UserRoleRepository userRoleRepository;
     private final PersonalTimetableSettingsRepository settingsRepository;
+    /** Issue #2715 ロットB: 受信者 locale の解決（D-5: auth の UserRepository を直接呼ばない）。 */
+    private final UserLocaleCache userLocaleCache;
+    private final MessageSource messageSource;
     @Autowired(required = false)
     private NotificationHelper notificationHelper;
     @Autowired(required = false)
     private StringRedisTemplate redisTemplate;
 
     public TeamSlotNoteNotifyListener(UserRoleRepository userRoleRepository,
-                                      PersonalTimetableSettingsRepository settingsRepository) {
+                                      PersonalTimetableSettingsRepository settingsRepository,
+                                      UserLocaleCache userLocaleCache,
+                                      MessageSource messageSource) {
         this.userRoleRepository = userRoleRepository;
         this.settingsRepository = settingsRepository;
+        this.userLocaleCache = userLocaleCache;
+        this.messageSource = messageSource;
     }
 
     @EventListener
@@ -73,6 +84,9 @@ public class TeamSlotNoteNotifyListener {
             List<Long> memberIds = userRoleRepository.findUserIdsByScope("TEAM", event.getTeamId());
             String body = truncate(event.getNotes(), 100);
 
+            // locale を一括解決（N+1 防止。Issue #2715 ロットB）。
+            Map<Long, String> locales = userLocaleCache.getLocales(memberIds);
+
             for (Long memberId : memberIds) {
                 Optional<PersonalTimetableSettingsEntity> settingsOpt =
                         settingsRepository.findById(memberId);
@@ -83,12 +97,12 @@ public class TeamSlotNoteNotifyListener {
                 if (notificationHelper == null) continue;
 
                 try {
+                    Locale locale = Locale.forLanguageTag(locales.getOrDefault(memberId, "ja"));
+                    String title = buildTitle(event.getSubjectName(), locale);
                     notificationHelper.notify(
                             memberId,
                             "TEAM_SLOT_NOTE_UPDATED",
-                            event.getSubjectName() != null
-                                    ? event.getSubjectName() + " の共通メモが更新されました"
-                                    : "コマの共通メモが更新されました",
+                            title,
                             body,
                             "TIMETABLE_SLOT", event.getSlotId(),
                             NotificationScopeType.TEAM, event.getTeamId(),
@@ -128,6 +142,22 @@ public class TeamSlotNoteNotifyListener {
         } catch (Exception ex) {
             log.warn("Valkey マーキング失敗（通知は配信済み）: {}", ex.getMessage());
         }
+    }
+
+    private String buildTitle(String subjectName, Locale locale) {
+        if (messageSource == null) {
+            return subjectName != null
+                    ? subjectName + " の共通メモが更新されました"
+                    : "コマの共通メモが更新されました";
+        }
+        if (subjectName != null) {
+            return messageSource.getMessage(
+                    "notification.timetable.slotNote.title.withSubject",
+                    new Object[]{subjectName}, subjectName + " の共通メモが更新されました", locale);
+        }
+        return messageSource.getMessage(
+                "notification.timetable.slotNote.title.default", null,
+                "コマの共通メモが更新されました", locale);
     }
 
     private static String truncate(String s, int max) {

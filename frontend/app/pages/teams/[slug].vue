@@ -138,6 +138,14 @@ const effectiveViewerRole = computed<ViewerRole>(() =>
   adminLens.value ? ((roleName.value as ViewerRole | null) ?? 'PUBLIC') : 'MEMBER',
 )
 
+// SUPPORTER/GUEST/未所属は TeamSidebar が項目を表示しないため、
+// Drawer の起動アイコン自体を出さない。
+const showSidebar = computed(() =>
+  roleName.value !== null
+  && roleName.value !== 'SUPPORTER'
+  && roleName.value !== 'GUEST',
+)
+
 const displayName = computed(
   () => team.value?.basicInfo?.nickname1 || team.value?.basicInfo?.name || '',
 )
@@ -296,15 +304,60 @@ const activeTab = computed<string>(() => {
 // =============================================================================
 /** シェル描画に必要なデータを一括ロード（重複ロード防止に teamLoaded で番人）。 */
 const teamLoaded = ref(false)
+// 15 秒 watchdog: team / 権限が settle しない場合にスピナーの下へ「時間がかかっています」＋再試行を
+// 追加表示する（読み込み自体は継続）。無限スピナーで固着させないための番人。
+const shellSlowLoading = ref(false)
+const SHELL_WATCHDOG_MS = 15_000
+let shellWatchdogTimer: ReturnType<typeof setTimeout> | null = null
+
+function clearShellWatchdog() {
+  if (shellWatchdogTimer !== null) {
+    clearTimeout(shellWatchdogTimer)
+    shellWatchdogTimer = null
+  }
+}
+
 async function loadShellData() {
   if (teamLoaded.value) return
   teamLoaded.value = true
-  await Promise.all([fetchTeam(), loadPermissions()])
-  await fetchFollowStatus()
-  // ウィジェット可視性設定と予約モジュール有効フラグを並列取得（失敗は無音 fallback）
-  fetchWidgetVisibility().catch(() => {})
-  fetchReservationEnabled()
+  shellSlowLoading.value = false
+  clearShellWatchdog()
+  shellWatchdogTimer = setTimeout(() => {
+    if (loading.value || roleLoading.value) shellSlowLoading.value = true
+  }, SHELL_WATCHDOG_MS)
+  try {
+    await Promise.all([fetchTeam(), loadPermissions()])
+    await fetchFollowStatus()
+    // ウィジェット可視性設定と予約モジュール有効フラグを並列取得。
+    // 非メンバー・サポーターは 403/401 が想定内（装飾的な visible:false のみ失われ、ロールゲートは
+    // defaultMinRole で生存）なので静かにフォールバック。それ以外の実エラーはログで表面化する。
+    fetchWidgetVisibility().catch((e) => {
+      const status = (e as { statusCode?: number; response?: { status?: number }; status?: number })
+        ?.statusCode ?? (e as { response?: { status?: number } })?.response?.status
+        ?? (e as { status?: number })?.status
+      if (status !== 403 && status !== 401) {
+        console.warn('[shell] ウィジェット可視性の取得に失敗（既定表示にフォールバック）', e)
+      }
+    })
+    fetchReservationEnabled()
+  }
+  finally {
+    shellSlowLoading.value = false
+    clearShellWatchdog()
+  }
 }
+
+/**
+ * シェルデータ取得の再試行（team=null のエラー面 / watchdog から呼ぶ）。
+ * teamLoaded を戻して番人を解除してから再ロードする。
+ */
+function retryShellData() {
+  teamLoaded.value = false
+  team.value = null
+  void loadShellData()
+}
+
+onBeforeUnmount(clearShellWatchdog)
 
 // シェル対象ルート（8 タブ）に居るときだけデータをロードする。
 // 非シェルルート（schedule / chat 等 約 100 ページ）ではロードしない＝従来と同じ挙動。
@@ -421,6 +474,9 @@ const teamMutators = {
       team.value.location.cityCode = cc
     }
   },
+  updateTeamTimezone: (timezone: string) => {
+    if (team.value) team.value.timezone = timezone
+  },
 }
 
 provideTeamShellContext({
@@ -451,8 +507,21 @@ provideTeamShellContext({
 
     <!-- シェル対象ルート（8 タブ）: 永続シェルで包む -->
     <template v-else>
-      <div v-if="loading || roleLoading" class="flex justify-center px-6 py-12">
-        <LoadingBounce />
+      <div v-if="loading || roleLoading">
+        <div class="flex justify-center px-6 py-12">
+          <LoadingBounce />
+        </div>
+        <!-- 15s watchdog: settle しない場合のみ表示（正常時は描画に一切影響しない） -->
+        <div v-if="shellSlowLoading" class="flex flex-col items-center gap-3 pb-8 text-center">
+          <p class="text-sm text-surface-500">{{ t('common.scopeShell.slow_loading') }}</p>
+          <Button
+            :label="t('common.scopeShell.retry')"
+            icon="pi pi-refresh"
+            size="small"
+            outlined
+            @click="retryShellData"
+          />
+        </div>
       </div>
 
       <ScopePageShell
@@ -461,6 +530,7 @@ provideTeamShellContext({
         :active-tab="activeTab"
         :sidebar="TeamSidebar"
         :sidebar-props="{ teamId: teamSlug }"
+        :show-sidebar="showSidebar"
         :show-lens="isAdminOrDeputy"
         :lens="adminLens"
         @update:lens="adminLens = $event"
@@ -501,10 +571,17 @@ provideTeamShellContext({
         <p class="mt-1 text-sm text-surface-500">
           {{ t('common.scopeShell.load_error_body') }}
         </p>
-        <NuxtLink to="/dashboard" class="mt-4 inline-block text-primary-600 hover:underline">
-          <i class="pi pi-arrow-left mr-1" />
-          {{ t('common.scopeShell.back_to_dashboard') }}
-        </NuxtLink>
+        <div class="mt-4 flex flex-col items-center gap-3">
+          <Button
+            :label="t('common.scopeShell.retry')"
+            icon="pi pi-refresh"
+            @click="retryShellData"
+          />
+          <NuxtLink to="/dashboard" class="inline-block text-primary-600 hover:underline">
+            <i class="pi pi-arrow-left mr-1" />
+            {{ t('common.scopeShell.back_to_dashboard') }}
+          </NuxtLink>
+        </div>
       </div>
 
       <!-- サポーター解除 / チーム退出の確認ダイアログ（親集約） -->

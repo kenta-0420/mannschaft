@@ -1,5 +1,6 @@
 package com.mannschaft.app.gallery.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
@@ -44,54 +45,94 @@ public class PhotoAlbumService {
     private final GalleryMapper galleryMapper;
     /** F00 Phase E-5: 可視性判定ファサード。 */
     private final ContentVisibilityChecker contentVisibilityChecker;
+    /** 認可根治戦役 Wave3-B5: 書込CRUD（作成/更新/削除）の scope 認可用。 */
+    private final AccessControlService accessControlService;
+    /** CMP-028 Phase B: 可視レベル解決に用いる F00 メンバーシップ照会サービス。 */
+    private final com.mannschaft.app.common.visibility.MembershipBatchQueryService membershipBatchQueryService;
 
     /**
      * アルバム一覧をページング取得する。
      *
-     * <p><b>F00 Phase E-5</b>: 旧来の visibility パラメータによる直接フィルタ（未実装・対応予定扱い）を廃止し、
-     * {@link ContentVisibilityChecker#filterAccessible(ReferenceType, java.util.Collection, Long)}
-     * 経由に一本化。ログイン中ユーザーの ID を {@link SecurityUtils#getCurrentUserIdOrNull()}
-     * で取得し、未認証の場合は {@code null} を渡す（PUBLIC のみ通過）。
-     * visibility クエリパラメータは後方互換のためシグネチャに残すが、判定は Resolver に委譲する。</p>
+     * <p><b>CMP-028 Phase B: 可視性の SQL 述語化（歯抜け根治）</b>: 旧実装は 1 ページ分を
+     * 無条件取得してから {@link ContentVisibilityChecker#filterAccessible} でメモリ上
+     * フィルタしており、非公開アルバムが混ざると要求件数より少ない件数しか返らない
+     * 「ページング歯抜け」があった（AC-6）。総件数も上界近似だった（AC-7）。</p>
+     *
+     * <p>本メソッドは {@code MembershipBatchQueryService#resolveVisibleLevels} が返す
+     * 可視 {@code StandardVisibility} 集合を
+     * {@link com.mannschaft.app.common.visibility.mapping.AlbumVisibilityMapper#toFunctional}
+     * で {@link AlbumVisibility} 集合へ逆写像し、SQL の {@code WHERE visibility IN (...)}
+     * へ渡す（{@link AlbumVisibility} は 3 値のみで行依存値を持たないため歯抜けが
+     * 数学的にゼロになる）。{@link AlbumVisibility} には {@code PUBLIC} 相当が無いため、
+     * 逆写像結果が空集合になり得る（非所属・未認証）。その場合は SQL を発行せず
+     * 空ページを返す（{@code IN ()} は不正 SQL のため）。</p>
      */
     public Page<AlbumResponse> listAlbums(Long teamId, Long organizationId, String query,
                                              LocalDate from, LocalDate to, String visibility,
                                              Pageable pageable) {
+        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
+        String scopeType = teamId != null ? "TEAM" : "ORGANIZATION";
+        Long scopeId = teamId != null ? teamId : organizationId;
+        com.mannschaft.app.common.visibility.ScopeKey scope =
+                new com.mannschaft.app.common.visibility.ScopeKey(scopeType, scopeId);
+        com.mannschaft.app.common.visibility.UserScopeRoleSnapshot snapshot =
+                membershipBatchQueryService.snapshotForUser(viewerUserId, Set.of(scope), Set.of(scope));
+        Set<com.mannschaft.app.common.visibility.StandardVisibility> visibleLevels =
+                membershipBatchQueryService.resolveVisibleLevels(scope, snapshot);
+        Set<AlbumVisibility> visibleVisibilities =
+                com.mannschaft.app.common.visibility.mapping.AlbumVisibilityMapper.toFunctional(visibleLevels);
+
+        if (visibleVisibilities.isEmpty()) {
+            // 非所属・未認証: AlbumVisibility には PUBLIC 相当が無いため何も見えない（fail-closed）。
+            // SQL の IN () は不正になるため発行せず空ページを返す。
+            return Page.empty(pageable);
+        }
+
         Page<PhotoAlbumEntity> page;
         if (query != null && !query.isBlank()) {
             if (teamId != null) {
-                page = albumRepository.findByTeamIdAndTitleContainingOrderByEventDateDesc(teamId, query, pageable);
+                page = albumRepository.findByTeamIdAndTitleContainingAndVisibilityInOrderByEventDateDesc(
+                        teamId, query, visibleVisibilities, pageable);
             } else {
-                page = albumRepository.findByOrganizationIdAndTitleContainingOrderByEventDateDesc(organizationId, query, pageable);
+                page = albumRepository.findByOrganizationIdAndTitleContainingAndVisibilityInOrderByEventDateDesc(
+                        organizationId, query, visibleVisibilities, pageable);
             }
         } else {
             if (teamId != null) {
-                page = albumRepository.findByTeamIdOrderByEventDateDesc(teamId, pageable);
+                page = albumRepository.findByTeamIdAndVisibilityInOrderByEventDateDesc(
+                        teamId, visibleVisibilities, pageable);
             } else {
-                page = albumRepository.findByOrganizationIdOrderByEventDateDesc(organizationId, pageable);
+                page = albumRepository.findByOrganizationIdAndVisibilityInOrderByEventDateDesc(
+                        organizationId, visibleVisibilities, pageable);
             }
         }
 
-        // F00 Phase E-5: ContentVisibilityChecker 経由で可視性フィルタリング
+        // 第二の門（保険）: SQL 述語と F00 の判定が食い違った場合を検知する。通常は 1 件も落ちない。
         List<PhotoAlbumEntity> all = page.getContent();
         if (all.isEmpty()) {
             return page.map(galleryMapper::toAlbumResponse);
         }
-
-        Long viewerUserId = SecurityUtils.getCurrentUserIdOrNull();
         Set<Long> accessibleIds = contentVisibilityChecker.filterAccessible(
                 ReferenceType.PHOTO_ALBUM,
                 all.stream().map(PhotoAlbumEntity::getId).collect(Collectors.toSet()),
                 viewerUserId);
-
+        if (accessibleIds.size() == all.size()) {
+            return page.map(galleryMapper::toAlbumResponse);
+        }
+        List<Long> divergentIds = all.stream()
+                .map(PhotoAlbumEntity::getId)
+                .filter(id -> !accessibleIds.contains(id))
+                .toList();
+        log.warn("アルバム一覧: SQL 述語と F00 可視性判定が乖離しました（fail-closed で除外）。"
+                        + "teamId={}, organizationId={}, viewerUserId={}, divergentIds={}",
+                teamId, organizationId, viewerUserId, divergentIds);
         List<PhotoAlbumEntity> filtered = all.stream()
                 .filter(e -> accessibleIds.contains(e.getId()))
                 .collect(Collectors.toList());
-
         return new PageImpl<>(
                 filtered.stream().map(galleryMapper::toAlbumResponse).collect(Collectors.toList()),
                 pageable,
-                filtered.size());
+                Math.max(0L, page.getTotalElements() - divergentIds.size()));
     }
 
     /**
@@ -109,9 +150,17 @@ public class PhotoAlbumService {
 
     /**
      * アルバムを作成する。
+     *
+     * <p><b>認可根治戦役 Wave3-B5</b>: 作成先 scope（teamId/organizationId）の ADMIN/DEPUTY_ADMIN
+     * のみ作成可（{@link AccessControlService#checkAdminOrAbove}）。従来は非会員でも
+     * 任意チーム/組織にアルバムを作成できる無防備状態だった。</p>
      */
     @Transactional
     public AlbumResponse createAlbum(Long userId, CreateAlbumRequest request) {
+        accessControlService.checkAdminOrAbove(userId,
+                resolveScopeId(request.getTeamId(), request.getOrganizationId()),
+                resolveScopeType(request.getTeamId()));
+
         AlbumVisibility visibility = request.getVisibility() != null
                 ? AlbumVisibility.valueOf(request.getVisibility()) : AlbumVisibility.ALL_MEMBERS;
         Boolean allowMemberUpload = request.getAllowMemberUpload() != null
@@ -138,10 +187,17 @@ public class PhotoAlbumService {
 
     /**
      * アルバムを更新する。
+     *
+     * <p><b>認可根治戦役 Wave3-B5</b>: entity 由来 scope（teamId/organizationId）の
+     * ADMIN/DEPUTY_ADMIN のみ更新可。id 指定エンドポイント（scope が path に無い）のため、
+     * scope は必ず entity 側から解決する（digest 等の既存 ID-only ドメインと同じ手本）。</p>
      */
     @Transactional
-    public AlbumResponse updateAlbum(Long albumId, UpdateAlbumRequest request) {
+    public AlbumResponse updateAlbum(Long albumId, Long userId, UpdateAlbumRequest request) {
         PhotoAlbumEntity entity = findAlbumOrThrow(albumId);
+        accessControlService.checkAdminOrAbove(userId,
+                resolveScopeId(entity.getTeamId(), entity.getOrganizationId()),
+                resolveScopeType(entity.getTeamId()));
 
         AlbumVisibility visibility = request.getVisibility() != null
                 ? AlbumVisibility.valueOf(request.getVisibility()) : entity.getVisibility();
@@ -160,10 +216,15 @@ public class PhotoAlbumService {
 
     /**
      * アルバムを論理削除する。
+     *
+     * <p><b>認可根治戦役 Wave3-B5</b>: entity 由来 scope の ADMIN/DEPUTY_ADMIN のみ削除可。</p>
      */
     @Transactional
-    public void deleteAlbum(Long albumId) {
+    public void deleteAlbum(Long albumId, Long userId) {
         PhotoAlbumEntity entity = findAlbumOrThrow(albumId);
+        accessControlService.checkAdminOrAbove(userId,
+                resolveScopeId(entity.getTeamId(), entity.getOrganizationId()),
+                resolveScopeType(entity.getTeamId()));
         entity.softDelete();
         albumRepository.save(entity);
         log.info("アルバム削除: albumId={}", albumId);
@@ -175,5 +236,20 @@ public class PhotoAlbumService {
     PhotoAlbumEntity findAlbumOrThrow(Long albumId) {
         return albumRepository.findById(albumId)
                 .orElseThrow(() -> new BusinessException(GalleryErrorCode.ALBUM_NOT_FOUND));
+    }
+
+    /**
+     * teamId/organizationId（片方のみ設定される想定）から scopeType 文字列を解決する
+     * （認可根治戦役 Wave3-B5: {@code AccessControlService} 呼び出し共通ヘルパー）。
+     */
+    static String resolveScopeType(Long teamId) {
+        return teamId != null ? "TEAM" : "ORGANIZATION";
+    }
+
+    /**
+     * teamId/organizationId（片方のみ設定される想定）から scopeId を解決する。
+     */
+    static Long resolveScopeId(Long teamId, Long organizationId) {
+        return teamId != null ? teamId : organizationId;
     }
 }

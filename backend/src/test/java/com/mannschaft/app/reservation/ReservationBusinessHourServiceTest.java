@@ -30,6 +30,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -59,6 +60,10 @@ class ReservationBusinessHourServiceTest {
     @Mock
     private com.mannschaft.app.common.NameResolverService nameResolverService;
 
+    /** 予約閲覧の view ゲート（会員 or 公開）。デフォルトのモック（void）は常に通過する。 */
+    @Mock
+    private com.mannschaft.app.reservation.service.ReservationViewAccessGuard viewAccessGuard;
+
     @InjectMocks
     private ReservationBusinessHourService service;
 
@@ -67,6 +72,7 @@ class ReservationBusinessHourServiceTest {
     // ========================================
 
     private static final Long TEAM_ID = 1L;
+    private static final Long USER_ID = 5L;
     private static final Long BLOCKED_ID = 10L;
     private static final Long CREATED_BY = 100L;
 
@@ -126,7 +132,7 @@ class ReservationBusinessHourServiceTest {
             given(reservationMapper.toBusinessHourResponseList(entities)).willReturn(responses);
 
             // When
-            List<BusinessHourResponse> result = service.getBusinessHours(TEAM_ID);
+            List<BusinessHourResponse> result = service.getBusinessHours(TEAM_ID, USER_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -306,7 +312,7 @@ class ReservationBusinessHourServiceTest {
             LocalDate date = LocalDate.of(2026, 4, 1);
             List<ReservationBlockedTimeEntity> entities = List.of(createBlockedTimeEntity());
             List<BlockedTimeResponse> responses = List.of(createBlockedTimeResponse());
-            given(blockedTimeRepository.findByTeamIdAndBlockedDateOrderByStartTimeAsc(TEAM_ID, date))
+            given(blockedTimeRepository.findEffectiveOnDate(TEAM_ID, date, date.minusDays(1)))
                     .willReturn(entities);
             // 機能B: 一覧は resourceName 一括解決のため singular mapper を entity ごとに呼ぶ。
             given(reservationMapper.toBlockedTimeResponse(any(ReservationBlockedTimeEntity.class)))
@@ -344,7 +350,7 @@ class ReservationBusinessHourServiceTest {
                     .willReturn(responses.get(0));
 
             // When
-            List<BlockedTimeResponse> result = service.listBlockedTimes(TEAM_ID, from, to);
+            List<BlockedTimeResponse> result = service.listBlockedTimes(TEAM_ID, USER_ID, from, to);
 
             // Then
             assertThat(result).hasSize(1);
@@ -412,6 +418,23 @@ class ReservationBusinessHourServiceTest {
             // Then
             assertThat(result).isNotNull();
         }
+
+        @Test
+        @DisplayName("日跨ぎblockは23:00→01:00を保存しresponseにも返す")
+        void overnightBlockedTimeCreate() {
+            BlockedTimeRequest request = new BlockedTimeRequest(
+                    LocalDate.of(2026, 4, 2), LocalTime.of(23, 0), LocalTime.of(1, 0),
+                    "overnight", null, null, true);
+            ReservationBlockedTimeEntity saved = ReservationBlockedTimeEntity.builder()
+                    .teamId(TEAM_ID).blockedDate(request.getBlockedDate()).startTime(request.getStartTime())
+                    .endTime(request.getEndTime()).endsNextDay(true).build();
+            BlockedTimeResponse response = BlockedTimeResponse.builder().endsNextDay(true).build();
+            given(blockedTimeRepository.save(any())).willReturn(saved);
+            given(reservationMapper.toBlockedTimeResponse(saved)).willReturn(response);
+
+            assertThat(service.createBlockedTime(TEAM_ID, request, CREATED_BY).getEndsNextDay()).isTrue();
+            assertThat(saved.getEndsNextDay()).isTrue();
+        }
     }
 
     // ========================================
@@ -476,9 +499,24 @@ class ReservationBusinessHourServiceTest {
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(ReservationErrorCode.INVALID_TIME_RANGE);
         }
+
+        @Test
+        @DisplayName("PATCH日跨ぎblockはendsNextDayを更新して返す")
+        void overnightBlockedTimeUpdate() {
+            ReservationBlockedTimeEntity entity = createBlockedTimeEntity();
+            BlockedTimeRequest request = new BlockedTimeRequest(
+                    LocalDate.of(2026, 4, 2), LocalTime.of(23, 0), LocalTime.of(1, 0),
+                    "overnight", null, null, true);
+            given(blockedTimeRepository.findByIdAndTeamId(BLOCKED_ID, TEAM_ID)).willReturn(Optional.of(entity));
+            given(blockedTimeRepository.save(entity)).willReturn(entity);
+            given(reservationMapper.toBlockedTimeResponse(entity))
+                    .willReturn(BlockedTimeResponse.builder().endsNextDay(true).build());
+
+            assertThat(service.updateBlockedTime(TEAM_ID, BLOCKED_ID, request).getEndsNextDay()).isTrue();
+            assertThat(entity.getEndsNextDay()).isTrue();
+        }
     }
 
-    // ========================================
     // deleteBlockedTime
     // ========================================
 
@@ -641,6 +679,39 @@ class ReservationBusinessHourServiceTest {
                     .containsExactlyInAnyOrder("山田太郎", "鈴木花子");
             // 副作用ゼロ: blocked_times を触らない。
             verify(blockedTimeRepository, org.mockito.Mockito.never()).save(any(ReservationBlockedTimeEntity.class));
+        }
+
+        @Test
+        @DisplayName("日跨ぎimpactは翌日開始予約も候補に含める")
+        void impactOvernightIncludesNextDateCandidates() {
+            LocalDate date = LocalDate.of(2026, 4, 2);
+            given(reservationRepository.findActiveReservationsOnDates(
+                    org.mockito.ArgumentMatchers.eq(TEAM_ID),
+                    org.mockito.ArgumentMatchers.eq(List.of(date.minusDays(1), date, date.plusDays(1))),
+                    org.mockito.ArgumentMatchers.eq((Long) null), org.mockito.ArgumentMatchers.eq(ACTIVE)))
+                    .willReturn(List.of());
+
+            service.getBlockedTimeImpact(TEAM_ID, date,
+                    com.mannschaft.app.reservation.ReservationBlockedResourceType.TEAM, null,
+                    LocalTime.of(23, 0), LocalTime.of(1, 0), true);
+
+            verify(reservationRepository).findActiveReservationsOnDates(
+                    org.mockito.ArgumentMatchers.eq(TEAM_ID),
+                    org.mockito.ArgumentMatchers.eq(List.of(date.minusDays(1), date, date.plusDays(1))),
+                    org.mockito.ArgumentMatchers.eq((Long) null), org.mockito.ArgumentMatchers.eq(ACTIVE));
+        }
+
+        @Test
+        @DisplayName("null/nullの日跨ぎblockは全日化せず400で拒否する")
+        void nullTimesWithEndsNextDayAreRejected() {
+            BlockedTimeRequest request = new BlockedTimeRequest(
+                    LocalDate.of(2026, 4, 2), null, null, "終日", null, null, true);
+
+            assertThatThrownBy(() -> service.createBlockedTime(TEAM_ID, request, CREATED_BY))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ReservationErrorCode.INVALID_TIME_RANGE);
+            verify(blockedTimeRepository, org.mockito.Mockito.never()).save(any());
         }
 
         @Test

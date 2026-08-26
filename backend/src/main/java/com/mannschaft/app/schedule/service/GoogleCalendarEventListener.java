@@ -57,10 +57,17 @@ public class GoogleCalendarEventListener {
         }
 
         List<Long> targetUserIds = resolveTargetUserIds(event.getScopeType(), event.getScopeId());
+        int pushed = 0;
         for (Long userId : targetUserIds) {
+            // AC-3: 可視性・min_view_role を満たさないユーザーへは push しない。
+            if (!googleCalendarService.isSchedulePushableToUser(schedule, userId)) {
+                continue;
+            }
             googleCalendarService.syncScheduleToGoogle(schedule, userId);
+            pushed++;
         }
-        log.info("Google Calendar同期（作成）完了: scheduleId={}, 対象ユーザー数={}", event.getScheduleId(), targetUserIds.size());
+        log.info("Google Calendar同期（作成）完了: scheduleId={}, 対象ユーザー数={}, push数={}",
+                event.getScheduleId(), targetUserIds.size(), pushed);
     }
 
     /**
@@ -89,10 +96,17 @@ public class GoogleCalendarEventListener {
         String scopeType = resolveScopeType(schedule);
         Long scopeId = resolveScopeId(schedule);
         List<Long> targetUserIds = resolveTargetUserIds(scopeType, scopeId);
+        int pushed = 0;
         for (Long userId : targetUserIds) {
+            // 可視性・min_view_role を満たさないユーザーへは push しない（作成経路と同一ゲート）。
+            if (!googleCalendarService.isSchedulePushableToUser(schedule, userId)) {
+                continue;
+            }
             googleCalendarService.syncScheduleToGoogle(schedule, userId);
+            pushed++;
         }
-        log.info("Google Calendar同期（更新）完了: scheduleId={}, 対象ユーザー数={}", event.getScheduleId(), targetUserIds.size());
+        log.info("Google Calendar同期（更新）完了: scheduleId={}, 対象ユーザー数={}, push数={}",
+                event.getScheduleId(), targetUserIds.size(), pushed);
     }
 
     /**
@@ -116,7 +130,8 @@ public class GoogleCalendarEventListener {
         Long scopeId = resolveScopeId(schedule);
         List<Long> targetUserIds = resolveTargetUserIds(scopeType, scopeId);
         for (Long userId : targetUserIds) {
-            googleCalendarService.syncScheduleToGoogle(schedule, userId);
+            // AC-8: キャンセルは update ではなく Google イベント削除（cancelled 化）で表現する。
+            googleCalendarService.syncCancelledScheduleToGoogle(schedule.getId(), userId);
         }
         log.info("Google Calendar同期（キャンセル）完了: scheduleId={}, 対象ユーザー数={}", event.getScheduleId(), targetUserIds.size());
     }

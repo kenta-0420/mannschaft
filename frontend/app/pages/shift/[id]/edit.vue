@@ -211,12 +211,14 @@ function formatDate(dateStr: string): string {
         <i class="pi pi-pencil" />{{ t('shift.detail.tabEdit') }}
       </span>
       <NuxtLink
+        v-if="canManage"
         :to="`/shift/${scheduleId}/requests`"
         class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
       >
         <i class="pi pi-list" />{{ t('shift.detail.tabRequests') }}
       </NuxtLink>
       <NuxtLink
+        v-if="canManage"
         :to="`/shift/${scheduleId}/work-constraints`"
         class="flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium text-surface-500 transition-colors hover:text-surface-800 dark:hover:text-surface-200"
       >

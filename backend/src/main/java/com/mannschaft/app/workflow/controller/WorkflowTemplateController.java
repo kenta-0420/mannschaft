@@ -49,7 +49,7 @@ public class WorkflowTemplateController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         Page<WorkflowTemplateResponse> result = templateService.listTemplates(
-                scopeType, scopeId, PageRequest.of(page, size));
+                scopeType, scopeId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -65,7 +65,8 @@ public class WorkflowTemplateController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long templateId) {
-        WorkflowTemplateResponse response = templateService.getTemplate(scopeType, scopeId, templateId);
+        WorkflowTemplateResponse response = templateService.getTemplate(
+                scopeType, scopeId, templateId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -95,7 +96,8 @@ public class WorkflowTemplateController {
             @PathVariable Long scopeId,
             @PathVariable Long templateId,
             @Valid @RequestBody UpdateWorkflowTemplateRequest request) {
-        WorkflowTemplateResponse response = templateService.updateTemplate(scopeType, scopeId, templateId, request);
+        WorkflowTemplateResponse response = templateService.updateTemplate(
+                scopeType, scopeId, templateId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -109,7 +111,7 @@ public class WorkflowTemplateController {
             @PathVariable String scopeType,
             @PathVariable Long scopeId,
             @PathVariable Long templateId) {
-        templateService.deleteTemplate(scopeType, scopeId, templateId);
+        templateService.deleteTemplate(scopeType, scopeId, templateId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

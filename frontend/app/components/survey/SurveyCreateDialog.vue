@@ -12,6 +12,7 @@ import type {
   UnrespondedVisibility,
 } from '~/types/survey'
 import type { QuestionDraft } from '~/components/survey/SurveyQuestionEditor.vue'
+import { isQuestionTypeSupportedByBackend } from '~/composables/useSurveyApi'
 
 const props = defineProps<{
   scopeType: 'TEAM' | 'ORGANIZATION'
@@ -72,6 +73,10 @@ interface SurveyDraftShape {
   teamBreakdownEnabled: boolean
   resultsVisibility: ResultsVisibility
   unrespondedVisibility: UnrespondedVisibility
+  /**
+   * 締切。これは localStorage の下書きスナップショット専用のキーであり、
+   * BE へは送らない（送信時は `expiresAt` に載せ替える。BE に `deadline` は存在しない）。
+   */
   deadline: string | null
   questions: QuestionDraft[]
 }
@@ -123,7 +128,19 @@ watch(visible, (nowVisible) => {
 const resultsVisibilityOptions = computed<Array<{ label: string; value: ResultsVisibility }>>(() => [
   { label: t('surveys.resultsVisibility.CREATOR_ONLY'), value: 'CREATOR_ONLY' },
   { label: t('surveys.resultsVisibility.RESPONDENTS'), value: 'RESPONDENTS' },
+  // 'ALL_MEMBERS'（締切前から配信対象スコープの所属者が中間集計を閲覧可）は、かつて BE の
+  // ResultsVisibility enum に対応値が無く必ず弾かれるため PR #2615 で選択肢から外していた。
+  // Issue #2635 で BE に 'ALWAYS' が実装され表現できるようになったので復活させる。
   { label: t('surveys.resultsVisibility.ALL_MEMBERS'), value: 'ALL_MEMBERS' },
+  { label: t('surveys.resultsVisibility.AFTER_CLOSE'), value: 'AFTER_CLOSE' },
+  // NOTE: 'VIEWERS_ONLY' は **意図的に選択肢へ出さない**。
+  // これは survey_result_viewers の名簿で閲覧者を個別指定する方式だが、その名簿を編集する UI が
+  // まだ無い。選択できるようにすると名簿が空のまま保存され「作成者以外の誰も結果を見られない
+  // アンケート」が作れてしまう。
+  // 一方で型・翻訳層では BE と 1:1 に対応させてある（types/survey.ts の対応表を参照）。
+  // 既存データが VIEWERS_ONLY を持つ場合に読み書きの往復で値が化けないようにするためで、
+  // 「読み書きの型としては 1:1、UI の選択肢としては出さない」が本件の線引きである（Issue #2617-2）。
+  // 名簿編集 UI が実装されたらここへ 1 行足すこと。
 ])
 
 const unrespondedVisibilityOptions = computed<Array<{ label: string; value: UnrespondedVisibility }>>(() => [
@@ -171,6 +188,12 @@ function validate(mode: 'draft' | 'publish'): string | null {
     if (!q.questionText.trim()) {
       return t('surveys.create.validation.questionTextRequired', { index: i + 1 })
     }
+    // 'DATE' は BE に対応値が無い。選択肢からは外してあるが、外れる前に localStorage へ
+    // 保存された下書きを復元すると復活しうる。黙って自由記述へ変換すると設問種別が
+    // ユーザーの知らないうちに書き換わるため、明示的に拒否して選び直してもらう。
+    if (!isQuestionTypeSupportedByBackend(q.questionType)) {
+      return t('surveys.create.validation.questionTypeUnsupported', { index: i + 1 })
+    }
     if (q.questionType === 'SINGLE_CHOICE' || q.questionType === 'MULTIPLE_CHOICE') {
       const opts = q.options ?? []
       if (opts.length < 2) {
@@ -204,7 +227,7 @@ async function submitWith(mode: 'draft' | 'publish') {
       teamBreakdownEnabled: isOrganizationScope.value ? teamBreakdownEnabled.value : undefined,
       resultsVisibility: resultsVisibility.value,
       unrespondedVisibility: unrespondedVisibility.value,
-      deadline: deadline.value ? deadline.value.toISOString() : undefined,
+      expiresAt: deadline.value ? deadline.value.toISOString() : undefined,
       // 設問ゼロの場合は空配列を送る（BEはDRAFTとして保存）
       questions:
         questions.value.length > 0
@@ -224,11 +247,7 @@ async function submitWith(mode: 'draft' | 'publish') {
           : [],
     }
 
-    const res = await createSurvey(
-      props.scopeType,
-      props.scopeId,
-      body as unknown as Record<string, unknown>,
-    )
+    const res = await createSurvey(props.scopeType, props.scopeId, body)
 
     // 成功 → 下書き削除
     clearDraft()

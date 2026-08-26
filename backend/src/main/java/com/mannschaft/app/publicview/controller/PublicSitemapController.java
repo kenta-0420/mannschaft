@@ -1,5 +1,6 @@
 package com.mannschaft.app.publicview.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.service.SitemapEntry;
 import com.mannschaft.app.publicview.service.SitemapPostEntry;
 import com.mannschaft.app.publicview.service.SitemapQueryService;
@@ -24,7 +25,8 @@ import java.util.concurrent.TimeUnit;
  * <p>設計書: docs/features/F19.1_public_pages_identity_disclosure.md §9.2 / §9.3</p>
  *
  * <ul>
- *   <li>{@code GET /sitemap.xml} — PUBLIC チーム・組織・投稿を収録した動的 sitemap。1h キャッシュ。</li>
+ *   <li>{@code GET /sitemap.xml} — PUBLIC チーム・組織・投稿・活動記録（F06.4）を収録した
+ *       動的 sitemap。1h キャッシュ。</li>
  *   <li>{@code GET /sitemap-{page}.xml} — 50,000 URL 超過時の分割 sitemap。1h キャッシュ。</li>
  *   <li>{@code GET /robots.txt} — クローラ向けアクセス制御ファイル。24h キャッシュ。</li>
  * </ul>
@@ -32,7 +34,30 @@ import java.util.concurrent.TimeUnit;
  * <p>いずれのエンドポイントも認証不要（{@code permitAll}）。
  * SecurityConfig で {@code /sitemap.xml}, {@code /sitemap-*.xml}, {@code /robots.txt} が
  * permitAll に追加されていること。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 3 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/sitemap.xml", "/robots.txt")
+ * / "/sitemap-*.xml" .permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F19.1 Phase 3 SEO。sitemap / robots.txt は<b>検索エンジンのクローラが未認証で取得する</b>
+ * のが仕様で、認証を課すと SEO が成立しない。収録するのは<b>公開ページの URL のみ</b>（非公開スコープは含めない）
+ * 。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/sitemap.xml",
+        "/robots.txt",
+        "/sitemap-*.xml"
+})
 @RestController
 @Tag(name = "SEO (F19.1 Phase 3)", description = "sitemap.xml / robots.txt エンドポイント")
 @RequiredArgsConstructor
@@ -47,8 +72,21 @@ public class PublicSitemapController {
     /**
      * 動的 sitemap.xml を返す。
      *
-     * <p>PUBLIC チーム・組織・投稿のエントリを収録する。
+     * <p>PUBLIC チーム・組織・投稿・活動記録（F06.4）のエントリを収録する。
      * 総 URL 数が 50,000 以下なら {@code urlset} 形式、超過なら {@code sitemapindex} 形式を返す。</p>
+     *
+     * <p>収録対象はいずれも<b>親スコープまで公開であるもの</b>に限る
+     * （sitemap は URL を検索エンジンへ差し出すため、載せた時点で存在が漏れる）。
+     * 判定は {@code SitemapQueryService} 側。設計書 F19.1 §9.2.1 参照。</p>
+     *
+     * <p><b>この保証は投稿 URL（{@code /public/teams/{teamId}/posts/{postId}} /
+     * {@code /public/organizations/{organizationId}/posts/{postId}}）にも及ぶ。</b>
+     * 投稿の 2 経路はかつて投稿自身の可視性しか見ておらず、非公開チーム / 組織配下の
+     * PUBLIC + PUBLISHED 投稿が載っていた。現在は
+     * {@code SitemapQueryService#findPublicTeamPostEntries} /
+     * {@code #findPublicOrganizationPostEntries} が公開スコープ ID 集合を SQL へ渡して
+     * 親を絞っており、活動記録・チーム・組織の各経路と同じ基準に揃っている。
+     * 収録経路を増やすときは、必ず親スコープの公開判定を伴わせること。</p>
      *
      * <p>Cache-Control: public, max-age=3600 (1時間) を付与する。</p>
      */
@@ -61,8 +99,9 @@ public class PublicSitemapController {
         List<SitemapEntry> orgs = sitemapQueryService.findPublicOrganizationEntries();
         List<SitemapPostEntry> teamPosts = sitemapQueryService.findPublicTeamPostEntries();
         List<SitemapPostEntry> orgPosts = sitemapQueryService.findPublicOrganizationPostEntries();
+        List<SitemapEntry> activities = sitemapQueryService.findPublicActivityEntries();
 
-        String xml = sitemapXmlGenerator.generate(baseUrl, teams, orgs, teamPosts, orgPosts);
+        String xml = sitemapXmlGenerator.generate(baseUrl, teams, orgs, teamPosts, orgPosts, activities);
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic())
@@ -88,8 +127,10 @@ public class PublicSitemapController {
         List<SitemapEntry> orgs = sitemapQueryService.findPublicOrganizationEntries();
         List<SitemapPostEntry> teamPosts = sitemapQueryService.findPublicTeamPostEntries();
         List<SitemapPostEntry> orgPosts = sitemapQueryService.findPublicOrganizationPostEntries();
+        List<SitemapEntry> activities = sitemapQueryService.findPublicActivityEntries();
 
-        String xml = sitemapXmlGenerator.generatePage(baseUrl, teams, orgs, teamPosts, orgPosts, page);
+        String xml = sitemapXmlGenerator.generatePage(
+                baseUrl, teams, orgs, teamPosts, orgPosts, activities, page);
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic())

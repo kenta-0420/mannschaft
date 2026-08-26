@@ -111,6 +111,8 @@ public class TeamScheduleController {
         String myAttendanceStatus = attendanceService
                 .getMyAttendanceStatus(scheduleId, SecurityUtils.getCurrentUserId())
                 .orElse(null);
+        var targetResponse = scheduleService.targetResponseForViewer(
+                entity, SecurityUtils.getCurrentUserId());
         ScheduleResponse response = ScheduleResponse.builder()
                 .id(entity.getId())
                 .content(new ScheduleResponse.ScheduleContentDto(
@@ -128,6 +130,9 @@ public class TeamScheduleController {
                         entity.getSourceScheduleId()))
                 .audit(new ScheduleResponse.ScheduleAuditDto(entity.getCreatedAt(), createdByDisplayName))
                 .myAttendanceStatus(myAttendanceStatus)
+                .targetMode(targetResponse.targetMode())
+                .targetCount(targetResponse.targetCount())
+                .targets(targetResponse.targets())
                 .reminders(reminderService.getReminders(scheduleId))
                 .scheduledTasks(scheduledTaskService.findTaskResponsesForSchedule(scheduleId))
                 .build();
@@ -179,7 +184,7 @@ public class TeamScheduleController {
             @PathVariable String teamPublicId,
             @PathVariable Long scheduleId,
             @RequestParam(defaultValue = "THIS_ONLY") String updateScope) {
-        scheduleService.deleteSchedule(scheduleId, updateScope);
+        scheduleService.deleteSchedule(scheduleId, updateScope, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -198,6 +203,9 @@ public class TeamScheduleController {
 
     /**
      * チームスケジュールの出欠一覧を取得する。
+     *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: 個人名付き出欠一覧の漏洩を防ぐため、当該スケジュールが
+     * 属するチームのメンバーのみ閲覧可（entity 由来 scope・{@code checkMembership} 水準）。</p>
      */
     @GetMapping("/{scheduleId}/attendances")
     @Operation(summary = "チーム出欠一覧")
@@ -205,12 +213,17 @@ public class TeamScheduleController {
     public ResponseEntity<ApiResponse<List<AttendanceResponse>>> getAttendances(
             @PathVariable String teamPublicId,
             @PathVariable Long scheduleId) {
-        List<AttendanceResponse> responses = attendanceService.getAttendances(scheduleId);
+        List<AttendanceResponse> responses =
+                attendanceService.getAttendances(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
 
     /**
      * チームスケジュールの出欠を一括更新する（管理者用）。
+     *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: 「管理者用」の doc どおり、当該スケジュールが属する
+     * チーム/組織の ADMIN/DEPUTY_ADMIN のみ実行可（entity 由来 scope・{@code checkAdminOrAbove} 水準）。
+     * 従来は認可ゼロで一般メンバーも一括上書きできていた欠陥を是正。</p>
      */
     @PatchMapping("/{scheduleId}/attendances/bulk")
     @Operation(summary = "チーム出欠一括更新")
@@ -219,12 +232,17 @@ public class TeamScheduleController {
             @PathVariable String teamPublicId,
             @PathVariable Long scheduleId,
             @Valid @RequestBody BulkAttendanceRequest request) {
-        attendanceService.bulkUpdateAttendances(scheduleId, request);
+        // 他者の出欠を書き換える操作のため、スケジュール実体由来のスコープに対する
+        // ADMIN/DEPUTY_ADMIN 判定を public 入口で行う（sendReminder と同じ流儀）。
+        scheduleService.checkScopeAdminAccess(scheduleId, SecurityUtils.getCurrentUserId());
+        attendanceService.bulkUpdateAttendances(scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
     /**
      * チームスケジュールの出欠一覧をCSVエクスポートする。
+     *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: getAttendances と同じく当該チームのメンバーのみ。</p>
      */
     @GetMapping("/{scheduleId}/attendances/export")
     @Operation(summary = "チーム出欠CSVエクスポート")
@@ -232,7 +250,7 @@ public class TeamScheduleController {
     public ResponseEntity<byte[]> exportAttendancesCsv(
             @PathVariable String teamPublicId,
             @PathVariable Long scheduleId) {
-        String csv = attendanceService.exportAttendancesCsv(scheduleId);
+        String csv = attendanceService.exportAttendancesCsv(scheduleId, SecurityUtils.getCurrentUserId());
         byte[] csvBytes = csv.getBytes(java.nio.charset.StandardCharsets.UTF_8);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=attendances_" + scheduleId + ".csv")
@@ -242,6 +260,11 @@ public class TeamScheduleController {
 
     /**
      * チームスケジュールを複製する。
+     *
+     * <p><b>認可（認可根治 Wave3-B6・BOLA是正）</b>: {@code ScheduleService.duplicateSchedule} は
+     * クロス招待受諾（{@code ScheduleCrossRefService.acceptInvitation}）からも呼ばれる共有メソッドで
+     * 認可を持たないため、この public な複製 API 入口で複製元(source)の entity 由来 scope に対する
+     * ADMIN 認可を行う（他 team/org の scheduleId を渡す複製元なりすましを防ぐ）。</p>
      */
     @PostMapping("/{scheduleId}/duplicate")
     @Operation(summary = "チームスケジュール複製")
@@ -249,7 +272,9 @@ public class TeamScheduleController {
     public ResponseEntity<ApiResponse<ScheduleResponse>> duplicateSchedule(
             @PathVariable String teamPublicId,
             @PathVariable Long scheduleId) {
-        ScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        scheduleService.checkScopeAdminAccess(scheduleId, userId);
+        ScheduleResponse response = scheduleService.duplicateSchedule(scheduleId, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 

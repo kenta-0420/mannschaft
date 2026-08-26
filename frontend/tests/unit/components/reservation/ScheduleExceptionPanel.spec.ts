@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterAll } from 'vitest'
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime'
 import { flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
@@ -61,6 +61,28 @@ mockNuxtImport('useErrorHandler', () => () => ({
 function findInBody<T extends Element = HTMLElement>(testId: string): T | null {
   return document.body.querySelector<T>(`[data-testid="${testId}"]`)
 }
+
+/**
+ * 生きた時計は使わない（根治）。
+ *
+ * 元は `dayjs().add(2, 'day').toDate()` で「今日」を実時計から求めていたが、
+ * このコンポーネントは日付文字列化に明示 `.tz('Asia/Tokyo')` を使う一方、
+ * このテストは既定（実行プロセスのローカルTZ）で `dayjs().format()` していたため、
+ * CI（TZ=UTC）で UTC 15:00〜24:00（=JSTでは既に翌日）の時間帯に実行されると
+ * 期待値とコンポーネント実測値の日付が1日ずれて落ちる時限爆弾だった
+ * （実測: TZ=UTC・システム時刻を UTC 2026-08-11T15:15:00Z に固定して再現済み）。
+ *
+ * 相対日付への変更は解にならない（「深夜に走ると壊れる」別の時限爆弾に化けるだけ）。
+ * 正解は時計を止めること。`vi.setSystemTime` で日付境界を跨がない安全な瞬間
+ * （UTC 03:00 = JST 12:00、UTC/JSTどちらのTZで解釈しても同じ暦日になる昼間）に固定し、
+ * スイート全体を通してその時刻のまま実行する（afterAll で必ず実時計に戻す）。
+ */
+vi.useFakeTimers({ toFake: ['Date'] })
+vi.setSystemTime(new Date('2026-08-11T03:00:00Z'))
+
+afterAll(() => {
+  vi.useRealTimers()
+})
 
 /** 2日先（明日以降〜90日以内の中央値）を対象日に使う。境界値の揺れを避ける。 */
 const targetDate = dayjs().add(2, 'day').toDate()

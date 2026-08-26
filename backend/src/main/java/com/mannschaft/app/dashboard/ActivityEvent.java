@@ -18,4 +18,9 @@ public class ActivityEvent {
     private final Long actorId;
     private final TargetType targetType;
     private final Long targetId;
+
+    /**
+     * F03.18: 変更差分（JSON文字列）。nullable。発行元がJSON化して積む。
+     */
+    private final String detail;
 }

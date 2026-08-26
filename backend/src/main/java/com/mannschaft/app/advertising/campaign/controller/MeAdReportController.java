@@ -5,6 +5,7 @@ import com.mannschaft.app.advertising.campaign.dto.CreateAdReportRequest;
 import com.mannschaft.app.advertising.campaign.service.AdReportService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,6 +33,8 @@ public class MeAdReportController {
     private final AdReportService adReportService;
 
     /** 通報を作成する。201 {@code { data: { id, status, createdAt } }}。 */
+    @SelfScopedEndpoint("通報者は SecurityUtils.getCurrentUserId() で確定した認証主体固定であり、"
+            + "他ユーザー名義で通報を記録する余地がない（AdReportService#createReport）")
     @PostMapping
     @Operation(summary = "広告を通報する",
             description = "campaignId（メッセージ型）/ operationalCampaignId（運用型）を XOR で指定する。"

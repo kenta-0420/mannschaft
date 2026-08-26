@@ -36,7 +36,7 @@ public class TimetableSlotUserNoteAttachmentEntity {
     @Column(nullable = false)
     private Long userId;
 
-    @Column(nullable = false, length = 500)
+    @Column(name = "r2_object_key", nullable = false, length = 500)
     private String r2ObjectKey;
 
     @Column(nullable = false, length = 255)
@@ -48,6 +48,7 @@ public class TimetableSlotUserNoteAttachmentEntity {
     @Column(nullable = false)
     private Long sizeBytes;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     private LocalDateTime deletedAt;

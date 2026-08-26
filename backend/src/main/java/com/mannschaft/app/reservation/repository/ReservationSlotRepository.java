@@ -16,6 +16,13 @@ import java.util.Optional;
  */
 public interface ReservationSlotRepository extends JpaRepository<ReservationSlotEntity, Long> {
 
+    /** endDate を含む業務日範囲検索（日跨ぎ枠を slotDate だけで落とさない）。 */
+    @Query("SELECT s FROM ReservationSlotEntity s WHERE s.teamId = :teamId "
+            + "AND s.slotDate <= :to AND s.endDate >= :from AND s.deletedAt IS NULL")
+    List<ReservationSlotEntity> findByTeamIdAndBusinessDateOverlap(@Param("teamId") Long teamId,
+                                                                     @Param("from") LocalDate from,
+                                                                     @Param("to") LocalDate to);
+
     /**
      * チームのスロットを日付範囲で取得する。
      */
@@ -101,8 +108,8 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
      * <p>Hibernate のネイティブクエリとして実行することで、TIME/DATE/BINARY(16) のパラメータバインドが
      * エンティティ永続化と<b>同一の変換規則</b>になる（素の JdbcTemplate 直挿入は MySQL Connector/J の
      * タイムゾーン変換が Hibernate 読取と非対称になり、JVM≠DB タイムゾーン環境で時刻が +9h ずれる
-     * 実測バグがあったため禁止）。{@code booked_count}/{@code slot_status}/{@code is_exception} は
-     * DDL 既定値（0 / 'AVAILABLE' / FALSE）に委ねる。</p>
+     * 実測バグがあったため禁止）。{@code booked_count}/{@code slot_status} は
+     * DDL 既定値（0 / 'AVAILABLE'）に委ねる。</p>
      *
      * @param templateId 生成元テンプレート ID（UUIDv7 の BINARY(16) 表現・{@code UuidV7Entity} と同じ
      *                   ビッグエンディアン MSB→LSB）
@@ -110,9 +117,9 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
      */
     @Modifying
     @Query(value = "INSERT IGNORE INTO reservation_slots "
-            + "(team_id, line_id, staff_user_id, template_id, slot_date, start_time, end_time, "
+            + "(team_id, line_id, staff_user_id, template_id, slot_date, end_date, start_time, end_time, "
             + " capacity, title, price, approval_mode, created_by, created_at, updated_at) "
-            + "VALUES (:teamId, :lineId, :staffUserId, :templateId, :slotDate, :startTime, :endTime, "
+            + "VALUES (:teamId, :lineId, :staffUserId, :templateId, :slotDate, :endDate, :startTime, :endTime, "
             + " :capacity, :title, :price, :approvalMode, :createdBy, NOW(6), NOW(6))",
             nativeQuery = true)
     int insertGeneratedCellIgnoreDuplicate(
@@ -121,6 +128,7 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
             @Param("staffUserId") Long staffUserId,
             @Param("templateId") byte[] templateId,
             @Param("slotDate") LocalDate slotDate,
+            @Param("endDate") LocalDate endDate,
             @Param("startTime") java.time.LocalTime startTime,
             @Param("endTime") java.time.LocalTime endTime,
             @Param("capacity") Integer capacity,
@@ -128,6 +136,46 @@ public interface ReservationSlotRepository extends JpaRepository<ReservationSlot
             @Param("price") java.math.BigDecimal price,
             @Param("approvalMode") String approvalMode,
             @Param("createdBy") Long createdBy);
+
+    /**
+     * 定期予約（F03.4.5 §6.2 W2-5）の週次枠解決に使う<b>唯一の範囲検索</b>。
+     *
+     * <p>起点枠の {@code (start_time, end_time)} に完全一致する枠を、{@code slot_date} の
+     * <b>範囲 1 回</b>で引く（{@code from} = 起点日+7日 / {@code to} = 起点日+7×(repeatWeeks-1)日）。</p>
+     *
+     * <p><b>なぜ週ごとに投げないか（AC-5-10）</b>: 「起点日 + 7k」を 1 日ずつ
+     * {@code findBy...SlotDateAndStartTime...} で解決すると 12 週で 12 クエリになり、
+     * 会員の予約作成というホットパスに N+1 を作る。範囲 1 回で取得し、
+     * 「7 の倍数日か」「同一ラインか」の絞り込みは呼び出し側がメモリで行う
+     * （単発 blocked_times の日付ロードと同じ作法）。</p>
+     *
+     * <p><b>ライン軸を SQL 条件に入れない理由</b>: 共通枠（{@code line_id IS NULL}）とライン軸枠を
+     * 「起点枠と同じ帰属か」で突合する必要があり、{@code null} 同値比較を JPQL の
+     * {@code :param IS NULL} イディオムで書くと Hibernate の型推論が方言依存になる。
+     * 判定を呼び出し側の {@code Objects.equals} に寄せて曖昧さを消す。</p>
+     *
+     * <p>並び順は {@code slot_date} 昇順・同日内は {@code id} 昇順。これは
+     * <b>ロック順序（AC-5-6）</b>をそのまま与えるためで、呼び出し側は取得順に確保していけばよい。</p>
+     *
+     * @param teamId    チームID
+     * @param from      検索開始日（含む）
+     * @param to        検索終了日（含む）
+     * @param startTime 起点枠の開始時刻（完全一致）
+     * @param endTime   起点枠の終了時刻（完全一致）
+     * @return 該当枠（日付昇順・同日は id 昇順）
+     */
+    @Query("SELECT s FROM ReservationSlotEntity s "
+            + "WHERE s.teamId = :teamId "
+            + "  AND s.slotDate BETWEEN :from AND :to "
+            + "  AND s.startTime = :startTime "
+            + "  AND s.endTime = :endTime "
+            + "ORDER BY s.slotDate ASC, s.id ASC")
+    List<ReservationSlotEntity> findRecurringCandidateSlots(
+            @Param("teamId") Long teamId,
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("startTime") java.time.LocalTime startTime,
+            @Param("endTime") java.time.LocalTime endTime);
 
     /**
      * 予約数を +1 し、定員に達したら FULL 化する<b>条件付きアトミック UPDATE</b>（オーバーブッキング防止の並行制御）。
