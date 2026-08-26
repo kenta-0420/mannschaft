@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -21,6 +21,9 @@ import java.util.UUID;
  *
  * <p>平文トークンは保持しない。DB には {@link #tokenHash}（SHA-256 hex）のみを保存し、
  * 照合は呼び出し側でハッシュ化した値で行う（{@code AuthTokenService} と同じ方式）。</p>
+ *
+ * <p>日時は全て {@link Instant}（起きた瞬間）で保持する。壁時計ではなく瞬間であり、
+ * 番人 {@code DateTimeAndZoneGuardTest} が新規の {@code LocalDateTime} フィールドを禁じている。</p>
  *
  * <p>{@code village_id} には実FKを張らない（クロスドメイン/モジュラーモノリス方針。
  * 整合性はアプリ層で保証し、インデックスのみ張る）。</p>
@@ -47,7 +50,7 @@ public class VillageInvitationEntity extends UuidV7Entity {
 
     /** 無期限の招待を作れないよう NOT NULL とする。 */
     @Column(name = "expires_at", nullable = false)
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     /** 無制限の招待を作れないよう NOT NULL とする。 */
     @Column(name = "max_uses", nullable = false)
@@ -57,7 +60,7 @@ public class VillageInvitationEntity extends UuidV7Entity {
     private Integer usedCount;
 
     @Column(name = "revoked_at")
-    private LocalDateTime revokedAt;
+    private Instant revokedAt;
 
     /**
      * 発行した村長/長老の村メンバーシップID。
@@ -69,14 +72,14 @@ public class VillageInvitationEntity extends UuidV7Entity {
     private UUID createdByMembershipId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         if (this.createdAt == null) {
             this.createdAt = now;
         }
@@ -88,7 +91,7 @@ public class VillageInvitationEntity extends UuidV7Entity {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        this.updatedAt = Instant.now();
     }
 
     /**
@@ -102,7 +105,7 @@ public class VillageInvitationEntity extends UuidV7Entity {
         if (this.revokedAt != null) {
             return false;
         }
-        if (this.expiresAt != null && this.expiresAt.isBefore(LocalDateTime.now())) {
+        if (this.expiresAt != null && this.expiresAt.isBefore(Instant.now())) {
             return false;
         }
         if (this.usedCount != null && this.maxUses != null && this.usedCount >= this.maxUses) {
