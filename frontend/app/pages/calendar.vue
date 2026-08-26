@@ -293,6 +293,17 @@ const hiddenLayerNotice = computed(() => {
   return { scopeKey, layerLabel: scopeLabelForKey(scopeKey) }
 })
 
+// [P2是正・検分四巡目] computed で非表示を導出するだけでは、対象キー（hiddenLayerNoticeScopeKey）
+// 自体が保持され続けるため、ユーザーが手で表示に戻した後に同じレイヤーを再び非表示にすると、
+// 何も保存していないのに古い案内が「ゾンビ」として復活してしまう。表示に戻った時点で
+// 対象キー自体を破棄し、次に非表示にしても案内は出さない（＝新しい保存操作でのみ再び現れる）。
+watch(selectedScopes, (val) => {
+  const scopeKey = hiddenLayerNoticeScopeKey.value
+  if (scopeKey && val.includes(scopeKey)) {
+    hiddenLayerNoticeScopeKey.value = null
+  }
+}, { deep: true })
+
 /** 作成ダイアログの保存完了（新規作成のみ・§5.4/AC-11b）。実際に保存されたスコープで判定する。 */
 async function onCreated(scope: SavedScope) {
   const scopeKey = savedScopeFilterKey(scope)

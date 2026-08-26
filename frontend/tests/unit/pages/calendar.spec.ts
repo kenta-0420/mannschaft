@@ -278,4 +278,36 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     expect(chipFor('チームA')!.classes()).toContain('border-primary')
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
   })
+
+  // [P2回帰・検分四巡目] 案内が消えた後（＝対象キーが破棄された後）、同じレイヤーを再び
+  // 非表示にしても、何も保存していないのに古い案内が「ゾンビ」として復活してはならない。
+  // 前回の修正は computed で表示可否を導出するだけで、対象キー自体（hiddenLayerNoticeScopeKey）
+  // を破棄していなかったため、この経路で再現していた。
+  it('[P2回帰・ゾンビ案内] 表示に戻した後に再び非表示にしても、保存操作なしで案内は復活しない', async () => {
+    const wrapper = await mountCalendarPage()
+    const chipFor = (label: string) =>
+      wrapper.findAll('button').find(b => b.text() === label)
+
+    // チームAを非表示にしてから作成 → 案内が出る
+    await chipFor('チームA')!.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    const createForm = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    createForm.vm.$emit('saved', { isPersonal: false, scopeType: 'team', scopeId: 't1' })
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(true)
+
+    // 手で表示に戻す（案内は消える）
+    await chipFor('チームA')!.trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
+
+    // 再びチームAを非表示にする（保存操作は一切していない）
+    await chipFor('チームA')!.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    // 案内が復活してはならない（対象キー自体が破棄されているはず）
+    expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
+  })
 })
