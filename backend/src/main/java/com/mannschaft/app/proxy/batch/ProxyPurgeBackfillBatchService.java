@@ -1,5 +1,7 @@
 package com.mannschaft.app.proxy.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.proxy.repository.ProxyInputConsentRepository;
 import com.mannschaft.app.proxy.repository.ProxyInputRecordRepository;
@@ -53,6 +55,8 @@ public class ProxyPurgeBackfillBatchService {
      *
      * <p>孤児が 0 件の場合も正常終了として扱う（毎日平常運転で 0 件が期待値）。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると論理削除済み代理関連行の物理削除 backfill が進まず、消したはずの代理関係の個人データが残り続ける")
     @BatchEndpoint(
             name = "proxy-purge-backfill-daily",
             description = "AccountPurgedEvent 処理漏れの proxy_input_records / proxy_input_consents を毎日 03:00 に補正する"
