@@ -1,5 +1,7 @@
 package com.mannschaft.app.billing.beta;
 
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.billing.EntitlementEntity;
@@ -67,6 +69,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 @DisplayName("BetaPerkAutoGrant 自動付与バッチ統合テスト（N+1回避・冪等・退会除外・境界・bulk）")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class BetaPerkAutoGrantBatchIT extends AbstractMySqlIntegrationTest {
+
+    /** ゲート開放用（{@link #openBackgroundFeatureGate()} で使う）。 */
+    @Autowired
+    private FeatureFlagRepository backgroundGateFeatureFlagRepository;
+
+    /**
+     * ゲート対象のバックグラウンド入口を open にしてから各テストを走らせる。
+     *
+     * <p>テストプロファイルは Flyway を無効化しており {@code feature_flags} が空のため、
+     * 何もしないと {@code FeatureFlagService#isEnabled} がフェイルクローズで false を返し、
+     * 検証対象のバッチ／リスナーが本体を呼ばずに正常終了してしまう。
+     * 詳細は {@link FeatureFlagTestSupport} を参照。</p>
+     */
+    @BeforeEach
+    void openBackgroundFeatureGate() {
+        FeatureFlagTestSupport.enable(backgroundGateFeatureFlagRepository, "FEATURE_BILLING_PAYMENT_ENABLED");
+    }
 
     private static final int PHASE = 1;
     private static final int MIN_ACTIVE_DAYS = 5;

@@ -1,5 +1,8 @@
 package com.mannschaft.app.advertising.service;
 
+import com.mannschaft.app.admin.repository.FeatureFlagRepository;
+import com.mannschaft.app.support.test.FeatureFlagTestSupport;
+import org.junit.jupiter.api.BeforeEach;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mannschaft.app.advertising.ReportFrequency;
 import com.mannschaft.app.advertising.entity.AdReportScheduleEntity;
@@ -31,6 +34,23 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 @DisplayName("ReportDeliveryBatchService#deliverWeeklyReports 統合テスト")
 @EnabledIf("com.mannschaft.app.support.test.AbstractMySqlIntegrationTest#isDockerAvailable")
 class ReportDeliveryBatchServiceIntegrationTest extends AbstractMySqlIntegrationTest {
+
+    /** ゲート開放用（{@link #openBackgroundFeatureGate()} で使う）。 */
+    @Autowired
+    private FeatureFlagRepository backgroundGateFeatureFlagRepository;
+
+    /**
+     * ゲート対象のバックグラウンド入口を open にしてから各テストを走らせる。
+     *
+     * <p>テストプロファイルは Flyway を無効化しており {@code feature_flags} が空のため、
+     * 何もしないと {@code FeatureFlagService#isEnabled} がフェイルクローズで false を返し、
+     * 検証対象のバッチ／リスナーが本体を呼ばずに正常終了してしまう。
+     * 詳細は {@link FeatureFlagTestSupport} を参照。</p>
+     */
+    @BeforeEach
+    void openBackgroundFeatureGate() {
+        FeatureFlagTestSupport.enable(backgroundGateFeatureFlagRepository, "FEATURE_PROMOTION_ENABLED");
+    }
 
     @Autowired
     private ReportDeliveryBatchService batchService;
