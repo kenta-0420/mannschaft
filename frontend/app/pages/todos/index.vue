@@ -77,20 +77,25 @@ onMounted(load)
           option-value="value"
           size="small"
         />
-        <SelectButton
-          v-model="viewMode"
-          :options="[
-            { value: 'list', icon: 'pi pi-list', tooltip: t('todo.list.viewModeList') },
-            { value: 'kanban', icon: 'pi pi-th-large', tooltip: t('todo.list.viewModeKanban') },
-            { value: 'gantt', icon: 'pi pi-chart-bar', tooltip: t('todo.enhancement.gantt.title') },
-          ]"
-          option-value="value"
-          option-label="value"
-        >
-          <template #option="{ option }">
-            <i v-tooltip.bottom="option.tooltip" :class="option.icon" />
-          </template>
-        </SelectButton>
+        <div class="flex gap-1 rounded-lg border border-surface-300 bg-surface-100 p-1 dark:border-surface-600 dark:bg-surface-700">
+          <button
+            v-for="opt in [
+              { value: 'list', icon: 'pi pi-list', tooltip: t('todo.list.viewModeList') },
+              { value: 'kanban', icon: 'pi pi-th-large', tooltip: t('todo.list.viewModeKanban') },
+              { value: 'gantt', icon: 'pi pi-chart-bar', tooltip: t('todo.enhancement.gantt.title') },
+            ]"
+            :key="opt.value"
+            v-tooltip.bottom="opt.tooltip"
+            type="button"
+            class="rounded-md px-3 py-1.5 text-sm transition-colors"
+            :class="viewMode === opt.value
+              ? 'bg-surface-0 text-primary shadow-sm dark:bg-surface-800'
+              : 'text-surface-500 hover:text-surface-700 dark:text-surface-400'"
+            @click="viewMode = opt.value as typeof viewMode"
+          >
+            <i :class="opt.icon" />
+          </button>
+        </div>
         <Button label="作成" icon="pi pi-plus" @click="showCreateDialog = true" />
       </div>
     </div>
