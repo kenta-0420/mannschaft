@@ -328,7 +328,7 @@ defineExpose({ focusToday })
            showTodayButton=true の呼び出し元（統合カレンダー）でのみ表示する。 -->
       <Button
         v-if="showTodayButton"
-        :label="t('schedule.calendarGrid.today')"
+        :label="t('schedule.calendar.today')"
         text
         size="small"
         data-testid="calendar-today-button"
@@ -423,7 +423,7 @@ defineExpose({ focusToday })
               class="flex min-h-11 w-full items-center truncate rounded px-1 text-left text-[10px] font-medium text-surface-500 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-700"
               @click.stop="openDayOverflow(day.dateStr, $event)"
             >
-              {{ t('schedule.calendarGrid.dayOverflow', { count: singleOverflowCount(week.singleByCol[di]) }) }}
+              {{ t('schedule.calendar.more', { count: singleOverflowCount(week.singleByCol[di]) }) }}
             </button>
           </div>
         </div>
@@ -480,7 +480,7 @@ defineExpose({ focusToday })
             :style="laneOverflowStyle(di, week.visibleBarLaneCap)"
             @click.stop="openDayOverflow(week.days[di]!.dateStr, $event)"
           >
-            {{ t('schedule.calendarGrid.laneOverflow', { count }) }}
+            {{ t('schedule.calendar.more', { count }) }}
           </button>
         </div>
       </div>
@@ -490,7 +490,7 @@ defineExpose({ focusToday })
     <Popover ref="dayPopover">
       <div data-testid="day-detail-popover" class="flex flex-col" style="min-width: 260px; max-width: 320px">
         <div class="px-2 pb-1 text-xs font-semibold text-surface-500">
-          {{ t('schedule.calendarGrid.dayDetailTitle', { date: popoverDateStr }) }}
+          {{ t('schedule.calendar.dayDetail.title', { date: popoverDateStr }) }}
         </div>
         <div class="max-h-80 overflow-y-auto">
           <ScheduleListRow

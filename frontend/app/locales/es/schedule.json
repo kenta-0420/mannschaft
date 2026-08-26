@@ -13,14 +13,6 @@
       "prevMonth": "Mes anterior",
       "nextMonth": "Mes siguiente"
     },
-    "calendarGrid": {
-      "today": "Hoy",
-      "dayOverflow": "{count} más",
-      "laneOverflow": "+{count} más",
-      "dayDetailTitle": "Eventos del {date}",
-      "hiddenLayerNotice": "La capa de destino \"{layer}\" está oculta",
-      "hiddenLayerShow": "Mostrar"
-    },
     "common_delete": "Eliminar",
     "description_label": "Descripción",
     "error_title_required": "El título es obligatorio",

@@ -2,7 +2,7 @@ import { defineComponent, h } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises } from '@vue/test-utils'
-import { mountSuspended } from '@nuxt/test-utils/runtime'
+import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime'
 import CalendarPage from '~/pages/calendar.vue'
 
 /**
@@ -25,6 +25,7 @@ const scheduleApiMock = {
   getSchedule: vi.fn(),
   deleteSchedule: vi.fn(),
   deletePersonalSchedule: vi.fn(),
+  getMyCalendarLayers: vi.fn(),
 }
 const ganttApiMock = {
   getMyCalendarTodos: vi.fn(),
@@ -36,6 +37,21 @@ const notificationMock = { success: vi.fn(), error: vi.fn(), warn: vi.fn() }
 vi.mock('~/composables/useScheduleApi', () => ({ useScheduleApi: () => scheduleApiMock }))
 vi.mock('~/composables/useTodoGantt', () => ({ useTodoGantt: () => ganttApiMock }))
 vi.mock('~/composables/useNotification', () => ({ useNotification: () => notificationMock }))
+
+/**
+ * F03.19 W2-a: loadLayers() は作成スコープ選択（availableScopes）の slug 解決に
+ * team/organization ストア（useTeamStore/useOrganizationStore）を使う。
+ *
+ * `mountSuspended` は実 Nuxt アプリ（@pinia/nuxt 経由）の Pinia インスタンスを使う。
+ * テスト側で `setActivePinia(createPinia())` して作ったストアはそれとは別物になり、
+ * `useTeamStore().myTeams = [...]` で事前投入しても mount 後のコンポーネント側からは
+ * 見えない（空のまま）。既存の `useAuthStore` 差し替え例（feature-gate.global.spec.ts）に
+ * 倣い、auto-import 自体を `mockNuxtImport` で差し替える。
+ */
+const teamStoreStub = { myTeams: [] as Array<{ id: number, slug: string, name: string, nickname1: string | null, iconUrl: string | null, role: string, template: string, memberCount: number }>, fetchMyTeams: vi.fn() }
+const orgStoreStub = { myOrganizations: [] as Array<{ id: number, slug: string, name: string }>, fetchMyOrganizations: vi.fn() }
+mockNuxtImport('useTeamStore', () => () => teamStoreStub)
+mockNuxtImport('useOrganizationStore', () => () => orgStoreStub)
 
 const CalendarGridStub = defineComponent({
   name: 'CalendarGrid',
@@ -75,13 +91,33 @@ const SelectStub = defineComponent({
 const emptyPersonal = { data: [] }
 const emptyTodos = { data: [] }
 
+// F03.19 W2-a: 作成スコープ・レイヤーチップは GET /me/calendar-layers 由来。
+// scopeId は数値、slug は別経路（team ストア）から補われる（useMyCalendarData.ts 参照）。
+const layersFixture = [
+  { scopeType: 'PERSONAL', scopeId: 0, scopeName: '個人', scopeNameKey: 'schedule.calendar.layer.personal', scopeIconUrl: null, color: '#059669', colorSource: 'LAYER_AUTO', hidden: false },
+  { scopeType: 'TEAM', scopeId: 1, scopeName: 'チームA', scopeNameKey: null, scopeIconUrl: null, color: '#2563eb', colorSource: 'LAYER_AUTO', hidden: false },
+]
+
+function presetTeamStore() {
+  teamStoreStub.myTeams = [
+    { id: 1, slug: 't1', name: 'チームA', nickname1: null, iconUrl: null, role: 'MEMBER', template: 'default', memberCount: 1 },
+  ]
+  teamStoreStub.fetchMyTeams.mockReset().mockResolvedValue(undefined)
+  orgStoreStub.myOrganizations = []
+  orgStoreStub.fetchMyOrganizations.mockReset().mockResolvedValue(undefined)
+}
+
 function teamCalendarEntry() {
   return {
     id: 5,
     scheduleId: 5,
     content: { title: 'チーム予定', eventType: 'SCHEDULE', status: 'PUBLISHED' },
     time: { startAt: '2026-07-10T10:00:00+09:00', endAt: '2026-07-10T11:00:00+09:00', allDay: false },
-    scope: { scopeType: 'TEAM', scopeId: 't1', scopeName: 'チームA', scopeIconUrl: null },
+    // F03.19 W2-a: scope.scopeId はレイヤーAPIと同じ数値スコープID（文字列化）。
+    // slug（画面URL・詳細API用）は別フィールド scopeSlug で渡す（useMyCalendarData.ts 参照）。
+    // これを合わせないと、このイベントの eventLayerKey（'TEAM:1'）がレイヤー一覧のキーと
+    // 一致せず「フォールバックチップ」として別枠に複製表示されてしまう。
+    scope: { scopeType: 'TEAM', scopeId: '1', scopeSlug: 't1', scopeName: 'チームA', scopeIconUrl: null },
     myAttendanceStatus: 'UNDECIDED',
   }
 }
@@ -121,7 +157,9 @@ describe('pages/calendar.vue: AC-11 作成スコープと表示フィルタの�
     localStorage.clear()
     scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
     scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [teamCalendarEntry()] })
+    scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
     ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
+    presetTeamStore()
   })
 
   it('AC-11: 作成スコープ Select を「個人」からチームへ変更しても、表示中のレイヤーチップの選択状態が変化しない', async () => {
@@ -153,8 +191,10 @@ describe('pages/calendar.vue: AC-11 作成スコープと表示フィルタの�
     expect(teamChipAfterScopeChange.classes()).not.toContain('border-primary')
     expect(teamChipAfterScopeChange.classes()).toContain('border-surface-300')
 
-    // 個人チップも変化しない（選択されたまま）
-    const personalChip = chipFor('個人')!
+    // 個人チップも変化しない（選択されたまま）。
+    // F03.19 W2-a との統合修繕: 個人レイヤーの表示名は本戦役から `schedule.calendar.layer.personal`
+    // 経由の翻訳になった（旧実装は '個人' 直書き）。テスト環境の既定ロケールは en のため 'Personal'。
+    const personalChip = chipFor('Personal')!
     expect(personalChip.classes()).toContain('border-primary')
   })
 })
@@ -173,7 +213,9 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     localStorage.clear()
     scheduleApiMock.listPersonalSchedules.mockReset().mockResolvedValue(emptyPersonal)
     scheduleApiMock.getCalendarRange.mockReset().mockResolvedValue({ data: [teamCalendarEntry()] })
+    scheduleApiMock.getMyCalendarLayers.mockReset().mockResolvedValue({ data: layersFixture })
     ganttApiMock.getMyCalendarTodos.mockReset().mockResolvedValue(emptyTodos)
+    presetTeamStore()
   })
 
   it('AC-11b: 作成先レイヤーが非表示のまま予定を作成すると案内が出て、押すとそのレイヤーだけ選択状態になる', async () => {

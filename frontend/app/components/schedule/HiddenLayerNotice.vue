@@ -28,9 +28,14 @@ const { t } = useI18n()
     class="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-200"
   >
     <i class="pi pi-eye-slash shrink-0" />
-    <span class="flex-1">{{ t('schedule.calendarGrid.hiddenLayerNotice', { layer: layerLabel }) }}</span>
+    <!--
+      設計書 §8 の `schedule.calendar.layer.hiddenNotice` は {layer} プレースホルダを
+      持たない固定文言（「作成先のレイヤーが非表示です」）。どのレイヤーが非表示なのかを
+      利用者が判別できるよう、レイヤー名は翻訳文字列に埋め込まず別途強調表示する。
+    -->
+    <span class="flex-1"><strong>{{ layerLabel }}</strong>：{{ t('schedule.calendar.layer.hiddenNotice') }}</span>
     <Button
-      :label="t('schedule.calendarGrid.hiddenLayerShow')"
+      :label="t('schedule.calendar.layer.showIt')"
       size="small"
       text
       data-testid="hidden-layer-show-button"

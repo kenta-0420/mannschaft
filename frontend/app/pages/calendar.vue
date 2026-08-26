@@ -80,7 +80,7 @@ const pad = (n: number) => String(n).padStart(2, '0')
 const {
   currentYear, currentMonth, loading, calendarLoading, loadEvents, refresh,
   onPrevMonth: calPrevMonth, onNextMonth: calNextMonth, goToToday,
-  extendedEvents, todosFailed, availableScopes, allScopeOptions, selectedScopes,
+  extendedEvents, todosFailed, layersFailed, availableScopes, allScopeOptions, selectedScopes,
   filteredEvents, toggleScope, multiSelectScopes, initStorage,
 } = useMyCalendarData()
 
@@ -169,14 +169,16 @@ async function onEventClick(eventId: number, isPersonal: boolean) {
       const ext = extendedEvents.value.find(e => e.id === eventId && !e.isPersonal)
       if (!ext) return
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
-      const sid = ext.scopeId ?? ''
+      // P1修繕: 詳細API・画面URLは公開スコープID（slug）を要求する。ext.scopeId は
+      // レイヤーキー照合用の数値IDに変わったため、詳細取得には ext.scopeRouteId を使う。
+      const sid = ext.scopeRouteId ?? ''
       const res = await scheduleApi.getSchedule(st, sid, eventId)
       const d = res.data as EventDetail & { createdByDisplayName?: string; myAttendanceStatus?: string }
       selectedEvent.value = {
         ...d,
         scheduleId: ext.scheduleId ?? null,
         scopeType: ext.scopeType,
-        scopeId: ext.scopeId,
+        scopeId: ext.scopeRouteId,
         scopeName: (d as EventDetail).scopeName ?? ext.scopeName,
         scopeIconUrl: (d as EventDetail).scopeIconUrl ?? null,
         createdBy: d.createdByDisplayName ? { displayName: d.createdByDisplayName } : d.createdBy,
@@ -209,7 +211,8 @@ async function onDeleteEvent() {
       const ext = extendedEvents.value.find(e => e.id === selectedEventId.value && !e.isPersonal)
       if (!ext) return
       const st = (ext.scopeType ?? '').toLowerCase() as 'team' | 'organization'
-      const sid = ext.scopeId ?? ''
+      // P1修繕: 削除APIも公開スコープID（slug）が必要（詳細取得と同じ経路）。
+      const sid = ext.scopeRouteId ?? ''
       await scheduleApi.deleteSchedule(st, sid, selectedEventId.value)
     }
     showEventPanel.value = false
@@ -272,13 +275,29 @@ interface SavedScope {
   scopeId: string
 }
 
-/** 実際に保存されたスコープに対応する selectedScopes 用キー（PERSONAL_KEY または `${SCOPE_TYPE}:${scopeId}`）。 */
+/**
+ * 実際に保存されたスコープに対応する selectedScopes 用キー（PERSONAL_KEY または
+ * `${SCOPE_TYPE}:数値scopeId`）。
+ *
+ * F03.19 W2-a との統合修繕: `scope.scopeId`（ScheduleEventForm の保存API呼び出しに使う値）は
+ * **slug**（公開スコープID）。一方 `selectedScopes`／`allScopeOptions` は数値スコープIDで
+ * キー付けされている（`useMyCalendarData.ts` の `availableScopes` コメント参照 — 作成スコープ選択
+ * 専用の slug 値を表示フィルタへ混入させてはならない）。両者を橋渡しするため、まず
+ * `availableScopes`（slug 側）でこのスコープの表示名を特定し、同じ scopeType・同じ表示名を
+ * 持つ `allScopeOptions`（数値側）のエントリへ変換する。
+ */
 function savedScopeFilterKey(scope: SavedScope): string {
   if (scope.isPersonal) return PERSONAL_KEY
-  const match = availableScopes.value.find(
+  const created = availableScopes.value.find(
     sc => sc.scopeId === scope.scopeId && sc.scopeType.toLowerCase() === scope.scopeType,
   )
-  return match?.value ?? `${scope.scopeType.toUpperCase()}:${scope.scopeId}`
+  if (created) {
+    const numeric = allScopeOptions.value.find(
+      o => o.scopeType === created.scopeType && o.label === created.label,
+    )
+    if (numeric) return numeric.value
+  }
+  return `${scope.scopeType.toUpperCase()}:${scope.scopeId}`
 }
 
 /** 案内に出すレイヤー表示名。allScopeOptions（表示フィルタと同じ一覧）から引く。 */
@@ -483,7 +502,7 @@ async function clearLinkedQuery() {
 }
 
 onMounted(async () => {
-  initStorage()
+  await initStorage()
   await loadEvents()
   // クエリパラメータ ?tab=gantt で直接ガントタブを開いた場合は初期読み込みを行う
   if (activeTab.value === 'gantt') {
@@ -518,6 +537,12 @@ onMounted(async () => {
     <Message v-if="todosFailed" severity="warn" :closable="false" class="mb-4">
       <span class="font-medium">{{ t('schedule.todo_load_error.summary') }}</span>
       <span class="ml-2">{{ t('schedule.todo_load_error.detail') }}</span>
+    </Message>
+
+    <!-- F03.19 P2修繕: レイヤー一覧の取得失敗を明示（予定本体は独立取得のため継続表示） -->
+    <Message v-if="layersFailed" severity="warn" :closable="false" class="mb-4">
+      <span class="font-medium">{{ t('schedule.calendar.layer.loadError.summary') }}</span>
+      <span class="ml-2">{{ t('schedule.calendar.layer.loadError.detail') }}</span>
     </Message>
 
     <!-- AC-11b（§5.4）: 作成先のレイヤーが表示フィルタで非表示のときの案内。表示するだけで

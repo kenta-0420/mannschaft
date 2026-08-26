@@ -45,6 +45,7 @@ export function useScheduleApi() {
     // === Calendar / Categories / Duplicate ===
     getCalendarMonth: crud.getCalendarMonth,
     getCalendarRange: crud.getCalendarRange,
+    getMyCalendarLayers: crud.getMyCalendarLayers,
     getCategories: crud.getCategories,
     createCategory: crud.createCategory,
     duplicateSchedule: crud.duplicateSchedule,

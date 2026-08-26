@@ -20,8 +20,6 @@ import java.util.UUID;
  */
 public interface VillageRepository extends JpaRepository<VillageEntity, UUID> {
 
-    Optional<VillageEntity> findBySlugAndDeletedAtIsNullAndArchivedAtIsNull(String slug);
-
     Optional<VillageEntity> findByIdAndDeletedAtIsNullAndArchivedAtIsNull(UUID id);
 
     boolean existsBySlug(String slug);

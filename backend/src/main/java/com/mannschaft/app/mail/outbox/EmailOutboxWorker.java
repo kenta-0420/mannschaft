@@ -1,5 +1,7 @@
 package com.mannschaft.app.mail.outbox;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.batch.BatchEndpointExempt;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +47,8 @@ public class EmailOutboxWorker {
      * 本ワーカーの可観測性は {@link MeterRegistry} のメトリクス（送信件数・失敗件数）で
      * 担保しているため、実行履歴は不要である。</p>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "Transactional Outbox の唯一の送信主体であり、止めると未送信メールが積み上がって再開時に一斉送信される")
     @BatchEndpointExempt("10 秒間隔（日次 8,640 回）の高頻度ワーカーであり、"
         + "実行履歴を書くと日次・月次バッチの記録が埋没する。可観測性は MeterRegistry のメトリクスで担保")
     @Scheduled(fixedDelay = 10_000)

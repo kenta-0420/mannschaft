@@ -1,5 +1,7 @@
 package com.mannschaft.app.errorreport.batch;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.errorreport.repository.ErrorReportOccurrenceRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +48,8 @@ public class ErrorReportPurgeBackfillBatchService {
      *   <li>匿名化件数を INFO ログに記録する</li>
      * </ol>
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると論理削除済みエラーレポートの物理削除 backfill が進まず、消したはずの本文と個人データが残り続ける")
     @BatchEndpoint(
             name = "error-report-purge-backfill-daily",
             description = "AccountPurgedEvent 処理漏れの error_report_occurrences を毎日 03:00 に補正する（GDPR）"

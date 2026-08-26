@@ -13,14 +13,6 @@
       "prevMonth": "上个月",
       "nextMonth": "下个月"
     },
-    "calendarGrid": {
-      "today": "今天",
-      "dayOverflow": "还有{count}件",
-      "laneOverflow": "+{count}件",
-      "dayDetailTitle": "{date} 的日程",
-      "hiddenLayerNotice": "创建目标图层「{layer}」当前处于隐藏状态",
-      "hiddenLayerShow": "显示"
-    },
     "common_delete": "删除",
     "description_label": "说明",
     "error_title_required": "标题为必填项",
