@@ -12,6 +12,9 @@
  * （PATCH /api/v1/schedules/{id}/responses への重複実装だったため削除）。
  */
 import type { ScheduleInvitationResponse } from '~/types/schedule'
+import type { components } from '~/types/generated'
+
+type CalendarLayerResponse = components['schemas']['CalendarLayerResponse']
 
 export function useScheduleCrud() {
   const api = useApi()
@@ -158,6 +161,14 @@ export function useScheduleCrud() {
     return api<{ data: unknown }>(`/api/v1/my/calendar?${query}`)
   }
 
+  /**
+   * 統合カレンダーのレイヤー一覧（所属スコープ＋解決済み色＋表示可否）。
+   * 予定の有無に依存せず全所属を返す（F03.19 §4.3・AC-01/AC-02）。月移動での再取得は不要（AC-03）。
+   */
+  async function getMyCalendarLayers() {
+    return api<{ data: CalendarLayerResponse[] }>('/api/v1/me/calendar-layers')
+  }
+
   // === Event Categories ===
   async function getCategories(scopeType: 'team' | 'organization', scopeId: string) {
     return api<{ data: unknown[] }>(`${buildBase(scopeType, scopeId)}/event-categories`)
@@ -223,6 +234,7 @@ export function useScheduleCrud() {
     duplicateSchedule,
     getCalendarMonth,
     getCalendarRange,
+    getMyCalendarLayers,
     getCategories,
     createCategory,
     remindSchedule,

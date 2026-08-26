@@ -1326,6 +1326,16 @@
     "filter": {
       "allTeamsOrgs": "팀・조직 (전체)",
       "selectScope": "생성 대상 선택"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "개인",
+        "unknown": "기타 일정",
+        "loadError": {
+          "summary": "레이어 목록을 불러오지 못했습니다",
+          "detail": "팀・조직 표시 전환을 일시적으로 사용할 수 없습니다. 일정은 계속 표시됩니다. 잠시 후 다시 시도해 주세요."
+        }
+      }
     }
   },
   "handoff": {

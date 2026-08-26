@@ -1326,6 +1326,16 @@
     "filter": {
       "allTeamsOrgs": "团队・组织（全部）",
       "selectScope": "选择创建目标"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "个人",
+        "unknown": "其他日程",
+        "loadError": {
+          "summary": "图层列表加载失败",
+          "detail": "团队・组织的显示切换暂时无法使用。日程仍会显示。请稍后重新加载。"
+        }
+      }
     }
   },
   "handoff": {
