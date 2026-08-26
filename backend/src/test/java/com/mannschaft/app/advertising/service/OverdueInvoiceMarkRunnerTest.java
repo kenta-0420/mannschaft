@@ -69,7 +69,8 @@ class OverdueInvoiceMarkRunnerTest {
         given(account.getScopeId()).willReturn(900L);
         given(advertiserAccountRepository.findById(50L)).willReturn(Optional.of(account));
         given(userRoleRepository.findUserIdAndEmailByScopeAndRole("ORGANIZATION", 900L, "ADMIN"))
-                .willReturn(List.of(new Object[]{10L, "admin@example.com"}));
+                // List.of(Object[]) は varargs 展開されて List<Object> に推論されるため型引数を明示する。
+                .willReturn(List.<Object[]>of(new Object[]{10L, "admin@example.com"}));
         given(userRoleRepository.findSystemAdminUserIds()).willReturn(List.of(99L));
 
         assertThat(runner.markOne(1L)).isTrue();

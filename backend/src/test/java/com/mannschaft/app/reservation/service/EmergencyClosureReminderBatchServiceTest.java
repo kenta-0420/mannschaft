@@ -70,13 +70,25 @@ class EmergencyClosureReminderBatchServiceTest {
         return e;
     }
 
+    /**
+     * 受信者ユーザーを組み立てる。
+     *
+     * <p>{@code UserEntity} は<b>モックにしない</b>。{@code BaseEntity#getId} は Lombok 生成の
+     * final メソッドで Mockito が差し替えられず、スタブが未完了のまま次のスタブに入って
+     * {@code UnfinishedStubbingException} になる（本テストで実際に踏んだ）。実体を組んで
+     * {@code id} だけリフレクションで埋める。</p>
+     */
     private UserEntity user(Long id, String email) {
-        UserEntity u = Mockito.mock(UserEntity.class);
-        Mockito.lenient().when(u.getId()).thenReturn(id);
-        Mockito.lenient().when(u.getEmail()).thenReturn(email);
-        Mockito.lenient().when(u.getLocale()).thenReturn("ja");
-        Mockito.lenient().when(u.getLastName()).thenReturn("山田");
-        Mockito.lenient().when(u.getFirstName()).thenReturn("太郎");
+        UserEntity u = UserEntity.builder()
+                .email(email)
+                .lastName("山田")
+                .firstName("太郎")
+                .displayName("山田 太郎")
+                .locale("ja")
+                .timezone("Asia/Tokyo")
+                .status(UserEntity.UserStatus.ACTIVE)
+                .build();
+        ReflectionTestUtils.setField(u, "id", id);
         return u;
     }
 
