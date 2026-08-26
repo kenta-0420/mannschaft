@@ -303,6 +303,28 @@ jobs:
         env:
           TESTCONTAINERS_RYUK_DISABLED: "false"
 
+      # OOM (OutOfMemoryError) 発生時のみ、-XX:HeapDumpOnOutOfMemoryError で
+      # backend/build/heap-dump.hprof に書き出されるヒープダンプをアーティファクトとして
+      # アップロードする（build.gradle.kts の Test タスク jvmArgs で
+      # -XX:HeapDumpPath=build/heap-dump.hprof を指定）。
+      #
+      # これまでダンプは JVM 内で生成されるだけで CI アーティファクトにアップロードされて
+      # おらず、OOM 発生時に何がヒープを占有していたか（dominator）を実測する手段が
+      # 無かった。本ステップはその診断の穴を塞ぐもの。
+      #
+      # if: failure() — テスト失敗時のみ実行する。成功時はダンプ自体生成されず、
+      # 約 7GB という巨大なファイルを毎回アップロードするのは論外なため常時化しない。
+      # OOM 以外の原因で失敗した場合はダンプが存在しないため if-no-files-found: ignore
+      # で警告・エラーにしない。
+      - name: ヒープダンプ（OOM調査用）をアップロード
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: heap-dump-pr-${{ github.event.pull_request.number || 'manual' }}-shard-${{ matrix.shard }}
+          path: backend/build/*.hprof
+          retention-days: 3
+          if-no-files-found: ignore
+
       # test-results の XML（JUnit 形式）。HTML レポートと違い各テストの time 属性を
       # 持つため、「Run tests の壁時計」と「Gradle 集計テスト時間」の差を分解できる。
       - name: テスト結果XML（JUnit）をアップロード
