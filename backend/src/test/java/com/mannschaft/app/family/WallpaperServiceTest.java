@@ -1,5 +1,6 @@
 package com.mannschaft.app.family;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.dto.CreateWallpaperRequest;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.verify;
 class WallpaperServiceTest {
 
     @Mock private TemplateWallpaperRepository templateWallpaperRepository;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private WallpaperService service;
 
     @Nested

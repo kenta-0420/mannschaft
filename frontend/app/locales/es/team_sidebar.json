@@ -6,6 +6,8 @@
       "match": "Partidos",
       "member": "Miembros",
       "ops": "Operaciones",
+      "ops_work": "Tareas y progreso",
+      "ops_admin": "Administración y presupuesto",
       "facility": "Instalaciones",
       "data": "Datos",
       "settings": "Configuración"
@@ -39,6 +41,7 @@
       "audit_logs": "Registros de auditoría",
       "settings": "Configuración",
       "faqSettings": "Configuración de FAQ",
+      "billing": "Facturación y gestión de planes",
       "leagueTransfers": "Ascensos y descensos",
       "adminConsole": "Consola de administración"
     }

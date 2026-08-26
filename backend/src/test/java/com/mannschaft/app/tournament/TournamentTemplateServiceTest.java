@@ -1,5 +1,6 @@
 package com.mannschaft.app.tournament;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.tournament.entity.SystemTournamentPresetEntity;
 import com.mannschaft.app.tournament.entity.TournamentTemplateEntity;
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 
 import java.util.List;
 import java.util.Optional;
@@ -23,8 +26,12 @@ import static org.mockito.Mockito.verify;
 
 /**
  * {@link TournamentTemplateService} の単体テスト。
+ *
+ * <p>認可根治戦役 Wave2 トランシェ2C: 変更系メソッドは orgId 束縛検証と
+ * 主催組織 ADMIN/DEPUTY_ADMIN 検証（accessControlService 経由）が先行するため追随した。</p>
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("TournamentTemplateService 単体テスト")
 class TournamentTemplateServiceTest {
 
@@ -35,6 +42,7 @@ class TournamentTemplateServiceTest {
     @Mock private SystemTournamentPresetTiebreakerRepository presetTiebreakerRepository;
     @Mock private SystemTournamentPresetStatDefRepository presetStatDefRepository;
     @Mock private TournamentMapper mapper;
+    @Mock private AccessControlService accessControlService;
 
     @InjectMocks
     private TournamentTemplateService service;
@@ -55,7 +63,7 @@ class TournamentTemplateServiceTest {
             given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.of(entity));
             given(templateRepository.save(any())).willReturn(entity);
 
-            service.deleteTemplate(TEMPLATE_ID);
+            service.deleteTemplate(ORG_ID, TEMPLATE_ID, USER_ID);
 
             verify(templateRepository).save(any());
         }
@@ -65,7 +73,7 @@ class TournamentTemplateServiceTest {
         void テンプレート不存在() {
             given(templateRepository.findById(TEMPLATE_ID)).willReturn(Optional.empty());
 
-            assertThatThrownBy(() -> service.deleteTemplate(TEMPLATE_ID))
+            assertThatThrownBy(() -> service.deleteTemplate(ORG_ID, TEMPLATE_ID, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .extracting(e -> ((BusinessException) e).getErrorCode())
                     .isEqualTo(TournamentErrorCode.TEMPLATE_NOT_FOUND);

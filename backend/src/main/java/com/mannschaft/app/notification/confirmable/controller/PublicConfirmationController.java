@@ -2,6 +2,7 @@ package com.mannschaft.app.notification.confirmable.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.notification.confirmable.dto.PublicConfirmationResponse;
 import com.mannschaft.app.notification.confirmable.service.ConfirmableNotificationService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,8 +20,18 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * <p>メール・LINE などの外部チャネルから送信された確認URLのリンク先として機能する。
  * {@code /api/v1/public/**} は SecurityConfig で {@code permitAll()} 設定済み。</p>
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService} クラス付与・全 1 EP が該当）</b>:
+ * {@link #confirmByToken} は確認トークン（capability）で認可する。
+ * {@code ConfirmableNotificationService.java:347} → {@code ConfirmableNotificationConfirmService.java:103}
+ * の {@code recipientRepository.findByConfirmToken(confirmToken)} がトークン実在を検証し、
+ * 不在なら {@code INVALID_TOKEN} を throw して中断する。さらに除外済み（同 107-109 行）・
+ * 二重確認（同 112-114 行）・通知の ACTIVE 状態（同 119-120 行）を検証する。
+ * トークンは受信者 1 名に紐づくため、確認できるのはトークン所持者本人の受信レコードのみ。
+ * 認可根治戦役 Wave5 監査済。</p>
  */
 @Slf4j
+@AuthorizedInService
 @RestController
 @RequestMapping("/api/v1/public")
 @Tag(name = "公開確認API", description = "F04.9 トークン経由の確認通知確認（認証不要）")

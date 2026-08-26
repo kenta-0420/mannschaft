@@ -282,7 +282,7 @@ onMounted(() => load())
       </p>
       <template #footer>
         <Button
-          :label="$t('common.button.cancel')"
+          :label="$t('button.cancel')"
           severity="secondary"
           @click="dialogVisible = false"
         />

@@ -1,20 +1,19 @@
 import { test, expect } from '@playwright/test'
 import { waitForHydration } from '../helpers/wait'
 
+// BE ChannelResponse のネスト正準形
 const MOCK_CHANNELS = [
   {
     id: 1,
-    name: '全体チャット',
-    type: 'PUBLIC',
-    description: 'チーム全体の連絡用',
+    identity: { channelType: 'TEAM_PUBLIC', teamId: 10, organizationId: null },
+    meta: { name: '全体チャット', iconKey: null, description: 'チーム全体の連絡用' },
+    settings: { isPrivate: false, isInquiryChannel: false, isArchived: false, version: 1 },
+    lastMessage: { lastMessageAt: '2026-03-01T10:00:00Z', lastMessagePreview: 'こんにちは' },
+    source: { sourceType: null, sourceId: null },
+    audit: { createdBy: null, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-03-01T10:00:00Z' },
     memberCount: 10,
-    unreadCount: 2,
-    lastMessage: {
-      content: 'こんにちは',
-      senderName: 'テストユーザー',
-      sentAt: '2026-03-01T10:00:00Z',
-    },
-    createdAt: '2026-01-01T00:00:00Z',
+    dmPartner: null,
+    viewer: { unreadCount: 2, isMuted: false, isPinned: false, category: null, role: null },
   },
 ]
 

@@ -60,7 +60,7 @@ public class ProxyVoteMotionController {
     public ResponseEntity<ApiResponse<MotionResponse>> addMotion(
             @PathVariable Long id, @Valid @RequestBody MotionRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.of(sessionService.addMotion(id, request)));
+                .body(ApiResponse.of(sessionService.addMotion(id, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -70,7 +70,7 @@ public class ProxyVoteMotionController {
     @Operation(summary = "議案更新")
     public ResponseEntity<ApiResponse<MotionResponse>> updateMotion(
             @PathVariable Long motionId, @Valid @RequestBody MotionRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(sessionService.updateMotion(motionId, request)));
+        return ResponseEntity.ok(ApiResponse.of(sessionService.updateMotion(motionId, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -79,7 +79,7 @@ public class ProxyVoteMotionController {
     @DeleteMapping("/motions/{motionId}")
     @Operation(summary = "議案削除")
     public ResponseEntity<Void> deleteMotion(@PathVariable Long motionId) {
-        sessionService.deleteMotion(motionId);
+        sessionService.deleteMotion(motionId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -92,7 +92,8 @@ public class ProxyVoteMotionController {
             @PathVariable Long motionId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<CommentResponse> result = commentService.listComments(motionId, PageRequest.of(page, size));
+        Page<CommentResponse> result = commentService.listComments(
+                motionId, SecurityUtils.getCurrentUserId(), PageRequest.of(page, size));
         return ResponseEntity.ok(PagedResponse.of(result.getContent(),
                 new PagedResponse.PageMeta(result.getTotalElements(), page, size, result.getTotalPages())));
     }
@@ -126,7 +127,8 @@ public class ProxyVoteMotionController {
     @Operation(summary = "議案投票開始")
     public ResponseEntity<ApiResponse<MotionResponse>> startVote(
             @PathVariable Long motionId, @RequestBody(required = false) StartVoteRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(motionService.startVote(motionId, request)));
+        return ResponseEntity.ok(ApiResponse.of(
+                motionService.startVote(motionId, request, SecurityUtils.getCurrentUserId())));
     }
 
     /**
@@ -135,7 +137,8 @@ public class ProxyVoteMotionController {
     @PatchMapping("/motions/{motionId}/end-vote")
     @Operation(summary = "議案投票終了")
     public ResponseEntity<ApiResponse<EndVoteResponse>> endVote(@PathVariable Long motionId) {
-        return ResponseEntity.ok(ApiResponse.of(motionService.endVote(motionId)));
+        return ResponseEntity.ok(ApiResponse.of(
+                motionService.endVote(motionId, SecurityUtils.getCurrentUserId())));
     }
 
     /**

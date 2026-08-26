@@ -30,7 +30,6 @@ import static org.mockito.Mockito.verify;
 class PointCardUserSettingsServiceTest {
 
     private static final Long USER_ID = 42L;
-    private static final String CURRENT_VERSION = "v1.0.0";
 
     @Mock
     private PointCardUserSettingsRepository settingsRepository;
@@ -62,7 +61,7 @@ class PointCardUserSettingsServiceTest {
                 .userId(USER_ID)
                 .enabled(Boolean.TRUE)
                 .termsAcceptedAt(acceptedAt)
-                .termsVersion(CURRENT_VERSION)
+                .termsVersion(PointCardUserSettingsService.CURRENT_TERMS_VERSION)
                 .requireBiometricOnShow(Boolean.TRUE)
                 .build();
         given(settingsRepository.findByUserId(USER_ID)).willReturn(Optional.of(existing));
@@ -71,7 +70,7 @@ class PointCardUserSettingsServiceTest {
 
         assertThat(response.isEnabled()).isTrue();
         assertThat(response.termsAcceptedAt()).isEqualTo(acceptedAt);
-        assertThat(response.termsVersion()).isEqualTo(CURRENT_VERSION);
+        assertThat(response.termsVersion()).isEqualTo(PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         assertThat(response.requireBiometricOnShow()).isTrue();
     }
 
@@ -88,11 +87,11 @@ class PointCardUserSettingsServiceTest {
 
         OffsetDateTime before = OffsetDateTime.now().minusSeconds(1);
         UpdateUserSettingsRequest req =
-                new UpdateUserSettingsRequest(Boolean.TRUE, CURRENT_VERSION, Boolean.FALSE);
+                new UpdateUserSettingsRequest(Boolean.TRUE, PointCardUserSettingsService.CURRENT_TERMS_VERSION, Boolean.FALSE);
         PointCardUserSettingsResponse response = settingsService.updateSettings(USER_ID, req);
 
         assertThat(response.isEnabled()).isTrue();
-        assertThat(response.termsVersion()).isEqualTo(CURRENT_VERSION);
+        assertThat(response.termsVersion()).isEqualTo(PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         assertThat(response.termsAcceptedAt()).isNotNull();
         assertThat(response.termsAcceptedAt()).isAfter(before);
     }
@@ -105,7 +104,7 @@ class PointCardUserSettingsServiceTest {
                 .userId(USER_ID)
                 .enabled(Boolean.TRUE)
                 .termsAcceptedAt(existingAcceptedAt)
-                .termsVersion(CURRENT_VERSION)
+                .termsVersion(PointCardUserSettingsService.CURRENT_TERMS_VERSION)
                 .requireBiometricOnShow(Boolean.TRUE)
                 .build();
         given(settingsRepository.findByUserId(USER_ID)).willReturn(Optional.of(existing));
@@ -117,7 +116,7 @@ class PointCardUserSettingsServiceTest {
 
         assertThat(response.isEnabled()).isTrue();
         assertThat(response.termsAcceptedAt()).isEqualTo(existingAcceptedAt);
-        assertThat(response.termsVersion()).isEqualTo(CURRENT_VERSION);
+        assertThat(response.termsVersion()).isEqualTo(PointCardUserSettingsService.CURRENT_TERMS_VERSION);
         assertThat(response.requireBiometricOnShow()).isTrue();
     }
 
@@ -126,7 +125,7 @@ class PointCardUserSettingsServiceTest {
     void assertTermsAcceptedAndCurrent_throwsWhenNoSettings() {
         given(settingsRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> settingsService.assertTermsAcceptedAndCurrent(USER_ID, CURRENT_VERSION))
+        assertThatThrownBy(() -> settingsService.assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(PointCardErrorCode.WALLET_NOT_ENABLED);
@@ -139,11 +138,11 @@ class PointCardUserSettingsServiceTest {
                 .userId(USER_ID)
                 .enabled(Boolean.FALSE)
                 .termsAcceptedAt(OffsetDateTime.now())
-                .termsVersion(CURRENT_VERSION)
+                .termsVersion(PointCardUserSettingsService.CURRENT_TERMS_VERSION)
                 .build();
         given(settingsRepository.findByUserId(USER_ID)).willReturn(Optional.of(disabled));
 
-        assertThatThrownBy(() -> settingsService.assertTermsAcceptedAndCurrent(USER_ID, CURRENT_VERSION))
+        assertThatThrownBy(() -> settingsService.assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -158,7 +157,7 @@ class PointCardUserSettingsServiceTest {
                 .build();
         given(settingsRepository.findByUserId(USER_ID)).willReturn(Optional.of(oldVersion));
 
-        assertThatThrownBy(() -> settingsService.assertTermsAcceptedAndCurrent(USER_ID, CURRENT_VERSION))
+        assertThatThrownBy(() -> settingsService.assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION))
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(PointCardErrorCode.WALLET_NOT_ENABLED);
@@ -171,11 +170,11 @@ class PointCardUserSettingsServiceTest {
                 .userId(USER_ID)
                 .enabled(Boolean.TRUE)
                 .termsAcceptedAt(OffsetDateTime.now())
-                .termsVersion(CURRENT_VERSION)
+                .termsVersion(PointCardUserSettingsService.CURRENT_TERMS_VERSION)
                 .build();
         given(settingsRepository.findByUserId(USER_ID)).willReturn(Optional.of(ok));
 
         // 例外が投げられないこと
-        settingsService.assertTermsAcceptedAndCurrent(USER_ID, CURRENT_VERSION);
+        settingsService.assertTermsAcceptedAndCurrent(USER_ID, PointCardUserSettingsService.CURRENT_TERMS_VERSION);
     }
 }

@@ -82,12 +82,16 @@ function onExported() {
     </div>
 
     <template v-else-if="entry">
-      <!-- マスク中：本文非表示＋想起テスト導線 -->
-      <div v-if="entry.isMasked" class="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center dark:border-amber-700/50 dark:bg-amber-900/20">
-        <i class="pi pi-eye-slash mb-3 text-3xl text-amber-500" />
-        <p class="mb-1 font-medium">{{ entry.maskedHint?.themeTitle }}</p>
-        <p class="mb-4 text-sm text-surface-500">{{ t('reflection.entry.masked_notice') }}</p>
-        <Button :label="t('reflection.recall.heading')" icon="pi pi-bolt" @click="goRecall" />
+      <!-- マスク中：本文非表示＋想起テスト導線（AC-92） -->
+      <div v-if="entry.isMasked" class="rounded-xl border border-amber-200 bg-amber-50 p-6 dark:border-amber-700/50 dark:bg-amber-900/20">
+        <div class="mb-4 text-center">
+          <i class="pi pi-eye-slash mb-3 text-3xl text-amber-500" />
+          <p class="mb-1 font-medium">{{ entry.maskedHint?.themeTitle }}</p>
+          <p class="mb-4 text-sm text-surface-500">{{ t('reflection.entry.masked_notice') }}</p>
+          <Button :label="t('reflection.recall.heading')" icon="pi pi-bolt" @click="goRecall" />
+        </div>
+        <!-- OUTLINE 足場ラダー cue 一覧（AC-92） -->
+        <ReflectionMaskedOutlineHints :scaffold="entry.maskedHint?.outlineScaffold" />
       </div>
 
       <!-- 非マスク：本文＋編集／輸出 -->

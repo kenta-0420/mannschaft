@@ -97,6 +97,8 @@
     "template": {
       "label": "Template",
       "help": "Choose preset headings for your input",
+      "heading_selector_label": "Headings to include",
+      "heading_optional_badge": "optional",
       "NORMAL": "Normal",
       "DIARY": "Diary",
       "WORK": "Work reflection",
@@ -185,7 +187,13 @@
       "history_empty": "No recall history yet.",
       "not_masked": "This entry is not masked. You can edit it normally.",
       "back_to_entry": "Back to reflection",
-      "card_answer_placeholder": "答えを入力..."
+      "card_answer_placeholder": "答えを入力...",
+      "outline_scaffold": {
+        "panel_heading": "Scaffold Hints",
+        "main_theme_label": "Theme",
+        "level_note_partial": "Only the first few characters of each heading are shown. Try to recall the rest.",
+        "aria_panel": "OUTLINE scaffold hints panel"
+      }
     },
     "export": {
       "button": "Export to blog",

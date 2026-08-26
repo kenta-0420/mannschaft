@@ -24,14 +24,16 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Predicate;
 
 /**
  * F13 Phase 5-b ストレージパス移行バッチサービス。
@@ -65,6 +67,9 @@ import java.util.Optional;
 public class StoragePathMigrationBatchService {
 
     private static final int PAGE_SIZE = 500;
+
+    /** ステータス集計（{@link #getStatus}）走査の暴走を防ぐ最大ページ数。 */
+    private static final int STATUS_MAX_PAGES = 2000;
 
     private final R2StorageService r2StorageService;
     private final StorageMigrationErrorRepository errorRepository;
@@ -109,7 +114,9 @@ public class StoragePathMigrationBatchService {
         int pageNum = 0;
         Page<ChatMessageAttachmentEntity> page;
         do {
-            Pageable pageable = PageRequest.of(pageNum, PAGE_SIZE);
+            // id 昇順を明示: 本ループは走査対象テーブル自身の行（fileKey 等）を更新するため、
+            // ORDER BY 省略の暗黙順序に頼るとページ境界での取りこぼし・重複のリスクがある。
+            Pageable pageable = PageRequest.of(pageNum, PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id"));
             page = chatMessageAttachmentRepository.findAll(pageable);
             for (ChatMessageAttachmentEntity attachment : page.getContent()) {
                 if (!isOldChatPath(attachment.getFileKey())) {
@@ -142,7 +149,9 @@ public class StoragePathMigrationBatchService {
         int pageNum = 0;
         Page<SharedFileEntity> page;
         do {
-            Pageable pageable = PageRequest.of(pageNum, PAGE_SIZE);
+            // id 昇順を明示: 本ループは走査対象テーブル自身の行（fileKey 等）を更新するため、
+            // ORDER BY 省略の暗黙順序に頼るとページ境界での取りこぼし・重複のリスクがある。
+            Pageable pageable = PageRequest.of(pageNum, PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id"));
             page = sharedFileRepository.findAll(pageable);
             for (SharedFileEntity file : page.getContent()) {
                 if (!isOldFilesPath(file.getFileKey())) {
@@ -175,7 +184,9 @@ public class StoragePathMigrationBatchService {
         int pageNum = 0;
         Page<CirculationAttachmentEntity> page;
         do {
-            Pageable pageable = PageRequest.of(pageNum, PAGE_SIZE);
+            // id 昇順を明示: 本ループは走査対象テーブル自身の行（fileKey 等）を更新するため、
+            // ORDER BY 省略の暗黙順序に頼るとページ境界での取りこぼし・重複のリスクがある。
+            Pageable pageable = PageRequest.of(pageNum, PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id"));
             page = circulationAttachmentRepository.findAll(pageable);
             for (CirculationAttachmentEntity attachment : page.getContent()) {
                 if (!isOldCirculationPath(attachment.getFileKey())) {
@@ -208,7 +219,9 @@ public class StoragePathMigrationBatchService {
         int pageNum = 0;
         Page<ScheduleMediaUploadEntity> page;
         do {
-            Pageable pageable = PageRequest.of(pageNum, PAGE_SIZE);
+            // id 昇順を明示: 本ループは走査対象テーブル自身の行（fileKey 等）を更新するため、
+            // ORDER BY 省略の暗黙順序に頼るとページ境界での取りこぼし・重複のリスクがある。
+            Pageable pageable = PageRequest.of(pageNum, PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id"));
             page = scheduleMediaUploadRepository.findAll(pageable);
             for (ScheduleMediaUploadEntity media : page.getContent()) {
                 if (!isOldSchedulesPath(media.getR2Key())) {
@@ -241,7 +254,9 @@ public class StoragePathMigrationBatchService {
         int pageNum = 0;
         Page<TimetableSlotUserNoteAttachmentEntity> page;
         do {
-            Pageable pageable = PageRequest.of(pageNum, PAGE_SIZE);
+            // id 昇順を明示: 本ループは走査対象テーブル自身の行（fileKey 等）を更新するため、
+            // ORDER BY 省略の暗黙順序に頼るとページ境界での取りこぼし・重複のリスクがある。
+            Pageable pageable = PageRequest.of(pageNum, PAGE_SIZE, Sort.by(Sort.Direction.ASC, "id"));
             page = timetableNoteAttachmentRepository.findAll(pageable);
             for (TimetableSlotUserNoteAttachmentEntity attachment : page.getContent()) {
                 if (!isOldTimetableNotePath(attachment.getR2ObjectKey())) {
@@ -618,67 +633,78 @@ public class StoragePathMigrationBatchService {
     // ==================== ステータス集計ヘルパー ====================
 
     private void countChatStatus(Map<String, Long> total, Map<String, Long> migrated, Map<String, Long> pending) {
-        long[] counts = countByOldPath(chatMessageAttachmentRepository.findAll()
-                .stream().map(ChatMessageAttachmentEntity::getFileKey).toList(),
-                "chat/");
+        long[] counts = countByOldPathPaged(chatMessageAttachmentRepository::findAll,
+                ChatMessageAttachmentEntity::getFileKey, this::isOldChatPath);
         total.put("CHAT", counts[0]);
         pending.put("CHAT", counts[1]);
         migrated.put("CHAT", counts[0] - counts[1]);
     }
 
     private void countSharedFilesStatus(Map<String, Long> total, Map<String, Long> migrated, Map<String, Long> pending) {
-        long[] counts = countByOldPath(sharedFileRepository.findAll()
-                .stream().map(SharedFileEntity::getFileKey).toList(),
-                "files/");
+        long[] counts = countByOldPathPaged(sharedFileRepository::findAll,
+                SharedFileEntity::getFileKey, this::isOldFilesPath);
         total.put("FILE_SHARING", counts[0]);
         pending.put("FILE_SHARING", counts[1]);
         migrated.put("FILE_SHARING", counts[0] - counts[1]);
     }
 
     private void countCirculationStatus(Map<String, Long> total, Map<String, Long> migrated, Map<String, Long> pending) {
-        List<String> keys = circulationAttachmentRepository.findAll()
-                .stream().map(CirculationAttachmentEntity::getFileKey).toList();
-        long totalCount = keys.size();
-        long pendingCount = keys.stream().filter(this::isOldCirculationPath).count();
-        total.put("CIRCULATION", totalCount);
-        pending.put("CIRCULATION", pendingCount);
-        migrated.put("CIRCULATION", totalCount - pendingCount);
+        long[] counts = countByOldPathPaged(circulationAttachmentRepository::findAll,
+                CirculationAttachmentEntity::getFileKey, this::isOldCirculationPath);
+        total.put("CIRCULATION", counts[0]);
+        pending.put("CIRCULATION", counts[1]);
+        migrated.put("CIRCULATION", counts[0] - counts[1]);
     }
 
     private void countScheduleMediaStatus(Map<String, Long> total, Map<String, Long> migrated, Map<String, Long> pending) {
-        List<String> keys = scheduleMediaUploadRepository.findAll()
-                .stream().map(ScheduleMediaUploadEntity::getR2Key).toList();
-        long totalCount = keys.size();
-        long pendingCount = keys.stream().filter(this::isOldSchedulesPath).count();
-        total.put("SCHEDULE_MEDIA", totalCount);
-        pending.put("SCHEDULE_MEDIA", pendingCount);
-        migrated.put("SCHEDULE_MEDIA", totalCount - pendingCount);
+        long[] counts = countByOldPathPaged(scheduleMediaUploadRepository::findAll,
+                ScheduleMediaUploadEntity::getR2Key, this::isOldSchedulesPath);
+        total.put("SCHEDULE_MEDIA", counts[0]);
+        pending.put("SCHEDULE_MEDIA", counts[1]);
+        migrated.put("SCHEDULE_MEDIA", counts[0] - counts[1]);
     }
 
     private void countTimetableNotesStatus(Map<String, Long> total, Map<String, Long> migrated, Map<String, Long> pending) {
-        List<String> keys = timetableNoteAttachmentRepository.findAll()
-                .stream().map(TimetableSlotUserNoteAttachmentEntity::getR2ObjectKey).toList();
-        long totalCount = keys.size();
-        long pendingCount = keys.stream().filter(this::isOldTimetableNotePath).count();
-        total.put("PERSONAL_TIMETABLE_NOTES", totalCount);
-        pending.put("PERSONAL_TIMETABLE_NOTES", pendingCount);
-        migrated.put("PERSONAL_TIMETABLE_NOTES", totalCount - pendingCount);
+        long[] counts = countByOldPathPaged(timetableNoteAttachmentRepository::findAll,
+                TimetableSlotUserNoteAttachmentEntity::getR2ObjectKey, this::isOldTimetableNotePath);
+        total.put("PERSONAL_TIMETABLE_NOTES", counts[0]);
+        pending.put("PERSONAL_TIMETABLE_NOTES", counts[1]);
+        migrated.put("PERSONAL_TIMETABLE_NOTES", counts[0] - counts[1]);
     }
 
     /**
-     * 旧パスと新パスの件数を集計する汎用ヘルパー。
+     * 旧パスと新パスの件数を、テーブル全体を一括メモリ展開せずページング走査して集計する汎用ヘルパー。
      *
-     * @param keys   R2キーの一覧
-     * @param prefix フィーチャープレフィックス（例: "chat/"）
+     * <p>本メソッドは読み取り専用の集計であり、走査中に対象行を更新・削除しないため
+     * 母集合は縮まない。{@code id} 昇順で安定ソートした通常の（オフセット）ページングで
+     * カーソルを前進させても取りこぼしは起きない。</p>
+     *
+     * @param pageFetcher  {@code Pageable} を受けて {@code Page<T>} を返す取得関数（各リポジトリの {@code findAll}）
+     * @param keyExtractor エンティティから R2 キーを取り出す関数
+     * @param isOldPath    R2 キーが旧パスかどうかの判定関数
      * @return [総件数, 旧パス件数] の配列
      */
-    private long[] countByOldPath(List<String> keys, String prefix) {
-        long totalCount = keys.size();
-        long oldCount;
-        if ("chat/".equals(prefix)) {
-            oldCount = keys.stream().filter(this::isOldChatPath).count();
-        } else {
-            oldCount = keys.stream().filter(this::isOldFilesPath).count();
+    private <T> long[] countByOldPathPaged(Function<Pageable, Page<T>> pageFetcher,
+                                            Function<T, String> keyExtractor,
+                                            Predicate<String> isOldPath) {
+        long totalCount = 0L;
+        long oldCount = 0L;
+        Sort sort = Sort.by(Sort.Direction.ASC, "id");
+
+        for (int pageNum = 0; pageNum < STATUS_MAX_PAGES; pageNum++) {
+            Page<T> page = pageFetcher.apply(PageRequest.of(pageNum, PAGE_SIZE, sort));
+            for (T entity : page.getContent()) {
+                totalCount++;
+                if (isOldPath.test(keyExtractor.apply(entity))) {
+                    oldCount++;
+                }
+            }
+            if (!page.hasNext()) {
+                break;
+            }
+            if (pageNum == STATUS_MAX_PAGES - 1) {
+                log.warn("ストレージ移行ステータス集計: STATUS_MAX_PAGES={} に到達したため打ち切り", STATUS_MAX_PAGES);
+            }
         }
         return new long[]{totalCount, oldCount};
     }

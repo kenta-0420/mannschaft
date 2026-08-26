@@ -12,6 +12,8 @@ export interface ActivityRecordResponse {
   participantCount: number
   customFields: Array<{ fieldId: number; fieldName: string; fieldType: string; value: string | null }>
   isPublic: boolean
+  /** 活動記録のステータス。BE 追加（隊乙 #2143）で DRAFT / PUBLISHED の2値 */
+  status?: 'DRAFT' | 'PUBLISHED'
   createdBy: { id: number; displayName: string } | null
   createdAt: string
   updatedAt: string
@@ -21,7 +23,7 @@ export interface ActivityRecordResponse {
  * 活動記録のカスタムフィールド型。
  * バックエンド {@code com.mannschaft.app.activity.FieldType} と一致させる。
  */
-export type ActivityFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT' | 'CHECKBOX' | 'TEXTAREA'
+export type ActivityFieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'DATETIME' | 'SELECT' | 'CHECKBOX' | 'TEXTAREA'
 
 /**
  * 活動テンプレートのフィールド定義。
@@ -104,39 +106,57 @@ export interface ActivityStats {
 }
 
 /**
- * 公開活動記録レスポンス
- * GET /api/v1/public/activities/{id} のレスポンス型（認証不要・PUBLIC のみ）
- */
-/**
- * 公開活動記録 API レスポンス
- * GET /api/v1/public/activities/{id} が返す ActivityResultEntity のフィールドに準拠する。
+ * 公開スコープ参照（チーム / 組織）。
  *
- * NOTE: バックエンドは現在 ActivityResultEntity をそのまま返している。
- * 将来的には専用 DTO（participantCount・customFields・teamName 等）を返すエンドポイントに移行する予定。
+ * BE {@code PublicScopeRef} に対応する。公開経路ではスコープの生 ID を直接返さず、
+ * 種別・ID・表示名をまとめたこの参照経由でのみ露出する。
+ */
+export interface PublicScopeRef {
+  scopeType: string
+  scopeId: number
+  scopeName: string
+}
+
+/**
+ * 公開活動記録 API レスポンス（F06.4・認証不要）。
+ *
+ * 対象エンドポイント:
+ * - GET /api/v1/public/activities/{id}
+ * - GET /api/v1/public/teams/{teamId}/activities/{id}
+ * - GET /api/v1/public/organizations/{orgId}/activities/{id}
+ *
+ * BE の公開専用 DTO {@code PublicActivityDetail}（および一覧用 {@code PublicActivitySummary}）に
+ * 1:1 で対応する。匿名公開のため軍議で御裁可された **8 項目のみ** を返し、
+ * `location` / `fieldValues` / `attachments` / `createdBy` / `visibility` / `status` /
+ * `templateId` / `venueId` / `scheduleId` / `updatedAt` は **禁則フィールドとして一切返らない**。
+ * ここに項目を足す前に、必ず BE 側 DTO と「未認証の誰にでも見せてよいか」を再審議すること。
+ *
+ * NOTE: BE は `@JsonInclude(NON_NULL)` を付けないため、値が未設定でも
+ * キー自体は常に存在し `null` が入る（契約テスト ActivityPublicContractIT AC-23 / AC-24）。
  */
 export interface PublicActivityResponse {
   id: number
-  scopeType: 'TEAM' | 'ORGANIZATION'
-  scopeId: string
-  templateId: number | null
   title: string
   activityDate: string
+  /** 開始時刻（未設定なら null） */
   activityTimeStart: string | null
+  /** 終了時刻（未設定なら null） */
   activityTimeEnd: string | null
-  location: string | null
-  venueId: number | null
+  /** 説明（未設定なら null） */
   description: string | null
-  fieldValues: string
-  attachments: string | null
-  visibility: 'PUBLIC' | 'MEMBERS_ONLY' | 'PRIVATE'
-  scheduleId: number | null
-  createdBy: number | null
+  scopeRef: PublicScopeRef
   createdAt: string
-  updatedAt: string
-  // 将来拡張フィールド（現在はバックエンドから返らない）
-  participantCount?: number
-  customFields?: Array<{ fieldId: number; fieldName: string; fieldType: string; value: string | null }>
-  imageUrl?: string | null
-  organizationName?: string | null
-  teamName?: string | null
 }
+
+/**
+ * 公開活動記録 一覧レスポンス（BE {@code PublicActivitySummary} に対応）。
+ *
+ * 対象エンドポイント:
+ * - GET /api/v1/public/teams/{teamId}/activities
+ * - GET /api/v1/public/organizations/{orgId}/activities
+ *
+ * 現状は詳細と同一の 8 項目だが、BE 側で別型に分かれている（一覧だけ項目を削る／
+ * 詳細だけ足す変更が互いに波及しないようにするため）ので FE も別名で扱う。
+ * **一覧は詳細より広い項目を持ってはならない。**
+ */
+export type PublicActivitySummaryResponse = PublicActivityResponse

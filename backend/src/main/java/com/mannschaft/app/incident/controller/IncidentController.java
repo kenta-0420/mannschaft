@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.security.AuthorizedByPathConfig;
 
 import java.util.List;
 
@@ -69,7 +70,8 @@ public class IncidentController {
      */
     @GetMapping("/{id}")
     public ApiResponse<IncidentResponse> getIncident(@PathVariable Long id) {
-        IncidentResponse response = incidentService.getIncident(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        IncidentResponse response = incidentService.getIncident(id, userId);
         return ApiResponse.of(response);
     }
 
@@ -84,9 +86,10 @@ public class IncidentController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        Long userId = SecurityUtils.getCurrentUserId();
         Pageable pageable = PageRequest.of(page, size);
         Page<IncidentSummaryResponse> result =
-                incidentService.listIncidents(scopeType, scopeId, status, pageable);
+                incidentService.listIncidents(scopeType, scopeId, status, pageable, userId);
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(),
                 result.getNumber(),
@@ -130,8 +133,9 @@ public class IncidentController {
     public ApiResponse<IncidentResponse> assignIncident(
             @PathVariable Long id,
             @Validated @RequestBody AssignIncidentRequest request) {
+        Long userId = SecurityUtils.getCurrentUserId();
         IncidentResponse response =
-                incidentService.assignIncident(id, request.assigneeId(), request.assigneeType());
+                incidentService.assignIncident(id, request.assigneeId(), request.assigneeType(), userId);
         return ApiResponse.of(response);
     }
 
@@ -141,7 +145,8 @@ public class IncidentController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteIncident(@PathVariable Long id) {
-        incidentService.deleteIncident(id);
+        Long userId = SecurityUtils.getCurrentUserId();
+        incidentService.deleteIncident(id, userId);
         return ResponseEntity.noContent().build();
     }
 
@@ -149,6 +154,10 @@ public class IncidentController {
      * インシデントのコメント一覧を取得する。
      * TODO: コメント機能実装後に本実装に差し替えること
      */
+    // SecurityConfig の anyRequest().authenticated() で認証必須。
+    // コメント機能は未実装のため常に固定の空リストを返し、id 値に関わらずユーザー固有データを
+    // 一切参照しない（本実装差し替え時は id の所有権検証を追加すること）。
+    @AuthorizedByPathConfig("anyRequest().authenticated()")
     @GetMapping("/{id}/comments")
     public ResponseEntity<ApiResponse<List<Object>>> listComments(@PathVariable Long id) {
         return ResponseEntity.ok(ApiResponse.of(List.of()));

@@ -98,11 +98,13 @@ async function mockMePermissions(
 
 /** 詳細ページ周辺の「叩かれうるが本テストで関係しない」API を空応答で潰す。 */
 async function mockSideApis(page: Page): Promise<void> {
+  // 実 BE wire 形（行配列）。督促テストは作成者・ADMIN 視点で結果可視は
+  // isCreator/isAdmin 短絡のため hasResponded 非依存だが、形は wire に統一する。
   await page.route('**/api/v1/surveys/*/responses/me', async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ data: { answers: [] } }),
+      body: JSON.stringify({ data: [] }),
     })
   })
 }
@@ -158,7 +160,7 @@ test.describe('SURVEY-003: 督促送信（詳細ページ → 回答者セクシ
   test('SURVEY-003-1: 成功 — showSuccess + 一覧再取得', async ({ page }) => {
     const survey = buildPublishedSurveyForAdmin()
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true) },
       respondentsById: { [SURVEY_ID]: RESPONDENTS },
       remindResponse: {
         ok: true,
@@ -200,7 +202,7 @@ test.describe('SURVEY-003: 督促送信（詳細ページ → 回答者セクシ
   test('SURVEY-003-2: クールダウン中 — showError + 一覧不変', async ({ page }) => {
     const survey = buildPublishedSurveyForAdmin()
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true) },
     })
 
     // GET /respondents 回数を計測しつつ常に同じ一覧を返す。
@@ -258,7 +260,7 @@ test.describe('SURVEY-003: 督促送信（詳細ページ → 回答者セクシ
   test('SURVEY-003-3: 上限超過 — showError + 一覧不変', async ({ page }) => {
     const survey = buildPublishedSurveyForAdmin()
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true) },
     })
 
     let respondentsGetCount = 0
@@ -328,7 +330,7 @@ test.describe('SURVEY-003-4: 詳細ページで回答者セクション開閉', 
 
     const survey = buildPublishedSurveyForAdmin()
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true) },
       respondentsById: { [SURVEY_ID]: RESPONDENTS },
     })
 
@@ -375,7 +377,7 @@ test.describe('SURVEY-003-4: 詳細ページで回答者セクション開閉', 
       createdBy: { id: CREATOR_ID, displayName: 'creator-user' },
     })
     await mockSurveyApi(page, {
-      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })]) },
+      detailById: { [SURVEY_ID]: buildSurveyDetail(survey, [buildQuestion({ id: 1, questionText: 'Q1', questionType: 'SINGLE_CHOICE' })], true) },
       respondentsById: { [SURVEY_ID]: RESPONDENTS },
     })
 

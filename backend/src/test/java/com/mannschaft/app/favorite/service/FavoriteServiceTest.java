@@ -1,6 +1,8 @@
 package com.mannschaft.app.favorite.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
+import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.favorite.FavoriteEntityType;
 import com.mannschaft.app.favorite.FavoriteErrorCode;
 import com.mannschaft.app.favorite.dto.FavoriteCheckResultDto;
@@ -32,6 +34,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -63,10 +66,22 @@ class FavoriteServiceTest {
     private static final Long OTHER_USER_ID = 2L;
     private static final UUID FAVORITE_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
+    /**
+     * 認可ゲートは実物を使う（判定対象のリポジトリと F00 可視性チェッカーはモックを流用する）。
+     * お気に入り行の所有者判定は {@code userFavoriteRepository.findById} のままなので、
+     * 各テストのスタブはそのまま認可判定に効く。
+     */
+    @Mock
+    private ContentVisibilityChecker contentVisibilityChecker;
+
     @BeforeEach
     void setUp() {
         given(teamResolver.entityType()).willReturn(FavoriteEntityType.TEAM);
-        favoriteService = new FavoriteService(userFavoriteRepository, favoriteResolverService, List.of(teamResolver));
+        // 既定は「対象が閲覧可能」。閲覧不可のケースは個別テストで false に上書きする。
+        given(contentVisibilityChecker.canView(any(), any(), any())).willReturn(true);
+        favoriteService = new FavoriteService(userFavoriteRepository, favoriteResolverService,
+                List.of(teamResolver),
+                new FavoriteAccessGuard(userFavoriteRepository, contentVisibilityChecker));
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -211,6 +226,46 @@ class FavoriteServiceTest {
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("FAV_003"));
+        }
+
+        @Test
+        @DisplayName("認可: 閲覧できないチームは FAV_003（404秘匿）で登録できず、上限判定にも進まない")
+        void addFavorite_閲覧不可のチーム_FAV003をスロー() {
+            String entityId = "1";
+            given(contentVisibilityChecker.canView(ReferenceType.TEAM, 1L, USER_ID)).willReturn(false);
+
+            assertThatThrownBy(() -> favoriteService.addFavorite(USER_ID, FavoriteEntityType.TEAM, entityId))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("FAV_003"));
+
+            // 認可は業務検証より前。件数上限の判定にも保存にも到達しない。
+            verify(userFavoriteRepository, never()).countByUserId(any());
+            verify(userFavoriteRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("認可: 閲覧できる組織は登録できる（正常系の非回帰）")
+        void addFavorite_閲覧可能な組織_登録できる() {
+            String entityId = "5";
+            given(contentVisibilityChecker.canView(ReferenceType.ORGANIZATION, 5L, USER_ID)).willReturn(true);
+            FavoriteEntityMetaDto meta = availableMeta(entityId, FavoriteEntityType.ORGANIZATION);
+            FavoriteEntityResolver orgResolver = org.mockito.Mockito.mock(FavoriteEntityResolver.class);
+            given(orgResolver.entityType()).willReturn(FavoriteEntityType.ORGANIZATION);
+            given(orgResolver.resolveAll(eq(List.of(entityId)), eq(USER_ID)))
+                    .willReturn(Map.of(entityId, meta));
+            FavoriteService serviceWithOrg = new FavoriteService(userFavoriteRepository,
+                    favoriteResolverService, List.of(teamResolver, orgResolver),
+                    new FavoriteAccessGuard(userFavoriteRepository, contentVisibilityChecker));
+            given(userFavoriteRepository.countByUserId(USER_ID)).willReturn(0L);
+            given(userFavoriteRepository.save(any()))
+                    .willReturn(createEntity(FavoriteEntityType.ORGANIZATION, entityId, 0));
+
+            FavoriteItemDto result =
+                    serviceWithOrg.addFavorite(USER_ID, FavoriteEntityType.ORGANIZATION, entityId);
+
+            assertThat(result).isNotNull();
+            assertThat(result.available()).isTrue();
         }
 
         @Test

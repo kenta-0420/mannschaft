@@ -1,5 +1,6 @@
 package com.mannschaft.app.forms;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.forms.dto.CreateFormTemplateRequest;
 import com.mannschaft.app.forms.dto.FormFieldRequest;
@@ -44,6 +45,9 @@ class FormTemplateServiceTest {
 
     @Mock
     private FormMapper formMapper;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private FormTemplateService formTemplateService;
@@ -94,7 +98,7 @@ class FormTemplateServiceTest {
             given(formMapper.toTemplateResponseWithFields(entity, List.of())).willReturn(response);
 
             // When
-            formTemplateService.publishTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID);
+            formTemplateService.publishTemplate(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(FormStatus.PUBLISHED);
@@ -110,7 +114,7 @@ class FormTemplateServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> formTemplateService.publishTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID))
+            assertThatThrownBy(() -> formTemplateService.publishTemplate(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FormErrorCode.INVALID_TEMPLATE_STATUS));
@@ -127,7 +131,7 @@ class FormTemplateServiceTest {
             given(fieldRepository.countByTemplateId(TEMPLATE_ID)).willReturn(0L);
 
             // When & Then
-            assertThatThrownBy(() -> formTemplateService.publishTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID))
+            assertThatThrownBy(() -> formTemplateService.publishTemplate(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FormErrorCode.EMPTY_FIELDS));
@@ -162,7 +166,7 @@ class FormTemplateServiceTest {
             given(formMapper.toTemplateResponseWithFields(entity, List.of())).willReturn(response);
 
             // When
-            formTemplateService.closeTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID);
+            formTemplateService.closeTemplate(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(FormStatus.CLOSED);
@@ -178,7 +182,7 @@ class FormTemplateServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> formTemplateService.closeTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID))
+            assertThatThrownBy(() -> formTemplateService.closeTemplate(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FormErrorCode.INVALID_TEMPLATE_STATUS));
@@ -198,7 +202,7 @@ class FormTemplateServiceTest {
                     .willReturn(Optional.of(entity));
 
             // When
-            formTemplateService.deleteTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID);
+            formTemplateService.deleteTemplate(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID);
 
             // Then
             assertThat(entity.getDeletedAt()).isNotNull();
@@ -241,7 +245,7 @@ class FormTemplateServiceTest {
                     null, null, null, null, null, null);
 
             // When
-            formTemplateService.updateTemplate(SCOPE_TYPE, SCOPE_ID, TEMPLATE_ID, request);
+            formTemplateService.updateTemplate(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID, request);
 
             // Then: save に渡るのは findById が返した同一インスタンスで、id・@Version が保持される（=UPDATE）
             ArgumentCaptor<FormTemplateEntity> captor =

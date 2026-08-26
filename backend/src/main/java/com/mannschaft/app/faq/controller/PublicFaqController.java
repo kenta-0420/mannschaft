@@ -1,5 +1,6 @@
 package com.mannschaft.app.faq.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.faq.dto.PublicFaqResponse;
 import com.mannschaft.app.faq.service.PublicFaqQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -31,7 +32,28 @@ import java.util.List;
  * <p>SecurityConfig での permitAll 登録（GET 2 パス）・
  * {@link com.mannschaft.app.publicview.filter.PublicApiRateLimitFilter} のレート制限対象登録は
  * 本フェーズで追加済み。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 2 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/teams/&#42;/faqs"
+ * / "/api/v1/public/organizations/&#42;/faqs").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F21.1 §5.5 公開 FAQ。<b>回答済みの FAQ のみ</b>を返す公開情報で、運営者が公開を意図して掲載したコンテンツに限られる。
+ * レート制限あり。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/teams/*/faqs",
+        "/api/v1/public/organizations/*/faqs"
+})
 @RestController
 @RequestMapping("/api/v1/public")
 @Tag(name = "公開FAQ API (F21.1 §5.5)")

@@ -17,7 +17,9 @@ import com.mannschaft.app.schedule.AttendanceStatus;
 import com.mannschaft.app.schedule.CommentOption;
 import com.mannschaft.app.schedule.MinResponseRole;
 import com.mannschaft.app.schedule.ScheduleErrorCode;
+import com.mannschaft.app.schedule.ScheduleTargetMode;
 import com.mannschaft.app.schedule.dto.AttendanceRequest;
+import com.mannschaft.app.schedule.dto.AttendanceSolicitationSettings;
 import com.mannschaft.app.schedule.dto.AttendanceResponse;
 import com.mannschaft.app.schedule.dto.AttendanceStatsResponse;
 import com.mannschaft.app.schedule.dto.AttendanceSummaryResponse;
@@ -29,6 +31,7 @@ import com.mannschaft.app.schedule.entity.ScheduleEntity;
 import com.mannschaft.app.schedule.event.AttendanceRespondedEvent;
 import com.mannschaft.app.schedule.repository.ScheduleAttendanceRepository;
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
+import com.mannschaft.app.schedule.repository.ScheduleTargetRepository;
 import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import lombok.RequiredArgsConstructor;
@@ -79,6 +82,7 @@ public class ScheduleAttendanceService {
     private final ScheduleDelegationService scheduleDelegationService;
     private final NotificationService notificationService;
     private final NotificationDispatchService notificationDispatchService;
+    private final ScheduleTargetRepository scheduleTargetRepository;
 
     /**
      * (B) 組織→参加チーム配信 案C フェーズA: 組織スコープ配信の宛先解決窓口。
@@ -151,11 +155,17 @@ public class ScheduleAttendanceService {
     /**
      * スケジュールの出欠一覧を取得する。
      *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: 個人名付き出欠一覧の漏洩を防ぐため、当該スケジュールが
+     * 属する scope（TEAM/ORGANIZATION）のメンバーのみ閲覧可（{@code checkMembership} 水準）。
+     * entity 由来 scope で判定するため、URL の teamId/orgId と実際のスケジュールの scope が
+     * 一致しない BOLA 越境も防ぐ。</p>
+     *
      * @param scheduleId スケジュールID
+     * @param userId     閲覧ユーザーID
      * @return 出欠回答一覧
      */
-    public List<AttendanceResponse> getAttendances(Long scheduleId) {
-        scheduleService.getSchedule(scheduleId);
+    public List<AttendanceResponse> getAttendances(Long scheduleId, Long userId) {
+        scheduleService.checkScopeViewAccess(scheduleId, userId);
         return attendanceRepository.findByScheduleIdOrderByUserIdAsc(scheduleId).stream()
                 .map(this::toAttendanceResponse)
                 .toList();
@@ -164,10 +174,15 @@ public class ScheduleAttendanceService {
     /**
      * 出欠集計サマリーを取得する。ATTENDING/PARTIAL/ABSENT/UNDECIDED の各件数を返す。
      *
+     * <p><b>認可（認可根治 Wave6）</b>: {@code getAttendances} と同じく entity 由来 scope
+     * （TEAM/ORGANIZATION）のメンバーのみ閲覧可（{@code checkScopeViewAccess} 水準）。</p>
+     *
      * @param scheduleId スケジュールID
+     * @param userId     閲覧ユーザーID
      * @return 出欠サマリー
      */
-    public AttendanceSummaryResponse getAttendanceSummary(Long scheduleId) {
+    public AttendanceSummaryResponse getAttendanceSummary(Long scheduleId, Long userId) {
+        scheduleService.checkScopeViewAccess(scheduleId, userId);
         scheduleService.getSchedule(scheduleId);
 
         Map<AttendanceStatus, Integer> countMap = new HashMap<>();
@@ -352,11 +367,17 @@ public class ScheduleAttendanceService {
     /**
      * 管理者による出欠一括更新を行う。
      *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: 「管理者用」の doc どおり、当該スケジュールが属する
+     * scope（TEAM/ORGANIZATION）の ADMIN/DEPUTY_ADMIN のみ実行可（{@code checkAdminOrAbove} 水準・
+     * entity 由来 scope）。従来は認可ゼロで一般メンバーも一括上書きできていた欠陥を是正。</p>
+     *
      * @param scheduleId スケジュールID
      * @param req        一括出欠リクエスト
+     * @param userId     操作ユーザーID
      */
     @Transactional
-    public void bulkUpdateAttendances(Long scheduleId, BulkAttendanceRequest req) {
+    public void bulkUpdateAttendances(Long scheduleId, BulkAttendanceRequest req, Long userId) {
+        scheduleService.checkScopeAdminAccess(scheduleId, userId);
         ScheduleEntity schedule = scheduleService.getSchedule(scheduleId);
         validateAttendanceRequired(schedule);
 
@@ -378,11 +399,14 @@ public class ScheduleAttendanceService {
     /**
      * 出欠一覧をCSV文字列として出力する。
      *
+     * <p><b>認可（認可根治 Wave3-B6）</b>: getAttendances と同じく entity 由来 scope のメンバーのみ。</p>
+     *
      * @param scheduleId スケジュールID
+     * @param userId     閲覧ユーザーID
      * @return CSV文字列
      */
-    public String exportAttendancesCsv(Long scheduleId) {
-        scheduleService.getSchedule(scheduleId);
+    public String exportAttendancesCsv(Long scheduleId, Long userId) {
+        scheduleService.checkScopeViewAccess(scheduleId, userId);
         List<ScheduleAttendanceEntity> attendances = attendanceRepository
                 .findByScheduleIdOrderByUserIdAsc(scheduleId);
 
@@ -504,13 +528,36 @@ public class ScheduleAttendanceService {
      *
      * @param scheduleId 対象予定 schedules.id
      */
+    @Transactional
+    public void openAttendanceSolicitation(Long scheduleId) {
+        openAttendanceSolicitation(scheduleId, AttendanceSolicitationSettings.NONE);
+    }
+
+    /**
+     * 出欠設定を適用しつつ出欠募集を開始する（機能55 / Issue #2508 欠陥B）。
+     *
+     * <p>予約出欠募集（{@code payload_json}）でユーザーが指定した回答締切・コメント要否・
+     * 最低応答ロールを、募集開始のタイミングで予定本体へ適用してから募集を行う。
+     * {@code settings} の各項目は <b>null = 未指定</b> で、その場合は予定の既存値を保つ。</p>
+     *
+     * <p><b>回帰防止</b>: 以前は materialize バッチが {@code payload_json} を一度も読まず、
+     * ユーザーが指定した設定が保存されるだけで一切適用されなかった。設定を引数で受け取ることで
+     * 「経路の途中で黙って捨てられる」ことを構造的に防ぐ。</p>
+     *
+     * <p>設定の適用は冪等性ガード（既に出欠レコードがある場合のスキップ）よりも <b>前</b> に行う。
+     * 募集が既に開始済みでも、予約された時刻に指定どおりの締切へ更新されるべきだからである。</p>
+     *
+     * @param scheduleId 対象予定 schedules.id
+     * @param settings   募集開始時に適用する出欠設定（null 不可。設定なしは
+     *                   {@link AttendanceSolicitationSettings#NONE}）
+     */
     // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。機能55: 2026-06-01
     // NOTE: (B) 組織→参加チーム配信 案C フェーズAで、ORGANIZATION スコープの宛先解決のみ
     //       organization ドメインの窓口 OrganizationMembershipService.resolveOrgDistributionUserIds
     //       経由に部分是正済み（team_org_memberships / memberships 直参照を排除）。
     //       TEAM スコープは従来どおり UserRoleRepository.findUserIdsByScope を使う。
     @Transactional
-    public void openAttendanceSolicitation(Long scheduleId) {
+    public void openAttendanceSolicitation(Long scheduleId, AttendanceSolicitationSettings settings) {
         ScheduleEntity schedule = scheduleService.getSchedule(scheduleId);
 
         String scopeType;
@@ -525,6 +572,17 @@ public class ScheduleAttendanceService {
             // PERSONAL スコープには出欠募集の概念が無い
             log.debug("出欠募集スキップ（PERSONALスコープ）: scheduleId={}", scheduleId);
             return;
+        }
+
+        // 予約時に指定された出欠設定を予定へ適用する（未指定項目は既存値を保つ）。
+        // 冪等性ガードより前に行い、募集済みでも予約された設定が確実に反映されるようにする。
+        if (settings != null && !settings.isEmpty()) {
+            schedule.applyAttendanceSolicitationSettings(
+                    settings.attendanceDeadline(), settings.commentOption(), settings.minResponseRole());
+            scheduleRepository.save(schedule);
+            log.info("出欠募集設定を適用: scheduleId={}, deadline={}, commentOption={}, minResponseRole={}",
+                    scheduleId, settings.attendanceDeadline(),
+                    settings.commentOption(), settings.minResponseRole());
         }
 
         // 冪等性ガード: 既に出欠レコードが生成済みなら何もしない（二重募集防止）
@@ -549,6 +607,12 @@ public class ScheduleAttendanceService {
             memberUserIds = userRoleRepository.findUserIdsByScope(scopeType, scopeId).stream()
                     .distinct()
                     .toList();
+        }
+        if (schedule.getTargetMode() == ScheduleTargetMode.SELECTED_MEMBERS) {
+            var targetIds = scheduleTargetRepository.findByScheduleIdOrderByUserIdAsc(schedule.getId()).stream()
+                    .map(com.mannschaft.app.schedule.entity.ScheduleTargetEntity::getUserId)
+                    .collect(java.util.stream.Collectors.toSet());
+            memberUserIds = memberUserIds.stream().filter(targetIds::contains).toList();
         }
         if (memberUserIds.isEmpty()) {
             log.info("出欠募集スキップ（対象メンバー0名）: scheduleId={}, scope={}:{}",
@@ -596,14 +660,21 @@ public class ScheduleAttendanceService {
     /**
      * チームの出席率統計を取得する。
      *
+     * <p><b>認可（認可根治 Wave6）</b>: 名簿全体・期間横断のユーザー別出席率という管理者向け集計のため、
+     * 当該チームの ADMIN/DEPUTY_ADMIN のみ取得可（{@code checkAdminOrAbove} 水準。
+     * {@code bulkUpdateAttendances} と同段）。SYSTEM_ADMIN は横断で許可。</p>
+     *
      * @param teamId チームID
      * @param from   期間開始
      * @param to     期間終了
+     * @param userId 閲覧ユーザーID
      * @return 出席率統計（ユーザー別）
      */
     // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public List<AttendanceStatsResponse> getTeamAttendanceStats(Long teamId,
-                                                                  LocalDateTime from, LocalDateTime to) {
+                                                                  LocalDateTime from, LocalDateTime to,
+                                                                  Long userId) {
+        checkScopeAdmin(userId, teamId, "TEAM");
         // チームメンバーのユーザーIDリストを取得
         Page<UserRoleEntity> memberPage = userRoleRepository.findByTeamId(teamId, PageRequest.of(0, 10000));
         List<Long> memberUserIds = memberPage.getContent().stream()
@@ -625,14 +696,19 @@ public class ScheduleAttendanceService {
     /**
      * 組織の出席率統計を取得する。
      *
-     * @param orgId 組織ID
-     * @param from  期間開始
-     * @param to    期間終了
+     * <p><b>認可（認可根治 Wave6）</b>: {@link #getTeamAttendanceStats} と同水準（ORGANIZATION 系）。</p>
+     *
+     * @param orgId  組織ID
+     * @param from   期間開始
+     * @param to     期間終了
+     * @param userId 閲覧ユーザーID
      * @return 出席率統計（ユーザー別）
      */
     // TODO: scheduleドメインとroleドメインをまたいでいる（UserRoleRepositoryを直接参照）。将来はUserRoleQueryServiceのAPI呼び出し経由で分離予定。Phase1-E: 2026-05-09
     public List<AttendanceStatsResponse> getOrgAttendanceStats(Long orgId,
-                                                                 LocalDateTime from, LocalDateTime to) {
+                                                                 LocalDateTime from, LocalDateTime to,
+                                                                 Long userId) {
+        checkScopeAdmin(userId, orgId, "ORGANIZATION");
         // 組織メンバーのユーザーIDリストを取得
         Page<UserRoleEntity> memberPage = userRoleRepository.findByOrganizationId(orgId, PageRequest.of(0, 10000));
         List<Long> memberUserIds = memberPage.getContent().stream()
@@ -664,18 +740,17 @@ public class ScheduleAttendanceService {
         // ユーザーが所属するチームのスケジュールIDを収集
         List<Long> allScheduleIds = new ArrayList<>();
 
-        List<UserRoleEntity> teamRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
-        for (UserRoleEntity role : teamRoles) {
+        // CMP-027: user_roles ∪ memberships の在籍チーム（素メンバー/応援者を取りこぼさない）
+        for (Long teamId : userRoleRepository.findTeamIdsByUserId(userId)) {
             List<ScheduleEntity> teamSchedules = scheduleRepository
-                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(role.getTeamId(), from, to);
+                    .findByTeamIdAndStartAtBetweenOrderByStartAtAsc(teamId, from, to);
             allScheduleIds.addAll(teamSchedules.stream().map(ScheduleEntity::getId).toList());
         }
 
-        // ユーザーが所属する組織のスケジュールIDを収集
-        List<UserRoleEntity> orgRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
-        for (UserRoleEntity role : orgRoles) {
+        // ユーザーが所属する組織のスケジュールIDを収集（CMP-027: user_roles ∪ memberships の在籍組織）
+        for (Long orgId : userRoleRepository.findOrganizationIdsByUserId(userId)) {
             List<ScheduleEntity> orgSchedules = scheduleRepository
-                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(role.getOrganizationId(), from, to);
+                    .findByOrganizationIdAndStartAtBetweenOrderByStartAtAsc(orgId, from, to);
             allScheduleIds.addAll(orgSchedules.stream().map(ScheduleEntity::getId).toList());
         }
 
@@ -702,6 +777,17 @@ public class ScheduleAttendanceService {
     }
 
     // --- プライベートメソッド ---
+
+    /**
+     * スコープ（TEAM/ORGANIZATION）の ADMIN/DEPUTY_ADMIN 認可を強制する（認可根治 Wave6）。
+     * SYSTEM_ADMIN は横断で許可する（{@code ScheduleService.checkScopeViewAccess} と同方針）。
+     */
+    private void checkScopeAdmin(Long userId, Long scopeId, String scopeType) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, scopeId, scopeType);
+    }
 
     /**
      * メンバーリストとスケジュールリストから出欠統計を構築する。

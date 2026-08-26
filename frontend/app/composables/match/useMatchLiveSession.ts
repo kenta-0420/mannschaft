@@ -60,8 +60,8 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
 
   // === sender（オンライン直 / 失敗時オフライン退避） ===
   async function onlineSender(body: MatchEventRequest): Promise<MatchEventResponse> {
-    if (orgId.value === null) throw new Error('orgId unresolved')
-    return eventApi.addEvent(orgId.value, matchId, body)
+    if (teamId.value === null) throw new Error('teamId unresolved')
+    return eventApi.addEvent(orgId.value, teamId.value, matchId, body)
   }
 
   async function resilientSender(body: MatchEventRequest): Promise<MatchEventResponse> {
@@ -80,7 +80,7 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
 
   // === timer + recorder ===
   async function onPeriodTransition(tr: PeriodTransition): Promise<void> {
-    if (orgId.value === null) return
+    if (teamId.value === null) return
     const side = ownTeamSide.value
     if (tr.endingPeriod) {
       await safeRecord({ eventType: 'PERIOD_END', period: tr.endingPeriod, teamSide: side, minute: tr.minute ?? undefined })
@@ -97,16 +97,17 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
   const recorder = useMatchLiveRecorder({
     sender: resilientSender,
     deleter: async (eventId: string) => {
-      if (orgId.value === null || eventId.startsWith('local-')) return
-      await eventApi.deleteEvent(orgId.value, matchId, eventId)
+      if (teamId.value === null || eventId.startsWith('local-')) return
+      await eventApi.deleteEvent(orgId.value, teamId.value, matchId, eventId)
     },
     reload: async () => {
-      if (orgId.value === null) return []
-      const res = await eventApi.listEvents(orgId.value, matchId)
+      if (teamId.value === null) return []
+      const res = await eventApi.listEvents(orgId.value, teamId.value, matchId)
       applyDerivedScore(res)
       return res.events ?? []
     },
     onConflict: () => notification.warn(t('match.live.conflict.title'), t('match.live.conflict.detail')),
+    onCompensationFailed: () => notification.error(t('match.live.error.substitution_rollback_failed')),
   })
 
   /**
@@ -165,9 +166,9 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
   }
 
   async function refreshScore(): Promise<void> {
-    if (orgId.value === null) return
+    if (teamId.value === null) return
     try {
-      applyDerivedScore(await eventApi.listEvents(orgId.value, matchId))
+      applyDerivedScore(await eventApi.listEvents(orgId.value, teamId.value, matchId))
     } catch {
       // 通知済み
     }
@@ -257,7 +258,10 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
   // === オフライン flush（online 復帰時） ===
   async function flushOffline(): Promise<void> {
     // flushAll は path から復元した orgId/matchId を渡してくる。現セッションの addEvent に転送する。
-    const results = await offlineQueue.flushAll((oid, mid, body) => eventApi.addEvent(oid, mid, body))
+    if (teamId.value === null) return
+    const results = await offlineQueue.flushAll(
+      (oid, mid, body) => eventApi.addEvent(oid, teamId.value!, mid, body),
+    )
     const ok = results.filter((r) => r.response).length
     if (ok > 0) {
       notification.success(t('match.live.offline.flushed', { count: ok }))
@@ -265,8 +269,8 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
     }
   }
   async function reloadEvents(): Promise<void> {
-    if (orgId.value === null) return
-    const res = await eventApi.listEvents(orgId.value, matchId)
+    if (teamId.value === null) return
+    const res = await eventApi.listEvents(orgId.value, teamId.value, matchId)
     recorder.setEvents(res.events ?? [])
     applyDerivedScore(res)
   }
@@ -295,7 +299,7 @@ export function useMatchLiveSession(sessionCtx: MatchLiveSessionContext) {
   async function completeMatch(penalty?: { home: number; away: number } | null): Promise<void> {
     await timer.complete()
     if (matchStatus.value === 'COMPLETED') return
-    if (orgId.value === null || teamId.value === null) return
+    if (teamId.value === null) return
     try {
       // 本戦（延長得点合算済みの導出スコア）＋ PK 戦スコアを Entity に確定保存。
       // これが COMPLETED 時に MatchCompletedEvent へ載り、大会順位連携に反映される（#1444）。

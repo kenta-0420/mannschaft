@@ -186,9 +186,27 @@ public class JobApplicationService {
 
     /**
      * 応募を ID で取得する。見つからない場合は {@code JOB_APPLICATION_NOT_FOUND} を送出する。
+     *
+     * <p>BOLA対策: 当事者（応募者本人、または当該求人の採否権限者
+     * {@link JobPolicy#canDecideApplication}）のみに限定する。</p>
+     *
+     * @param applicationId 応募ID
+     * @param requestUserId リクエストユーザーID
+     * @return 応募エンティティ
      */
-    public JobApplicationEntity findById(Long applicationId) {
-        return findOrThrow(applicationId);
+    public JobApplicationEntity findById(Long applicationId, Long requestUserId) {
+        JobApplicationEntity app = findOrThrow(applicationId);
+
+        if (requestUserId != null && requestUserId.equals(app.getApplicantUserId())) {
+            return app;
+        }
+
+        JobPostingEntity posting = postingRepository.findById(app.getJobPostingId())
+                .orElseThrow(() -> new BusinessException(JobmatchingErrorCode.JOB_NOT_FOUND));
+        if (!jobPolicy.canDecideApplication(requestUserId, posting)) {
+            throw new BusinessException(JobmatchingErrorCode.JOB_PERMISSION_DENIED);
+        }
+        return app;
     }
 
     // ---------------------------------------------------------------------

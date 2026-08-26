@@ -67,6 +67,7 @@ public class AuthOAuthService {
     private final EncryptionService encryptionService;
     private final OAuthProperties oAuthProperties;
     private final RoleClaimResolver roleClaimResolver;
+    private final StatusClaimResolver statusClaimResolver;
 
     /** OAuthプロバイダとのHTTP通信に使用するWebClient。@PostConstructで初期化する。 */
     private WebClient webClient;
@@ -170,6 +171,12 @@ public class AuthOAuthService {
                 .displayName(oauthUserInfo.displayName() != null ? oauthUserInfo.displayName() : oauthUserInfo.email())
                 .isSearchable(true)
                 .locale("ja")
+                // Issue #2487 項目 7（本 PR では見送り・意図的な固定値）:
+                // OAuth プロバイダはタイムゾーンを返さないため、ここで実 TZ を知る手段が無い。実 TZ を得るには
+                // FE がブラウザの Intl.DateTimeFormat().resolvedOptions().timeZone を OAuth 開始 URL → state →
+                // コールバックへ引き回す必要があり、FE を巻き込む設計判断になる（メール登録経路は
+                // RegisterRequest.timezone で既に受け取れる）。海外の OAuth 利用者は当面この既定値になり、
+                // 本人が設定画面で変更するまで日境界が JST に寄る。ベータ第 4 段階は国内が対象のため当面の支障は無い。
                 .timezone("Asia/Tokyo")
                 .status(UserEntity.UserStatus.ACTIVE)
                 .build();
@@ -320,7 +327,8 @@ public class AuthOAuthService {
      */
     private TokenResponse issueTokenPair(Long userId, String ipAddress, String userAgent) {
         // 認可基盤完全根治 Phase 1（§3.2）: RoleClaimResolver で SYSTEM_ADMIN を判定して roles に載せる。
-        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId));
+        String accessToken = authTokenService.issueAccessToken(userId, roleClaimResolver.resolveRoles(userId),
+                statusClaimResolver.isPendingParentalConsent(userId));
         String refreshToken = authTokenService.generateRefreshToken();
         String refreshTokenHash = authTokenService.hashToken(refreshToken);
 

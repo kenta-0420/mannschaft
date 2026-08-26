@@ -63,7 +63,7 @@ onMounted(async () => {
       else {
         const res = await getTeamModules(props.scopeId)
         enabledSlugs.value = new Set(
-          res.data.filter(m => m.isEnabled).map(m => m.slug),
+          res.data.filter(m => m.isEnabled).map(m => m.moduleSlug),
         )
       }
     })(),
@@ -109,7 +109,7 @@ function isItemActive(item: SidebarItem): boolean {
       <div v-if="isCategoryVisible(category)">
         <!-- カテゴリヘッダー（クリックで展開/折り畳み） -->
         <button
-          class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500 hover:bg-surface-100 transition-colors"
+          class="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold uppercase tracking-wide text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-700 transition-colors"
           @click="toggleCategory(category.key)"
         >
           <i :class="category.icon" class="text-sm" />
@@ -123,8 +123,8 @@ function isItemActive(item: SidebarItem): boolean {
             <NuxtLink
               v-if="isItemVisible(item) && item.path !== ''"
               :to="`${basePath}/${item.path}`"
-              class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-surface-100"
-              :class="isItemActive(item) ? 'bg-primary/10 text-primary font-medium' : 'text-surface-600'"
+              class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm transition-colors hover:bg-surface-100 dark:hover:bg-surface-700"
+              :class="isItemActive(item) ? 'bg-primary/10 text-primary font-medium' : 'text-surface-600 dark:text-surface-300'"
             >
               <i :class="item.icon" class="text-sm w-4" />
               {{ $t(item.labelKey) }}
@@ -132,7 +132,7 @@ function isItemActive(item: SidebarItem): boolean {
             <!-- タブ遷移アイテム（path === ''） -->
             <button
               v-else-if="isItemVisible(item) && item.path === ''"
-              class="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-surface-600 transition-colors hover:bg-surface-100 text-left"
+              class="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-surface-600 dark:text-surface-300 transition-colors hover:bg-surface-100 dark:hover:bg-surface-700 text-left"
               @click="emit('tabNavigate', item)"
             >
               <i :class="item.icon" class="text-sm w-4" />

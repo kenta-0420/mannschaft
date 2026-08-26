@@ -85,6 +85,12 @@ const scoreEntry = shallowRef<MatchScoreEntryReturn | null>(null)
 const scoredComponents = shallowRef<MatchScoredComponentsReturn | null>(null)
 /** 多人数順位制トラッカー（出場者 N 人→順位・§5B・SCORED 競技時のみ非 null）。 */
 const scoredRanking = shallowRef<MatchScoreEntriesReturn | null>(null)
+/**
+ * 既存採点（内訳/順位）の読み込みに失敗したか（データ保護フラグ）。
+ * true の間は内訳・順位の確定（全置換 PUT）を禁止する。ロード失敗を「内訳なし」とみなして
+ * 空の全置換 PUT を送るとサーバ既存採点を上書き（破壊）する恐れがあるため、確定操作を止める。
+ */
+const scoreLoadFailed = ref(false)
 
 /**
  * 団体戦の子ボード進捗（6-④c・GET /boards 由来）。
@@ -175,9 +181,9 @@ function onTimelineSelect(ev: MatchEventResponse): void {
 
 // === スタメン設定（前回先発コピー含む・§G.1c / §G.15a）===
 async function copyPreviousStarters(): Promise<void> {
-  if (orgId.value === null) return
   try {
-    grid.copyPreviousStarters(await eventApi.listAppearances(orgId.value, matchId))
+    if (teamId.value === null) return
+    grid.copyPreviousStarters(await eventApi.listAppearances(orgId.value, teamId.value, matchId))
   } catch {
     // 通知済み
   }
@@ -191,7 +197,7 @@ onMounted(async () => {
   const ctx = await resolveContext(teamSlug)
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
-  if (orgId.value === null || teamId.value === null) {
+  if (ctx === null || teamId.value === null) {
     loading.value = false
     return
   }
@@ -244,8 +250,21 @@ onMounted(async () => {
     const rankingTracker = mod.createRankingEntry(scoredSport)
     scoredRanking.value = rankingTracker
     if (orgId.value !== null) {
-      await componentsTracker.load(orgId.value, matchId).catch(() => undefined)
-      await rankingTracker.load(orgId.value, matchId).catch(() => undefined)
+      // 既存採点（内訳/順位）の読み込み。失敗を握りつぶすと「内訳なし」の空トラッカーのまま
+      // 確定（全置換 PUT）へ進み、サーバ既存採点を上書き（破壊）する恐れがある。
+      // よって失敗時はフラグを立て、確定操作を後段でブロックする（根治原則）。
+      try {
+        await componentsTracker.load(orgId.value, matchId)
+      } catch {
+        scoreLoadFailed.value = true
+        console.error('[live] 採点内訳（scored-components）の読み込みに失敗しました。確定を禁止します。')
+      }
+      try {
+        await rankingTracker.load(orgId.value, matchId)
+      } catch {
+        scoreLoadFailed.value = true
+        console.error('[live] 多人数順位エントリ（score-entries）の読み込みに失敗しました。確定を禁止します。')
+      }
     }
   }
 
@@ -267,13 +286,21 @@ onMounted(async () => {
   session.value = s
 
   try {
-    const res = await eventApi.listEvents(orgId.value, matchId)
+    const res = await eventApi.listEvents(orgId.value, teamId.value, matchId)
     s.recorder.setEvents(res.events ?? [])
     s.applyDerivedScore(res)
   } catch {
     // 通知済み
   }
-  await grid.loadPlayers(teamSlug).catch(() => undefined)
+  // 選手名簿の読み込み。失敗を沈黙させると空名簿になり記録できないため通知する
+  // （データ破壊はないので確定ブロックまでは不要・通知＋ログで表面化させる）。
+  try {
+    await grid.loadPlayers(teamSlug)
+  } catch {
+    notification.error(t('match.live.error.load_players_failed'))
+  }
+  // wakeLock 取得はブラウザに拒否されうる（想定内・データ影響なし）。取得失敗は無視してよい。
+  // eslint-disable-next-line no-restricted-syntax -- wakeLock はブラウザ拒否が想定内（データ影響なし）。取得失敗を無視するのが正しい
   await wakeLock.acquireWakeLock().catch(() => undefined)
   window.addEventListener('online', flushOffline)
   loading.value = false
@@ -324,6 +351,7 @@ async function completeTurnResult(): Promise<void> {
     await turnApi.recordResult(orgId.value, matchId, payload)
   } catch {
     // recordResult 内でトースト済み。結果保存に失敗したら status 遷移はしない（根治原則）。
+    // eslint-disable-next-line no-restricted-syntax -- 保存関数内で通知済み・失敗時は確定へ進めない意図的な早期return
     return
   }
   try {
@@ -354,6 +382,7 @@ async function completeScoredResult(): Promise<void> {
     res = await entry.submit(orgId.value, matchId)
   } catch {
     // submit（recordScore）内でトースト済み。スコア保存に失敗したら status 遷移はしない（根治原則）。
+    // eslint-disable-next-line no-restricted-syntax -- 保存関数内で通知済み・失敗時は確定へ進めない意図的な早期return
     return
   }
   if (res === null) {
@@ -382,10 +411,16 @@ async function completeScoredComponents(): Promise<void> {
   if (!tracker || orgId.value === null || teamId.value === null) return
   if (matchStatus.value === 'COMPLETED') return
   if (!tracker.canSubmit.value) return
+  if (scoreLoadFailed.value) {
+    // 既存採点の読み込みに失敗している。全置換 PUT でサーバ既存採点を上書き（破壊）しないよう確定を止める。
+    notification.error(t('match.live.error.score_load_failed'))
+    return
+  }
   try {
     await tracker.save(orgId.value, matchId)
   } catch {
     // save 内でトースト済み。内訳保存に失敗したら status 遷移はしない（根治原則）。
+    // eslint-disable-next-line no-restricted-syntax -- 保存関数内で通知済み・失敗時は確定へ進めない意図的な早期return
     return
   }
   try {
@@ -410,10 +445,16 @@ async function completeScoredRanking(): Promise<void> {
   if (!tracker || orgId.value === null || teamId.value === null) return
   if (matchStatus.value === 'COMPLETED') return
   if (!tracker.canSubmit.value) return
+  if (scoreLoadFailed.value) {
+    // 既存採点の読み込みに失敗している。全置換 PUT でサーバ既存採点を上書き（破壊）しないよう確定を止める。
+    notification.error(t('match.live.error.score_load_failed'))
+    return
+  }
   try {
     await tracker.save(orgId.value, matchId)
   } catch {
     // save 内でトースト済み。エントリ保存に失敗したら status 遷移はしない（根治原則）。
+    // eslint-disable-next-line no-restricted-syntax -- 保存関数内で通知済み・失敗時は確定へ進めない意図的な早期return
     return
   }
   try {
@@ -731,6 +772,15 @@ function goOvertime(): void {
         @upload-photo="onUploadPositionPhoto"
         @remove-photo="onRemovePositionPhoto"
       />
+
+      <!-- 既存採点の読み込み失敗警告（確定ブロック中・データ保護）。 -->
+      <p
+        v-if="isScored && scoreLoadFailed"
+        class="mb-3 rounded border border-red-300 bg-red-50 p-2 text-xs text-red-700"
+        role="alert"
+      >
+        {{ t('match.live.error.score_load_failed') }}
+      </p>
 
       <!--
         採点制 採点結果入力シート（SCORED 競技のみ表示・07_scored.md §9）。

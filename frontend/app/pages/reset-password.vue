@@ -42,6 +42,12 @@ const schema = computed(() =>
 
 const { defineField, handleSubmit, errors } = useForm({
   validationSchema: schema,
+  // ハイドレーション前に入力された値（パスワードマネージャの自動入力を含む）を取り込む。
+  // 未指定のままだとハイドレーション時に上書きされて消える。必ずセットアップ時に読むこと。
+  initialValues: {
+    newPassword: readPrefilledInputValue('newPassword'),
+    confirmPassword: readPrefilledInputValue('confirmPassword'),
+  },
 })
 const [newPassword, newPasswordProps] = defineField('newPassword')
 const [confirmPassword, confirmPasswordProps] = defineField('confirmPassword')
@@ -49,6 +55,14 @@ const [confirmPassword, confirmPasswordProps] = defineField('confirmPassword')
 const loading = ref(false)
 const success = ref(false)
 const errorMessage = ref('')
+
+// SSR 配信済み HTML に @submit.prevent が未結合の窓で送信ボタンを押されると、
+// ブラウザ標準のフォーム送信が走って入力が失われるため、ハイドレーション完了まで送信を封じる。
+const hydrated = useHydrated()
+// ハイドレーション待ちの間もボタンをローディング表示にする（無反応に見える問題の解消）。
+// :disabled="!hydrated" は Enter キーによる implicit submission 抑止のため別途維持する
+// （PrimeVue の loading は内部的に disabled 相当になるが、明示指定で確実に塞ぐ）。
+const submitting = computed(() => loading.value || !hydrated.value)
 
 const api = useApi()
 const notification = useNotification()
@@ -123,7 +137,8 @@ const onSubmit = handleSubmit(async (values) => {
           type="submit"
           :label="$t('auth.password_reset.submit_button')"
           icon="pi pi-lock"
-          :loading="loading"
+          :loading="submitting"
+          :disabled="!hydrated"
           class="mt-2"
         />
         <div class="text-center">

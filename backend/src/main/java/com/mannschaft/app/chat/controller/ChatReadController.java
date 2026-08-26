@@ -1,6 +1,7 @@
 package com.mannschaft.app.chat.controller;
 
 import com.mannschaft.app.chat.service.ChatMemberService;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,9 @@ public class ChatReadController {
     /**
      * チャンネルを既読にする。
      */
+    @SelfScopedEndpoint("更新対象は (channelId, SecurityUtils.getCurrentUserId()) のメンバー行に限定され、"
+            + "他ユーザーの既読状態には到達しない"
+            + "（ChatMemberService#markAsRead の findByChannelIdAndUserId が認証主体に束縛される）")
     @PostMapping
     @Operation(summary = "既読にする")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "既読成功")

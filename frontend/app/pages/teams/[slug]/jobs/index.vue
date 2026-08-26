@@ -5,6 +5,8 @@ import type {
   JobPostingSummaryResponse,
 } from '~/types/jobmatching'
 
+definePageMeta({ layout: 'team' })
+
 /**
  * F13.1 チーム配下求人一覧（Requester 視点）。
  *
@@ -86,7 +88,7 @@ onMounted(() => {
 
 <template>
   <div class="container mx-auto max-w-4xl p-4">
-    <PageHeader :title="t('jobmatching.list.teamTitle')" :back="false">
+    <PageHeader :title="t('jobmatching.list.teamTitle')">
       <template #actions>
         <Button
           :label="t('jobmatching.list.createButton')"

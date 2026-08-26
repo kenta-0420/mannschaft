@@ -140,7 +140,41 @@ export default {
       "noFeedItems": "No new recruitments",
       "listing": "Listing",
       "waitlistPosition": "Waitlist #{n}",
-      "postedAt": "Posted"
+      "postedAt": "Posted",
+      "loadError": "Failed to load data",
+      "listingLabel": "Listing #{id}"
+    },
+    "guide": {
+      "feed": {
+        "title": "How to use New Recruitments",
+        "what": {
+          "title": "What is the recruitment feed?",
+          "body": "A read-only feed showing new recruitments from teams you follow or support, sorted newest first. Use it to discover recruitments that interest you."
+        },
+        "apply": {
+          "title": "View and apply",
+          "body": "Tap a card to open the recruitment's detail page. You apply or join the waitlist from that detail page."
+        },
+        "read": {
+          "title": "Reading the cards",
+          "body": "Tags such as \"Open\" or \"Full\" show the status. Numbers are shown as \"confirmed / capacity\", and prices are shown with \"¥\"."
+        }
+      },
+      "listings": {
+        "title": "How to use My Participations",
+        "what": {
+          "title": "What are my participations?",
+          "body": "Recruitments you have applied for or been confirmed on appear here. Only active participations are shown; cancelled or finished ones are excluded."
+        },
+        "status": {
+          "title": "Reading the status",
+          "body": "Tags such as \"Confirmed\", \"Applied\" or \"Waitlisted\" show your current state. When waitlisted, \"#rank\" shows your position in line."
+        },
+        "detail": {
+          "title": "Details and cancellation",
+          "body": "Open the recruitment page via \"View details\". Actions such as cancelling your application are done from that detail page."
+        }
+      }
     },
     "distribution": {
       "title": "Distribution targets",
@@ -276,6 +310,42 @@ export default {
         "expired": "Expired",
         "lifted": "Lifted"
       }
+    },
+    "cancellationFeeWaive": {
+      "pageTitle": "Waive Cancellation Fee",
+      "pageDescription": "Waive cancellation fees you are due to receive",
+      "unknownUser": "Unknown user",
+      "loadMore": "Load more",
+      "reasonTooLong": "The reason must be {max} characters or fewer",
+      "columns": {
+        "listing": "Listing",
+        "user": "Target User",
+        "feeAmount": "Cancellation Fee",
+        "status": "Status",
+        "cancelledAt": "Cancelled At"
+      },
+      "status": {
+        "pending": "Unpaid",
+        "failed": "Payment Failed",
+        "uncollectible": "Uncollectible",
+        "paid": "Paid",
+        "waived": "Waived",
+        "notRequired": "Not Applicable"
+      },
+      "waiveButton": "Waive",
+      "reasonLabel": "Reason for Waiver",
+      "reasonPlaceholder": "Enter the reason for waiving (required)",
+      "reasonRequired": "A reason is required",
+      "confirmDialog": {
+        "title": "Waive Cancellation Fee",
+        "message": "This will cancel the {amount} yen cancellation fee charge. This action cannot be undone.\nIf this user has other unpaid cancellation fees, the application restriction will not be lifted.",
+        "confirmButton": "Waive",
+        "cancelButton": "Back"
+      },
+      "emptyMessage": "No waivable cancellation fee records",
+      "loadError": "Failed to load the list",
+      "waiveSuccess": "Cancellation fee waived",
+      "waiveError": "Failed to waive the fee"
     }
   }
 }

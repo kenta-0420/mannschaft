@@ -21,6 +21,12 @@ public interface ClassHomeroomRepository extends JpaRepository<ClassHomeroomEnti
     Optional<ClassHomeroomEntity> findByTeamIdAndEffectiveFromLessThanEqualAndEffectiveUntilGreaterThanEqualOrTeamIdAndEffectiveFromLessThanEqualAndEffectiveUntilIsNull(
             Long teamId, LocalDate date1, LocalDate date2, Long teamId2, LocalDate date3);
 
+    /**
+     * 指定ユーザーが当該チームで担任を務めた設定が 1 件でも存在するか確認する。
+     * 学級担任設定一覧の認可ゲート（担任本人の判定）に用いる。
+     */
+    boolean existsByTeamIdAndHomeroomTeacherUserId(Long teamId, Long homeroomTeacherUserId);
+
     /** 同一チーム・年度に既に現役担任設定が存在するか確認する。 */
     boolean existsByTeamIdAndAcademicYearAndEffectiveUntilIsNull(Long teamId, Integer academicYear);
 }

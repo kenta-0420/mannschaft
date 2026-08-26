@@ -6,6 +6,7 @@ import com.mannschaft.app.payment.dto.PaymentMethodConfirmRequest;
 import com.mannschaft.app.payment.dto.PaymentMethodResponse;
 import com.mannschaft.app.payment.dto.SetupIntentResponse;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
+import com.mannschaft.app.common.security.SelfScopedEndpoint;
 import com.mannschaft.app.payment.service.PaymentMethodService;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,6 +45,8 @@ public class PaymentMethodController {
      *
      * @return 201 Created + {@link SetupIntentResponse}（setupIntentId / clientSecret / status）
      */
+    @SelfScopedEndpoint("Customer の get-or-create は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストに他ユーザーの識別子を指定する項目が無い（createSetupIntent メソッド本体）")
     @PostMapping("/setup-intent")
     @Operation(summary = "SetupIntent 作成（F08.9 P5・off_session PM 保存）")
     public ResponseEntity<ApiResponse<SetupIntentResponse>> createSetupIntent() {
@@ -63,6 +66,9 @@ public class PaymentMethodController {
      * @param request confirm 済みの payment_method_id
      * @return 200 OK + {@link PaymentMethodResponse}（defaultPaymentMethod / saved）
      */
+    @SelfScopedEndpoint("attach 先の Customer は SecurityUtils.getCurrentUserId() 固定で、"
+            + "リクエストの payment_method_id は自分の Customer への attach 対象を指すのみで"
+            + "他ユーザーの内部リソースを検索する識別子ではない（confirmPaymentMethod メソッド本体）")
     @PostMapping("/confirm")
     @Operation(summary = "支払い方法 confirm（F08.9 P5・attach＋既定設定）")
     public ResponseEntity<ApiResponse<PaymentMethodResponse>> confirmPaymentMethod(

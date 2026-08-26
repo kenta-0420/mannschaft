@@ -44,10 +44,26 @@ public enum NotificationType {
     RESERVATION_RECEIVED(NotificationPriority.HIGH, "RESERVATION"),
     RESERVATION_PENDING_APPROVAL(NotificationPriority.HIGH, "RESERVATION"),
     RESERVATION_CANCELLED_BY_MEMBER(NotificationPriority.NORMAL, "RESERVATION"),
+    /** F03.4.5 §6.1: 満席枠のキャンセルで空きが出たときのキャンセル待ち一斉通知（HIGH）。 */
+    RESERVATION_WAITLIST_OPENING(NotificationPriority.HIGH, "RESERVATION"),
+    /**
+     * F03.4.5 §6.3: 仮押さえ(PENDING)が承認されないまま期限切れになり自動キャンセルされた旨の
+     * 申込者向け通知（NORMAL）。管理者の不作為による失効であり緊急性は無いため HIGH にしない。
+     */
+    RESERVATION_PENDING_EXPIRED(NotificationPriority.NORMAL, "RESERVATION"),
     INQUIRY_RECEIVED(NotificationPriority.HIGH, "CHAT_MESSAGE"),
     /** 日次ダイジェスト。opt-in 方式のため既定 OFF。 */
     DAILY_DIGEST(NotificationPriority.LOW, "SYSTEM", false),
-    TODO_HANDED_OFF(NotificationPriority.NORMAL, "TODO");
+    TODO_HANDED_OFF(NotificationPriority.NORMAL, "TODO"),
+
+    /** F20.3 ベータ特典: 付与（本人・02 §3 / §6.5）。 */
+    BETA_PERK_GRANTED(NotificationPriority.NORMAL, "BETA_PERK"),
+    /** F20.3 ベータ特典: 取消（本人・02 §4.2 / §6.5）。 */
+    BETA_PERK_REVOKED(NotificationPriority.HIGH, "BETA_PERK"),
+    /** F20.3 ベータ特典: 期間延長（本人・02 §4.3 / §6.5）。 */
+    BETA_PERK_EXTENDED(NotificationPriority.NORMAL, "BETA_PERK"),
+    /** F20.3 ベータ特典: 審査フラグ設定（運営向け・02 §5 / §6.5・notifyAll）。 */
+    BETA_PERK_REVIEW_FLAGGED(NotificationPriority.NORMAL, "BETA_PERK");
 
     private final NotificationPriority priority;
     private final String sourceType;

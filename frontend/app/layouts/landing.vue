@@ -124,7 +124,8 @@ const localeLabels: Record<string, string> = {
             <ul class="space-y-2 text-sm text-surface-500">
               <li><NuxtLink to="/terms" class="hover:text-primary">{{ t('landing.layout.footer_terms') }}</NuxtLink></li>
               <li><NuxtLink to="/privacy" class="hover:text-primary">{{ t('landing.layout.footer_privacy') }}</NuxtLink></li>
-              <li><a href="#" class="hover:text-primary">{{ t('landing.layout.footer_contact') }}</a></li>
+              <li><NuxtLink to="/commerce-disclosure" class="hover:text-primary">{{ t('landing.layout.footer_commerce') }}</NuxtLink></li>
+              <li><NuxtLink to="/commerce-disclosure#contact" class="hover:text-primary">{{ t('landing.layout.footer_contact') }}</NuxtLink></li>
             </ul>
           </div>
         </div>

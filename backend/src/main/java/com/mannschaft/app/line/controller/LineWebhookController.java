@@ -1,5 +1,6 @@
 package com.mannschaft.app.line.controller;
 
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.line.service.LineWebhookService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -13,7 +14,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * LINE Webhook受信コントローラー（認証不要）。
+ *
+ * <p><b>認可根拠（{@link AuthorizedInService} クラス付与・全 1 EP が該当）</b>:
+ * {@link #receiveWebhook} は {@code LineWebhookService.java:71} の
+ * {@code verifySignature(config, signature, requestBody)} を通り、
+ * {@code LineWebhookService.java:122} の {@code MessageDigest.isEqual(...)} で
+ * channel secret による HMAC-SHA256 署名（{@code X-Line-Signature}）を<b>定数時間比較</b>する。
+ * 検証失敗時はイベント処理を行わない（LINE の無限リトライ回避のため HTTP は常に 200 を返すが、
+ * 副作用は発生しない）。認可根治戦役 Wave5 監査済。</p>
  */
+@AuthorizedInService
 @RestController
 @RequestMapping("/api/v1/line/webhook")
 @RequiredArgsConstructor

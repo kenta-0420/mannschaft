@@ -3,6 +3,7 @@ package com.mannschaft.app.social.repository;
 import com.mannschaft.app.social.entity.TeamFriendEntity;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -48,6 +49,36 @@ public interface TeamFriendRepository extends JpaRepository<TeamFriendEntity, Lo
      */
     List<TeamFriendEntity> findByTeamAIdOrTeamBIdOrderByEstablishedAtDesc(
             Long teamAId, Long teamBId, Pageable pageable);
+
+    /**
+     * 指定されたチームが関与するフレンド関係一覧を、{@code publicOnly} 絞り込みを SQL の
+     * WHERE で行いつつ、成立日時の降順で DB ページングして取得する（CMP-028 Phase D）。
+     *
+     * <p>
+     * {@code publicOnly=true} の場合は {@code is_public = TRUE} の行のみを対象にする。
+     * 旧実装は 1 ページ分取得後にメモリで {@code is_public} フィルタをかけてから
+     * {@code PageImpl} で「フィルタ後件数」を総件数として包んでおり、要求件数を割り込む
+     * 歯抜けと総件数の虚偽表示を招いていた。本メソッドは絞り込みを SQL 段階で行うため、
+     * {@code Page#getTotalElements()} が実際の該当件数と一致し、歯抜けも生じない。
+     * </p>
+     *
+     * @param teamAId    チーム ID（team_a_id 側の検索値）
+     * @param teamBId    チーム ID（team_b_id 側の検索値）
+     * @param publicOnly {@code true} なら {@code is_public = TRUE} のみを対象にする
+     * @param pageable   ページング
+     * @return フレンド関係のページ
+     */
+    @Query("""
+            SELECT tf FROM TeamFriendEntity tf
+            WHERE (tf.teamAId = :teamAId OR tf.teamBId = :teamBId)
+              AND (:publicOnly = false OR tf.isPublic = true)
+            ORDER BY tf.establishedAt DESC
+            """)
+    Page<TeamFriendEntity> findVisibleByTeamAIdOrTeamBId(
+            @Param("teamAId") Long teamAId,
+            @Param("teamBId") Long teamBId,
+            @Param("publicOnly") boolean publicOnly,
+            Pageable pageable);
 
     /**
      * 指定ペアのフレンド関係を削除する。

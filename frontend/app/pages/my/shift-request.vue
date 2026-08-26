@@ -288,7 +288,7 @@ onMounted(async () => {
       <div class="mb-4">
         <Button
           icon="pi pi-arrow-left"
-          :label="t('common.button.back')"
+          :label="t('button.back')"
           text
           severity="secondary"
           @click="step = 'team-select'"
@@ -338,7 +338,7 @@ onMounted(async () => {
       <div class="mb-4 flex items-center justify-between">
         <Button
           icon="pi pi-arrow-left"
-          :label="t('common.button.back')"
+          :label="t('button.back')"
           text
           severity="secondary"
           @click="step = 'schedule-select'"
@@ -444,7 +444,7 @@ onMounted(async () => {
       <div class="mb-4 flex items-center">
         <Button
           icon="pi pi-arrow-left"
-          :label="t('common.button.back')"
+          :label="t('button.back')"
           text
           severity="secondary"
           @click="step = 'slot-fill'"
@@ -473,7 +473,7 @@ onMounted(async () => {
 
       <div class="mt-6 flex justify-end gap-2">
         <Button
-          :label="t('common.button.cancel')"
+          :label="t('button.cancel')"
           text
           severity="secondary"
           @click="step = 'slot-fill'"

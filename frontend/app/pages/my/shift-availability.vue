@@ -171,7 +171,7 @@ onMounted(async () => {
       <div v-if="teamStore.myTeams.length > 1" class="mb-4">
         <Button
           icon="pi pi-arrow-left"
-          :label="t('common.button.back')"
+          :label="t('button.back')"
           text
           severity="secondary"
           @click="selectedTeamId = null"
@@ -243,7 +243,7 @@ onMounted(async () => {
             @click="resetAll"
           />
           <Button
-            :label="t('common.button.save')"
+            :label="t('button.save')"
             icon="pi pi-check"
             :loading="saving"
             @click="save"

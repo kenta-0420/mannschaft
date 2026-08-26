@@ -5,6 +5,9 @@ const route = useRoute()
 const router = useRouter()
 const { loginWithOAuth } = useAuthApi()
 const authStore = useAuthStore()
+// 先回りリフレッシュ武装用に runtimeConfig を setup コンテキストで capture する
+// （onMounted の await 後で useRuntimeConfig() を呼ぶ落とし穴を避ける。armProactiveRefresh 参照）。
+const runtimeConfig = useRuntimeConfig()
 const api = useApi()
 const { t } = useI18n()
 const notification = useNotification()
@@ -26,6 +29,8 @@ onMounted(async () => {
     const res = await loginWithOAuth('google', { code })
     const tokenData = res.data
     authStore.setTokens(tokenData.accessToken, tokenData.refreshToken)
+    // OAuth ログイン成立直後に先回りリフレッシュタイマーを武装する（capture 済み runtimeConfig を渡す）。
+    armProactiveRefresh(runtimeConfig, authStore)
 
     // プロフィールを取得してユーザー情報を更新
     try {
@@ -53,6 +58,10 @@ onMounted(async () => {
     } catch {
       // プロフィール取得失敗はサイレント（トークンは取得済み）
     }
+
+    // ログイン成立直後にアカウント設定（外観・ナビ）をサーバーから同期する。
+    // 新ブラウザ（シークレット等）で localStorage が空でも BEの保存済み設定が反映される。
+    authStore.syncAccountSettings()
 
     notification.success(t('auth.login.success'))
     if (authStore.isSystemAdmin) {

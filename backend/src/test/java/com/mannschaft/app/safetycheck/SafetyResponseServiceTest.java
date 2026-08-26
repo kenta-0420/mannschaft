@@ -1,5 +1,6 @@
 package com.mannschaft.app.safetycheck;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.safetycheck.dto.BulkRespondRequest;
 import com.mannschaft.app.safetycheck.dto.RespondRequest;
@@ -53,6 +54,9 @@ class SafetyResponseServiceTest {
     @Mock
     private SafetyCheckMapper mapper;
 
+    @Mock
+    private AccessControlService accessControlService;
+
     @InjectMocks
     private SafetyResponseService safetyResponseService;
 
@@ -63,6 +67,7 @@ class SafetyResponseServiceTest {
     private static final Long SAFETY_CHECK_ID = 100L;
     private static final Long USER_ID = 10L;
     private static final Long RESPONSE_ID = 200L;
+    private static final Long OPERATOR_ID = 5L;
 
     private SafetyCheckEntity createActiveCheck() {
         return SafetyCheckEntity.builder()
@@ -109,6 +114,16 @@ class SafetyResponseServiceTest {
         }
     }
 
+    /**
+     * 認可根治戦役 Wave6 ロットC で追加したスコープメンバーシップ確認のスタブ。
+     * {@code respond}/{@code bulkRespond} は {@code findCheckOrThrow} 直後にこの判定を通るため、
+     * クローズ済み・重複回答等の既存分岐に到達させたい既存テストにも共通して必要になる。
+     */
+    private void stubMember(SafetyCheckEntity check, Long userId, boolean isMember) {
+        given(accessControlService.isMember(userId, check.getScopeId(), check.getScopeType().name()))
+                .willReturn(isMember);
+    }
+
     // ========================================
     // respond
     // ========================================
@@ -126,6 +141,7 @@ class SafetyResponseServiceTest {
             SafetyResponseEntity savedEntity = createResponseEntity();
             SafetyResponseResponse responseDto = createResponseDto();
 
+            stubMember(check, USER_ID, true);
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(check));
             given(responseRepository.findBySafetyCheckIdAndUserId(SAFETY_CHECK_ID, USER_ID))
                     .willReturn(Optional.empty());
@@ -158,6 +174,7 @@ class SafetyResponseServiceTest {
             callOnCreate(savedEntity);
             SafetyResponseResponse responseDto = createResponseDto();
 
+            stubMember(check, USER_ID, true);
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(check));
             given(responseRepository.findBySafetyCheckIdAndUserId(SAFETY_CHECK_ID, USER_ID))
                     .willReturn(Optional.empty());
@@ -179,6 +196,7 @@ class SafetyResponseServiceTest {
             SafetyCheckEntity check = createActiveCheck();
             SafetyResponseEntity existing = createResponseEntity();
 
+            stubMember(check, USER_ID, true);
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(check));
             given(responseRepository.findBySafetyCheckIdAndUserId(SAFETY_CHECK_ID, USER_ID))
                     .willReturn(Optional.of(existing));
@@ -197,6 +215,7 @@ class SafetyResponseServiceTest {
             RespondRequest req = new RespondRequest("SAFE", "無事です", null, null, null, null);
             SafetyCheckEntity check = createClosedCheck();
 
+            stubMember(check, USER_ID, true);
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(check));
 
             // When & Then
@@ -218,6 +237,31 @@ class SafetyResponseServiceTest {
                     .isInstanceOf(BusinessException.class);
         }
 
+        /**
+         * 認可根治戦役 Wave6 ロットC の根治対象: 旧実装は対象安否確認のスコープ（チーム/組織）に
+         * 呼び出し元が所属しているかを一切検証していなかった（兄弟メソッド
+         * {@code SafetyCheckService#getSafetyCheck} は {@code isMember} を使うが respond は素通し）。
+         * 非所属者が他組織・他チームの安否確認へ回答を書き込めない（結果集計の汚染を根治）ことを固定する。
+         */
+        @Test
+        @DisplayName("安否回答_対象スコープの非所属者_BusinessException")
+        void 安否回答_対象スコープの非所属者_BusinessException() {
+            // Given
+            RespondRequest req = new RespondRequest("SAFE", "無事です", null, null, null, null);
+            SafetyCheckEntity check = createActiveCheck();
+
+            given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(check));
+            stubMember(check, USER_ID, false);
+
+            // When & Then
+            assertThatThrownBy(() -> safetyResponseService.respond(SAFETY_CHECK_ID, req, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(SafetyCheckErrorCode.SAFETY_CHECK_NOT_FOUND));
+
+            verify(responseRepository, never()).save(any());
+        }
+
         @Test
         @DisplayName("安否回答_不正な回答ステータス_BusinessException")
         void 安否回答_不正な回答ステータス_BusinessException() {
@@ -225,6 +269,7 @@ class SafetyResponseServiceTest {
             RespondRequest req = new RespondRequest("INVALID_STATUS", null, null, null, null, null);
             SafetyCheckEntity check = createActiveCheck();
 
+            stubMember(check, USER_ID, true);
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(check));
             given(responseRepository.findBySafetyCheckIdAndUserId(SAFETY_CHECK_ID, USER_ID))
                     .willReturn(Optional.empty());
@@ -263,7 +308,8 @@ class SafetyResponseServiceTest {
             given(mapper.toSafetyResponseResponse(savedEntity)).willReturn(responseDto);
 
             // When
-            List<SafetyResponseResponse> result = safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req);
+            List<SafetyResponseResponse> result =
+                    safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req, OPERATOR_ID);
 
             // Then
             assertThat(result).hasSize(1);
@@ -291,7 +337,8 @@ class SafetyResponseServiceTest {
             given(mapper.toSafetyResponseResponse(savedEntity)).willReturn(responseDto);
 
             // When
-            List<SafetyResponseResponse> result = safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req);
+            List<SafetyResponseResponse> result =
+                    safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req, OPERATOR_ID);
 
             // Then
             assertThat(result).hasSize(1); // 新規の1件のみ
@@ -311,7 +358,7 @@ class SafetyResponseServiceTest {
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(check));
 
             // When & Then
-            assertThatThrownBy(() -> safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req))
+            assertThatThrownBy(() -> safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req, OPERATOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SafetyCheckErrorCode.BULK_RESPOND_LIMIT_EXCEEDED));
@@ -329,7 +376,7 @@ class SafetyResponseServiceTest {
             given(safetyCheckRepository.findById(SAFETY_CHECK_ID)).willReturn(Optional.of(check));
 
             // When & Then
-            assertThatThrownBy(() -> safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req))
+            assertThatThrownBy(() -> safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req, OPERATOR_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(SafetyCheckErrorCode.SAFETY_CHECK_ALREADY_CLOSED));
@@ -359,7 +406,7 @@ class SafetyResponseServiceTest {
             given(mapper.toSafetyResponseResponse(savedEntity)).willReturn(responseDto);
 
             // When
-            safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req);
+            safetyResponseService.bulkRespond(SAFETY_CHECK_ID, req, OPERATOR_ID);
 
             // Then
             verify(followupRepository).save(any(SafetyResponseFollowupEntity.class));

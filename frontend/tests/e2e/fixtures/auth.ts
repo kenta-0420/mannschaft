@@ -46,21 +46,31 @@ export async function loginViaApi(
     systemRole: string | null
     timezone: string | null
   }
+  const accessTokenCookie = (await page.context().cookies())
+    .find(cookie => cookie.name === 'access_token')
+  if (!accessTokenCookie || accessTokenCookie.expires <= 0) {
+    throw new Error('API ログイン成功後の access_token Cookie に有効期限がありません')
+  }
+  const tokenExpiresAt = accessTokenCookie.expires * 1000
 
   // アプリのオリジンへ遷移してから localStorage を書き込む（オリジンに紐づくため）。
   // useAuthStore は currentUser の有無で isAuthenticated を判定する。
   await page.goto('/')
   await page.evaluate(
-    (user) => {
+    ({ user, expiresAt }) => {
       localStorage.setItem('currentUser', JSON.stringify(user))
+      localStorage.setItem('tokenExpiresAt', String(expiresAt))
     },
     {
-      id: me.id,
-      email: me.email,
-      fullName: `${me.lastName} ${me.firstName}`,
-      profileImageUrl: me.avatarUrl,
-      systemRole: me.systemRole ?? undefined,
-      timezone: me.timezone ?? undefined,
+      user: {
+        id: me.id,
+        email: me.email,
+        fullName: `${me.lastName} ${me.firstName}`,
+        profileImageUrl: me.avatarUrl,
+        systemRole: me.systemRole ?? undefined,
+        timezone: me.timezone ?? undefined,
+      },
+      expiresAt: tokenExpiresAt,
     },
   )
 }
@@ -108,7 +118,11 @@ export async function loginAs(
   await passwordInput.click()
   await passwordInput.pressSequentially(credentials.password, { delay: 10 })
 
-  await page.getByRole('button', { name: 'ログイン' }).click()
+  // exact: true が必須。login.vue には「Googleでログイン」ボタンも存在し、
+  // exact 指定なしだと部分一致で2要素にマッチして strict mode violation になる
+  // （2026-07-14 F09.19 実機E2E作成時に発見。module-settings-catalog.spec.ts は
+  // 独自ログイン関数で exact: true 済みだったが、共有ヘルパーの本箇所は未修正だった）。
+  await page.getByRole('button', { name: 'ログイン', exact: true }).click()
   // ログイン成功後は '/' にリダイレクトされる（login.vue の navigateTo(redirect) デフォルト値）
   // dev サーバーはダッシュボード SSR が重いため commit まで待ち、タイムアウトを 30s に延ばす
   await page.waitForURL((url) => !url.pathname.includes('/login'), {

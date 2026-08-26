@@ -7,6 +7,7 @@ import com.mannschaft.app.event.dto.CreateEventRequest;
 import com.mannschaft.app.event.dto.EventDetailResponse;
 import com.mannschaft.app.event.dto.EventResponse;
 import com.mannschaft.app.event.dto.UpdateEventRequest;
+import com.mannschaft.app.event.service.EventScopeAccessGuard;
 import com.mannschaft.app.event.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -37,12 +39,14 @@ import com.mannschaft.app.common.SecurityUtils;
 public class TeamEventController {
 
     private final EventService eventService;
+    private final EventScopeAccessGuard eventScopeAccessGuard;
 
     /**
      * チームのイベント一覧を取得する。
      */
     @GetMapping
     @Operation(summary = "チームイベント一覧")
+    @PreAuthorize("@accessGuard.isScopeMember(authentication, #teamId, 'TEAM')")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<PagedResponse<EventResponse>> listEvents(
             @PathVariable Long teamId,
@@ -65,6 +69,9 @@ public class TeamEventController {
     public ResponseEntity<ApiResponse<EventDetailResponse>> getEvent(
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
+        // IDOR 根治: URL の teamId と event.scope の帰属一致＋当該チームのメンバーシップを検証する。
+        eventScopeAccessGuard.requireScopeMember(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         EventDetailResponse response = eventService.getEvent(eventId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -74,6 +81,7 @@ public class TeamEventController {
      */
     @PostMapping
     @Operation(summary = "イベント作成")
+    @PreAuthorize("@accessGuard.isScopeAdmin(authentication, #teamId, 'TEAM')")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<EventDetailResponse>> createEvent(
             @PathVariable Long teamId,
@@ -93,6 +101,8 @@ public class TeamEventController {
             @PathVariable Long teamId,
             @PathVariable Long eventId,
             @Valid @RequestBody UpdateEventRequest request) {
+        eventScopeAccessGuard.requireScopeAdmin(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         EventDetailResponse response = eventService.updateEvent(eventId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -106,6 +116,8 @@ public class TeamEventController {
     public ResponseEntity<ApiResponse<EventDetailResponse>> publishEvent(
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeAdmin(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         EventDetailResponse response = eventService.publishEvent(eventId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -119,6 +131,8 @@ public class TeamEventController {
     public ResponseEntity<ApiResponse<EventDetailResponse>> openRegistration(
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeAdmin(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         EventDetailResponse response = eventService.openRegistration(eventId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -132,6 +146,8 @@ public class TeamEventController {
     public ResponseEntity<ApiResponse<EventDetailResponse>> closeRegistration(
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeAdmin(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         EventDetailResponse response = eventService.closeRegistration(eventId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -145,6 +161,8 @@ public class TeamEventController {
     public ResponseEntity<ApiResponse<EventDetailResponse>> cancelEvent(
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeAdmin(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         EventDetailResponse response = eventService.cancelEvent(eventId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -158,6 +176,8 @@ public class TeamEventController {
     public ResponseEntity<Void> deleteEvent(
             @PathVariable Long teamId,
             @PathVariable Long eventId) {
+        eventScopeAccessGuard.requireScopeAdmin(
+                SecurityUtils.getCurrentUserId(), EventScopeType.TEAM, teamId, eventId);
         eventService.deleteEvent(eventId);
         return ResponseEntity.noContent().build();
     }

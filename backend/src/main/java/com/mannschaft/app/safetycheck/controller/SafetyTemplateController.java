@@ -25,6 +25,13 @@ import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 安否確認テンプレートコントローラー。テンプレートの取得・作成・更新APIを提供する。
+ *
+ * <p><b>認可</b>: 本 Controller は素の認証済みパス（{@code /api/v1/safety-checks/templates}）に置かれ、
+ * {@code SecurityConfig} のパス単位認可を持たない。チーム／組織が<b>自スコープ</b>のテンプレートを
+ * 自己管理するための入口であり、全メソッドが {@code SafetyTemplateService} の {@code *Scoped} 系
+ * （スコープ認可つき）を経由する。システム既定テンプレート（スコープ null）の作成・改変・削除は
+ * SYSTEM_ADMIN 専用の {@code SafetyAdminController}（{@code /api/v1/system-admin/**}）側に限定され、
+ * 本 Controller からは行えない。</p>
  */
 @RestController
 @RequestMapping("/api/v1/safety-checks/templates")
@@ -44,7 +51,8 @@ public class SafetyTemplateController {
     public ResponseEntity<ApiResponse<List<SafetyTemplateResponse>>> listTemplates(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        List<SafetyTemplateResponse> templates = templateService.listTemplates(scopeType, scopeId);
+        List<SafetyTemplateResponse> templates = templateService.listScopedTemplates(
+                scopeType, scopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(templates));
     }
 
@@ -56,7 +64,8 @@ public class SafetyTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SafetyTemplateResponse>> getTemplate(
             @PathVariable Long templateId) {
-        SafetyTemplateResponse response = templateService.getTemplate(templateId);
+        SafetyTemplateResponse response = templateService.getScopedTemplate(
+                templateId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -68,7 +77,8 @@ public class SafetyTemplateController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
     public ResponseEntity<ApiResponse<SafetyTemplateResponse>> createTemplate(
             @Valid @RequestBody CreateTemplateRequest request) {
-        SafetyTemplateResponse response = templateService.createTemplate(request, SecurityUtils.getCurrentUserId());
+        SafetyTemplateResponse response = templateService.createScopedTemplate(
+                request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -81,7 +91,8 @@ public class SafetyTemplateController {
     public ResponseEntity<ApiResponse<SafetyTemplateResponse>> updateTemplate(
             @PathVariable Long templateId,
             @Valid @RequestBody UpdateTemplateRequest request) {
-        SafetyTemplateResponse response = templateService.updateTemplate(templateId, request);
+        SafetyTemplateResponse response = templateService.updateScopedTemplate(
+                templateId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

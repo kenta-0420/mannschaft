@@ -106,7 +106,7 @@ class AttendanceStatisticsControllerTest {
                     .studentBreakdown(List.of(summary))
                     .build();
 
-            given(statisticsService.getMonthlyStatistics(eq(TEAM_ID), eq(2026), eq(5)))
+            given(statisticsService.getMonthlyStatistics(eq(TEAM_ID), eq(2026), eq(5), eq(USER_ID)))
                     .willReturn(response);
 
             mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/statistics/monthly", TEAM_ID)
@@ -125,12 +125,13 @@ class AttendanceStatisticsControllerTest {
     // GET /api/v1/me/attendance/statistics/term
     // ════════════════════════════════════════════════
 
+    /** AttendanceStatisticsController#getTermStatistics の自己スコープ性を固定する契約テスト。 */
     @Nested
     @DisplayName("GET /api/v1/me/attendance/statistics/term")
     class GetTermStatistics {
 
         @Test
-        @DisplayName("正常系: 期間別集計を返す → 200 + data")
+        @DisplayName("正常系: 期間別集計を返す → 200 + data（studentUserIdはSecurityUtils.getCurrentUserId()に束縛）")
         void 正常系_200() throws Exception {
             StudentTermStatisticsResponse response = StudentTermStatisticsResponse.builder()
                     .studentUserId(USER_ID)
@@ -175,7 +176,8 @@ class AttendanceStatisticsControllerTest {
             given(statisticsService.exportAttendanceCsv(
                     eq(TEAM_ID),
                     eq(LocalDate.of(2026, 5, 1)),
-                    eq(LocalDate.of(2026, 5, 31))))
+                    eq(LocalDate.of(2026, 5, 31)),
+                    eq(USER_ID)))
                     .willReturn(csvContent.getBytes(StandardCharsets.UTF_8));
 
             byte[] body = mockMvc.perform(get("/api/v1/teams/{teamId}/attendance/export", TEAM_ID)

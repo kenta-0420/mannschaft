@@ -21,6 +21,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.Optional;
@@ -59,8 +60,28 @@ class CirculationServiceTest {
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
 
+    /** Issue #2715 CMP-055 lot C-5/C-6: newly added i18n dependencies. */
+    @Mock private com.mannschaft.app.common.i18n.UserLocaleCache userLocaleCache;
+    @Mock private MessageSource messageSource;
+
     @InjectMocks
     private CirculationService circulationService;
+
+    /**
+     * Issue #2715 CMP-055 lot C-5/C-6: the bare MessageSource mock would return null for
+     * title/body. Return the supplied default message so existing assertions keep working.
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void stubI18nMessageSource() {
+        org.mockito.Mockito.lenient().when(userLocaleCache.getLocales(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(java.util.Map.of());
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any()))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     private static final Long DOCUMENT_ID = 100L;
     private static final Long SCOPE_ID = 1L;
@@ -81,10 +102,12 @@ class CirculationServiceTest {
     }
 
     private DocumentResponse createDocumentResponse() {
-        return new DocumentResponse(DOCUMENT_ID, SCOPE_TYPE, SCOPE_ID, USER_ID,
-                "回覧テスト", "回覧本文", "SIMULTANEOUS", 0, "DRAFT", "NORMAL",
-                null, false, (short) 24, "STANDARD", 0, 0, null, 0, 0,
-                null, null);
+        return DocumentResponse.builder()
+                .id(DOCUMENT_ID).scopeType(SCOPE_TYPE).scopeId(SCOPE_ID).createdBy(USER_ID)
+                .title("回覧テスト").body("回覧本文").circulationMode("SIMULTANEOUS").sequentialCount(0)
+                .status("DRAFT").priority("NORMAL").stampDisplayStyle("STANDARD")
+                .totalRecipientCount(0).stampedCount(0).attachmentCount(0).commentCount(0)
+                .build();
     }
 
     @Nested

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import type { TimelineScopeType } from '~/types/timeline'
+import type { TimelineScopeType, TimelineDeliveryScope } from '~/types/timeline'
+import { DEFAULT_DELIVERY_SCOPE } from '~/types/timeline'
 
 const props = defineProps<{
   scopeType: TimelineScopeType
@@ -13,13 +14,42 @@ const emit = defineEmits<{
 
 const { createPost, getImageUploadUrl } = useTimelineApi()
 const { showSuccess, showError } = useNotification()
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 // お知らせウィジェット表示フラグ（チーム/組織スコープのみ有効）
 const displayInAnnouncement = ref(false)
 const isTeamOrOrgScope = computed(() =>
   (props.scopeType === 'TEAM' || props.scopeType === 'ORGANIZATION') && !!props.scopeId,
 )
+
+/**
+ * 配下配信範囲（CMP-058）。組織スコープでのみ意味を持つ。
+ * 既定は DIRECT（この団体のメンバーだけ）で、ユーザーが何もしなければこの値のまま送信される。
+ */
+const deliveryScope = ref<TimelineDeliveryScope>(DEFAULT_DELIVERY_SCOPE)
+
+const isOrganizationScope = computed(() => props.scopeType === 'ORGANIZATION' && !!props.scopeId)
+
+/**
+ * 配信範囲の選択可否は組織のロールで決まる（ADMIN / DEPUTY_ADMIN のみ）。
+ * 権限が無い人に選択肢を見せると BE が COMMON_002(403) で必ず弾き、意味の分からない失敗体験になるため、
+ * 正典の {@link useRoleAccess} でロールを取得して可視制御する。
+ * 取得に失敗した場合は roleName が null のままとなり選択肢は出ない（見せて弾かれるより安全側）。
+ */
+const orgScopeIdForRole = computed(() => (isOrganizationScope.value ? String(props.scopeId) : ''))
+const { isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgScopeIdForRole)
+
+onMounted(() => {
+  if (isOrganizationScope.value) void loadPermissions()
+})
+
+/**
+ * 配信範囲セレクタの表示条件。
+ * 組織スコープ かつ ADMIN/DEPUTY_ADMIN のときのみ。
+ * （返信は本フォームでは作成されない — 返信は TimelinePostCard のインラインフォーム経由で、
+ *   BE が親投稿から deliveryScope を継承するためクライアントは指定しない。）
+ */
+const canSelectDeliveryScope = computed(() => isOrganizationScope.value && isAdminOrDeputy.value)
 
 const content = ref('')
 const images = ref<File[]>([])
@@ -35,6 +65,12 @@ const videoFileSize = ref<number | null>(null)
 const videoContentType = ref<string | null>(null)
 
 const maxLength = computed(() => props.scopeType === 'PUBLIC' ? 280 : 5000)
+
+// スコープ別のプレースホルダ（未知のscopeTypeはTEAM文言にフォールバック）
+const composerPlaceholder = computed(() => {
+  const key = `timeline.composerPlaceholder.${props.scopeType}`
+  return te(key) ? t(key) : t('timeline.composerPlaceholder.TEAM')
+})
 
 const canSubmit = computed(() => {
   return content.value.trim().length > 0
@@ -151,6 +187,11 @@ async function onSubmit() {
       // VILLAGE スコープ: scopeId=0 + scopeVillageId=UUID（設計書 §3.12.2）
       ...(isVillage && props.scopeId ? { scopeVillageId: String(props.scopeId) } : {}),
       content: content.value.trim(),
+      // 配下配信範囲（CMP-058）。既定 DIRECT のときは送らない（BE 側の既定と一致するため）。
+      // 権限が無い場合はセレクタ自体が出ず deliveryScope は既定のままなので、403 になる値は送られない。
+      ...(canSelectDeliveryScope.value && deliveryScope.value !== DEFAULT_DELIVERY_SCOPE
+        ? { deliveryScope: deliveryScope.value }
+        : {}),
       ...(attachments.length ? { attachments } : {}),
       ...(poll.value ? { poll: poll.value } : {}),
     }
@@ -179,6 +220,7 @@ async function onSubmit() {
     videoContentType.value = null
     poll.value = null
     displayInAnnouncement.value = false
+    deliveryScope.value = DEFAULT_DELIVERY_SCOPE
     emit('posted')
   } catch {
     showError(t('timeline.postError'))
@@ -192,7 +234,7 @@ async function onSubmit() {
   <div class="rounded-xl border-2 border-surface-400 bg-surface-0 p-4 dark:bg-surface-800">
     <Textarea
       v-model="content"
-      :placeholder="scopeType === 'PUBLIC' ? '今どうしてる？' : 'チームに投稿...'"
+      :placeholder="composerPlaceholder"
       auto-resize
       rows="3"
       class="mb-2 w-full"
@@ -247,7 +289,7 @@ async function onSubmit() {
       <div class="flex items-center justify-between">
         <div>
           <p class="text-sm font-medium">{{ poll.question }}</p>
-          <p class="text-xs text-surface-400">{{ poll.options.length }}択</p>
+          <p class="text-xs text-surface-400">{{ $t('timeline.pollOptionsCount', { count: poll.options.length }) }}</p>
         </div>
         <Button icon="pi pi-times" text rounded severity="danger" size="small" @click="removePoll" />
       </div>
@@ -281,7 +323,7 @@ async function onSubmit() {
         />
       </div>
       <Button
-        label="投稿"
+        :label="$t('timeline.submitLabel')"
         size="small"
         :loading="submitting"
         :disabled="!canSubmit"
@@ -290,9 +332,14 @@ async function onSubmit() {
       />
     </div>
 
+    <!-- 配信範囲（組織スコープ かつ ADMIN/DEPUTY_ADMIN のみ・既定 DIRECT のまま触らなくてよい） -->
+    <div v-if="canSelectDeliveryScope" class="mt-3 border-t border-surface-200 pt-3 dark:border-surface-700">
+      <TimelineDeliveryScopeSelect v-model="deliveryScope" :disabled="submitting" />
+    </div>
+
     <!-- お知らせウィジェット表示フラグ（チーム/組織スコープのみ） -->
     <div v-if="isTeamOrOrgScope" class="mt-3 border-t border-surface-200 pt-3 dark:border-surface-700">
-      <AnnouncementAnnouncementToggle v-model="displayInAnnouncement" :disabled="submitting" />
+      <AnnouncementToggle v-model="displayInAnnouncement" :disabled="submitting" />
     </div>
 
     <TimelinePollForm v-model:visible="showPollDialog" @created="onPollCreated" />

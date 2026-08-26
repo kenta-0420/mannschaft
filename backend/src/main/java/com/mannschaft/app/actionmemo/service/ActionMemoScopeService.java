@@ -4,7 +4,6 @@ import com.mannschaft.app.actionmemo.dto.AvailableOrgResponse;
 import com.mannschaft.app.actionmemo.dto.AvailableTeamResponse;
 import com.mannschaft.app.actionmemo.entity.UserActionMemoSettingsEntity;
 import com.mannschaft.app.organization.repository.OrganizationRepository;
-import com.mannschaft.app.role.entity.UserRoleEntity;
 import com.mannschaft.app.role.repository.UserRoleRepository;
 import com.mannschaft.app.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,16 +37,15 @@ public class ActionMemoScopeService {
      * @return 所属チーム一覧
      */
     public List<AvailableTeamResponse> getAvailableTeams(Long userId) {
-        // ユーザーのチーム所属一覧を取得
-        List<UserRoleEntity> userRoles = userRoleRepository.findByUserIdAndTeamIdIsNotNull(userId);
+        // ユーザーのチーム所属一覧を取得（CMP-027: user_roles ∪ memberships の在籍チーム ID）
+        List<Long> teamIds = userRoleRepository.findTeamIdsByUserId(userId);
 
         // デフォルト投稿先チームID
         Long defaultPostTeamId = settingsService.findSettings(userId)
                 .map(UserActionMemoSettingsEntity::getDefaultPostTeamId)
                 .orElse(null);
 
-        return userRoles.stream()
-                .map(UserRoleEntity::getTeamId)
+        return teamIds.stream()
                 .distinct()
                 .map(teamId -> teamRepository.findById(teamId).orElse(null))
                 .filter(Objects::nonNull)
@@ -66,10 +64,9 @@ public class ActionMemoScopeService {
      * @return 所属組織一覧
      */
     public List<AvailableOrgResponse> getAvailableOrgs(Long userId) {
-        List<UserRoleEntity> userRoles = userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(userId);
+        List<Long> orgIds = userRoleRepository.findOrganizationIdsByUserId(userId);
 
-        return userRoles.stream()
-                .map(UserRoleEntity::getOrganizationId)
+        return orgIds.stream()
                 .distinct()
                 .map(orgId -> organizationRepository.findById(orgId).orElse(null))
                 .filter(Objects::nonNull)

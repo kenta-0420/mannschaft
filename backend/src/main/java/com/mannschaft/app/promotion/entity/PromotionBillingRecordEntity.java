@@ -57,5 +57,6 @@ public class PromotionBillingRecordEntity {
     private LocalDateTime billedAt;
 
     @Builder.Default
+    @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 }

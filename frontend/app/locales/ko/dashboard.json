@@ -77,7 +77,10 @@
       "toggle_today": "今日",
       "toggle_week": "今週",
       "empty_today": "今日の予定はありません",
-      "empty_week": "今週の予定はありません"
+      "empty_week": "今週の予定はありません",
+      "kind_event": "予定",
+      "kind_shift": "シフト",
+      "kind_reservation": "予約"
     },
     "personal": {
       "find_team_title": "새로운 팀·조직 찾기",
@@ -108,13 +111,10 @@
       "my-organizations": "所属組織",
       "favorites": "お気に入り",
       "recent-activity": "最近のアクティビティ",
-      "family-hub": "家族",
-      "notifications": "通知",
       "recruitment-feed": "新着募集",
       "my-recruitments": "参加予定",
       "my-corkboard": "マイコルクボード",
       "village-lobby-digest": "井戸端ダイジェスト",
-      "inbox": "インボックス",
       "todos": "TODO",
       "timeline": "タイムライン",
       "bulletin": "掲示板",
@@ -133,7 +133,8 @@
       "team-division-standings": "順位表",
       "org-tournament-summary": "主催大会サマリ",
       "team-match-summary": "試合サマリ",
-      "projects": "プロジェクト"
+      "projects": "プロジェクト",
+      "my-timeline": "集約タイムライン"
     },
     "widget_descriptions": {
       "event-dismissal-reminder": "解散通知が未送信のイベントへのリマインダー",
@@ -154,13 +155,10 @@
       "my-organizations": "参加中の組織一覧",
       "favorites": "お気に入りに登録したコンテンツ",
       "recent-activity": "最近の活動履歴",
-      "family-hub": "家族チームのお知らせ・TODO",
-      "notifications": "未読の通知",
       "recruitment-feed": "フォロー先・サポーター先の新着募集",
       "my-recruitments": "自分の確定・キャンセル待ち参加予定",
       "my-corkboard": "ピン止めしたカードの横断一覧",
       "village-lobby-digest": "ピン留め村の本日の井戸端在席状況",
-      "inbox": "通知を一箇所で仕分け",
       "todos": "未完了のTODO",
       "timeline": "最新の投稿",
       "bulletin": "最新のスレッド",
@@ -179,7 +177,33 @@
       "team-division-standings": "現在参加中のディビジョンの順位表",
       "org-tournament-summary": "主催する各大会×各部の首位・参加数・状態",
       "team-match-summary": "直近の試合成績と進行中試合の記録再開",
-      "projects": "プロジェクトの進捗状況と一覧"
+      "projects": "プロジェクトの進捗状況と一覧",
+      "my-timeline": "所属チーム・組織の投稿を横断表示"
+    },
+    "notices": {
+      "actionRequiredTab": "처리 필요",
+      "actionRequiredEmpty": "처리가 필요한 항목이 없습니다",
+      "widget_notices_tab_platform": "공지사항",
+      "widget_notices_platform_empty": "현재 공지사항이 없습니다"
+    },
+    "commandCenter": {
+      "title": "지금 할 일",
+      "unresolvedCount": "미처리 {count}건",
+      "chipCirculation": "회람판",
+      "chipSurvey": "설문",
+      "chipAttendance": "출석 확인",
+      "chipOverdueTodo": "기한 초과 TODO",
+      "deadlineOverdue": "기한 초과",
+      "deadlineToday": "오늘",
+      "emptyTitle": "놓친 항목 없음 🎉",
+      "emptyMessage": "처리가 필요한 항목이 없습니다",
+      "partialLoadError": "일부 데이터를 불러오지 못했습니다",
+      "todoCompleteAria": "완료로 표시",
+      "todoCompleteSuccess": "TODO를 완료했습니다",
+      "todoCompleteError": "TODO 완료에 실패했습니다",
+      "adminSectionTitle": "승인 대기",
+      "adminUnresolvedCount": "승인 대기 {count}건",
+      "adminLoadError": "승인 대기 항목을 불러오지 못했습니다"
     },
     "myCorkboard": {
       "widgetTitle": "내 코르크보드",
@@ -194,6 +218,27 @@
       "unpinAction": "이 카드의 고정을 해제",
       "navigationFailed": "이 카드의 참조 대상에 접근할 수 없습니다",
       "colorLabelAria": "{color} 라벨"
+    },
+    "activity_feed": {
+      "post_created": "が投稿しました",
+      "event_created": "がイベントを作成しました",
+      "member_joined": "が参加しました",
+      "todo_completed": "がTODOを完了しました",
+      "bulletin_created": "がお知らせを投稿しました",
+      "poll_created": "がアンケートを作成しました",
+      "file_uploaded": "がファイルを共有しました",
+      "schedule_created": "が予定を作成しました",
+      "schedule_updated": "が予定を更新しました",
+      "schedule_cancelled": "が予定をキャンセルしました",
+      "schedule_rescheduled": "が予定の日程を変更しました",
+      "detail_start_at": "開始日時",
+      "detail_end_at": "終了日時",
+      "detail_is_all_day": "終日設定",
+      "detail_title": "タイトル",
+      "detail_location": "場所",
+      "detail_status": "ステータス",
+      "detail_description_changed": "詳細が更新されました",
+      "unknown": "アクションしました"
     }
   },
   "swipeWidgets": {
@@ -212,8 +257,43 @@
       "unconfirmed": "{count}건 미확인",
       "unanswered": "{count}건 미응답",
       "empty": "처리가 필요한 항목이 없습니다",
-      "loadError": "처리 필요 항목 불러오기 실패"
+      "loadError": "처리 필요 항목 불러오기 실패",
+      "circulationModal": {
+        "title": "회람 확인",
+        "circulatedAt": "회람일",
+        "deadline": "마감일",
+        "confirm": "확인했습니다",
+        "noSealMessage": "도장이 설정되지 않았습니다. 도장을 설정한 후 날인할 수 있습니다.",
+        "goToSealSettings": "도장 설정으로 이동",
+        "stampSuccess": "날인했습니다",
+        "stampError": "날인에 실패했습니다"
+      },
+      "surveyModal": {
+        "loadError": "설문 불러오기 실패"
+      },
+      "attendanceModal": {
+        "title": "출석 확인",
+        "attending": "출석",
+        "absent": "결석",
+        "undecided": "미정",
+        "success": "출석 응답이 제출되었습니다",
+        "error": "출석 응답 제출에 실패했습니다"
+      }
     },
-    "emptyState": "아직 게시물이 없습니다"
+    "emptyState": "아직 게시물이 없습니다",
+    "list": {
+      "allDay": "종일",
+      "overdue": "기한 초과",
+      "nextEvent": "다음 일정",
+      "noNextEvent": "예정된 일정이 없습니다",
+      "eventsThisWeek": "이번 주 {count}건",
+      "upcomingEmpty": "예정된 일정이 없습니다",
+      "blogEmpty": "블로그 글이 없습니다",
+      "chatEmpty": "채팅이 없습니다",
+      "todoEmpty": "TODO가 없습니다",
+      "calendarEmpty": "일정이 없습니다",
+      "bulletinEmpty": "게시판 스레드가 없습니다",
+      "unread": "읽지 않음"
+    }
   }
 }

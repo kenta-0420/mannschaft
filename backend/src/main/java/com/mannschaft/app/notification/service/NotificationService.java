@@ -15,7 +15,7 @@ import com.mannschaft.app.notification.dto.UnreadCountResponse;
 import com.mannschaft.app.notification.entity.NotificationEntity;
 import com.mannschaft.app.notification.repository.NotificationRepository;
 import com.mannschaft.app.notification.repository.PushSubscriptionRepository;
-import com.mannschaft.app.scopefolder.entity.ScopeType;
+import com.mannschaft.app.scopefolder.entity.enums.ScopeType;
 import com.mannschaft.app.scopefolder.service.MyScopeFolderQueryService;
 import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
@@ -100,11 +100,60 @@ public class NotificationService {
         }
 
         // 2) scope_type + scope_id IN (...) で絞り込み
-        // NotificationEntity.scopeType は String 型、scope_id は Long
+        // NotificationEntity.scopeType は @Enumerated(EnumType.STRING) の enum 属性であり、
+        // scopeType.name() の String を渡すと Hibernate のパラメータ束縛で型不一致になる（実行時 500）。
+        // 必ず NotificationScopeType へ写像してから渡すこと。
         Page<NotificationEntity> page = notificationRepository
                 .findByUserIdAndScopeTypeAndScopeIdInOrderByCreatedAtDesc(
-                        userId, scopeType.name(), scopeIds, pageable);
+                        userId, toNotificationScopeType(scopeType), scopeIds, pageable);
         return page.map(notificationMapper::toNotificationResponse);
+    }
+
+    /**
+     * scopefolder ドメインの {@link ScopeType} を通知ドメインの {@link NotificationScopeType} へ写像する。
+     *
+     * <p><b>値集合の関係</b>: {@code ScopeType} は {@code TEAM} / {@code ORGANIZATION} の 2 値のみで、
+     * いずれも {@code NotificationScopeType} に同名の定数が存在する。したがって本写像は全域（total）であり、
+     * 「写像できない値」は存在しない。逆に {@code NotificationScopeType} 側には
+     * {@code PERSONAL} / {@code SYSTEM} / {@code FRIEND_TEAM} / {@code FRIEND_FOLDER} / {@code COMMITTEE}
+     * が余分にあるが、マイスコープフォルダはチーム／組織しか分類しない（F15.3 §4.3）ため
+     * それらがフォルダフィルタの引数に来ることはない。</p>
+     *
+     * <p><b>過去の経緯（switch → == 連鎖 → switch へ差し戻し）</b>:
+     * enum に対する {@code switch} を書くと、javac が {@code $SwitchMap$...} を保持する
+     * 合成クラス {@code NotificationService$1} を自動生成する。かつてクロスドメイン Entity 参照の
+     * 番人（{@code CrossDomainEntityImportArchTest} / D-1）はこの合成クラスを除外しておらず、
+     * 外側クラスの依存は凍結ストア済みでも合成クラスは別名のため「新規違反」と誤検出して CI が落ちて
+     * いた（コミット {@code 598f56d09}）。当時はこれを {@code ==} による enum 参照比較へ書き換えて
+     * 回避したが、これは番人の欠陥に対する対処療法であった。本 PR で D-1 番人自体に合成クラス除外
+     * （{@code SyntheticClasses#isSynthetic}、{@code ACC_SYNTHETIC} 修飾子判定）を実装し根治したため、
+     * ここでは {@code switch} 式へ差し戻す。網羅性がコンパイラに保証される形（{@code switch} 式・
+     * 全 enum 定数を列挙）を維持すること。</p>
+     *
+     * <p><b>将来 {@code ScopeType} に定数が増えた場合（重要・{@code default} を足さないこと）</b>:
+     * この {@code switch} 式には {@code TEAM} / {@code ORGANIZATION} の2ケースしか書いておらず、
+     * <b>意図的に {@code default} を用意していない</b>。{@code ScopeType} は現時点で定数2つの
+     * 純粋な enum であり、Java の {@code switch} 式は enum に対して既知の定数を網羅していれば
+     * {@code default} 無しでコンパイルできる。{@code default} を足すとこの網羅性チェックが
+     * 失われ、{@code ScopeType} に新しい定数が増えてもコンパイルが通ってしまい、写像漏れが
+     * 実行時まで表面化しない状態に逆戻りする。「安全のため」と善意で {@code default} を
+     * 足さないこと —— それは本メソッドをかつて {@code ==} 連鎖に歪めさせた事故
+     * （上記の過去の経緯）と<b>同じ型の事故</b>である。{@code ScopeType} に定数を追加した際は、
+     * ここに {@code case} を追加しない限り notification ドメインがコンパイルエラーになる。
+     * これが最強の検知であり、実行時に未知値が来ることは enum である以上あり得ない。</p>
+     *
+     * <p>番人テスト {@code NotificationScopeTypeMappingTest} は
+     * {@code ScopeType.values()} を全件ループして写像可能性を検査しており、コンパイル時の
+     * 網羅性チェックと合わせた二重の守りとして<b>そのまま維持する</b>。</p>
+     *
+     * @param scopeType scopefolder ドメインのスコープ種別
+     * @return 通知ドメインのスコープ種別
+     */
+    static NotificationScopeType toNotificationScopeType(ScopeType scopeType) {
+        return switch (scopeType) {
+            case TEAM -> NotificationScopeType.TEAM;
+            case ORGANIZATION -> NotificationScopeType.ORGANIZATION;
+        };
     }
 
     /**

@@ -7,6 +7,8 @@ import type {
 } from '~/types/jobmatching'
 import type { JobPostingFormState } from '~/components/jobs/JobPostingForm.vue'
 
+definePageMeta({ layout: 'team' })
+
 /**
  * F13.1 求人新規投稿ページ（Requester 視点）。
  *

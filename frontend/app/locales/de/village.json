@@ -76,13 +76,19 @@
       "timeline": "Zeitstrahl",
       "lobby": "Foyer",
       "members": "Mitgliederliste",
-      "settings": "Einstellungen",
-      "reports": "Meldungen",
       "calendar": "Kalender",
       "festival": "Festival",
       "matchRecruit": "Spielrekrutierung",
       "meetup": "Treffen",
-      "chronicle": "Dorfchronik"
+      "chronicle": "Dorfchronik",
+      "charter": "Dorfsatzung"
+    },
+    "systemPost": {
+      "authorName": "Dorf-Veranstaltungshinweis",
+      "eventCreated": "Eine Veranstaltung wurde erstellt",
+      "eventUpcoming": "Eine Veranstaltung steht bevor",
+      "meetupConfirmed": "Der Treffentermin wurde bestätigt",
+      "festivalStarted": "Das Festival hat begonnen"
     },
     "lobby": {
       "title": "Foyer",
@@ -197,7 +203,28 @@
       "rejected": "Abgelehnt",
       "withdrawn": "Zurückgezogen",
       "reviewComment": "Prüfkommentar",
-      "empty": "Keine Beitrittsanträge"
+      "empty": "Keine Beitrittsanträge",
+      "description": "Dieses Dorf erfordert eine Genehmigung. Du wirst Dorfbewohner, sobald der Dorfvorsteher oder ein Ältester deinen Antrag genehmigt. Eine Nachricht erhöht deine Chancen.",
+      "formTitle": "Beitritt beantragen",
+      "messagePlaceholder": "Beschreibe, was du im Dorf vorhast und warum du beitreten möchtest (optional, max. 500 Zeichen)",
+      "submittedTitle": "Dein gesendeter Antrag",
+      "submittedBody": "Bitte warte auf die Prüfung durch den Dorfvorsteher oder einen Ältesten. Solange der Antrag aussteht, kannst du ihn jederzeit auf dieser Seite zurückziehen.",
+      "withdrawSuccess": "Beitrittsantrag zurückgezogen",
+      "approveSuccess": "Beitrittsantrag genehmigt",
+      "rejectSuccess": "Beitrittsantrag abgelehnt",
+      "rejectCommentRequired": "Bei einer Ablehnung ist ein Prüfkommentar erforderlich",
+      "reviewCommentPlaceholder": "Kommentar für die antragstellende Person eingeben (max. 500 Zeichen)",
+      "reviewDescription": "Prüfe die Beitrittsanträge für dieses Dorf. Nach der Genehmigung wird die antragstellende Person Dorfbewohner.",
+      "column": {
+        "requester": "Antragsteller",
+        "message": "Nachricht",
+        "status": "Status",
+        "actions": "Aktionen"
+      },
+      "confirm": {
+        "approve": "Diesen Beitrittsantrag genehmigen? Die antragstellende Person wird Dorfbewohner.",
+        "reject": "Diesen Beitrittsantrag ablehnen?"
+      }
     },
     "feed": {
       "title": "Dorf-Feed",
@@ -238,7 +265,17 @@
       "empty": "Noch keine Mitglieder",
       "banned": "Gesperrt",
       "you": "Sie",
-      "filterRole": "Nach Rolle filtern"
+      "filterRole": "Nach Rolle filtern",
+      "soloHeadmanHint": "Sobald weitere Mitglieder diesem Dorf beitreten, können Sie sie hier zu Ältesten ernennen."
+    },
+    "profile": {
+      "title": "Dorfbewohner-Profil",
+      "villages": {
+        "title": "Zugehörige Dörfer",
+        "empty": "Keine Dörfer zum Anzeigen",
+        "publicToggle": "Dieses Dorf in meiner Dorfliste anzeigen",
+        "publicToggleHint": "Wenn aktiviert, können Personen, die mit Ihnen ein Dorf teilen, dieses Dorf in Ihrer Dorfliste sehen."
+      }
     },
     "postingIdentity": {
       "title": "Beitrag als",
@@ -273,7 +310,7 @@
       "VILLAGE_007": "Sie sind kein Mitglied dieses Dorfes",
       "VILLAGE_008": "Dieser Spitzname ist bereits vergeben",
       "VILLAGE_009": "Meldelimit erreicht (10 pro Stunde)",
-      "VILLAGE_010": "Limit für Dorferstellungsanträge erreicht (3 pro Tag, max. 10 ausstehend)",
+      "VILLAGE_010": "Limit für Dorferstellungen erreicht. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
       "VILLAGE_011": "Der Spitzname kann nur 3 Mal pro Monat geändert werden",
       "VILLAGE_012": "Sie haben die maximale Anzahl von Dörfern erreicht, denen Sie beitreten können (100)",
       "VILLAGE_013": "Sie haben die maximale Anzahl von Lieblingsdörfern erreicht (30)",
@@ -304,9 +341,13 @@
       "VILLAGE_042": "Meldung nicht gefunden",
       "VILLAGE_043": "Diese Meldung wurde bereits bearbeitet",
       "VILLAGE_044": "Angeheftetes Lieblingsdorf nicht gefunden",
+      "VILLAGE_052": "Vertreterdelegierung nicht gefunden",
+      "VILLAGE_053": "Diese Kombination aus Mitgliedschaft und Benutzer wurde bereits als Vertreter delegiert",
+      "VILLAGE_054": "Die Ziel-Mitgliedschaft ist kein Team/keine Organisation",
+      "VILLAGE_055": "Der delegierte Benutzer ist kein Mitglied des Ziel-Teams/der Ziel-Organisation",
       "generic": "In der Dorffunktion ist ein Fehler aufgetreten",
       "backToList": "Zurück zur Dorfliste",
-      "headmanOnly": "Nur der Dorfvorsteher kann diese Einstellung ändern"
+      "moderatorOnly": "Nur der Dorfvorsteher und Älteste können diese Einstellung ändern"
     },
     "placeholder": {
       "bulletinComingSoon": "Das Schwarze Brett des Dorfes ist für Phase 2 geplant",
@@ -330,7 +371,15 @@
     "monsho": {
       "title": "Dorfwappen",
       "upload": "Dorfwappen hochladen",
-      "remove": "Dorfwappen entfernen"
+      "remove": "Dorfwappen entfernen",
+      "label": "Dorfwappen (Emblem / Logo)",
+      "change": "Wappen ändern",
+      "uploading": "Wird hochgeladen…",
+      "hint": "JPG / PNG / WebP, bis zu 5MB",
+      "errorMime": "Nur JPG-, PNG- und WebP-Bilder werden unterstützt",
+      "errorSize": "Die Dateigröße darf höchstens 5MB betragen",
+      "uploadSuccess": "Dorfwappen hochgeladen",
+      "removeSuccess": "Dorfwappen entfernt"
     },
     "calendar": {
       "title": "Dorfkalender",
@@ -354,7 +403,26 @@
       "deleteSuccess": "Veranstaltung gelöscht",
       "empty": "Keine Veranstaltungen eingetragen",
       "noEventsInMonth": "Keine Veranstaltungen in diesem Monat",
-      "loadFailed": "Kalender konnte nicht geladen werden"
+      "loadFailed": "Kalender konnte nicht geladen werden",
+      "log": {
+        "title": "Rückblick auf letztes Jahr",
+        "lastYear": "Rückblick {year}",
+        "addLog": "Eintrag hinzufügen",
+        "year": "Jahr",
+        "note": "Notiz",
+        "notePlaceholder": "Ein kurzer Kommentar dazu, wie es war",
+        "photoKey": "Foto (R2-Schlüssel, optional)",
+        "photoKeyHint": "Der Bild-Upload folgt bald. Falls bereits ein R2-Schlüssel existiert, kann er hier eingetragen werden",
+        "submit": "Speichern",
+        "delete": "Löschen",
+        "empty": "Noch keine Einträge",
+        "loadFailed": "Einträge konnten nicht geladen werden",
+        "addSuccess": "Eintrag gespeichert",
+        "addFailed": "Eintrag konnte nicht hinzugefügt werden",
+        "deleteConfirm": "Diesen Eintrag löschen?",
+        "deleteSuccess": "Eintrag gelöscht",
+        "deleteFailed": "Eintrag konnte nicht gelöscht werden"
+      }
     },
     "festival": {
       "title": "Festival",
@@ -376,12 +444,38 @@
       "saveSuccess": "Festival gespeichert",
       "cancelSuccess": "Festival abgesagt",
       "loadFailed": "Festivalliste konnte nicht geladen werden",
+      "invalidDateTime": "Start-/Enddatum bzw. -uhrzeit ist ungültig. Bitte erneut eingeben.",
       "filterAll": "Alle",
       "status": {
         "SCHEDULED": "Geplant",
         "ACTIVE": "Laufend",
         "ENDED": "Beendet",
         "CANCELLED": "Abgesagt"
+      },
+      "rsvp": {
+        "title": "Teilnahmezusage",
+        "going": "Ich komme",
+        "maybe": "Vielleicht",
+        "roleLabel": "Rolle",
+        "roleLabelPlaceholder": "Rolle (optional, z. B. Standbetreuung)",
+        "submit": "Senden",
+        "cancel": "Zusage zurückziehen",
+        "empty": "Noch niemand hat zugesagt",
+        "loadFailed": "Teilnehmerliste konnte nicht geladen werden",
+        "saveSuccess": "Teilnahmezusage gespeichert",
+        "saveFailed": "Teilnahmezusage konnte nicht gespeichert werden",
+        "cancelSuccess": "Teilnahmezusage zurückgezogen",
+        "cancelFailed": "Zusage konnte nicht zurückgezogen werden"
+      },
+      "live": {
+        "title": "Live-Updates",
+        "tagAsLive": "Schreibe etwas als Live-Update",
+        "submit": "Als Live-Update posten",
+        "empty": "Noch keine Live-Updates",
+        "viewPost": "Beitrag ansehen",
+        "loadFailed": "Live-Updates konnten nicht geladen werden",
+        "tagSuccess": "Als Live-Update gepostet",
+        "tagFailed": "Live-Update konnte nicht gepostet werden"
       }
     },
     "matchRecruit": {
@@ -450,11 +544,22 @@
     },
     "representative": {
       "title": "Vertreterdelegierung",
+      "subtitle": "Delegieren Sie das Recht, als Vertreter zu posten, an einen einzelnen Benutzer im Namen einer Team-/Organisationsmitgliedschaft in diesem Dorf.",
       "grant": "Als Vertreter delegieren",
       "revoke": "Delegation widerrufen",
       "empty": "Keine delegierten Vertreter",
       "grantedBy": "Delegiert von",
-      "note": "Notiz"
+      "grantedAt": "Delegiert am",
+      "note": "Notiz",
+      "target": "Ziel (Team/Organisation)",
+      "targetPlaceholder": "Team/Organisation zum Delegieren auswählen",
+      "noTargets": "Keine Team-/Organisationsmitgliedschaften für die Delegation verfügbar",
+      "unknownTarget": "Unbekanntes Ziel",
+      "representativeUser": "Vertreterbenutzer",
+      "loadFailed": "Vertreterdelegierungen konnten nicht geladen werden",
+      "confirmRevokeTitle": "Diese Delegation widerrufen?",
+      "confirmRevokeBody": "Die Vertreterdelegierung für {name} wird widerrufen. Sind Sie sicher?",
+      "revokeSuccess": "Delegation widerrufen"
     },
     "meetup": {
       "title": "Treffen",
@@ -463,38 +568,82 @@
       "editTitle": "Treffen bearbeiten",
       "meetupTitle": "Treffenname",
       "description": "Beschreibung",
-      "venue": "Ort",
+      "location": "Ort",
       "candidateDates": "Kandidatentermine",
       "addCandidateDate": "Kandidatentermin hinzufügen",
       "removeCandidateDate": "Kandidatentermin entfernen",
       "candidateDate": "Kandidatentermin",
-      "candidateTimeStart": "Startzeit",
-      "candidateTimeEnd": "Endzeit",
+      "candidateTime": "Uhrzeit",
+      "allDay": "Ganztägig",
+      "timeOptionalHint": "Die Uhrzeit ist optional (leer lassen für ganztägig)",
       "vote": "Abstimmen",
-      "voteComment": "Kommentar (optional)",
-      "voteSubmit": "Abstimmung abschicken",
       "confirm": "Diesen Termin bestätigen",
       "confirmedDate": "Bestätigter Termin",
       "cancel": "Treffen absagen",
       "confirmCancel": "Dieses Treffen absagen?",
       "empty": "Keine geplanten Treffen",
-      "participantCount": "Erwartete Teilnehmer",
       "saveSuccess": "Treffen gespeichert",
       "voteSuccess": "Abstimmung eingereicht",
       "confirmSuccess": "Termin bestätigt",
       "cancelSuccess": "Treffen abgesagt",
       "loadFailed": "Treffen konnten nicht geladen werden",
       "voteType": {
-        "YES": "Teilnehmen",
-        "NO": "Nicht teilnehmen",
-        "MAYBE": "Vielleicht"
+        "AVAILABLE": "Kann teilnehmen",
+        "MAYBE": "Vielleicht",
+        "UNAVAILABLE": "Kann nicht"
       },
       "status": {
-        "DRAFT": "Entwurf",
-        "OPEN": "Abstimmung offen",
+        "PLANNING": "Abstimmung offen",
         "CONFIRMED": "Bestätigt",
-        "CANCELLED": "Abgesagt",
-        "CLOSED": "Geschlossen"
+        "CANCELLED": "Abgesagt"
+      },
+      "attendance": {
+        "title": "Teilnahme",
+        "going": "Ich komme",
+        "maybe": "Vielleicht",
+        "absent": "Ich komme nicht",
+        "notConfirmedHint": "Du kannst deine Teilnahme eintragen, sobald der Termin bestätigt ist",
+        "empty": "Noch niemand hat geantwortet",
+        "unknownMember": "Dorfbewohner",
+        "saveSuccess": "Teilnahme gespeichert",
+        "saveFailed": "Teilnahme konnte nicht gespeichert werden"
+      },
+      "comment": {
+        "title": "Kommentare",
+        "placeholder": "Kommentar schreiben",
+        "submit": "Absenden",
+        "empty": "Noch keine Kommentare",
+        "delete": "Löschen",
+        "postFailed": "Kommentar konnte nicht gesendet werden",
+        "deleteConfirm": "Diesen Kommentar löschen?",
+        "deleteSuccess": "Kommentar gelöscht",
+        "deleteFailed": "Kommentar konnte nicht gelöscht werden"
+      },
+      "decisions": {
+        "title": "Beschlüsse",
+        "placeholder": "Notiere, was beschlossen wurde, was mitzubringen ist usw.",
+        "edit": "Bearbeiten",
+        "empty": "Noch nichts beschlossen",
+        "saveSuccess": "Beschlüsse gespeichert",
+        "saveFailed": "Beschlüsse konnten nicht gespeichert werden"
+      },
+      "todo": {
+        "title": "Aufgaben",
+        "titlePlaceholder": "Was ist zu tun? (z. B. Snacks kaufen)",
+        "add": "Hinzufügen",
+        "claim": "Ich übernehme das",
+        "complete": "Als erledigt markieren",
+        "release": "Aufgabe abgeben",
+        "unassigned": "Nicht zugewiesen",
+        "empty": "Noch keine Aufgaben",
+        "alreadyClaimed": "Diese Aufgabe ist bereits vergeben",
+        "addSuccess": "Aufgabe hinzugefügt",
+        "addFailed": "Aufgabe konnte nicht hinzugefügt werden",
+        "claimSuccess": "Du hast diese Aufgabe übernommen",
+        "completeSuccess": "Als erledigt markiert",
+        "completeFailed": "Status konnte nicht aktualisiert werden",
+        "releaseSuccess": "Aufgabe abgegeben",
+        "releaseFailed": "Aufgabe konnte nicht abgegeben werden"
       }
     },
     "chronicle": {
@@ -509,9 +658,71 @@
       "loadFailed": "Chroniken konnten nicht geladen werden",
       "viewDetail": "Details anzeigen"
     },
+    "archive": {
+      "title": "Chronik",
+      "subtitle": "Aufzeichnungen der Feste, Kalenderereignisse und Treffen des Dorfes",
+      "empty": "Noch keine Chronikeinträge",
+      "loadFailed": "Chronik konnte nicht geladen werden",
+      "archivedAt": "Aufgezeichnet am",
+      "filterAll": "Alle",
+      "sourceType": {
+        "festival": "Festival",
+        "calendarEvent": "Kalenderereignis",
+        "meetup": "Treffen"
+      }
+    },
+    "charter": {
+      "title": "Dorfsatzung",
+      "subtitle": "Die gemeinsamen Versprechen des Dorfes",
+      "empty": "Für dieses Dorf wurde noch keine Satzung erlassen",
+      "enactedAt": "Erlassen am",
+      "lastRevisedAt": "Zuletzt geändert am",
+      "article": {
+        "label": "Artikel {n}",
+        "add": "+ Artikel hinzufügen",
+        "bodyPlaceholder": "Artikeltext eingeben",
+        "bodyRequired": "Bitte gib den Artikeltext ein",
+        "delete": "Artikel löschen",
+        "deleteConfirm": "Diesen Artikel löschen?"
+      },
+      "supplement": {
+        "add": "+ Anhang hinzufügen",
+        "label": "Anhang",
+        "placeholder": "Anhang eingeben (optional)"
+      },
+      "reorder": {
+        "hint": "Mit den Auf-/Ab-Schaltflächen die Reihenfolge der Artikel ändern",
+        "up": "Nach oben",
+        "down": "Nach unten"
+      },
+      "drafters": {
+        "title": "Verfasser",
+        "add": "+ Verfasser hinzufügen",
+        "empty": "Es sind noch keine Verfasser eingetragen",
+        "delete": "Verfasser entfernen",
+        "deleteConfirm": "„{name}“ aus den Verfassern entfernen?",
+        "selectPlaceholder": "Dorfbewohner auswählen",
+        "loadMembersFailed": "Die Liste der Dorfbewohner konnte nicht geladen werden, daher können keine Verfasser hinzugefügt werden.",
+        "reloadMembers": "Neu laden"
+      },
+      "revision": {
+        "confirm": "Änderung bestätigen",
+        "confirmHint": "Dies vermerkt den aktuellen Zeitpunkt als Änderung (die Sichtbarkeit der Artikel ändert sich dadurch nicht).",
+        "confirmSuccess": "Änderung bestätigt",
+        "notePlaceholder": "Notiz zur Änderung (optional)",
+        "history": "Änderungshistorie",
+        "historyEmpty": "Noch keine Änderungen"
+      },
+      "error": {
+        "loadFailed": "Die Dorfsatzung konnte nicht geladen werden",
+        "mutationFailed": "Der Vorgang ist fehlgeschlagen",
+        "versionConflict": "Ein anderer Dorfvorsteher hat dies gleichzeitig bearbeitet. Bitte lade die neueste Version neu.",
+        "drafterDuplicate": "Dieser Dorfbewohner ist bereits Verfasser"
+      }
+    },
     "serendipity": {
       "title": "Affinitätspunkte",
-      "subtitle": "Kompatibilität mit Ihnen",
+      "subtitle": "Gesammelte Begegnungen in diesem Dorf",
       "rank": "Rang",
       "score": "Punkte",
       "myScore": "Ihre Punkte",
@@ -519,6 +730,26 @@
       "lastComputedAt": "Zuletzt berechnet",
       "empty": "Affinitätspunkte noch nicht berechnet",
       "loadFailed": "Affinitätspunkte konnten nicht geladen werden"
+    },
+    "affinity": {
+      "title": "Kompatibilitätshinweis",
+      "subtitle": "Sehen Sie vor dem Beitritt, ob dieses Dorf zu Ihnen passen könnte",
+      "categoryMatch": "Nahe an Ihren Interessen und Kategorien",
+      "hidden": "Derzeit kein Kompatibilitätshinweis",
+      "sharedVillagers": {
+        "hidden": "Kann noch nicht angezeigt werden",
+        "few": "Ein paar Personen",
+        "many": "10 oder mehr Personen"
+      },
+      "reason": {
+        "categoryMatch": "Dieses Dorf liegt nahe an Ihren Interessen",
+        "sharedVillagers": "Es gibt Dorfbewohner, mit denen Sie bereits verbunden sind",
+        "pioneer": "Sie können jetzt als Gründungsmitglied beitreten"
+      },
+      "pioneer": {
+        "title": "Sie können ein Gründungsmitglied werden!",
+        "body": "Dies ist noch ein kleines Dorf. Wenn Sie jetzt beitreten, werden Sie eines der Gründungsmitglieder, die es gemeinsam aufbauen."
+      }
     },
     "pilgrimage": {
       "title": "Dorfwallfahrt",
@@ -535,23 +766,32 @@
     },
     "newsletter": {
       "title": "Newsletter",
-      "subtitle": "Dorf-Update-Benachrichtigungen",
+      "subtitle": "Dorf-Updates",
       "settings": "Newsletter-Einstellungen",
-      "frequency": "Häufigkeit",
       "lastSentAt": "Zuletzt gesendet",
-      "nextScheduledAt": "Nächste geplante Sendung",
-      "optOut": "Abmelden",
-      "optIn": "Wieder anmelden",
-      "optedOut": "Sie sind derzeit abgemeldet",
       "saveSuccess": "Newsletter-Einstellungen gespeichert",
-      "optOutSuccess": "Abgemeldet",
-      "optInSuccess": "Wieder angemeldet",
+      "optOutSuccess": "Empfang beendet",
+      "optInSuccess": "Empfang wieder aktiviert",
       "loadFailed": "Newsletter-Einstellungen konnten nicht geladen werden",
-      "frequencyOption": {
-        "DAILY": "Täglich",
-        "WEEKLY": "Wöchentlich",
-        "MONTHLY": "Monatlich",
-        "NEVER": "Nie"
+      "manageOnlyHint": "Nur der Dorfvorsteher und die Ältesten können die Versandeinstellungen des Dorfes ändern.",
+      "comingSoonNote": "Der Newsletter-Versand ist in Vorbereitung. Einstellungen lassen sich speichern, es werden aber noch keine Newsletter versendet.",
+      "villageSection": {
+        "title": "Versandeinstellungen des Dorfes",
+        "subtitle": "Aktiviere oder deaktiviere den wöchentlichen und den monatlichen Newsletter unabhängig voneinander."
+      },
+      "weekly": {
+        "label": "Wöchentlicher Newsletter",
+        "timing": "Wird jeden Freitag versendet"
+      },
+      "monthly": {
+        "label": "Monatlicher Newsletter",
+        "timing": "Wird zum Monatsende versendet"
+      },
+      "personalSection": {
+        "title": "Dein Empfang",
+        "toggleLabel": "Newsletter dieses Dorfes empfangen",
+        "receivingHint": "Du empfängst diesen Newsletter derzeit.",
+        "stoppedHint": "Du hast den Empfang dieses Newsletters gestoppt."
       }
     },
     "slug": {
@@ -704,6 +944,231 @@
           "step2": "年でしぼり込むと、その年の月別カードが並びます。",
           "step3": "各カードで、その月の盛り上がりをふり返れます。"
         }
+      },
+      "charter": {
+        "title": "Die Versprechen des Dorfes in der Satzung festhalten",
+        "body": "Der Dorfvorsteher/die Ältesten können die Regeln des Dorfes (Artikel) festlegen und sie auch für Nichtmitglieder veröffentlichen (öffentliche Dörfer zeigen sie auch künftigen Mitgliedern).",
+        "steps": {
+          "step1": "Öffne den Tab „Dorfsatzung“.",
+          "step2": "Der Dorfvorsteher/die Ältesten können mit „+ Artikel hinzufügen“ Artikel verfassen und optional einen Anhang beifügen.",
+          "step3": "Neuanordnung und Löschen wirken sofort. Mit „Änderung bestätigen“ wird dies in der Änderungshistorie vermerkt."
+        }
+      }
+    },
+    "joinRequestGuide": {
+      "page_title": "Beitrittsanträge verwenden",
+      "description": "Erklärt, wie du den Beitritt zu einem genehmigungspflichtigen Dorf beantragst und wie Dorfvorsteher und Älteste die Anträge prüfen.",
+      "apply": {
+        "title": "Beitritt beantragen",
+        "body": "Einem genehmigungspflichtigen Dorf kannst du nicht direkt beitreten. Sende einen Antrag und warte auf die Genehmigung durch den Dorfvorsteher oder einen Ältesten. Die Nachricht ist optional, erhöht aber deine Chancen.",
+        "steps": {
+          "step1": "Beschreibe in der Nachricht, was du im Dorf vorhast und warum du beitreten möchtest (optional, max. 500 Zeichen).",
+          "step2": "Mit Senden geht der Antrag an den Dorfvorsteher und die Ältesten.",
+          "step3": "Direkt nach dem Senden kannst du den Antrag über die Schaltfläche Zurückziehen abbrechen."
+        }
+      },
+      "status": {
+        "title": "Prüfstatus verfolgen",
+        "body": "Ein Antrag beginnt mit Prüfung ausstehend. Anschließend setzt der Dorfvorsteher oder ein Ältester ihn auf Genehmigt oder Abgelehnt. Nach der Genehmigung wirst du Dorfbewohner und alle Funktionen stehen offen.",
+        "steps": {
+          "step1": "Direkt nach dem Senden wird der Status Prüfung ausstehend angezeigt.",
+          "step2": "Nach der Genehmigung wirst du Dorfbewohner und alle Dorf-Tabs öffnen sich.",
+          "step3": "Bei einer Ablehnung erklärt der Prüfkommentar den Grund. Lies ihn und stelle bei Bedarf einen neuen Antrag."
+        }
+      },
+      "review": {
+        "title": "Anträge prüfen (Dorfvorsteher und Älteste)",
+        "body": "Dorfvorsteher und Älteste sehen auf dieser Seite die Liste der eingegangenen Beitrittsanträge. Lies die Nachricht und entscheide über Genehmigung oder Ablehnung.",
+        "steps": {
+          "step1": "Wechsle über die Tabs zwischen Prüfung ausstehend, Genehmigt, Abgelehnt und Zurückgezogen.",
+          "step2": "Mit Genehmigen wird die antragstellende Person Dorfbewohner. Der Prüfkommentar ist optional.",
+          "step3": "Beim Ablehnen ist ein Prüfkommentar Pflicht, damit der Grund nachvollziehbar ist."
+        }
+      }
+    },
+    "admin": {
+      "title": "Dorfverwaltung",
+      "subtitle": "Verwaltungsmenü für Dorfvorsteher und Älteste",
+      "cards": {
+        "recruitCategories": {
+          "title": "Gesuchkategorien",
+          "desc": "Gesuchkategorien hinzufügen, bearbeiten und neu anordnen."
+        },
+        "newsletter": {
+          "title": "Newsletter-Einstellungen",
+          "desc": "Versandhäufigkeit und Abmeldung konfigurieren."
+        },
+        "members": {
+          "title": "Mitglieder & Rollen",
+          "desc": "Dorfbewohner verwalten, Rollen ändern und sperren (BAN)."
+        },
+        "representatives": {
+          "title": "Vertreterdelegierung",
+          "desc": "Benutzer delegieren und verwalten, die als Vertreter einer Team-/Organisationsmitgliedschaft posten dürfen."
+        },
+        "joinRequests": {
+          "title": "Beitrittsanträge prüfen",
+          "desc": "Beitrittsanträge prüfen sowie genehmigen oder ablehnen."
+        },
+        "reports": {
+          "title": "Meldungsverwaltung",
+          "desc": "Meldungen prüfen und bearbeiten (demnächst verfügbar)."
+        },
+        "settings": {
+          "title": "Grundeinstellungen des Dorfes",
+          "desc": "Name, Beschreibung und weitere Grundinformationen des Dorfes bearbeiten."
+        }
+      },
+      "comingSoon": "Demnächst verfügbar",
+      "accessDenied": "Nur der Dorfvorsteher und Älteste können auf diesen Bildschirm zugreifen."
+    },
+    "adminGuide": {
+      "page_title": "So funktioniert die Dorfverwaltung",
+      "description": "Ein Verwaltungsmenü für Dorfvorsteher und Älteste. Jede Karte führt zu einem Bildschirm, der für den täglichen Betrieb benötigt wird.",
+      "open": {
+        "title": "Dorfverwaltung öffnen",
+        "body": "Öffnen Sie sie über die Schaltfläche mit dem Zahnradsymbol „Dorfverwaltung\" in der Dorfkopfzeile. Diese Schaltfläche wird nur Dorfvorstehern und Ältesten angezeigt.",
+        "steps": {
+          "step1": "Drücken Sie die Schaltfläche „Dorfverwaltung\" oben rechts in der Dorfkopfzeile.",
+          "step2": "Eine Liste von Karten wird angezeigt. Tippen Sie auf eine Karte, um zu diesem Bildschirm zu gelangen."
+        }
+      },
+      "cards": {
+        "title": "Was Sie mit jeder Karte tun können",
+        "body": "Sie können auf Gesuchkategorien, Newsletter-Einstellungen, Mitglieder & Rollen, die Prüfung von Beitrittsanträgen, Meldungen und die Grundeinstellungen des Dorfes zugreifen.",
+        "steps": {
+          "step1": "„Gesuchkategorien\" ermöglicht das Hinzufügen, Bearbeiten und Neuanordnen von Kategorien wie Festen oder Übungsspielen.",
+          "step2": "„Mitglieder & Rollen\" und „Beitrittsanträge prüfen\" ermöglichen die Verwaltung von Dorfbewohnern und die Prüfung neuer Bewerber.",
+          "step3": "Die „Grundeinstellungen des Dorfes\" können nur vom Dorfvorsteher geöffnet werden. Damit werden Name, Beschreibung und mehr bearbeitet."
+        }
+      },
+      "permissions": {
+        "title": "Unterschied zwischen Dorfvorsteher und Ältesten",
+        "body": "Die meisten Karten können sowohl vom Dorfvorsteher als auch von Ältesten genutzt werden, aber die Grundeinstellungen des Dorfes (und derzeit auch die Newsletter-Einstellungen) können nur vom Dorfvorsteher geöffnet werden.",
+        "steps": {
+          "step1": "Älteste können die Karten Gesuchkategorien, Mitglieder, Beitrittsanträge und Meldungen nutzen.",
+          "step2": "Nur der Dorfvorsteher kann die Grundeinstellungen des Dorfes bearbeiten."
+        }
+      }
+    },
+    "recruitCategory": {
+      "title": "Gesuchkategorien",
+      "subtitle": "Definieren Sie Gesuchkategorien frei, passend zur tatsächlichen Arbeit Ihres Dorfes.",
+      "add": "Kategorie hinzufügen",
+      "edit": "Kategorie bearbeiten",
+      "name": "Kategoriename",
+      "namePlaceholder": "z. B. Teilnehmende gesucht",
+      "description": "Beschreibung (optional)",
+      "descriptionPlaceholder": "Erläutern Sie, wofür diese Kategorie verwendet wird",
+      "color": "Farbe (optional)",
+      "displayOrder": "Anzeigereihenfolge",
+      "preset": "Standard",
+      "usage": "Verwendende Gesuche",
+      "usageCount": "{count}",
+      "empty": "Noch keine Kategorien. Erstellen Sie eine über „Kategorie hinzufügen\".",
+      "reorder": "Neu anordnen",
+      "moveUp": "Nach oben",
+      "moveDown": "Nach unten",
+      "reorderSaved": "Reihenfolge gespeichert",
+      "created": "Kategorie hinzugefügt",
+      "updated": "Kategorie aktualisiert",
+      "deleted": "Kategorie gelöscht",
+      "confirmDelete": "Diese Kategorie löschen?",
+      "confirmDeleteBody": "„{name}\" wird gelöscht. Von einem Gesuch verwendete Kategorien können nicht gelöscht werden.",
+      "limitNote": "Bis zu {max} Kategorien pro Dorf (aktuell {count}).",
+      "error": {
+        "VILLAGE_083": "Gesuchkategorie nicht gefunden",
+        "VILLAGE_084": "Eine Gesuchkategorie mit demselben Namen existiert bereits",
+        "VILLAGE_085": "Sie können höchstens {max} Gesuchkategorien haben",
+        "VILLAGE_086": "Diese Kategorie wird von einem Gesuch verwendet und kann nicht gelöscht werden",
+        "loadFailed": "Gesuchkategorien konnten nicht geladen werden"
+      },
+      "validation": {
+        "nameRequired": "Der Kategoriename ist erforderlich",
+        "nameMax": "Der Kategoriename darf höchstens {max} Zeichen lang sein",
+        "descriptionMax": "Die Beschreibung darf höchstens {max} Zeichen lang sein"
+      },
+      "clearColor": "Farbe entfernen"
+    },
+    "recruitCategoryGuide": {
+      "page_title": "So funktionieren Gesuchkategorien",
+      "description": "Definieren Sie pro Dorf die Kategorien, mit denen Gesuche eingeteilt werden. Dorfvorsteher und Älteste können sie bearbeiten.",
+      "manage": {
+        "title": "Kategorien hinzufügen und bearbeiten",
+        "body": "Erstellen Sie über „Kategorie hinzufügen\" eine neue. Der Name ist frei wählbar, Beschreibung und Farbe sind ebenfalls möglich.",
+        "steps": {
+          "step1": "Drücken Sie die Schaltfläche „Kategorie hinzufügen\".",
+          "step2": "Geben Sie einen Kategorienamen ein (erforderlich, max. 40 Zeichen). Beschreibung und Farbe sind optional.",
+          "step3": "Mit „Speichern\" wird sie zur Liste hinzugefügt. Über das Stiftsymbol können Sie sie jederzeit bearbeiten."
+        }
+      },
+      "preset": {
+        "title": "Auch Standardkategorien lassen sich ändern",
+        "body": "Die mit dem Dorf angelegten Standardkategorien (Teilnehmende, Helfende, Sonstiges) sind nur Daten. Wenn sie nicht zu Ihrem Dorf passen, benennen Sie sie um oder löschen Sie sie.",
+        "steps": {
+          "step1": "Auch mit dem Abzeichen „Standard\" gibt es keine Einschränkung beim Bearbeiten oder Löschen.",
+          "step2": "Passt ein Name nicht zu Ihrem Dorf, schreiben Sie ihn einfach um."
+        }
+      },
+      "order": {
+        "title": "Reihenfolge und Löschen",
+        "body": "Das Umsortieren mit den Pfeilen ändert auch die Reihenfolge beim Erstellen und Filtern von Gesuchen. Verwendete Kategorien können nicht gelöscht werden, um bestehende Gesuche zu schützen.",
+        "steps": {
+          "step1": "Das Umsortieren mit den Pfeiltasten wird sofort gespeichert.",
+          "step2": "Kategorien mit null „Verwendenden Gesuchen\" lassen sich über das Papierkorbsymbol löschen.",
+          "step3": "Um eine verwendete Kategorie zu löschen, ändern Sie zuerst die Kategorie dieser Gesuche."
+        }
+      }
+    },
+    "newsletterGuide": {
+      "page_title": "So nutzt du den Newsletter",
+      "description": "Der Dorf-Newsletter bündelt Dorf-Updates in einer Benachrichtigung. Wöchentlich und monatlich lassen sich unabhängig schalten, und jedes Mitglied entscheidet selbst über den Empfang.",
+      "toggles": {
+        "title": "Wöchentlich und monatlich unabhängig schalten",
+        "body": "In den Versandeinstellungen des Dorfes kannst du wöchentlich und monatlich getrennt umschalten. Du kannst auch nur eines aktivieren.",
+        "steps": {
+          "step1": "Schalte mit dem Schalter „Wöchentlicher Newsletter“ den wöchentlichen Versand ein oder aus.",
+          "step2": "Schalte mit dem Schalter „Monatlicher Newsletter“ den monatlichen Versand ein oder aus.",
+          "step3": "Änderungen werden beim Umschalten sofort gespeichert (kein Speichern-Button nötig)."
+        }
+      },
+      "timing": {
+        "title": "Versandzeitpunkt",
+        "body": "Wöchentlich wird jeden Freitag versendet, monatlich zum Ende jedes Monats."
+      },
+      "permission": {
+        "title": "Wer es ändern kann",
+        "body": "Nur der Dorfvorsteher und die Ältesten können die „Versandeinstellungen des Dorfes“ ändern. Andere Mitglieder sehen die aktuellen Einstellungen schreibgeschützt."
+      },
+      "personal": {
+        "title": "Dein Empfang",
+        "body": "Jedes Mitglied entscheidet selbst über den Empfang des Newsletters. Standardmäßig ist der Empfang aktiviert.",
+        "steps": {
+          "step1": "Schalte den Schalter „Dein Empfang“ aus, um den Newsletter dieses Dorfes nicht mehr zu erhalten.",
+          "step2": "Schalte ihn wieder ein, um den Empfang fortzusetzen."
+        }
+      },
+      "comingSoon": {
+        "body": "⚠️ Der Newsletter-Versand ist in Vorbereitung. Einstellungen lassen sich speichern, es werden aber noch keine Newsletter tatsächlich versendet."
+      }
+    },
+    "memberProfileGuide": {
+      "toggleLabel": "Anleitung",
+      "what": {
+        "title": "Was ist das Dorfbewohner-Mini-Profil",
+        "body": "Tippen Sie in der Mitgliederliste auf einen Namen, um das einfache Profil dieses Dorfbewohners zu öffnen. Sie sehen dessen Rolle und die Dörfer, die er sichtbar gemacht hat."
+      },
+      "villages": {
+        "title": "Die Dorfliste verstehen",
+        "body": "Es werden nur Dörfer angezeigt, die der Dorfbewohner sichtbar gemacht hat. Angezeigt werden nur Dorfname, Wappen und Kategorie, niemals ein Spitzname. Tippen Sie auf eine Karte, um zur Startseite dieses Dorfes zu gelangen."
+      },
+      "toggle": {
+        "title": "Wenn Sie Ihr eigenes Profil öffnen",
+        "body": "Ihr eigenes Mini-Profil zeigt den Schalter „Dieses Dorf in meiner Dorfliste anzeigen“. Wenn Sie ihn aktivieren, können Personen, die mit Ihnen ein Dorf teilen, dieses Dorf in Ihrer Dorfliste sehen. Die Einstellung gilt pro Dorf."
+      },
+      "privacy": {
+        "title": "Zum Datenschutz",
+        "body": "Die Dorfliste wird nur angezeigt, wenn Sie und die andere Person mindestens ein Dorf gemeinsam haben. Gibt es nichts anzuzeigen, erscheint neutral „Keine Dörfer zum Anzeigen“, ohne zu verraten, ob Sie ein Dorf teilen."
       }
     }
   }

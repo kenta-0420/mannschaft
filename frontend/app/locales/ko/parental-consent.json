@@ -3,7 +3,7 @@
     "pending_title": "보호자 동의가 필요합니다",
     "pending_description": "18세 미만이므로 보호자의 동의가 필요합니다. 보호자의 이메일 주소를 입력하여 초대를 보내주세요.",
     "invite_email_label": "보호자의 이메일 주소",
-    "invite_email_placeholder": "parent@example.com",
+    "invite_email_placeholder": "parent{'@'}example.com",
     "send_invite": "초대 보내기",
     "cancel_invite": "초대 취소",
     "invite_sent": "초대 이메일을 발송했습니다",

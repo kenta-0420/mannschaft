@@ -7,7 +7,10 @@ import com.mannschaft.app.template.dto.CreateTemplateRequest;
 import com.mannschaft.app.template.dto.ModuleSummaryResponse;
 import com.mannschaft.app.template.dto.TemplateResponse;
 import com.mannschaft.app.template.dto.UpdateLevelAvailabilityRequest;
+import com.mannschaft.app.template.dto.UpdateModuleActiveRequest;
+import com.mannschaft.app.template.dto.UpdateModulePaidPlanRequest;
 import com.mannschaft.app.template.dto.UpdateTemplateRequest;
+import com.mannschaft.app.template.entity.ModuleDefinitionEntity;
 import com.mannschaft.app.template.entity.ModuleLevelAvailabilityEntity;
 import com.mannschaft.app.template.entity.TeamTemplateEntity;
 import com.mannschaft.app.template.entity.TemplateModuleEntity;
@@ -161,6 +164,53 @@ public class SystemAdminTemplateService {
         moduleLevelAvailabilityRepository.save(availability);
 
         log.info("レベル別利用可否更新完了: moduleId={}, level={}, isAvailable={}", moduleId, request.getLevel(), request.isAvailable());
+    }
+
+    /**
+     * モジュールの有料プラン要否を更新する（SYSTEM_ADMIN操作）。
+     * {@code updateLevelAvailability} と同じ作法（{@code findById}→{@code TMPL_002}・
+     * {@code moduleCatalog}/{@code moduleDetail} キャッシュ evict）を踏襲する。
+     *
+     * @param moduleId モジュールID
+     * @param request  更新リクエスト
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "moduleCatalog", allEntries = true),
+            @CacheEvict(value = "moduleDetail", key = "#moduleId")
+    })
+    public void updateModulePaidPlan(Long moduleId, UpdateModulePaidPlanRequest request) {
+        ModuleDefinitionEntity module = moduleDefinitionRepository.findById(moduleId)
+                .orElseThrow(() -> new BusinessException(TemplateErrorCode.TMPL_002));
+
+        module.applyRequiresPaidPlan(request.getRequiresPaidPlan());
+        moduleDefinitionRepository.save(module);
+
+        log.info("モジュール有料プラン要否更新完了: moduleId={}, requiresPaidPlan={}",
+                moduleId, request.getRequiresPaidPlan());
+    }
+
+    /**
+     * モジュールの有効/無効を更新する（SYSTEM_ADMIN操作）。
+     * {@code updateLevelAvailability} と同じ作法を踏襲する。
+     *
+     * @param moduleId モジュールID
+     * @param request  更新リクエスト
+     */
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "moduleCatalog", allEntries = true),
+            @CacheEvict(value = "moduleDetail", key = "#moduleId")
+    })
+    public void updateModuleActive(Long moduleId, UpdateModuleActiveRequest request) {
+        ModuleDefinitionEntity module = moduleDefinitionRepository.findById(moduleId)
+                .orElseThrow(() -> new BusinessException(TemplateErrorCode.TMPL_002));
+
+        module.applyActive(request.getIsActive());
+        moduleDefinitionRepository.save(module);
+
+        log.info("モジュール有効/無効更新完了: moduleId={}, isActive={}",
+                moduleId, request.getIsActive());
     }
 
     // ========================================

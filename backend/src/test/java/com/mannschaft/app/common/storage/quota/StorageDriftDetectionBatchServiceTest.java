@@ -26,6 +26,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -499,7 +500,7 @@ class StorageDriftDetectionBatchServiceTest {
         @DisplayName("正常系: サブスクリプションが空の場合はスキップ（エラーなし）")
         void 正常系_サブスクリプションが空() {
             // サブスクリプションが空なので R2 呼び出しは発生しない
-            given(subscriptionRepository.findAll()).willReturn(List.of());
+            given(subscriptionRepository.findAllAfterId(eq(0L), any())).willReturn(List.of());
 
             service.execute();
 
@@ -520,7 +521,8 @@ class StorageDriftDetectionBatchServiceTest {
             StorageSubscriptionEntity sub = StorageSubscriptionEntity.builder()
                     .id(SUBSCRIPTION_ID).scopeType("TEAM").scopeId(SCOPE_ID)
                     .planId(1L).usedBytes(0L).fileCount(0).build();
-            given(subscriptionRepository.findAll()).willReturn(List.of(sub));
+            // batch.size()(1) < SUBSCRIPTION_PAGE_SIZE のためこの1ページで打ち切られ次ページは問い合わせない
+            given(subscriptionRepository.findAllAfterId(eq(0L), any())).willReturn(List.of(sub));
 
             service.execute();
 
@@ -554,7 +556,8 @@ class StorageDriftDetectionBatchServiceTest {
             StorageSubscriptionEntity sub = StorageSubscriptionEntity.builder()
                     .id(SUBSCRIPTION_ID).scopeType("TEAM").scopeId(SCOPE_ID)
                     .planId(1L).usedBytes(0L).fileCount(0).build();
-            given(subscriptionRepository.findAll()).willReturn(List.of(sub));
+            // batch.size()(1) < SUBSCRIPTION_PAGE_SIZE のためこの1ページで打ち切られ次ページは問い合わせない
+            given(subscriptionRepository.findAllAfterId(eq(0L), any())).willReturn(List.of(sub));
             given(subscriptionRepository.save(any(StorageSubscriptionEntity.class)))
                     .willAnswer(inv -> inv.getArgument(0));
 
@@ -563,6 +566,63 @@ class StorageDriftDetectionBatchServiceTest {
             // サブスクリプションが修正されている
             verify(subscriptionRepository, times(1)).save(any());
             verify(usageLogRepository, times(1)).save(any());
+        }
+
+        @Test
+        @DisplayName("境界: ページサイズ（200件）をまたぐ全サブスクリプションが処理される（取りこぼし検出）")
+        void 境界_ページサイズをまたぐ全件が処理される() {
+            given(storageProperties.getBucket()).willReturn(BUCKET);
+            ListObjectsV2Response emptyResponse = ListObjectsV2Response.builder()
+                    .contents(List.of()).isTruncated(false).build();
+            given(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).willReturn(emptyResponse);
+
+            int pageSize = 200;
+            int total = pageSize + 1;
+            List<StorageSubscriptionEntity> firstPage = new java.util.ArrayList<>();
+            for (long id = 1; id <= pageSize; id++) {
+                firstPage.add(StorageSubscriptionEntity.builder()
+                        .id(id).scopeType("TEAM").scopeId(id).planId(1L).usedBytes(0L).fileCount(0).build());
+            }
+            StorageSubscriptionEntity last = StorageSubscriptionEntity.builder()
+                    .id((long) total).scopeType("TEAM").scopeId((long) total)
+                    .planId(1L).usedBytes(0L).fileCount(0).build();
+
+            given(subscriptionRepository.findAllAfterId(eq(0L), any())).willReturn(firstPage);
+            // 2ページ目は batch.size()(1) < SUBSCRIPTION_PAGE_SIZE のためここで打ち切られ、3ページ目は問い合わせない
+            given(subscriptionRepository.findAllAfterId(eq((long) pageSize), any())).willReturn(List.of(last));
+
+            service.execute();
+
+            // 差異なしのため save は発生しないが、全ページを取得したことをカーソル引数で検証する
+            verify(subscriptionRepository).findAllAfterId(eq(0L), any());
+            verify(subscriptionRepository).findAllAfterId(eq((long) pageSize), any());
+        }
+
+        @Test
+        @DisplayName("安全弁: SUBSCRIPTION_MAX_PAGES に到達したら打ち切り、WARN ログを出す")
+        void 安全弁_MAX_PAGES到達で打ち切り() {
+            given(storageProperties.getBucket()).willReturn(BUCKET);
+            ListObjectsV2Response emptyResponse = ListObjectsV2Response.builder()
+                    .contents(List.of()).isTruncated(false).build();
+            given(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).willReturn(emptyResponse);
+
+            // 毎回ちょうど 200 件（ページサイズ）返し続け、hasNext が尽きない状況を再現する
+            given(subscriptionRepository.findAllAfterId(any(Long.class), any()))
+                    .willAnswer(inv -> {
+                        long cursor = inv.getArgument(0);
+                        List<StorageSubscriptionEntity> page = new java.util.ArrayList<>();
+                        for (long id = cursor + 1; id <= cursor + 200; id++) {
+                            page.add(StorageSubscriptionEntity.builder()
+                                    .id(id).scopeType("TEAM").scopeId(id)
+                                    .planId(1L).usedBytes(0L).fileCount(0).build());
+                        }
+                        return page;
+                    });
+
+            service.execute();
+
+            // 500 ページ分（SUBSCRIPTION_MAX_PAGES）呼ばれて打ち切られる
+            verify(subscriptionRepository, times(500)).findAllAfterId(any(Long.class), any());
         }
     }
 }

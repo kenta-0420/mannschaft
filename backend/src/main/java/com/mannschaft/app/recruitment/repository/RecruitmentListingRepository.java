@@ -343,4 +343,79 @@ public interface RecruitmentListingRepository extends JpaRepository<RecruitmentL
             GROUP BY rr.cityCode
             """)
     List<Object[]> countMarketListingsByCity();
+
+    /**
+     * <b>論理削除済み（archive 済み）</b>の募集枠のスコープを引く（#2497）。
+     *
+     * <p><b>なぜネイティブクエリなのか</b>: {@link RecruitmentListingEntity} には
+     * {@code @SQLRestriction("deleted_at IS NULL")} が乗っているため、JPQL / 派生クエリ /
+     * {@code findById} / {@code existsById} のいずれからも論理削除済みの行には到達できない。
+     * ネイティブ SQL だけがこのフィルタを迂回できる。</p>
+     *
+     * <p><b>何に使うのか</b>: 募集枠が archive 済みだと、NO_SHOW 記録のスコープ帰属クエリ
+     * （{@code RecruitmentNoShowRecordRepository#findByIdAndScopeTypeAndScopeId}）が
+     * 募集枠を JOIN する都合で引けなくなり、<b>異議の裁定が永久に不能になる</b>。
+     * そこで {@code RecruitmentNoShowService#dispute} は申立を受け付けた直後に本クエリで
+     * 「裁定不能か」を判定し、不能なら即座に取り下げる。
+     * <b>戻り値が存在すること自体が「archive 済み」の信号</b>であり、同時に監査ログへ残す
+     * スコープ文脈（team / organization）の唯一の入手経路でもある（1 クエリで両方を満たす）。</p>
+     *
+     * <p><b>「募集枠の行そのものが存在しない」ケースは扱わない。</b>
+     * {@code recruitment_no_show_records.listing_id} には
+     * {@code fk_rns_listing ... ON DELETE CASCADE}（V3.128）が張られており、
+     * 募集枠の行が物理削除されれば NO_SHOW 記録も道連れに消えるため、
+     * 「記録は在るのに募集枠の行が無い」状態は発生しない。</p>
+     *
+     * <p><b>【訂正 issue #2545】{@code CAST(scope_id AS SIGNED)} は必須ではない。</b>
+     * 本 javadoc は当初「本番 DDL（V3.119）の {@code scope_id} は {@code BIGINT UNSIGNED} であり、
+     * MySQL Connector/J は符号なし BIGINT を {@code BigInteger} で返すため、射影の
+     * {@code Long getScopeId()} に渡すと本番でのみ壊れる」と断定していたが、
+     * <b>この機構は実測されていなかった</b>。</p>
+     *
+     * <p>issue #2545 で Flyway 実スキーマ（＝本番同一の {@code BIGINT UNSIGNED}）上の
+     * Testcontainers MySQL に対して実測した結果は次のとおりである
+     * （{@code NativeQueryUnsignedBigintTypeIT#符号なしBIGINTの各経路の実行時型を固定する}。
+     * 測定条件: MySQL 8.0 + MySQL Connector/J（Spring Boot 3.5 系の管理バージョン）
+     * + Hibernate ORM 6.6 系 + Spring Data JPA）:</p>
+     * <ul>
+     *   <li>生 JDBC {@code ResultSet#getObject} … {@code BigInteger}（ドライバの挙動の記述自体は正しい）</li>
+     *   <li>Hibernate ネイティブクエリのスカラ … <b>{@code Long}</b></li>
+     *   <li>Spring Data {@code @Query(nativeQuery=true)} の {@code List<Long>} の要素 … <b>{@code Long}</b></li>
+     *   <li>射影インタフェースの {@code Long} 宣言 … <b>{@code Long}</b></li>
+     *   <li>{@code List<Object[]>} の要素 … <b>{@code Long}</b></li>
+     * </ul>
+     *
+     * <p>Hibernate 6（現行スタックは Spring Boot 3.5 系）はネイティブクエリのスカラ型を
+     * {@code ResultSetMetaData#getColumnType}（{@code BIGINT}）で解決し {@code Long} に正規化するため、
+     * <b>本測定条件下では</b> {@code BigInteger} が ORM 境界を越えて Java コードに現れることはない
+     * （Hibernate 5 系の {@code getColumnClassName} 経由とは挙動が異なる）。
+     * よって「テストは通るが本番だけ落ちる」分岐は現行スタックには存在しない。
+     * これは無条件の一般則ではなく観測事実であり、
+     * ドライバ / Hibernate / Spring Data が入れ替われば上記 IT が赤くなって検知される
+     * （#2514 の無条件断定を否定する記述が、同じ形の無条件断定にならないための注記）。</p>
+     *
+     * <p>それでも CAST を残しているのは、本クエリが {@code l.id = :listingId} による
+     * 主キー1行引きであり CAST がインデックス選択に一切影響しないこと、および
+     * 「射影が符号付き {@code Long} を期待している」という意図の明示になるためである。
+     * 除去も可能だが利得が無いため触らない
+     * （インデックス列に CAST が乗って実害が出ていた {@code MyScopeFolderItemRepository} とは事情が異なる）。</p>
+     *
+     * @param listingId 募集枠 ID
+     * @return archive 済みならスコープ、生存中なら空
+     */
+    @Query(value = """
+            SELECT l.scope_type AS scopeType, CAST(l.scope_id AS SIGNED) AS scopeId
+            FROM recruitment_listings l
+            WHERE l.id = :listingId
+              AND l.deleted_at IS NOT NULL
+            """, nativeQuery = true)
+    Optional<ArchivedListingScope> findArchivedScopeById(@Param("listingId") Long listingId);
+
+    /** {@link #findArchivedScopeById} の射影。 */
+    interface ArchivedListingScope {
+        /** {@code RecruitmentScopeType} の名前（{@code TEAM} / {@code ORGANIZATION}）。 */
+        String getScopeType();
+
+        Long getScopeId();
+    }
 }

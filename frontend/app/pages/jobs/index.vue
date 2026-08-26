@@ -91,7 +91,7 @@ onMounted(async () => {
 
 <template>
   <div class="container mx-auto max-w-4xl p-4">
-    <PageHeader :title="t('jobmatching.workerSearch.title')" :back="false" help @help="showGuide = true" />
+    <PageHeader :title="t('jobmatching.workerSearch.title')" help @help="showGuide = true" />
     <p class="mb-4 text-sm text-surface-500">
       {{ t('jobmatching.workerSearch.description') }}
     </p>

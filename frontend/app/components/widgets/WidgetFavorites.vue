@@ -13,12 +13,13 @@ import FavoriteQuickEditDialog from '~/components/favorites/FavoriteQuickEditDia
 
 const { t } = useI18n()
 const notification = useNotification()
-const { confirmAction } = useConfirmDialog()
+const { showUndoToast } = useUndoToast()
 const {
   items,
   isLoading,
   error,
   fetchFavorites,
+  addFavorite,
   removeFavorite,
   reorderFavorites,
 } = useFavoritesApi()
@@ -100,19 +101,28 @@ async function onFavoriteSaved() {
   await refresh()
 }
 
-function handleRemove(item: UserFavoriteItem) {
-  confirmAction({
-    message: t('favorites.removeConfirm'),
-    header: t('favorites.remove'),
-    onAccept: async () => {
-      try {
-        await removeFavorite(item.favoriteId)
-        notification.success(t('favorites.removeSuccess'))
-      } catch {
-        notification.error(t('favorites.saveError'))
-      }
-    },
-  })
+// ADHD 配慮 AC-15: 確認ダイアログを廃止し、即時削除 + Undo Toast に置換する。
+// お気に入り削除は可逆（同一 entity を再登録すれば復元できる）ため、
+// Undo では addFavorite(entityType, entityId) を呼び直して元の状態に戻す。
+async function handleRemove(item: UserFavoriteItem) {
+  try {
+    await removeFavorite(item.favoriteId)
+    showUndoToast({
+      summary: t('favorites.removeSuccess'),
+      undoLabel: t('button.undo'),
+      severity: 'info',
+      onUndo: async () => {
+        try {
+          await addFavorite(item.entityType, item.entityId)
+          notification.success(t('favorites.restoredToast'))
+        } catch {
+          notification.error(t('favorites.restoreFailed'))
+        }
+      },
+    })
+  } catch {
+    notification.error(t('favorites.saveError'))
+  }
 }
 
 async function refresh() {

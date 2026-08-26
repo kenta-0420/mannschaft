@@ -14,7 +14,6 @@ import com.mannschaft.app.reflection.dto.UpsertReflectionEntryRequest;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
 import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
 import com.mannschaft.app.reflection.repository.ReflectionEntryRepository;
-import com.mannschaft.app.reflection.repository.ReflectionThemeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,13 +41,13 @@ public class ReflectionEntryService {
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Tokyo");
 
     private final ReflectionEntryRepository reflectionEntryRepository;
-    private final ReflectionThemeRepository reflectionThemeRepository;
     private final ReflectionSpacedReminderService reflectionSpacedReminderService;
     private final ReflectionContentSanitizer contentSanitizer;
     private final ReflectionEntryResponseMapper responseMapper;
     private final ReflectionMaskEvaluator maskEvaluator;
     private final UserTimezoneCache userTimezoneCache;
     private final BlogPostService blogPostService;
+    private final ReflectionAccessGuard reflectionAccessGuard;
 
     /** テーマ配下エントリ一覧（§7 #6・マスク適用＝§3.2）。 */
     @Transactional(readOnly = true)
@@ -295,14 +294,14 @@ public class ReflectionEntryService {
         }
     }
 
+    /** 認可は {@link ReflectionAccessGuard} に一元化（他者所有・不在は 404 秘匿）。 */
     private ReflectionThemeEntity requireOwnedTheme(Long userId, UUID themeId) {
-        return reflectionThemeRepository.findByIdAndUserId(themeId, userId)
-                .orElseThrow(() -> new BusinessException(ReflectionErrorCode.REFLECTION_NOT_FOUND));
+        return reflectionAccessGuard.requireOwnedTheme(userId, themeId);
     }
 
+    /** 認可は {@link ReflectionAccessGuard} に一元化（他者所有・不在は 404 秘匿）。 */
     private ReflectionEntryEntity requireOwnedEntry(Long userId, UUID entryId) {
-        return reflectionEntryRepository.findByIdAndUserId(entryId, userId)
-                .orElseThrow(() -> new BusinessException(ReflectionErrorCode.REFLECTION_NOT_FOUND));
+        return reflectionAccessGuard.requireOwnedEntry(userId, entryId);
     }
 
     /** ユーザー TZ の今日（§3.1 / §2.5.1 c の基準）。 */

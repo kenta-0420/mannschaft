@@ -60,7 +60,8 @@
       "saveSuccess": "设置已保存",
       "saveError": "保存失败",
       "reorderHint": "拖动手柄即可调整导航项的显示顺序",
-      "dragHandleLabel": "拖动手柄"
+      "dragHandleLabel": "拖动手柄",
+      "pinnedBottom": "固定在底部"
     },
     "account": {
       "page_title": "账户设置",
@@ -356,27 +357,35 @@
     },
     "gcal": {
       "section_title": "Google 日历集成",
+      "connection_status_title": "连接状态",
       "connected_label": "已连接",
       "last_synced": "最后同步: {date}",
       "last_sync_error": "同步错误: {message}",
       "manual_sync_button": "手动同步",
       "disconnect_button": "解除连接",
+      "disconnect_confirm": "确定要解除 Google 日历连接吗？",
       "sync_settings_title": "同步设置",
       "personal_calendar_label": "个人日历",
       "personal_calendar_description": "将个人日程同步到 Google 日历",
       "team_calendars_label": "团队日历",
       "org_calendars_label": "组织日历",
-      "save_settings_button": "保存设置",
+      "no_team_calendars": "您尚未加入任何团队",
+      "no_org_calendars": "您尚未加入任何组织",
       "not_connected_description": "连接您的 Google 账户以同步日历",
       "connect_button": "连接 Google 账户",
+      "detail_link_button": "前往详细设置",
       "toast": {
         "connect_error": "连接失败",
+        "oauth_connected": "已与 Google 日历连接",
+        "oauth_connect_failed": "Google 日历连接失败",
         "disconnect_success": "已解除连接",
         "disconnect_error": "解除连接失败",
-        "save_success": "同步设置已保存",
-        "save_error": "保存失败",
         "sync_success": "同步已执行",
-        "sync_error": "同步失败"
+        "sync_error": "同步失败",
+        "load_error": "读取失败",
+        "toggle_on_success": "已开启{name}的同步",
+        "toggle_off_success": "已关闭{name}的同步",
+        "backfill_info": "已将{count}项日程加入同步队列"
       }
     },
     "delete_account": {

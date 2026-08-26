@@ -1,11 +1,9 @@
 <script setup lang="ts">
 definePageMeta({
   middleware: 'auth',
-  layout: 'organization',
 })
 
 const route = useRoute()
-const router = useRouter()
 const orgSlug = String(route.params.slug)
 const { isAdmin, isAdminOrDeputy, loadPermissions } = useRoleAccess('organization', orgSlug)
 
@@ -16,9 +14,8 @@ function onPosted() {
   feedRef.value?.refresh()
 }
 
-function onClickPost(postId: number) {
-  router.push(`/timeline/${postId}`)
-}
+// 投稿カード本体クリックは返信アコーディオン開閉に統一済み（詳細遷移は各カードの時刻パーマリンク経由）。
+// このため clickPost の購読は不要になり撤去した。
 
 onMounted(async () => {
   try {
@@ -50,7 +47,6 @@ onMounted(async () => {
         :scope-id="orgSlug"
         :can-pin="isAdminOrDeputy"
         :can-delete-others="isAdmin"
-        @click-post="onClickPost"
       />
     </div>
   </div>

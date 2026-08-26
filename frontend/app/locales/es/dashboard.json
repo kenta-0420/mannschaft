@@ -77,7 +77,10 @@
       "toggle_today": "今日",
       "toggle_week": "今週",
       "empty_today": "今日の予定はありません",
-      "empty_week": "今週の予定はありません"
+      "empty_week": "今週の予定はありません",
+      "kind_event": "予定",
+      "kind_shift": "シフト",
+      "kind_reservation": "予約"
     },
     "personal": {
       "find_team_title": "Encontrar un nuevo equipo u organización",
@@ -108,13 +111,10 @@
       "my-organizations": "所属組織",
       "favorites": "お気に入り",
       "recent-activity": "最近のアクティビティ",
-      "family-hub": "家族",
-      "notifications": "通知",
       "recruitment-feed": "新着募集",
       "my-recruitments": "参加予定",
       "my-corkboard": "マイコルクボード",
       "village-lobby-digest": "井戸端ダイジェスト",
-      "inbox": "インボックス",
       "todos": "TODO",
       "timeline": "タイムライン",
       "bulletin": "掲示板",
@@ -133,7 +133,8 @@
       "team-division-standings": "順位表",
       "org-tournament-summary": "主催大会サマリ",
       "team-match-summary": "試合サマリ",
-      "projects": "プロジェクト"
+      "projects": "プロジェクト",
+      "my-timeline": "集約タイムライン"
     },
     "widget_descriptions": {
       "event-dismissal-reminder": "解散通知が未送信のイベントへのリマインダー",
@@ -154,13 +155,10 @@
       "my-organizations": "参加中の組織一覧",
       "favorites": "お気に入りに登録したコンテンツ",
       "recent-activity": "最近の活動履歴",
-      "family-hub": "家族チームのお知らせ・TODO",
-      "notifications": "未読の通知",
       "recruitment-feed": "フォロー先・サポーター先の新着募集",
       "my-recruitments": "自分の確定・キャンセル待ち参加予定",
       "my-corkboard": "ピン止めしたカードの横断一覧",
       "village-lobby-digest": "ピン留め村の本日の井戸端在席状況",
-      "inbox": "通知を一箇所で仕分け",
       "todos": "未完了のTODO",
       "timeline": "最新の投稿",
       "bulletin": "最新のスレッド",
@@ -179,7 +177,33 @@
       "team-division-standings": "現在参加中のディビジョンの順位表",
       "org-tournament-summary": "主催する各大会×各部の首位・参加数・状態",
       "team-match-summary": "直近の試合成績と進行中試合の記録再開",
-      "projects": "プロジェクトの進捗状況と一覧"
+      "projects": "プロジェクトの進捗状況と一覧",
+      "my-timeline": "所属チーム・組織の投稿を横断表示"
+    },
+    "notices": {
+      "actionRequiredTab": "Acción requerida",
+      "actionRequiredEmpty": "No hay elementos que requieran su atención",
+      "widget_notices_tab_platform": "Anuncios",
+      "widget_notices_platform_empty": "No hay anuncios en este momento"
+    },
+    "commandCenter": {
+      "title": "Ahora mismo",
+      "unresolvedCount": "{count} pendientes",
+      "chipCirculation": "Circulación",
+      "chipSurvey": "Encuesta",
+      "chipAttendance": "Asistencia",
+      "chipOverdueTodo": "Tareas vencidas",
+      "deadlineOverdue": "Vencido",
+      "deadlineToday": "Hoy",
+      "emptyTitle": "Nada pendiente 🎉",
+      "emptyMessage": "No hay elementos que requieran su atención",
+      "partialLoadError": "No se pudieron cargar algunos datos",
+      "todoCompleteAria": "Marcar como completada",
+      "todoCompleteSuccess": "Tarea completada",
+      "todoCompleteError": "Error al completar la tarea",
+      "adminSectionTitle": "Aprobaciones pendientes",
+      "adminUnresolvedCount": "{count} aprobaciones pendientes",
+      "adminLoadError": "No se pudieron cargar las aprobaciones pendientes"
     },
     "myCorkboard": {
       "widgetTitle": "Mi tablero de corcho",
@@ -194,6 +218,27 @@
       "unpinAction": "Desfijar esta tarjeta",
       "navigationFailed": "No se puede acceder a la referencia de esta tarjeta",
       "colorLabelAria": "Etiqueta {color}"
+    },
+    "activity_feed": {
+      "post_created": "が投稿しました",
+      "event_created": "がイベントを作成しました",
+      "member_joined": "が参加しました",
+      "todo_completed": "がTODOを完了しました",
+      "bulletin_created": "がお知らせを投稿しました",
+      "poll_created": "がアンケートを作成しました",
+      "file_uploaded": "がファイルを共有しました",
+      "schedule_created": "が予定を作成しました",
+      "schedule_updated": "が予定を更新しました",
+      "schedule_cancelled": "が予定をキャンセルしました",
+      "schedule_rescheduled": "が予定の日程を変更しました",
+      "detail_start_at": "開始日時",
+      "detail_end_at": "終了日時",
+      "detail_is_all_day": "終日設定",
+      "detail_title": "タイトル",
+      "detail_location": "場所",
+      "detail_status": "ステータス",
+      "detail_description_changed": "詳細が更新されました",
+      "unknown": "アクションしました"
     }
   },
   "swipeWidgets": {
@@ -212,8 +257,43 @@
       "unconfirmed": "{count} sin confirmar",
       "unanswered": "{count} sin responder",
       "empty": "No hay elementos que requieran acción",
-      "loadError": "Error al cargar los elementos de acción"
+      "loadError": "Error al cargar los elementos de acción",
+      "circulationModal": {
+        "title": "Confirmar circulación",
+        "circulatedAt": "Fecha de circulación",
+        "deadline": "Fecha límite",
+        "confirm": "Confirmado",
+        "noSealMessage": "No hay sello configurado. Configure un sello antes de estampar.",
+        "goToSealSettings": "Ir a configuración de sello",
+        "stampSuccess": "Sellado correctamente",
+        "stampError": "Error al sellar"
+      },
+      "surveyModal": {
+        "loadError": "Error al cargar la encuesta"
+      },
+      "attendanceModal": {
+        "title": "Confirmar asistencia",
+        "attending": "Asistiendo",
+        "absent": "Ausente",
+        "undecided": "Indeciso",
+        "success": "Asistencia registrada",
+        "error": "Error al registrar la asistencia"
+      }
     },
-    "emptyState": "Sin publicaciones aún"
+    "emptyState": "Sin publicaciones aún",
+    "list": {
+      "allDay": "Todo el día",
+      "overdue": "Vencido",
+      "nextEvent": "Próximo evento",
+      "noNextEvent": "Sin próximos eventos",
+      "eventsThisWeek": "{count} esta semana",
+      "upcomingEmpty": "Sin próximos eventos",
+      "blogEmpty": "Sin entradas de blog",
+      "chatEmpty": "Sin chats",
+      "todoEmpty": "Sin tareas",
+      "calendarEmpty": "Sin eventos",
+      "bulletinEmpty": "No hay temas del tablón",
+      "unread": "No leído"
+    }
   }
 }

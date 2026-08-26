@@ -47,7 +47,8 @@ public class TransitionAlertController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(defaultValue = "false") boolean unresolvedOnly) {
-        return ApiResponse.of(transitionAlertService.getAlerts(teamId, date, unresolvedOnly));
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        return ApiResponse.of(transitionAlertService.getAlerts(teamId, date, unresolvedOnly, currentUserId));
     }
 
     /**
@@ -68,6 +69,6 @@ public class TransitionAlertController {
             @PathVariable Long alertId,
             @Valid @RequestBody TransitionAlertResolveRequest request) {
         Long currentUserId = SecurityUtils.getCurrentUserId();
-        return ApiResponse.of(transitionAlertService.resolveAlert(alertId, currentUserId, request.getNote()));
+        return ApiResponse.of(transitionAlertService.resolveAlert(teamId, alertId, currentUserId, request.getNote()));
     }
 }

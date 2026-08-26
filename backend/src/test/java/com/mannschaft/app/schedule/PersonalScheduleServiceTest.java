@@ -12,6 +12,7 @@ import com.mannschaft.app.schedule.repository.PersonalScheduleReminderRepository
 import com.mannschaft.app.schedule.repository.ScheduleRepository;
 import com.mannschaft.app.schedule.entity.PersonalScheduleReminderEntity;
 import com.mannschaft.app.schedule.service.PersonalScheduleService;
+import com.mannschaft.app.schedule.service.ScheduleAccessGuard;
 import com.mannschaft.app.schedule.service.ScheduleRecurrenceService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -66,6 +68,17 @@ class PersonalScheduleServiceTest {
 
     @Mock
     private ScheduleRecurrenceService recurrenceService;
+
+    // F03.19 W1-c: 個人予定一覧の色解決でレイヤー設定を読む（既定 mock は空 Map を返す＝設定なし）。
+    @Mock
+    private com.mannschaft.app.schedule.service.CalendarLayerService calendarLayerService;
+
+    /**
+     * 認可ガードは状態を持たない純粋な判定のため、モックではなく実体を注入して
+     * 本物の所有者判定を通す（@Spy により @InjectMocks の注入対象になる）。
+     */
+    @Spy
+    private ScheduleAccessGuard scheduleAccessGuard = new ScheduleAccessGuard();
 
     @InjectMocks
     private PersonalScheduleService personalScheduleService;

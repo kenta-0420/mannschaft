@@ -27,6 +27,12 @@ public interface TournamentParticipantRepository extends JpaRepository<Tournamen
     long countByDivisionId(Long divisionId);
 
     /**
+     * 認可根治戦役 Wave2 トランシェ2C: 参加チームが指定ディビジョン配下に属するかの束縛検証（BOLA 対策）。
+     * pId を divisionId で絞り込み、他ディビジョンの参加チームを URL 差し替えで操作できないようにする。
+     */
+    Optional<TournamentParticipantEntity> findByIdAndDivisionId(Long id, Long divisionId);
+
+    /**
      * F08.7.1 主催大会サマリ: 複数ディビジョンの参加チーム数を 1 クエリで一括集約する（N+1 回避）。
      *
      * <p>{@code GROUP BY division_id COUNT(*)}。参加レコードが 0 件のディビジョンは結果に含まれない

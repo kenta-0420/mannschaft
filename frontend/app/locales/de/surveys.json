@@ -4,7 +4,8 @@
     "statusLabel": {
       "DRAFT": "Entwurf",
       "PUBLISHED": "Geöffnet",
-      "CLOSED": "Geschlossen"
+      "CLOSED": "Geschlossen",
+      "ARCHIVED": "Archiviert"
     },
     "questionType": {
       "SINGLE_CHOICE": "Einzelauswahl",
@@ -17,7 +18,8 @@
       "label": "Sichtbarkeit der Ergebnisse",
       "CREATOR_ONLY": "Nur Ersteller",
       "RESPONDENTS": "Nur Befragte",
-      "ALL_MEMBERS": "Alle Mitglieder"
+      "ALL_MEMBERS": "Alle Mitglieder",
+      "AFTER_CLOSE": "Alle Mitglieder nach Abschluss"
     },
     "unrespondedVisibility": {
       "label": "Sichtbarkeit der Nicht-Befragten",
@@ -27,8 +29,10 @@
     },
     "list": {
       "filterAll": "Alle",
+      "filterDraft": "Entwurf",
       "filterPlaceholder": "Status",
       "createButton": "Umfrage erstellen",
+      "editDraft": "Fragen hinzufügen/bearbeiten",
       "answeredBadge": "Beantwortet",
       "anonymous": "Anonym",
       "responseCountUnit": "Antworten",
@@ -48,7 +52,13 @@
       "questions": "Fragen",
       "cancel": "Abbrechen",
       "save": "Speichern",
+      "saveDraft": "Als Entwurf speichern",
+      "saveAndPublish": "Erstellen & veröffentlichen",
+      "draftSaved": "Entwurf gespeichert",
+      "draftRestored": "Vorherige Eingabe wiederhergestellt",
+      "draftHint": "Fragen können später hinzugefügt werden. Speichere zunächst nur mit einem Titel.",
       "successToast": "Umfrage erstellt",
+      "draftSuccessToast": "Als Entwurf gespeichert. Fragen hinzufügen und veröffentlichen.",
       "failureToast": "Umfrage konnte nicht erstellt werden",
       "validation": {
         "titleRequired": "Bitte einen Titel eingeben",
@@ -57,7 +67,8 @@
         "questionsRequired": "Bitte mindestens eine Frage hinzufügen",
         "questionTextRequired": "Bitte Text für Frage {index} eingeben",
         "optionsTooFew": "Frage {index} benötigt mindestens zwei Optionen",
-        "optionEmpty": "Frage {index} hat leere Option(en)"
+        "optionEmpty": "Frage {index} hat leere Option(en)",
+        "questionTypeUnsupported": "Frage {index}: Datumsfragen werden derzeit nicht unterstützt. Bitte einen anderen Typ wählen."
       },
       "questionEditor": {
         "empty": "Noch keine Fragen",
@@ -91,6 +102,8 @@
       "responseCount": "Antworten",
       "anonymous": "Anonym",
       "draftHint": "Diese Umfrage ist ein Entwurf. Vor der Veröffentlichung werden keine Antworten angenommen.",
+      "draftAddQuestionsHint": "Fragen hinzufügen, bevor die Umfrage veröffentlicht wird. Ohne Fragen ist keine Beantwortung möglich.",
+      "draftQuestionsSection": "Fragen hinzufügen",
       "publishButton": "Veröffentlichen",
       "publishSuccess": "Umfrage veröffentlicht",
       "publishFailed": "Umfrage konnte nicht veröffentlicht werden",
@@ -169,6 +182,18 @@
       "optionCount": "{count} ({percentage}%)",
       "noOptionData": "Keine Daten.",
       "noQuestionData": "Keine auswertbaren Fragen."
+    },
+    "results": {
+      "withheldForPrivacy": {
+        "title": "Ergebnisse sind ausgeblendet, solange es nur wenige Antworten gibt",
+        "description": "Bei anonymen Umfragen kann eine Änderung der Auswertung direkt nach einer Antwort diese Antwort preisgeben. Ergebnisse werden ab {threshold} Antworten angezeigt. (Aktuell {count})"
+      },
+      "respondCta": "An dieser Umfrage teilnehmen",
+      "editResponseCta": "Antwort bearbeiten",
+      "forbidden": {
+        "title": "Du hast keine Berechtigung, die Ergebnisse dieser Umfrage zu sehen",
+        "description": "Diese Umfrage richtet sich an einen begrenzten Empfängerkreis, zu dem du nicht gehörst. Bei Fragen wende dich bitte an die Ersteller:in."
+      }
     }
   }
 }

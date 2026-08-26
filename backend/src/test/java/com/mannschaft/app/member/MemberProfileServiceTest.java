@@ -55,7 +55,7 @@ class MemberProfileServiceTest {
                     1L, 100L, "テスト太郎", "001", null, null, null, null);
 
             // When
-            MemberProfileResponse result = service.createProfile(req);
+            MemberProfileResponse result = service.createProfile(999L, req);
 
             // Then
             assertThat(result.getDisplayName()).isEqualTo("テスト太郎");
@@ -72,7 +72,7 @@ class MemberProfileServiceTest {
                     1L, 100L, "テスト太郎", null, null, null, null, null);
 
             // When / Then
-            assertThatThrownBy(() -> service.createProfile(req))
+            assertThatThrownBy(() -> service.createProfile(999L, req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBER_008"));
@@ -90,7 +90,7 @@ class MemberProfileServiceTest {
             given(profileRepository.findById(1L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.getProfile(1L))
+            assertThatThrownBy(() -> service.getProfile(999L, 1L))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBER_003"));
@@ -113,7 +113,7 @@ class MemberProfileServiceTest {
             BulkCreateMemberRequest req = new BulkCreateMemberRequest(1L, items);
 
             // When / Then
-            assertThatThrownBy(() -> service.bulkCreate(req))
+            assertThatThrownBy(() -> service.bulkCreate(999L, req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBER_014"));
@@ -131,7 +131,7 @@ class MemberProfileServiceTest {
             CopyMembersRequest req = new CopyMembersRequest(1L);
 
             // When / Then
-            assertThatThrownBy(() -> service.copyMembers(1L, req))
+            assertThatThrownBy(() -> service.copyMembers(999L, 1L, req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBER_011"));
@@ -153,7 +153,7 @@ class MemberProfileServiceTest {
             ReorderRequest req = new ReorderRequest(1L, orders);
 
             // When / Then
-            assertThatThrownBy(() -> service.reorderMembers(req))
+            assertThatThrownBy(() -> service.reorderMembers(999L, req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("MEMBER_013"));

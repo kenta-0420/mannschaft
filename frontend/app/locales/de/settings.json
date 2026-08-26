@@ -60,7 +60,8 @@
       "saveSuccess": "Einstellungen gespeichert",
       "saveError": "Einstellungen konnten nicht gespeichert werden",
       "reorderHint": "Ziehen Sie den Griff, um die Navigationspunkte neu anzuordnen",
-      "dragHandleLabel": "Ziehgriff"
+      "dragHandleLabel": "Ziehgriff",
+      "pinnedBottom": "Am Ende fixiert"
     },
     "account": {
       "page_title": "Kontoeinstellungen",
@@ -356,27 +357,35 @@
     },
     "gcal": {
       "section_title": "Google Calendar Integration",
+      "connection_status_title": "Verbindungsstatus",
       "connected_label": "Verbunden",
       "last_synced": "Zuletzt synchronisiert: {date}",
       "last_sync_error": "Synchronisierungsfehler: {message}",
       "manual_sync_button": "Manuell synchronisieren",
       "disconnect_button": "Verbindung trennen",
+      "disconnect_confirm": "Google Calendar-Verbindung wirklich trennen?",
       "sync_settings_title": "Synchronisationseinstellungen",
       "personal_calendar_label": "Persönlicher Kalender",
       "personal_calendar_description": "Persönliche Termine mit Google Calendar synchronisieren",
       "team_calendars_label": "Team-Kalender",
       "org_calendars_label": "Organisations-Kalender",
-      "save_settings_button": "Einstellungen speichern",
+      "no_team_calendars": "Sie gehören keinem Team an",
+      "no_org_calendars": "Sie gehören keiner Organisation an",
       "not_connected_description": "Verbinden Sie Ihr Google-Konto, um Kalender zu synchronisieren",
       "connect_button": "Google-Konto verbinden",
+      "detail_link_button": "Zu den Detaileinstellungen",
       "toast": {
         "connect_error": "Verbindung fehlgeschlagen",
+        "oauth_connected": "Mit Google Calendar verbunden",
+        "oauth_connect_failed": "Verbindung mit Google Calendar fehlgeschlagen",
         "disconnect_success": "Verbindung getrennt",
         "disconnect_error": "Trennung fehlgeschlagen",
-        "save_success": "Synchronisationseinstellungen gespeichert",
-        "save_error": "Speichern fehlgeschlagen",
         "sync_success": "Synchronisation abgeschlossen",
-        "sync_error": "Synchronisation fehlgeschlagen"
+        "sync_error": "Synchronisation fehlgeschlagen",
+        "load_error": "Laden fehlgeschlagen",
+        "toggle_on_success": "Synchronisation für {name} aktiviert",
+        "toggle_off_success": "Synchronisation für {name} deaktiviert",
+        "backfill_info": "{count} Termine zur Synchronisation hinzugefügt"
       }
     },
     "delete_account": {

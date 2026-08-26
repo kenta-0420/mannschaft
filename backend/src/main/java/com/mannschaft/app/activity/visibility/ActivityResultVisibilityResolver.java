@@ -4,6 +4,8 @@ import com.mannschaft.app.activity.ActivityVisibility;
 import com.mannschaft.app.activity.repository.ActivityResultRepository;
 import com.mannschaft.app.auth.service.AuditLogService;
 import com.mannschaft.app.common.visibility.AbstractContentVisibilityResolver;
+import com.mannschaft.app.common.visibility.ContentStatus;
+import com.mannschaft.app.common.visibility.mapping.ActivityStatusMapper;
 import com.mannschaft.app.common.visibility.FollowBatchService;
 import com.mannschaft.app.common.visibility.MembershipBatchQueryService;
 import com.mannschaft.app.common.visibility.ReferenceType;
@@ -85,5 +87,18 @@ public class ActivityResultVisibilityResolver
     @Override
     protected StandardVisibility toStandard(ActivityVisibility visibility) {
         return ActivityVisibilityMapper.toStandard(visibility);
+    }
+
+    /**
+     * status 軸のマッピング（F06.4 下書き対応）。
+     *
+     * <p>{@link com.mannschaft.app.activity.ActivityStatus#DRAFT} は
+     * {@link ContentStatus#DRAFT}（作成者・SystemAdmin のみ可視）、PUBLISHED は
+     * {@link ContentStatus#PUBLISHED}（visibility 評価に進む）へ写像する。
+     * これにより「DRAFT はスコープ一覧に非表示・作成者のみ閲覧可」が F00 正準で担保される。</p>
+     */
+    @Override
+    protected ContentStatus toContentStatus(ActivityResultVisibilityProjection row) {
+        return ActivityStatusMapper.toContentStatus(row.status());
     }
 }

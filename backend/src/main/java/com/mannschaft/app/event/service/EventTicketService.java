@@ -46,22 +46,31 @@ public class EventTicketService {
     /**
      * チケット詳細を取得する。
      *
+     * <p>親子BOLA根治: {@code ticketId} が {@code eventId} に属さない場合は
+     * 存在を漏らさないため TICKET_NOT_FOUND（404）で秘匿する。</p>
+     *
+     * @param eventId  イベントID（URL パス由来。親子突合に使用）
      * @param ticketId チケットID
      * @return チケットレスポンス
      */
-    public TicketResponse getTicket(Long ticketId) {
-        EventTicketEntity entity = findTicketOrThrow(ticketId);
+    public TicketResponse getTicket(Long eventId, Long ticketId) {
+        EventTicketEntity entity = findTicketOrThrow(eventId, ticketId);
         return eventMapper.toTicketResponse(entity);
     }
 
     /**
      * QRトークンでチケットを検索する。
      *
+     * <p>親子BOLA根治: QR トークンで引けたチケットの {@code eventId} が URL パスの
+     * {@code eventId} と一致しない場合は TICKET_NOT_FOUND（404）で秘匿する。</p>
+     *
+     * @param eventId イベントID（URL パス由来。親子突合に使用）
      * @param qrToken QRトークン
      * @return チケットレスポンス
      */
-    public TicketResponse getTicketByQrToken(String qrToken) {
+    public TicketResponse getTicketByQrToken(Long eventId, String qrToken) {
         EventTicketEntity entity = ticketRepository.findByQrToken(qrToken)
+                .filter(t -> t.getEventId().equals(eventId))
                 .orElseThrow(() -> new BusinessException(EventErrorCode.TICKET_NOT_FOUND));
         return eventMapper.toTicketResponse(entity);
     }
@@ -69,12 +78,15 @@ public class EventTicketService {
     /**
      * チケットをキャンセルする。
      *
+     * <p>親子BOLA根治: {@code ticketId} が {@code eventId} に属さない場合は 404 で秘匿する。</p>
+     *
+     * @param eventId  イベントID（URL パス由来。親子突合に使用）
      * @param ticketId チケットID
      * @return 更新されたチケットレスポンス
      */
     @Transactional
-    public TicketResponse cancelTicket(Long ticketId) {
-        EventTicketEntity entity = findTicketOrThrow(ticketId);
+    public TicketResponse cancelTicket(Long eventId, Long ticketId) {
+        EventTicketEntity entity = findTicketOrThrow(eventId, ticketId);
         if (entity.getStatus() != TicketStatus.VALID) {
             throw new BusinessException(EventErrorCode.INVALID_TICKET_STATUS);
         }
@@ -135,10 +147,11 @@ public class EventTicketService {
     }
 
     /**
-     * チケットを取得する。存在しない場合は例外をスローする。
+     * チケットIDとイベントIDでチケットを取得する。存在しない・イベント帰属不一致の場合は
+     * 存在を漏らさないため同一の TICKET_NOT_FOUND（404）で例外をスローする（親子BOLA根治）。
      */
-    private EventTicketEntity findTicketOrThrow(Long ticketId) {
-        return ticketRepository.findById(ticketId)
+    private EventTicketEntity findTicketOrThrow(Long eventId, Long ticketId) {
+        return ticketRepository.findByIdAndEventId(ticketId, eventId)
                 .orElseThrow(() -> new BusinessException(EventErrorCode.TICKET_NOT_FOUND));
     }
 

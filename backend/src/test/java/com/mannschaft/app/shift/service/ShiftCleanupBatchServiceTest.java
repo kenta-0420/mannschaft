@@ -1,11 +1,13 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.service.NotificationHelper;
 import com.mannschaft.app.shift.SwapRequestStatus;
 import com.mannschaft.app.shift.entity.ShiftSwapRequestEntity;
 import com.mannschaft.app.shift.repository.ShiftRequestRepository;
 import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSwapRequestRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -13,11 +15,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.MessageSource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
+import java.util.Locale;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -34,9 +38,24 @@ class ShiftCleanupBatchServiceTest {
     @Mock private ShiftScheduleRepository scheduleRepository;
     @Mock private ShiftRequestRepository requestRepository;
     @Mock private NotificationHelper notificationHelper;
+    @Mock private UserLocaleCache userLocaleCache;
+    @Mock private MessageSource messageSource;
 
     @InjectMocks
     private ShiftCleanupBatchService batchService;
+
+    // Issue #2715 ロットB: 依存追加に伴う mock 漏れ対策。
+    // getLocale が null を返すと Locale.forLanguageTag(null) が NPE になり、
+    // それが notifySwapExpired の try/catch に飲まれて「通知されない」という無関係な失敗に化ける。
+    @BeforeEach
+    void setUpLocaleStubs() {
+        org.mockito.Mockito.lenient().when(userLocaleCache.getLocale(org.mockito.ArgumentMatchers.anyLong()))
+                .thenReturn("ja");
+        org.mockito.Mockito.lenient().when(messageSource.getMessage(
+                        org.mockito.ArgumentMatchers.anyString(), any(), org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.any(Locale.class)))
+                .thenAnswer(inv -> inv.getArgument(2));
+    }
 
     // =========================================================
     // runSwapExpiryCancel
@@ -57,6 +76,33 @@ class ShiftCleanupBatchServiceTest {
 
             assertThat(swap.getStatus()).isEqualTo(SwapRequestStatus.CANCELLED);
             verify(swapRepository).save(swap);
+        }
+
+        @Test
+        @DisplayName("Issue #2715 ロットB: 受信者 locale が en の場合、通知件名・本文が英語で組み立てられプレースホルダが残らない")
+        void 受信者ロケールがenなら英語件名本文になる() {
+            var realMessageSource = new org.springframework.context.support.ResourceBundleMessageSource();
+            realMessageSource.setBasename("messages");
+            realMessageSource.setDefaultEncoding("UTF-8");
+            org.springframework.test.util.ReflectionTestUtils.setField(
+                    batchService, "messageSource", realMessageSource);
+            given(userLocaleCache.getLocale(10L)).willReturn("en");
+
+            ShiftSwapRequestEntity swap = buildPendingSwap(9L, 10L, null);
+            given(swapRepository.findExpiredPendingBefore(any(), any(Pageable.class)))
+                    .willReturn(List.of(swap));
+
+            batchService.runSwapExpiryCancel();
+
+            org.mockito.ArgumentCaptor<String> titleCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+            org.mockito.ArgumentCaptor<String> bodyCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+            verify(notificationHelper).notify(
+                    eq(10L), eq("SHIFT_SWAP_EXPIRED"),
+                    titleCaptor.capture(), bodyCaptor.capture(),
+                    eq("SHIFT_SWAP_REQUEST"), eq(9L),
+                    any(), eq(10L), anyString(), isNull());
+            assertThat(titleCaptor.getValue()).doesNotContain("{0}").isEqualTo("Shift swap request has expired");
+            assertThat(bodyCaptor.getValue()).doesNotContain("{0}");
         }
 
         @Test

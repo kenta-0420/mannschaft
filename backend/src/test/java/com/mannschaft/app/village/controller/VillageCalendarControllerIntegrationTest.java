@@ -136,10 +136,11 @@ class VillageCalendarControllerIntegrationTest extends AbstractVillageIntegratio
     // ─────────────────────────────────────────────
 
     @Test
-    @DisplayName("GET — 月別一覧で当月の毎年繰返イベントが取得できる")
+    @DisplayName("GET — 月別一覧で当月の毎年繰返イベントが取得できる（村人）")
     void listByMonth_returnsRecurring() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity v = persistVillage();
+        persistVillager(v.getId(), REGULAR_USER_ID);
         // 年無視で 7 月のイベント
         VillageCalendarEventEntity e1 = persistEvent(v.getId(), "七夕",
                 LocalDate.of(2020, 7, 7), true);
@@ -156,10 +157,11 @@ class VillageCalendarControllerIntegrationTest extends AbstractVillageIntegratio
     }
 
     @Test
-    @DisplayName("GET — 月引数が不正(13)なら VILLAGE_FIELD_INVALID")
+    @DisplayName("GET — 月引数が不正(13)なら VILLAGE_FIELD_INVALID（村人）")
     void listByMonth_invalidMonth() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity v = persistVillage();
+        persistVillager(v.getId(), REGULAR_USER_ID);
 
         assertThatThrownBy(() -> controller.listByMonth(v.getId(), 2026, 13))
                 .isInstanceOf(BusinessException.class)
@@ -167,15 +169,44 @@ class VillageCalendarControllerIntegrationTest extends AbstractVillageIntegratio
                 .isEqualTo(VillageErrorCode.VILLAGE_FIELD_INVALID);
     }
 
+    @Test
+    @DisplayName("GET — 非村人は MODERATION_FORBIDDEN（村人のみ閲覧可）")
+    void listByMonth_nonMember_forbidden() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity v = persistVillage();
+        // REGULAR_USER_ID は当該村のメンバーシップを持たない
+
+        assertThatThrownBy(() -> controller.listByMonth(v.getId(), 2026, 7))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("GET — 別村の HEADMAN であっても当該村の非会員なら MODERATION_FORBIDDEN（BOLA 対策）")
+    void listByMonth_headmanOfOtherVillage_forbidden() {
+        authenticateAs(HEADMAN_USER_ID);
+        VillageEntity other = persistVillage();
+        persistHeadman(other.getId(), HEADMAN_USER_ID);
+        VillageEntity target = persistVillage();
+        // HEADMAN_USER_ID は target 村には所属していない
+
+        assertThatThrownBy(() -> controller.listByMonth(target.getId(), 2026, 7))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
+    }
+
     // ─────────────────────────────────────────────
     // GET /api/v1/villages/{vid}/calendar-events/{eid}
     // ─────────────────────────────────────────────
 
     @Test
-    @DisplayName("GET 詳細 — 存在するイベントは 200")
+    @DisplayName("GET 詳細 — 存在するイベントは 200（村人）")
     void get_ok() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity v = persistVillage();
+        persistVillager(v.getId(), REGULAR_USER_ID);
         VillageCalendarEventEntity e = persistEvent(v.getId(), "年越し",
                 LocalDate.of(2020, 12, 31), true);
 
@@ -186,16 +217,62 @@ class VillageCalendarControllerIntegrationTest extends AbstractVillageIntegratio
     }
 
     @Test
-    @DisplayName("GET 詳細 — 存在しないIDは CALENDAR_EVENT_NOT_FOUND")
+    @DisplayName("GET 詳細 — HEADMAN も閲覧できる（正当な権限保持者・200）")
+    void get_headman_ok() {
+        authenticateAs(HEADMAN_USER_ID);
+        VillageEntity v = persistVillage();
+        persistHeadman(v.getId(), HEADMAN_USER_ID);
+        VillageCalendarEventEntity e = persistEvent(v.getId(), "初詣",
+                LocalDate.of(2026, 1, 1), true);
+
+        ApiResponse<CalendarEventResponse> res = controller.get(v.getId(), e.getId());
+
+        assertThat(res.getData().id()).isEqualTo(e.getId());
+    }
+
+    @Test
+    @DisplayName("GET 詳細 — 存在しないIDは CALENDAR_EVENT_NOT_FOUND（村人）")
     void get_notFound() {
         authenticateAs(REGULAR_USER_ID);
         VillageEntity v = persistVillage();
+        persistVillager(v.getId(), REGULAR_USER_ID);
         UUID missing = UUID.fromString("01956cff-ffff-7000-8000-fffffffffffd");
 
         assertThatThrownBy(() -> controller.get(v.getId(), missing))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(VillageErrorCode.CALENDAR_EVENT_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("GET 詳細 — 非村人は MODERATION_FORBIDDEN（村人のみ閲覧可）")
+    void get_nonMember_forbidden() {
+        authenticateAs(REGULAR_USER_ID);
+        VillageEntity v = persistVillage();
+        VillageCalendarEventEntity e = persistEvent(v.getId(), "非公開行事",
+                LocalDate.of(2026, 4, 1), false);
+        // REGULAR_USER_ID は当該村のメンバーシップを持たない
+
+        assertThatThrownBy(() -> controller.get(v.getId(), e.getId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
+    }
+
+    @Test
+    @DisplayName("GET 詳細 — 別村の HEADMAN であっても当該村の非会員なら MODERATION_FORBIDDEN（BOLA 対策）")
+    void get_headmanOfOtherVillage_forbidden() {
+        authenticateAs(HEADMAN_USER_ID);
+        VillageEntity other = persistVillage();
+        persistHeadman(other.getId(), HEADMAN_USER_ID);
+        VillageEntity target = persistVillage();
+        VillageCalendarEventEntity e = persistEvent(target.getId(), "他村行事",
+                LocalDate.of(2026, 4, 1), false);
+
+        assertThatThrownBy(() -> controller.get(target.getId(), e.getId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(VillageErrorCode.MODERATION_FORBIDDEN);
     }
 
     // ─────────────────────────────────────────────
@@ -297,6 +374,17 @@ class VillageCalendarControllerIntegrationTest extends AbstractVillageIntegratio
                 .subjectType(VillageSubjectType.USER)
                 .subjectId(userId)
                 .role(VillageRole.HEADMAN)
+                .joinedAt(LocalDateTime.now())
+                .build();
+        return membershipRepository.saveAndFlush(m);
+    }
+
+    private VillageMembershipEntity persistVillager(UUID villageId, Long userId) {
+        VillageMembershipEntity m = VillageMembershipEntity.builder()
+                .villageId(villageId)
+                .subjectType(VillageSubjectType.USER)
+                .subjectId(userId)
+                .role(VillageRole.VILLAGER)
                 .joinedAt(LocalDateTime.now())
                 .build();
         return membershipRepository.saveAndFlush(m);

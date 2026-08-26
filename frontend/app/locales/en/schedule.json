@@ -1,5 +1,18 @@
 {
   "schedule": {
+    "attendance": {
+      "yes": "Attend",
+      "no": "Absent",
+      "maybe": "Maybe",
+      "respondSuccess": "Attendance response saved",
+      "respondError": "Failed to save attendance response"
+    },
+    "list": {
+      "allDay": "All day",
+      "empty": "No events for this period",
+      "prevMonth": "Previous month",
+      "nextMonth": "Next month"
+    },
     "common_delete": "Delete",
     "description_label": "Description",
     "error_title_required": "Title is required",
@@ -152,6 +165,171 @@
         "step4": "Run 'Manual sync' when you want changes reflected immediately"
       }
     },
-    "google_sync_notice": "Connected to Google Calendar. Any changes made in Google will be replaced by Mannschaft data the next time you save this event here."
+    "google_sync_notice": "Connected to Google Calendar. Any changes made in Google will be replaced by Mannschaft data the next time you save this event here.",
+    "comment": {
+      "title": "Comments",
+      "placeholder": "Comment on this event…",
+      "submit": "Post",
+      "cancel": "Cancel",
+      "save": "Save",
+      "reply": "Reply",
+      "replyTo": "Reply to {name}",
+      "showReplies": "Show {count} more replies",
+      "empty": "No comments yet",
+      "loadMore": "Load more",
+      "edit": "Edit",
+      "edited": "(edited)",
+      "delete": "Delete",
+      "deleteConfirm": "Delete this comment?",
+      "deleted": "This comment was deleted",
+      "deletedAuthor": "Deleted user",
+      "closed": "Comments are closed for this event",
+      "cancelled": "You cannot comment on a cancelled event",
+      "updateSuccess": "Comment updated",
+      "deleteSuccess": "Comment deleted",
+      "postSuccess": "Comment posted",
+      "settings": {
+        "enable": "Allow comments",
+        "disable": "Close comments",
+        "updateSuccess": "Comment settings updated"
+      },
+      "mention": {
+        "hint": "You can mention a member",
+        "empty": "No matching members"
+      },
+      "count": "{count} comments",
+      "error": {
+        "bodyRequired": "Please enter a comment",
+        "bodyTooLong": "Comments must be 2000 characters or fewer",
+        "maxDepth": "You cannot reply to this reply",
+        "closed": "Comments are closed",
+        "forbidden": "You do not have permission for this action",
+        "tooManyMentions": "You can mention up to 20 people",
+        "rateLimited": "Too many posts. Please try again later",
+        "generic": "The operation failed",
+        "notFound": "Comment not found"
+      }
+    },
+    "targetAudience": {
+      "label": "Schedule audience",
+      "allMembers": "Everyone",
+      "selectMembers": "Select members",
+      "memberPlaceholder": "Select audience members",
+      "more": "+{count} more",
+      "selectedCount": "{count} selected",
+      "invalidSelection": "Select between 1 and 500 audience members"
+    },
+    "memberColor": {
+      "column": "Schedule color",
+      "auto": "Automatic",
+      "reset": "Reset to automatic color",
+      "updated": "Member schedule color updated",
+      "resetDone": "Member schedule color reset",
+      "updateFailed": "Could not update member schedule color",
+      "colorLabel": "Schedule color for {name}"
+    },
+    "todo_load_error": {
+      "summary": "Failed to load TODOs",
+      "detail": "TODOs could not be shown on the calendar. Schedules are still displayed. Please reload after a while."
+    }
+  },
+  "scheduleKeep": {
+    "title": "Keep",
+    "subtitle": "A place for plans without a date yet",
+    "empty": "Nothing here yet. Jot down an idea.",
+    "form": {
+      "titleLabel": "What do you want to do?",
+      "titlePlaceholder": "e.g. Summer camp",
+      "memoLabel": "Memo (optional)",
+      "candidateDatesLabel": "Candidate dates (optional)",
+      "submit": "Keep it"
+    },
+    "action": {
+      "convert": "Add to calendar",
+      "convertFromCandidate": "Pick this date",
+      "pickDate": "Choose a date",
+      "specifyTime": "Specify a time",
+      "archive": "Archive",
+      "restore": "Restore",
+      "revert": "Undo scheduling",
+      "reorder": "Reorder"
+    },
+    "status": {
+      "kept": "Kept",
+      "scheduled": "Scheduled",
+      "archived": "Archived"
+    },
+    "filter": {
+      "kept": "Kept",
+      "scheduled": "Scheduled",
+      "archived": "Archived",
+      "all": "All"
+    },
+    "badge": {
+      "candidateCount": "{count} candidate dates"
+    },
+    "origin": {
+      "label": "Created from a keep",
+      "cancelled": "The event was cancelled",
+      "deleted": "The scheduled event was deleted"
+    },
+    "lockedHint": {
+      "scheduled": "This is now an event — edit it on the calendar",
+      "archived": "Archived items are read-only. Restore to edit."
+    },
+    "notification": {
+      "converted": "The date for \"{title}\" is set",
+      "created": "\"{title}\" was kept"
+    },
+    "confirm": {
+      "archive": "Archive this? You can restore it later."
+    },
+    "limit": {
+      "hint": "Archiving items frees up space"
+    },
+    "help": {
+      "title": "How to use Keep",
+      "body": "Keep is a place to set aside plans without a fixed date yet. Create one with just a title, then add candidate dates or a memo later. Once a candidate date is chosen, one tap turns it into a calendar event.",
+      "create": {
+        "title": "Keep an idea",
+        "body": "You only need a title to create a keep. Candidate dates and memos can be added later.",
+        "steps": {
+          "step1": "Type what you want to do as the title",
+          "step2": "Optionally add candidate dates or a memo",
+          "step3": "Press \"Keep it\""
+        }
+      },
+      "convert": {
+        "title": "Convert to an event",
+        "body": "With a candidate date it's one tap; without one it's a date picker away — two taps at most.",
+        "steps": {
+          "step1": "Tap a candidate date badge, or \"Add to calendar\"",
+          "step2": "Pick a date if there's no candidate yet",
+          "step3": "It appears on the calendar as an event"
+        }
+      },
+      "organize": {
+        "title": "Organize",
+        "body": "Archived keeps disappear from the list, but you can always bring them back with Restore. Reordering is also available.",
+        "steps": {
+          "step1": "Archive keeps you no longer need",
+          "step2": "Restore them from the Archived filter",
+          "step3": "Drag to reorder"
+        }
+      }
+    },
+    "error": {
+      "notFound": "Keep not found",
+      "titleRequired": "Please enter a title",
+      "tooManyCandidateDates": "Up to 10 candidate dates",
+      "invalidCandidateDate": "Invalid date format",
+      "forbidden": "You don't have permission for this keep",
+      "notConvertible": "This keep can't be converted",
+      "notEditable": "Can't edit in this state",
+      "revertBlockedByAttendance": "Can't undo — attendance replies exist",
+      "invalidStateTransition": "This transition isn't allowed",
+      "limitExceeded": "Keep limit reached",
+      "invalidReorder": "Invalid reorder request"
+    }
   }
 }

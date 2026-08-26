@@ -12,9 +12,27 @@ import static org.assertj.core.api.Assertions.assertThat;
 class NotificationTypeTest {
 
     @Test
-    @DisplayName("設計書§5の24種別が定義されている")
-    void 全24種別が定義() {
-        assertThat(NotificationType.values()).hasSize(25); // 24種別 + TODO_HANDED_OFF = 25
+    @DisplayName("通知種別が全て定義されている（25種別 + TODO_HANDED_OFF + BETA_PERK_* 4種 + RESERVATION_PENDING_EXPIRED = 31）")
+    void 全31種別が定義() {
+        // 内訳: 設計書§5 の通知種別（F03.4.5 §6.1 の RESERVATION_WAITLIST_OPENING を含む 25 種別）
+        //       ＋ TODO_HANDED_OFF（後付け）＋ F20.3 ベータ特典の BETA_PERK_GRANTED/_REVOKED/_EXTENDED/
+        //       _REVIEW_FLAGGED（4 種）＋ F03.4.5 §6.3 の RESERVATION_PENDING_EXPIRED（仮押さえ自動失効）
+        //       = 計 31 種別。
+        assertThat(NotificationType.values()).hasSize(31);
+        assertThat(NotificationType.values())
+                .contains(NotificationType.BETA_PERK_GRANTED, NotificationType.BETA_PERK_REVOKED,
+                        NotificationType.BETA_PERK_EXTENDED, NotificationType.BETA_PERK_REVIEW_FLAGGED,
+                        NotificationType.RESERVATION_PENDING_EXPIRED);
+    }
+
+    @Test
+    @DisplayName("F03.4.5 §6.3: RESERVATION_PENDING_EXPIRED は NORMAL 優先度・sourceType=RESERVATION")
+    void 仮押さえ失効通知の優先度とsourceType() {
+        // 管理者の不作為による失効であり緊急性は無いため HIGH にしない（設計書 §6.3）。
+        assertThat(NotificationType.RESERVATION_PENDING_EXPIRED.getPriority())
+                .isEqualTo(NotificationPriority.NORMAL);
+        // sourceType は F00 visibility / 受信権の判定キー。予約ドメインの既存種別と揃える。
+        assertThat(NotificationType.RESERVATION_PENDING_EXPIRED.getSourceType()).isEqualTo("RESERVATION");
     }
 
     @Test

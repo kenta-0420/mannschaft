@@ -79,7 +79,7 @@ function apply() {
 
     <template #footer>
       <div class="flex justify-end gap-2">
-        <Button :label="t('common.button.cancel')" text severity="secondary" @click="close" />
+        <Button :label="t('button.cancel')" text severity="secondary" @click="close" />
         <Button :label="t('shift.bulkSet.confirm')" @click="apply" />
       </div>
     </template>

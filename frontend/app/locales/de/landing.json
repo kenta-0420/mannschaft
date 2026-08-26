@@ -288,6 +288,7 @@
       "footer_legal": "Rechtliches",
       "footer_terms": "Nutzungsbedingungen",
       "footer_privacy": "Datenschutzerklärung",
+      "footer_commerce": "Angaben gem. Handelsgesetz",
       "footer_contact": "Kontakt",
       "skip_to_content": "Zum Hauptinhalt springen",
       "open_menu": "Menü öffnen",
@@ -296,58 +297,207 @@
     "product": {
       "title": "Mannschaft Produkt",
       "desc": "Eine All-in-One-Verwaltungsplattform mit allem, was dein Team oder deine Organisation braucht",
-      "features_heading": "Hauptfunktionen",
-      "pricing_heading": "Preispläne",
-      "pricing": {
-        "free": {
-          "name": "Kostenlos",
-          "price": "€0",
-          "desc": "Für Einzelpersonen & kleine Teams",
-          "features": [
-            "Alle Grundfunktionen",
-            "Bis zu 10 Mitglieder",
-            "1GB Speicher"
-          ]
-        },
-        "pro": {
-          "name": "Pro",
-          "price": "€9,80/Mo.",
-          "desc": "Für wachsende Teams",
-          "features": [
-            "Alle kostenlosen Funktionen",
-            "Unbegrenzte Mitglieder",
-            "50GB Speicher",
-            "Prioritätssupport"
-          ]
-        },
-        "enterprise": {
-          "name": "Enterprise",
-          "price": "Kontakt",
-          "desc": "Für große Organisationen",
-          "features": [
-            "Alle Pro-Funktionen",
-            "Benutzerdefinierte Integrationen",
-            "Dedizierter Support",
-            "SLA-Garantie"
-          ]
-        }
-      }
+      "features_heading": "Hauptfunktionen"
     },
     "legal": {
       "terms": {
         "title": "Nutzungsbedingungen",
-        "last_updated": "Zuletzt aktualisiert",
-        "placeholder": "Der Inhalt der Nutzungsbedingungen wird hier platziert. Bitte ersetze es durch das tatsächliche Rechtsdokument.",
-        "section1_title": "Artikel 1 (Anwendung)",
-        "section1_content": "Diese Bedingungen legen die Nutzungsbedingungen für Mannschaft (den \"Dienst\") fest.",
-        "section2_title": "Artikel 2 (Registrierung)",
-        "section2_content": "Nutzer*innen registrieren sich nach Zustimmung zu diesen Bedingungen gemäß den vorgeschriebenen Verfahren.",
-        "section3_title": "Artikel 3 (Verbotene Aktivitäten)",
-        "section3_content": "Nutzer*innen dürfen keine Aktivitäten durchführen, die gegen Gesetze oder die öffentliche Ordnung verstoßen, oder sonstige vom Dienst als unangemessen erachtete Aktivitäten.",
-        "section4_title": "Artikel 4 (Haftungsausschluss)",
-        "section4_content": "Der Dienst übernimmt keine Haftung für Unterbrechung, Beendigung oder Änderung des Dienstes.",
-        "section5_title": "Artikel 5 (Anwendbares Recht & Gerichtsstand)",
-        "section5_content": "Diese Bedingungen unterliegen japanischem Recht. Das Bezirksgericht Tokio hat die ausschließliche Zuständigkeit für alle Streitigkeiten."
+        "seo_description": "Nutzungsbedingungen von Mannschaft: Geltungsbereich, Kontoverwaltung, Pflichten der Team-Administratoren, Entgelte, Nutzerinhalte, Haftungsausschluss und anwendbares Recht.",
+        "language_note": "Maßgeblich ist die japanische Fassung dieser Bedingungen. Übersetzungen dienen nur der Information; bei Abweichungen geht die japanische Fassung vor.",
+        "version_notice": "Version 1.0.0 — in Kraft getreten am 5. Juli 2026",
+        "enacted_label": "Datum des Inkrafttretens",
+        "enacted_date": "2026-07-05",
+        "revised_label": "Zuletzt geändert",
+        "revised_date": "2026-07-05",
+        "toc_label": "Inhaltsverzeichnis",
+        "sections": [
+          {
+            "title": "Artikel 1 (Geltungsbereich und Begriffe)",
+            "content": [
+              "Diese Nutzungsbedingungen (die „Bedingungen“) regeln die Nutzung der Plattform „Mannschaft“ (der „Dienst“), die vom Betreiber von Mannschaft (das „Unternehmen“) bereitgestellt wird. Nutzer verwenden den Dienst erst nach Zustimmung zu diesen Bedingungen.",
+              "In diesen Bedingungen bedeutet: (1) „Nutzer“ jede Person, die den Dienst nutzt; (2) „Team“ jedes im Dienst erstellte Team, jede Organisation oder sonstige Gruppe; (3) „Administrator“ ein Nutzer mit Verwaltungsbefugnis für ein Team; (4) „Inhalte“ Texte, Bilder, Dateien und sonstige Informationen, die Nutzer im Dienst veröffentlichen oder speichern."
+            ]
+          },
+          {
+            "title": "Artikel 2 (Registrierung)",
+            "content": [
+              "Interessenten beantragen die Registrierung nach Zustimmung zu diesen Bedingungen auf dem vom Unternehmen vorgesehenen Weg. Die Registrierung wird mit der Genehmigung durch das Unternehmen wirksam.",
+              "Das Unternehmen kann eine Registrierung in folgenden Fällen ablehnen und ist nicht verpflichtet, Gründe offenzulegen: (1) falsche Angaben, Fehler oder Auslassungen bei der Registrierung; (2) frühere Sperrung oder Löschung wegen Verstoßes gegen diese Bedingungen; (3) Zugehörigkeit zu oder Verbindung mit antisozialen Kräften nach Einschätzung des Unternehmens; (4) sonstige Fälle, in denen das Unternehmen die Registrierung für unangemessen hält."
+            ]
+          },
+          {
+            "title": "Artikel 3 (Kontoverwaltung)",
+            "content": [
+              "Nutzer verwalten E-Mail-Adresse, Passwort und sonstige Zugangsdaten eigenverantwortlich und dürfen diese nicht an Dritte weitergeben, verleihen oder übertragen. Das Unternehmen empfiehlt Zwei-Faktor-Authentifizierung (Authenticator-App) und Passkeys.",
+              "Schäden aus unzureichender Verwaltung der Zugangsdaten oder aus der Nutzung durch Dritte trägt der Nutzer, außer bei Vorsatz oder grober Fahrlässigkeit des Unternehmens. Bei Verdacht auf unbefugte Kontonutzung informiert der Nutzer das Unternehmen unverzüglich.",
+              "Die für die Nutzung des Dienstes erforderlichen Kommunikationsgeräte, Software und sonstige Nutzungsumgebung stellen Nutzer auf eigene Kosten und Verantwortung bereit; Verbindungskosten tragen die Nutzer. Die empfohlene Umgebung wird im Dienst angezeigt."
+            ]
+          },
+          {
+            "title": "Artikel 4 (Nutzung durch Minderjährige)",
+            "content": [
+              "Minderjährige holen vor der Nutzung des Dienstes die Zustimmung eines gesetzlichen Vertreters (Eltern oder Erziehungsberechtigte) ein. Die Registrierung von Personen unter 18 Jahren wird erst wirksam, wenn die Verknüpfung mit dem Konto des gesetzlichen Vertreters (Bestätigung der Zustimmung) abgeschlossen ist; bis dahin kann der Dienst nicht genutzt werden. Das Unternehmen kann bei Bedarf einen Nachweis der Zustimmung verlangen.",
+              "Erstellt eine Schule oder andere Einrichtung ein Team und nutzt den Dienst unter Beteiligung von Kindern oder Schülern, ist der Administrator dieses Teams für die Einholung der erforderlichen Zustimmungen und sonstige geeignete Maßnahmen verantwortlich. Für personenbezogene Daten Minderjähriger gilt die Datenschutzerklärung.",
+              "Für ein Kind unter 18 Jahren, das im Grundschulalter oder jünger ist (im japanischen Schulaltersystem bis zum letzten Tag des Schuljahres, in dem das Kind 12 Jahre alt wird), kann der gesetzliche Vertreter (Elternteil oder Erziehungsberechtigter) nach dem vom Unternehmen vorgeschriebenen Verfahren die Termine, die Anwesenheit, die Zugehörigkeiten und die Mitteilungen des Unternehmens des Kindes einsehen und begleiten sowie im Namen des Kindes die Zahlung von Mitgliedsbeiträgen und weitere Vorgänge innerhalb des vom Unternehmen im Dienst angezeigten Umfangs vornehmen.",
+              "Die Befugnis zur Begleitung und zur Vornahme von Vorgängen im Namen des Kindes nach dem vorstehenden Absatz endet automatisch am ersten Tag (1. April) des Schuljahres, in dem das Kind die Mittelschule beginnt.",
+              "Der gesetzliche Vertreter ist für die Ergebnisse der von ihm im Namen des Kindes vorgenommenen Vorgänge verantwortlich; das Unternehmen haftet für die Ergebnisse solcher Vorgänge nicht, außer im Falle von Vorsatz oder grober Fahrlässigkeit des Unternehmens."
+            ]
+          },
+          {
+            "title": "Artikel 5 (Pflichten von Teams und Administratoren)",
+            "content": [
+              "Administratoren erkennen an, dass sie durch die Verwaltung eines Teams personenbezogene Daten der Mitglieder verarbeiten (einschließlich Namen und Kontaktdaten sowie Anwesenheit, Beitragsstatus und gesundheitsbezogener Informationen wie Behandlungsaufzeichnungen in der Aktenfunktion), und halten das Gesetz zum Schutz personenbezogener Daten sowie alle sonstigen anwendbaren Gesetze ein.",
+              "Administratoren verwenden die Daten der Mitglieder nur für Zwecke der Teamverwaltung, nutzen sie nicht zweckfremd, geben sie nicht ohne Zustimmung an Dritte weiter und erklären den Mitgliedern angemessen, wofür ihre Daten verwendet werden.",
+              "Streitigkeiten innerhalb eines Teams (Beiträge, Führungsfragen, Konflikte zwischen Mitgliedern usw.) werden zwischen den Beteiligten gelöst. Das Unternehmen ist zu einer Beteiligung nicht verpflichtet, außer bei eigenem Vorsatz oder grober Fahrlässigkeit.",
+              "Wird ein Team aufgelöst oder gelöscht, liegt der Umgang mit den dort gespeicherten Daten (Information der Mitglieder, Sicherung erforderlicher Daten usw.) in der Verantwortung des Administrators. Tritt ein Administrator aus oder ist er über längere Zeit abwesend, kann das Unternehmen zur Aufrechterhaltung des Teambetriebs Befugnisse auf andere Mitglieder übertragen oder sonstige erforderliche Maßnahmen ergreifen."
+            ]
+          },
+          {
+            "title": "Artikel 6 (Entgelte und Zahlung)",
+            "content": [
+              "Die Grundfunktionen des Dienstes sind kostenlos. Bestimmte Zusatzfunktionen (etwa Wahlmodule) können je nach Anzahl oder Art kostenpflichtig sein; Entgelte und Abrechnungsbedingungen werden im Dienst angezeigt.",
+              "Das Unternehmen kann Inhalt und Entgelte kostenpflichtiger Tarife ändern. Änderungen werden vorab im Dienst oder auf andere geeignete Weise angekündigt.",
+              "Bereits gezahlte Entgelte werden grundsätzlich nicht erstattet, es sei denn, eine Erstattung ist gesetzlich vorgeschrieben.",
+              "Kostenpflichtige Tarife verlängern sich automatisch zu denselben Bedingungen, sofern der Nutzer nicht kündigt. Die Kündigung wird zum Ende des laufenden Abrechnungszeitraums wirksam; eine anteilige Erstattung bei Kündigung während des Zeitraums erfolgt nicht, außer eine Erstattung ist gesetzlich vorgeschrieben."
+            ]
+          },
+          {
+            "title": "Artikel 7 (Zahlungsabwicklung und Beitragseinzug)",
+            "content": [
+              "Zahlungen im Dienst werden über Zahlungsdienstleister (z. B. Stripe) abgewickelt. Das Unternehmen speichert keine Kreditkartennummern oder sonstige rohe Zahlungsdaten (Details in der Datenschutzerklärung).",
+              "Die Beitragsfunktion stellt lediglich ein Mittel für Geldflüsse zwischen einem Team und seinen Mitgliedern bereit. Festsetzung, Einzug und Erstattung von Beiträgen sowie jeder sonstige Umgang mit Geld liegen in der Verantwortung des Teams; daraus entstehende Streitigkeiten werden zwischen den Beteiligten gelöst."
+            ]
+          },
+          {
+            "title": "Artikel 8 (Inhalte)",
+            "content": [
+              "Urheberrechte und sonstige Rechte an Inhalten stehen dem Nutzer oder dem jeweiligen Rechteinhaber zu.",
+              "Nutzer räumen dem Unternehmen ein nicht ausschließliches, unentgeltliches Recht ein, Inhalte in dem Umfang zu nutzen (Vervielfältigung, Anzeige, Bearbeitung usw.), der für Bereitstellung, Betrieb, Verbesserung und Fehlerbehebung des Dienstes erforderlich ist.",
+              "Nutzer bemühen sich, wichtige Daten auch selbst zu sichern, etwa über die Exportfunktionen des Dienstes.",
+              "Inhalte, die ein Nutzer oder Administrator öffentlich gestellt hat, können von einem unbestimmten Personenkreis eingesehen werden, einschließlich Dritter, die nicht im Dienst registriert sind. Für die Sichtbarkeitseinstellungen und die Folgen der Veröffentlichung ist der Nutzer oder Administrator verantwortlich, der die Inhalte öffentlich gestellt hat."
+            ]
+          },
+          {
+            "title": "Artikel 9 (Verbotene Handlungen)",
+            "content": [
+              "Nutzern ist Folgendes untersagt: (1) Verstöße gegen Gesetze oder die guten Sitten; (2) Verletzung von Immaterialgüterrechten, Bildrechten, Privatsphäre, Ehre oder sonstigen Rechten und Interessen Dritter; (3) Identitätsanmaßung oder Registrierung bzw. Verbreitung falscher Informationen; (4) unbefugter Zugriff, übermäßige Belastung der Server oder Netze des Dienstes oder sonstige Störung des Betriebs; (5) Sammeln von Informationen aus dem Dienst durch Scraping oder andere automatisierte Mittel ohne vorherige Zustimmung des Unternehmens; (6) Sammeln, Veröffentlichen oder Weitergeben personenbezogener Daten anderer Nutzer ohne deren Zustimmung; (7) Spam, wahllose Werbung oder Geschäftsstörung; (8) Zuwendungen an oder sonstige Zusammenarbeit mit antisozialen Kräften; (9) sonstige Handlungen, die das Unternehmen vernünftigerweise als unangemessen einstuft."
+            ]
+          },
+          {
+            "title": "Artikel 10 (Geistiges Eigentum)",
+            "content": [
+              "Rechte des geistigen Eigentums an Programmen, Designs, Logos, Dokumenten und sonstigen Elementen des Dienstes stehen dem Unternehmen oder Rechteinhabern zu, die dem Unternehmen Lizenzen erteilen. Nutzer dürfen diese nicht über den in diesen Bedingungen erlaubten Umfang hinaus vervielfältigen, übernehmen, verändern oder verbreiten."
+            ]
+          },
+          {
+            "title": "Artikel 11 (Datenschutz und personenbezogene Daten)",
+            "content": [
+              "Der Umgang des Unternehmens mit personenbezogenen Daten richtet sich nach der Datenschutzerklärung. Nutzer stimmen dieser vor Nutzung des Dienstes zu.",
+              "Innerhalb eines Teams wird anderen Mitgliedern grundsätzlich der registrierte vollständige Name angezeigt. In öffentlich sichtbaren Profilen wird ein separat festgelegter Nickname (Anzeigename) verwendet. Nutzer treten Teams in Kenntnis und mit Zustimmung hierzu bei.",
+              "In den sozialen Funktionen können Nutzer anonyme Personas (bis zu drei) anlegen und verwenden. Auch für Aktivitäten unter anonymen Personas gelten diese Bedingungen; auf rechtmäßige Auskunftsersuchen reagiert das Unternehmen auf Grundlage der Registrierungsdaten im gesetzlich vorgesehenen Umfang."
+            ]
+          },
+          {
+            "title": "Artikel 12 (Sicherheit)",
+            "content": [
+              "Das Unternehmen trifft angemessene Sicherheitsmaßnahmen, darunter verschlüsselte Kommunikation, Zugriffskontrolle und die Bereitstellung von Mehrfaktor-Authentifizierung (Details in der Datenschutzerklärung).",
+              "Nutzer wirken am Schutz ihres Kontos mit, etwa durch sorgfältige Passwortverwaltung und Abmelden an gemeinsam genutzten Geräten."
+            ]
+          },
+          {
+            "title": "Artikel 13 (Beauftragung Dritter und Werbung)",
+            "content": [
+              "Das Unternehmen kann den Betrieb des Dienstes ganz oder teilweise Dritten übertragen. Der Umgang der Auftragnehmer mit personenbezogenen Daten richtet sich nach der Datenschutzerklärung.",
+              "Das Unternehmen kann im Dienst Werbung des Unternehmens oder Dritter anzeigen. Geschäfte mit Werbetreibenden erfolgen auf eigene Verantwortung der Nutzer; für daraus entstehende Schäden haftet das Unternehmen nicht, außer bei Vorsatz oder grober Fahrlässigkeit.",
+              "Art der zielgerichteten Werbung und Opt-out-Verfahren richten sich nach der Datenschutzerklärung."
+            ]
+          },
+          {
+            "title": "Artikel 14 (Änderung, Unterbrechung und Einstellung des Dienstes)",
+            "content": [
+              "Das Unternehmen kann den Inhalt des Dienstes jederzeit ändern, ergänzen oder einstellen. Änderungen mit wesentlichen Auswirkungen auf Nutzer werden vorab im Dienst oder auf andere geeignete Weise angekündigt.",
+              "Das Unternehmen kann den Dienst wegen Wartung, Störungen, Naturkatastrophen oder anderer unvermeidbarer Umstände ganz oder teilweise vorübergehend unterbrechen.",
+              "Bei Einstellung des gesamten Dienstes kündigt das Unternehmen dies grundsätzlich mit angemessener Frist an und bemüht sich, Nutzern Gelegenheit zum Export ihrer Daten zu geben."
+            ]
+          },
+          {
+            "title": "Artikel 15 (Austritt)",
+            "content": [
+              "Nutzer können jederzeit über das vorgesehene Verfahren den Austritt beantragen.",
+              "Beim Austritt anonymisiert das Unternehmen personenbezogene Daten wie Name, E-Mail-Adresse und Avatar. Beiträge, Aktivitätsverlauf und Statistikdaten verbleiben in nicht identifizierbarer Form im Dienst. Zeitpunkt der Löschung personenbezogener Daten und das Verfahren für Löschersuchen nach anwendbarem Recht richten sich nach Artikel 11 der Datenschutzerklärung."
+            ]
+          },
+          {
+            "title": "Artikel 16 (Sperrung und Löschung der Registrierung)",
+            "content": [
+              "Beurteilt das Unternehmen vernünftigerweise, dass ein Nutzer gegen diese Bedingungen verstößt oder zu verstoßen droht, kann es ohne Vorankündigung Beiträge löschen, die Nutzung vorübergehend sperren oder die Registrierung löschen.",
+              "Für Schäden aus Maßnahmen nach diesem Artikel haftet das Unternehmen nicht, außer bei Vorsatz oder grober Fahrlässigkeit."
+            ]
+          },
+          {
+            "title": "Artikel 17 (Abtretungsverbot; Unternehmensübertragung)",
+            "content": [
+              "Nutzer dürfen ihre Vertragsstellung sowie Rechte und Pflichten aus diesen Bedingungen ohne vorherige schriftliche Zustimmung des Unternehmens nicht an Dritte abtreten, übertragen oder als Sicherheit stellen.",
+              "Überträgt das Unternehmen das den Dienst betreffende Geschäft auf einen Dritten (einschließlich Unternehmensübertragung, Spaltung und aller sonstigen Fälle der Geschäftsübertragung), kann es die Vertragsstellung, die Rechte und Pflichten aus diesen Bedingungen sowie die Registrierungs- und sonstigen Informationen der Nutzer auf den Erwerber übertragen; die Nutzer stimmen einer solchen Übertragung bereits im Voraus zu."
+            ]
+          },
+          {
+            "title": "Artikel 18 (Gewährleistungsausschluss; Haftungsbeschränkung)",
+            "content": [
+              "Das Unternehmen stellt den Dienst wie besehen bereit und übernimmt keine Gewähr für Eignung zu einem bestimmten Zweck, Vollständigkeit, Richtigkeit oder Kontinuität.",
+              "Entsteht einem Nutzer ein vom Unternehmen zu vertretender Schaden, haftet das Unternehmen nur für unmittelbare und typische Schäden, begrenzt auf die Gesamtentgelte, die der Nutzer in den zwölf Monaten vor Schadenseintritt an das Unternehmen gezahlt hat (mindestens jedoch 10.000 Yen, wenn dieser Betrag darunter liegt). Dies gilt nicht bei Vorsatz oder grober Fahrlässigkeit des Unternehmens oder soweit eine Haftungsbeschränkung gesetzlich nicht zulässig ist."
+            ]
+          },
+          {
+            "title": "Artikel 19 (Schadensersatz durch Nutzer)",
+            "content": [
+              "Verstößt ein Nutzer gegen diese Bedingungen und fügt dadurch dem Unternehmen oder Dritten Schaden zu, ist er zum Ersatz dieses Schadens (einschließlich angemessener Anwaltskosten) verpflichtet."
+            ]
+          },
+          {
+            "title": "Artikel 20 (Ausschluss antisozialer Kräfte)",
+            "content": [
+              "Nutzer versichern für Gegenwart und Zukunft, dass sie keiner kriminellen Vereinigung, deren Mitgliedern oder vergleichbaren Personen („antisoziale Kräfte“) angehören und keine gesellschaftlich zu missbilligende Beziehung zu antisozialen Kräften unterhalten. Bei Verstoß kann das Unternehmen die Registrierung ohne Vorankündigung löschen."
+            ]
+          },
+          {
+            "title": "Artikel 21 (Änderung der Bedingungen)",
+            "content": [
+              "Diese Bedingungen können gemäß Artikel 548-4 des japanischen Zivilgesetzbuchs (Änderung von Standardbedingungen) geändert werden, wenn die Änderung dem allgemeinen Interesse der Nutzer entspricht oder sachgerecht ist und dem Vertragszweck nicht widerspricht.",
+              "Bei einer Änderung legt das Unternehmen den Zeitpunkt des Wirksamwerdens fest und macht Inhalt und Zeitpunkt vorab im Dienst oder auf andere geeignete Weise bekannt."
+            ]
+          },
+          {
+            "title": "Artikel 22 (Mitteilungen)",
+            "content": [
+              "Mitteilungen des Unternehmens an Nutzer erfolgen durch Anzeige im Dienst oder per E-Mail an die registrierte Adresse und gelten als zugegangen, wenn sie üblicherweise zugehen würden. Mitteilungen der Nutzer an das Unternehmen erfolgen über das Kontaktformular im Dienst."
+            ]
+          },
+          {
+            "title": "Artikel 23 (Salvatorische Klausel)",
+            "content": [
+              "Sollte eine Bestimmung dieser Bedingungen oder ein Teil davon nach geltendem Recht unwirksam oder undurchsetzbar sein, bleiben die übrigen Bestimmungen in vollem Umfang wirksam."
+            ]
+          },
+          {
+            "title": "Artikel 24 (Fortgeltung)",
+            "content": [
+              "Die Artikel 8, 10, 18, 19, 22, 23, 25 und 26 sowie dieser Artikel gelten auch nach Beendigung des Nutzungsvertrags fort."
+            ]
+          },
+          {
+            "title": "Artikel 25 (Anwendbares Recht und Gerichtsstand)",
+            "content": [
+              "Diese Bedingungen unterliegen japanischem Recht. Für alle Streitigkeiten aus oder im Zusammenhang mit dem Dienst sind in erster Instanz ausschließlich das Distriktgericht Oita oder das Amtsgericht Oita (Summary Court) zuständig."
+            ]
+          },
+          {
+            "title": "Artikel 26 (Sprache)",
+            "content": [
+              "Maßgeblich ist der japanische Wortlaut dieser Bedingungen. Auch wenn das Unternehmen Übersetzungen zur Information bereitstellt, geht bei Abweichungen die japanische Fassung vor."
+            ]
+          }
+        ]
       },
       "privacy": {
         "title": "Datenschutzerklärung",
@@ -372,17 +522,35 @@
         "section9_title": "Artikel 9: Administrator-Kontozugriff",
         "section9_content": "Um die Servicequalität aufrechtzuerhalten, Kundensupport bereitzustellen und unbefugte Nutzung zu untersuchen, können autorisierte Systemadministratoren den Dienst im Namen Ihres Kontos bedienen.\n\n[Bedingungen]\n1. Eingeschränkter Zweck: Nur für Kundensupport, technische Untersuchungen und gesetzliche Compliance-Prüfungen\n2. Eingeschränktes Personal: Nur Systemadministratoren mit ausdrücklicher Berechtigung\n3. Prüfprotokollierung: Alle Zugriffe werden mit Operator, Zweck, Grund und Zeitstempel protokolliert\n4. Mindesterforderlich: Der Zugriff ist auf den Mindestumfang beschränkt, der zur Erreichung des Zwecks erforderlich ist\n\nDiese Funktion ist eine Standardsupportpraxis, die von wichtigen SaaS-Plattformen wie Zendesk und Shopify verwendet wird.",
         "section10_title": "Artikel 10: Sicherheit",
-        "section10_content": "Wir implementieren folgende technische und organisatorische Maßnahmen:\n\n- Verschlüsselte Kommunikation (TLS/HTTPS)\n- bcrypt-Passwort-Hashing (keine Klartextspeicherung)\n- Rollenbasierte Zugriffskontrolle (RBAC)\n- Multi-Faktor-Authentifizierung (SMS, TOTP, Passkey/WebAuthn)\n- Regelmäßige Schwachstellenscans von Abhängigkeiten\n\nIm Falle einer Verletzung personenbezogener Daten werden wir Sie und die zuständige Aufsichtsbehörde umgehend benachrichtigen.",
+        "section10_content": "Wir implementieren folgende technische und organisatorische Maßnahmen:\n\n- Verschlüsselte Kommunikation (TLS/HTTPS)\n- bcrypt-Passwort-Hashing (keine Klartextspeicherung)\n- Rollenbasierte Zugriffskontrolle (RBAC)\n- Multi-Faktor-Authentifizierung (TOTP-Authenticator-App, Passkey/WebAuthn)\n- Regelmäßige Schwachstellenscans von Abhängigkeiten\n\nIm Falle einer Verletzung personenbezogener Daten werden wir Sie und die zuständige Aufsichtsbehörde umgehend benachrichtigen.",
         "section11_title": "Artikel 11: Ihre Rechte",
         "section11_content": "- Zugriff und Berichtigung: Sie können Ihre personenbezogenen Daten in den Kontoeinstellungen (/settings/profile) einsehen und aktualisieren\n- Datenportabilität: Sie können einen Datenexport aus den Kontoeinstellungen anfordern\n- Widerruf und Löschung: Nach dem Widerruf löschen wir Ihre personenbezogenen Daten innerhalb von 30 Tagen gemäß DSGVO Art. 17. Daten, die gesetzlich aufbewahrt werden müssen, und anonymisierte aggregierte Daten können aufbewahrt werden\n- Werbe-Opt-out: Siehe Artikel 4\n\nBenutzer in der EU/EWR können auch Rechte nach DSGVO Art. 15-22 ausüben (Einschränkung der Verarbeitung, Widerspruchsrecht usw.).",
         "section12_title": "Artikel 12: Internationale Datenübertragungen",
         "section12_content": "Der Dienst nutzt AWS, Cloudflare und andere Anbieter mit Hauptsitz in den Vereinigten Staaten, daher können Ihre personenbezogenen Daten außerhalb Japans übertragen und gespeichert werden.\n\nFür Daten von Einwohnern der EU/EWR erfolgen Übertragungen gemäß Standardvertragsklauseln (SCC) nach DSGVO Art. 46 oder anderen geeigneten Schutzmaßnahmen.",
         "section13_title": "Artikel 13: Personenbezogene Daten Minderjähriger",
-        "section13_content": "Der Dienst richtet sich gemäß unseren Nutzungsbedingungen an Benutzer ab 18 Jahren.\n\n- Wir liefern keine verhaltensbasierte Werbung an Benutzer unter 18 Jahren\n- Wenn wir erfahren, dass ein Benutzer unter 18 Jahre alt ist, sperren wir sein Konto und löschen die erhobenen personenbezogenen Daten umgehend\n- Das bei der Registrierung erhobene Geburtsdatum wird ausschließlich zur Altersverifizierung verwendet; für die Anzeigenausrichtung werden nur Altersgruppen (z. B. 20er, 30er) verwendet",
+        "section13_content": "Minderjährige können den Dienst gemäß Artikel 4 der Nutzungsbedingungen nutzen: Erforderlich sind die vorherige Zustimmung eines gesetzlichen Vertreters (Eltern oder Erziehungsberechtigte) und die Verknüpfung mit dem Konto des Erziehungsberechtigten (Bestätigung der Zustimmung).\n\n- Wir liefern keine zielgerichtete Werbung an Benutzer unter 18 Jahren\n- Erfahren wir, dass der Dienst ohne Zustimmung eines gesetzlichen Vertreters genutzt wird, können wir die Nutzung aussetzen oder andere geeignete Maßnahmen ergreifen\n- Das bei der Registrierung erhobene Geburtsdatum wird ausschließlich zur Altersverifizierung verwendet; für die Anzeigenausrichtung werden nur Altersgruppen (z. B. 20er, 30er) verwendet\n\nFür ein Kind im Grundschulalter oder jünger (im japanischen Schulaltersystem bis zum letzten Tag des Schuljahres, in dem das Kind 12 Jahre alt wird) kann der gesetzliche Vertreter (Elternteil oder Erziehungsberechtigter) die Termine, die Anwesenheit, die Zugehörigkeiten und die Mitteilungen des Unternehmens des Kindes einsehen und begleiten sowie im Namen des Kindes die Zahlung von Mitgliedsbeiträgen und weitere Vorgänge innerhalb des vom Unternehmen im Dienst angezeigten Umfangs vornehmen (Artikel 4 der Nutzungsbedingungen). Für diese Begleitung und die Vornahme von Vorgängen im Namen des Kindes legen wir die personenbezogenen Daten des Kindes dem gesetzlichen Vertreter in dem für den Zweck der Begleitung und der Vornahme von Vorgängen im Namen des Kindes erforderlichen Umfang offen. Diese Befugnis endet automatisch am ersten Tag (1. April) des Schuljahres, in dem das Kind die Mittelschule beginnt.",
         "section14_title": "Artikel 14: Änderungen dieser Erklärung",
         "section14_content": "Wir können diese Erklärung gelegentlich als Reaktion auf rechtliche Änderungen oder Dienst-Updates aktualisieren.\n\n- Wesentliche Änderungen (neue Zwecke, neue Datenerhebung, neue Drittpartei-Weitergabe usw.) werden im Voraus per In-Service-Benachrichtigung oder E-Mail mitgeteilt\n- Geringfügige Änderungen werden durch Aktualisierung des Datums „Zuletzt aktualisiert“ auf dieser Seite angezeigt\n- Ihre fortgesetzte Nutzung des Dienstes nach einer Überarbeitung stellt Ihre Zustimmung zur aktualisierten Erklärung dar",
         "section15_title": "Artikel 15: Kontakt",
         "section15_content": "Für Anfragen zum Umgang mit personenbezogenen Daten, Werbe-Opt-out oder zur Ausübung Ihrer Rechte kontaktieren Sie uns bitte über das In-Service-Anfrageformular. Wir können Sie bitten, Ihre registrierte E-Mail-Adresse zur Identitätsverifizierung anzugeben."
+      },
+      "commerce": {
+        "title": "Angaben gemäß dem japanischen Gesetz über bestimmte Handelsgeschäfte (Tokushoho)",
+        "seo_description": "Angaben von Mannschaft gemäß dem japanischen Gesetz über bestimmte Handelsgeschäfte, einschließlich Verkäuferinformationen, Zahlungsmethoden und Rückgabe-/Stornierungsrichtlinien.",
+        "items": {
+          "seller": { "label": "Verkäufer", "value": "Mannschaft Betriebsbüro" },
+          "manager": { "label": "Verantwortlicher für den Geschäftsbetrieb", "value": "Wird auf Anfrage von Personen mit Kaufabsicht unverzüglich offengelegt" },
+          "address": { "label": "Anschrift", "value": "Wird auf Anfrage von Personen mit Kaufabsicht unverzüglich offengelegt" },
+          "phone": { "label": "Telefonnummer", "value": "Wird auf Anfrage von Personen mit Kaufabsicht unverzüglich offengelegt" },
+          "contact": { "label": "Kontakt (Kontaktmethode)", "value": "Bitte kontaktieren Sie uns nach der Anmeldung über den „Vorschlagskasten“ oben im Header. Anfragen zur Offenlegung von Anschrift und Telefonnummer werden ebenfalls über diesen Weg entgegengenommen" },
+          "price": { "label": "Verkaufspreis", "value": "Gemäß dem auf der jeweiligen Kaufseite für Dienstleistungen, Tickets usw. angezeigten Preis (inkl. Mehrwertsteuer)" },
+          "extraFee": { "label": "Zusätzliche Kosten außer dem Verkaufspreis", "value": "Internetverbindungskosten und sonstige Kommunikationsgebühren trägt der Kunde" },
+          "paymentMethod": { "label": "Zahlungsmethode", "value": "Kreditkarte und andere auf der jeweiligen Kaufseite angezeigte Zahlungsmethoden (die Zahlungsabwicklung erfolgt über den Zahlungsdienst von Stripe, Inc.)" },
+          "paymentTiming": { "label": "Zeitpunkt der Zahlung", "value": "Die Zahlung wird mit Abschluss des Kaufvorgangs verbindlich. Abonnements (wiederkehrende Abrechnung) werden an jedem Verlängerungstermin abgerechnet" },
+          "serviceTiming": { "label": "Zeitpunkt der Leistungserbringung", "value": "Sofort nach Abschluss der Zahlung verfügbar" },
+          "refund": { "label": "Rückgabe, Stornierung und Rückerstattung", "value": "Aufgrund der Art der Dienstleistung werden Rückerstattungen und Stornierungen nach Abschluss der Zahlung grundsätzlich nicht angenommen. Bei Zahlungen, bei denen ein Team oder eine Organisation als Verkäufer auftritt (Tickets, Mitgliedsbeiträge usw.), ist Mannschaft jedoch lediglich eine Plattform, die den Ort für die Transaktion bereitstellt; ob eine Rückerstattung möglich ist und zu welchen Bedingungen, richtet sich nach der vom jeweiligen Team bzw. der jeweiligen Organisation festgelegten Richtlinie. Für Einzelheiten wenden Sie sich bitte an den jeweiligen Verkäufer" },
+          "environment": { "label": "Betriebsumgebung", "value": "Empfohlen wird die jeweils neueste Version gängiger Browser (Chrome / Safari / Edge / Firefox)" }
+        }
       }
     },
     "features_detail": {
@@ -428,6 +596,527 @@
         "best_viewed": "※ Diese Seite wird am besten mit Netscape Navigator 4.0 bei 800×600 Auflösung angezeigt",
         "made_with": "♦ Made with Notepad ♦",
         "welcome_message": "★ Willkommen bei Mannschaft! Die Plattform zur Maximierung Ihrer Teamkraft ★"
+      }
+    },
+    "v2": {
+      "seo_title": "Mannschaft — Welcher Eingang ist deiner?",
+      "hero": {
+        "badge": "Einzelperson, Team, Organisation — alles in einem",
+        "cta_register": "Kostenlos starten",
+        "login_prompt": "Schon ein Konto?",
+        "login_link": "Anmelden",
+        "title_segments": [
+          "Chat-Apps, Tabellen und Einzweck-Tools — bring alles an ",
+          "einen Ort."
+        ],
+        "subtitle_segments": [
+          "Eine All-in-One-Plattform für die Organisation — egal wer du bist: Einzelperson, Team oder Organisation."
+        ],
+        "no_download_note": "Kein App-Download nötig — starte direkt im Browser"
+      },
+      "scope": {
+        "heading": "Welcher Eingang ist deiner?",
+        "subheading": "Dein Einstieg in Mannschaft hängt von deiner Rolle ab.",
+        "tab_personal": "Einzelperson",
+        "tab_team": "Team",
+        "tab_org": "Organisation",
+        "personal": {
+          "role_badge": "Teilnehmende Seite",
+          "tagline": "Für dich — der du buchst und teilnimmst.",
+          "f0": "Punktekarten und QR-Mitgliedsausweise in einer Wallet",
+          "f1": "Deine Termine und Anwesenheit in einem Kalender",
+          "f2": "Ein persönliches Dashboard über alle deine Teams hinweg",
+          "mock_caption": "Mein Dashboard"
+        },
+        "team": {
+          "role_badge": "Organisierende Seite",
+          "tagline": "Für dich — der du den Betrieb führst.",
+          "f0": "Schichtpläne erstellen, Wünsche sammeln, Bestätigung senden",
+          "f1": "Teilnahme an Veranstaltungen auswerten und erinnern",
+          "f2": "Beiträge einziehen und Zahlungsstand auf einen Blick",
+          "mock_caption": "Team-Dashboard"
+        },
+        "org": {
+          "role_badge": "Bündelnde Seite",
+          "tagline": "Für dich — der du eine größere Organisation leitest.",
+          "f0": "Stimmrechte und Vollmachten für Versammlungen digitalisieren",
+          "f1": "Dokumente mit digitalen Siegeln und Lesebestätigung umlaufen lassen",
+          "f2": "Bewohnerverzeichnisse und Listen sicher verwalten",
+          "mock_caption": "Organisations-Dashboard"
+        }
+      },
+      "stats": {
+        "users": "Nutzer",
+        "teams": "Teams",
+        "organizations": "Organisationen",
+        "heading_segments": [
+          "So viele sind schon dabei"
+        ]
+      },
+      "features": {
+        "detail_link": "Mehr erfahren",
+        "close": "Schließen",
+        "items": {
+          "team": {
+            "title": "Team- und Organisationsverwaltung",
+            "desc": "Lade Mitglieder ein und lege Rollen und Rechte klar fest. Sieh auf einen Blick, wer was darf.",
+            "points": [
+              "Mitglieder einladen und Rollen und Rechte festlegen",
+              "Nur die genutzten Funktionen per Schalter aktivieren (Admins)",
+              "Team- und Organisationsebenen unter einem Konto verwalten"
+            ]
+          },
+          "schedule": {
+            "title": "Termine und Anwesenheit",
+            "desc": "Teile Pläne und bestätige die Teilnahme mit einem Tipp. Erinnerungen werden automatisch gesendet.",
+            "points": [
+              "Alle Team- und Privattermine in einem Kalender sehen",
+              "Anwesenheit mit einem Tipp beantworten: dabei, abwesend, offen",
+              "Private Termine bidirektional mit Google Kalender synchronisieren"
+            ]
+          },
+          "reservation": {
+            "title": "Reservierungen",
+            "desc": "Nimm Buchungen nach Zeitfenster oder Mitarbeiter an. Kapazität, volle Slots und Stornos laufen automatisch.",
+            "points": [
+              "Im Verfügbarkeitsraster freie Zeitfenster antippen und buchen",
+              "Status per Badge verfolgen: ausstehend, bestätigt, storniert",
+              "Sperrzeiten und E-Mail-Empfänger für Benachrichtigungen verwalten"
+            ]
+          },
+          "shift": {
+            "title": "Schichtplanung",
+            "desc": "Vom Sammeln der Wünsche über den Plan bis zur Benachrichtigung, sobald er steht.",
+            "points": [
+              "Schichtwünsche fünfstufig einsammeln und in der Matrix prüfen",
+              "Fortschritt über Entwurf, Sammlung, Abstimmung und Veröffentlichung steuern",
+              "Mitglieder sehen fixe Schichten nach Monat oder Woche und beantragen Tausch"
+            ]
+          },
+          "chat": {
+            "title": "Chat",
+            "desc": "Halte Gespräche mit Kanälen geordnet und antworte locker mit Threads und Reaktionen.",
+            "points": [
+              "Gespräche in Kanälen nach Thema ordnen",
+              "Kanäle je Team oder Organisation anlegen",
+              "Auf Nachrichten locker mit Emojis reagieren"
+            ]
+          },
+          "timeline": {
+            "title": "Timeline",
+            "desc": "Teile Neuigkeiten aus deinem Team in einem vertrauten Feed.",
+            "points": [
+              "Kurze Updates in den Team-Feed posten",
+              "Mit Antworten locker im Gespräch bleiben",
+              "Admins können wichtige Beiträge anpinnen"
+            ]
+          },
+          "circulation": {
+            "title": "Umlauf und digitale Siegel",
+            "desc": "Lass Dokumente nacheinander oder gleichzeitig umlaufen — mit Stempel und sichtbarem Lesestatus.",
+            "points": [
+              "Dokumente der Reihe nach oder an alle gleichzeitig umlaufen lassen",
+              "Empfänger bestätigen mit ihrem registrierten digitalen Siegel",
+              "Fortschritt wie die Zahl der Siegel in Echtzeit verfolgen"
+            ]
+          },
+          "survey": {
+            "title": "Umfragen und Abstimmungen",
+            "desc": "Erstelle Fragen und werte Antworten aus, anonym oder namentlich, mit Ergebnissen als Diagramm.",
+            "points": [
+              "Fragetypen: Einzel- und Mehrfachauswahl, Freitext, Bewertung, Datum",
+              "Anonymität und Sichtbarkeit der Ergebnisse fein einstellen",
+              "Antworten über Status und Antwortzahlen verwalten"
+            ]
+          },
+          "files": {
+            "title": "Dateifreigabe",
+            "desc": "Ordne Dokumente und Fotos in Ordnern und teile sie sicher mit den richtigen Personen.",
+            "points": [
+              "Je Ordner oder Datei die Mindestrolle für die Ansicht festlegen",
+              "Downloads bei Bedarf pro Datei sperren",
+              "Extern über ablaufende öffentliche Links teilen (nur Admins)"
+            ]
+          },
+          "billing": {
+            "title": "Beiträge und Zahlungen",
+            "desc": "Vom Beitrag bis zur Prüfung des Zahlungsstands und Erinnerungen — alles online.",
+            "points": [
+              "Beitragsrechnungen und Zahlungsstand online verwalten",
+              "Wiederkehrende Zahlungen laufen nach Kartenregistrierung automatisch",
+              "Unbezahlte Inhalte bleiben hinter einer Bezahlschranke geschützt"
+            ]
+          },
+          "matching": {
+            "title": "Matching und Turniere",
+            "desc": "Von der Gegnersuche bis zur Turnierorganisation und Ergebniserfassung.",
+            "points": [
+              "Auf der ganzen Plattform nach Gegnern und Austausch suchen",
+              "Nach Art — Spiel, Training, Austausch — und Niveau filtern",
+              "Die Turnierverwaltung automatisiert Tabellen, Paarungen und Ranglisten"
+            ]
+          },
+          "safety": {
+            "title": "Notfall-Sicherheitsabfrage",
+            "desc": "Frage bei Katastrophen oder Notfällen alle auf einmal ab und werte den Status aus.",
+            "points": [
+              "Admins lösen die Abfrage für alle auf einmal aus (Übungsmodus möglich)",
+              "Antworten und Rücklaufquote in Echtzeit auswerten",
+              "Vergangene Abfragen und Details später einsehen"
+            ]
+          },
+          "qr": {
+            "title": "QR-Mitgliedsausweis",
+            "desc": "Gib Mitgliedsausweise als QR-Code aus und bestätige die Identität per Scan am Eingang.",
+            "points": [
+              "Digitale Mitgliedsausweise als QR-Code ausgeben",
+              "Check-in-Historie einsehen",
+              "Ausweise bei Bedarf aussetzen und reaktivieren"
+            ]
+          },
+          "wallet": {
+            "title": "Punktekarten-Wallet",
+            "desc": "Bündle Punktekarten aller Läden auf deinem Smartphone.",
+            "points": [
+              "Bis zu 200 eigene Punktekarten registrieren",
+              "Karten gruppieren und per Wisch schnell wechseln",
+              "Barcode an der Kasse im Vollbild zeigen, mit biometrischer Sperre"
+            ]
+          },
+          "karte": {
+            "title": "Patientenakte",
+            "desc": "Führe Anamnese, Behandlungsverlauf und Fortschritt zusammen mit Fotos und Diagrammen.",
+            "points": [
+              "Akten für Behandlung und Verlauf anlegen",
+              "Mit Entwurf/final und Anpinnen ordnen",
+              "Details schnell im Dialog öffnen"
+            ]
+          },
+          "village": {
+            "title": "Dorf (Community)",
+            "desc": "Ein lockerer gemeinsamer Ort, der Menschen über ein einzelnes Team hinaus verbindet.",
+            "points": [
+              "Dörfern gleichgesinnter Menschen beitreten (auch mit Freigabe)",
+              "Über Brett, Timeline und Dorfplatz locker austauschen",
+              "Von Fest-Aufrufen über Terminabstimmungen bis zur Monatschronik"
+            ]
+          }
+        },
+        "heading_segments": [
+          "Funktionen, genau wenn du sie brauchst."
+        ],
+        "subheading_segments": [
+          "Tippe auf eine Funktion für eine kurze Erklärung."
+        ],
+        "pricing_note_segments": [
+          "Die Grundfunktionen sind kostenlos. Zusatzmodule wählst du nach Bedarf — viele auf einmal können einen Bezahltarif erfordern."
+        ],
+        "growing_title": "Mannschaft wächst noch.",
+        "growing_note_segments": [
+          "Die Funktionen wachsen weiter — geprägt von den Stimmen der Menschen, die sie nutzen."
+        ],
+        "can_do_label": "Was du tun kannst",
+        "more_label": "Mehr Details",
+        "less_label": "Details ausblenden"
+      },
+      "usecases": {
+        "sports_team": "Sportverein",
+        "clinic": "Osteopathie-Praxis",
+        "school": "Schule",
+        "alumni": "Ehemaligenverein",
+        "salon": "Friseursalon",
+        "mansion": "Eigentümergemeinschaft",
+        "neighborhood": "Nachbarschaftsverein",
+        "gym": "Fitnessstudio",
+        "restaurant": "Restaurant",
+        "circle": "Verein / Gruppe",
+        "heading_segments": [
+          "Die Einsatzmöglichkeiten sind grenzenlos."
+        ],
+        "subheading_segments": [
+          "Dieselben Werkzeuge, für jeden eine andere Rolle."
+        ]
+      },
+      "cta": {
+        "register": "Kostenlos starten",
+        "pricing_prompt": "Neugierig auf die Preise?",
+        "pricing_link": "Preise ansehen",
+        "faq_heading": "Häufige Fragen",
+        "faq": {
+          "0": {
+            "q": "Ist die Nutzung kostenlos?",
+            "a": "Persönliche Konten und Grundfunktionen sind kostenlos. Zusatzmodule wählst du nach Bedarf; viele auf einmal können einen Bezahltarif erfordern."
+          },
+          "1": {
+            "q": "Kann ich es auf dem Handy nutzen?",
+            "a": "Ja. Es läuft direkt im Browser auf Handy und Tablet — ohne App-Installation."
+          },
+          "2": {
+            "q": "Kann ich mehreren Teams angehören?",
+            "a": "Mit einem Konto kannst du mehreren Teams und Organisationen angehören und zwischen ihnen wechseln."
+          },
+          "3": {
+            "q": "Kann ich meine Daten exportieren?",
+            "a": "Ja. Ein Massenexport in CSV- und JSON-Format wird unterstützt."
+          },
+          "4": {
+            "q": "Wie steht es um die Sicherheit?",
+            "a": "Die Verbindung ist TLS-verschlüsselt, mit Zwei-Faktor-Authentifizierung (Authenticator-App, Passkeys) und rollenbasierter Zugriffskontrolle."
+          },
+          "5": {
+            "q": "Was passiert mit meinen Daten beim Austritt?",
+            "a": "Personenbezogene Daten werden innerhalb von 30 Tagen nach dem Austrittsantrag gelöscht (DSGVO-konform). Beiträge und Statistiken bleiben in nicht identifizierbarer Form erhalten."
+          },
+          "6": {
+            "q": "Welche Sprachen werden unterstützt?",
+            "a": "Sechs Sprachen: Japanisch, Englisch, Deutsch, Spanisch, Koreanisch und Chinesisch."
+          },
+          "7": {
+            "q": "Was, wenn eine Funktion fehlt?",
+            "a": "Schick uns deinen Wunsch über das Kontaktformular. Mannschaft ist eine wachsende Plattform, die Funktionen nach dem Feedback der Nutzer ergänzt."
+          },
+          "8": {
+            "q": "Können auch Personen unter 18 Jahren es nutzen?",
+            "a": "Personen unter 18 Jahren können den Dienst erst nutzen, nachdem sie mit dem Konto eines Elternteils (gesetzlichen Vertreters) verknüpft wurden und dessen Einwilligung erhalten haben. Bis zum Abschluss der Verknüpfung ist die Nutzung nicht möglich. Insbesondere Kinder im Grundschulalter oder jünger (vor dem Eintritt in die Mittelschule) fallen unter den „Begleitmodus“, bei dem ein Elternteil ihre Termine, Anwesenheit, Zugehörigkeiten und Ankündigungen einsehen kann, um sie zu begleiten, und Mitgliedsbeiträge in ihrem Namen bezahlen kann (dies endet automatisch mit dem Eintritt in die Mittelschule).",
+            "a_terms_note": "Einzelheiten finden Sie in {link}.",
+            "a_terms_link": "Artikel 4 der Nutzungsbedingungen"
+          },
+          "9": {
+            "q": "Kann ich ein älteres Familienmitglied im Blick behalten?",
+            "a": "Ja. Mit der Einwilligung der Person oder ihrer Familie können Sie eine „begleitende Person“ registrieren, und ihre Familie wird automatisch über Anwesenheit, Ankunft und Verlassen bei Veranstaltungen sowie über eine Abwesenheitswarnung benachrichtigt, wenn jemand, der teilnehmen soll, nicht als angekommen bestätigt werden kann. Es gibt keine automatische Registrierung nach Alter; sie erfolgt stets auf Grundlage der Einwilligung der Person und ihrer Familie."
+          }
+        },
+        "retro_hint": "🎮 Manchmal wird der Bildschirm retro … vielleicht?",
+        "heading_segments": [
+          "Kostenlos starten."
+        ],
+        "subheading_segments": [
+          "Ein persönliches Konto ist kostenlos. Ein Team kannst du später erstellen."
+        ]
+      },
+      "usecase_pages": {
+        "common": {
+          "back": "← Zurück zur Startseite",
+          "story_heading": "Mit Mannschaft läuft es so",
+          "chips_heading": "Genutzte Funktionen",
+          "cta": "Kostenlos starten"
+        },
+        "sports_team": {
+          "title": "Sportverein",
+          "problem": "Zusagen gehen im Chat unter, Beiträge werden bar eingesammelt, Fotos liegen auf fremden Handys. Bleibt die ganze Arbeit an einer Person hängen?",
+          "story": [
+            "Training und Spiele in den Kalender eintragen — Mitglieder erhalten Abfragen und Erinnerungen automatisch",
+            "Monatsbeiträge online abrechnen, den Zahlungsstand auf einen Blick sehen, Mahnungen laufen automatisch",
+            "Gegner über das Matching finden, Tabellen berechnet die Turnierverwaltung automatisch",
+            "Spielfotos in der Galerie sammeln und im Chat über das Spiel reden",
+            "Fahrtkosten abrechnen und Termine per Umfrage finden — alles am selben Ort"
+          ],
+          "chips": [
+            "Termine und Anwesenheit",
+            "Beiträge und Zahlungen",
+            "Matching und Turniere",
+            "Galerie",
+            "Chat"
+          ]
+        },
+        "clinic": {
+          "title": "Osteopathie-Praxis",
+          "problem": "Telefonische Terminvergabe unterbricht die Behandlung, Papierakten kosten Zeit beim Suchen und Übergeben.",
+          "story": [
+            "Terminfenster veröffentlichen — Patienten wählen freie Zeiten am Handy",
+            "Automatische Erinnerungen am Vortag reduzieren Terminausfälle",
+            "Behandlung und Verlauf in der Patientenakte festhalten, samt Fotos und Körperdiagrammen",
+            "Beim Besuch genügt ein Scan des QR-Ausweises am Empfang",
+            "Bei Andrang zeigt die Warteschlangenverwaltung den Wartestand in Echtzeit"
+          ],
+          "chips": [
+            "Reservierungen",
+            "Patientenakte",
+            "QR-Mitgliedsausweis",
+            "Warteschlangenverwaltung",
+            "Servicehistorie"
+          ]
+        },
+        "school": {
+          "title": "Schule",
+          "problem": "Elterninfos laufen über Zettel, das Auszählen von Zusagen und die Verwaltung der Elternbeiräte kosten Zeit.",
+          "story": [
+            "Veranstaltungen im Kalender teilen und Zusagen automatisch auszählen",
+            "Mitteilungen über Aushang und Umlauf verteilen — Lesebestätigungen zeigen, ob es ankam",
+            "Beiträge online einziehen und den Zahlungsstand in einer Liste prüfen",
+            "Elternumfragen per Formular einsammeln und als Diagramm auswerten",
+            "Stundenpläne je Halbjahr verwalten, samt Hinweisen bei kurzfristigen Änderungen"
+          ],
+          "chips": [
+            "Termine und Anwesenheit",
+            "Umlauf",
+            "Beiträge und Zahlungen",
+            "Umfragen",
+            "Stundenplan"
+          ]
+        },
+        "alumni": {
+          "title": "Ehemaligenverein",
+          "problem": "Alle paar Jahre die Kontaktdaten zu prüfen ist ein Großprojekt — die Last der Organisatoren schiebt Treffen hinaus.",
+          "story": [
+            "Mitgliederliste online führen — Kontaktdaten aktualisiert jeder selbst",
+            "Einladungen auf einmal verschicken und Zusagen mit einem Tipp einsammeln",
+            "Beiträge bargeldlos online einziehen",
+            "Fotos vom Treffen in der Galerie als Archiv teilen",
+            "Den nächsten Termin per Umfrage abstimmen"
+          ],
+          "chips": [
+            "Mitgliederverwaltung",
+            "Termine und Anwesenheit",
+            "Beiträge und Zahlungen",
+            "Galerie",
+            "Umfragen"
+          ]
+        },
+        "salon": {
+          "title": "Friseursalon",
+          "problem": "Das Telefon steht nicht still, und die Historie jedes Kunden existiert nur im Gedächtnis des Teams.",
+          "story": [
+            "Terminfenster je Stylist veröffentlichen — Kundschaft bucht ihren Favoriten am Handy",
+            "Erinnerungen am Vortag reduzieren Terminausfälle",
+            "Behandlungen und verwendete Produkte in der Servicehistorie festhalten",
+            "Schichten des Teams von der Wunschabfrage bis zur Bestätigung in der App regeln",
+            "Stammkundschaft mit QR-Ausweis und Mailversand zur Rückkehr einladen"
+          ],
+          "chips": [
+            "Reservierungen",
+            "Servicehistorie",
+            "Schichtplanung",
+            "QR-Mitgliedsausweis",
+            "Mailversand"
+          ]
+        },
+        "mansion": {
+          "title": "Eigentümergemeinschaft",
+          "problem": "Vollmachten zur Versammlung kommen auf Papier zurück, Umläufe bleiben stecken — niemand weiß, wer was gelesen hat.",
+          "story": [
+            "Über Tagesordnungspunkte elektronisch abstimmen, Vollmachten online einreichen",
+            "Beschlüsse per Umlauf verteilen — digitale Siegel machen die Bestätigung sichtbar",
+            "Wohnungs- und Bewohnerdaten sicher im Bewohnerverzeichnis führen",
+            "Stellplatzvergabe und freie Plätze in der App verwalten",
+            "Gästezimmer und Gemeinschaftsräume online reservieren"
+          ],
+          "chips": [
+            "Stimmrechte und Vollmachten",
+            "Umlauf und digitale Siegel",
+            "Bewohnerverzeichnis",
+            "Stellplatzverwaltung",
+            "Raumreservierung"
+          ]
+        },
+        "neighborhood": {
+          "title": "Nachbarschaftsverein",
+          "problem": "Der Papierumlauf braucht ewig, und im Notfall bleibt nur die Telefonkette.",
+          "story": [
+            "Den Umlauf digitalisieren — der Reihe nach oder an alle, mit sichtbarem Lesestatus",
+            "Feste und Aufräumaktionen im Kalender teilen und Teilnehmer automatisch zählen",
+            "Vereinsbeiträge online einziehen, ohne Haustür-Runden",
+            "Im Katastrophenfall alle auf einmal nach ihrem Befinden fragen und Antworten auswerten",
+            "Fotos der Feste in der Galerie als Chronik teilen"
+          ],
+          "chips": [
+            "Umlauf",
+            "Notfall-Sicherheitsabfrage",
+            "Termine und Anwesenheit",
+            "Beiträge und Zahlungen",
+            "Galerie"
+          ]
+        },
+        "gym": {
+          "title": "Fitnessstudio",
+          "problem": "Mitgliedsausweise, Einlasskontrolle und Monatsbeiträge verteilen sich auf getrennte Werkzeuge.",
+          "story": [
+            "QR-Mitgliedsausweise ausgeben — ein Scan am Eingang genügt",
+            "Kursplätze veröffentlichen, die sich bei vollem Kurs automatisch schließen",
+            "Monatsbeiträge online einziehen, säumige Mitglieder automatisch erinnern",
+            "Schichten von Team und Trainern zentral verwalten",
+            "Neue Programme an alle auf einmal ankündigen"
+          ],
+          "chips": [
+            "QR-Mitgliedsausweis",
+            "Reservierungen",
+            "Beiträge und Zahlungen",
+            "Schichtplanung",
+            "Ankündigungen"
+          ]
+        },
+        "restaurant": {
+          "title": "Restaurant",
+          "problem": "Schichtwünsche versinken im Gruppenchat, und zur Stoßzeit fehlen die Hände für die Warteschlange.",
+          "story": [
+            "Schichtwünsche in der App einsammeln, Plan erstellen und Bestätigung senden",
+            "Stundenlöhne hinterlegen und die Personalkosten im Blick behalten",
+            "Warteliste per QR-Code — Gäste sehen ihren Platz am Handy und werden aufgerufen",
+            "Tischreservierungen online an einem Ort annehmen und verwalten",
+            "Teamkommunikation im Filialkanal ordnen"
+          ],
+          "chips": [
+            "Schichtplanung",
+            "Warteschlangenverwaltung",
+            "Reservierungen",
+            "Chat"
+          ]
+        },
+        "circle": {
+          "title": "Verein / Gruppe",
+          "problem": "Unklare Zusagen erschweren die Raumbuchung, und die Fahrtabrechnung lebt in irgendjemandes Notizen.",
+          "story": [
+            "Aktivitätstage in den Kalender eintragen und Zusagen automatisch einsammeln",
+            "Kosten von Fahrten und Events transparent abrechnen",
+            "Chat für den Alltag, das Schwarze Brett für wichtige Ankündigungen",
+            "Aktivitätsfotos in der Galerie zu Alben machen",
+            "Anmeldungen neuer Mitglieder per Formular annehmen"
+          ],
+          "chips": [
+            "Termine und Anwesenheit",
+            "Beiträge und Zahlungen",
+            "Chat",
+            "Galerie",
+            "Formulare"
+          ]
+        }
+      },
+      "pwa": {
+        "heading_segments": [
+          "Kein App-Store nötig. Nutze es direkt als App."
+        ],
+        "desc_segments": [
+          "Mannschaft ist eine PWA — zum Startbildschirm hinzugefügt öffnet es sich wie eine App, ganz ohne Download."
+        ],
+        "button": "Zum Startbildschirm hinzufügen",
+        "guide": {
+          "guide_button": "Anleitung ansehen",
+          "guide_title": "So fügst du es zum Startbildschirm hinzu",
+          "tab_ios": "iPhone / iPad",
+          "tab_android": "Android",
+          "tab_desktop": "PC (Chrome / Edge)",
+          "android_step1": "Öffne diese Seite in Chrome",
+          "android_step2": "Tippe oben rechts auf das Menü (⋮)",
+          "android_step3": "Wähle „App installieren“ oder „Zum Startbildschirm hinzufügen“",
+          "android_step4": "Tippe auf „Installieren“, um abzuschließen",
+          "desktop_step1": "Öffne diese Seite in Chrome oder Edge",
+          "desktop_step2": "Klicke auf das Installieren-Symbol (⊕) am rechten Rand der Adressleiste",
+          "desktop_step3": "Oder wähle im Menü „App installieren“",
+          "desktop_step4": "Klicke auf „Installieren“, um abzuschließen",
+          "close": "Schließen"
+        }
+      },
+      "trust": {
+        "heading": "Unser Einsatz für Sicherheit und Schutz",
+        "badges": {
+          "minor": "Elternverknüpfung unter 18 Pflicht",
+          "auth": "Zwei-Faktor-Auth & Passkeys",
+          "i18n": "6 Sprachen",
+          "encryption": "Verschlüsselte Kommunikation & Daten",
+          "gdpr": "DSGVO-konform",
+          "watch": "Begleitung von Kindern & älteren Angehörigen",
+          "safety": "Notfall-Sammelabfrage zur Sicherheit"
+        }
       }
     }
   }

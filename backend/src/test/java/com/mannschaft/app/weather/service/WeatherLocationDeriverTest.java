@@ -11,6 +11,7 @@ import com.mannschaft.app.weather.exception.WeatherLocationDeriveException.Error
 import com.mannschaft.app.weather.metrics.WeatherMetrics;
 import com.mannschaft.app.weather.repository.PostalCodeRepository;
 import com.mannschaft.app.weather.repository.UserWeatherLocationRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,13 +56,25 @@ class WeatherLocationDeriverTest {
     @InjectMocks private WeatherLocationDeriver deriver;
 
     private ListAppender<ILoggingEvent> logAppender;
+    private ch.qos.logback.classic.Level originalLogLevel;
 
     @BeforeEach
     void attachLogAppender() {
         Logger logger = (Logger) LoggerFactory.getLogger(WeatherLocationDeriver.class);
+        originalLogLevel = logger.getLevel();
+        // ログ出力検証テストのため、同一 gradle テストフォーク内で先行する SpringBootTest
+        // （test プロファイル・root=WARN）の影響を受けないよう実効レベルを自明に設定する。
+        logger.setLevel(ch.qos.logback.classic.Level.ALL);
         logAppender = new ListAppender<>();
         logAppender.start();
         logger.addAppender(logAppender);
+    }
+
+    @AfterEach
+    void detachLogAppender() {
+        Logger logger = (Logger) LoggerFactory.getLogger(WeatherLocationDeriver.class);
+        logger.detachAppender(logAppender);
+        logger.setLevel(originalLogLevel);
     }
 
     @Test

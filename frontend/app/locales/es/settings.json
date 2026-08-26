@@ -60,7 +60,8 @@
       "saveSuccess": "Configuración guardada",
       "saveError": "Error al guardar la configuración",
       "reorderHint": "Arrastra el controlador para reordenar los elementos de navegación",
-      "dragHandleLabel": "Controlador de arrastre"
+      "dragHandleLabel": "Controlador de arrastre",
+      "pinnedBottom": "Fijado al final"
     },
     "account": {
       "page_title": "Configuración de cuenta",
@@ -356,27 +357,35 @@
     },
     "gcal": {
       "section_title": "Integración con Google Calendar",
+      "connection_status_title": "Estado de la conexión",
       "connected_label": "Conectado",
       "last_synced": "Última sincronización: {date}",
       "last_sync_error": "Error de sincronización: {message}",
       "manual_sync_button": "Sincronización manual",
       "disconnect_button": "Desconectar",
+      "disconnect_confirm": "¿Desconectar la integración con Google Calendar?",
       "sync_settings_title": "Configuración de sincronización",
       "personal_calendar_label": "Calendario personal",
       "personal_calendar_description": "Sincronizar eventos personales con Google Calendar",
       "team_calendars_label": "Calendarios de equipo",
       "org_calendars_label": "Calendarios de organización",
-      "save_settings_button": "Guardar configuración",
+      "no_team_calendars": "No perteneces a ningún equipo",
+      "no_org_calendars": "No perteneces a ninguna organización",
       "not_connected_description": "Conecte su cuenta de Google para sincronizar calendarios",
       "connect_button": "Conectar cuenta de Google",
+      "detail_link_button": "Ir a la configuración detallada",
       "toast": {
         "connect_error": "Error al conectar",
+        "oauth_connected": "Conectado con Google Calendar",
+        "oauth_connect_failed": "Error al conectar con Google Calendar",
         "disconnect_success": "Desconectado",
         "disconnect_error": "Error al desconectar",
-        "save_success": "Configuración de sincronización guardada",
-        "save_error": "Error al guardar",
         "sync_success": "Sincronización completada",
-        "sync_error": "Error al sincronizar"
+        "sync_error": "Error al sincronizar",
+        "load_error": "Error al cargar",
+        "toggle_on_success": "Sincronización activada para {name}",
+        "toggle_off_success": "Sincronización desactivada para {name}",
+        "backfill_info": "{count} eventos añadidos a la cola de sincronización"
       }
     },
     "delete_account": {

@@ -211,9 +211,7 @@ function statusSeverity(status: string): 'success' | 'warn' | 'secondary' | 'dan
   }
 }
 
-function formatDeadline(iso: string): string {
-  return new Date(iso).toLocaleDateString()
-}
+const { formatDate: formatDeadline } = useDatetime()
 
 /**
  * 複数地域募集（F22.1 Phase2 D）の表示用地域配列を返す。

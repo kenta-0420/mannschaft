@@ -2,8 +2,10 @@ package com.mannschaft.app.village.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.security.AuthorizedInService;
 import com.mannschaft.app.village.dto.VillageFeedResponse;
 import com.mannschaft.app.village.service.VillageFeedService;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -29,8 +31,17 @@ public class VillageFeedController {
 
     private final VillageFeedService feedService;
 
+    /**
+     * ピン留め村の最新動きを集約して返す。
+     *
+     * <p>認可は {@link VillageFeedService#build} 内で実施する。ピン一覧は認証主体のピン行に
+     * 束縛され、村内コンテンツ（井戸端メッセージ・タイムライン投稿・掲示板スレッド）は
+     * 呼び出しユーザーが<b>現役の村人である村</b>のみを集約対象とする
+     * （{@code PostingIdentityService#getActiveVillageIdsByUser} が退村・BAN 済みを除外する）。</p>
+     */
+    @AuthorizedInService
     @GetMapping
-    @Operation(summary = "ピン留め村の最新動きをダッシュボード向けに集約取得")
+    @Operation(summary = "ピン留め村の最新動きをダッシュボード向けに集約取得（本文は村人である村のみ）")
     public ApiResponse<VillageFeedResponse> feed(
             @RequestParam(name = "limit", defaultValue = "20") int limit) {
         Long actorUserId = SecurityUtils.getCurrentUserId();

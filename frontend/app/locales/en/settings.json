@@ -60,7 +60,8 @@
       "saveSuccess": "Settings saved",
       "saveError": "Failed to save settings",
       "reorderHint": "Drag the handle to reorder the navigation items",
-      "dragHandleLabel": "Drag handle"
+      "dragHandleLabel": "Drag handle",
+      "pinnedBottom": "Pinned to bottom"
     },
     "account": {
       "page_title": "Account Settings",
@@ -356,27 +357,35 @@
     },
     "gcal": {
       "section_title": "Google Calendar Integration",
+      "connection_status_title": "Connection Status",
       "connected_label": "Connected",
       "last_synced": "Last synced: {date}",
       "last_sync_error": "Sync error: {message}",
       "manual_sync_button": "Manual Sync",
       "disconnect_button": "Disconnect",
+      "disconnect_confirm": "Disconnect Google Calendar integration?",
       "sync_settings_title": "Sync Settings",
       "personal_calendar_label": "Personal Calendar",
       "personal_calendar_description": "Sync personal events to Google Calendar",
       "team_calendars_label": "Team Calendars",
       "org_calendars_label": "Organization Calendars",
-      "save_settings_button": "Save Settings",
+      "no_team_calendars": "You are not a member of any team",
+      "no_org_calendars": "You are not a member of any organization",
       "not_connected_description": "Connect your Google account to sync calendars",
       "connect_button": "Connect Google Account",
+      "detail_link_button": "Go to detailed settings",
       "toast": {
         "connect_error": "Failed to connect",
+        "oauth_connected": "Connected to Google Calendar",
+        "oauth_connect_failed": "Failed to connect to Google Calendar",
         "disconnect_success": "Disconnected",
         "disconnect_error": "Failed to disconnect",
-        "save_success": "Sync settings saved",
-        "save_error": "Failed to save",
         "sync_success": "Sync completed",
-        "sync_error": "Failed to sync"
+        "sync_error": "Failed to sync",
+        "load_error": "Failed to load",
+        "toggle_on_success": "Turned on sync for {name}",
+        "toggle_off_success": "Turned off sync for {name}",
+        "backfill_info": "{count} events queued for sync"
       }
     },
     "delete_account": {

@@ -4,11 +4,14 @@ import com.mannschaft.app.advertising.AdvertisingErrorCode;
 import com.mannschaft.app.advertising.entity.AdCampaignEntity;
 import com.mannschaft.app.advertising.entity.AdConversionEntity;
 import com.mannschaft.app.advertising.entity.AdDailyStatsEntity;
+import com.mannschaft.app.advertising.entity.AdvertiserAccountEntity;
 import com.mannschaft.app.advertising.repository.AdCampaignRepository;
 import com.mannschaft.app.advertising.repository.AdConversionRepository;
 import com.mannschaft.app.advertising.repository.AdDailyStatsRepository;
+import com.mannschaft.app.advertising.repository.AdvertiserAccountRepository;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CommonErrorCode;
+import com.mannschaft.app.membership.domain.ScopeType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,15 +33,27 @@ public class CsvExportService {
     private final AdCampaignRepository adCampaignRepository;
     private final AdDailyStatsRepository adDailyStatsRepository;
     private final AdConversionRepository adConversionRepository;
+    private final AdvertiserAccountRepository advertiserAccountRepository;
 
     /**
      * キャンペーンのパフォーマンスデータをCSV形式でエクスポートする。
      */
     public byte[] exportCampaignPerformance(Long campaignId, Long organizationId,
                                              LocalDate from, LocalDate to) {
+        return exportCampaignPerformance(campaignId, ScopeType.ORGANIZATION, organizationId, from, to);
+    }
+
+    /**
+     * キャンペーンのパフォーマンスデータをCSV形式でエクスポートする（scope 化。F09.19.5b: org/team 両対応）。
+     */
+    public byte[] exportCampaignPerformance(Long campaignId, ScopeType scopeType, Long scopeId,
+                                             LocalDate from, LocalDate to) {
+        AdvertiserAccountEntity account = advertiserAccountRepository
+                .findByScopeTypeAndScopeIdAndDeletedAtIsNull(scopeType, scopeId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.COMMON_002));
         AdCampaignEntity campaign = adCampaignRepository.findById(campaignId)
                 .orElseThrow(() -> new BusinessException(AdvertisingErrorCode.AD_005));
-        if (!campaign.getAdvertiserOrganizationId().equals(organizationId)) {
+        if (!campaign.getAdvertiserAccountId().equals(account.getId())) {
             throw new BusinessException(CommonErrorCode.COMMON_002);
         }
 

@@ -20,11 +20,17 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -35,6 +41,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willDoNothing;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -101,14 +108,14 @@ class SharedFileServiceTest {
         void ファイル作成_正常_バージョン1も作成_クォータ加算() {
             // Given
             CreateFileRequest request = new CreateFileRequest(
-                    FOLDER_ID, "test.pdf", "files/test.pdf", 1024L, "application/pdf", null);
+                    FOLDER_ID, "test.pdf", "files/test.pdf", 1024L, "application/pdf", null, null, null);
 
             SharedFolderEntity folder = buildFolder();
             SharedFileEntity savedFile = SharedFileEntity.builder()
                     .folderId(FOLDER_ID).name("test.pdf").fileKey("files/test.pdf")
                     .fileSize(1024L).contentType("application/pdf").createdBy(USER_ID).build();
             FileResponse response = new FileResponse(FILE_ID, FOLDER_ID, "test.pdf", "files/test.pdf",
-                    1024L, "application/pdf", null, USER_ID, 1, null, null);
+                    1024L, "application/pdf", null, USER_ID, 1, null, null, null, null);
 
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
             willDoNothing().given(quotaService).checkFileQuota(any(SharedFolderEntity.class), eq(1024L));
@@ -131,7 +138,7 @@ class SharedFileServiceTest {
         void ファイル作成_クォータ超過_BusinessException_DB登録されない() {
             // Given
             CreateFileRequest request = new CreateFileRequest(
-                    FOLDER_ID, "big.pdf", "files/big.pdf", 999999L, "application/pdf", null);
+                    FOLDER_ID, "big.pdf", "files/big.pdf", 999999L, "application/pdf", null, null, null);
             SharedFolderEntity folder = buildFolder();
 
             given(folderService.findFolderOrThrow(FOLDER_ID)).willReturn(folder);
@@ -215,7 +222,7 @@ class SharedFileServiceTest {
             // Given
             SharedFileEntity file = buildFile();
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
-            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+            willDoNothing().given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
             given(r2StorageService.generateDownloadUrl(eq(FILE_KEY), any()))
                     .willReturn("https://r2.example.com/" + FILE_KEY + "?X-Amz-Signature=xxx");
 
@@ -236,7 +243,7 @@ class SharedFileServiceTest {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
             // PERSONAL 本人不一致は authorizeFolderViewById が FOLDER_NOT_FOUND（→404）を投げる
             willThrow(new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND))
-                    .given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+                    .given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
 
             // When & Then
             assertThatThrownBy(() -> sharedFileService.presignDownload(FILE_ID, USER_ID))
@@ -255,7 +262,7 @@ class SharedFileServiceTest {
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
             // TEAM/ORG 非メンバーは authorizeFolderViewById（内部 checkMembership）が COMMON_002（→403）を投げる
             willThrow(new BusinessException(CommonErrorCode.COMMON_002))
-                    .given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+                    .given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
 
             // When & Then
             assertThatThrownBy(() -> sharedFileService.presignDownload(FILE_ID, USER_ID))
@@ -277,7 +284,7 @@ class SharedFileServiceTest {
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
             // 存在しなければ認可も URL 発行も行わない
-            verify(folderQueryService, never()).authorizeFolderViewById(anyLong(), anyLong());
+            verify(folderQueryService, never()).authorizeDownload(anyLong(), anyLong());
             verify(r2StorageService, never()).generateDownloadUrl(any(), any());
         }
 
@@ -287,7 +294,7 @@ class SharedFileServiceTest {
             // Given
             SharedFileEntity file = buildFile();
             given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
-            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_OF_FILE, USER_ID);
+            willDoNothing().given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
             given(r2StorageService.generateDownloadUrl(eq(FILE_KEY), any())).willReturn("https://r2/x");
 
             // When
@@ -295,6 +302,290 @@ class SharedFileServiceTest {
 
             // Then: file.getFileKey() がそのまま presign に渡る
             verify(r2StorageService).generateDownloadUrl(eq(FILE_KEY), any());
+        }
+
+        @Test
+        @DisplayName("AC-C1相当: DL 禁止(authorizeDownload が DOWNLOAD_DISABLED)なら 403 で URL 未発行（generateDownloadUrl を呼ばない）")
+        void AC_C_DL禁止_403_URL未発行() {
+            // Given
+            SharedFileEntity file = buildFile();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            willThrow(new BusinessException(FileSharingErrorCode.DOWNLOAD_DISABLED))
+                    .given(folderQueryService).authorizeDownload(FILE_ID, USER_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.presignDownload(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.DOWNLOAD_DISABLED));
+            // DL 禁止で弾かれたら presigned URL を一切発行しない。
+            verify(r2StorageService, never()).generateDownloadUrl(any(), any());
+        }
+    }
+
+    // ========================================
+    // listFilesPaged / listFiles（一覧の IDOR 封鎖）
+    // ========================================
+
+    @Nested
+    @DisplayName("listFilesPaged / listFiles — IDOR 封鎖")
+    class ListFilesAuthorization {
+
+        @Test
+        @DisplayName("AC-A1相当: TEAM 非会員は 403（COMMON_002）で fileRepository を引かない")
+        void listFilesPaged_非会員_403_リポジトリ未参照() {
+            // Given: authorizeFolderViewById が内部 checkMembership で COMMON_002（→403）を投げる
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.listFilesPaged(
+                    FOLDER_ID, USER_ID, PageRequest.of(0, 20)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            // 認可で弾かれた場合はファイルを一切引かない（メタ漏洩の封鎖）
+            verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong(), any());
+            verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong());
+        }
+
+        @Test
+        @DisplayName("AC-A2相当: 他人の PERSONAL フォルダは 404（FOLDER_NOT_FOUND・存在隠蔽）で未参照")
+        void listFilesPaged_他人PERSONAL_404_リポジトリ未参照() {
+            // Given
+            willThrow(new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND))
+                    .given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.listFilesPaged(
+                    FOLDER_ID, USER_ID, PageRequest.of(0, 20)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
+            verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("AC-A4相当: 正規会員は認可通過後にページを取得できる（回帰なし）")
+        void listFilesPaged_正規会員_200相当() {
+            // Given
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            // 全許可(null)＝従来の絞り無しクエリ経路（SYSTEM_ADMIN / PERSONAL 相当）。
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(null);
+            given(fileRepository.findByFolderIdOrderByNameAsc(eq(FOLDER_ID), any()))
+                    .willReturn(Page.empty());
+
+            // When
+            Page<FileResponse> result = sharedFileService.listFilesPaged(
+                    FOLDER_ID, USER_ID, PageRequest.of(0, 20));
+
+            // Then: 認可が先に呼ばれ、その後にリポジトリを引く
+            assertThat(result).isNotNull();
+            InOrder order = inOrder(folderQueryService, fileRepository);
+            order.verify(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            order.verify(fileRepository).findByFolderIdOrderByNameAsc(eq(FOLDER_ID), any());
+        }
+
+        @Test
+        @DisplayName("listFiles（内部用）も認可を先に通し、弾かれたらリポジトリ未参照")
+        void listFiles_非会員_403_リポジトリ未参照() {
+            // Given
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.listFiles(FOLDER_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class);
+            verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong());
+        }
+    }
+
+    // ========================================
+    // listFilesPaged / listFiles — B: ファイル個別 min role のクエリ段階絞り込み
+    // （フォルダより厳しいファイルのメタ露出封鎖。全許可/空/非空の 3 分岐を結線検証）
+    // ========================================
+
+    @Nested
+    @DisplayName("listFilesPaged / listFiles — B: ファイル個別 min role 絞り込みの結線")
+    class ListFilesLevelFilter {
+
+        @Test
+        @DisplayName("AC-B-list-1: 許可レベルが非空→findVisibleByFolderIdAndLevels に許可集合を渡して絞る（隠しファイル除外）")
+        void 非空_絞り込みクエリ() {
+            // Given: 認可通過・MEMBER 相当（ADMINS_AND_ABOVE を含まない集合）
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            Set<FileVisibilityRole> allowed = EnumSet.of(
+                    FileVisibilityRole.SUPPORTERS_AND_ABOVE, FileVisibilityRole.MEMBERS_AND_ABOVE);
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(allowed);
+            given(fileRepository.findVisibleByFolderIdAndLevels(eq(FOLDER_ID), eq(allowed), any()))
+                    .willReturn(Page.empty());
+
+            // When
+            sharedFileService.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 20));
+
+            // Then: 絞り込みクエリのみ使用（従来の絞り無しクエリは使わない）
+            verify(fileRepository).findVisibleByFolderIdAndLevels(eq(FOLDER_ID), eq(allowed), any());
+            verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong(), any());
+            verify(fileRepository, never())
+                    .findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("AC-B-list-2: 許可レベルが空→NULL のみクエリ（min role 付きファイルは全て除外）")
+        void 空_NULLのみクエリ() {
+            // Given
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID))
+                    .willReturn(EnumSet.noneOf(FileVisibilityRole.class));
+            given(fileRepository.findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(eq(FOLDER_ID), any()))
+                    .willReturn(Page.empty());
+
+            // When
+            sharedFileService.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 20));
+
+            // Then
+            verify(fileRepository).findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(eq(FOLDER_ID), any());
+            verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong(), any());
+            verify(fileRepository, never()).findVisibleByFolderIdAndLevels(anyLong(), any(), any());
+        }
+
+        @Test
+        @DisplayName("AC-B-list-3: 全許可(null=SYSTEM_ADMIN/PERSONAL)→従来の絞り無しクエリ（非回帰）")
+        void 全許可_従来クエリ() {
+            // Given: resolveVisibleFileLevels が null（全許可）
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(null);
+            given(fileRepository.findByFolderIdOrderByNameAsc(eq(FOLDER_ID), any())).willReturn(Page.empty());
+
+            // When
+            sharedFileService.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 20));
+
+            // Then
+            verify(fileRepository).findByFolderIdOrderByNameAsc(eq(FOLDER_ID), any());
+            verify(fileRepository, never()).findVisibleByFolderIdAndLevels(anyLong(), any(), any());
+            verify(fileRepository, never())
+                    .findByFolderIdAndMinVisibleRoleIsNullOrderByNameAsc(anyLong(), any());
+        }
+
+        @Test
+        @DisplayName("順序: 認可→許可レベル解決→リポジトリ絞り込み の順で呼ばれる")
+        void 順序_認可先行() {
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            Set<FileVisibilityRole> allowed = EnumSet.of(FileVisibilityRole.MEMBERS_AND_ABOVE);
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(allowed);
+            given(fileRepository.findVisibleByFolderIdAndLevels(eq(FOLDER_ID), eq(allowed), any()))
+                    .willReturn(Page.empty());
+
+            sharedFileService.listFilesPaged(FOLDER_ID, USER_ID, PageRequest.of(0, 20));
+
+            InOrder order = inOrder(folderQueryService, fileRepository);
+            order.verify(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            order.verify(folderQueryService).resolveVisibleFileLevels(FOLDER_ID, USER_ID);
+            order.verify(fileRepository).findVisibleByFolderIdAndLevels(eq(FOLDER_ID), eq(allowed), any());
+        }
+
+        @Test
+        @DisplayName("listFiles（非ページング）も同様に許可レベルで絞る（非空→findVisibleByFolderIdAndLevels）")
+        void listFiles_非空_絞り込み() {
+            willDoNothing().given(folderQueryService).authorizeFolderViewById(FOLDER_ID, USER_ID);
+            Set<FileVisibilityRole> allowed = EnumSet.of(FileVisibilityRole.SUPPORTERS_AND_ABOVE);
+            given(folderQueryService.resolveVisibleFileLevels(FOLDER_ID, USER_ID)).willReturn(allowed);
+            given(fileRepository.findVisibleByFolderIdAndLevels(FOLDER_ID, allowed)).willReturn(List.of());
+            given(fileSharingMapper.toFileResponseList(List.of())).willReturn(List.of());
+
+            sharedFileService.listFiles(FOLDER_ID, USER_ID);
+
+            verify(fileRepository).findVisibleByFolderIdAndLevels(FOLDER_ID, allowed);
+            verify(fileRepository, never()).findByFolderIdOrderByNameAsc(anyLong());
+        }
+    }
+
+    // ========================================
+    // getFile（詳細の IDOR 封鎖・順序: fileId 実在確認 → フォルダ認可）
+    // ========================================
+
+    @Nested
+    @DisplayName("getFile — IDOR 封鎖")
+    class GetFileAuthorization {
+
+        private static final Long FOLDER_OF_FILE = 7L;
+
+        private SharedFileEntity buildFile() {
+            return SharedFileEntity.builder()
+                    .folderId(FOLDER_OF_FILE).name("doc.pdf").fileKey("files/TEAM/5/x.pdf")
+                    .fileSize(2048L).contentType("application/pdf").createdBy(USER_ID).build();
+        }
+
+        @Test
+        @DisplayName("AC-A3相当: 他チームの fileId は 403（TEAM 非会員・COMMON_002）")
+        void getFile_他チーム_403() {
+            // Given
+            SharedFileEntity file = buildFile();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            willThrow(new BusinessException(CommonErrorCode.COMMON_002))
+                    .given(folderQueryService).authorizeFileViewById(FILE_ID, USER_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.getFile(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(CommonErrorCode.COMMON_002));
+            // 認可で弾かれたらメタを返さない
+            verify(fileSharingMapper, never()).toFileResponse(any());
+        }
+
+        @Test
+        @DisplayName("AC-A3相当: 他人 PERSONAL 配下の fileId は 404（FOLDER_NOT_FOUND・存在隠蔽）")
+        void getFile_他人PERSONAL_404() {
+            // Given
+            SharedFileEntity file = buildFile();
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            willThrow(new BusinessException(FileSharingErrorCode.FOLDER_NOT_FOUND))
+                    .given(folderQueryService).authorizeFileViewById(FILE_ID, USER_ID);
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.getFile(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FOLDER_NOT_FOUND));
+            verify(fileSharingMapper, never()).toFileResponse(any());
+        }
+
+        @Test
+        @DisplayName("存在しない fileId は 404（FILE_NOT_FOUND）で認可を呼ばない（順序: 実在確認が先）")
+        void getFile_不存在_404_認可未呼び出し() {
+            // Given
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.empty());
+
+            // When & Then
+            assertThatThrownBy(() -> sharedFileService.getFile(FILE_ID, USER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(FileSharingErrorCode.FILE_NOT_FOUND));
+            // 実在確認（404）が先。存在しないファイルではフォルダ認可を呼ばない
+            verify(folderQueryService, never()).authorizeFileViewById(anyLong(), anyLong());
+        }
+
+        @Test
+        @DisplayName("AC-A4相当: 正規会員は 実在確認 → 認可 の順を経てメタを取得できる")
+        void getFile_正規会員_200相当() {
+            // Given
+            SharedFileEntity file = buildFile();
+            FileResponse response = new FileResponse(FILE_ID, FOLDER_OF_FILE, "doc.pdf",
+                    "files/TEAM/5/x.pdf", 2048L, "application/pdf", null, USER_ID, 1, null, null, null, null);
+            given(fileRepository.findById(FILE_ID)).willReturn(Optional.of(file));
+            willDoNothing().given(folderQueryService).authorizeFileViewById(FILE_ID, USER_ID);
+            given(fileSharingMapper.toFileResponse(file)).willReturn(response);
+
+            // When
+            FileResponse result = sharedFileService.getFile(FILE_ID, USER_ID);
+
+            // Then: fileId 実在確認 → フォルダ認可 の順序
+            assertThat(result).isNotNull();
+            InOrder order = inOrder(fileRepository, folderQueryService, fileSharingMapper);
+            order.verify(fileRepository).findById(FILE_ID);
+            order.verify(folderQueryService).authorizeFileViewById(FILE_ID, USER_ID);
+            order.verify(fileSharingMapper).toFileResponse(file);
         }
     }
 }

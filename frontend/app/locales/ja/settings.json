@@ -60,7 +60,8 @@
       "saveSuccess": "設定を保存しました",
       "saveError": "設定の保存に失敗しました",
       "reorderHint": "ハンドルをドラッグして表示順を並び替えできます",
-      "dragHandleLabel": "並び替えハンドル"
+      "dragHandleLabel": "並び替えハンドル",
+      "pinnedBottom": "最下部固定"
     },
     "account": {
       "page_title": "アカウント設定",
@@ -356,27 +357,35 @@
     },
     "gcal": {
       "section_title": "Google Calendar 連携",
+      "connection_status_title": "接続状態",
       "connected_label": "接続中",
       "last_synced": "最終同期: {date}",
       "last_sync_error": "同期エラー: {message}",
       "manual_sync_button": "手動同期",
       "disconnect_button": "連携解除",
+      "disconnect_confirm": "Google Calendar連携を解除しますか？",
       "sync_settings_title": "同期設定",
       "personal_calendar_label": "個人カレンダー",
       "personal_calendar_description": "個人の予定をGoogleカレンダーに同期",
       "team_calendars_label": "チームカレンダー",
       "org_calendars_label": "組織カレンダー",
-      "save_settings_button": "設定を保存",
+      "no_team_calendars": "所属しているチームがありません",
+      "no_org_calendars": "所属している組織がありません",
       "not_connected_description": "Googleアカウントと連携して、カレンダーを同期できます",
       "connect_button": "Googleアカウントに接続",
+      "detail_link_button": "詳細設定へ",
       "toast": {
         "connect_error": "接続に失敗しました",
+        "oauth_connected": "Google Calendarと連携しました",
+        "oauth_connect_failed": "Google Calendar連携に失敗しました",
         "disconnect_success": "連携を解除しました",
         "disconnect_error": "解除に失敗しました",
-        "save_success": "同期設定を保存しました",
-        "save_error": "保存に失敗しました",
         "sync_success": "同期を実行しました",
-        "sync_error": "同期に失敗しました"
+        "sync_error": "同期に失敗しました",
+        "load_error": "読み込みに失敗しました",
+        "toggle_on_success": "{name}の同期をONにしました",
+        "toggle_off_success": "{name}の同期をOFFにしました",
+        "backfill_info": "{count}件の予定を同期対象に追加しました"
       }
     },
     "delete_account": {

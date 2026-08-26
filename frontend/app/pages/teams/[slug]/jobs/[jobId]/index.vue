@@ -4,6 +4,8 @@ import type {
   JobPagedMeta,
   JobPostingResponse,
 } from '~/types/jobmatching'
+
+definePageMeta({ layout: 'team' })
 // F13.1 Phase 13.1.2: ACCEPTED 応募について「QR を表示」ボタンを出すため、
 // 現在ログイン中ユーザーの契約一覧を引いて応募 ID → 契約 ID のマップを作る。
 

@@ -166,6 +166,9 @@ function goEntry() {
               <dd>{{ entry.maskedHint.dueRecallDates.join(' / ') }}</dd>
             </div>
           </dl>
+
+          <!-- OUTLINE 足場ラダー（AC-91） -->
+          <ReflectionMaskedOutlineHints :scaffold="entry.maskedHint?.outlineScaffold" />
         </div>
 
         <!-- 想起入力 -->

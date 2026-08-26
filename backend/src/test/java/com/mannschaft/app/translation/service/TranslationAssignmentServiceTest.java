@@ -102,7 +102,8 @@ class TranslationAssignmentServiceTest {
             TranslationAssignmentEntity saved = createAssignment(ASSIGNMENT_ID);
             AssignTranslatorRequest req = createRequest();
 
-            given(contentTranslationRepository.findById(TRANSLATION_ID))
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    TRANSLATION_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(translation));
             given(translationAssignmentRepository
                     .existsByScopeTypeAndScopeIdAndUserIdAndLanguageAndIsActiveTrue(
@@ -113,7 +114,7 @@ class TranslationAssignmentServiceTest {
 
             // Act
             ApiResponse<TranslationAssignmentResponse> response =
-                    service.assignTranslator(ASSIGNED_BY, req);
+                    service.assignTranslator(ASSIGNED_BY, SCOPE_TYPE, SCOPE_ID, req);
 
             // Assert
             assertThat(response.getData()).isNotNull();
@@ -134,7 +135,8 @@ class TranslationAssignmentServiceTest {
             TranslationAssignmentEntity existing = createAssignment(ASSIGNMENT_ID);
             AssignTranslatorRequest req = createRequest();
 
-            given(contentTranslationRepository.findById(TRANSLATION_ID))
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    TRANSLATION_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(translation));
             given(translationAssignmentRepository
                     .existsByScopeTypeAndScopeIdAndUserIdAndLanguageAndIsActiveTrue(
@@ -147,7 +149,7 @@ class TranslationAssignmentServiceTest {
 
             // Act
             ApiResponse<TranslationAssignmentResponse> response =
-                    service.assignTranslator(ASSIGNED_BY, req);
+                    service.assignTranslator(ASSIGNED_BY, SCOPE_TYPE, SCOPE_ID, req);
 
             // Assert
             assertThat(response.getData()).isNotNull();
@@ -161,11 +163,12 @@ class TranslationAssignmentServiceTest {
         void 翻訳コンテンツ未存在_例外() {
             // Arrange
             AssignTranslatorRequest req = createRequest();
-            given(contentTranslationRepository.findById(TRANSLATION_ID))
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    TRANSLATION_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.empty());
 
             // Act & Assert
-            assertThatThrownBy(() -> service.assignTranslator(ASSIGNED_BY, req))
+            assertThatThrownBy(() -> service.assignTranslator(ASSIGNED_BY, SCOPE_TYPE, SCOPE_ID, req))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TRANSLATION_002"));
@@ -189,7 +192,8 @@ class TranslationAssignmentServiceTest {
             TranslationAssignmentEntity assignment2 = createAssignment(2L);
             ReflectionTestUtils.setField(assignment2, "language", "en");
 
-            given(contentTranslationRepository.findById(TRANSLATION_ID))
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    TRANSLATION_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.of(translation));
             given(translationAssignmentRepository
                     .findByScopeTypeAndScopeIdAndIsActiveTrue(SCOPE_TYPE, SCOPE_ID))
@@ -197,7 +201,7 @@ class TranslationAssignmentServiceTest {
 
             // Act
             ApiResponse<List<TranslationAssignmentResponse>> response =
-                    service.listAssignments(TRANSLATION_ID);
+                    service.listAssignments(SCOPE_TYPE, SCOPE_ID, TRANSLATION_ID);
 
             // Assert
             assertThat(response.getData()).hasSize(2);
@@ -209,11 +213,12 @@ class TranslationAssignmentServiceTest {
         @DisplayName("異常系: 翻訳コンテンツが見つからずTRANSLATION_002例外")
         void 翻訳コンテンツ未存在_例外() {
             // Arrange
-            given(contentTranslationRepository.findById(TRANSLATION_ID))
+            given(contentTranslationRepository.findByIdAndScopeTypeAndScopeIdAndDeletedAtIsNull(
+                    TRANSLATION_ID, SCOPE_TYPE, SCOPE_ID))
                     .willReturn(Optional.empty());
 
             // Act & Assert
-            assertThatThrownBy(() -> service.listAssignments(TRANSLATION_ID))
+            assertThatThrownBy(() -> service.listAssignments(SCOPE_TYPE, SCOPE_ID, TRANSLATION_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TRANSLATION_002"));
@@ -263,25 +268,43 @@ class TranslationAssignmentServiceTest {
         @DisplayName("正常系: アサインを物理削除する")
         void アサイン削除() {
             // Arrange
-            given(translationAssignmentRepository.existsById(ASSIGNMENT_ID))
-                    .willReturn(true);
+            TranslationAssignmentEntity assignment = createAssignment(ASSIGNMENT_ID);
+            given(translationAssignmentRepository.findByIdAndScopeTypeAndScopeId(
+                    ASSIGNMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.of(assignment));
 
             // Act
-            service.removeAssignment(ASSIGNMENT_ID);
+            service.removeAssignment(SCOPE_TYPE, SCOPE_ID, ASSIGNMENT_ID);
 
             // Assert
-            then(translationAssignmentRepository).should().deleteById(ASSIGNMENT_ID);
+            then(translationAssignmentRepository).should().delete(assignment);
         }
 
         @Test
         @DisplayName("異常系: アサインが見つからずTRANSLATION_009例外")
         void アサイン未存在_例外() {
             // Arrange
-            given(translationAssignmentRepository.existsById(ASSIGNMENT_ID))
-                    .willReturn(false);
+            given(translationAssignmentRepository.findByIdAndScopeTypeAndScopeId(
+                    ASSIGNMENT_ID, SCOPE_TYPE, SCOPE_ID))
+                    .willReturn(Optional.empty());
 
             // Act & Assert
-            assertThatThrownBy(() -> service.removeAssignment(ASSIGNMENT_ID))
+            assertThatThrownBy(() -> service.removeAssignment(SCOPE_TYPE, SCOPE_ID, ASSIGNMENT_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
+                            .isEqualTo("TRANSLATION_009"));
+        }
+
+        @Test
+        @DisplayName("BOLA: idが指定scope配下でない場合 → TRANSLATION_009（存在秘匿）")
+        void 越境id_例外() {
+            // Arrange
+            given(translationAssignmentRepository.findByIdAndScopeTypeAndScopeId(
+                    ASSIGNMENT_ID, SCOPE_TYPE, 999L))
+                    .willReturn(Optional.empty());
+
+            // Act & Assert
+            assertThatThrownBy(() -> service.removeAssignment(SCOPE_TYPE, 999L, ASSIGNMENT_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TRANSLATION_009"));

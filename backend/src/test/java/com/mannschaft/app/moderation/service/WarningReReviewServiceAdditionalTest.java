@@ -6,6 +6,7 @@ import com.mannschaft.app.moderation.ModerationExtMapper;
 import com.mannschaft.app.moderation.ReReviewStatus;
 import com.mannschaft.app.moderation.dto.WarningReReviewResponse;
 import com.mannschaft.app.moderation.entity.WarningReReviewEntity;
+import com.mannschaft.app.moderation.repository.UserViolationRepository;
 import com.mannschaft.app.moderation.repository.WarningReReviewRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,6 +38,9 @@ class WarningReReviewServiceAdditionalTest {
 
     @Mock
     private WarningReReviewRepository reReviewRepository;
+
+    @Mock
+    private UserViolationRepository userViolationRepository;
 
     @Mock
     private ModerationExtMapper mapper;

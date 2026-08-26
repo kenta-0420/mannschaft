@@ -40,6 +40,7 @@ public class AnalyticsAlertHistoryEntity extends BaseEntity {
     private BigDecimal changePct;
 
     @Builder.Default
+    @Column(nullable = false)
     private boolean notified = false;
 
     /**

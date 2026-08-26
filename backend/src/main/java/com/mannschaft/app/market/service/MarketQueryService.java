@@ -1,6 +1,7 @@
 package com.mannschaft.app.market.service;
 
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.market.MarketErrorCode;
 import com.mannschaft.app.market.dto.MarketCategoryDto;
 import com.mannschaft.app.market.dto.MarketListingResponse;
@@ -63,6 +64,7 @@ public class MarketQueryService {
     private final TeamRepository teamRepository;
     private final OrganizationRepository organizationRepository;
     private final RegionTranslationService regionTranslationService;
+    private final MediaUrlResolver mediaUrlResolver;
 
     // =====================================================================
     // §3.1 一覧
@@ -259,12 +261,16 @@ public class MarketQueryService {
             TeamEntity t = maps.teams().get(scopeId);
             return t == null
                     ? new MarketOwnerDto("TEAM", scopeId, null, null)
-                    : new MarketOwnerDto("TEAM", scopeId, t.getName(), t.getIconUrl());
+                    // iconUrl は DB の生 R2 キー。表示用署名付き URL へ解決して返す（生キーは 404）。
+                    : new MarketOwnerDto("TEAM", scopeId, t.getName(),
+                            mediaUrlResolver.resolve(t.getIconUrl()));
         }
         OrganizationEntity o = maps.organizations().get(scopeId);
         return o == null
                 ? new MarketOwnerDto("ORGANIZATION", scopeId, null, null)
-                : new MarketOwnerDto("ORGANIZATION", scopeId, o.getName(), o.getIconUrl());
+                // iconUrl は DB の生 R2 キー。表示用署名付き URL へ解決して返す（生キーは 404）。
+                : new MarketOwnerDto("ORGANIZATION", scopeId, o.getName(),
+                        mediaUrlResolver.resolve(o.getIconUrl()));
     }
 
     private MarketRegionDto resolveRegionFromMap(

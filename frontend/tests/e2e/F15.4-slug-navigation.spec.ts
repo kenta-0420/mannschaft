@@ -12,7 +12,8 @@ import { test, expect, type Page, type Route } from '@playwright/test'
  *   SLUG-001: 組織内チーム検索カード（ログイン済）が /teams/{slug} を href に持つ
  *   SLUG-002: 公開チーム検索カード（未ログイン）が /public/teams/{slug} を href に持つ
  *
- * 公開詳細ページの描画検証は F15.4-phase5-public-team-detail.spec.ts が担う。
+ * 公開詳細ページ（/public/teams/{slug}）の描画検証は F19.1 の
+ * tests/e2e/public/public-team-flow.spec.ts が担う（旧 F15.4 Phase5 ページは #2425 後続で撤去）。
  * 本ファイルは遷移 href が slug ベースであることのみを保証する。
  *
  * すべてモック方式（バックエンド非依存・CI 安定）。

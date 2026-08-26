@@ -88,6 +88,9 @@ const saving = ref(false)
 const saveError = ref<string | null>(null)
 const validationError = ref<string | null>(null)
 
+// 使い方モーダルの開閉状態
+const showGuide = ref(false)
+
 // ─────────────────────────────────────────────
 // Computed
 // ─────────────────────────────────────────────
@@ -178,7 +181,7 @@ function cancel() {
 
 <template>
   <div class="card-new">
-    <PageHeader :title="t('wallet.add.title')" />
+    <PageHeader :title="t('wallet.add.title')" help @help="showGuide = true" />
 
     <!-- ===== Step 1: 入力 ===== -->
     <template v-if="step === 'input'">
@@ -195,14 +198,13 @@ function cancel() {
           <label for="card-displayname" class="card-new__label">
             {{ t('wallet.add.display_name') }} <span class="card-new__required">*</span>
           </label>
-          <input
+          <InputText
             id="card-displayname"
             v-model="displayName"
-            type="text"
-            class="card-new__input"
+            class="w-full"
             :placeholder="t('wallet.add.display_name_placeholder')"
-            maxlength="100"
-          >
+            :maxlength="100"
+          />
         </div>
       </section>
 
@@ -224,19 +226,20 @@ function cancel() {
         {{ validationError }}
       </p>
 
+      <!-- 次へボタンが押せない理由の案内（まだ進めない状態のときのみ表示） -->
+      <p v-if="!canProceedToPreview" class="card-new__hint card-new__next-hint">
+        {{ t('wallet.add.next_disabled_hint') }}
+      </p>
+
       <!-- フッタ -->
       <div class="card-new__footer">
-        <button type="button" class="card-new__btn" @click="cancel">
-          {{ t('wallet.add.cancel') }}
-        </button>
-        <button
-          type="button"
-          class="card-new__btn card-new__btn--primary"
+        <Button :label="t('wallet.add.cancel')" severity="secondary" class="flex-1" @click="cancel" />
+        <Button
+          :label="t('wallet.add.next')"
+          class="flex-1"
           :disabled="!canProceedToPreview"
           @click="goPreview"
-        >
-          {{ t('wallet.add.next') }}
-        </button>
+        />
       </div>
     </template>
 
@@ -257,32 +260,32 @@ function cancel() {
 
         <div class="card-new__field">
           <label for="card-nickname" class="card-new__label">{{ t('wallet.add.nickname') }}</label>
-          <input
+          <InputText
             id="card-nickname"
             v-model="nickname"
-            type="text"
-            class="card-new__input"
+            class="w-full"
             :placeholder="t('wallet.add.nickname_placeholder')"
-            maxlength="50"
-          >
+            :maxlength="50"
+          />
         </div>
 
         <div class="card-new__field">
           <label for="card-memo" class="card-new__label">{{ t('wallet.add.memo') }}</label>
-          <textarea
+          <Textarea
             id="card-memo"
             v-model="memo"
-            class="card-new__input card-new__textarea"
+            class="w-full"
             :placeholder="t('wallet.add.memo_placeholder')"
-            maxlength="500"
-            rows="3"
+            :maxlength="500"
+            :rows="3"
+            auto-resize
           />
         </div>
 
-        <label class="card-new__checkbox">
-          <input v-model="favorite" type="checkbox">
-          <span>{{ t('wallet.add.favorite') }}</span>
-        </label>
+        <div class="flex items-center gap-2">
+          <Checkbox v-model="favorite" binary input-id="card-favorite" />
+          <label for="card-favorite">{{ t('wallet.add.favorite') }}</label>
+        </div>
       </section>
 
       <p v-if="saveError" class="card-new__error" role="alert">
@@ -290,19 +293,24 @@ function cancel() {
       </p>
 
       <div class="card-new__footer">
-        <button type="button" class="card-new__btn" :disabled="saving" @click="backToInput">
-          {{ t('wallet.add.back') }}
-        </button>
-        <button
-          type="button"
-          class="card-new__btn card-new__btn--primary"
+        <Button
+          :label="t('wallet.add.back')"
+          severity="secondary"
+          class="flex-1"
           :disabled="saving"
+          @click="backToInput"
+        />
+        <Button
+          :label="t('wallet.add.save')"
+          class="flex-1"
+          :disabled="saving"
+          :loading="saving"
           @click="save"
-        >
-          {{ saving ? '…' : t('wallet.add.save') }}
-        </button>
+        />
       </div>
     </template>
+    <!-- カード追加の使い方モーダル -->
+    <CardAddGuideModal v-model:visible="showGuide" />
   </div>
 </template>
 
@@ -341,24 +349,6 @@ function cancel() {
 .card-new__required {
   color: #dc2626;
 }
-.card-new__input {
-  padding: 0.625rem 0.75rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  border-radius: 0.5rem;
-  background: var(--p-surface-0, #fff);
-  font-size: 0.9375rem;
-}
-.card-new__textarea {
-  resize: vertical;
-  font-family: inherit;
-}
-.card-new__checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9375rem;
-  cursor: pointer;
-}
 .card-new__mini-preview {
   margin-top: 0.5rem;
 }
@@ -383,31 +373,14 @@ function cancel() {
   margin: 0;
   text-align: center;
 }
+.card-new__next-hint {
+  text-align: center;
+}
 .card-new__footer {
   display: flex;
-  justify-content: space-between;
   gap: 0.5rem;
   margin-top: 0.5rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--p-surface-200, #e5e7eb);
-}
-.card-new__btn {
-  flex: 1;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
-  font-weight: 600;
-  cursor: pointer;
-}
-.card-new__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.card-new__btn--primary {
-  background: var(--p-primary-color, #3b82f6);
-  color: #fff;
-  border-color: transparent;
 }
 </style>

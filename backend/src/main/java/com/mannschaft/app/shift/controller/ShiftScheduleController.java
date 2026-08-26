@@ -53,11 +53,12 @@ public class ShiftScheduleController {
             @RequestParam Long teamId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
         List<ShiftScheduleResponse> responses;
         if (from != null && to != null) {
-            responses = scheduleService.listSchedulesByPeriod(teamId, from, to);
+            responses = scheduleService.listSchedulesByPeriod(teamId, from, to, currentUserId);
         } else {
-            responses = scheduleService.listSchedules(teamId);
+            responses = scheduleService.listSchedules(teamId, currentUserId);
         }
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
@@ -70,7 +71,7 @@ public class ShiftScheduleController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> getSchedule(
             @PathVariable Long scheduleId) {
-        ShiftScheduleResponse response = scheduleService.getSchedule(scheduleId);
+        ShiftScheduleResponse response = scheduleService.getSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -96,7 +97,8 @@ public class ShiftScheduleController {
     public ResponseEntity<ApiResponse<ShiftScheduleResponse>> updateSchedule(
             @PathVariable Long scheduleId,
             @Valid @RequestBody UpdateShiftScheduleRequest request) {
-        ShiftScheduleResponse response = scheduleService.updateSchedule(scheduleId, request);
+        ShiftScheduleResponse response = scheduleService.updateSchedule(
+                scheduleId, request, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -108,7 +110,7 @@ public class ShiftScheduleController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteSchedule(
             @PathVariable Long scheduleId) {
-        scheduleService.deleteSchedule(scheduleId);
+        scheduleService.deleteSchedule(scheduleId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 

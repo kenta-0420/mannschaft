@@ -1,5 +1,6 @@
 package com.mannschaft.app.family;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.family.dto.ShoppingItemRequest;
@@ -35,6 +36,7 @@ class ShoppingListServiceTest {
 
     @Mock private ShoppingListRepository shoppingListRepository;
     @Mock private ShoppingListItemRepository shoppingListItemRepository;
+    @Mock private AccessControlService accessControlService;
     @InjectMocks private ShoppingListService service;
 
     @Nested
@@ -145,7 +147,7 @@ class ShoppingListServiceTest {
                     .willReturn(List.of(list));
 
             // When
-            ApiResponse<List<ShoppingListResponse>> result = service.getLists(1L, null);
+            ApiResponse<List<ShoppingListResponse>> result = service.getLists(1L, 100L, null);
 
             // Then
             assertThat(result.getData()).hasSize(1);
@@ -163,7 +165,7 @@ class ShoppingListServiceTest {
                     .willReturn(List.of(list));
 
             // When
-            ApiResponse<List<ShoppingListResponse>> result = service.getLists(1L, "active");
+            ApiResponse<List<ShoppingListResponse>> result = service.getLists(1L, 100L, "active");
 
             // Then
             assertThat(result.getData()).hasSize(1);
@@ -184,7 +186,7 @@ class ShoppingListServiceTest {
             given(shoppingListRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(list));
 
             // When
-            ApiResponse<ShoppingListResponse> result = service.updateList(1L, 1L,
+            ApiResponse<ShoppingListResponse> result = service.updateList(1L, 1L, 100L,
                     new ShoppingListRequest("新しい名前", null));
 
             // Then
@@ -206,7 +208,7 @@ class ShoppingListServiceTest {
             given(shoppingListRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(list));
 
             // When
-            ApiResponse<ShoppingListResponse> result = service.archiveList(1L, 1L);
+            ApiResponse<ShoppingListResponse> result = service.archiveList(1L, 1L, 100L);
 
             // Then
             assertThat(result.getData().getStatus()).isEqualTo("ARCHIVED");
@@ -229,7 +231,7 @@ class ShoppingListServiceTest {
                     .willReturn(List.of());
 
             // When
-            ApiResponse<List<ShoppingItemResponse>> result = service.getItems(1L, 1L);
+            ApiResponse<List<ShoppingItemResponse>> result = service.getItems(1L, 1L, 100L);
 
             // Then
             assertThat(result.getData()).isEmpty();
@@ -270,12 +272,16 @@ class ShoppingListServiceTest {
         @DisplayName("正常系: アイテムが更新される")
         void 更新_正常() {
             // Given
+            ShoppingListEntity list = ShoppingListEntity.builder()
+                    .teamId(1L).name("食料品").createdBy(100L)
+                    .status(ShoppingListStatus.ACTIVE).build();
+            given(shoppingListRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(list));
             ShoppingListItemEntity item = ShoppingListItemEntity.builder()
                     .listId(1L).name("牛乳").createdBy(100L).build();
             given(shoppingListItemRepository.findById(1L)).willReturn(Optional.of(item));
 
             // When
-            ApiResponse<ShoppingItemResponse> result = service.updateItem(1L, 1L, 1L,
+            ApiResponse<ShoppingItemResponse> result = service.updateItem(1L, 1L, 1L, 100L,
                     new ShoppingItemRequest("豆乳", "2本", "大豆アレルギー対応", null, 1));
 
             // Then
@@ -286,10 +292,14 @@ class ShoppingListServiceTest {
         @DisplayName("異常系: アイテム不存在でFAMILY_013例外")
         void 更新_不存在_例外() {
             // Given
+            ShoppingListEntity list = ShoppingListEntity.builder()
+                    .teamId(1L).name("食料品").createdBy(100L)
+                    .status(ShoppingListStatus.ACTIVE).build();
+            given(shoppingListRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(list));
             given(shoppingListItemRepository.findById(99L)).willReturn(Optional.empty());
 
             // When / Then
-            assertThatThrownBy(() -> service.updateItem(1L, 1L, 99L,
+            assertThatThrownBy(() -> service.updateItem(1L, 1L, 99L, 100L,
                     new ShoppingItemRequest("牛乳", "1本", null, null, null)))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
@@ -305,12 +315,16 @@ class ShoppingListServiceTest {
         @DisplayName("正常系: アイテムが削除される")
         void 削除_正常() {
             // Given
+            ShoppingListEntity list = ShoppingListEntity.builder()
+                    .teamId(1L).name("食料品").createdBy(100L)
+                    .status(ShoppingListStatus.ACTIVE).build();
+            given(shoppingListRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(list));
             ShoppingListItemEntity item = ShoppingListItemEntity.builder()
                     .listId(1L).name("牛乳").createdBy(100L).build();
             given(shoppingListItemRepository.findById(1L)).willReturn(Optional.of(item));
 
             // When
-            service.deleteItem(1L, 1L, 1L);
+            service.deleteItem(1L, 1L, 1L, 100L);
 
             // Then
             verify(shoppingListItemRepository).delete(item);
@@ -325,6 +339,10 @@ class ShoppingListServiceTest {
         @DisplayName("正常系: チェック状態がトグルされる")
         void チェックトグル_正常() {
             // Given
+            ShoppingListEntity list = ShoppingListEntity.builder()
+                    .teamId(1L).name("食料品").createdBy(100L)
+                    .status(ShoppingListStatus.ACTIVE).build();
+            given(shoppingListRepository.findByIdAndDeletedAtIsNull(1L)).willReturn(Optional.of(list));
             ShoppingListItemEntity item = ShoppingListItemEntity.builder()
                     .listId(1L).name("牛乳").createdBy(100L).build();
             given(shoppingListItemRepository.findById(1L)).willReturn(Optional.of(item));
@@ -352,7 +370,7 @@ class ShoppingListServiceTest {
             given(shoppingListItemRepository.deleteCheckedItems(1L)).willReturn(3);
 
             // When
-            ApiResponse<Integer> result = service.deleteCheckedItems(1L, 1L);
+            ApiResponse<Integer> result = service.deleteCheckedItems(1L, 1L, 100L);
 
             // Then
             assertThat(result.getData()).isEqualTo(3);
@@ -374,7 +392,7 @@ class ShoppingListServiceTest {
             given(shoppingListItemRepository.uncheckAllItems(1L)).willReturn(5);
 
             // When
-            ApiResponse<Integer> result = service.uncheckAll(1L, 1L);
+            ApiResponse<Integer> result = service.uncheckAll(1L, 1L, 100L);
 
             // Then
             assertThat(result.getData()).isEqualTo(5);

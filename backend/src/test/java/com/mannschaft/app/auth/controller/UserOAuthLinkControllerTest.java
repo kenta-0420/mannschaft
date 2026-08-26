@@ -94,7 +94,8 @@ class UserOAuthLinkControllerTest {
     // ──────────────────────────────────────────────
 
     @Test
-    @DisplayName("AC-1: GET /GOOGLE/auth-url — 正常系: 200 で認可URL（$.data.authUrl）を返す")
+    @DisplayName("AC-1: GET /GOOGLE/auth-url — 正常系: 200 で認可URL（$.data.authUrl）を返す"
+            + "（UserOAuthLinkController#getAuthUrl — 連携対象は認証主体の userId のみ）")
     void getAuthUrl_google_success_returns200WithAuthUrl() throws Exception {
         // Given: サービスが Google の認可URLを返す
         given(authOAuthLinkService.generateAuthUrl(any(), eq("GOOGLE"), anyBoolean()))
@@ -155,5 +156,25 @@ class UserOAuthLinkControllerTest {
         // When / Then: エンドポイント未実装のため現状は 404 → RED
         mockMvc.perform(get("/api/v1/users/me/oauth/link/GITHUB/auth-url"))
                 .andExpect(status().isBadRequest());
+    }
+
+    // ──────────────────────────────────────────────
+    // 認可根治戦役 Wave5 ロットB — 自己スコープ契約テスト
+    // UserOAuthLinkController#getCalendarOnlyAuthUrl
+    //
+    // 連携先ユーザーは SecurityContextHolder に設定した TEST_USER_ID のみで解決される
+    // （厳密一致スタブが応答することで、他ユーザーIDが紛れ込む余地が無いことを固定する）。
+    // ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("GET /GOOGLE/calendar-only-auth-url — 連携対象は認証主体の userId のみ"
+            + "（UserOAuthLinkController#getCalendarOnlyAuthUrl）")
+    void getCalendarOnlyAuthUrl_targetsOnlyAuthenticatedUser() throws Exception {
+        given(authOAuthLinkService.generateCalendarOnlyAuthUrl(eq(TEST_USER_ID)))
+                .willReturn("https://accounts.google.com/o/oauth2/v2/auth?scope=calendar&state=xyz");
+
+        mockMvc.perform(get("/api/v1/users/me/oauth/link/GOOGLE/calendar-only-auth-url"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.authUrl").exists());
     }
 }

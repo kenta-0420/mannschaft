@@ -288,6 +288,7 @@
       "footer_legal": "Información legal",
       "footer_terms": "Términos de servicio",
       "footer_privacy": "Política de privacidad",
+      "footer_commerce": "Divulgación (Ley de Transacciones Comerciales)",
       "footer_contact": "Contacto",
       "skip_to_content": "Ir al contenido principal",
       "open_menu": "Abrir menú",
@@ -296,58 +297,207 @@
     "product": {
       "title": "Producto Mannschaft",
       "desc": "Una plataforma de gestión todo en uno con todo lo que tu equipo u organización necesita",
-      "features_heading": "Funciones principales",
-      "pricing_heading": "Planes de precios",
-      "pricing": {
-        "free": {
-          "name": "Gratis",
-          "price": "€0",
-          "desc": "Para individuos y equipos pequeños",
-          "features": [
-            "Todas las funciones básicas",
-            "Hasta 10 miembros",
-            "1GB de almacenamiento"
-          ]
-        },
-        "pro": {
-          "name": "Pro",
-          "price": "€9,80/mes",
-          "desc": "Para equipos en crecimiento",
-          "features": [
-            "Todas las funciones gratuitas",
-            "Miembros ilimitados",
-            "50GB de almacenamiento",
-            "Soporte prioritario"
-          ]
-        },
-        "enterprise": {
-          "name": "Enterprise",
-          "price": "Contáctanos",
-          "desc": "Para grandes organizaciones",
-          "features": [
-            "Todas las funciones Pro",
-            "Integraciones personalizadas",
-            "Soporte dedicado",
-            "Garantía SLA"
-          ]
-        }
-      }
+      "features_heading": "Funciones principales"
     },
     "legal": {
       "terms": {
-        "title": "Términos de servicio",
-        "last_updated": "Última actualización",
-        "placeholder": "El contenido de los Términos de servicio se colocará aquí. Por favor, reemplácelo con el documento legal real.",
-        "section1_title": "Artículo 1 (Aplicación)",
-        "section1_content": "Estos términos establecen las condiciones de uso de Mannschaft (el \"Servicio\").",
-        "section2_title": "Artículo 2 (Registro)",
-        "section2_content": "Los usuarios se registrarán de acuerdo con los procedimientos prescritos tras aceptar estos términos.",
-        "section3_title": "Artículo 3 (Actividades prohibidas)",
-        "section3_content": "Los usuarios no podrán participar en actividades que violen leyes o el orden público, ni en ninguna otra actividad considerada inapropiada por el Servicio.",
-        "section4_title": "Artículo 4 (Exención de responsabilidad)",
-        "section4_content": "El Servicio no acepta ninguna responsabilidad por la interrupción, terminación o modificación del Servicio.",
-        "section5_title": "Artículo 5 (Ley aplicable y jurisdicción)",
-        "section5_content": "Estos términos se rigen por la ley japonesa. El Tribunal de Distrito de Tokio tendrá jurisdicción exclusiva sobre cualquier disputa."
+        "title": "Términos del Servicio",
+        "seo_description": "Términos del Servicio de Mannschaft: ámbito de aplicación, gestión de cuentas, responsabilidades de los administradores de equipos, tarifas, contenido de usuario, exención de responsabilidad y ley aplicable.",
+        "language_note": "La versión japonesa de estos Términos es el texto auténtico. Las traducciones se ofrecen solo a título informativo; en caso de discrepancia, prevalece la versión japonesa.",
+        "version_notice": "Versión 1.0.0 — promulgada el 5 de julio de 2026",
+        "enacted_label": "Fecha de entrada en vigor",
+        "enacted_date": "2026-07-05",
+        "revised_label": "Última revisión",
+        "revised_date": "2026-07-05",
+        "toc_label": "Índice",
+        "sections": [
+          {
+            "title": "Artículo 1 (Ámbito y definiciones)",
+            "content": [
+              "Estos Términos del Servicio (los «Términos») establecen las condiciones de uso de la plataforma «Mannschaft» (el «Servicio») que ofrece el operador de Mannschaft (la «Compañía»). Los usuarios utilizarán el Servicio únicamente tras aceptar estos Términos.",
+              "En estos Términos: (1) «Usuario» es toda persona que utiliza el Servicio; (2) «Equipo» es todo equipo, organización u otro grupo creado en el Servicio; (3) «Administrador» es el Usuario con facultades de gestión de un Equipo; (4) «Contenido» son los textos, imágenes, archivos y demás información que los Usuarios publican o guardan en el Servicio."
+            ]
+          },
+          {
+            "title": "Artículo 2 (Registro)",
+            "content": [
+              "Quien desee registrarse solicitará el registro por el método establecido por la Compañía tras aceptar estos Términos. El registro se completa con la aprobación de la Compañía.",
+              "La Compañía podrá denegar el registro en los siguientes casos, sin obligación de revelar los motivos: (1) datos falsos, erróneos o incompletos en la solicitud; (2) antecedentes de suspensión o cancelación por incumplimiento de estos Términos; (3) pertenencia o vinculación, a juicio de la Compañía, con fuerzas antisociales; (4) cualquier otro caso en que la Compañía considere inapropiado el registro."
+            ]
+          },
+          {
+            "title": "Artículo 3 (Gestión de la cuenta)",
+            "content": [
+              "El Usuario gestionará bajo su responsabilidad su correo electrónico, contraseña y demás credenciales, y no las compartirá, prestará ni cederá a terceros. La Compañía recomienda la autenticación de dos factores (aplicación de autenticación) y las passkeys.",
+              "Salvo dolo o negligencia grave de la Compañía, los daños derivados de una gestión insuficiente de las credenciales o del uso por terceros correrán a cargo del Usuario. Ante sospecha de uso no autorizado de la cuenta, el Usuario avisará sin demora a la Compañía.",
+              "El Usuario preparará, a su costa y bajo su responsabilidad, los dispositivos de comunicación, el software y demás entorno necesarios para usar el Servicio, y asumirá sus gastos de comunicación. El entorno recomendado se indica dentro del Servicio."
+            ]
+          },
+          {
+            "title": "Artículo 4 (Uso por menores)",
+            "content": [
+              "Los menores de edad obtendrán previamente el consentimiento de su representante legal (padres o tutores) para usar el Servicio. El registro de una persona menor de 18 años solo surte efecto una vez completada la vinculación con la cuenta del representante legal (aprobación del consentimiento), y el Servicio no podrá utilizarse hasta que dicha vinculación se complete. La Compañía podrá solicitar la confirmación del consentimiento cuando sea necesario.",
+              "Cuando un colegio u otra entidad cree un Equipo y utilice el Servicio con participación de niños o alumnos, el Administrador de dicho Equipo será responsable de obtener los consentimientos necesarios y de adoptar las demás medidas apropiadas. El tratamiento de los datos personales de menores se rige por la Política de Privacidad.",
+              "Respecto de un menor de 18 años que curse educación primaria o inferior (en el sistema de edad escolar japonés, hasta el último día del año escolar en que el menor cumple 12 años), el representante legal (padre, madre o tutor) podrá, por el método que la Compañía establezca, consultar y supervisar el calendario, la asistencia, las afiliaciones y los avisos de la Compañía del menor, y también realizar, en nombre del menor, el pago de cuotas de membresía y otras operaciones dentro del alcance que la Compañía muestre en el Servicio.",
+              "La facultad de supervisión y de actuación en representación conforme al párrafo anterior finalizará automáticamente el primer día (1 de abril) del año escolar en que el menor ingrese a la escuela secundaria.",
+              "El representante legal será responsable de los resultados de las operaciones que realice en representación del menor, y la Compañía no será responsable de los resultados de dichas operaciones salvo en casos de dolo o culpa grave de la Compañía."
+            ]
+          },
+          {
+            "title": "Artículo 5 (Responsabilidades de Equipos y Administradores)",
+            "content": [
+              "El Administrador reconoce que, al gestionar un Equipo, trata datos personales de los miembros (incluidos nombre y datos de contacto, así como asistencia, estado de pago de cuotas e información relacionada con la salud, como los registros de tratamientos de la función de ficha clínica) y cumplirá la Ley de Protección de la Información Personal y demás normativa aplicable.",
+              "El Administrador utilizará los datos personales de los miembros únicamente para la gestión del Equipo, no los usará con otros fines ni los facilitará a terceros sin consentimiento, y explicará adecuadamente a los miembros el uso de su información.",
+              "Las disputas surgidas dentro de un Equipo (cuotas, política de gestión, conflictos entre miembros, etc.) se resolverán entre las partes. La Compañía no está obligada a intervenir, salvo dolo o negligencia grave por su parte.",
+              "En caso de disolución o eliminación de un Equipo, el tratamiento de los datos guardados en él (aviso a los miembros, conservación de los datos necesarios, etc.) será responsabilidad del Administrador. Si un Administrador se da de baja o permanece ausente durante un periodo prolongado, la Compañía podrá transferir las facultades a otro miembro o adoptar otras medidas necesarias para mantener el funcionamiento del Equipo."
+            ]
+          },
+          {
+            "title": "Artículo 6 (Tarifas y pago)",
+            "content": [
+              "Las funciones básicas del Servicio son gratuitas. Algunas funciones adicionales (como los módulos opcionales) pueden ser de pago según su número o naturaleza; las tarifas y condiciones de facturación se muestran dentro del Servicio.",
+              "La Compañía podrá modificar el contenido y las tarifas de los planes de pago. Los cambios se anunciarán con antelación dentro del Servicio o por otros medios adecuados.",
+              "Las tarifas ya abonadas no se reembolsan, por regla general, salvo que la ley exija el reembolso.",
+              "Los planes de pago se renuevan automáticamente en las mismas condiciones salvo que el Usuario complete el procedimiento de cancelación. La cancelación surte efecto al final del periodo de facturación en curso, y no se realizan reembolsos prorrateados por cancelaciones a mitad de periodo, salvo que la ley exija el reembolso."
+            ]
+          },
+          {
+            "title": "Artículo 7 (Pagos y cobro de cuotas)",
+            "content": [
+              "El procesamiento de pagos del Servicio se realiza a través de proveedores de pago (como Stripe). La Compañía no conserva números de tarjeta ni otros datos de pago en bruto (véase la Política de Privacidad).",
+              "La función de cobro de cuotas se limita a proporcionar un medio de intercambio de dinero entre un Equipo y sus miembros. La fijación, el cobro y la devolución de cuotas y cualquier otro manejo de dinero son responsabilidad del Equipo, y las disputas derivadas se resolverán entre las partes."
+            ]
+          },
+          {
+            "title": "Artículo 8 (Contenido)",
+            "content": [
+              "Los derechos de autor y demás derechos sobre el Contenido pertenecen al Usuario o a su legítimo titular.",
+              "El Usuario concede a la Compañía una licencia no exclusiva y gratuita para usar el Contenido (reproducción, visualización, adaptación, etc.) en la medida necesaria para prestar, mantener y mejorar el Servicio y corregir defectos.",
+              "El Usuario procurará conservar sus propias copias de seguridad de los datos importantes, por ejemplo mediante las funciones de exportación del Servicio.",
+              "El Contenido que un Usuario o Administrador configure como público podrá ser visto por un público indeterminado, incluidos terceros no registrados en el Servicio. El Usuario o Administrador que hizo público el Contenido es responsable de la configuración de visibilidad y de las consecuencias de la publicación."
+            ]
+          },
+          {
+            "title": "Artículo 9 (Conductas prohibidas)",
+            "content": [
+              "El Usuario no realizará ninguna de las siguientes conductas: (1) actos contrarios a la ley o al orden público y las buenas costumbres; (2) infracción de la propiedad intelectual, el derecho a la propia imagen, la privacidad, el honor u otros derechos o intereses de terceros; (3) suplantación de identidad o registro o difusión de información falsa; (4) acceso no autorizado, sobrecarga de los servidores o redes del Servicio u otra obstrucción de su funcionamiento; (5) recopilación de información del Servicio mediante scraping u otros medios automatizados sin consentimiento previo de la Compañía; (6) recopilación, publicación o cesión a terceros de datos personales de otros Usuarios sin su consentimiento; (7) spam, captación indiscriminada u obstrucción de negocios; (8) aportación de beneficios u otra colaboración con fuerzas antisociales; (9) cualquier otra conducta que la Compañía considere razonablemente inapropiada."
+            ]
+          },
+          {
+            "title": "Artículo 10 (Propiedad intelectual)",
+            "content": [
+              "Los derechos de propiedad intelectual sobre los programas, diseños, logotipos, documentos y demás elementos del Servicio pertenecen a la Compañía o a los titulares que le otorgan licencia. El Usuario no los reproducirá, republicará, modificará ni distribuirá más allá de lo permitido por estos Términos."
+            ]
+          },
+          {
+            "title": "Artículo 11 (Privacidad y datos personales)",
+            "content": [
+              "El tratamiento de los datos personales por la Compañía se rige por la Política de Privacidad, que el Usuario aceptará antes de usar el Servicio.",
+              "Dentro de un Equipo se muestra a los demás miembros, por regla general, el nombre y apellidos registrados. En los perfiles visibles al público se utiliza un apodo (nombre visible) configurado por separado. El Usuario se une a los Equipos conociendo y aceptando lo anterior.",
+              "En las funciones sociales, el Usuario puede crear y usar personas anónimas (hasta tres). Estos Términos se aplican también a la actividad bajo personas anónimas, y la Compañía responderá a las solicitudes legales de divulgación sobre la base de los datos registrados, en la medida exigida por la ley."
+            ]
+          },
+          {
+            "title": "Artículo 12 (Seguridad)",
+            "content": [
+              "La Compañía adopta medidas de seguridad razonables, incluidas la comunicación cifrada, el control de accesos y la autenticación multifactor (véase la Política de Privacidad).",
+              "El Usuario colaborará en la seguridad de su cuenta, por ejemplo gestionando adecuadamente sus contraseñas y cerrando sesión en dispositivos compartidos."
+            ]
+          },
+          {
+            "title": "Artículo 13 (Subcontratación y publicidad)",
+            "content": [
+              "La Compañía podrá encomendar a terceros la totalidad o parte de la explotación del Servicio. El tratamiento de los datos personales por los encargados se rige por la Política de Privacidad.",
+              "La Compañía podrá mostrar en el Servicio publicidad propia o de terceros. Las transacciones con los anunciantes se realizan bajo la responsabilidad del Usuario, y la Compañía no responderá de los daños derivados de ellas, salvo dolo o negligencia grave.",
+              "Los tipos de publicidad segmentada y el procedimiento de exclusión se rigen por la Política de Privacidad."
+            ]
+          },
+          {
+            "title": "Artículo 14 (Modificación, suspensión y terminación del Servicio)",
+            "content": [
+              "La Compañía podrá modificar, ampliar o suprimir el contenido del Servicio en cualquier momento. Los cambios que afecten sustancialmente a los Usuarios se anunciarán con antelación dentro del Servicio o por otros medios adecuados.",
+              "La Compañía podrá suspender temporalmente la totalidad o parte del Servicio por mantenimiento, averías, desastres naturales u otras circunstancias inevitables.",
+              "Si la Compañía pone fin al Servicio en su conjunto, lo anunciará, por regla general, con antelación razonable y procurará ofrecer a los Usuarios la oportunidad de exportar sus datos."
+            ]
+          },
+          {
+            "title": "Artículo 15 (Baja)",
+            "content": [
+              "El Usuario podrá solicitar la baja en cualquier momento mediante el procedimiento establecido por la Compañía.",
+              "Al darse de baja, la Compañía anonimiza los datos personales como el nombre, el correo electrónico y el avatar. Las publicaciones, el historial de actividad y los datos estadísticos permanecen en el Servicio en una forma que no permite identificar a la persona. El momento del borrado de los datos personales y el procedimiento de solicitud de supresión conforme a la ley se rigen por el artículo 11 de la Política de Privacidad."
+            ]
+          },
+          {
+            "title": "Artículo 16 (Suspensión y cancelación del registro)",
+            "content": [
+              "Si la Compañía juzga razonablemente que un Usuario ha incumplido o puede incumplir estos Términos, podrá, sin previo aviso, eliminar sus publicaciones, suspender temporalmente su uso o cancelar su registro.",
+              "La Compañía no responderá de los daños causados al Usuario por las medidas de este artículo, salvo dolo o negligencia grave."
+            ]
+          },
+          {
+            "title": "Artículo 17 (Prohibición de cesión; transmisión del negocio)",
+            "content": [
+              "El Usuario no podrá ceder, transmitir ni dar en garantía a terceros su posición contractual ni los derechos y obligaciones derivados de estos Términos sin el consentimiento previo y por escrito de la Compañía.",
+              "Si la Compañía transmite a un tercero el negocio relativo al Servicio (incluidas la transmisión de negocio, la escisión societaria y cualquier otra forma de transferencia del negocio), podrá ceder al adquirente la posición contractual, los derechos y obligaciones derivados de estos Términos y la información registrada y demás información de los Usuarios, y el Usuario presta desde ahora su consentimiento a dicha sucesión."
+            ]
+          },
+          {
+            "title": "Artículo 18 (Exclusión de garantías; limitación de responsabilidad)",
+            "content": [
+              "La Compañía presta el Servicio tal cual y no garantiza su idoneidad para un fin determinado, su integridad, exactitud o continuidad.",
+              "Si el Usuario sufre daños imputables a la Compañía, la responsabilidad de la Compañía se limitará a los daños directos y ordinarios, con el límite del total de las tarifas pagadas por el Usuario a la Compañía en los doce meses anteriores al hecho dañoso (o 10.000 yenes si dicho total es inferior a 10.000 yenes). Esta limitación no se aplicará en caso de dolo o negligencia grave de la Compañía, ni cuando la ley no permita limitar la responsabilidad."
+            ]
+          },
+          {
+            "title": "Artículo 19 (Indemnización por el Usuario)",
+            "content": [
+              "El Usuario que incumpla estos Términos y cause daños a la Compañía o a terceros deberá indemnizarlos (incluidos los honorarios razonables de abogados)."
+            ]
+          },
+          {
+            "title": "Artículo 20 (Exclusión de fuerzas antisociales)",
+            "content": [
+              "El Usuario declara y garantiza, ahora y en el futuro, que no pertenece a grupos de crimen organizado, a sus miembros ni a personas equivalentes («fuerzas antisociales») y que no mantiene relaciones socialmente reprobables con ellas. En caso de incumplimiento, la Compañía podrá cancelar el registro sin previo aviso."
+            ]
+          },
+          {
+            "title": "Artículo 21 (Modificación de los Términos)",
+            "content": [
+              "Estos Términos podrán modificarse conforme al artículo 548-4 del Código Civil de Japón (modificación de condiciones generales) cuando la modificación convenga al interés general de los Usuarios o sea razonable y no contraria a la finalidad del contrato.",
+              "Al modificar estos Términos, la Compañía fijará la fecha de entrada en vigor y anunciará con antelación el contenido y dicha fecha dentro del Servicio o por otros medios adecuados."
+            ]
+          },
+          {
+            "title": "Artículo 22 (Comunicaciones y notificaciones)",
+            "content": [
+              "Las comunicaciones de la Compañía al Usuario se realizarán mediante avisos dentro del Servicio o por correo electrónico a la dirección registrada, y se considerarán recibidas cuando normalmente deberían llegar. Las comunicaciones del Usuario a la Compañía se realizarán a través del formulario de contacto del Servicio."
+            ]
+          },
+          {
+            "title": "Artículo 23 (Divisibilidad)",
+            "content": [
+              "Aunque alguna disposición de estos Términos o parte de ella sea declarada nula o inaplicable conforme a la ley, las demás disposiciones conservarán plena validez y eficacia."
+            ]
+          },
+          {
+            "title": "Artículo 24 (Supervivencia)",
+            "content": [
+              "Los artículos 8, 10, 18, 19, 22, 23, 25 y 26, junto con el presente artículo, seguirán vigentes tras la terminación del contrato de uso."
+            ]
+          },
+          {
+            "title": "Artículo 25 (Ley aplicable y jurisdicción)",
+            "content": [
+              "Estos Términos se rigen por el Derecho japonés. Para toda controversia derivada del Servicio o relacionada con él, el Tribunal de Distrito de Oita o el Tribunal Sumario de Oita tendrán competencia exclusiva en primera instancia."
+            ]
+          },
+          {
+            "title": "Artículo 26 (Idioma)",
+            "content": [
+              "El texto japonés de estos Términos es el auténtico. Aunque la Compañía ofrezca traducciones a título informativo, en caso de discrepancia entre la versión japonesa y una traducción prevalecerá la versión japonesa."
+            ]
+          }
+        ]
       },
       "privacy": {
         "title": "Política de privacidad",
@@ -372,17 +522,35 @@
         "section9_title": "Artículo 9: Acceso de administrador a la cuenta",
         "section9_content": "Para mantener la calidad del servicio, proporcionar soporte al cliente e investigar el uso no autorizado, los administradores de sistema autorizados pueden operar el Servicio en nombre de su cuenta.\n\n[Condiciones]\n1. Propósito limitado: Solo para soporte al cliente, investigación técnica y verificaciones de cumplimiento legal\n2. Personal limitado: Solo administradores de sistema con autorización explícita\n3. Registro de auditoría: Todo acceso se registra con el operador, propósito, motivo y marca de tiempo\n4. Mínimo necesario: El acceso está limitado al alcance mínimo necesario para lograr el propósito\n\nEsta función es una práctica de soporte estándar utilizada por las principales plataformas SaaS como Zendesk y Shopify.",
         "section10_title": "Artículo 10: Seguridad",
-        "section10_content": "Implementamos las siguientes medidas técnicas y organizativas:\n\n- Comunicaciones cifradas (TLS/HTTPS)\n- Hash de contraseñas bcrypt (sin almacenamiento en texto plano)\n- Control de acceso basado en roles (RBAC)\n- Autenticación multifactor (SMS, TOTP, Passkey/WebAuthn)\n- Escaneo regular de vulnerabilidades de dependencias\n\nEn caso de una violación de información personal, le notificaremos a usted y a la autoridad supervisora relevante con prontitud.",
+        "section10_content": "Implementamos las siguientes medidas técnicas y organizativas:\n\n- Comunicaciones cifradas (TLS/HTTPS)\n- Hash de contraseñas bcrypt (sin almacenamiento en texto plano)\n- Control de acceso basado en roles (RBAC)\n- Autenticación multifactor (aplicación TOTP, Passkey/WebAuthn)\n- Escaneo regular de vulnerabilidades de dependencias\n\nEn caso de una violación de información personal, le notificaremos a usted y a la autoridad supervisora relevante con prontitud.",
         "section11_title": "Artículo 11: Sus derechos",
         "section11_content": "- Acceso y corrección: Puede revisar y actualizar su información personal en Configuración de cuenta (/settings/profile)\n- Portabilidad de datos: Puede solicitar una exportación de datos desde Configuración de cuenta\n- Retiro y eliminación: Tras el retiro, borraremos su información personal en un plazo de 30 días según lo requiere el RGPD Art. 17. Los datos que deben conservarse por ley y los datos agregados anonimizados pueden conservarse\n- Exclusión publicitaria: Ver Artículo 4\n\nLos usuarios en la UE/EEE también pueden ejercer derechos bajo el RGPD Art. 15-22 (restricción del procesamiento, derecho a objetar, etc.).",
         "section12_title": "Artículo 12: Transferencias internacionales de datos",
         "section12_content": "El Servicio utiliza AWS, Cloudflare y otros proveedores con sede en los Estados Unidos, por lo que su información personal puede ser transferida y almacenada fuera de Japón.\n\nPara los datos de residentes de la UE/EEE, las transferencias se realizan bajo Cláusulas Contractuales Estándar (SCC) de conformidad con el RGPD Art. 46, u otras salvaguardas apropiadas.",
         "section13_title": "Artículo 13: Información personal de menores",
-        "section13_content": "El Servicio está destinado a usuarios mayores de 18 años de acuerdo con nuestros Términos de servicio.\n\n- No entregamos publicidad dirigida a usuarios menores de 18 años\n- Si descubrimos que un usuario es menor de 18 años, suspenderemos su cuenta y eliminaremos con prontitud la información personal recopilada\n- La fecha de nacimiento recopilada en el registro se usa únicamente para verificación de edad; solo se usan grupos de edad (p. ej., 20s, 30s) para la segmentación publicitaria",
+        "section13_content": "Los menores pueden usar el Servicio conforme al artículo 4 de los Términos del Servicio: se requieren el consentimiento previo de un representante legal (padres o tutores) y la vinculación con la cuenta del tutor (aprobación del consentimiento).\n\n- No entregamos publicidad dirigida a usuarios menores de 18 años\n- Si descubrimos que el Servicio se usa sin el consentimiento del representante legal, podremos suspender el uso o adoptar otras medidas apropiadas\n- La fecha de nacimiento recopilada en el registro se usa únicamente para verificación de edad; solo se usan grupos de edad (p. ej., 20s, 30s) para la segmentación publicitaria\n\nRespecto de un menor que curse educación primaria o inferior (en el sistema de edad escolar japonés, hasta el último día del año escolar en que el menor cumple 12 años), el representante legal (padre, madre o tutor) podrá consultar y supervisar el calendario, la asistencia, las afiliaciones y los avisos de la Compañía del menor, y realizar, en nombre del menor, el pago de cuotas de membresía y otras operaciones dentro del alcance que la Compañía muestre en el Servicio (artículo 4 de los Términos de Servicio). Para esta supervisión y actuación en representación, divulgamos los datos personales del menor al representante legal en la medida necesaria para la finalidad de la supervisión y la actuación en representación. Esta facultad finaliza automáticamente el primer día (1 de abril) del año escolar en que el menor ingrese a la escuela secundaria.",
         "section14_title": "Artículo 14: Cambios a esta Política",
         "section14_content": "Podemos actualizar esta Política de vez en cuando en respuesta a cambios legales o actualizaciones del servicio.\n\n- Los cambios materiales (nuevos propósitos, nueva recopilación de datos, nuevo intercambio con terceros, etc.) se notificarán con anticipación mediante aviso en el servicio o correo electrónico\n- Los cambios menores se indicarán actualizando la fecha de «Última actualización» en esta página\n- El uso continuo del Servicio después de cualquier revisión constituye su aceptación de la Política actualizada",
         "section15_title": "Artículo 15: Contáctenos",
         "section15_content": "Para consultas sobre el manejo de información personal, exclusión publicitaria o para ejercer sus derechos, contáctenos a través del formulario de consulta del servicio. Es posible que le pidamos que proporcione su dirección de correo electrónico registrada para verificación de identidad."
+      },
+      "commerce": {
+        "title": "Divulgación conforme a la Ley de Transacciones Comerciales Específicas",
+        "seo_description": "Divulgación de Mannschaft conforme a la Ley japonesa de Transacciones Comerciales Específicas, incluyendo información del vendedor, métodos de pago y política de reembolsos/cancelaciones.",
+        "items": {
+          "seller": { "label": "Vendedor", "value": "Oficina de Operaciones de Mannschaft" },
+          "manager": { "label": "Responsable de operaciones", "value": "Se revelará sin demora a quienes lo soliciten para fines de una transacción" },
+          "address": { "label": "Domicilio", "value": "Se revelará sin demora a quienes lo soliciten para fines de una transacción" },
+          "phone": { "label": "Número de teléfono", "value": "Se revelará sin demora a quienes lo soliciten para fines de una transacción" },
+          "contact": { "label": "Contacto (forma de comunicación)", "value": "Después de iniciar sesión, contáctenos a través del «Buzón de sugerencias» en la parte superior de la pantalla. Las solicitudes de divulgación del domicilio y el número de teléfono también se reciben por este medio" },
+          "price": { "label": "Precio de venta", "value": "Conforme al precio mostrado en la pantalla de compra de cada servicio, entrada, etc. (impuesto incluido)" },
+          "extraFee": { "label": "Costes adicionales al precio de venta", "value": "Los gastos de conexión a Internet y otros cargos de comunicación corren a cargo del cliente" },
+          "paymentMethod": { "label": "Método de pago", "value": "Tarjeta de crédito y otros medios de pago mostrados en cada pantalla de compra (el procesamiento de pagos utiliza el servicio de Stripe, Inc.)" },
+          "paymentTiming": { "label": "Momento del pago", "value": "El pago se confirma al completar el proceso de compra. Las suscripciones (facturación recurrente) se cobran en cada fecha de renovación" },
+          "serviceTiming": { "label": "Momento de la prestación del servicio", "value": "Disponible inmediatamente después de completar el pago" },
+          "refund": { "label": "Devoluciones, cancelaciones y reembolsos", "value": "Debido a la naturaleza del servicio, en principio no se aceptan reembolsos ni cancelaciones después de completado el pago. No obstante, en los pagos en los que un equipo u organización actúa como vendedor (entradas, cuotas, etc.), Mannschaft es una plataforma que ofrece el espacio para la transacción, y la posibilidad de reembolso y sus condiciones se rigen por la política establecida por dicho equipo u organización. Para más detalles, consulte con el vendedor correspondiente" },
+          "environment": { "label": "Entorno operativo", "value": "Se recomienda la versión más reciente de los principales navegadores (Chrome / Safari / Edge / Firefox)" }
+        }
       }
     },
     "features_detail": {
@@ -428,6 +596,527 @@
         "best_viewed": "※ Se recomienda ver esta página con Netscape Navigator 4.0 a resolución de 800×600",
         "made_with": "♦ Made with Notepad ♦",
         "welcome_message": "★ ¡Bienvenido a Mannschaft! La plataforma para maximizar el poder de tu equipo ★"
+      }
+    },
+    "v2": {
+      "seo_title": "Mannschaft — ¿Cuál es tu entrada?",
+      "hero": {
+        "badge": "Persona, equipo, organización: todo en uno",
+        "cta_register": "Empieza gratis",
+        "login_prompt": "¿Ya tienes una cuenta?",
+        "login_link": "Inicia sesión",
+        "title_segments": [
+          "Apps de chat, hojas de cálculo, herramientas sueltas: reúnelo todo en ",
+          "un solo lugar."
+        ],
+        "subtitle_segments": [
+          "Una plataforma todo en uno para gestionar — seas quien seas: una persona, un equipo o una organización."
+        ],
+        "no_download_note": "Sin descargar ninguna app: empieza directamente en tu navegador"
+      },
+      "scope": {
+        "heading": "¿Cuál es tu entrada?",
+        "subheading": "Tu punto de entrada a Mannschaft depende de tu rol.",
+        "tab_personal": "Persona",
+        "tab_team": "Equipo",
+        "tab_org": "Organización",
+        "personal": {
+          "role_badge": "Quien participa",
+          "tagline": "Para ti, que reservas y participas.",
+          "f0": "Reúne tarjetas de puntos y carnés QR en una sola cartera",
+          "f1": "Tu agenda y asistencia en un único calendario",
+          "f2": "Un panel personal que abarca todos tus equipos",
+          "mock_caption": "Mi panel"
+        },
+        "team": {
+          "role_badge": "Quien organiza",
+          "tagline": "Para ti, que llevas la gestión.",
+          "f0": "Crea turnos, recoge preferencias y avisa al confirmarlos",
+          "f1": "Cuenta la asistencia a eventos y envía recordatorios",
+          "f2": "Cobra cuotas y ve quién ha pagado de un vistazo",
+          "mock_caption": "Panel del equipo"
+        },
+        "org": {
+          "role_badge": "Quien lo une todo",
+          "tagline": "Para ti, que diriges una organización mayor.",
+          "f0": "Digitaliza el voto y los poderes de las asambleas",
+          "f1": "Haz circular documentos con sellos digitales y acuse de lectura",
+          "f2": "Gestiona padrones y listados de forma segura",
+          "mock_caption": "Panel de la organización"
+        }
+      },
+      "stats": {
+        "users": "Usuarios",
+        "teams": "Equipos",
+        "organizations": "Organizaciones",
+        "heading_segments": [
+          "Ya somos esta gente"
+        ]
+      },
+      "features": {
+        "detail_link": "Ver más",
+        "close": "Cerrar",
+        "items": {
+          "team": {
+            "title": "Gestión de equipos y organizaciones",
+            "desc": "Invita a miembros y define roles y permisos con claridad. Ve quién puede hacer qué de un vistazo.",
+            "points": [
+              "Invita a miembros y define roles y permisos",
+              "Activa o desactiva solo las funciones que usas (administradores)",
+              "Gestiona niveles de equipo y organización con una sola cuenta"
+            ]
+          },
+          "schedule": {
+            "title": "Agenda y asistencia",
+            "desc": "Comparte planes y confirma la asistencia con un toque. Los recordatorios se envían solos.",
+            "points": [
+              "Ve los eventos de todos tus equipos y los personales en un calendario",
+              "Responde la asistencia con un toque: asisto, falto, sin decidir",
+              "Sincronización bidireccional de eventos personales con Google Calendar"
+            ]
+          },
+          "reservation": {
+            "title": "Reservas",
+            "desc": "Acepta reservas por franja horaria o por personal. Aforo, plazas llenas y cancelaciones se gestionan solos.",
+            "points": [
+              "Reserva tocando un hueco libre en la cuadrícula de disponibilidad",
+              "Sigue el estado con insignias: pendiente, confirmada, cancelada",
+              "Gestiona franjas bloqueadas y destinatarios de correos de aviso"
+            ]
+          },
+          "shift": {
+            "title": "Gestión de turnos",
+            "desc": "Desde recoger preferencias y crear el cuadrante hasta avisar a todos al confirmarlo.",
+            "points": [
+              "Recoge preferencias de turno en 5 niveles y revísalas en una matriz",
+              "Controla el avance por etapas: borrador, recogida, ajuste y publicación",
+              "Los miembros ven sus turnos por mes o semana y piden cambios"
+            ]
+          },
+          "chat": {
+            "title": "Chat",
+            "desc": "Mantén las conversaciones ordenadas con canales y responde con hilos y reacciones.",
+            "points": [
+              "Ordena las conversaciones en canales por tema",
+              "Crea canales por equipo u organización",
+              "Reacciona a los mensajes con emojis"
+            ]
+          },
+          "timeline": {
+            "title": "Muro",
+            "desc": "Comparte lo que pasa en tu equipo con un muro familiar.",
+            "points": [
+              "Publica notas breves en el muro de cada equipo",
+              "Mantén conversaciones ligeras con las respuestas",
+              "Los administradores pueden fijar publicaciones importantes"
+            ]
+          },
+          "circulation": {
+            "title": "Circulares y sellos digitales",
+            "desc": "Haz circular documentos en orden o a la vez, con sellos y estado de lectura a la vista.",
+            "points": [
+              "Haz circular documentos en orden o a todos a la vez",
+              "Los destinatarios confirman estampando su sello digital registrado",
+              "Sigue el avance, como el número de sellos, en tiempo real"
+            ]
+          },
+          "survey": {
+            "title": "Encuestas y votaciones",
+            "desc": "Crea preguntas y cuenta respuestas, anónimas o con nombre, con resultados en gráficos.",
+            "points": [
+              "Tipos de pregunta: opción única, múltiple, texto libre, valoración y fecha",
+              "Ajusta con detalle el anonimato y la visibilidad de resultados",
+              "Gestiona las respuestas con estados y recuentos"
+            ]
+          },
+          "files": {
+            "title": "Compartir archivos",
+            "desc": "Organiza documentos y fotos en carpetas y compártelos con seguridad con quien corresponda.",
+            "points": [
+              "Define el rol mínimo que puede ver cada carpeta o archivo",
+              "Desactiva la descarga por archivo cuando haga falta",
+              "Comparte fuera con enlaces públicos caducables (solo administradores)"
+            ]
+          },
+          "billing": {
+            "title": "Cuotas y pagos",
+            "desc": "Desde emitir cuotas hasta ver el estado de pago y enviar recordatorios, todo en línea.",
+            "points": [
+              "Gestiona en línea los recibos de cuotas y su estado de pago",
+              "Los pagos recurrentes se ejecutan solos tras registrar la tarjeta",
+              "El contenido impagado queda protegido tras un muro de pago"
+            ]
+          },
+          "matching": {
+            "title": "Emparejamientos y torneos",
+            "desc": "Desde buscar rivales hasta organizar torneos y registrar resultados.",
+            "points": [
+              "Busca rivales e intercambios en toda la plataforma",
+              "Filtra por tipo — partido, entrenamiento, intercambio — y nivel",
+              "La gestión de torneos automatiza clasificación, cruces y rankings"
+            ]
+          },
+          "safety": {
+            "title": "Comprobación de seguridad",
+            "desc": "En caso de desastre o emergencia, pregunta a todos a la vez y cuenta su estado.",
+            "points": [
+              "Los administradores lanzan la comprobación a todos a la vez (con modo simulacro)",
+              "Recuento de respuestas y tasa de respuesta en tiempo real",
+              "Consulta después el historial y los detalles"
+            ]
+          },
+          "qr": {
+            "title": "Carné de socio QR",
+            "desc": "Emite carnés como código QR y verifica la identidad con un simple escaneo en la puerta.",
+            "points": [
+              "Emite carnés de socio digitales como códigos QR",
+              "Consulta el historial de accesos",
+              "Suspende y reactiva carnés cuando haga falta"
+            ]
+          },
+          "wallet": {
+            "title": "Cartera de tarjetas de puntos",
+            "desc": "Reúne las tarjetas de puntos de cada tienda en tu móvil.",
+            "points": [
+              "Registra hasta 200 tarjetas de puntos",
+              "Agrupa las tarjetas y cambia rápido con un deslizamiento",
+              "Muestra el código de barras a pantalla completa, con bloqueo biométrico"
+            ]
+          },
+          "karte": {
+            "title": "Ficha clínica",
+            "desc": "Reúne anamnesis, historial de tratamientos y evolución con fotos y gráficas.",
+            "points": [
+              "Crea fichas de tratamientos y evolución",
+              "Organiza con estados borrador/definitivo y fijado",
+              "Abre los detalles al instante en un diálogo"
+            ]
+          },
+          "village": {
+            "title": "Aldea (comunidad)",
+            "desc": "Un espacio común y relajado que conecta a la gente más allá de un solo equipo.",
+            "points": [
+              "Únete a aldeas de gente con tu mismo propósito (también con aprobación)",
+              "Convive en el tablón, el muro y la plaza del pueblo",
+              "De convocar fiestas a votar fechas y repasar la crónica mensual"
+            ]
+          }
+        },
+        "heading_segments": [
+          "Funciones, justo cuando las necesitas."
+        ],
+        "subheading_segments": [
+          "Toca cualquier función para ver una breve explicación."
+        ],
+        "pricing_note_segments": [
+          "Las funciones básicas son gratis. Los módulos adicionales se eligen según necesidad — elegir muchos puede requerir un plan de pago."
+        ],
+        "growing_title": "Mannschaft sigue creciendo.",
+        "growing_note_segments": [
+          "Las funciones siguen aumentando, moldeadas por la voz de quienes la usan."
+        ],
+        "can_do_label": "Qué puedes hacer",
+        "more_label": "Más detalles",
+        "less_label": "Ocultar detalles"
+      },
+      "usecases": {
+        "sports_team": "Equipo deportivo",
+        "clinic": "Clínica de osteopatía",
+        "school": "Colegio",
+        "alumni": "Asociación de antiguos alumnos",
+        "salon": "Peluquería",
+        "mansion": "Comunidad de propietarios",
+        "neighborhood": "Asociación vecinal",
+        "gym": "Gimnasio",
+        "restaurant": "Restaurante",
+        "circle": "Club / grupo",
+        "heading_segments": [
+          "Las formas de usarlo son infinitas."
+        ],
+        "subheading_segments": [
+          "Las mismas herramientas, un papel distinto para cada persona."
+        ]
+      },
+      "cta": {
+        "register": "Empieza gratis",
+        "pricing_prompt": "¿Te interesan los precios?",
+        "pricing_link": "Ver planes de precios",
+        "faq_heading": "Preguntas frecuentes",
+        "faq": {
+          "0": {
+            "q": "¿Se puede usar gratis?",
+            "a": "Las cuentas personales y las funciones básicas son gratis. Los módulos adicionales se eligen según necesidad; elegir muchos puede requerir un plan de pago."
+          },
+          "1": {
+            "q": "¿Puedo usarlo en el móvil?",
+            "a": "Sí. Funciona directamente en el navegador de móviles y tabletas, sin instalar ninguna app."
+          },
+          "2": {
+            "q": "¿Puedo pertenecer a varios equipos?",
+            "a": "Con una sola cuenta puedes pertenecer a varios equipos y organizaciones y cambiar entre ellos."
+          },
+          "3": {
+            "q": "¿Puedo exportar mis datos?",
+            "a": "Sí. Se admite la exportación masiva en formatos CSV y JSON."
+          },
+          "4": {
+            "q": "¿Qué hay de la seguridad?",
+            "a": "La conexión va cifrada con TLS, con autenticación de dos factores (app de autenticación, passkeys) y control de acceso por roles."
+          },
+          "5": {
+            "q": "¿Qué pasa con mis datos si me doy de baja?",
+            "a": "Los datos personales se eliminan en un plazo de 30 días desde la solicitud de baja (conforme al RGPD). Las publicaciones y estadísticas se conservan de forma no identificable."
+          },
+          "6": {
+            "q": "¿Qué idiomas están disponibles?",
+            "a": "Seis idiomas: japonés, inglés, alemán, español, coreano y chino."
+          },
+          "7": {
+            "q": "¿Y si falta una función que quiero?",
+            "a": "Envíanos tu petición por el formulario de contacto. Mannschaft es una plataforma en crecimiento que añade funciones según las opiniones de sus usuarios."
+          },
+          "8": {
+            "q": "¿Pueden usarlo los menores de 18 años?",
+            "a": "Los menores de 18 años solo pueden usar el servicio tras vincularse con la cuenta de un progenitor (representante legal) y recibir la aprobación de su consentimiento. No es posible usar el servicio hasta completar la vinculación. En particular, los niños de primaria o menores (antes de entrar en secundaria) están cubiertos por el «modo de supervisión», en el que un progenitor puede ver sus horarios, asistencia, pertenencias y avisos para supervisarlos y pagar las cuotas en su nombre (esto finaliza automáticamente al entrar en secundaria).",
+            "a_terms_note": "Consulta {link} para más detalles.",
+            "a_terms_link": "el artículo 4 de los Términos del servicio"
+          },
+          "9": {
+            "q": "¿Puedo cuidar de un familiar mayor?",
+            "a": "Sí. Con el consentimiento de la persona o de su familia, puedes registrar a un «supervisor», y su familia recibe avisos automáticos de la asistencia, la llegada y la salida en los eventos, así como una alerta de ausencia cuando alguien que se espera que asista no puede confirmarse como presente. No hay registro automático por edad; siempre se configura con el consentimiento de la persona y de su familia."
+          }
+        },
+        "retro_hint": "🎮 A veces la pantalla se vuelve retro… ¿tal vez?",
+        "heading_segments": [
+          "Empieza gratis."
+        ],
+        "subheading_segments": [
+          "La cuenta personal es gratis. Podrás crear un equipo más tarde."
+        ]
+      },
+      "usecase_pages": {
+        "common": {
+          "back": "← Volver al inicio",
+          "story_heading": "Con Mannschaft, así funciona",
+          "chips_heading": "Funciones usadas",
+          "cta": "Empieza gratis"
+        },
+        "sports_team": {
+          "title": "Equipo deportivo",
+          "problem": "La asistencia se pierde en el chat, las cuotas se cobran en efectivo y las fotos viven en el móvil de otro. ¿Todo el trabajo recae en una sola persona?",
+          "story": [
+            "Registra entrenamientos y partidos en el calendario — los miembros reciben la consulta de asistencia y los recordatorios automáticamente",
+            "Cobra las cuotas mensuales en línea, ve quién ha pagado de un vistazo y deja que los avisos de impago se envíen solos",
+            "Encuentra rivales con el emparejamiento y deja que la gestión de torneos calcule la clasificación",
+            "Reúne las fotos de los partidos en la galería y comenta el partido en el chat",
+            "Liquida los gastos de viaje y elige fechas con encuestas en el mismo sitio"
+          ],
+          "chips": [
+            "Agenda y asistencia",
+            "Cuotas y pagos",
+            "Emparejamientos y torneos",
+            "Galería",
+            "Chat"
+          ]
+        },
+        "clinic": {
+          "title": "Clínica de osteopatía",
+          "problem": "Las reservas por teléfono interrumpen el tratamiento, y las fichas en papel tardan en encontrarse y traspasarse.",
+          "story": [
+            "Publica los huecos de reserva y los pacientes eligen uno libre desde el móvil",
+            "Los recordatorios automáticos del día anterior reducen las ausencias",
+            "Registra tratamientos y evolución en la ficha clínica, junto con fotos y esquemas corporales",
+            "Al llegar, basta con escanear el carné QR en recepción",
+            "En horas punta, la gestión de turnos de espera muestra la cola en tiempo real"
+          ],
+          "chips": [
+            "Reservas",
+            "Ficha clínica",
+            "Carné de socio QR",
+            "Gestión de esperas",
+            "Historial de servicios"
+          ]
+        },
+        "school": {
+          "title": "Colegio",
+          "problem": "La comunicación con las familias depende de circulares en papel, y contar asistencias o gestionar las cuotas del AMPA consume tiempo.",
+          "story": [
+            "Comparte eventos y jornadas de puertas abiertas en el calendario y cuenta las asistencias automáticamente",
+            "Difunde avisos por tablón y circulares — el acuse de lectura acaba con el \"¿habrá llegado?\"",
+            "Cobra las cuotas del AMPA en línea y revisa los pagos en una lista",
+            "Recoge encuestas a las familias con formularios y ve los resultados en gráficos",
+            "Gestiona los horarios por trimestre, con avisos de cambios de última hora"
+          ],
+          "chips": [
+            "Agenda y asistencia",
+            "Circulares",
+            "Cuotas y pagos",
+            "Encuestas",
+            "Horarios"
+          ]
+        },
+        "alumni": {
+          "title": "Asociación de antiguos alumnos",
+          "problem": "Confirmar los contactos cada pocos años es una gran tarea, y la carga del organizador aleja cada reunión.",
+          "story": [
+            "Mantén el listado de miembros en línea — cada uno actualiza sus propios datos",
+            "Envía las invitaciones de golpe y recoge las confirmaciones con un toque",
+            "Cobra las cuotas sin efectivo con pagos en línea",
+            "Comparte las fotos del día en la galería como archivo",
+            "Decide la próxima fecha con una encuesta rápida"
+          ],
+          "chips": [
+            "Gestión de miembros",
+            "Agenda y asistencia",
+            "Cuotas y pagos",
+            "Galería",
+            "Encuestas"
+          ]
+        },
+        "salon": {
+          "title": "Peluquería",
+          "problem": "El teléfono no para de sonar, y el historial de cada cliente vive solo en la memoria del personal.",
+          "story": [
+            "Publica huecos por estilista y la clientela reserva a su favorito desde el móvil",
+            "Los recordatorios del día anterior reducen las ausencias",
+            "Registra tratamientos y productos usados en el historial de servicios para la próxima visita",
+            "Gestiona los turnos del personal, de la recogida de preferencias a la confirmación, en la app",
+            "Fideliza a la clientela habitual con el carné QR y envíos de correo"
+          ],
+          "chips": [
+            "Reservas",
+            "Historial de servicios",
+            "Gestión de turnos",
+            "Carné de socio QR",
+            "Envío de correos"
+          ]
+        },
+        "mansion": {
+          "title": "Comunidad de propietarios",
+          "problem": "Los poderes para la junta vuelven en papel y las circulares se atascan — nadie sabe quién ha leído qué.",
+          "story": [
+            "Vota los puntos del orden del día electrónicamente y presenta los poderes en línea",
+            "Difunde los acuerdos por circular, con sellos digitales que hacen visible la confirmación",
+            "Gestiona con seguridad los datos de viviendas y residentes en el padrón",
+            "Administra la asignación de plazas de garaje y las vacantes desde la app",
+            "Reserva en línea la sala común y la habitación de invitados"
+          ],
+          "chips": [
+            "Voto y poderes",
+            "Circulares y sellos digitales",
+            "Padrón de residentes",
+            "Gestión de garajes",
+            "Reserva de instalaciones"
+          ]
+        },
+        "neighborhood": {
+          "title": "Asociación vecinal",
+          "problem": "La circular en papel tarda en llegar, y en una emergencia solo queda la cadena telefónica.",
+          "story": [
+            "Digitaliza la circular — en orden o a todos a la vez, con estado de lectura visible",
+            "Comparte fiestas y jornadas de limpieza en el calendario y cuenta los participantes automáticamente",
+            "Cobra las cuotas vecinales en línea, sin ir puerta por puerta",
+            "En un desastre, envía una comprobación de seguridad a todos y recopila las respuestas",
+            "Comparte las fotos de las fiestas en la galería como memoria del barrio"
+          ],
+          "chips": [
+            "Circulares",
+            "Comprobación de seguridad",
+            "Agenda y asistencia",
+            "Cuotas y pagos",
+            "Galería"
+          ]
+        },
+        "gym": {
+          "title": "Gimnasio",
+          "problem": "Carnés, control de acceso y cuotas mensuales están repartidos en herramientas distintas.",
+          "story": [
+            "Emite carnés QR — un escaneo en la entrada registra el acceso",
+            "Publica plazas de clase que se cierran solas al llenarse",
+            "Cobra las cuotas en línea, con recordatorios automáticos a los morosos",
+            "Gestiona los turnos del personal y entrenadores de forma centralizada",
+            "Anuncia los nuevos programas a todos de una vez"
+          ],
+          "chips": [
+            "Carné de socio QR",
+            "Reservas",
+            "Cuotas y pagos",
+            "Gestión de turnos",
+            "Avisos"
+          ]
+        },
+        "restaurant": {
+          "title": "Restaurante",
+          "problem": "Las preferencias de turno se hunden en el chat de grupo, y en hora punta no hay manos para la cola de espera.",
+          "story": [
+            "Recoge las preferencias de turno en la app, monta el cuadrante y notifica al confirmarlo",
+            "Con los salarios por hora configurados, ves el coste de personal de un vistazo",
+            "Gestiona la espera con código QR — los clientes ven su turno en el móvil y reciben el aviso",
+            "Recibe y gestiona las reservas de mesa en línea en un solo lugar",
+            "Ordena la comunicación del equipo en el canal del local"
+          ],
+          "chips": [
+            "Gestión de turnos",
+            "Gestión de esperas",
+            "Reservas",
+            "Chat"
+          ]
+        },
+        "circle": {
+          "title": "Club / grupo",
+          "problem": "La asistencia es impredecible y reservar el local se complica — y las cuentas del viaje viven en las notas de alguien.",
+          "story": [
+            "Apunta los días de actividad en el calendario y recoge la asistencia automáticamente",
+            "Liquida los gastos de viajes y eventos con transparencia",
+            "Chat para el día a día, tablón para los anuncios importantes",
+            "Convierte las fotos de las actividades en álbumes en la galería",
+            "Recibe las inscripciones de nuevos miembros con un formulario"
+          ],
+          "chips": [
+            "Agenda y asistencia",
+            "Cuotas y pagos",
+            "Chat",
+            "Galería",
+            "Formularios"
+          ]
+        }
+      },
+      "pwa": {
+        "heading_segments": [
+          "Sin tienda de aplicaciones. Úsalo como app, aquí mismo."
+        ],
+        "desc_segments": [
+          "Mannschaft es una PWA: añádelo a tu pantalla de inicio y se abre como una app, sin descargas."
+        ],
+        "button": "Añadir a la pantalla de inicio",
+        "guide": {
+          "guide_button": "Ver cómo añadirlo",
+          "guide_title": "Cómo añadirlo a la pantalla de inicio",
+          "tab_ios": "iPhone / iPad",
+          "tab_android": "Android",
+          "tab_desktop": "PC (Chrome / Edge)",
+          "android_step1": "Abre esta página en Chrome",
+          "android_step2": "Toca el menú (⋮) arriba a la derecha",
+          "android_step3": "Elige “Instalar aplicación” o “Añadir a la pantalla de inicio”",
+          "android_step4": "Toca “Instalar” para terminar",
+          "desktop_step1": "Abre esta página en Chrome o Edge",
+          "desktop_step2": "Haz clic en el icono de instalar (⊕) al final de la barra de direcciones",
+          "desktop_step3": "O elige “Instalar aplicación” en el menú",
+          "desktop_step4": "Haz clic en “Instalar” para terminar",
+          "close": "Cerrar"
+        }
+      },
+      "trust": {
+        "heading": "Nuestro compromiso con la seguridad",
+        "badges": {
+          "minor": "Vínculo parental obligatorio para menores de 18",
+          "auth": "Autenticación en dos pasos y passkeys",
+          "i18n": "6 idiomas",
+          "encryption": "Comunicación y datos cifrados",
+          "gdpr": "Conforme al RGPD",
+          "watch": "Supervisión de niños y familiares mayores",
+          "safety": "Comprobación de seguridad colectiva en emergencias"
+        }
       }
     }
   }

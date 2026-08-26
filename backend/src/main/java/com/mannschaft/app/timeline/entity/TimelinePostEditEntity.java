@@ -34,6 +34,7 @@ public class TimelinePostEditEntity {
     @Column(columnDefinition = "TEXT")
     private String contentBefore;
 
+    @Column(nullable = false)
     private LocalDateTime editedAt;
 
     @PrePersist

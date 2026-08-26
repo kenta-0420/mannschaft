@@ -30,12 +30,15 @@ public class AnalyticsDailyModulesEntity extends BaseEntity {
     private Long moduleId;
 
     @Builder.Default
+    @Column(nullable = false)
     private int activeTeams = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int newActivations = 0;
 
     @Builder.Default
+    @Column(nullable = false)
     private int deactivations = 0;
 
     @Column(nullable = false)

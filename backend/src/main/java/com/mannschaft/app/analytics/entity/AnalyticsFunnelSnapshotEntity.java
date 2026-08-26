@@ -33,5 +33,6 @@ public class AnalyticsFunnelSnapshotEntity extends BaseEntity {
     private FunnelStage stage;
 
     @Builder.Default
+    @Column(nullable = false)
     private int userCount = 0;
 }

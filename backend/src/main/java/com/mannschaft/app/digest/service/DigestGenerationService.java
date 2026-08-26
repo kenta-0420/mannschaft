@@ -8,6 +8,7 @@ import com.mannschaft.app.cms.PostType;
 import com.mannschaft.app.cms.Visibility;
 import com.mannschaft.app.cms.entity.BlogPostEntity;
 import com.mannschaft.app.cms.repository.BlogPostRepository;
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.CursorPagedResponse;
 import com.mannschaft.app.common.NameResolverService;
@@ -71,6 +72,7 @@ public class DigestGenerationService {
     private final BlogPostRepository blogPostRepository;
     private final FeatureFlagService featureFlagService;
     private final ObjectMapper objectMapper;
+    private final AccessControlService accessControlService;
 
     private static final int MAX_PERIOD_DAYS = 31;
     private static final int GENERATING_TIMEOUT_MINUTES = 5;
@@ -87,6 +89,9 @@ public class DigestGenerationService {
         DigestStyle style = request.getDigestStyle() != null
                 ? DigestStyle.valueOf(request.getDigestStyle())
                 : DigestStyle.SUMMARY;
+
+        // 認可根治戦役 Wave2-2C: 生成トリガー（変更系）はリクエスト先スコープの ADMIN/DEPUTY_ADMIN のみ
+        accessControlService.checkAdminOrAbove(userId, request.getScopeId(), scopeType.name());
 
         // 期間バリデーション
         validatePeriod(request.getPeriodStart(), request.getPeriodEnd());
@@ -163,9 +168,12 @@ public class DigestGenerationService {
      * @throws BusinessException ダイジェスト不存在、ステータス不正
      */
     @Transactional
-    public DigestPublishResponse publish(Long digestId, DigestPublishRequest request) {
+    public DigestPublishResponse publish(Long digestId, DigestPublishRequest request, Long actorUserId) {
         TimelineDigestEntity digest = digestRepository.findById(digestId)
                 .orElseThrow(() -> new BusinessException(DigestErrorCode.DIGEST_011));
+
+        // 認可根治戦役 Wave2-2C: entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ公開可（BOLA対策）
+        accessControlService.checkAdminOrAbove(actorUserId, digest.getScopeId(), digest.getScopeType().name());
 
         if (digest.getStatus() != DigestStatus.GENERATED) {
             throw new BusinessException(DigestErrorCode.DIGEST_012);
@@ -217,8 +225,13 @@ public class DigestGenerationService {
     /**
      * ダイジェスト履歴一覧を取得する。
      */
-    public DigestListResponse list(String scopeType, Long scopeId, String status, Long cursor, Integer limit) {
+    public DigestListResponse list(String scopeType, Long scopeId, String status, Long cursor, Integer limit,
+                                   Long actorUserId) {
         DigestScopeType scope = DigestScopeType.valueOf(scopeType);
+
+        // 認可根治戦役 Wave2-2C: 閲覧系はスコープメンバーのみ（非メンバーは403）
+        accessControlService.checkMembership(actorUserId, scopeId, scope.name());
+
         DigestStatus statusFilter = status != null ? DigestStatus.valueOf(status) : null;
         int pageLimit = limit != null ? limit : 20;
 
@@ -246,9 +259,13 @@ public class DigestGenerationService {
     /**
      * ダイジェスト詳細を取得する。
      */
-    public DigestDetailResponse getDetail(Long digestId) {
+    public DigestDetailResponse getDetail(Long digestId, Long actorUserId) {
         TimelineDigestEntity digest = digestRepository.findById(digestId)
                 .orElseThrow(() -> new BusinessException(DigestErrorCode.DIGEST_011));
+
+        // 認可根治戦役 Wave2-2C: entity 由来スコープのメンバーのみ閲覧可（BOLA対策）
+        accessControlService.checkMembership(actorUserId, digest.getScopeId(), digest.getScopeType().name());
+
         return digestMapper.toDetailResponse(digest);
     }
 
@@ -256,9 +273,12 @@ public class DigestGenerationService {
      * ダイジェストを破棄する（GENERATED のみ）。
      */
     @Transactional
-    public DigestDetailResponse discard(Long digestId) {
+    public DigestDetailResponse discard(Long digestId, Long actorUserId) {
         TimelineDigestEntity digest = digestRepository.findById(digestId)
                 .orElseThrow(() -> new BusinessException(DigestErrorCode.DIGEST_011));
+
+        // 認可根治戦役 Wave2-2C: entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ破棄可（BOLA対策）
+        accessControlService.checkAdminOrAbove(actorUserId, digest.getScopeId(), digest.getScopeType().name());
 
         if (digest.getStatus() != DigestStatus.GENERATED) {
             throw new BusinessException(DigestErrorCode.DIGEST_012);
@@ -280,6 +300,9 @@ public class DigestGenerationService {
     public DigestGenerateResponse regenerate(Long digestId, DigestRegenerateRequest request, Long userId) {
         TimelineDigestEntity original = digestRepository.findById(digestId)
                 .orElseThrow(() -> new BusinessException(DigestErrorCode.DIGEST_011));
+
+        // 認可根治戦役 Wave2-2C: entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ再生成可（BOLA対策）
+        accessControlService.checkAdminOrAbove(userId, original.getScopeId(), original.getScopeType().name());
 
         if (original.getStatus() != DigestStatus.GENERATED && original.getStatus() != DigestStatus.FAILED) {
             throw new BusinessException(DigestErrorCode.DIGEST_013);
@@ -351,9 +374,12 @@ public class DigestGenerationService {
      * ダイジェストのインライン編集（GENERATED のみ）。
      */
     @Transactional
-    public DigestDetailResponse edit(Long digestId, DigestEditRequest request) {
+    public DigestDetailResponse edit(Long digestId, DigestEditRequest request, Long actorUserId) {
         TimelineDigestEntity digest = digestRepository.findById(digestId)
                 .orElseThrow(() -> new BusinessException(DigestErrorCode.DIGEST_011));
+
+        // 認可根治戦役 Wave2-2C: entity 由来スコープの ADMIN/DEPUTY_ADMIN のみ編集可（BOLA対策）
+        accessControlService.checkAdminOrAbove(actorUserId, digest.getScopeId(), digest.getScopeType().name());
 
         if (digest.getStatus() != DigestStatus.GENERATED) {
             throw new BusinessException(DigestErrorCode.DIGEST_012);

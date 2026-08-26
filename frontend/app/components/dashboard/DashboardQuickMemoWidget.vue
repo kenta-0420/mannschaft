@@ -138,9 +138,15 @@ onMounted(load)
     refreshable
     @refresh="load"
   >
-    <p v-if="memos.length === 0" class="text-sm text-gray-500">
-      {{ t('quick_memo.dashboard_widget.empty') }}
-    </p>
+    <div v-if="memos.length === 0" class="flex flex-col gap-2">
+      <p class="text-sm text-gray-500">
+        {{ t('quick_memo.dashboard_widget.empty') }}
+      </p>
+      <p class="text-xs text-surface-400 dark:text-surface-500">
+        <i class="pi pi-info-circle mr-1" aria-hidden="true" />
+        {{ t('quick_memo.dashboard_widget.empty_hint') }}
+      </p>
+    </div>
 
     <ul v-if="memos.length > 0" class="space-y-2">
       <li

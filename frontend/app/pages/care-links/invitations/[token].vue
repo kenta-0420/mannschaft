@@ -84,7 +84,7 @@ onMounted(() => loadInvitation())
           {{ $t('care.message.invalidToken') }}
         </h2>
         <Button
-          :label="$t('common.button.back')"
+          :label="$t('button.back')"
           severity="secondary"
           class="mt-4"
           @click="router.push('/')"
@@ -108,7 +108,7 @@ onMounted(() => loadInvitation())
           }}
         </h2>
         <Button
-          :label="$t('common.button.close')"
+          :label="$t('button.close')"
           severity="secondary"
           class="mt-4"
           @click="router.push('/')"

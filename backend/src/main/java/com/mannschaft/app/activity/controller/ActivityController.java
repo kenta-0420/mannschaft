@@ -1,9 +1,12 @@
 package com.mannschaft.app.activity.controller;
 
+import com.mannschaft.app.activity.ActivityMapper;
 import com.mannschaft.app.activity.ActivityScopeType;
 import com.mannschaft.app.activity.dto.ActivityParticipantResponse;
+import com.mannschaft.app.activity.dto.ActivityRecordResponse;
 import com.mannschaft.app.activity.dto.AddParticipantsRequest;
 import com.mannschaft.app.activity.dto.CreateActivityRequest;
+import com.mannschaft.app.activity.dto.CreateDraftActivityRequest;
 import com.mannschaft.app.activity.dto.DuplicateActivityRequest;
 import com.mannschaft.app.activity.dto.RemoveParticipantsRequest;
 import com.mannschaft.app.activity.dto.UpdateActivityRequest;
@@ -13,6 +16,7 @@ import com.mannschaft.app.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,23 +45,52 @@ import com.mannschaft.app.common.SecurityUtils;
 public class ActivityController {
 
     private final ActivityResultService activityService;
+    private final ActivityMapper activityMapper;
 
 
     /**
-     * 活動記録一覧を取得する（Cursor-based ページネーション）。
+     * 活動記録一覧を取得する（オフセットページネーション）。
+     *
+     * <p><b>ページング方式</b>: {@code page}（0始まり・既定 0）と {@code limit} を受け取り
+     * {@code PageRequest.of(page, limit)} に変換する単純なオフセットページングであり、
+     * カーソルベースではない（旧 javadoc の「Cursor-based」という記述は誤りだった）。
+     * {@code page} 未指定時は従来どおり 0 ページ目を返す（後方互換）。
+     * {@code page} に負値、{@code limit} に 0 以下を渡すと {@code PageRequest.of} が
+     * {@link IllegalArgumentException} を投げ、{@link com.mannschaft.app.common.GlobalExceptionHandler}
+     * には専用ハンドラが無いため 500 に化けてしまう（本 PR が新たに `page` を追加したことで
+     * 開けた口）。{@code @Min} 制約で 400 に倒す（Spring 6.1+ の組込みメソッド検証により
+     * {@link org.springframework.web.method.annotation.HandlerMethodValidationException} が発火し、
+     * {@code GlobalExceptionHandler#handleHandlerMethodValidation} が処理する）。</p>
+     *
+     * <p><b>本クラスに {@code @Validated} を付けてはならない</b>: 付けると Spring は
+     * AOP プロキシ経由の従来型メソッドバリデーション（{@code ConstraintViolationException}）に
+     * 切り替え、上記の組込み検証を抑止する。AOP 代理を作らない
+     * {@code MockMvcBuilders.standaloneSetup(controller)} のような試験環境では
+     * どちらの検証機構も働かなくなり、{@code @Min} 制約が素通りして 500 に戻ってしまう
+     * （検分差し戻しで実際に踏んだ事故）。次に善意で {@code @Validated} を付け直さないこと。</p>
+     *
+     * <p><b>総件数は上界近似</b>: レスポンスの {@code data} 件数および将来 {@code meta} を追加する場合の
+     * 総件数は、{@link com.mannschaft.app.activity.service.ActivityResultService#listActivities}
+     * の Javadoc が明記するとおり「SQL で 1 ページ取得後に F00 可視性でメモリフィルタする」実装のため、
+     * <b>ページ内に歯抜けが残り得る</b>（他人の DRAFT 等が多いページでは要求件数より少ない件数しか
+     * 返らない）。この歯抜けの根治には F00 に「閲覧可能な可視性集合を返す API」を新設し SQL の
+     * {@code IN} 述語へ翻訳する必要があり、設計変更を伴うため本エンドポイントの修正範囲外である
+     * （後続戦役の対象。詳細は {@link com.mannschaft.app.activity.service.ActivityResultService#listActivities}
+     * の Javadoc を参照）。</p>
      */
     @GetMapping
     @Operation(summary = "活動記録一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<List<ActivityResultEntity>>> listActivities(
+    public ResponseEntity<ApiResponse<List<ActivityRecordResponse>>> listActivities(
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId,
             @RequestParam(value = "template_id", required = false) Long templateId,
-            @RequestParam(defaultValue = "20") int limit) {
+            @RequestParam(defaultValue = "20") @Min(1) int limit,
+            @RequestParam(defaultValue = "0") @Min(0) int page) {
         Page<ActivityResultEntity> result = activityService.listActivities(
                 SecurityUtils.getCurrentUserId(),
-                ActivityScopeType.valueOf(scopeType), scopeId, templateId, PageRequest.of(0, limit));
-        return ResponseEntity.ok(ApiResponse.of(result.getContent()));
+                ActivityScopeType.valueOf(scopeType), scopeId, templateId, PageRequest.of(page, limit));
+        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponseList(result.getContent())));
     }
 
     /**
@@ -66,8 +99,9 @@ public class ActivityController {
     @GetMapping("/{id}")
     @Operation(summary = "活動記録詳細")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
-    public ResponseEntity<ApiResponse<ActivityResultEntity>> getActivity(@PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(activityService.getActivity(id, SecurityUtils.getCurrentUserId())));
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> getActivity(@PathVariable Long id) {
+        ActivityResultEntity entity = activityService.getActivity(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponse(entity)));
     }
 
     /**
@@ -76,13 +110,43 @@ public class ActivityController {
     @PostMapping
     @Operation(summary = "活動記録作成")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
-    public ResponseEntity<ApiResponse<ActivityResultEntity>> createActivity(
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> createActivity(
             @RequestParam("scope_type") String scopeType,
             @RequestParam("scope_id") Long scopeId,
             @Valid @RequestBody CreateActivityRequest request) {
         ActivityResultEntity response = activityService.createActivity(
                 SecurityUtils.getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
+    }
+
+    /**
+     * 下書き（DRAFT）活動記録を作成する（F06.4 下書き対応）。
+     *
+     * <p>AC-8: title + activityDate のみの最小項目で作成可能。DRAFT は作成者のみ閲覧可。</p>
+     */
+    @PostMapping("/draft")
+    @Operation(summary = "活動記録 下書き作成")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "作成成功")
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> createDraftActivity(
+            @RequestParam("scope_type") String scopeType,
+            @RequestParam("scope_id") Long scopeId,
+            @Valid @RequestBody CreateDraftActivityRequest request) {
+        ActivityResultEntity response = activityService.createDraftActivity(
+                SecurityUtils.getCurrentUserId(), ActivityScopeType.valueOf(scopeType), scopeId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
+    }
+
+    /**
+     * 下書き活動記録を公開する（DRAFT → PUBLISHED）。
+     *
+     * <p>AC-9: 既に PUBLISHED のものを publish すると 400。</p>
+     */
+    @PostMapping("/{id}/publish")
+    @Operation(summary = "活動記録 公開")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "公開成功")
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> publishActivity(@PathVariable Long id) {
+        ActivityResultEntity response = activityService.publishActivity(id, SecurityUtils.getCurrentUserId());
+        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
     }
 
     /**
@@ -91,10 +155,11 @@ public class ActivityController {
     @PutMapping("/{id}")
     @Operation(summary = "活動記録更新")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
-    public ResponseEntity<ApiResponse<ActivityResultEntity>> updateActivity(
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> updateActivity(
             @PathVariable Long id,
             @Valid @RequestBody UpdateActivityRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(activityService.updateActivity(id, SecurityUtils.getCurrentUserId(), request)));
+        ActivityResultEntity response = activityService.updateActivity(id, SecurityUtils.getCurrentUserId(), request);
+        return ResponseEntity.ok(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
     }
 
     /**
@@ -114,11 +179,11 @@ public class ActivityController {
     @PostMapping("/{id}/duplicate")
     @Operation(summary = "活動記録複製")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "201", description = "複製成功")
-    public ResponseEntity<ApiResponse<ActivityResultEntity>> duplicateActivity(
+    public ResponseEntity<ApiResponse<ActivityRecordResponse>> duplicateActivity(
             @PathVariable Long id,
             @Valid @RequestBody(required = false) DuplicateActivityRequest request) {
         ActivityResultEntity response = activityService.duplicateActivity(id, SecurityUtils.getCurrentUserId(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(activityMapper.toActivityRecordResponse(response)));
     }
 
     /**

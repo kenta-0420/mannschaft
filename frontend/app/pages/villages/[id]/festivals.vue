@@ -15,7 +15,10 @@
  */
 import type {
   VillageFestivalCreateRequest,
+  VillageFestivalLivePostResponse,
   VillageFestivalResponse,
+  VillageFestivalRsvpResponse,
+  VillageFestivalRsvpStatus,
   VillageFestivalStatus,
   VillageFestivalUpdateRequest,
 } from '~/types/village'
@@ -29,13 +32,14 @@ const route = useRoute()
 const villageId = computed(() => String(route.params.id))
 const { t } = useI18n()
 const villageApi = useVillageApi()
+const { createPost: createTimelinePost } = useTimelineApi()
 const { handleApiError } = useErrorHandler()
-const { success } = useNotification()
+const { success, error: notifyError } = useNotification()
 const { confirmAction } = useConfirmDialog()
-const config = useRuntimeConfig()
+const { buildOffsetDateTimeStr } = useDatetime()
 
 // 権限は親シェルから inject
-const { perms } = useVillageContext()
+const { perms, currentUserId } = useVillageContext()
 
 // =====================================================================
 // State — お祭り一覧
@@ -48,6 +52,7 @@ const festivals = ref<VillageFestivalResponse[]>([])
 const festivalsLoading = ref(false)
 
 const canManage = computed(() => perms.value.isAdmin)
+const isVillager = computed(() => perms.value.isMember)
 
 const statusFilterTabs: { value: StatusFilter, i18nKey: string }[] = [
   { value: 'ACTIVE', i18nKey: 'village.festival.status.ACTIVE' },
@@ -75,21 +80,6 @@ async function loadFestivals() {
 function setStatusFilter(value: StatusFilter) {
   statusFilter.value = value
   loadFestivals()
-}
-
-// =====================================================================
-// バナー画像 URL 組立
-// =====================================================================
-
-const r2PublicBase = computed<string>(() => {
-  const url = config.public.r2PublicUrl as string | undefined
-  return url ? url.replace(/\/$/, '') : ''
-})
-
-function buildBannerUrl(r2Key: string | null): string | null {
-  if (!r2Key) return null
-  if (!r2PublicBase.value) return null
-  return `${r2PublicBase.value}/${r2Key}`
 }
 
 // =====================================================================
@@ -127,15 +117,34 @@ const showEditDialog = ref(false)
 const editForm = ref<FestivalFormState>(emptyForm())
 const editTargetId = ref<string | null>(null)
 
+// === useFormDraft（ADHD配慮・フェスティバル作成の自動保存）===
+const authStore = useAuthStore()
+const festivalDraftKey = computed(
+  () => `festival-create-draft-${authStore.currentUser?.id ?? 'guest'}-${villageId.value}`,
+)
+const festivalFormSnapshot = computed<FestivalFormState>(() => ({ ...createForm.value }))
+const { clear: clearFestivalDraft, restore: restoreFestivalDraft } = useFormDraft<FestivalFormState>(
+  festivalDraftKey.value,
+  { source: festivalFormSnapshot, debounceMs: 1000 },
+)
+
 function openCreateDialog() {
   createForm.value = emptyForm()
   createPostingIdentity.value = null
+  // 下書き復元
+  const saved = restoreFestivalDraft()
+  if (saved) {
+    createForm.value = { ...emptyForm(), ...saved }
+  }
   showCreateDialog.value = true
 }
 
 function openDetailDialog(f: VillageFestivalResponse) {
   detailFestival.value = f
   showDetailDialog.value = true
+  resetParticipationState()
+  if (f.status !== 'CANCELLED') void loadRsvps(f.id, { reset: true })
+  if (f.status === 'ACTIVE') void loadLivePosts(f.id)
 }
 
 function openEditDialog(f: VillageFestivalResponse) {
@@ -144,7 +153,12 @@ function openEditDialog(f: VillageFestivalResponse) {
     description: f.description ?? '',
     startsAt: f.startsAt.slice(0, 16), // datetime-local
     endsAt: f.endsAt.slice(0, 16),
-    bannerR2Key: f.bannerR2Key ?? '',
+    // バナーR2キー入力欄は「新しい値を入力する」欄として扱う（空欄プリフィル）。
+    // VillageFestivalResponse は #2355 で署名済み表示 URL（bannerUrl）のみを返し、
+    // 生キーは返さなくなったため、現在値をテキストとして再表示することはできない。
+    // 空送信は BE 側で「未指定＝現状維持」として扱われる（updateFestival の null チェック）
+    // ため、空欄プリフィルでも「変更しない」という既存の意味は壊れない（VillageEditDialog と同じ方針）。
+    bannerR2Key: '',
     themeColorHex: f.themeColorHex ?? '',
   }
   editTargetId.value = f.id
@@ -152,19 +166,39 @@ function openEditDialog(f: VillageFestivalResponse) {
   showEditDialog.value = true
 }
 
+/**
+ * datetime-local 入力値（"YYYY-MM-DDTHH:mm"）を、ユーザーTZのオフセット付き ISO 文字列へ変換する。
+ *
+ * <p>Issue #2508: BE の startsAt/endsAt は LocalDateTime で受信時オフセットを無視するため、
+ * 以前はオフセット無しの壁時計文字列をそのまま送っていた。useDatetime の共通道具
+ * buildOffsetDateTimeStr を使い、明示的にオフセットを付与する。</p>
+ *
+ * <p>解決できない場合（不正な日時文字列等）は null を返す。オフセット無しの旧形式への
+ * フォールバックはしない（対処療法禁止・根治治療の原則。呼び出し側で送信をブロックする）。</p>
+ */
+function datetimeLocalToOffsetIso(value: string): string | null {
+  return buildOffsetDateTimeStr(new Date(value))
+}
+
 async function submitCreate() {
   if (!createForm.value.startsAt || !createForm.value.endsAt) return
+  const startsAt = datetimeLocalToOffsetIso(createForm.value.startsAt)
+  const endsAt = datetimeLocalToOffsetIso(createForm.value.endsAt)
+  if (!startsAt || !endsAt) {
+    notifyError(t('village.festival.invalidDateTime'))
+    return
+  }
   const body: VillageFestivalCreateRequest = {
     title: createForm.value.title,
     description: createForm.value.description || null,
-    // datetime-local の値（YYYY-MM-DDTHH:mm）に :00 を足して ISO 化
-    startsAt: `${createForm.value.startsAt}:00`,
-    endsAt: `${createForm.value.endsAt}:00`,
+    startsAt,
+    endsAt,
     bannerR2Key: createForm.value.bannerR2Key || null,
     themeColorHex: createForm.value.themeColorHex || null,
   }
   try {
     await villageApi.createFestival(villageId.value, body)
+    clearFestivalDraft()
     showCreateDialog.value = false
     success(t('village.festival.saveSuccess'))
     await loadFestivals()
@@ -176,11 +210,18 @@ async function submitCreate() {
 
 async function submitEdit() {
   if (!editTargetId.value) return
+  const startsAt = editForm.value.startsAt ? datetimeLocalToOffsetIso(editForm.value.startsAt) : null
+  const endsAt = editForm.value.endsAt ? datetimeLocalToOffsetIso(editForm.value.endsAt) : null
+  // 入力があったのに解決できなかった場合のみ不正扱い（未入力＝null は「変更しない」の意味を保つ）。
+  if ((editForm.value.startsAt && !startsAt) || (editForm.value.endsAt && !endsAt)) {
+    notifyError(t('village.festival.invalidDateTime'))
+    return
+  }
   const body: VillageFestivalUpdateRequest = {
     title: editForm.value.title || null,
     description: editForm.value.description || null,
-    startsAt: editForm.value.startsAt ? `${editForm.value.startsAt}:00` : null,
-    endsAt: editForm.value.endsAt ? `${editForm.value.endsAt}:00` : null,
+    startsAt,
+    endsAt,
     bannerR2Key: editForm.value.bannerR2Key || null,
     themeColorHex: editForm.value.themeColorHex || null,
   }
@@ -213,6 +254,145 @@ function submitCancel(f: VillageFestivalResponse) {
 }
 
 // =====================================================================
+// F17.2 Wave2 ③お祭りの参加レイヤー（RSVP・実況）
+// 設計書: docs/features/F17.2_village_events_activation.md §5
+// =====================================================================
+
+const RSVP_PAGE_SIZE = 50
+
+const rsvps = ref<VillageFestivalRsvpResponse[]>([])
+const rsvpsLoading = ref(false)
+const rsvpsLoadingMore = ref(false)
+const rsvpsPage = ref(0)
+const rsvpsHasMore = ref(false)
+
+const livePosts = ref<VillageFestivalLivePostResponse[]>([])
+const livePostsLoading = ref(false)
+const livePostPosting = ref(false)
+
+/**
+ * 自分の RSVP。`rsvps` 一覧（size 上限あり・AC-14b）は回答者が多いと自分の回答を
+ * 取り逃す恐れがあるため、upsert 応答（自分の回答そのもの）を正として保持する
+ * （寄合出欠の `myAttendanceRecord` と同じ設計判断）。
+ */
+const myRsvpRecord = ref<VillageFestivalRsvpResponse | null>(null)
+
+const myRsvpStatus = computed<VillageFestivalRsvpStatus | null>(() => {
+  if (myRsvpRecord.value) return myRsvpRecord.value.status
+  if (!currentUserId.value) return null
+  return rsvps.value.find(r => r.userId === currentUserId.value)?.status ?? null
+})
+
+const myRsvpRoleLabel = computed<string | null>(() => {
+  if (myRsvpRecord.value) return myRsvpRecord.value.roleLabel
+  if (!currentUserId.value) return null
+  return rsvps.value.find(r => r.userId === currentUserId.value)?.roleLabel ?? null
+})
+
+function resetParticipationState() {
+  rsvps.value = []
+  rsvpsPage.value = 0
+  rsvpsHasMore.value = false
+  myRsvpRecord.value = null
+  livePosts.value = []
+}
+
+async function loadRsvps(festivalId: string, opts: { reset: boolean }) {
+  const page = opts.reset ? 0 : rsvpsPage.value + 1
+  const loadingRef = opts.reset ? rsvpsLoading : rsvpsLoadingMore
+  loadingRef.value = true
+  try {
+    const fetched = await villageApi.listRsvps(villageId.value, festivalId, {
+      page,
+      size: RSVP_PAGE_SIZE,
+    })
+    rsvps.value = opts.reset ? fetched : [...rsvps.value, ...fetched]
+    rsvpsPage.value = page
+    // BE はページ総数を返さないため、直前ページが size 丁度ならまだ続きがあるとみなす。
+    rsvpsHasMore.value = fetched.length === RSVP_PAGE_SIZE
+  }
+  catch (error) {
+    if (opts.reset) rsvps.value = []
+    handleApiError(error, t('village.festival.rsvp.loadFailed'))
+  }
+  finally {
+    loadingRef.value = false
+  }
+}
+
+async function respondRsvp(status: VillageFestivalRsvpStatus, roleLabel: string | null) {
+  if (!detailFestival.value) return
+  const festivalId = detailFestival.value.id
+  try {
+    myRsvpRecord.value = await villageApi.upsertRsvp(villageId.value, festivalId, { status, roleLabel })
+    await loadRsvps(festivalId, { reset: true })
+    success(t('village.festival.rsvp.saveSuccess'))
+  }
+  catch (error) {
+    handleApiError(error, t('village.festival.rsvp.saveFailed'))
+  }
+}
+
+async function cancelRsvp() {
+  if (!detailFestival.value) return
+  const festivalId = detailFestival.value.id
+  try {
+    await villageApi.deleteRsvp(villageId.value, festivalId)
+    myRsvpRecord.value = null
+    await loadRsvps(festivalId, { reset: true })
+    success(t('village.festival.rsvp.cancelSuccess'))
+  }
+  catch (error) {
+    handleApiError(error, t('village.festival.rsvp.cancelFailed'))
+  }
+}
+
+function loadMoreRsvps() {
+  if (!detailFestival.value || rsvpsLoadingMore.value || !rsvpsHasMore.value) return
+  void loadRsvps(detailFestival.value.id, { reset: false })
+}
+
+async function loadLivePosts(festivalId: string) {
+  livePostsLoading.value = true
+  try {
+    livePosts.value = await villageApi.listLivePosts(villageId.value, festivalId)
+  }
+  catch (error) {
+    livePosts.value = []
+    handleApiError(error, t('village.festival.live.loadFailed'))
+  }
+  finally {
+    livePostsLoading.value = false
+  }
+}
+
+/** 実況として投稿する。VILLAGE スコープへ投稿 → 返った投稿 ID を祭へタグ付けする（§5.4 案B）。 */
+async function submitLivePost(content: string) {
+  if (!detailFestival.value) return
+  const festivalId = detailFestival.value.id
+  livePostPosting.value = true
+  try {
+    const posted = await createTimelinePost({
+      scopeType: 'VILLAGE',
+      scopeId: 0,
+      scopeVillageId: villageId.value,
+      content,
+    })
+    if (posted?.data?.id) {
+      await villageApi.tagLivePost(villageId.value, festivalId, { timelinePostId: posted.data.id })
+    }
+    await loadLivePosts(festivalId)
+    success(t('village.festival.live.tagSuccess'))
+  }
+  catch (error) {
+    handleApiError(error, t('village.festival.live.tagFailed'))
+  }
+  finally {
+    livePostPosting.value = false
+  }
+}
+
+// =====================================================================
 // Init
 // =====================================================================
 
@@ -229,7 +409,6 @@ onMounted(() => {
       :status-filter="statusFilter"
       :status-filter-tabs="statusFilterTabs"
       :can-manage="canManage"
-      :build-banner-url="buildBannerUrl"
       @set-status-filter="setStatusFilter"
       @open-create-dialog="openCreateDialog"
       @open-detail-dialog="openDetailDialog"
@@ -244,14 +423,27 @@ onMounted(() => {
       @submit="submitCreate"
     />
 
-    <!-- 詳細 Dialog -->
+    <!-- 詳細 Dialog（F17.2 Wave2 ③ RSVP・実況 込み） -->
     <VillageFestivalDetailDialog
       v-model:visible="showDetailDialog"
       :festival="detailFestival"
       :can-manage="canManage"
-      :build-banner-url="buildBannerUrl"
+      :is-villager="isVillager"
+      :rsvps="rsvps"
+      :my-rsvp-status="myRsvpStatus"
+      :my-rsvp-role-label="myRsvpRoleLabel"
+      :rsvps-loading="rsvpsLoading"
+      :rsvps-has-more="rsvpsHasMore"
+      :rsvps-loading-more="rsvpsLoadingMore"
+      :live-posts="livePosts"
+      :live-posts-loading="livePostsLoading"
+      :live-post-posting="livePostPosting"
       @edit="openEditDialog"
       @cancel-festival="submitCancel"
+      @respond-rsvp="respondRsvp"
+      @cancel-rsvp="cancelRsvp"
+      @load-more-rsvps="loadMoreRsvps"
+      @submit-live-post="submitLivePost"
     />
 
     <!-- 編集 Dialog -->

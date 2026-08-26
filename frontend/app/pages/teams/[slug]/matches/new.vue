@@ -14,15 +14,21 @@ const { t } = useI18n()
 
 const { createMatch } = useMatchApi()
 const { buildOffsetDateTimeStr } = useDatetime()
+const notification = useNotification()
 
 // === 組織／チーム 数値 ID の解決（slug→数値 orgId/teamId・useMatchOrgContext に集約）===
 const { resolveContext } = useMatchOrgContext()
 const orgId = ref<number | null>(null)
 const teamId = ref<number | null>(null)
-async function loadOrganizationId(): Promise<void> {
+async function loadOrganizationId(): Promise<boolean> {
   const ctx = await resolveContext(teamSlug)
+  if (!ctx) {
+    notification.warn(t('match.org_context.resolve_failed'))
+    return false
+  }
   orgId.value = ctx?.orgId ?? null
   teamId.value = ctx?.teamId ?? null
+  return true
 }
 
 // === フォーム状態 ===
@@ -44,6 +50,7 @@ const form = reactive<{
 
 const errors = ref<Record<string, string>>({})
 const submitting = ref(false)
+const submitError = ref<string | null>(null)
 
 const kindOptions = computed(() =>
   MATCH_KINDS.map((k) => ({ value: k, label: t(`match.kind.${k}`) })),
@@ -82,9 +89,12 @@ function selectKind(kind: MatchKind): void {
 }
 
 async function submit(): Promise<void> {
+  submitError.value = null
   if (!validate()) return
-  await loadOrganizationId()
-  if (orgId.value === null || teamId.value === null || form.kind === null) return
+  if (!await loadOrganizationId() || teamId.value === null || form.kind === null) {
+    submitError.value = t('match.org_context.resolve_failed')
+    return
+  }
 
   submitting.value = true
   const body: CreateMatchRequest = {
@@ -103,11 +113,12 @@ async function submit(): Promise<void> {
     const created = await createMatch(orgId.value, teamId.value, body)
     // 作成成功後は live.vue へ遷移する（§G.1a-2 = 即記録開始）。3-B で live.vue を実装済み。
     if (created.id) {
-      void router.push(`/teams/${teamSlug}/matches/${created.id}/live`)
+      await router.push(`/teams/${teamSlug}/matches/${created.id}/live`)
     } else {
-      void router.push(`/teams/${teamSlug}/matches`)
+      await router.push(`/teams/${teamSlug}/matches`)
     }
   } catch {
+    submitError.value = t('match.create.error.create_failed')
     // エラーは composable 内で通知済み
   } finally {
     submitting.value = false
@@ -219,6 +230,9 @@ onMounted(() => loadOrganizationId())
           :loading="submitting"
         />
       </div>
+      <p v-if="submitError" class="mt-3 text-right text-sm text-red-500" role="alert">
+        {{ submitError }}
+      </p>
     </form>
   </div>
 </template>

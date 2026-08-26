@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.service;
 
+import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.payment.PaymentErrorCode;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
@@ -21,9 +23,25 @@ import org.springframework.transaction.annotation.Transactional;
  *       Customer へ attach＋既定設定し、{@code stripe_customers.default_payment_method} を更新する。</li>
  * </ol>
  *
- * <p><b>email プレースホルダの既知負債（P1 踏襲）:</b> Customer 新規作成時に Stripe へ渡す email は
- * P1（{@code MemberPaymentService.getOrCreateStripeCustomer}）と同一のプレースホルダ {@code "user@example.com"}
- * を用いる。実メール反映は P1 側の既知負債として別途修正対象（本波では P1 と挙動を揃え、直さない）。</p>
+ * <p><b>【残債2】email プレースホルダの根治（P1 既知負債の解消）:</b> Customer 新規作成時に Stripe へ渡す email は
+ * 実決済開始後は Stripe の領収書送付先になるため、固定プレースホルダ {@code "user@example.com"} ではなく
+ * {@link MembershipSubscriptionService#resolveEmailForStripeCustomer(Long)} 経由で実メールを取得する
+ * （P1 の {@code MemberPaymentService.getOrCreateStripeCustomer} 側のプレースホルダは本修正のスコープ外・
+ * 既存 Customer の email 更新もスコープ外・新規作成時のみ改善）。</p>
+ *
+ * <p><b>退会済み/不在ユーザーの扱い:</b> {@link #getOrCreateStripeCustomer(Long)} は対象ユーザーが
+ * 退会済み（{@code deletedAt} 非 null）または存在しない場合、プレースホルダで通さず
+ * {@link BusinessException}({@link PaymentErrorCode#STRIPE_CUSTOMER_TARGET_USER_WITHDRAWN}) を投げて
+ * Customer 新規作成そのものを拒否する。理由（judgement・2026-07-11）:</p>
+ * <ul>
+ *   <li>退会 30 日後の物理削除バッチ（{@code AccountPurgeService}）＋{@code BillingPurgeEventListener} が
+ *       猶予終了時に USER スコープの契約を強制解約するため、退会受付後に新規 Customer/決済導線が生きている
+ *       状態は業務的に想定外（呼出元の認可・画面導線が正しく塞いでいれば到達しないはずの防御的分岐）。</li>
+ *   <li>プレースホルダ許容だと「間もなく物理削除されるユーザー」の孤児 Stripe Customer をわざわざ新規作成
+ *       してしまい、実害のない Stripe リソースの無駄・調査時のノイズを増やすだけで得るものがない。</li>
+ *   <li>「到達したら即例外で気づける」方が、症状を隠すプレースホルダ運用よりも根治的
+ *       （CLAUDE.md 障害対応の原則）。</li>
+ * </ul>
  *
  * <p>設計書: docs/features/F08.9_membership_billing_paywall/02_api_design.md §4.1</p>
  */
@@ -34,6 +52,8 @@ public class PaymentMethodService {
 
     private final StripeCustomerRepository stripeCustomerRepository;
     private final StripePaymentProvider stripePaymentProvider;
+    /** 【残債2】ユーザー実メール解決のため注入（payment ドメイン内・既存の凍結済み UserEntity 参照範囲）。 */
+    private final MembershipSubscriptionService membershipSubscriptionService;
 
     /**
      * 認証ユーザーの Stripe Customer を get-or-create し、off_session 用 SetupIntent を作成する（設計書 02 §4.1）。
@@ -72,13 +92,38 @@ public class PaymentMethodService {
     }
 
     /**
-     * ユーザーの Stripe Customer を取得、無ければ作成する（P1 {@code MemberPaymentService.getOrCreateStripeCustomer} と
-     * 同一挙動・email プレースホルダは P1 既知負債を踏襲して直さない）。
+     * ユーザーの Stripe Customer を get-or-create し、その ID（{@code cus_xxx}）を返す
+     * （F20.1 billing 等の<b>他ドメイン向け公開 API</b>・ArchUnit D-1 対応）。
+     *
+     * <p>クロスドメイン Entity 依存の禁止（CLAUDE.md「ドメイン間のデータ取得は Service のメソッド呼び出し経由」・
+     * {@code CrossDomainEntityImportArchTest}）のため、{@link StripeCustomerEntity} ではなく ID 文字列を返す。
+     * get-or-create の実体は {@link #getOrCreateStripeCustomer(Long)}（残債2: 実メール解決を含め
+     * payment ドメイン内に集約）。</p>
+     *
+     * @param userId 対象ユーザー ID
+     * @return Stripe Customer ID（{@code cus_xxx}）
+     */
+    @Transactional
+    public String getOrCreateStripeCustomerId(Long userId) {
+        return getOrCreateStripeCustomer(userId).getStripeCustomerId();
+    }
+
+    /**
+     * ユーザーの Stripe Customer を取得、無ければ作成する。
+     *
+     * <p>【残債2】新規作成時は {@link MembershipSubscriptionService#resolveEmailForStripeCustomer(Long)}
+     * で解決した実メールを Stripe へ渡す（領収書送付先）。対象ユーザーが退会済み/不在の場合は
+     * {@link BusinessException}({@link PaymentErrorCode#STRIPE_CUSTOMER_TARGET_USER_WITHDRAWN}) で
+     * Customer 新規作成自体を拒否する（判断理由はクラス Javadoc 参照）。既存 Customer が既にある場合は
+     * このメール解決処理は通らない（get-or-create の get 経路）。</p>
      */
     private StripeCustomerEntity getOrCreateStripeCustomer(Long userId) {
         return stripeCustomerRepository.findByUserId(userId)
                 .orElseGet(() -> {
-                    String customerId = stripePaymentProvider.createCustomer("user@example.com", userId);
+                    String email = membershipSubscriptionService.resolveEmailForStripeCustomer(userId)
+                            .orElseThrow(() -> new BusinessException(
+                                    PaymentErrorCode.STRIPE_CUSTOMER_TARGET_USER_WITHDRAWN));
+                    String customerId = stripePaymentProvider.createCustomer(email, userId);
                     return stripeCustomerRepository.save(StripeCustomerEntity.builder()
                             .userId(userId)
                             .stripeCustomerId(customerId)

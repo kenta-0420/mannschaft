@@ -6,7 +6,7 @@ import type { FeeStatementResponse } from '~/types/payment'
  * チーム ADMIN のみアクセス可。
  * BE: GET /api/v1/teams/{id}/fee-statements?period=YYYY-MM
  */
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const { t } = useI18n()
 const route = useRoute()

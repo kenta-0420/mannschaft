@@ -95,11 +95,20 @@ public class AdAudienceResolver {
     /**
      * 配信ターゲット数を返す。{@link #estimateReach(UUID)} の内部利用 + バッチでの効率取得用。
      *
-     * <p>現状の実装は和集合算出後に size() を返すため、ピーク時はセグメント分の Set を
-     * メモリ展開する。100 万件規模を超える場合は COUNT 専用クエリ化を検討する
-     * （第二陣 AdDispatcher 着手前の負荷試験で判断）。</p>
+     * <p>セグメントが INCLUDE 1件のみ・EXCLUDE 0件の場合に限り、{@link AdSegmentEvaluator#countUserIds}
+     * の COUNT クエリ結果をそのまま返し、user_id 集合のメモリ展開（{@link #resolve(UUID)}）を回避する。
+     * それ以外（複数セグメントの積集合・差集合が必要な場合）は従来どおり {@link #resolve(UUID)} の
+     * size() を返す（振る舞いは完全に維持する）。</p>
      */
     public long countCandidates(UUID campaignId) {
+        List<AdAudienceSegment> segments = segmentRepository.findByCampaignId(campaignId);
+        if (segments.size() == 1 && segments.get(0).getInclusionMode() == AdSegmentInclusionMode.INCLUDE) {
+            AdAudienceSegment onlySegment = segments.get(0);
+            long count = countUserIds(onlySegment);
+            log.info("countCandidates 高速経路（INCLUDE 1件のみ）: campaignId={}, segmentType={}, count={}",
+                    campaignId, onlySegment.getSegmentType(), count);
+            return count;
+        }
         return resolve(campaignId).size();
     }
 
@@ -122,6 +131,8 @@ public class AdAudienceResolver {
 
         for (AdAudienceSegment seg : segments) {
             Set<Long> matched = evaluate(seg);
+            log.info("resolve セグメント評価完了: campaignId={}, segmentType={}, inclusionMode={}, matchedCount={}",
+                    campaignId, seg.getSegmentType(), seg.getInclusionMode(), matched.size());
             if (seg.getInclusionMode() == AdSegmentInclusionMode.INCLUDE) {
                 // 同一 type は OR で和集合化
                 includeByType.merge(seg.getSegmentType(), matched, (a, b) -> {
@@ -158,6 +169,7 @@ public class AdAudienceResolver {
         if (!excludeUnion.isEmpty()) {
             result.removeAll(excludeUnion);
         }
+        log.info("resolve 最終結果: campaignId={}, resultCount={}", campaignId, result.size());
         return result;
     }
 
@@ -176,6 +188,19 @@ public class AdAudienceResolver {
             if (evaluator.supports(segment.getSegmentType())) {
                 Set<Long> matched = evaluator.resolveUserIds(segment);
                 return matched != null ? matched : Set.of();
+            }
+        }
+        throw new UnsupportedSegmentException(segment.getSegmentType());
+    }
+
+    /**
+     * 単一セグメントの該当件数のみを評価する（{@link #evaluate(AdAudienceSegment)} の件数版）。
+     * {@link #countCandidates(UUID)} の高速経路（INCLUDE 1件のみ）専用。
+     */
+    private long countUserIds(AdAudienceSegment segment) {
+        for (AdSegmentEvaluator evaluator : evaluators) {
+            if (evaluator.supports(segment.getSegmentType())) {
+                return evaluator.countUserIds(segment);
             }
         }
         throw new UnsupportedSegmentException(segment.getSegmentType());

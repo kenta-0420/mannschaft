@@ -78,12 +78,12 @@ class FileSharingControllerTest {
 
     private FileResponse mockFileResponse() {
         return new FileResponse(FILE_ID, FOLDER_ID, "test.pdf", "uploads/test.pdf",
-                1024L, "application/pdf", "説明", USER_ID, 1, null, null);
+                1024L, "application/pdf", "説明", USER_ID, 1, null, null, null, null);
     }
 
     private FolderResponse mockFolderResponse() {
         return new FolderResponse(FOLDER_ID, "TEAM", TEAM_ID, null, null, null,
-                "テストフォルダ", "説明", USER_ID, null, null);
+                "テストフォルダ", "説明", USER_ID, null, null, null, null);
     }
 
     // ========================================
@@ -98,7 +98,7 @@ class FileSharingControllerTest {
         @DisplayName("正常系: フォルダ内のファイル一覧が返却される")
         void ファイル一覧_正常() {
             Page<FileResponse> page = new PageImpl<>(List.of(mockFileResponse()));
-            given(fileService.listFilesPaged(eq(FOLDER_ID), any())).willReturn(page);
+            given(fileService.listFilesPaged(eq(FOLDER_ID), eq(USER_ID), any())).willReturn(page);
 
             ResponseEntity<PagedResponse<FileResponse>> result =
                     fileController.listFiles(FOLDER_ID, 0, 20);
@@ -110,7 +110,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: ファイル詳細が返却される")
         void ファイル詳細_正常() {
-            given(fileService.getFile(FILE_ID)).willReturn(mockFileResponse());
+            given(fileService.getFile(FILE_ID, USER_ID)).willReturn(mockFileResponse());
 
             ResponseEntity<ApiResponse<FileResponse>> result = fileController.getFile(FILE_ID);
 
@@ -122,7 +122,7 @@ class FileSharingControllerTest {
         @DisplayName("正常系: ファイルが作成される (201)")
         void ファイル作成_正常_201() {
             CreateFileRequest request = new CreateFileRequest(
-                    FOLDER_ID, "test.pdf", "uploads/test.pdf", 1024L, "application/pdf", null);
+                    FOLDER_ID, "test.pdf", "uploads/test.pdf", 1024L, "application/pdf", null, null, null);
             given(fileService.createFile(eq(USER_ID), any())).willReturn(mockFileResponse());
 
             ResponseEntity<ApiResponse<FileResponse>> result = fileController.createFile(request);
@@ -133,7 +133,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: ファイルが更新される")
         void ファイル更新_正常() {
-            UpdateFileRequest request = new UpdateFileRequest("renamed.pdf", null, null);
+            UpdateFileRequest request = new UpdateFileRequest("renamed.pdf", null, null, null, null);
             given(fileService.updateFile(eq(FILE_ID), any())).willReturn(mockFileResponse());
 
             ResponseEntity<ApiResponse<FileResponse>> result =
@@ -193,7 +193,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: チームルートフォルダ一覧が返却される")
         void チームルートフォルダ一覧_正常() {
-            given(folderService.listTeamRootFolders(TEAM_ID))
+            given(folderService.listTeamRootFolders(TEAM_ID, USER_ID))
                     .willReturn(List.of(mockFolderResponse()));
 
             ResponseEntity<ApiResponse<List<FolderResponse>>> result =
@@ -206,7 +206,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: 子フォルダ一覧が返却される")
         void 子フォルダ一覧_正常() {
-            given(folderService.listChildFolders(FOLDER_ID))
+            given(folderService.listChildFolders(FOLDER_ID, USER_ID))
                     .willReturn(List.of(mockFolderResponse()));
 
             ResponseEntity<ApiResponse<List<FolderResponse>>> result =
@@ -219,7 +219,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: フォルダ詳細が返却される")
         void フォルダ詳細_正常() {
-            given(folderService.getFolder(FOLDER_ID)).willReturn(mockFolderResponse());
+            given(folderService.getFolder(FOLDER_ID, USER_ID)).willReturn(mockFolderResponse());
 
             ResponseEntity<ApiResponse<FolderResponse>> result =
                     teamFolderController.getFolder(TEAM_ID, FOLDER_ID);
@@ -231,7 +231,7 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: チームフォルダが作成される (201)")
         void チームフォルダ作成_正常_201() {
-            CreateFolderRequest request = new CreateFolderRequest("新フォルダ", null, null, "TEAM", null);
+            CreateFolderRequest request = new CreateFolderRequest("新フォルダ", null, null, "TEAM", null, null, null);
             given(folderService.createTeamFolder(eq(TEAM_ID), eq(USER_ID), any()))
                     .willReturn(mockFolderResponse());
 
@@ -244,8 +244,8 @@ class FileSharingControllerTest {
         @Test
         @DisplayName("正常系: フォルダが更新される")
         void フォルダ更新_正常() {
-            UpdateFolderRequest request = new UpdateFolderRequest("更新フォルダ", null, null);
-            given(folderService.updateFolder(eq(FOLDER_ID), any())).willReturn(mockFolderResponse());
+            UpdateFolderRequest request = new UpdateFolderRequest("更新フォルダ", null, null, null, null);
+            given(folderService.updateFolder(eq(FOLDER_ID), eq(USER_ID), any())).willReturn(mockFolderResponse());
 
             ResponseEntity<ApiResponse<FolderResponse>> result =
                     teamFolderController.updateFolder(TEAM_ID, FOLDER_ID, request);
@@ -259,7 +259,7 @@ class FileSharingControllerTest {
             ResponseEntity<Void> result = teamFolderController.deleteFolder(TEAM_ID, FOLDER_ID);
 
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
-            verify(folderService).deleteFolder(FOLDER_ID);
+            verify(folderService).deleteFolder(FOLDER_ID, USER_ID);
         }
     }
 }

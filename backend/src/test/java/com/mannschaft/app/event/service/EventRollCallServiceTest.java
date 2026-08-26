@@ -2,6 +2,7 @@ package com.mannschaft.app.event.service;
 
 import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.event.CheckinType;
 import com.mannschaft.app.event.dto.RollCallCandidateResponse;
 import com.mannschaft.app.event.dto.RollCallEntryRequest;
@@ -63,6 +64,9 @@ class EventRollCallServiceTest {
 
     @Mock
     private CareEventNotificationService careEventNotificationService;
+
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
 
     @InjectMocks
     private EventRollCallService rollCallService;

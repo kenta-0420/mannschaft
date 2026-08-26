@@ -54,7 +54,11 @@ async function load() {
       projectApi.getProject(teamSlug, projectId),
       projectApi.listMilestones(teamSlug, projectId),
       projectApi.getProjectTodos(teamSlug, projectId),
-      projectApi.getGatesSummary(teamSlug, projectId).catch(() => null),
+      projectApi.getGatesSummary(teamSlug, projectId).catch((e) => {
+        // ゲート概要は補助情報。取得失敗は null フォールバック（未表示）だが沈黙させずログに残す。
+        console.warn('[teams/projects] ゲート概要の取得に失敗（未表示にフォールバック）', e)
+        return null
+      }),
     ])
     project.value = pRes.data
     milestones.value = mRes.data

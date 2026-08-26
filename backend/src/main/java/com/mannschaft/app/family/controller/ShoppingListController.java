@@ -43,7 +43,7 @@ public class ShoppingListController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ShoppingListResponse>>> getLists(
             @PathVariable Long teamId, @RequestParam(required = false) String status) {
-        return ResponseEntity.ok(shoppingListService.getLists(teamId, status));
+        return ResponseEntity.ok(shoppingListService.getLists(teamId, SecurityUtils.getCurrentUserId(), status));
     }
 
     @PostMapping
@@ -60,7 +60,7 @@ public class ShoppingListController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<ShoppingListResponse>> updateList(
             @PathVariable Long teamId, @PathVariable Long id, @Valid @RequestBody ShoppingListRequest request) {
-        return ResponseEntity.ok(shoppingListService.updateList(teamId, id, request));
+        return ResponseEntity.ok(shoppingListService.updateList(teamId, id, SecurityUtils.getCurrentUserId(), request));
     }
 
     @DeleteMapping("/{id}")
@@ -76,7 +76,7 @@ public class ShoppingListController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "アーカイブ成功")
     public ResponseEntity<ApiResponse<ShoppingListResponse>> archiveList(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(shoppingListService.archiveList(teamId, id));
+        return ResponseEntity.ok(shoppingListService.archiveList(teamId, id, SecurityUtils.getCurrentUserId()));
     }
 
     @PostMapping("/{id}/copy-from-template")
@@ -92,7 +92,7 @@ public class ShoppingListController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<ShoppingItemResponse>>> getItems(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(shoppingListService.getItems(teamId, id));
+        return ResponseEntity.ok(shoppingListService.getItems(teamId, id, SecurityUtils.getCurrentUserId()));
     }
 
     @PostMapping("/{id}/items")
@@ -110,7 +110,7 @@ public class ShoppingListController {
     public ResponseEntity<ApiResponse<ShoppingItemResponse>> updateItem(
             @PathVariable Long teamId, @PathVariable Long id, @PathVariable Long itemId,
             @Valid @RequestBody ShoppingItemRequest request) {
-        return ResponseEntity.ok(shoppingListService.updateItem(teamId, id, itemId, request));
+        return ResponseEntity.ok(shoppingListService.updateItem(teamId, id, itemId, SecurityUtils.getCurrentUserId(), request));
     }
 
     @DeleteMapping("/{id}/items/{itemId}")
@@ -118,7 +118,7 @@ public class ShoppingListController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "204", description = "削除成功")
     public ResponseEntity<Void> deleteItem(
             @PathVariable Long teamId, @PathVariable Long id, @PathVariable Long itemId) {
-        shoppingListService.deleteItem(teamId, id, itemId);
+        shoppingListService.deleteItem(teamId, id, itemId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -135,7 +135,7 @@ public class ShoppingListController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "削除成功")
     public ResponseEntity<ApiResponse<Integer>> deleteCheckedItems(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(shoppingListService.deleteCheckedItems(teamId, id));
+        return ResponseEntity.ok(shoppingListService.deleteCheckedItems(teamId, id, SecurityUtils.getCurrentUserId()));
     }
 
     @PatchMapping("/{id}/items/uncheck-all")
@@ -143,6 +143,6 @@ public class ShoppingListController {
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "更新成功")
     public ResponseEntity<ApiResponse<Integer>> uncheckAll(
             @PathVariable Long teamId, @PathVariable Long id) {
-        return ResponseEntity.ok(shoppingListService.uncheckAll(teamId, id));
+        return ResponseEntity.ok(shoppingListService.uncheckAll(teamId, id, SecurityUtils.getCurrentUserId()));
     }
 }

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 領収書発行者設定コントローラー。発行者設定のCRUD APIを提供する。
@@ -48,7 +49,8 @@ public class ReceiptIssuerSettingsController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        IssuerSettingsResponse response = issuerSettingsService.getSettings(type, scopeId);
+        IssuerSettingsResponse response = issuerSettingsService.getSettings(
+                type, scopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -63,7 +65,8 @@ public class ReceiptIssuerSettingsController {
             @RequestParam Long scopeId,
             @Valid @RequestBody UpdateIssuerSettingsRequest request) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        IssuerSettingsResponse response = issuerSettingsService.upsertSettings(type, scopeId, request);
+        IssuerSettingsResponse response = issuerSettingsService.upsertSettings(
+                type, scopeId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -78,7 +81,8 @@ public class ReceiptIssuerSettingsController {
             @RequestParam Long scopeId) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
         String logoStorageKey = "receipt-logos/" + scopeType + "/" + scopeId + "/logo.png";
-        IssuerSettingsResponse response = issuerSettingsService.updateLogo(type, scopeId, logoStorageKey);
+        IssuerSettingsResponse response = issuerSettingsService.updateLogo(
+                type, scopeId, SecurityUtils.getCurrentUserId(), logoStorageKey);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -92,7 +96,7 @@ public class ReceiptIssuerSettingsController {
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
         ReceiptScopeType type = ReceiptScopeType.valueOf(scopeType.toUpperCase());
-        issuerSettingsService.deleteLogo(type, scopeId);
+        issuerSettingsService.deleteLogo(type, scopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

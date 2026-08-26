@@ -34,6 +34,7 @@ public class TimelineBookmarkEntity {
     @Column(nullable = false)
     private Long timelinePostId;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

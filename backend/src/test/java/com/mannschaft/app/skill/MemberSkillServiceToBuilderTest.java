@@ -63,8 +63,8 @@ class MemberSkillServiceToBuilderTest {
         given(memberSkillRepository.findByIdAndDeletedAtIsNull(SKILL_ID)).willReturn(Optional.of(entity));
         given(memberSkillRepository.save(any())).willReturn(entity);
 
-        // シグネチャ: updateSkill(id, requestUserId, userRole, name, issuer, credentialNumber, acquiredOn, expiresAt, version)
-        memberSkillService.updateSkill(SKILL_ID, USER_ID, "ADMIN",
+        // シグネチャ: updateSkill(id, requestUserId, userRole, scopeType, scopeId, name, issuer, credentialNumber, acquiredOn, expiresAt, version)
+        memberSkillService.updateSkill(SKILL_ID, USER_ID, "ADMIN", "TEAM", 1L,
                 "更新スキル", null, null, LocalDate.of(2020, 1, 1), null, 0L);
 
         ArgumentCaptor<MemberSkillEntity> captor = ArgumentCaptor.forClass(MemberSkillEntity.class);

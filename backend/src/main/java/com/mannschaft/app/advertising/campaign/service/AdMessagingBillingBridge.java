@@ -1,12 +1,13 @@
 package com.mannschaft.app.advertising.campaign.service;
 
+import com.mannschaft.app.admin.batch.BatchEndpoint;
 import com.mannschaft.app.advertising.InvoiceStatus;
 import com.mannschaft.app.advertising.PricingModel;
 import com.mannschaft.app.advertising.campaign.entity.AdMessagingCampaign;
-import com.mannschaft.app.advertising.campaign.enums.AdBounceType;
 import com.mannschaft.app.advertising.campaign.enums.AdCampaignStatus;
 import com.mannschaft.app.advertising.campaign.event.MessagingCampaignBudgetConsumedEvent;
 import com.mannschaft.app.advertising.campaign.repository.AdAnnouncementDeliveryRepository;
+import com.mannschaft.app.advertising.campaign.repository.AdBannerDeliveryRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdEmailDeliveryRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdMessagingCampaignRepository;
 import com.mannschaft.app.advertising.campaign.repository.AdPushDeliveryRepository;
@@ -49,7 +50,8 @@ import java.util.UUID;
  *   <li>ANNOUNCEMENT: ¥5 / 件 ({@code delivered_at IS NOT NULL})</li>
  *   <li>EMAIL:        ¥10 / 通 ({@code sent_at IS NOT NULL AND (bounce_type IS NULL OR bounce_type='SOFT')})</li>
  *   <li>PUSH:         ¥3 / 通 ({@code delivered_at IS NOT NULL AND failed_reason IS NULL})</li>
- *   <li>BANNER:       F09.7 既存 CPM/CPC で別バッチが処理 (ε-C スコープ外)</li>
+ *   <li>BANNER:       ¥3 / served view ({@code served_at IS NOT NULL} の予約行のみ。F09.19.3 §7.4 で新規実装。
+ *                     クリック課金なし・未表示予約は課金対象外)</li>
  * </ul>
  *
  * <h3>冪等性</h3>
@@ -76,6 +78,8 @@ public class AdMessagingBillingBridge {
     static final long UNIT_PRICE_EMAIL_YEN = 10L;
     /** PUSH 単価 (円/通)。 */
     static final long UNIT_PRICE_PUSH_YEN = 3L;
+    /** BANNER 単価 (円/served view)。F09.19.3 §7.4 固定単価。 */
+    static final long UNIT_PRICE_BANNER_YEN = 3L;
 
     /** YYYY-MM 形式 (パーティショニング & 冪等キー)。 */
     static final DateTimeFormatter MONTH_KEY_FMT = DateTimeFormatter.ofPattern("yyyy-MM");
@@ -84,6 +88,7 @@ public class AdMessagingBillingBridge {
     private final AdAnnouncementDeliveryRepository announcementDeliveryRepository;
     private final AdEmailDeliveryRepository emailDeliveryRepository;
     private final AdPushDeliveryRepository pushDeliveryRepository;
+    private final AdBannerDeliveryRepository bannerDeliveryRepository;
     private final AdInvoiceRepository invoiceRepository;
     private final AdInvoiceItemRepository invoiceItemRepository;
     private final ApplicationEventPublisher eventPublisher;
@@ -97,7 +102,8 @@ public class AdMessagingBillingBridge {
     enum BillingChannel {
         ANNOUNCEMENT(UNIT_PRICE_ANNOUNCEMENT_YEN),
         EMAIL(UNIT_PRICE_EMAIL_YEN),
-        PUSH(UNIT_PRICE_PUSH_YEN);
+        PUSH(UNIT_PRICE_PUSH_YEN),
+        BANNER(UNIT_PRICE_BANNER_YEN);
 
         final long unitPriceYen;
 
@@ -117,6 +123,8 @@ public class AdMessagingBillingBridge {
             name = "adMessagingBilling",
             lockAtMostFor = "PT30M",
             lockAtLeastFor = "PT5M")
+    @BatchEndpoint(name = "ad-messaging-billing-monthly",
+            description = "前月分のメッセージ型広告キャンペーン配信実績を集計し、請求明細行を毎月1日03:00に積み上げる")
     public void runMonthlyBilling() {
         YearMonth targetMonth = YearMonth.now().minusMonths(1);
         runMonthlyBilling(targetMonth);
@@ -179,11 +187,13 @@ public class AdMessagingBillingBridge {
         long announcementCount = countAnnouncements(campaign.getId(), monthKey);
         long emailCount = countBillableEmails(campaign.getId(), monthKey);
         long pushCount = countBillablePushes(campaign.getId(), monthKey);
+        long bannerCount = countBillableBanners(campaign.getId(), monthKey);
 
         Map<BillingChannel, Long> counts = new EnumMap<>(BillingChannel.class);
         counts.put(BillingChannel.ANNOUNCEMENT, announcementCount);
         counts.put(BillingChannel.EMAIL, emailCount);
         counts.put(BillingChannel.PUSH, pushCount);
+        counts.put(BillingChannel.BANNER, bannerCount);
 
         long totalAddedYen = 0L;
         AdInvoiceEntity invoice = null;
@@ -265,10 +275,8 @@ public class AdMessagingBillingBridge {
      * ANNOUNCEMENT 課金件数: delivered_at IS NOT NULL の行数。
      */
     long countAnnouncements(UUID campaignId, String monthKey) {
-        return announcementDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey)
-                .stream()
-                .filter(d -> d.getDeliveredAt() != null)
-                .count();
+        return announcementDeliveryRepository
+                .countByCampaignIdAndMonthKeyAndDeliveredAtIsNotNull(campaignId, monthKey);
     }
 
     /**
@@ -276,22 +284,22 @@ public class AdMessagingBillingBridge {
      * HARD / COMPLAINT は課金対象外 (設計書 §11 解決事項 8)。
      */
     long countBillableEmails(UUID campaignId, String monthKey) {
-        return emailDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey)
-                .stream()
-                .filter(d -> d.getSentAt() != null)
-                .filter(d -> d.getBounceType() == null || d.getBounceType() == AdBounceType.SOFT)
-                .count();
+        return emailDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey);
     }
 
     /**
      * PUSH 課金件数: delivered_at IS NOT NULL AND failed_reason IS NULL。
      */
     long countBillablePushes(UUID campaignId, String monthKey) {
-        return pushDeliveryRepository.findByCampaignIdAndMonthKey(campaignId, monthKey)
-                .stream()
-                .filter(d -> d.getDeliveredAt() != null)
-                .filter(d -> d.getFailedReason() == null || d.getFailedReason().isBlank())
-                .count();
+        return pushDeliveryRepository.countBillableByCampaignIdAndMonthKey(campaignId, monthKey);
+    }
+
+    /**
+     * BANNER 課金件数: served_at IS NOT NULL の予約行数（実表示された view のみ・F09.19.3 §7.4）。
+     * 未表示予約（served_at NULL）・クリック有無は課金額に影響しない。
+     */
+    long countBillableBanners(UUID campaignId, String monthKey) {
+        return bannerDeliveryRepository.countByCampaignIdAndMonthKeyAndServedAtIsNotNull(campaignId, monthKey);
     }
 
     /**

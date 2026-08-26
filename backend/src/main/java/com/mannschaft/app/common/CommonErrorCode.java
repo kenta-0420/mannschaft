@@ -28,6 +28,9 @@ public enum CommonErrorCode implements ErrorCode {
     /** HTTPメソッド不一致（405 Method Not Allowed） */
     COMMON_004("COMMON_004", "このエンドポイントでは指定されたHTTPメソッドは使用できません", Severity.WARN),
 
+    /** リソース未検出（404 Not Found）― 未マップAPIパスやstaticリソース不在 */
+    COMMON_005("COMMON_005", "リソースが見つかりません", Severity.WARN),
+
     /** 予期しないシステムエラー */
     COMMON_999("COMMON_999", "システムエラーが発生しました", Severity.ERROR);
 

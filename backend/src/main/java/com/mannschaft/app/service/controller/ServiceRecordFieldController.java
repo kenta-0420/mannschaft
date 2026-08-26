@@ -1,6 +1,7 @@
 package com.mannschaft.app.service.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.service.dto.CreateFieldRequest;
 import com.mannschaft.app.service.dto.FieldResponse;
 import com.mannschaft.app.service.dto.FieldSortOrderRequest;
@@ -47,7 +48,7 @@ public class ServiceRecordFieldController {
     @Operation(summary = "カスタムフィールド一覧")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<List<FieldResponse>>> listFields(@PathVariable Long teamId) {
-        List<FieldResponse> response = fieldService.listFields(teamId);
+        List<FieldResponse> response = fieldService.listFields(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -62,7 +63,7 @@ public class ServiceRecordFieldController {
     public ResponseEntity<ApiResponse<FieldResponse>> createField(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateFieldRequest request) {
-        FieldResponse response = fieldService.createField(teamId, request);
+        FieldResponse response = fieldService.createField(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -78,7 +79,7 @@ public class ServiceRecordFieldController {
             @PathVariable Long teamId,
             @PathVariable Long id,
             @Valid @RequestBody UpdateFieldRequest request) {
-        FieldResponse response = fieldService.updateField(teamId, id, request);
+        FieldResponse response = fieldService.updateField(teamId, id, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -93,7 +94,7 @@ public class ServiceRecordFieldController {
     public ResponseEntity<Void> deactivateField(
             @PathVariable Long teamId,
             @PathVariable Long id) {
-        fieldService.deactivateField(teamId, id);
+        fieldService.deactivateField(teamId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -108,7 +109,7 @@ public class ServiceRecordFieldController {
     public ResponseEntity<ApiResponse<SortOrderResponse>> updateSortOrder(
             @PathVariable Long teamId,
             @Valid @RequestBody FieldSortOrderRequest request) {
-        SortOrderResponse response = fieldService.updateSortOrder(teamId, request);
+        SortOrderResponse response = fieldService.updateSortOrder(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -121,7 +122,7 @@ public class ServiceRecordFieldController {
     @Operation(summary = "機能設定取得")
     @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "取得成功")
     public ResponseEntity<ApiResponse<SettingsResponse>> getSettings(@PathVariable Long teamId) {
-        SettingsResponse response = fieldService.getSettings(teamId);
+        SettingsResponse response = fieldService.getSettings(teamId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -136,7 +137,7 @@ public class ServiceRecordFieldController {
     public ResponseEntity<ApiResponse<SettingsResponse>> updateSettings(
             @PathVariable Long teamId,
             @Valid @RequestBody UpdateSettingsRequest request) {
-        SettingsResponse response = fieldService.updateSettings(teamId, request);
+        SettingsResponse response = fieldService.updateSettings(teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 }

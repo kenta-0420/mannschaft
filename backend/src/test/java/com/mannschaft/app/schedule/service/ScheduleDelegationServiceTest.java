@@ -16,6 +16,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -41,6 +42,8 @@ class ScheduleDelegationServiceTest {
     @Mock private ScheduleService scheduleService;
     @Mock private ScheduleDelegationValidator validator;
     @Mock private ScheduleDelegationNotifier notifier;
+    /** 認可ガードは状態を持たない純粋な判定のため、実体を注入して本物の本人性判定を通す。 */
+    @Spy private ScheduleAccessGuard scheduleAccessGuard = new ScheduleAccessGuard();
 
     @InjectMocks
     private ScheduleDelegationService service;

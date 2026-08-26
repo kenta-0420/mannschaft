@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FacilityResponse } from '~/types/facility'
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 const route = useRoute()
 const teamSlug = String(route.params.slug)
 const { getFacilities } = useFacilityApi()

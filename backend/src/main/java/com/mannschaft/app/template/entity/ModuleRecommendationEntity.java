@@ -42,6 +42,7 @@ public class ModuleRecommendationEntity {
     @Column(nullable = false)
     private Integer sortOrder;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

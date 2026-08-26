@@ -126,9 +126,15 @@ class BlogPostServiceAdditionalTest {
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
 
             // Long文字列で渡す（後方互換）
-            Page<BlogPostResponse> result = service.listByOrganization(ORG_ID_STR, pageable);
+            Page<BlogPostResponse> result;
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> su =
+                    Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                su.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserId).thenReturn(USER_ID);
+                result = service.listByOrganization(ORG_ID_STR, pageable);
+            }
 
             assertThat(result).hasSize(1);
+            verify(accessControlService).checkMembership(USER_ID, ORG_ID, "ORGANIZATION");
         }
     }
 
@@ -141,17 +147,46 @@ class BlogPostServiceAdditionalTest {
     class ListByUser {
 
         @Test
-        @DisplayName("正常系: ユーザー別記事一覧が返却される")
+        @DisplayName("正常系: ユーザー別記事一覧が返却される（可視性フィルタ通過分）")
         void ユーザー別一覧_正常_一覧返却() {
             Pageable pageable = PageRequest.of(0, 10);
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            org.springframework.test.util.ReflectionTestUtils.setField(entity, "id", POST_ID);
             Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
             given(postRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable)).willReturn(page);
             given(cmsMapper.toBlogPostResponse(any(BlogPostEntity.class))).willReturn(createPostResponse());
+            given(contentVisibilityChecker.filterAccessible(ReferenceType.BLOG_POST, Set.of(POST_ID), USER_ID))
+                    .willReturn(Set.of(POST_ID));
 
-            Page<BlogPostResponse> result = service.listByUser(USER_ID, pageable);
+            Page<BlogPostResponse> result;
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> su =
+                    Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                su.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserIdOrNull).thenReturn(USER_ID);
+                result = service.listByUser(USER_ID, pageable);
+            }
 
             assertThat(result).hasSize(1);
+        }
+
+        @Test
+        @DisplayName("認可: 可視性フィルタで除外された記事は一覧に出ない")
+        void ユーザー別一覧_非公開記事は除外() {
+            Pageable pageable = PageRequest.of(0, 10);
+            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            org.springframework.test.util.ReflectionTestUtils.setField(entity, "id", POST_ID);
+            Page<BlogPostEntity> page = new PageImpl<>(List.of(entity));
+            given(postRepository.findByUserIdOrderByCreatedAtDesc(USER_ID, pageable)).willReturn(page);
+            given(contentVisibilityChecker.filterAccessible(ReferenceType.BLOG_POST, Set.of(POST_ID), 999L))
+                    .willReturn(Set.of());
+
+            Page<BlogPostResponse> result;
+            try (org.mockito.MockedStatic<com.mannschaft.app.common.SecurityUtils> su =
+                    Mockito.mockStatic(com.mannschaft.app.common.SecurityUtils.class)) {
+                su.when(com.mannschaft.app.common.SecurityUtils::getCurrentUserIdOrNull).thenReturn(999L);
+                result = service.listByUser(USER_ID, pageable);
+            }
+
+            assertThat(result.getContent()).isEmpty();
         }
     }
 
@@ -331,7 +366,7 @@ class BlogPostServiceAdditionalTest {
             given(postRepository.save(entity)).willReturn(entity);
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
-            BlogPostResponse result = service.changeStatus(POST_ID, request);
+            BlogPostResponse result = service.changeStatus(POST_ID, USER_ID, request);
 
             assertThat(result).isNotNull();
             assertThat(entity.getStatus()).isEqualTo(PostStatus.REJECTED);
@@ -346,24 +381,55 @@ class BlogPostServiceAdditionalTest {
             given(postRepository.save(entity)).willReturn(entity);
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
-            BlogPostResponse result = service.changeStatus(POST_ID, request);
+            BlogPostResponse result = service.changeStatus(POST_ID, USER_ID, request);
 
             assertThat(result).isNotNull();
         }
 
+        /**
+         * AC-2（issue #2616）: <b>過去</b>の publishedAt を指定した場合のみ即時公開される。
+         *
+         * <p>従来この試験は固定日 {@code 2026-04-01} を渡しており、書かれた時点では
+         * 「未来日時でも即 PUBLISHED」という<b>予約公開が無い時代の仕様</b>を固定していた
+         * （日付の経過に伴い意味が変わる時限爆弾でもあった）。予約公開の導入に伴い、
+         * 相対時刻に置き換えて「過去なら即公開」であることを明示的に固定する。
+         * 未来日時の挙動は {@code BlogPostScheduledPublishServiceTest} の AC-1 が担う。</p>
+         */
         @Test
-        @DisplayName("正常系: publishedAt を指定して公開する")
-        void ステータス変更_公開日時指定_正常() {
+        @DisplayName("AC-2: 過去の publishedAt を指定すると即 PUBLISHED になる")
+        void ステータス変更_公開日時指定_過去は即公開() {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
-            LocalDateTime publishAt = LocalDateTime.of(2026, 4, 1, 9, 0);
+            LocalDateTime publishAt = LocalDateTime.now().minusDays(1);
             PublishRequest request = new PublishRequest("PUBLISHED", publishAt, null);
             given(postRepository.save(entity)).willReturn(entity);
             given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
 
-            service.changeStatus(POST_ID, request);
+            service.changeStatus(POST_ID, USER_ID, request);
 
             assertThat(entity.getPublishedAt()).isEqualTo(publishAt);
+            assertThat(entity.getStatus()).isEqualTo(PostStatus.PUBLISHED);
+        }
+
+        /**
+         * AC-1（issue #2616）: <b>未来</b>の publishedAt は予約であり、即時公開してはならない。
+         */
+        @Test
+        @DisplayName("AC-1: 未来の publishedAt を指定しても即 PUBLISHED にはならない")
+        void ステータス変更_公開日時指定_未来は予約() {
+            BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
+            given(postRepository.findById(POST_ID)).willReturn(Optional.of(entity));
+            LocalDateTime publishAt = LocalDateTime.now().plusDays(7);
+            PublishRequest request = new PublishRequest("PUBLISHED", publishAt, null);
+            given(postRepository.save(entity)).willReturn(entity);
+            given(cmsMapper.toBlogPostResponse(entity)).willReturn(createPostResponse());
+
+            service.changeStatus(POST_ID, USER_ID, request);
+
+            assertThat(entity.getPublishedAt()).isEqualTo(publishAt);
+            assertThat(entity.getStatus())
+                    .as("予約中は DRAFT のまま（PostStatus.SCHEDULED は新設しない）")
+                    .isEqualTo(PostStatus.DRAFT);
         }
     }
 
@@ -433,7 +499,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getProcessedCount()).isEqualTo(1);
         }
@@ -445,7 +511,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getProcessedCount()).isEqualTo(0);
             assertThat(result.getSkippedIds()).contains(1L);
@@ -458,7 +524,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getProcessedCount()).isEqualTo(1);
         }
@@ -470,7 +536,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.PUBLISHED);
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getSkippedIds()).contains(1L);
         }
@@ -481,7 +547,7 @@ class BlogPostServiceAdditionalTest {
             BulkActionRequest request = new BulkActionRequest(List.of(99L), "DELETE");
             given(postRepository.findById(99L)).willReturn(Optional.empty());
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getProcessedCount()).isEqualTo(0);
             assertThat(result.getSkippedIds()).contains(99L);
@@ -494,7 +560,7 @@ class BlogPostServiceAdditionalTest {
             BlogPostEntity entity = createPostEntity(PostStatus.DRAFT);
             given(postRepository.findById(1L)).willReturn(Optional.of(entity));
 
-            BulkActionResponse result = service.bulkAction(request);
+            BulkActionResponse result = service.bulkAction(request, USER_ID);
 
             assertThat(result.getSkippedIds()).contains(1L);
         }

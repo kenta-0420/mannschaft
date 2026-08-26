@@ -174,8 +174,8 @@ public class FamilyPersonalTimetableService {
      *
      * <ul>
      *   <li>teamId が family テンプレ＆未削除でなければ 404</li>
-     *   <li>currentUser がそのチーム MEMBER+ でなければ 404</li>
-     *   <li>userId も同じチーム MEMBER+ でなければ 404</li>
+     *   <li>currentUser がそのチーム MEMBER+（かつアカウントが ACTIVE）でなければ 404</li>
+     *   <li>userId も同じチーム在籍（<b>アカウント状態は問わない</b>）でなければ 404</li>
      * </ul>
      */
     private void validateAccess(Long teamId, Long userId, Long currentUserId) {
@@ -188,7 +188,11 @@ public class FamilyPersonalTimetableService {
         if (!userRoleRepository.existsByUserIdAndTeamId(currentUserId, teamId)) {
             throw new BusinessException(PersonalTimetableErrorCode.PERSONAL_TIMETABLE_NOT_FOUND);
         }
-        if (!userRoleRepository.existsByUserIdAndTeamId(userId, teamId)) {
+        // CMP-050: 被参照者（家族の子）の在籍判定はアカウント状態を問わない。子アカウントは
+        // PENDING_PARENTAL_CONSENT / FROZEN を取り得るが、その間も保護者の家族時間割閲覧は
+        // 維持する仕様のため。ACTIVE 必須版へ戻すと凍結中の子の時間割が保護者から見えなくなる。
+        // 権限を与えるのは上の currentUser 側の判定であり、そちらは ACTIVE 必須のままとする。
+        if (!userRoleRepository.existsAnyStatusByUserIdAndTeamId(userId, teamId)) {
             throw new BusinessException(PersonalTimetableErrorCode.PERSONAL_TIMETABLE_NOT_FOUND);
         }
     }

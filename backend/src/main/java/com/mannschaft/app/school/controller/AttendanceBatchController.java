@@ -22,8 +22,8 @@ import java.time.LocalDateTime;
  * <p>通常はスケジュールで自動実行されるが、手動トリガーが必要な場合に使用する。</p>
  *
  * <p><b>認可の真の強制点（Track2 第二陣 / 2026-05-29）</b>: クラス注釈の
- * {@code @PreAuthorize("hasRole('ADMIN')")} は {@code @EnableMethodSecurity} 未有効ゆえ
- * 実機では効かない。加えて、本バッチは特定チーム・組織に閉じず
+ * {@code @PreAuthorize("hasRole('ADMIN')")} は {@code hasRole} である以上 per-scope 判定にならない。
+ * 加えて、本バッチは特定チーム・組織に閉じず
  * 全 ACTIVE 規程を横断評価するプラットフォーム全体の運用操作であり、
  * 単一スコープの ADMIN に開放すると他テナントへの越境操作（クロステナント昇格）になる。
  * よって各エンドポイントで {@link AccessControlService#checkSystemAdmin(Long)} により

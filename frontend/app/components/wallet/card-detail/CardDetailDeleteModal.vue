@@ -34,22 +34,19 @@ const { t } = useI18n()
       <h2 class="card-detail__modal-title">{{ t('wallet.detail.delete_confirm_title') }}</h2>
       <p class="card-detail__modal-body">{{ t('wallet.detail.delete_confirm') }}</p>
       <div class="card-detail__modal-actions">
-        <button
-          type="button"
-          class="card-detail__btn"
+        <Button
+          :label="t('wallet.detail.cancel')"
+          severity="secondary"
           :disabled="deleting"
           @click="emit('cancel')"
-        >
-          {{ t('wallet.detail.cancel') }}
-        </button>
-        <button
-          type="button"
-          class="card-detail__btn card-detail__btn--danger"
+        />
+        <Button
+          :label="deleting ? '…' : t('wallet.detail.delete_confirm_ok')"
+          severity="danger"
           :disabled="deleting"
+          :loading="deleting"
           @click="emit('confirm')"
-        >
-          {{ deleting ? '…' : t('wallet.detail.delete_confirm_ok') }}
-        </button>
+        />
       </div>
     </div>
   </div>
@@ -67,7 +64,7 @@ const { t } = useI18n()
   padding: 1rem;
 }
 .card-detail__modal {
-  background: #fff;
+  background: var(--p-content-background, #fff);
   border-radius: 0.75rem;
   padding: 1.25rem;
   max-width: 420px;
@@ -90,30 +87,5 @@ const { t } = useI18n()
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
-}
-.card-detail__btn {
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--p-surface-300, #d1d5db);
-  background: var(--p-surface-0, #fff);
-  color: var(--p-text-color, #111827);
-  font-weight: 600;
-  cursor: pointer;
-}
-.card-detail__btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.card-detail__btn--danger {
-  background: #fff;
-  color: #dc2626;
-  border-color: #dc2626;
-}
-:global(.dark) .card-detail__modal {
-  background: #1e1e1e;
-  color: #f4f4f5;
-}
-:global(.dark) .card-detail__btn--danger {
-  background: #27272a;
 }
 </style>

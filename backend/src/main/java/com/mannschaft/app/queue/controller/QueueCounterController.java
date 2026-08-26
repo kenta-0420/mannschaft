@@ -1,9 +1,11 @@
 package com.mannschaft.app.queue.controller;
 
 import com.mannschaft.app.common.ApiResponse;
+import com.mannschaft.app.queue.QueueScopeType;
 import com.mannschaft.app.queue.dto.CounterResponse;
 import com.mannschaft.app.queue.dto.CreateCounterRequest;
 import com.mannschaft.app.queue.dto.UpdateCounterRequest;
+import com.mannschaft.app.queue.service.QueueAccessGuard;
 import com.mannschaft.app.queue.service.QueueCounterService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,6 +27,10 @@ import com.mannschaft.app.common.SecurityUtils;
 
 /**
  * 順番待ちカウンターコントローラー。カウンターのCRUD APIを提供する。
+ *
+ * <p>認可根治戦役 Wave5: 一覧・詳細は membership、作成・更新は ADMIN を {@link QueueAccessGuard} で要求する。
+ * {@code categoryId}（クエリ / リクエストボディ）・{@code counterId}（パス）はいずれも
+ * URL パスの {@code teamId} 由来 scope と突合し、越境 ID は 404（QUEUE_001/002）で秘匿する。</p>
  */
 @RestController
 @RequestMapping("/api/v1/teams/{teamId}/queue/counters")
@@ -33,6 +39,7 @@ import com.mannschaft.app.common.SecurityUtils;
 public class QueueCounterController {
 
     private final QueueCounterService counterService;
+    private final QueueAccessGuard accessGuard;
 
     /**
      * カテゴリ配下のカウンター一覧を取得する。
@@ -43,6 +50,8 @@ public class QueueCounterController {
     public ResponseEntity<ApiResponse<List<CounterResponse>>> listCounters(
             @PathVariable Long teamId,
             @RequestParam Long categoryId) {
+        accessGuard.requireScopeMember(QueueScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId());
+        accessGuard.requireCategoryInScope(categoryId, QueueScopeType.TEAM, teamId);
         List<CounterResponse> counters = counterService.listCounters(categoryId);
         return ResponseEntity.ok(ApiResponse.of(counters));
     }
@@ -56,6 +65,8 @@ public class QueueCounterController {
     public ResponseEntity<ApiResponse<CounterResponse>> getCounter(
             @PathVariable Long teamId,
             @PathVariable Long counterId) {
+        accessGuard.requireScopeMember(QueueScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId());
+        accessGuard.requireCounterInScope(counterId, QueueScopeType.TEAM, teamId);
         CounterResponse counter = counterService.getCounter(counterId);
         return ResponseEntity.ok(ApiResponse.of(counter));
     }
@@ -69,7 +80,11 @@ public class QueueCounterController {
     public ResponseEntity<ApiResponse<CounterResponse>> createCounter(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateCounterRequest request) {
-        CounterResponse counter = counterService.createCounter(request, SecurityUtils.getCurrentUserId());
+        Long userId = SecurityUtils.getCurrentUserId();
+        accessGuard.requireScopeAdmin(QueueScopeType.TEAM, teamId, userId);
+        // 他チームのカテゴリ配下にカウンターをぶら下げる越境作成を防ぐ
+        accessGuard.requireCategoryInScope(request.getCategoryId(), QueueScopeType.TEAM, teamId);
+        CounterResponse counter = counterService.createCounter(request, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(counter));
     }
 
@@ -83,6 +98,8 @@ public class QueueCounterController {
             @PathVariable Long teamId,
             @PathVariable Long counterId,
             @Valid @RequestBody UpdateCounterRequest request) {
+        accessGuard.requireScopeAdmin(QueueScopeType.TEAM, teamId, SecurityUtils.getCurrentUserId());
+        accessGuard.requireCounterInScope(counterId, QueueScopeType.TEAM, teamId);
         CounterResponse counter = counterService.updateCounter(counterId, request);
         return ResponseEntity.ok(ApiResponse.of(counter));
     }

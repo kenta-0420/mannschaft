@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.regex.Pattern;
 
 /**
  * F09.17 Phase 11-b 公開エンドポイント (unsubscribe / 開封ピクセル) の IP 単位レートリミット。
@@ -22,6 +23,7 @@ import java.time.Duration;
  *   <li>{@code GET  /api/v1/ads/unsubscribe}     ─ 60 req/分（設計書 §6）</li>
  *   <li>{@code POST /api/v1/ads/unsubscribe}     ─ 60 req/分（F09.17 残課題 4 SPA POST 共通）</li>
  *   <li>{@code GET  /api/v1/ads/pixels/open}     ─ 600 req/分（メーラー再フェッチ考慮）</li>
+ *   <li>{@code POST /api/v1/ads/{campaignId}/click} ─ 60 req/分（公開網漏れ是正・クリック不正水増し対策）</li>
  * </ul>
  *
  * <p>認証不要エンドポイントのためユーザー識別子が無く、IP アドレスのみで制御する。
@@ -45,8 +47,17 @@ public class AdPublicEndpointRateLimitFilter extends AbstractRateLimitFilter {
     private static final String UNSUBSCRIBE_PATH = "/api/v1/ads/unsubscribe";
     private static final String OPEN_PIXEL_PATH = "/api/v1/ads/pixels/open";
 
+    /**
+     * 公開網漏れ是正: クリック計測（{@code POST /api/v1/ads/{campaignId}/click}）。
+     * SecurityConfig に「将来 IP ベースのレート制限を本フィルタに追加」という TODO があった
+     * 未実装箇所。IDOR 防止のため {@code [^/]+} で 1 階層のみ捕捉する（{@code /**} 再帰は使わない）。
+     */
+    private static final Pattern CLICK_PATH = Pattern.compile("^/api/v1/ads/([^/]+)/click$");
+
     private static final int UNSUBSCRIBE_RATE_PER_MINUTE = 60;
     private static final int OPEN_PIXEL_RATE_PER_MINUTE = 600;
+    /** クリック不正水増し対策。unsubscribe と同程度に絞る。 */
+    private static final int CLICK_RATE_PER_MINUTE = 60;
 
     private static final Duration WINDOW = Duration.ofMinutes(1);
 
@@ -55,6 +66,9 @@ public class AdPublicEndpointRateLimitFilter extends AbstractRateLimitFilter {
 
     /** 開封ピクセル用 Valkey zone */
     private static final String ZONE_PIXEL = "ad-public:pixel-open";
+
+    /** クリック計測用 Valkey zone */
+    private static final String ZONE_CLICK = "ad-public:click";
 
     public AdPublicEndpointRateLimitFilter(ObjectProvider<ValkeyRateLimiter> rateLimiterProvider) {
         super(rateLimiterProvider);
@@ -73,6 +87,10 @@ public class AdPublicEndpointRateLimitFilter extends AbstractRateLimitFilter {
         if (OPEN_PIXEL_PATH.equals(path) && "GET".equalsIgnoreCase(method)) {
             return false;
         }
+        // クリック計測は POST のみ（公開網漏れ是正）
+        if (CLICK_PATH.matcher(path).matches() && "POST".equalsIgnoreCase(method)) {
+            return false;
+        }
         return true;
     }
 
@@ -84,6 +102,9 @@ public class AdPublicEndpointRateLimitFilter extends AbstractRateLimitFilter {
         }
         if (OPEN_PIXEL_PATH.equals(path)) {
             return new RateLimitRule(ZONE_PIXEL, OPEN_PIXEL_RATE_PER_MINUTE, WINDOW);
+        }
+        if (CLICK_PATH.matcher(path).matches()) {
+            return new RateLimitRule(ZONE_CLICK, CLICK_RATE_PER_MINUTE, WINDOW);
         }
         return null;
     }

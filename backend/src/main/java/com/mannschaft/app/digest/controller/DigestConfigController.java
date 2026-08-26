@@ -39,7 +39,8 @@ public class DigestConfigController {
     public ResponseEntity<ApiResponse<DigestConfigResponse>> getConfig(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        DigestConfigResponse response = digestConfigService.getConfig(scopeType, scopeId);
+        DigestConfigResponse response = digestConfigService.getConfig(
+                scopeType, scopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -64,7 +65,7 @@ public class DigestConfigController {
     public ResponseEntity<Void> deleteConfig(
             @RequestParam String scopeType,
             @RequestParam Long scopeId) {
-        digestConfigService.deleteConfig(scopeType, scopeId);
+        digestConfigService.deleteConfig(scopeType, scopeId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 }

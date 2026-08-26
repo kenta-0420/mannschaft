@@ -1,6 +1,8 @@
 package com.mannschaft.app.shift.service;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.CommonErrorCode;
 import com.mannschaft.app.shift.ShiftErrorCode;
 import com.mannschaft.app.shift.dto.BulkCreateShiftSlotRequest;
 import com.mannschaft.app.shift.dto.CreateShiftSlotRequest;
@@ -10,6 +12,7 @@ import com.mannschaft.app.shift.dto.UpdateShiftSlotRequest;
 import com.mannschaft.app.shift.entity.ShiftPositionEntity;
 import com.mannschaft.app.shift.entity.ShiftSlotEntity;
 import com.mannschaft.app.shift.repository.ShiftPositionRepository;
+import com.mannschaft.app.shift.repository.ShiftScheduleRepository;
 import com.mannschaft.app.shift.repository.ShiftSlotRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -25,6 +28,26 @@ import java.util.List;
 
 /**
  * シフト枠サービス。シフト枠のCRUD・一括操作を担当する。
+ *
+ * <p><b>認可（認可根治 Wave6）:</b> 本サービスはかつて {@code AccessControlService} を
+ * import すらしておらず、操作者を受け取る口が無かった。結果として
+ * {@code ShiftSlotController} の全エンドポイントが無認可で、任意チームのシフト枠を
+ * 閲覧・改変・割当できる状態だった。本改修で全 public メソッドが操作者 {@code userId} を
+ * 受け取り、<b>シフト枠の所属スケジュール実体から解決した teamId</b> に対して per-scope 認可する
+ *（パス変数・クエリの scope 値を鵜呑みにしないことで BOLA を封鎖する）。</p>
+ *
+ * <p>粒度は同ドメインの既存実装に合わせる:</p>
+ * <ul>
+ *   <li><b>参照</b>（{@code listSlots} / {@code getSlot}）: 当該チームのメンバー、ただし
+ *       SUPPORTER は不可。{@code ShiftPdfService#checkMemberAndNotSupporter} と同一方針
+ *       （PDF で SUPPORTER に伏せている情報を生 API から取れては意味がないため）。</li>
+ *   <li><b>更新・割当</b>（作成/一括作成/更新/削除/差分割当）: ADMIN/DEPUTY_ADMIN 以上
+ *       （SYSTEM_ADMIN 短絡）。{@code ShiftScheduleService#checkScheduleAdminAccess} と同一方針。</li>
+ * </ul>
+ *
+ * <p>認可失敗は参照・更新とも {@code COMMON_002}（403）とする。越境を 404 に寄せず 403 とするのは
+ * 同ドメインの既存契約テスト {@code ShiftScheduleScopeContractIT}（Wave3-B6）が別 scope ADMIN に
+ * 403 を期待しており、そちらへ揃えるため。</p>
  */
 @Slf4j
 @Service
@@ -34,15 +57,19 @@ public class ShiftSlotService {
 
     private final ShiftSlotRepository slotRepository;
     private final ShiftPositionRepository positionRepository;
+    private final ShiftScheduleRepository scheduleRepository;
+    private final AccessControlService accessControlService;
     private final ObjectMapper objectMapper;
 
     /**
      * スケジュールのシフト枠一覧を取得する。
      *
      * @param scheduleId スケジュールID
+     * @param userId     操作者ユーザーID
      * @return シフト枠一覧
      */
-    public List<ShiftSlotResponse> listSlots(Long scheduleId) {
+    public List<ShiftSlotResponse> listSlots(Long scheduleId, Long userId) {
+        checkScheduleReadAccess(scheduleId, userId);
         List<ShiftSlotEntity> entities = slotRepository.findByScheduleIdOrderBySlotDateAscStartTimeAsc(scheduleId);
         return entities.stream().map(this::toSlotResponse).toList();
     }
@@ -51,10 +78,12 @@ public class ShiftSlotService {
      * シフト枠を単体取得する。
      *
      * @param slotId シフト枠ID
+     * @param userId 操作者ユーザーID
      * @return シフト枠
      */
-    public ShiftSlotResponse getSlot(Long slotId) {
+    public ShiftSlotResponse getSlot(Long slotId, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
+        checkScheduleReadAccess(entity.getScheduleId(), userId);
         return toSlotResponse(entity);
     }
 
@@ -63,10 +92,12 @@ public class ShiftSlotService {
      *
      * @param scheduleId スケジュールID
      * @param req        作成リクエスト
+     * @param userId     操作者ユーザーID
      * @return 作成されたシフト枠
      */
     @Transactional
-    public ShiftSlotResponse createSlot(Long scheduleId, CreateShiftSlotRequest req) {
+    public ShiftSlotResponse createSlot(Long scheduleId, CreateShiftSlotRequest req, Long userId) {
+        checkScheduleAdminAccess(scheduleId, userId);
         ShiftSlotEntity entity = ShiftSlotEntity.builder()
                 .scheduleId(scheduleId)
                 .slotDate(req.getSlotDate())
@@ -87,10 +118,12 @@ public class ShiftSlotService {
      *
      * @param scheduleId スケジュールID
      * @param req        一括作成リクエスト
+     * @param userId     操作者ユーザーID
      * @return 作成されたシフト枠一覧
      */
     @Transactional
-    public List<ShiftSlotResponse> bulkCreateSlots(Long scheduleId, BulkCreateShiftSlotRequest req) {
+    public List<ShiftSlotResponse> bulkCreateSlots(Long scheduleId, BulkCreateShiftSlotRequest req, Long userId) {
+        checkScheduleAdminAccess(scheduleId, userId);
         List<ShiftSlotEntity> entities = req.getSlots().stream()
                 .map(slotReq -> (ShiftSlotEntity) ShiftSlotEntity.builder()
                         .scheduleId(scheduleId)
@@ -113,11 +146,13 @@ public class ShiftSlotService {
      *
      * @param slotId シフト枠ID
      * @param req    更新リクエスト
+     * @param userId 操作者ユーザーID
      * @return 更新されたシフト枠
      */
     @Transactional
-    public ShiftSlotResponse updateSlot(Long slotId, UpdateShiftSlotRequest req) {
+    public ShiftSlotResponse updateSlot(Long slotId, UpdateShiftSlotRequest req, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
+        checkScheduleAdminAccess(entity.getScheduleId(), userId);
 
         // managed entity を直接ミューテート（toBuilder().build() でなくドメインメソッドで更新）。
         // ShiftSlotEntity は @Builder(toBuilder=true) / @SuperBuilder でない / BaseEntity継承(自前id無)
@@ -143,11 +178,13 @@ public class ShiftSlotService {
      *
      * @param slotId  シフト枠ID
      * @param request 差分割当リクエスト
+     * @param userId  操作者ユーザーID
      * @return 更新後のシフト枠レスポンス
      */
     @Transactional
-    public ShiftSlotResponse patchSlotAssignments(Long slotId, SlotAssignmentPatchRequest request) {
+    public ShiftSlotResponse patchSlotAssignments(Long slotId, SlotAssignmentPatchRequest request, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
+        checkScheduleAdminAccess(entity.getScheduleId(), userId);
 
         // 楽観ロックチェック: version が一致しない場合は 409
         if (!entity.getVersion().equals(request.slotVersion().longValue())) {
@@ -157,11 +194,11 @@ public class ShiftSlotService {
         // 現在の割当ユーザーリストを取得
         List<Long> currentUserIds = new ArrayList<>(deserializeUserIds(entity.getAssignedUserIds()));
 
-        // ユーザーを追加
+        // ユーザーを追加（ループ変数は操作者 userId と衝突しないよう addUserId とする）
         if (request.addUserIds() != null) {
-            for (Long userId : request.addUserIds()) {
-                if (!currentUserIds.contains(userId)) {
-                    currentUserIds.add(userId);
+            for (Long addUserId : request.addUserIds()) {
+                if (!currentUserIds.contains(addUserId)) {
+                    currentUserIds.add(addUserId);
                 }
             }
         }
@@ -191,10 +228,12 @@ public class ShiftSlotService {
      * シフト枠を削除する。
      *
      * @param slotId シフト枠ID
+     * @param userId 操作者ユーザーID
      */
     @Transactional
-    public void deleteSlot(Long slotId) {
+    public void deleteSlot(Long slotId, Long userId) {
         ShiftSlotEntity entity = findSlotOrThrow(slotId);
+        checkScheduleAdminAccess(entity.getScheduleId(), userId);
         slotRepository.delete(entity);
         log.info("シフト枠削除: id={}", slotId);
     }
@@ -205,6 +244,55 @@ public class ShiftSlotService {
     ShiftSlotEntity findSlotOrThrow(Long id) {
         return slotRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SLOT_NOT_FOUND));
+    }
+
+    /**
+     * スケジュール ID から所属チーム ID を解決する。
+     *
+     * <p>scope をパス変数・クエリ入力でなく<b>スケジュール実体由来</b>にすることで、
+     * 「他チームの slotId / scheduleId を直接指定して越境する」BOLA を封鎖する。</p>
+     *
+     * @param scheduleId スケジュール ID
+     * @return 所属チーム ID
+     */
+    private Long resolveTeamId(Long scheduleId) {
+        return scheduleRepository.findById(scheduleId)
+                .orElseThrow(() -> new BusinessException(ShiftErrorCode.SHIFT_SCHEDULE_NOT_FOUND))
+                .getTeamId();
+    }
+
+    /**
+     * シフト枠の参照認可（当該チームのメンバー、ただし SUPPORTER は不可）。
+     *
+     * @param scheduleId スケジュール ID
+     * @param userId     操作者ユーザー ID
+     * @throws BusinessException メンバーでない場合、または SUPPORTER の場合（COMMON_002 / 403）
+     */
+    private void checkScheduleReadAccess(Long scheduleId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        Long teamId = resolveTeamId(scheduleId);
+        if (!accessControlService.isMember(userId, teamId, "TEAM")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+        if (accessControlService.isSupporter(userId, teamId, "TEAM")) {
+            throw new BusinessException(CommonErrorCode.COMMON_002);
+        }
+    }
+
+    /**
+     * シフト枠の更新・割当認可（SYSTEM_ADMIN 短絡 or 当該チームの ADMIN/DEPUTY_ADMIN）。
+     *
+     * @param scheduleId スケジュール ID
+     * @param userId     操作者ユーザー ID
+     * @throws BusinessException 権限が無い場合（COMMON_002 / 403）
+     */
+    private void checkScheduleAdminAccess(Long scheduleId, Long userId) {
+        if (accessControlService.isSystemAdmin(userId)) {
+            return;
+        }
+        accessControlService.checkAdminOrAbove(userId, resolveTeamId(scheduleId), "TEAM");
     }
 
     /**

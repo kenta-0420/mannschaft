@@ -45,7 +45,8 @@ public class OrgPromotionController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        Page<PromotionResponse> result = promotionService.list("ORGANIZATION", orgId, status, PageRequest.of(page, Math.min(size, 50)));
+        Page<PromotionResponse> result = promotionService.list("ORGANIZATION", orgId, status,
+                PageRequest.of(page, Math.min(size, 50)), SecurityUtils.getCurrentUserId());
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
         return ResponseEntity.ok(PagedResponse.of(result.getContent(), meta));
@@ -64,7 +65,7 @@ public class OrgPromotionController {
     @Operation(summary = "プロモーション詳細")
     public ResponseEntity<ApiResponse<PromotionResponse>> get(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.get("ORGANIZATION", orgId, id)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.get("ORGANIZATION", orgId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @PutMapping("/api/v1/organizations/{orgId}/promotions/{id}")
@@ -72,13 +73,13 @@ public class OrgPromotionController {
     public ResponseEntity<ApiResponse<PromotionResponse>> update(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody UpdatePromotionRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.update("ORGANIZATION", orgId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.update("ORGANIZATION", orgId, id, request, SecurityUtils.getCurrentUserId())));
     }
 
     @DeleteMapping("/api/v1/organizations/{orgId}/promotions/{id}")
     @Operation(summary = "プロモーション削除")
     public ResponseEntity<Void> delete(@PathVariable Long orgId, @PathVariable Long id) {
-        promotionService.delete("ORGANIZATION", orgId, id);
+        promotionService.delete("ORGANIZATION", orgId, id, SecurityUtils.getCurrentUserId());
         return ResponseEntity.noContent().build();
     }
 
@@ -86,7 +87,7 @@ public class OrgPromotionController {
     @Operation(summary = "即時配信")
     public ResponseEntity<ApiResponse<PromotionResponse>> publish(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.publish("ORGANIZATION", orgId, id)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.publish("ORGANIZATION", orgId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/promotions/{id}/schedule")
@@ -94,14 +95,14 @@ public class OrgPromotionController {
     public ResponseEntity<ApiResponse<PromotionResponse>> schedule(
             @PathVariable Long orgId, @PathVariable Long id,
             @Valid @RequestBody SchedulePromotionRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.schedule("ORGANIZATION", orgId, id, request)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.schedule("ORGANIZATION", orgId, id, request, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/promotions/{id}/cancel")
     @Operation(summary = "配信キャンセル")
     public ResponseEntity<ApiResponse<PromotionResponse>> cancel(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.cancel("ORGANIZATION", orgId, id)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.cancel("ORGANIZATION", orgId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/promotions/{id}/approve")
@@ -115,7 +116,7 @@ public class OrgPromotionController {
     @Operation(summary = "効果測定")
     public ResponseEntity<ApiResponse<PromotionStatsResponse>> getStats(
             @PathVariable Long orgId, @PathVariable Long id) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.getStats("ORGANIZATION", orgId, id)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.getStats("ORGANIZATION", orgId, id, SecurityUtils.getCurrentUserId())));
     }
 
     @PostMapping("/api/v1/organizations/{orgId}/promotions/estimate-audience")
@@ -123,6 +124,6 @@ public class OrgPromotionController {
     public ResponseEntity<ApiResponse<AudienceEstimateResponse>> estimateAudience(
             @PathVariable Long orgId,
             @RequestBody EstimateAudienceRequest request) {
-        return ResponseEntity.ok(ApiResponse.of(promotionService.estimateAudience("ORGANIZATION", orgId, request)));
+        return ResponseEntity.ok(ApiResponse.of(promotionService.estimateAudience("ORGANIZATION", orgId, request, SecurityUtils.getCurrentUserId())));
     }
 }

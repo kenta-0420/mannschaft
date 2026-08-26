@@ -1,5 +1,6 @@
 package com.mannschaft.app.forms;
 
+import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.forms.dto.CreateFormSubmissionRequest;
 import com.mannschaft.app.forms.dto.FormSubmissionResponse;
@@ -47,6 +48,9 @@ class FormSubmissionServiceTest {
 
     @Mock
     private com.mannschaft.app.common.storage.StorageService storageService;
+
+    @Mock
+    private AccessControlService accessControlService;
 
     @InjectMocks
     private FormSubmissionService formSubmissionService;
@@ -144,7 +148,7 @@ class FormSubmissionServiceTest {
             given(formMapper.toSubmissionResponseWithValues(entity, List.of())).willReturn(response);
 
             // When
-            formSubmissionService.approveSubmission(SUBMISSION_ID);
+            formSubmissionService.approveSubmission(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID, SUBMISSION_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SubmissionStatus.APPROVED);
@@ -158,7 +162,7 @@ class FormSubmissionServiceTest {
             given(submissionRepository.findById(SUBMISSION_ID)).willReturn(Optional.of(entity));
 
             // When & Then
-            assertThatThrownBy(() -> formSubmissionService.approveSubmission(SUBMISSION_ID))
+            assertThatThrownBy(() -> formSubmissionService.approveSubmission(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID, SUBMISSION_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
                             .isEqualTo(FormErrorCode.INVALID_SUBMISSION_STATUS));
@@ -189,7 +193,7 @@ class FormSubmissionServiceTest {
             given(formMapper.toSubmissionResponseWithValues(entity, List.of())).willReturn(response);
 
             // When
-            formSubmissionService.rejectSubmission(SUBMISSION_ID);
+            formSubmissionService.rejectSubmission(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID, SUBMISSION_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SubmissionStatus.REJECTED);
@@ -220,7 +224,7 @@ class FormSubmissionServiceTest {
             given(formMapper.toSubmissionResponseWithValues(entity, List.of())).willReturn(response);
 
             // When
-            formSubmissionService.returnSubmission(SUBMISSION_ID);
+            formSubmissionService.returnSubmission(SCOPE_TYPE, SCOPE_ID, USER_ID, TEMPLATE_ID, SUBMISSION_ID);
 
             // Then
             assertThat(entity.getStatus()).isEqualTo(SubmissionStatus.RETURNED);

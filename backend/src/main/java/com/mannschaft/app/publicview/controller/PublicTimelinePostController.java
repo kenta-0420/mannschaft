@@ -1,5 +1,6 @@
 package com.mannschaft.app.publicview.controller;
 
+import com.mannschaft.app.common.security.IntentionallyPublic;
 import com.mannschaft.app.publicview.dto.PublicTimelinePostResponse;
 import com.mannschaft.app.publicview.service.PublicTimelinePostQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -24,7 +25,28 @@ import org.springframework.web.bind.annotation.RestController;
  * 投稿一覧を返す。フラグが {@code false} または PRIVATE の場合は 404 で隠蔽する（IDOR 対策）。</p>
  *
  * <p>投稿者識別は返さない（タイムライン投稿は匿名性を重視するため最小限情報のみ）。</p>
+ *
+ * <p><b>公開根拠（{@link IntentionallyPublic} クラス付与・凍結ストア該当 2 EP）</b>:
+ * 本 Controller の全 Mapping エンドポイントは {@code SecurityConfig} で
+ * {@code permitAll()} 済み。</p>
+ *
+ * <p><b>根拠</b>:
+ * SecurityConfig — requestMatchers(GET, "/api/v1/public/teams/&#42;/timeline-posts"
+ * / "/api/v1/public/organizations/&#42;/timeline-posts").permitAll()
+ * </p>
+ *
+ * <p><b>公開してよいと判断した理由</b>:
+ * F19.1 Phase 7 公開タイムライン投稿。<b>公開設定されたスコープの公開投稿のみ</b>を返す。未ログイン訪問者への情報発信が目的の公開ページ機能。
+ * レート制限あり。
+ * </p>
+ *
+ * <p>認可根治戦役 Wave5 監査済。レスポンス項目が将来増えた場合は公開の妥当性が崩れうるため、
+ * 当該 DTO の変更時は本注釈の妥当性を再評価すること。</p>
  */
+@IntentionallyPublic({
+        "/api/v1/public/teams/*/timeline-posts",
+        "/api/v1/public/organizations/*/timeline-posts"
+})
 @RestController
 @Tag(name = "公開タイムライン投稿 API (F19.1 Phase 7)")
 @RequiredArgsConstructor

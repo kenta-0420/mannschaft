@@ -5,6 +5,7 @@ import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.common.NameResolverService;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.todo.TodoErrorCode;
 import com.mannschaft.app.todo.TodoPriority;
 import com.mannschaft.app.todo.TodoScopeType;
 import com.mannschaft.app.todo.TodoStatus;
@@ -14,6 +15,7 @@ import com.mannschaft.app.todo.entity.TodoEntity;
 import com.mannschaft.app.todo.entity.TodoSharedMemoEntryEntity;
 import com.mannschaft.app.todo.repository.TodoRepository;
 import com.mannschaft.app.todo.repository.TodoSharedMemoEntryRepository;
+import com.mannschaft.app.todo.security.TodoAccessGuard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -35,6 +37,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 
@@ -58,6 +61,9 @@ class TodoSharedMemoServiceTest {
     @Mock
     private NameResolverService nameResolverService;
 
+    @Mock
+    private TodoAccessGuard todoAccessGuard;
+
     @InjectMocks
     private TodoSharedMemoService todoSharedMemoService;
 
@@ -66,6 +72,7 @@ class TodoSharedMemoServiceTest {
     private static final Long USER_ID = 100L;
     private static final Long OTHER_USER_ID = 200L;
     private static final Long SCOPE_ID = 50L;
+    private static final TodoScopeType SCOPE_TYPE = TodoScopeType.TEAM;
 
     private TodoEntity createTodo() {
         return TodoEntity.builder()
@@ -148,30 +155,32 @@ class TodoSharedMemoServiceTest {
         @DisplayName("正常系: 共有メモが追加される")
         void addSharedMemo_正常_追加成功() {
             // Given
-            TodoEntity todo = createTodo();
             SharedMemoEntryRequest request = new SharedMemoEntryRequest("新規共有メモ", null);
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(sharedMemoRepository.countByTodoId(TODO_ID)).willReturn(0L);
 
             // When
             ApiResponse<SharedMemoEntryResponse> response =
-                    todoSharedMemoService.addSharedMemo(TODO_ID, USER_ID, request, USER_ID);
+                    todoSharedMemoService.addSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, USER_ID, request, USER_ID);
 
             // Then
             assertThat(response.getData().getMemo()).isEqualTo("新規共有メモ");
             assertThat(response.getData().getUserId()).isEqualTo(USER_ID);
             verify(sharedMemoRepository).save(any(TodoSharedMemoEntryEntity.class));
+            verify(todoAccessGuard).verifyScopeAndMembership(TODO_ID, SCOPE_TYPE, SCOPE_ID, USER_ID);
         }
 
         @Test
-        @DisplayName("異常系: TODO不在でTODO_010例外")
+        @DisplayName("異常系: TODO不在（ガードがTODO_010を送出）で透過")
         void addSharedMemo_TODO不在_TODO010例外() {
-            // Given
+            // Given: ガードが scope 束縛で TODO_010 を送出する
             SharedMemoEntryRequest request = new SharedMemoEntryRequest("メモ", null);
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.empty());
+            doThrow(new BusinessException(TodoErrorCode.TODO_NOT_FOUND))
+                    .when(todoAccessGuard)
+                    .verifyScopeAndMembership(eq(TODO_ID), eq(SCOPE_TYPE), eq(SCOPE_ID), anyLong());
 
             // When / Then
-            assertThatThrownBy(() -> todoSharedMemoService.addSharedMemo(TODO_ID, USER_ID, request, USER_ID))
+            assertThatThrownBy(() ->
+                    todoSharedMemoService.addSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, USER_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_010"));
@@ -181,13 +190,12 @@ class TodoSharedMemoServiceTest {
         @DisplayName("異常系: メモ件数が500件上限に達した場合TODO_052例外")
         void addSharedMemo_500件上限_TODO052例外() {
             // Given
-            TodoEntity todo = createTodo();
             SharedMemoEntryRequest request = new SharedMemoEntryRequest("メモ", null);
-            given(todoRepository.findByIdAndDeletedAtIsNull(TODO_ID)).willReturn(Optional.of(todo));
             given(sharedMemoRepository.countByTodoId(TODO_ID)).willReturn(500L);
 
             // When / Then
-            assertThatThrownBy(() -> todoSharedMemoService.addSharedMemo(TODO_ID, USER_ID, request, USER_ID))
+            assertThatThrownBy(() ->
+                    todoSharedMemoService.addSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, USER_ID, request, USER_ID))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_052"));
@@ -212,7 +220,7 @@ class TodoSharedMemoServiceTest {
 
             // When
             ApiResponse<SharedMemoEntryResponse> response =
-                    todoSharedMemoService.updateSharedMemo(TODO_ID, MEMO_ID, USER_ID, request);
+                    todoSharedMemoService.updateSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, MEMO_ID, USER_ID, request);
 
             // Then
             verify(sharedMemoRepository).save(any(TodoSharedMemoEntryEntity.class));
@@ -228,7 +236,7 @@ class TodoSharedMemoServiceTest {
 
             // When / Then
             assertThatThrownBy(() ->
-                    todoSharedMemoService.updateSharedMemo(TODO_ID, MEMO_ID, USER_ID, request))
+                    todoSharedMemoService.updateSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, MEMO_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_051"));
@@ -243,7 +251,7 @@ class TodoSharedMemoServiceTest {
 
             // When / Then
             assertThatThrownBy(() ->
-                    todoSharedMemoService.updateSharedMemo(TODO_ID, MEMO_ID, USER_ID, request))
+                    todoSharedMemoService.updateSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, MEMO_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_050"));
@@ -260,7 +268,7 @@ class TodoSharedMemoServiceTest {
 
             // When / Then
             assertThatThrownBy(() ->
-                    todoSharedMemoService.updateSharedMemo(TODO_ID, MEMO_ID, USER_ID, request))
+                    todoSharedMemoService.updateSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, MEMO_ID, USER_ID, request))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_053"));
@@ -283,7 +291,7 @@ class TodoSharedMemoServiceTest {
             given(sharedMemoRepository.findById(MEMO_ID)).willReturn(Optional.of(memo));
 
             // When
-            todoSharedMemoService.deleteSharedMemo(TODO_ID, MEMO_ID, USER_ID);
+            todoSharedMemoService.deleteSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, MEMO_ID, USER_ID);
 
             // Then: softDelete後にsaveが呼ばれる（論理削除）
             verify(sharedMemoRepository).save(any(TodoSharedMemoEntryEntity.class));
@@ -301,7 +309,7 @@ class TodoSharedMemoServiceTest {
             given(accessControlService.isAdminOrAbove(adminUserId, SCOPE_ID, "TEAM")).willReturn(true);
 
             // When
-            todoSharedMemoService.deleteSharedMemo(TODO_ID, MEMO_ID, adminUserId);
+            todoSharedMemoService.deleteSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, MEMO_ID, adminUserId);
 
             // Then: softDelete後にsaveが呼ばれる
             verify(sharedMemoRepository).save(any(TodoSharedMemoEntryEntity.class));
@@ -320,7 +328,7 @@ class TodoSharedMemoServiceTest {
 
             // When / Then
             assertThatThrownBy(() ->
-                    todoSharedMemoService.deleteSharedMemo(TODO_ID, MEMO_ID, nonAdminUserId))
+                    todoSharedMemoService.deleteSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, MEMO_ID, nonAdminUserId))
                     .isInstanceOf(BusinessException.class)
                     .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode().getCode())
                             .isEqualTo("TODO_051"));
@@ -334,7 +342,7 @@ class TodoSharedMemoServiceTest {
             given(sharedMemoRepository.findById(MEMO_ID)).willReturn(Optional.of(memo));
 
             // When
-            todoSharedMemoService.deleteSharedMemo(TODO_ID, MEMO_ID, USER_ID);
+            todoSharedMemoService.deleteSharedMemo(TODO_ID, SCOPE_TYPE, SCOPE_ID, MEMO_ID, USER_ID);
 
             // Then: softDeleteが呼ばれてdeletedAtが設定される
             assertThat(memo.getDeletedAt()).isNotNull();

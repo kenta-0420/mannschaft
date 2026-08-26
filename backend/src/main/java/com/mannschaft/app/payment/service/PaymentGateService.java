@@ -118,4 +118,21 @@ public class PaymentGateService {
 
         return new GateCheckResponse(allSatisfied, titleHidden, exposedItems);
     }
+
+    /**
+     * 指定コンテンツにペイウォールゲートが 1 件以上設定されているかを返す。
+     *
+     * <p>{@link #checkAccess} が予期せぬ例外で判定不能に陥った際の <b>fail-closed 判定</b>
+     * （ゲート有り＝本文をマスク／ゲート無し＝非課金コンテンツゆえ従来どおり本文を返す）に用いる。
+     * 本文取得経路（cms/publicview）が「評価不能の真因がゲート不在かどうか」を切り分けるための
+     * 軽量な存在確認であり、支払い状態は評価しない。</p>
+     *
+     * @param contentType コンテンツ種別
+     * @param contentId   コンテンツ ID
+     * @return ゲートが 1 件以上設定されていれば true
+     */
+    public boolean hasGate(String contentType, Long contentId) {
+        return !contentPaymentGateRepository
+                .findByContentTypeAndContentId(contentType, contentId).isEmpty();
+    }
 }

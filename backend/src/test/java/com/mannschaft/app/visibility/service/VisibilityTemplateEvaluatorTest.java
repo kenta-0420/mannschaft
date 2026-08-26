@@ -55,6 +55,16 @@ class VisibilityTemplateEvaluatorTest {
     @InjectMocks
     private VisibilityTemplateEvaluator evaluator;
 
+    /**
+     * issue #2544: 本番では {@code @Autowired @Lazy} で注入される自己プロキシ {@code self} を、
+     * 純 Mockito UT では自分自身で埋める（キャッシュプロキシは介在しないので挙動は従来どおり）。
+     * 埋めないと自己プロキシ経由の呼び出しが NPE になる。
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void setUpSelfProxy() {
+        org.springframework.test.util.ReflectionTestUtils.setField(evaluator, "self", evaluator);
+    }
+
     private static final Long VIEWER_ID = 10L;
     private static final Long OWNER_ID = 20L;
     private static final Long TEMPLATE_ID = 1000L;
@@ -159,8 +169,8 @@ class VisibilityTemplateEvaluatorTest {
         void explicitTargetTeam_friend_true() {
             mockRules(rule(VisibilityTemplateRuleType.TEAM_FRIEND_OF, TARGET_TEAM_ID, null));
             // viewer は team 500 に所属
-            when(userRoleRepository.findByUserIdAndTeamIdIsNotNull(VIEWER_ID))
-                    .thenReturn(List.of(roleWithTeam(500L)));
+            when(userRoleRepository.findTeamIdsByUserId(VIEWER_ID))
+                    .thenReturn(List.of(500L));
             // 500 と 700 のフレンド関係を正規化（min=500, max=700）
             when(teamFriendRepository.findByTeamAIdAndTeamBId(500L, TARGET_TEAM_ID))
                     .thenReturn(Optional.of(mock(TeamFriendEntity.class)));
@@ -172,7 +182,7 @@ class VisibilityTemplateEvaluatorTest {
         @DisplayName("viewer がどのチームにも属さなければ false")
         void viewerNoTeam_false() {
             mockRules(rule(VisibilityTemplateRuleType.TEAM_FRIEND_OF, TARGET_TEAM_ID, null));
-            when(userRoleRepository.findByUserIdAndTeamIdIsNotNull(VIEWER_ID))
+            when(userRoleRepository.findTeamIdsByUserId(VIEWER_ID))
                     .thenReturn(List.of());
             assertThat(evaluator.canView(VIEWER_ID, TEMPLATE_ID, OWNER_ID)).isFalse();
         }
@@ -181,8 +191,8 @@ class VisibilityTemplateEvaluatorTest {
         @DisplayName("フレンド関係が無ければ false")
         void notFriend_false() {
             mockRules(rule(VisibilityTemplateRuleType.TEAM_FRIEND_OF, TARGET_TEAM_ID, null));
-            when(userRoleRepository.findByUserIdAndTeamIdIsNotNull(VIEWER_ID))
-                    .thenReturn(List.of(roleWithTeam(500L)));
+            when(userRoleRepository.findTeamIdsByUserId(VIEWER_ID))
+                    .thenReturn(List.of(500L));
             when(teamFriendRepository.findByTeamAIdAndTeamBId(500L, TARGET_TEAM_ID))
                     .thenReturn(Optional.empty());
             assertThat(evaluator.canView(VIEWER_ID, TEMPLATE_ID, OWNER_ID)).isFalse();
@@ -193,10 +203,10 @@ class VisibilityTemplateEvaluatorTest {
         void primaryTeamPlaceholder_resolved() {
             mockRules(rule(VisibilityTemplateRuleType.TEAM_FRIEND_OF, null, "@USER_PRIMARY_TEAM"));
             // owner は team 900, 700 に所属 → 最小 700 が primary
-            when(userRoleRepository.findByUserIdAndTeamIdIsNotNull(OWNER_ID))
-                    .thenReturn(List.of(roleWithTeam(900L), roleWithTeam(TARGET_TEAM_ID)));
-            when(userRoleRepository.findByUserIdAndTeamIdIsNotNull(VIEWER_ID))
-                    .thenReturn(List.of(roleWithTeam(500L)));
+            when(userRoleRepository.findTeamIdsByUserId(OWNER_ID))
+                    .thenReturn(List.of(900L, TARGET_TEAM_ID));
+            when(userRoleRepository.findTeamIdsByUserId(VIEWER_ID))
+                    .thenReturn(List.of(500L));
             when(teamFriendRepository.findByTeamAIdAndTeamBId(500L, TARGET_TEAM_ID))
                     .thenReturn(Optional.of(mock(TeamFriendEntity.class)));
 
@@ -207,9 +217,33 @@ class VisibilityTemplateEvaluatorTest {
         @DisplayName("@USER_PRIMARY_TEAM: owner がどのチームにも属さなければ解決失敗 false")
         void primaryTeamPlaceholder_ownerNoTeam_false() {
             mockRules(rule(VisibilityTemplateRuleType.TEAM_FRIEND_OF, null, "@USER_PRIMARY_TEAM"));
-            when(userRoleRepository.findByUserIdAndTeamIdIsNotNull(OWNER_ID))
+            when(userRoleRepository.findTeamIdsByUserId(OWNER_ID))
                     .thenReturn(List.of());
             assertThat(evaluator.canView(VIEWER_ID, TEMPLATE_ID, OWNER_ID)).isFalse();
+        }
+
+        /**
+         * CMP-050 AC-20: {@code findTeamIdsByUserId(ownerId)} が空のとき、
+         * {@code evaluateTeamFriendOf} は false・{@code resolveTargetTeamId} は null
+         * （＝メンバー集合が空）となり、非公開側へ倒れること。
+         *
+         * <p>CMP-050 で在籍プリミティブに ACTIVE 条件が入ると、凍結オーナーの
+         * {@code @USER_PRIMARY_TEAM} テンプレは解決不能になる。これはフェイルセーフとして
+         * 意図した挙動であり、公開側へ倒れない（可視化されない）ことを締める番人である。</p>
+         */
+        @Test
+        @DisplayName("CMP-050 AC-20: owner の所属チームが空なら canView は false・メンバー集合も空（非公開側へ倒れる）")
+        void cmp050_ac20_ownerTeamsEmpty_failsClosed() {
+            mockRules(rule(VisibilityTemplateRuleType.TEAM_FRIEND_OF, null, "@USER_PRIMARY_TEAM"));
+            when(userRoleRepository.findTeamIdsByUserId(OWNER_ID))
+                    .thenReturn(List.of());
+
+            assertThat(evaluator.canView(VIEWER_ID, TEMPLATE_ID, OWNER_ID))
+                    .as("primary チームが解決できないテンプレは非公開側（false）へ倒れるべきである")
+                    .isFalse();
+            assertThat(evaluator.resolveMemberUserIds(TEMPLATE_ID, OWNER_ID))
+                    .as("resolveTargetTeamId が null のときメンバー集合は空であるべきである")
+                    .isEmpty();
         }
     }
 

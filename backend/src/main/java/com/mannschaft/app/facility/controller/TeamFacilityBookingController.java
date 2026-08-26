@@ -2,6 +2,7 @@ package com.mannschaft.app.facility.controller;
 
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
+import com.mannschaft.app.common.SecurityUtils;
 import com.mannschaft.app.facility.dto.ApproveBookingRequest;
 import com.mannschaft.app.facility.dto.BookingDetailResponse;
 import com.mannschaft.app.facility.dto.BookingPaymentResponse;
@@ -11,6 +12,7 @@ import com.mannschaft.app.facility.dto.CancelBookingRequest;
 import com.mannschaft.app.facility.dto.CreateBookingRequest;
 import com.mannschaft.app.facility.dto.RejectBookingRequest;
 import com.mannschaft.app.facility.dto.UpdateBookingRequest;
+import com.mannschaft.app.facility.service.FacilityAccessGuard;
 import com.mannschaft.app.facility.service.FacilityBookingService;
 import com.mannschaft.app.facility.service.FacilityPaymentService;
 import com.mannschaft.app.common.pdf.PdfFileNameBuilder;
@@ -54,10 +56,7 @@ public class TeamFacilityBookingController {
     private final FacilityBookingService bookingService;
     private final FacilityPaymentService paymentService;
     private final PdfGeneratorService pdfGeneratorService;
-
-    private Long getCurrentUserId() {
-        return 1L;
-    }
+    private final FacilityAccessGuard accessGuard;
 
     /**
      * 予約一覧を取得する。
@@ -70,6 +69,7 @@ public class TeamFacilityBookingController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
+        accessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         Page<BookingResponse> result = bookingService.listBookings(SCOPE_TYPE, teamId, status, PageRequest.of(page, size));
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 result.getTotalElements(), result.getNumber(), result.getSize(), result.getTotalPages());
@@ -85,7 +85,8 @@ public class TeamFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingResponse>> createBooking(
             @PathVariable Long teamId,
             @Valid @RequestBody CreateBookingRequest request) {
-        BookingResponse response = bookingService.createBooking(SCOPE_TYPE, teamId, getCurrentUserId(), request);
+        accessGuard.requireFacilityMember(SCOPE_TYPE, teamId, request.getFacilityId(), SecurityUtils.getCurrentUserId());
+        BookingResponse response = bookingService.createBooking(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.of(response));
     }
 
@@ -98,6 +99,7 @@ public class TeamFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingDetailResponse>> getBooking(
             @PathVariable Long teamId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingMember(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.getBooking(bookingId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -112,6 +114,7 @@ public class TeamFacilityBookingController {
             @PathVariable Long teamId,
             @PathVariable Long bookingId,
             @Valid @RequestBody UpdateBookingRequest request) {
+        accessGuard.requireBookingOwnerOrAdmin(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.updateBooking(bookingId, request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -126,7 +129,8 @@ public class TeamFacilityBookingController {
             @PathVariable Long teamId,
             @PathVariable Long bookingId,
             @Valid @RequestBody CancelBookingRequest request) {
-        BookingDetailResponse response = bookingService.cancelBooking(bookingId, getCurrentUserId(), request);
+        accessGuard.requireBookingOwnerOrAdmin(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
+        BookingDetailResponse response = bookingService.cancelBooking(bookingId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -140,7 +144,8 @@ public class TeamFacilityBookingController {
             @PathVariable Long teamId,
             @PathVariable Long bookingId,
             @Valid @RequestBody ApproveBookingRequest request) {
-        BookingDetailResponse response = bookingService.approveBooking(bookingId, getCurrentUserId(), request);
+        accessGuard.requireBookingAdmin(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
+        BookingDetailResponse response = bookingService.approveBooking(bookingId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -154,7 +159,8 @@ public class TeamFacilityBookingController {
             @PathVariable Long teamId,
             @PathVariable Long bookingId,
             @Valid @RequestBody RejectBookingRequest request) {
-        BookingDetailResponse response = bookingService.rejectBooking(bookingId, getCurrentUserId(), request);
+        accessGuard.requireBookingAdmin(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
+        BookingDetailResponse response = bookingService.rejectBooking(bookingId, SecurityUtils.getCurrentUserId(), request);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -167,6 +173,7 @@ public class TeamFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingDetailResponse>> checkIn(
             @PathVariable Long teamId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingAdmin(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.checkIn(bookingId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -180,6 +187,7 @@ public class TeamFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingDetailResponse>> completeBooking(
             @PathVariable Long teamId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingAdmin(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse response = bookingService.completeBooking(bookingId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -193,6 +201,7 @@ public class TeamFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingPaymentResponse>> getPayment(
             @PathVariable Long teamId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingOwnerOrAdmin(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
         BookingPaymentResponse response = paymentService.getPayment(bookingId);
         return ResponseEntity.ok(ApiResponse.of(response));
     }
@@ -206,7 +215,8 @@ public class TeamFacilityBookingController {
     public ResponseEntity<ApiResponse<BookingPaymentResponse>> confirmPayment(
             @PathVariable Long teamId,
             @PathVariable Long bookingId) {
-        BookingPaymentResponse response = paymentService.confirmDirectPayment(bookingId, getCurrentUserId());
+        accessGuard.requireBookingAdmin(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
+        BookingPaymentResponse response = paymentService.confirmDirectPayment(bookingId, SecurityUtils.getCurrentUserId());
         return ResponseEntity.ok(ApiResponse.of(response));
     }
 
@@ -220,6 +230,7 @@ public class TeamFacilityBookingController {
             @PathVariable Long teamId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo) {
+        accessGuard.requireScopeMember(SCOPE_TYPE, teamId, SecurityUtils.getCurrentUserId());
         List<CalendarBookingResponse> responses = bookingService.getCalendarBookings(SCOPE_TYPE, teamId, dateFrom, dateTo);
         return ResponseEntity.ok(ApiResponse.of(responses));
     }
@@ -234,6 +245,7 @@ public class TeamFacilityBookingController {
     public ResponseEntity<byte[]> getConfirmationPdf(
             @PathVariable Long teamId,
             @PathVariable Long bookingId) {
+        accessGuard.requireBookingMember(SCOPE_TYPE, teamId, bookingId, SecurityUtils.getCurrentUserId());
         BookingDetailResponse booking = bookingService.getBookingForPdf(bookingId);
 
         Map<String, Object> variables = new HashMap<>();

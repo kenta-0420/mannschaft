@@ -1,7 +1,9 @@
 package com.mannschaft.app.payment;
 
+import com.mannschaft.app.common.BusinessException;
 import com.mannschaft.app.payment.entity.StripeCustomerEntity;
 import com.mannschaft.app.payment.repository.StripeCustomerRepository;
+import com.mannschaft.app.payment.service.MembershipSubscriptionService;
 import com.mannschaft.app.payment.service.PaymentMethodService;
 import com.mannschaft.app.payment.stripe.StripePaymentProvider;
 import org.junit.jupiter.api.DisplayName;
@@ -15,16 +17,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 /**
  * F08.9 P5 第二波: {@link PaymentMethodService} の単体テスト。
  *
- * <p>get-or-create Customer・SetupIntent 作成・attach＋default 焼付を検証する。</p>
+ * <p>get-or-create Customer・SetupIntent 作成・attach＋default 焼付を検証する。
+ * 残債2（Stripe Customer email 実メール化）の分岐（実メール解決・退会済み拒否）も本テストで検証する。</p>
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("PaymentMethodService 単体テスト")
@@ -32,6 +37,7 @@ class PaymentMethodServiceTest {
 
     @Mock private StripeCustomerRepository stripeCustomerRepository;
     @Mock private StripePaymentProvider stripePaymentProvider;
+    @Mock private MembershipSubscriptionService membershipSubscriptionService;
 
     @InjectMocks
     private PaymentMethodService service;
@@ -52,13 +58,17 @@ class PaymentMethodServiceTest {
         assertThat(info.setupIntentId()).isEqualTo("seti_1");
         assertThat(info.clientSecret()).isEqualTo("seti_secret");
         verify(stripePaymentProvider, never()).createCustomer(any(), any());
+        // 既存 Customer 経路ではユーザーメール解決は不要（get-or-create の get 経路）。
+        verifyNoInteractions(membershipSubscriptionService);
     }
 
     @Test
-    @DisplayName("createSetupIntent: Customer 不在なら get-or-create で新規作成")
-    void Customer新規作成() {
+    @DisplayName("残債2: createSetupIntent: Customer 不在なら実メールで get-or-create 新規作成する（プレースホルダ廃止）")
+    void Customer新規作成_実メール() {
         given(stripeCustomerRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
-        given(stripePaymentProvider.createCustomer("user@example.com", USER_ID)).willReturn("cus_new");
+        given(membershipSubscriptionService.resolveEmailForStripeCustomer(USER_ID))
+                .willReturn(Optional.of("real-user@example.co.jp"));
+        given(stripePaymentProvider.createCustomer("real-user@example.co.jp", USER_ID)).willReturn("cus_new");
         given(stripeCustomerRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
         given(stripePaymentProvider.createSetupIntent("cus_new"))
                 .willReturn(new StripePaymentProvider.SetupIntentInfo("seti_2", "secret2", "requires_payment_method"));
@@ -66,7 +76,24 @@ class PaymentMethodServiceTest {
         StripePaymentProvider.SetupIntentInfo info = service.createSetupIntent(USER_ID);
 
         assertThat(info.setupIntentId()).isEqualTo("seti_2");
-        verify(stripePaymentProvider).createCustomer("user@example.com", USER_ID);
+        verify(stripePaymentProvider).createCustomer("real-user@example.co.jp", USER_ID);
+        verify(stripePaymentProvider, never()).createCustomer(eq("user@example.com"), any());
+    }
+
+    @Test
+    @DisplayName("残債2: 退会済み（メール解決不可）ユーザーは Customer 新規作成を拒否する（プレースホルダで通さない）")
+    void 退会済みユーザーはCustomer作成拒否() {
+        given(stripeCustomerRepository.findByUserId(USER_ID)).willReturn(Optional.empty());
+        given(membershipSubscriptionService.resolveEmailForStripeCustomer(USER_ID))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.createSetupIntent(USER_ID))
+                .isInstanceOf(BusinessException.class)
+                .extracting(e -> ((BusinessException) e).getErrorCode())
+                .isEqualTo(PaymentErrorCode.STRIPE_CUSTOMER_TARGET_USER_WITHDRAWN);
+
+        verify(stripePaymentProvider, never()).createCustomer(any(), any());
+        verify(stripeCustomerRepository, never()).save(any());
     }
 
     @Test

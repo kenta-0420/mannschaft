@@ -11,11 +11,28 @@ import DashboardWidgetCard from '~/components/DashboardWidgetCard.vue'
  * - scrollable=true（デフォルト）でコンテンツ領域に overflow-y-auto クラスが付く
  * - scrollable=false で overflow-y-auto クラスが付かない
  * - maxHeight プロップが style 属性に反映される
+ *
+ * max-height はカードルート要素（wrapper.element）に付与される仕様（#2070）。
+ * コンテンツ領域（slot の直接の親）には overflow-y-auto クラスのみが付き、インライン style は持たない。
+ * #2623: 旧テストはコンテンツ領域の parentElement を見ていたため、実装が仕様通りでも
+ * max-height を検出できず赤化していた（実装ではなくテストの取得方法の誤りと判断）。
  */
 
 const slotContent = () => h('p', { 'data-testid': 'content' }, '本文')
 
 describe('DashboardWidgetCard.vue', () => {
+  it('actions スロットをヘッダーに描画する', async () => {
+    const wrapper = await mountSuspended(DashboardWidgetCard, {
+      props: { title: 'テストタイトル' },
+      slots: {
+        default: slotContent,
+        actions: () => h('button', { 'data-testid': 'header-action' }, '追加'),
+      },
+    })
+
+    expect(wrapper.find('[data-testid="header-action"]').exists()).toBe(true)
+  })
+
   it('to 未指定なら title は <h3> のみでリンクではない', async () => {
     const wrapper = await mountSuspended(DashboardWidgetCard, {
       props: { title: 'テストタイトル', icon: 'pi pi-user' },
@@ -58,8 +75,8 @@ describe('DashboardWidgetCard.vue', () => {
     expect(content.exists()).toBe(true)
     const parent = content.element.parentElement
     expect(parent?.className).toContain('overflow-y-auto')
-    // インラインスタイル max-height が指定されていること
-    expect(parent?.getAttribute('style') ?? '').toContain('max-height')
+    // max-height はコンテンツ領域ではなくカードルート要素に付与される（行内高さ揃えの仕組み上の仕様。#2070）
+    expect(wrapper.element.getAttribute('style') ?? '').toContain('max-height')
   })
 
   it('scrollable=false でコンテンツ領域に overflow-y-auto クラスが付かない', async () => {
@@ -82,7 +99,9 @@ describe('DashboardWidgetCard.vue', () => {
 
     const content = wrapper.find('[data-testid="content"]')
     expect(content.exists()).toBe(true)
-    const parent = content.element.parentElement
-    expect(parent?.getAttribute('style') ?? '').toContain('12rem')
+    // max-height はカードルート要素の style に反映される（#2070）
+    const style = wrapper.element.getAttribute('style') ?? ''
+    expect(style).toContain('max-height')
+    expect(style).toContain('12rem')
   })
 })

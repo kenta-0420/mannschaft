@@ -4,6 +4,7 @@ import com.mannschaft.app.auth.entity.UserEntity;
 import com.mannschaft.app.auth.repository.UserRepository;
 import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.BusinessException;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.common.visibility.ContentVisibilityChecker;
 import com.mannschaft.app.common.visibility.ReferenceType;
 import com.mannschaft.app.role.repository.UserRoleRepository;
@@ -78,8 +79,25 @@ class SurveyResultServiceTest {
     @Mock
     private com.mannschaft.app.organization.service.OrganizationMembershipService organizationMembershipService;
 
+    @Mock
+    private MediaUrlResolver mediaUrlResolver;
+
     @InjectMocks
     private SurveyResultService surveyResultService;
+
+    /**
+     * 結果閲覧可否の判定点は<b>実物</b>を差し込む（Issue #2779）。
+     *
+     * <p>モックに置き換えると「403 を投げる経路」と「詳細応答の viewerCanViewResults」が
+     * 同じ判定を通っている保証が消えるため、モック化した可視性基盤を包んだ実物を使う。
+     * 既存の {@code contentVisibilityChecker} スタブはそのまま素通しで効く。</p>
+     */
+    @org.junit.jupiter.api.BeforeEach
+    void injectRealResultAccessPolicy() {
+        org.springframework.test.util.ReflectionTestUtils.setField(
+                surveyResultService, "resultAccessGuard",
+                new com.mannschaft.app.survey.service.SurveyResultAccessGuard(contentVisibilityChecker));
+    }
 
     private static final Long SURVEY_ID = 100L;
     private static final Long USER_ID = 10L;

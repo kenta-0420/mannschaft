@@ -1,5 +1,6 @@
 package com.mannschaft.app.filesharing.dto;
 
+import com.mannschaft.app.filesharing.FileVisibilityRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
@@ -27,6 +28,8 @@ public record FolderDetailResponse(
         UserRef createdBy,
         Integer fileCount,
         Integer subfolderCount,
+        FileVisibilityRole minVisibleRole,
+        Boolean downloadDisabled,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         List<FolderSummary> subfolders,
@@ -52,6 +55,8 @@ public record FolderDetailResponse(
             UserRef createdBy,
             Integer fileCount,
             Integer subfolderCount,
+            FileVisibilityRole minVisibleRole,
+            Boolean downloadDisabled,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {
@@ -79,6 +84,8 @@ public record FolderDetailResponse(
             Long currentVersionId,
             List<String> tags,
             Integer downloadCount,
+            FileVisibilityRole minVisibleRole,
+            Boolean downloadDisabled,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
     ) {

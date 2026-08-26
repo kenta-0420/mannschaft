@@ -63,6 +63,7 @@ public class PointTransactionEntity {
     @Column(nullable = false)
     private LocalDate earnedOn;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @PrePersist

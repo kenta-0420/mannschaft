@@ -77,7 +77,10 @@
       "toggle_today": "Today",
       "toggle_week": "This Week",
       "empty_today": "No events today",
-      "empty_week": "No events this week"
+      "empty_week": "No events this week",
+      "kind_event": "Event",
+      "kind_shift": "Shift",
+      "kind_reservation": "Reservation"
     },
     "personal": {
       "find_team_title": "Find a New Team or Organization",
@@ -108,13 +111,10 @@
       "my-organizations": "My Organizations",
       "favorites": "Favorites",
       "recent-activity": "Recent Activity",
-      "family-hub": "Family",
-      "notifications": "Notifications",
       "recruitment-feed": "New Listings",
       "my-recruitments": "My Reservations",
       "my-corkboard": "My Corkboard",
       "village-lobby-digest": "Village Digest",
-      "inbox": "Inbox",
       "todos": "TODO",
       "timeline": "Timeline",
       "bulletin": "Bulletin Board",
@@ -133,7 +133,8 @@
       "team-division-standings": "Standings",
       "org-tournament-summary": "Tournament Summary",
       "team-match-summary": "Match Summary",
-      "projects": "Projects"
+      "projects": "Projects",
+      "my-timeline": "Aggregated Timeline"
     },
     "widget_descriptions": {
       "event-dismissal-reminder": "Reminder for events with unsent disbanding notifications",
@@ -154,13 +155,10 @@
       "my-organizations": "Organizations you belong to",
       "favorites": "Your favorited content",
       "recent-activity": "Your recent activity history",
-      "family-hub": "Family team announcements and TODOs",
-      "notifications": "Unread notifications",
       "recruitment-feed": "New listings from followed groups",
       "my-recruitments": "Your confirmed and waitlisted reservations",
       "my-corkboard": "Pinned cards overview",
       "village-lobby-digest": "Today's presence in pinned villages",
-      "inbox": "Sort notifications in one place",
       "todos": "Incomplete TODOs",
       "timeline": "Latest posts",
       "bulletin": "Latest threads",
@@ -179,7 +177,33 @@
       "team-division-standings": "Current division standings",
       "org-tournament-summary": "Summary of tournaments you organize",
       "team-match-summary": "Recent match results and records",
-      "projects": "Project progress and list"
+      "projects": "Project progress and list",
+      "my-timeline": "Cross-scope posts from your teams and organizations"
+    },
+    "notices": {
+      "actionRequiredTab": "Action Required",
+      "actionRequiredEmpty": "No items require your attention",
+      "widget_notices_tab_platform": "Announcements",
+      "widget_notices_platform_empty": "No announcements at this time"
+    },
+    "commandCenter": {
+      "title": "Right Now",
+      "unresolvedCount": "{count} unresolved",
+      "chipCirculation": "Circulation",
+      "chipSurvey": "Survey",
+      "chipAttendance": "Attendance",
+      "chipOverdueTodo": "Overdue TODO",
+      "deadlineOverdue": "Overdue",
+      "deadlineToday": "Today",
+      "emptyTitle": "Nothing missed 🎉",
+      "emptyMessage": "No items require your attention",
+      "partialLoadError": "Some data could not be loaded",
+      "todoCompleteAria": "Mark as complete",
+      "todoCompleteSuccess": "TODO completed",
+      "todoCompleteError": "Failed to complete the TODO",
+      "adminSectionTitle": "Pending Approvals",
+      "adminUnresolvedCount": "{count} pending approvals",
+      "adminLoadError": "Failed to load pending approvals"
     },
     "myCorkboard": {
       "widgetTitle": "My Corkboard",
@@ -194,6 +218,27 @@
       "unpinAction": "Unpin this card",
       "navigationFailed": "Cannot access the reference of this card",
       "colorLabelAria": "{color} label"
+    },
+    "activity_feed": {
+      "post_created": "posted",
+      "event_created": "created an event",
+      "member_joined": "joined",
+      "todo_completed": "completed a TODO",
+      "bulletin_created": "posted a notice",
+      "poll_created": "created a poll",
+      "file_uploaded": "shared a file",
+      "schedule_created": "created a schedule",
+      "schedule_updated": "updated a schedule",
+      "schedule_cancelled": "cancelled a schedule",
+      "schedule_rescheduled": "rescheduled a schedule",
+      "detail_start_at": "Start time",
+      "detail_end_at": "End time",
+      "detail_is_all_day": "All-day",
+      "detail_title": "Title",
+      "detail_location": "Location",
+      "detail_status": "Status",
+      "detail_description_changed": "Description updated",
+      "unknown": "did something"
     }
   },
   "swipeWidgets": {
@@ -212,8 +257,43 @@
       "unconfirmed": "{count} unconfirmed",
       "unanswered": "{count} unanswered",
       "empty": "No action items",
-      "loadError": "Failed to load action items"
+      "loadError": "Failed to load action items",
+      "circulationModal": {
+        "title": "Confirm circulation",
+        "circulatedAt": "Circulated at",
+        "deadline": "Deadline",
+        "confirm": "Confirm",
+        "noSealMessage": "No seal is set. Please set up a seal before stamping.",
+        "goToSealSettings": "Go to seal settings",
+        "stampSuccess": "Stamped successfully",
+        "stampError": "Failed to stamp"
+      },
+      "surveyModal": {
+        "loadError": "Failed to load survey"
+      },
+      "attendanceModal": {
+        "title": "Attendance",
+        "attending": "Attending",
+        "absent": "Absent",
+        "undecided": "Undecided",
+        "success": "Attendance recorded",
+        "error": "Failed to record attendance"
+      }
     },
-    "emptyState": "No posts yet"
+    "emptyState": "No posts yet",
+    "list": {
+      "allDay": "All day",
+      "overdue": "Overdue",
+      "nextEvent": "Next event",
+      "noNextEvent": "No upcoming events",
+      "eventsThisWeek": "{count} this week",
+      "upcomingEmpty": "No upcoming events",
+      "blogEmpty": "No blog posts",
+      "chatEmpty": "No chats",
+      "todoEmpty": "No TODOs",
+      "calendarEmpty": "No events",
+      "bulletinEmpty": "No bulletin threads",
+      "unread": "Unread"
+    }
   }
 }

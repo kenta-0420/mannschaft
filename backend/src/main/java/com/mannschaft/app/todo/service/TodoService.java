@@ -61,13 +61,16 @@ public class TodoService {
      * @param status    ステータスフィルタ（NULLで全件）
      * @param page      ページ番号（0始まり）
      * @param size      ページサイズ
+     * @param sortType  ソート種別。"PRIORITY" = 優先度降順→期限昇順→作成日降順、
+     *                  それ以外（"RECENT" または未指定）= 作成日降順（新着順）。
      * @return TODO一覧
      */
     @Timed(value = "mannschaft.repository.query", extraTags = {"operation", "TodoService.listTodos"})
     public PagedResponse<TodoResponse> listTodos(TodoScopeType scopeType, Long scopeId,
-                                                  TodoStatus status, int page, int size) {
-        PageRequest pageable = PageRequest.of(page, size,
-                Sort.by("priority").descending().and(Sort.by("dueDate").ascending()));
+                                                  TodoStatus status, int page, int size,
+                                                  String sortType) {
+        Sort sort = buildSort(sortType);
+        PageRequest pageable = PageRequest.of(page, size, sort);
 
         Page<TodoEntity> pageResult;
         if (status != null) {
@@ -83,6 +86,24 @@ public class TodoService {
         PagedResponse.PageMeta meta = new PagedResponse.PageMeta(
                 pageResult.getTotalElements(), pageResult.getNumber(), pageResult.getSize(), pageResult.getTotalPages());
         return PagedResponse.of(responses, meta);
+    }
+
+    /**
+     * ソート種別文字列から {@link Sort} を構築する。
+     *
+     * <ul>
+     *   <li>{@code "PRIORITY"} — 優先度降順 → 期限昇順 → 作成日降順</li>
+     *   <li>それ以外（{@code "RECENT"} / {@code null} / 不正値）— 作成日降順（新着順・既定）</li>
+     * </ul>
+     */
+    private Sort buildSort(String sortType) {
+        if ("PRIORITY".equals(sortType)) {
+            return Sort.by(Sort.Order.desc("priority"))
+                    .and(Sort.by(Sort.Order.asc("dueDate")))
+                    .and(Sort.by(Sort.Order.desc("createdAt")));
+        }
+        // RECENT（既定）: 作成新着順
+        return Sort.by(Sort.Order.desc("createdAt"));
     }
 
     /**
@@ -345,6 +366,51 @@ public class TodoService {
     }
 
     /**
+     * 個人TODOを復元する（論理削除の取り消し）。担当者であることを検証する（IDOR対策）。
+     *
+     * <p>削除EP {@link #deletePersonalTodo(Long, Long)} と同じ認可境界を採用する。
+     * 他人の（担当者でない）TODOの復元要求は、他スコープでの ID 存在を漏らさないため
+     * {@link TodoErrorCode#TODO_NOT_FOUND}（404）で返す。</p>
+     *
+     * @param todoId Todo ID
+     * @param userId 操作ユーザーID
+     */
+    @Transactional
+    public void restorePersonalTodo(Long todoId, Long userId) {
+        // 担当者であることを検証（IDOR対策: 他人のTODOはNOT_FOUNDで返す）
+        boolean isAssignee = assigneeRepository.existsByTodoIdAndUserId(todoId, userId);
+        if (!isAssignee) {
+            throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+        }
+        restoreTodo(todoId);
+    }
+
+    /**
+     * 論理削除済みTODOを復元する。
+     *
+     * @param todoId Todo ID
+     */
+    @Transactional
+    public void restoreTodo(Long todoId) {
+        TodoEntity todo = findDeletedTodoOrThrow(todoId);
+        Long parentId = todo.getParentId();
+        todo.restore();
+        todoRepository.save(todo);
+
+        // プロジェクト進捗再計算
+        if (todo.getProjectId() != null) {
+            projectRepository.recalculateProgress(todo.getProjectId());
+        }
+
+        // 親TODO（自動モード）の進捗率再計算
+        if (parentId != null) {
+            todoProgressService.recalculateAfterChildChange(parentId);
+        }
+
+        log.info("TODO復元: id={}", todoId);
+    }
+
+    /**
      * TODOを部分更新する（PATCH）。
      * 個人TODOの担当者本人のみ更新可能。IDOR対策としてTODO_NOT_FOUNDで統一する。
      *
@@ -467,6 +533,36 @@ public class TodoService {
     public TodoEntity findTodoOrThrow(Long todoId) {
         return todoRepository.findByIdAndDeletedAtIsNull(todoId)
                 .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+    }
+
+    /**
+     * 論理削除済みTODOを取得する。存在しない（未削除も含む）場合は TODO_NOT_FOUND をスローする。
+     * 復元（restore）専用ヘルパー。
+     */
+    public TodoEntity findDeletedTodoOrThrow(Long todoId) {
+        return todoRepository.findByIdAndDeletedAtIsNotNull(todoId)
+                .orElseThrow(() -> new BusinessException(TodoErrorCode.TODO_NOT_FOUND));
+    }
+
+    /**
+     * 復元対象の論理削除済み TODO について、path で指定された scope と一致することを検証する。
+     *
+     * <p>{@link #assertTodoScope(Long, TodoScopeType, Long)} の削除済み版。
+     * {@code /api/v1/teams/{teamId}/todos/{id}/restore} などで path scope と
+     * 削除済み todo の scope が不一致のとき、他スコープでの ID 存在を漏らさないため
+     * {@link TodoErrorCode#TODO_NOT_FOUND}（404）で返す。</p>
+     *
+     * @param todoId    検証する TODO の ID
+     * @param scopeType path のスコープ種別
+     * @param scopeId   path のスコープ ID
+     * @throws BusinessException 不一致 / 未削除 / 不存在のとき TODO_NOT_FOUND
+     */
+    public void assertDeletedTodoScope(Long todoId, TodoScopeType scopeType, Long scopeId) {
+        TodoEntity todo = findDeletedTodoOrThrow(todoId);
+        if (todo.getScopeType() != scopeType
+                || !java.util.Objects.equals(todo.getScopeId(), scopeId)) {
+            throw new BusinessException(TodoErrorCode.TODO_NOT_FOUND);
+        }
     }
 
     /**

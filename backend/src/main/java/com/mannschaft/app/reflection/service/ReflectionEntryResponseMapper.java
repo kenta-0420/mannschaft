@@ -2,6 +2,7 @@ package com.mannschaft.app.reflection.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.mannschaft.app.reflection.RecallDirection;
+import com.mannschaft.app.reflection.ReflectionOutlineRevealLevel;
 import com.mannschaft.app.reflection.dto.ReflectionEntryResponse;
 import com.mannschaft.app.reflection.entity.ReflectionEntryEntity;
 import com.mannschaft.app.reflection.entity.ReflectionThemeEntity;
@@ -28,6 +29,7 @@ public class ReflectionEntryResponseMapper {
     private final ReflectionMaskEvaluator maskEvaluator;
     private final ReflectionContentSanitizer contentSanitizer;
     private final ReflectionMaskedCueExtractor maskedCueExtractor;
+    private final ReflectionMaskedOutlineExtractor maskedOutlineExtractor;
 
     /**
      * マスク判定を行ったうえでエントリ応答を生成する（一覧・詳細用）。
@@ -91,20 +93,30 @@ public class ReflectionEntryResponseMapper {
                 : List.of();
 
         // Phase 4（§13-C-1）: TERM_CARD の cue 側だけを抽出する。
-        // fail-closed: today=null（算出不能）・parse 失敗・型不整合では cardQuiz 空・recallDirection=null。
+        // §13-C 増分: OUTLINE 段階式マスク（足場ラダー）の足場を抽出する。
+        // fail-closed: today=null（算出不能）・parse 失敗・型不整合では cardQuiz 空・recallDirection=null・
+        //              足場 HIDDEN（空）。answer 側（term/meaning・小見出し/詳細/補足）は絶対に載せない。
         RecallDirection direction = null;
         List<ReflectionEntryResponse.MaskedCardQuiz> cardQuiz = List.of();
+        ReflectionEntryResponse.MaskedOutlineScaffold outlineScaffold =
+                maskedOutlineExtractor.extractScaffold(null, ReflectionOutlineRevealLevel.HIDDEN);
         if (today != null) {
             try {
-                direction = maskEvaluator.resolveDirection(entry, theme, today);
+                // 本文 parse は cue 抽出と足場抽出で 1 回だけ行い流用する。
                 JsonNode content = contentSanitizer.parse(entry.getStructuredContent());
+                direction = maskEvaluator.resolveDirection(entry, theme, today);
                 cardQuiz = maskedCueExtractor.extractCardQuiz(content, direction);
+                ReflectionOutlineRevealLevel level =
+                        maskEvaluator.resolveOutlineRevealLevel(entry, theme, today);
+                outlineScaffold = maskedOutlineExtractor.extractScaffold(content, level);
             } catch (Exception e) {
-                // cue 抽出で例外 → 答えを絶対に載せない（fail-closed・§13-C-1）。
-                log.warn("マスク中の cue 抽出に失敗のため fail-closed（cardQuiz 空）: entryId={}",
+                // 抽出で例外 → 答え・足場を絶対に載せない（fail-closed・§13-C-1）。
+                log.warn("マスク中の cue/足場抽出に失敗のため fail-closed（cardQuiz 空・足場 HIDDEN）: entryId={}",
                         entry.getId(), e);
                 direction = null;
                 cardQuiz = List.of();
+                outlineScaffold = maskedOutlineExtractor.extractScaffold(
+                        null, ReflectionOutlineRevealLevel.HIDDEN);
             }
         }
 
@@ -114,6 +126,7 @@ public class ReflectionEntryResponseMapper {
                 .dueRecallDates(dueDates)
                 .recallDirection(direction)
                 .cardQuiz(cardQuiz)
+                .outlineScaffold(outlineScaffold)
                 .build();
         return ReflectionEntryResponse.builder()
                 .id(entry.getId().toString())

@@ -35,8 +35,8 @@ async function load() {
   loading.value = true
   try {
     const results = await Promise.all(
-      teamStore.myTeams.slice(0, 5).map((team) =>
-        getScopedThreads('teams', String(team.id), { page: 0, size: 3 })
+      teamStore.myTeams.slice(0, 8).map((team) =>
+        getScopedThreads('teams', String(team.id), { page: 0, size: 4 })
           .then((res) =>
             res.data.map((t) => ({
               ...t,
@@ -56,7 +56,7 @@ async function load() {
     threads.value = results
       .flat()
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .slice(0, 8)
+      .slice(0, 20)
   } finally {
     loading.value = false
   }
@@ -111,6 +111,11 @@ onMounted(load)
           </div>
         </div>
       </NuxtLink>
+      <div class="flex justify-end pt-2">
+        <NuxtLink to="/timeline" class="text-sm text-primary hover:underline">
+          {{ $t('button.view_all') }}
+        </NuxtLink>
+      </div>
     </div>
   </DashboardWidgetCard>
 

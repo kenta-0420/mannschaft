@@ -14,7 +14,7 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.timeline', icon: 'pi pi-comments', path: 'timeline', moduleSlug: 'timeline', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.chat', icon: 'pi pi-comment', path: 'chat', moduleSlug: 'chat', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.bulletin', icon: 'pi pi-megaphone', path: 'bulletin', moduleSlug: 'bulletin', requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.blog', icon: 'pi pi-pen-to-square', path: 'blog', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.blog', icon: 'pi pi-pen-to-square', path: 'blog', moduleSlug: 'blog_cms', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.circulation', icon: 'pi pi-sync', path: 'circulation', moduleSlug: 'circular', requiredRole: 'MEMBER' },
     ],
   },
@@ -25,7 +25,7 @@ const categories: SidebarCategory[] = [
     items: [
       { labelKey: 'orgSidebar.schedule', icon: 'pi pi-calendar', path: 'schedule', moduleSlug: 'schedule', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.events', icon: 'pi pi-calendar-plus', path: 'events', moduleSlug: 'schedule', requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.timetable', icon: 'pi pi-table', path: 'timetable', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.timetable', icon: 'pi pi-table', path: 'timetable', moduleSlug: 'timetable', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.annualPlan', icon: 'pi pi-chart-bar', path: 'annual-plan', moduleSlug: null, requiredRole: 'MEMBER' },
     ],
   },
@@ -47,13 +47,13 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-briefcase',
     items: [
       { labelKey: 'orgSidebar.todos', icon: 'pi pi-check-square', path: 'todos', moduleSlug: 'todo', requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.workflows', icon: 'pi pi-sitemap', path: 'workflows', moduleSlug: null, requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.forms', icon: 'pi pi-file-edit', path: 'forms', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.workflows', icon: 'pi pi-sitemap', path: 'workflows', moduleSlug: 'workflow', requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.forms', icon: 'pi pi-file-edit', path: 'forms', moduleSlug: 'form', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.surveys', icon: 'pi pi-chart-pie', path: 'surveys', moduleSlug: 'survey', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.voting', icon: 'pi pi-check-circle', path: 'voting', moduleSlug: 'voting', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.safety', icon: 'pi pi-heart', path: 'safety', moduleSlug: 'safety_check', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.incidents', icon: 'pi pi-exclamation-triangle', path: 'incidents', moduleSlug: null, requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.committees', icon: 'pi pi-building', path: 'committees', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.committees', icon: 'pi pi-building', path: 'committees', moduleSlug: 'committee', requiredRole: 'MEMBER' },
     ],
   },
   {
@@ -83,7 +83,7 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.files', icon: 'pi pi-folder', path: 'files', moduleSlug: 'file_sharing', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.kb', icon: 'pi pi-book', path: 'kb', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.analytics', icon: 'pi pi-chart-line', path: 'analytics', moduleSlug: 'analytics', requiredRole: 'ADMIN' },
-      { labelKey: 'orgSidebar.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: null, requiredRole: 'ADMIN' },
+      { labelKey: 'orgSidebar.budget', icon: 'pi pi-wallet', path: 'budget', moduleSlug: 'budget', requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.auditLogs', icon: 'pi pi-list', path: 'audit-logs', moduleSlug: 'audit_log', requiredRole: 'ADMIN' },
     ],
   },
@@ -93,7 +93,7 @@ const categories: SidebarCategory[] = [
     icon: 'pi pi-ellipsis-h',
     items: [
       { labelKey: 'orgSidebar.gamification', icon: 'pi pi-star', path: 'gamification', moduleSlug: null, requiredRole: 'MEMBER' },
-      { labelKey: 'orgSidebar.tournaments', icon: 'pi pi-trophy', path: 'tournaments', moduleSlug: null, requiredRole: 'MEMBER' },
+      { labelKey: 'orgSidebar.tournaments', icon: 'pi pi-trophy', path: 'tournaments', moduleSlug: 'tournament', requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.leagueTransfers', icon: 'pi pi-arrow-right-arrow-left', path: 'league-transfers', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.queue', icon: 'pi pi-sort-numeric-up', path: 'queue', moduleSlug: null, requiredRole: 'MEMBER' },
       { labelKey: 'orgSidebar.timelineDigest', icon: 'pi pi-align-left', path: 'timeline-digest', moduleSlug: null, requiredRole: 'MEMBER' },
@@ -122,6 +122,8 @@ const categories: SidebarCategory[] = [
       { labelKey: 'orgSidebar.notificationCredits', icon: 'pi pi-bell', path: 'settings/notification-credits', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.todoStatusLabels', icon: 'pi pi-tags', path: 'settings/todo-status-labels', moduleSlug: null, requiredRole: 'ADMIN' },
       { labelKey: 'orgSidebar.faqSettings', icon: 'pi pi-question-circle', path: 'settings/faq-settings', moduleSlug: null, requiredRole: 'ADMIN' },
+      // F20.1: 課金・プラン管理（閲覧はメンバー可・操作はADMIN限定。ナビはメンバー以上に表示）
+      { labelKey: 'orgSidebar.billing', icon: 'pi pi-credit-card', path: 'settings/billing', moduleSlug: null, requiredRole: 'MEMBER' },
     ],
   },
 ]

@@ -59,8 +59,10 @@ public class ShiftAssignmentEntity {
     @Column(length = 500)
     private String note;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
     @Version

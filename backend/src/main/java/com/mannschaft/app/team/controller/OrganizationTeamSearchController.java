@@ -4,6 +4,7 @@ import com.mannschaft.app.common.AccessControlService;
 import com.mannschaft.app.common.ApiResponse;
 import com.mannschaft.app.common.PagedResponse;
 import com.mannschaft.app.common.SecurityUtils;
+import com.mannschaft.app.common.storage.MediaUrlResolver;
 import com.mannschaft.app.organization.exception.OrganizationNotFoundException;
 import com.mannschaft.app.organization.service.OrganizationService;
 import com.mannschaft.app.team.dto.TeamPublicSummaryResponse;
@@ -64,6 +65,8 @@ public class OrganizationTeamSearchController {
     private final TeamSearchService teamSearchService;
     private final AccessControlService accessControlService;
     private final OrganizationService organizationService;
+    /** 画像 URL 根治 Phase 1: 生 R2 キー → 署名付き表示 URL の解決を担う共通部品。 */
+    private final MediaUrlResolver mediaUrlResolver;
 
     /**
      * 組織配下のチーム（店舗）を検索する。
@@ -133,12 +136,18 @@ public class OrganizationTeamSearchController {
         PagedResponse<?> body;
         if (isMember) {
             List<TeamSearchResultResponse> content = resultPage.getContent().stream()
-                    .map(TeamSearchResultResponse::from)
+                    // 画像 URL 根治 Phase 1: icon/banner を署名付き表示 URL へ解決して渡す。
+                    .map(team -> TeamSearchResultResponse.from(
+                            team,
+                            mediaUrlResolver.resolve(team.getIconUrl()),
+                            mediaUrlResolver.resolve(team.getBannerUrl())))
                     .toList();
             body = PagedResponse.of(content, buildMeta(resultPage, page, size));
         } else {
             List<TeamPublicSummaryResponse> content = resultPage.getContent().stream()
-                    .map(TeamPublicSummaryResponse::from)
+                    // 画像 URL 根治 Phase 1: icon を署名付き表示 URL へ解決して渡す（抑制版はバナーなし）。
+                    .map(team -> TeamPublicSummaryResponse.from(
+                            team, mediaUrlResolver.resolve(team.getIconUrl())))
                     .toList();
             body = PagedResponse.of(content, buildMeta(resultPage, page, size));
         }

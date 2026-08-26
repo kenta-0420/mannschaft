@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CoinTossResponse } from '~/types/coin-toss'
 
-definePageMeta({ middleware: 'auth' })
+definePageMeta({ layout: 'team', middleware: 'auth' })
 
 const route = useRoute()
 const teamSlug = String(route.params.slug)

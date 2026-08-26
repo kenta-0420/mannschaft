@@ -65,6 +65,11 @@
     },
     "connection": {
       "failed": "Verbindung unterbrochen. Verbindungsversuch läuft…"
+    },
+    "mobile": {
+      "backToList": "Zurück zur Kanalliste",
+      "noChannels": "Noch keine Kanäle",
+      "createChannel": "Kanal erstellen"
     }
   },
   "button": {
@@ -82,7 +87,10 @@
     "loading": "Laden...",
     "confirm": "Bestatigen",
     "logout": "Abmelden",
-    "update": "Aktualisieren"
+    "update": "Aktualisieren",
+    "see_more": "Mehr anzeigen",
+    "view_all": "Alle anzeigen",
+    "undo": "Rückgängig"
   },
   "label": {
     "required": "Pflichtfeld",
@@ -218,8 +226,12 @@
   "error": {
     "server": "Ein Serverfehler ist aufgetreten",
     "server_retry": "Bitte versuchen Sie es spater erneut.",
+    "rate_limited": "Zu viele Anfragen",
+    "rate_limited_detail": "Sie haben in kurzer Zeit zu viele Anfragen gesendet. Bitte warten Sie einen Moment und versuchen Sie es erneut.",
+    "rate_limited_retry_after": "Sie haben in kurzer Zeit zu viele Anfragen gesendet. Bitte versuchen Sie es in etwa {seconds} Sekunden erneut.",
     "network": "Ein Netzwerkfehler ist aufgetreten",
     "unauthorized": "Bitte melden Sie sich an",
+    "section_load_failed": "Dieser Abschnitt konnte nicht geladen werden. Bitte neu laden.",
     "unknown": "Ein Fehler ist aufgetreten",
     "COMMON_001": "Die Eingaben sind fehlerhaft",
     "COMMON_002": "Sie haben keine Berechtigung fur diese Aktion",
@@ -236,7 +248,19 @@
     "AUTH_010": "Das aktuelle Passwort ist nicht korrekt",
     "AUTH_011": "Es wurde noch kein Passwort festgelegt",
     "AUTH_044": "Zu viele Anfragen. Bitte warten Sie einen Moment und versuchen Sie es erneut",
-    "SURVEY_023": "Die Team-Aufschluesselung kann bei anonymen Umfragen nicht aktiviert werden"
+    "SURVEY_023": "Die Team-Aufschluesselung kann bei anonymen Umfragen nicht aktiviert werden",
+    "SCHEDULE_KEEP_001": "キープが見つかりません",
+    "SCHEDULE_KEEP_002": "タイトルを入力してください",
+    "SCHEDULE_KEEP_003": "候補日は最大10件です",
+    "SCHEDULE_KEEP_004": "候補日の形式が正しくありません",
+    "SCHEDULE_KEEP_005": "このキープを操作する権限がありません",
+    "SCHEDULE_KEEP_006": "このキープは予定に変換できません",
+    "SCHEDULE_KEEP_007": "この状態では編集できません",
+    "SCHEDULE_KEEP_008": "出欠の回答があるため変換を取り消せません",
+    "SCHEDULE_KEEP_009": "この操作はできません",
+    "SCHEDULE_KEEP_010": "キープの上限に達しました",
+    "SCHEDULE_KEEP_012": "並び替えの指定が正しくありません",
+    "TIMELINE_017": "Du hast das Limit von 200 Ausblendungen erreicht. Blende bitte etwas wieder ein."
   },
   "annual_plan": {
     "title": "Jahresveranstaltungsplan",
@@ -455,7 +479,51 @@
     "imageUploadError": "Bild-Upload fehlgeschlagen",
     "postSuccess": "Erfolgreich gepostet",
     "postError": "Fehler beim Posten",
-    "announcementRegisterError": "Fehler bei der Ankündigung. Bitte manuell registrieren."
+    "announcementRegisterError": "Fehler bei der Ankündigung. Bitte manuell registrieren.",
+    "postSource": "Gepostet in",
+    "writeReply": "Antwort schreiben",
+    "replySubmit": "Antworten",
+    "noReplies": "Noch keine Antworten",
+    "loadMoreReplies": "Mehr anzeigen",
+    "composerPlaceholder": {
+      "TEAM": "Im Team posten...",
+      "VILLAGE": "Im Dorf posten...",
+      "ORGANIZATION": "In der Organisation posten...",
+      "PUBLIC": "Was gibt's Neues?"
+    },
+    "submitLabel": "Posten",
+    "pollOptionsCount": "{count} Optionen",
+    "deliveryScope": {
+      "label": "Zustellbereich",
+      "options": {
+        "DIRECT": "Nur Mitglieder dieser Organisation",
+        "CHILDREN": "Auch direkte untergeordnete Organisationen",
+        "DESCENDANTS": "Alle untergeordneten Organisationen"
+      },
+      "hints": {
+        "DIRECT": "Wird nur in den Timelines der Mitglieder dieser Organisation angezeigt.",
+        "CHILDREN": "Wird auch Mitgliedern der direkt untergeordneten Organisationen angezeigt.",
+        "DESCENDANTS": "Wird Mitgliedern aller untergeordneten Organisationen angezeigt."
+      }
+    },
+    "mute": {
+      "menuLabel": {
+        "TEAM": "Beiträge dieses Teams ausblenden",
+        "ORGANIZATION": "Beiträge dieser Organisation ausblenden"
+      },
+      "targetType": {
+        "TEAM": "Team",
+        "ORGANIZATION": "Organisation"
+      },
+      "muted": "Beiträge von {name} wurden ausgeblendet",
+      "undo": "Rückgängig",
+      "unmuted": "Beiträge werden wieder angezeigt",
+      "chip": "Ausgeblendet: {count}",
+      "dialogTitle": "Ausgeblendete Quellen",
+      "emptyList": "Du hast niemanden ausgeblendet.",
+      "unmuteAction": "Wieder anzeigen",
+      "unknownTarget": "{type} (ID: {id})"
+    }
   },
   "gallery": {
     "title": "Galerie",
@@ -508,7 +576,8 @@
       "selfReviewEnd": "Endzeit der Selbstüberprüfung",
       "selfReviewHelp": "Der konfigurierte Zeitraum wird als Überprüfungsfenster vor der Veröffentlichung behandelt",
       "saveSettings": "Einstellungen speichern",
-      "loadFailed": "Artikel konnte nicht geladen werden"
+      "loadFailed": "Artikel konnte nicht geladen werden",
+      "scheduledPublishUnavailable": "Geplantes Veröffentlichen ist derzeit nicht verfügbar. Beim Veröffentlichen wird der Beitrag sofort sichtbar."
     },
     "autoSave": {
       "label": "Automatisch speichern",
@@ -534,7 +603,14 @@
       "viewModeKanban": "Kanban-Ansicht",
       "deleteButton": "Löschen",
       "deleteAriaLabel": "Diesen Eintrag löschen",
-      "deleteConfirm": "Diesen Eintrag löschen? Diese Aktion kann nicht rückgängig gemacht werden."
+      "deleteConfirm": "Diesen Eintrag löschen? Diese Aktion kann nicht rückgängig gemacht werden.",
+      "sortLabel": "Sortieren nach",
+      "sortRecent": "Neueste",
+      "sortPriority": "Priorität",
+      "deletedToast": "TODO gelöscht",
+      "restoredToast": "TODO wiederhergestellt",
+      "deleteFailed": "Löschen fehlgeschlagen",
+      "restoreFailed": "Rückgängig nicht möglich"
     },
     "field": {
       "status": "Status",
@@ -645,6 +721,24 @@
         "saving": "Wird gespeichert...",
         "saved": "Gespeichert"
       }
+    },
+    "create": {
+      "dialog_title": "TODO erstellen",
+      "title_label": "Titel",
+      "title_placeholder": "TODO-Titel",
+      "details_toggle": "Details festlegen (optional)",
+      "description_label": "Beschreibung (optional)",
+      "description_placeholder": "Details oder Notizen",
+      "scope_label": "Teilen mit",
+      "scope_personal": "Persönlich",
+      "priority_label": "Priorität",
+      "start_date_label": "Startdatum (optional)",
+      "due_date_label": "Fälligkeitsdatum (optional)",
+      "submit_button": "Erstellen",
+      "cancel_button": "Abbrechen",
+      "draft_restored": "Entwurf wiederhergestellt",
+      "create_success": "TODO erstellt",
+      "create_failed": "Erstellen fehlgeschlagen"
     }
   },
   "extended_profile": {
@@ -684,6 +778,62 @@
     "custom_field_added": "Benutzerdefiniertes Feld hinzugefügt",
     "custom_field_updated": "Benutzerdefiniertes Feld aktualisiert",
     "custom_field_deleted": "Benutzerdefiniertes Feld gelöscht"
+  },
+  "notification": {
+    "todoHandedOff": {
+      "title": "Aufgabe wurde weitergegeben",
+      "body": "{from} hat \"{title}\" an dich weitergegeben (Status: {label})"
+    },
+    "pageTitle": "通知",
+    "guide": {
+      "title": "通知の使い方",
+      "description": "通知一覧では、予定・チャット・お知らせ・確認依頼・緊急休業など、あなた宛ての知らせをまとめて確認できます。行をタップすると自動で既読になり、関連画面へ移動します。",
+      "read": {
+        "title": "通知を読む",
+        "body": "通知の行をタップすると既読になり、関連する画面へ移動します。まだ読んでいない通知には青いドットが付きます。",
+        "steps": {
+          "step1": "気になる通知の行をタップします",
+          "step2": "自動で既読になり、関連する画面へ移動します",
+          "step3": "未読の通知は左端の青いドットで見分けられます"
+        }
+      },
+      "filter": {
+        "title": "絞り込み",
+        "body": "上部の「すべて／未読」の切り替えで、未読の通知だけを表示できます。",
+        "steps": {
+          "step1": "画面上部の「すべて／未読」ボタンを押します",
+          "step2": "「未読」を選ぶと、まだ読んでいない通知だけが表示されます",
+          "step3": "「すべて」に戻すと全ての通知が表示されます"
+        }
+      },
+      "snooze": {
+        "title": "スヌーズ",
+        "body": "今すぐ対応できない通知は、時計アイコンから後回しにできます。指定した時刻に再び表示されます。",
+        "steps": {
+          "step1": "通知の右側にある時計アイコンを押します",
+          "step2": "「3時間後／今夜／明朝／来週」から再表示するタイミングを選びます",
+          "step3": "選んだ時刻になると、その通知が再び一覧に表示されます"
+        }
+      },
+      "confirm": {
+        "title": "確認通知",
+        "body": "「確認する」ボタンが付いた通知は、内容を確認したことを送信元に伝えられます。未確認の人数が表示される場合もあります。",
+        "steps": {
+          "step1": "確認通知（背景色が付いた通知）の内容を読みます",
+          "step2": "「確認する」ボタンを押して確認済みにします",
+          "step3": "確認後は「確認済み」ラベルに変わります"
+        }
+      },
+      "urgent": {
+        "title": "緊急休業・一括既読",
+        "body": "緊急休業の通知は「確認する」を押して確認します。溜まった通知は右上の「すべて既読にする」でまとめて既読にできます。",
+        "steps": {
+          "step1": "緊急休業の通知は「確認する」ボタンで確認します",
+          "step2": "右上の「すべて既読にする」で通知をまとめて既読にできます",
+          "step3": "既読にするとベルのバッジも0になります"
+        }
+      }
+    }
   },
   "project": {
     "milestones": "Meilensteine",
@@ -1127,12 +1277,65 @@
       "event": "Bitte die numerische ID aus der Termin-Detail-URL eingeben (z. B. /events/77).",
       "document": "Bitte die numerische ID aus der Dokument-Detail-URL eingeben (z. B. /documents/55).",
       "url": "Für eine URL-Karte oben den „Kartentyp“ auf URL ändern."
+    },
+    "guide": {
+      "title": "So funktioniert Meine Pinnwand",
+      "description": "Sieh alle Karten, die du in deinen Pinnwänden angeheftet hast, an einem Ort.",
+      "what": {
+        "title": "Was ist Meine Pinnwand",
+        "body": "Karten, die du auf jeder Pinnwand 📌 angeheftet hast, werden hier gesammelt und nach Neuestem zuerst sortiert."
+      },
+      "open": {
+        "title": "Eine Karte öffnen",
+        "body": "Tippe auf eine Karte, um zu ihrer Referenz zu springen.",
+        "steps": {
+          "step1": "Tippe auf eine Karte, um zum ursprünglichen Beitrag, zur Datei, zum Termin usw. zu gelangen.",
+          "step2": "URL-Karten öffnen sich in einem neuen Tab.",
+          "step3": "Karten, auf die du keinen Zugriff mehr hast, können nicht geöffnet werden (angezeigt als „Kein Zugriff“)."
+        }
+      },
+      "editNote": {
+        "title": "Notiz bearbeiten",
+        "body": "Du kannst einer Karte eine Haftnotiz hinzufügen.",
+        "steps": {
+          "step1": "Drücke die Stift-Schaltfläche oben rechts auf der Karte.",
+          "step2": "Gib deine Notiz ein und speichere sie.",
+          "step3": "Die gespeicherte Notiz wird als Haftnotiz auf der Karte angezeigt."
+        }
+      },
+      "unpinDelete": {
+        "title": "Lösen / Löschen",
+        "body": "Entferne nicht mehr benötigte Karten aus der Liste oder lösche sie.",
+        "steps": {
+          "step1": "Mit der 📌-Schaltfläche löst du die Anheftung; die Karte verlässt diese Liste (die Karte auf der ursprünglichen Pinnwand bleibt).",
+          "step2": "Mit der 🗑-Schaltfläche löschst du eine Karte. Das Löschen kann nicht rückgängig gemacht werden."
+        }
+      },
+      "filterAndPin": {
+        "title": "Filtern / Neu anheften",
+        "body": "Grenze die angezeigten Karten ein oder hefte neue an.",
+        "steps": {
+          "step1": "Nutze die Pinnwand-Auswahl in der Symbolleiste, um nur die Karten einer bestimmten Pinnwand anzuzeigen.",
+          "step2": "Nutze „Mehr laden“, um weitere Karten anzuzeigen.",
+          "step3": "Nutze die Schaltfläche „Neu anheften“, um zu einer Pinnwand zu gehen und eine Karte 📌 anzuheften."
+        }
+      }
     }
   },
   "schedule": {
     "filter": {
       "allTeamsOrgs": "Teams & Organisationen (alle)",
       "selectScope": "Ziel auswählen"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Privat",
+        "unknown": "Weitere Termine",
+        "loadError": {
+          "summary": "Ebenen konnten nicht geladen werden",
+          "detail": "Die Team-/Organisationsfilter sind vorübergehend nicht verfügbar. Termine werden weiterhin angezeigt. Bitte später erneut laden."
+        }
+      }
     }
   },
   "handoff": {
@@ -1175,12 +1378,6 @@
       "title": "Weitergabeverlauf",
       "empty": "Noch kein Verlauf",
       "deletedLabel": "(gelöscht)"
-    }
-  },
-  "notification": {
-    "todoHandedOff": {
-      "title": "Aufgabe wurde weitergegeben",
-      "body": "{from} hat \"{title}\" an dich weitergegeben (Status: {label})"
     }
   },
   "common": {
@@ -1293,6 +1490,25 @@
       "skillsSummaryHint": "Beschreibe frei deine Erfahrungen, Kenntnisse und Fähigkeiten (strukturierte Skills bitte im unten stehenden Skills-Bereich eintragen)",
       "excelPreviewUnavailable": "Excel-Dateivorschau ist im Browser nicht verfügbar",
       "downloadLabel": "{format} herunterladen ({type})"
+    },
+    "menu": "Menü",
+    "scopeShell": {
+      "supporter_cancel_confirm_title": "Unterstützung beenden?",
+      "supporter_cancel_confirm_body": "Du beendest die Unterstützung von {name}. Bist du sicher?",
+      "supporter_cancel_action": "Beenden",
+      "supporter_registered": "Als Unterstützer registriert",
+      "supporter_applied": "Unterstützerantrag gesendet",
+      "supporter_canceled": "Unterstützung beendet",
+      "leave_action": "Verlassen",
+      "load_error_title": "Informationen konnten nicht geladen werden",
+      "load_error_body": "Bitte versuche es später erneut. Ohne Berechtigung ist die Anzeige evtl. nicht möglich.",
+      "back_to_dashboard": "Zurück zum Dashboard",
+      "retry": "Erneut versuchen",
+      "slow_loading": "Das Laden dauert länger als erwartet"
+    },
+    "unsavedChanges": {
+      "title": "Ungespeicherte Änderungen",
+      "confirmLeave": "Es gibt ungespeicherte Änderungen. Wenn Sie diese Seite verlassen, gehen Ihre Eingaben verloren. Fortfahren?"
     }
   },
   "teamHub": {
@@ -1410,12 +1626,17 @@
       "feedback": "Feedback",
       "reports": "Berichte",
       "advertisers": "Werbeverwaltung",
+      "adRateCards": "Anzeigen-Preiskarten",
+      "adCreditLimitRequests": "Anzeigen-Kreditlimit-Anträge",
+      "affiliateSettings": "Affiliate-Einstellungen",
       "auditLogs": "Audit-Protokolle",
       "shiftBudget": "Schichtbudget",
       "betaRestriction": "Beta-Einschränkung",
       "errorReports": "Fehlerberichte",
       "gdprPurge": "DSGVO Bereinigungsstatus",
-      "feedbackInbox": "Feedback-Posteingang (Global)"
+      "feedbackInbox": "Feedback-Posteingang (Global)",
+      "billing": "Abrechnungs-Stammdaten",
+      "betaPerks": "ベータ特典管理"
     },
     "impersonation": {
       "banner": "Identitätswechsel: {label}",
@@ -1500,7 +1721,57 @@
       "saveError": "Fehler beim Hinzufügen des Aktivitätsprotokolls",
       "submit": "Hinzufügen",
       "scopeResolveError": "Ziel konnte nicht ermittelt werden",
-      "templatesLoadError": "Fehler beim Laden der Vorlagen"
+      "templatesLoadError": "Fehler beim Laden der Vorlagen",
+      "draftHint": "Du kannst einen Entwurf nur mit einem Titel und Aktivitätsdatum speichern. Vorlagen und benutzerdefinierte Felder können später hinzugefügt werden.",
+      "saveDraft": "Entwurf speichern",
+      "draftSaved": "Entwurf gespeichert",
+      "draftRestored": "Vorherige Eingabe wiederhergestellt",
+      "draftSuccess": "Als Entwurf gespeichert"
+    },
+    "statusLabel": {
+      "DRAFT": "Entwurf",
+      "PUBLISHED": "Veröffentlicht"
+    },
+    "list": {
+      "filterAll": "Alle",
+      "filterDraft": "Entwurf",
+      "editDraft": "Bearbeiten und veröffentlichen"
+    },
+    "publish": {
+      "success": "Aktivitätsprotokoll veröffentlicht",
+      "error": "Fehler beim Veröffentlichen"
+    },
+    "guide": {
+      "title": "So verwendest du Aktivitätsprotokolle",
+      "description": "Halte die Aktivitäten deines Teams oder deiner Organisation fest (Training, Spiele, Events usw.), um sie nachzubereiten und zu teilen.",
+      "list": {
+        "title": "Protokolle anzeigen",
+        "body": "Aktivitäten werden als Karten in umgekehrter chronologischer Reihenfolge angezeigt. Titel, Datum, Ort und Teilnehmerzahl sind auf einen Blick sichtbar. Einträge mit der Sichtbarkeit „Öffentlich\" zeigen einen Teilen-Button, mit dem du den Link nach außen weitergeben kannst."
+      },
+      "add": {
+        "title": "Protokoll hinzufügen",
+        "body": "Tippe oben rechts auf „Protokoll hinzufügen\", um ein neues Aktivitätsprotokoll zu erstellen.",
+        "steps": {
+          "step1": "Oben rechts auf „Protokoll hinzufügen\" tippen",
+          "step2": "Eine Vorlage auswählen",
+          "step3": "Titel und Aktivitätsdatum eingeben (beide Pflichtfelder)",
+          "step4": "Sichtbarkeit wählen (Nur Mitglieder / Öffentlich)",
+          "step5": "Benutzerdefinierte Felder der Vorlage ausfüllen, falls vorhanden",
+          "step6": "Auf „Hinzufügen\" tippen, um den Eintrag in der Liste zu speichern"
+        }
+      },
+      "template": {
+        "title": "Wenn eine Vorlage benötigt wird",
+        "body": "Zum Erstellen eines Protokolls ist eine Vorlage erforderlich. Ist noch keine Vorlage vorhanden, wird ein Hinweisbildschirm anstelle des Formulars angezeigt. Bei Teams erstelle zuerst im Bereich „Aktivitätsvorlagen\" eine Vorlage, bevor du ein Protokoll hinzufügst."
+      },
+      "visibility": {
+        "title": "Sichtbarkeit (wer den Eintrag sehen kann)",
+        "members_only_label": "Nur Mitglieder",
+        "members_only_desc": "Nur Mitglieder des Teams oder der Organisation können diesen Eintrag sehen.",
+        "public_label": "Öffentlich",
+        "public_desc": "Jeder mit dem Link kann den Eintrag aufrufen. In der Liste wird ein Teilen-Button angezeigt, um den Link einfach weiterzugeben.",
+        "note": "Die Standard-Sichtbarkeit richtet sich nach den Einstellungen der Vorlage."
+      }
     }
   },
   "dashboard": {
@@ -1573,7 +1844,9 @@
       "KB_PAGE": "KB",
       "BLOG_AUTHOR": "Autor",
       "VILLAGE": "Dorf"
-    }
+    },
+    "restoredToast": "Zu Favoriten wiederhergestellt",
+    "restoreFailed": "Rückgängig nicht möglich"
   },
   "succession": {
     "legalFilings": {
@@ -1612,6 +1885,13 @@
     "mapEmbedUrlHelp": "In Google Maps auf \"Teilen > Karte einbetten > HTML kopieren\" klicken und die src= URL einfügen",
     "mapEmbedUrlInvalidFormat": "Muss eine Google Maps Einbettungs-URL sein (https://www.google.com/maps/embed?...)",
     "mapEmbedUrlSaved": "Standortkarten-URL gespeichert",
+    "timezone": {
+      "label": "Zeitzone für Reservierungen",
+      "help": "IANA-Zeitzone für die Start- und Endzeiten von Reservierungen.",
+      "placeholder": "z. B. Asia/Tokyo",
+      "invalid": "Geben Sie eine gültige IANA-Zeitzone ein",
+      "saved": "Zeitzone gespeichert"
+    },
     "regionCode": {
       "label": "Standort (Präfektur / Stadt)",
       "help": "Die Auswahl von Präfektur und Stadt legt die Standardwerte für regionale Suche und Inserate fest.",
@@ -1629,6 +1909,7 @@
     "bulletinOpen": "Im Forum diskutieren"
   },
   "scopeDashboard": {
+    "storageSummary": { "title": "Speicher", "personal": "Persönlich", "team": "Team", "organization": "Organisation", "details": "Details anzeigen", "error": "Speicher konnte nicht geladen werden", "retry": "Erneut versuchen", "unconfigured": "Kontingent nicht konfiguriert", "not_available": "Keine Speicherdaten", "meterLabel": "Speichernutzung {scope}", "meterValue": "Nutzung {percent}%", "warningTitle": "Speicherlimit wird erreicht", "warningMessage": "{scope} verwendet {percent}%. Erwägen Sie ein kostenpflichtiges Upgrade.", "viewPlans": "Tarife anzeigen", "checkStorage": "Speicher prüfen", "cancel": "Abbrechen" },
     "tabs": {
       "personal": "Persönlich",
       "team": "Team",
@@ -1686,5 +1967,227 @@
     "GUESTS_AND_ABOVE": "Gäste und höher",
     "SUPPORTERS_AND_ABOVE": "Unterstützer und höher",
     "MEMBERS_AND_ABOVE": "Mitglieder und höher"
+  },
+  "module_settings": {
+    "enabled_count": "有効な機能: {count} / {limit}",
+    "fetch_error": "機能一覧の取得に失敗しました",
+    "empty": "現在このスコープで利用できる追加機能はありません",
+    "toggle_success_on": "{name} を有効にしました",
+    "toggle_success_off": "{name} を無効にしました",
+    "badge": {
+      "level_unavailable": "このレベルでは利用できません",
+      "paid_plan": "有料プラン",
+      "limit_reached": "上限（{limit}）に達しています"
+    },
+    "error": {
+      "paid_required": "この機能は有料プランが必要です",
+      "limit_reached": "無料プランで有効化できる機能の上限（10個）に達しています",
+      "level_unavailable": "このレベルではこの機能を利用できません",
+      "generic": "機能の切替に失敗しました"
+    }
+  },
+  "module_settings_guide": {
+    "title": "機能設定の使い方",
+    "help_button": "使い方",
+    "description": "「機能設定」では、このチーム・組織で使える機能を一覧から探して、スイッチで ON / OFF できます。ここで ON にした機能だけが、メンバーの画面に表示され利用できるようになります。",
+    "what": {
+      "title": "機能設定とは",
+      "body": "チーム・組織で使える機能（モジュール）の一覧です。利用できる機能がすべてカードで並び、各機能を ON にするとメンバーが使えるようになり、OFF にすると画面から隠れて使えなくなります。必要な機能だけを選んで、画面をすっきり保てます。"
+    },
+    "toggle": {
+      "title": "機能を ON / OFF する",
+      "body": "使いたい機能を一覧から探して、カード右のスイッチを ON にするだけです。保存ボタンは不要で、押すとすぐに反映されます。",
+      "steps": {
+        "step1": "一覧から使いたい機能のカードを探す",
+        "step2": "カード右のスイッチを押して ON にする（もう一度押すと OFF）",
+        "step3": "「有効にしました」または「無効にしました」と通知が出れば完了（保存操作は不要）",
+        "step4": "切り替え中はそのスイッチが一時的に押せなくなります（二重操作を防ぐためです）"
+      }
+    },
+    "count": {
+      "title": "今いくつ使えるかを確認する",
+      "body": "画面の上部に「有効な機能: 2 / 10」のように、ON にしている数と有効化できる上限の数が表示されます。右の更新ボタン（回転する矢印）を押すと、最新の状態を取得し直せます。"
+    },
+    "restrictions": {
+      "title": "使えないスイッチがあるとき",
+      "body": "スイッチが押せない（グレーアウトしている）機能には、理由を示すバッジが付きます。",
+      "items": {
+        "paid": "「有料プラン」… 有料プランに加入すると使える機能です。",
+        "limit": "「上限（10）に達しています」… 無料プランで同時に ON にできる機能の数が上限に達しています。ほかの機能を OFF にすると新しく ON にできます。",
+        "level": "「このレベルでは利用できません」… このチーム・組織の種別では使えない機能です。"
+      }
+    },
+    "empty": {
+      "title": "機能が表示されないとき",
+      "body": "「現在このスコープで利用できる追加機能はありません」と出る場合は、いまのところこのチーム・組織で追加できる機能がありません。"
+    },
+    "permission": {
+      "title": "設定できる人",
+      "body": "機能設定はチーム・組織の管理者だけが開けます。管理者でも、画面右上の表示切り替えが「メンバー表示」になっているとこのタブは隠れます。設定したいときは「管理者表示」に切り替えてください。"
+    }
+  },
+  "teamShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basisinfo",
+      "members": "Mitglieder",
+      "invites": "Einladungen",
+      "supporters": "Unterstützerverwaltung",
+      "modules": "Funktionen"
+    },
+    "action": {
+      "leave_confirm_title": "Team verlassen",
+      "leave_confirm_body": "Möchtest du dieses Team wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
+      "left": "Team verlassen"
+    }
+  },
+  "orgShell": {
+    "tab": {
+      "dashboard": "Dashboard",
+      "info": "Basisinfo",
+      "members": "Mitglieder",
+      "member_teams": "Teams",
+      "invites": "Einladungen",
+      "permission_groups": "Berechtigungsgruppen",
+      "supporters": "Unterstützerverwaltung",
+      "modules": "Funktionen"
+    },
+    "action": {
+      "leave_confirm_title": "Organisation verlassen",
+      "leave_confirm_body": "Möchtest du diese Organisation wirklich verlassen? Dies kann nicht rückgängig gemacht werden.",
+      "left": "Organisation verlassen"
+    }
+  },
+  "blog_guide": {
+    "title": "So verwenden Sie Mein Blog",
+    "description": "Schreiben Sie Artikel und teilen Sie sie mit Ihren Team- und Organisationsmitgliedern. Speichern Sie zuerst als Entwurf, dann veröffentlichen Sie, wenn Sie bereit sind.",
+    "what": {
+      "title": "Was ist ein Blog?",
+      "body": "Ein Ort, um Ihre Gedanken und Lernerkenntnisse als Artikel zu schreiben und mit Ihren Team- und Organisationsmitgliedern zu teilen. Artikel können im Entwurfs-, Veröffentlicht-, Geplant- oder Archiviert-Zustand verwaltet werden."
+    },
+    "create": {
+      "title": "Einen Artikel schreiben",
+      "body": "Klicken Sie einfach auf '+ Neuer Artikel', um einen Entwurfsartikel zu erstellen. Sie können den Titel später ändern.",
+      "steps": {
+        "step1": "Klicken Sie oben rechts auf '+ Neuer Artikel'",
+        "step2": "Geben Sie den Artikeltitel ein (kann später geändert werden)",
+        "step3": "Wählen Sie das Veröffentlichungsziel (persönlich, Team oder Organisation)",
+        "step4": "Klicken Sie auf 'Erstellen und Bearbeiten', um zum Editor zu gelangen"
+      }
+    },
+    "publish": {
+      "title": "Einen Artikel veröffentlichen",
+      "body": "Klicken Sie auf das Augensymbol auf jeder Karte in 'Meine Beiträge', um zwischen öffentlich und privat zu wechseln.",
+      "steps": {
+        "step1": "Klicken Sie auf das Augensymbol auf einer Entwurfsartikelkarte",
+        "step2": "Wechselt zu 'Veröffentlicht' und wird für Team- und Organisationsmitglieder sichtbar",
+        "step3": "Erneut klicken, um wieder privat (Entwurf) zu werden"
+      }
+    },
+    "manage": {
+      "title": "Artikel verwalten",
+      "body": "'Meine Beiträge' zeigt die neuesten 5 Artikel in einem horizontalen Scroll. Verwenden Sie die Symbole auf jeder Karte zum Bearbeiten oder Löschen.",
+      "item_edit": "Bleistiftsymbol → Artikelinhalt bearbeiten",
+      "item_delete": "Papierkorbsymbol → Artikel löschen (kann nicht rückgängig gemacht werden)",
+      "item_count": "Überprüfen Sie die Artikelanzahl oben rechts",
+      "item_all": "Alle Artikel werden im Abschnitt 'Aller Beiträge' aufgelistet"
+    },
+    "settings": {
+      "title": "Blog-Einstellungen",
+      "body": "Sie können Ihren Blog-Titel, die Beschreibung und den Selbstüberprüfungszeitraum festlegen.",
+      "steps": {
+        "step1": "Klicken Sie oben rechts auf '⚙ Blog-Einstellungen'",
+        "step2": "Geben Sie Ihren Blog-Titel und Ihre Beschreibung ein",
+        "step3": "Legen Sie den Selbstüberprüfungszeitraum fest (Überprüfungszeitraum vor dem Posten)",
+        "step4": "Klicken Sie auf 'Einstellungen speichern'"
+      }
+    }
+  },
+  "analytics": {
+    "title": "Zugriffsanalyse",
+    "loadError": "Zugriffsanalysedaten konnten nicht geladen werden",
+    "empty": "Noch keine Zugriffsdaten vorhanden",
+    "summary": {
+      "totalViews": "Gesamt-PV",
+      "uniqueVisitors": "Eindeutige Besucher",
+      "memberViews": "Mitgliederaufrufe",
+      "guestViews": "Gastaufrufe"
+    },
+    "export": "Daten exportieren",
+    "topContent": {
+      "title": "Beliebte Inhalte",
+      "empty": "Keine Daten verfügbar"
+    },
+    "chart": {
+      "views": "Seitenaufrufe",
+      "daily": "Täglich",
+      "monthly": "Monatlich",
+      "toggle": "Ansicht wechseln",
+      "recentDays": "Zugriffsstatistiken der letzten 30 Tage",
+      "monthlyTrend": "Monatliche Zugriffstrendstatistiken"
+    },
+    "period": {
+      "allTime": "Gesamtzeitraum"
+    },
+    "guide": {
+      "page_title": "Verwendung von Analytics",
+      "what": {
+        "title": "Was ist Analytics?",
+        "body": "Mit Analytics können Sie sehen, wie oft die Seiten Ihres Teams oder Ihrer Organisation aufgerufen werden. Nutzen Sie es, um Besuchsmuster von Mitgliedern und Gästen zu verstehen und Inhalte zu verbessern."
+      },
+      "metrics": {
+        "title": "Gemessene Daten",
+        "total_views": "Gesamt-PV: Gesamtzahl der Seitenaufrufe",
+        "unique_visitors": "Eindeutige Besucher: Besucherzahl ohne Duplikate",
+        "member_views": "Mitglieder-Aufrufe: Seitenaufrufe durch Mitglieder",
+        "guest_views": "Gast-Aufrufe: Seitenaufrufe durch Gäste (Nicht-Mitglieder)"
+      },
+      "timing": {
+        "title": "Datenaktualisierungszeit",
+        "body": "Zugriffsdaten werden in einem täglichen Batch aggregiert. Daten vom selben Tag werden am nächsten Morgen angezeigt. Da es sich nicht um Echtzeit handelt, werden Zugriffe der letzten Stunden ab dem nächsten Tag angezeigt."
+      },
+      "chart": {
+        "title": "Diagramm verstehen",
+        "body": "Sie können das Diagramm zwischen «Täglich» und «Monatlich» umschalten.",
+        "daily_title": "Tägliches Diagramm",
+        "daily_desc": "Zeigt tägliche Seitenaufruf-Trends der letzten 30 Tage.",
+        "monthly_title": "Monatliches Diagramm",
+        "monthly_desc": "Zeigt monatlich aggregierte Werte. Nützlich zum Verstehen langfristiger Trends."
+      },
+      "top_content": {
+        "title": "Beliebte Inhalte",
+        "body": "Zeigt eine Rangliste der Inhalte nach Anzahl der Aufrufe. Solange noch keine Zugriffsdaten vorliegen, wird \"Keine Daten verfügbar\" angezeigt. Die Rangliste erscheint automatisch, sobald Aufrufe erfasst wurden."
+      }
+    }
+  },
+  "comingSoon": {
+    "title": "Demnächst verfügbar",
+    "description": "Diese Funktion befindet sich derzeit in der Entwicklung. Bitte schauen Sie später wieder vorbei."
+  },
+  "transferOwnership": {
+    "sectionTitle": "Eigentum übertragen",
+    "sectionDescription": "Übergib die Rolle des Eigentümers (Administrator) an ein anderes Mitglied. Nach der Übertragung bist du stellvertretende:r Administrator:in und kannst administratorexklusive Aktionen nicht mehr ausführen.",
+    "openButton": "Eigentum übertragen",
+    "dialogTitle": "Eigentum übertragen",
+    "warning": "Diese Aktion kann nicht rückgängig gemacht werden. Die Administratorrechte gehen an die neue Eigentümerin bzw. den neuen Eigentümer über; nur diese Person kann sie zurückgeben.",
+    "targetLabel": "Neue:r Eigentümer:in",
+    "targetPlaceholder": "Mitglied auswählen",
+    "noCandidates": "Es gibt kein Mitglied, an das du das Eigentum übertragen kannst.",
+    "confirmLabel": "Gib zur Bestätigung „{name}“ ein",
+    "confirmMismatch": "Der Name stimmt nicht überein.",
+    "cancel": "Abbrechen",
+    "submit": "Übertragen",
+    "successTitle": "Eigentum übertragen",
+    "successDetail": "Die Administratorrechte wurden an die neue Eigentümerin bzw. den neuen Eigentümer übertragen."
+  },
+  "featureGate": {
+    "blocked": {
+      "title": "Funktion nicht verfügbar",
+      "body": "Diese Funktion ist derzeit nicht verfügbar. Sie werden zum Dashboard zurückgeleitet."
+    },
+    "error": {
+      "fetchFailedTitle": "Verfügbarkeit der Funktion konnte nicht geprüft werden",
+      "fetchFailedBody": "Aufgrund eines Netzwerkfehlers konnte nicht geprüft werden, ob diese Funktion verfügbar ist. Bitte versuchen Sie es später erneut."
+    }
   }
 }

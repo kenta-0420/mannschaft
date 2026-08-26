@@ -87,6 +87,7 @@ class DashboardBulletinUnreadN1Test {
     @Mock private com.mannschaft.app.dashboard.service.ScopeWidgetSummaryService scopeWidgetSummaryService;
     @Mock private com.mannschaft.app.dashboard.service.ScopeActionRequiredFacade scopeActionRequiredFacade;
     @Mock private com.mannschaft.app.dashboard.service.SwipeWidgetVisibilityResolver swipeWidgetVisibilityResolver;
+    @Mock private com.mannschaft.app.common.visibility.ContentVisibilityChecker contentVisibilityChecker;
 
     @InjectMocks
     private DashboardService dashboardService;
@@ -122,8 +123,8 @@ class DashboardBulletinUnreadN1Test {
         @Test
         @DisplayName("2チーム×複数スレッドでも existsByThreadIdAndUserId は呼ばれず、ID一括取得1回＋既読一括取得≦1回")
         void 掲示板未読_existsを呼ばず一括取得() {
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
             // チーム横断のスレッド ID を 1 クエリで取得（TEAM スコープ × teamIds IN）。
             given(bulletinThreadRepository.findIdsByScopeTypeAndScopeIdIn(
                     eq(com.mannschaft.app.bulletin.ScopeType.TEAM), anyCollection()))
@@ -157,8 +158,8 @@ class DashboardBulletinUnreadN1Test {
         @Test
         @DisplayName("スレッド4件中2件既読 → total_unread_bulletin=2")
         void 未読カウント_一部既読() {
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A), teamRole(TEAM_B)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A, TEAM_B));
             given(bulletinThreadRepository.findIdsByScopeTypeAndScopeIdIn(
                     eq(com.mannschaft.app.bulletin.ScopeType.TEAM), anyCollection()))
                     .willReturn(List.of(100L, 101L, 102L, 103L));
@@ -173,8 +174,8 @@ class DashboardBulletinUnreadN1Test {
         @Test
         @DisplayName("全件未読 → total_unread_bulletin=スレッド数")
         void 未読カウント_全件未読() {
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A));
             given(bulletinThreadRepository.findIdsByScopeTypeAndScopeIdIn(
                     eq(com.mannschaft.app.bulletin.ScopeType.TEAM), anyCollection()))
                     .willReturn(List.of(200L, 201L, 202L));
@@ -189,8 +190,8 @@ class DashboardBulletinUnreadN1Test {
         @Test
         @DisplayName("全件既読 → total_unread_bulletin=0")
         void 未読カウント_全件既読() {
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID))
-                    .willReturn(List.of(teamRole(TEAM_A)));
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID))
+                    .willReturn(List.of(TEAM_A));
             given(bulletinThreadRepository.findIdsByScopeTypeAndScopeIdIn(
                     eq(com.mannschaft.app.bulletin.ScopeType.TEAM), anyCollection()))
                     .willReturn(List.of(300L, 301L));
@@ -214,7 +215,7 @@ class DashboardBulletinUnreadN1Test {
         @Test
         @DisplayName("所属チーム無し → スレッドID取得は空、既読バッチは未呼出、未読0")
         void 所属チーム無し_バッチ未呼出() {
-            given(userRoleRepository.findByUserIdAndTeamIdIsNotNull(USER_ID)).willReturn(List.of());
+            given(userRoleRepository.findTeamIdsByUserId(USER_ID)).willReturn(List.of());
 
             PersonalDashboardResponse result = dashboardService.getPersonalDashboard(USER_ID, "ALL");
 
@@ -238,7 +239,7 @@ class DashboardBulletinUnreadN1Test {
                 .willReturn(List.of());
         given(scheduleRepository.findByTeamIdInAndStartAtBetween(anyCollection(), any(), any()))
                 .willReturn(List.of());
-        given(userRoleRepository.findByUserIdAndOrganizationIdIsNotNull(USER_ID)).willReturn(List.of());
+        given(userRoleRepository.findOrganizationIdsByUserId(USER_ID)).willReturn(List.of());
         given(todoRepository.findMyTodos(USER_ID)).willReturn(List.of());
         given(platformAnnouncementRepository.findActiveAnnouncements(any())).willReturn(List.of());
         given(timelinePostRepository.findByUserIdOrderByCreatedAtDesc(eq(USER_ID), any()))
@@ -253,7 +254,7 @@ class DashboardBulletinUnreadN1Test {
                 .willReturn(List.of());
         given(bulletinReadStatusRepository.findReadThreadIds(anyCollection(), anyLong()))
                 .willReturn(List.of());
-        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any()))
-                .willReturn(List.of());
+        given(activityFeedService.getActivityFeed(eq(USER_ID), isNull(), anyInt(), any(), any()))
+                .willReturn(new com.mannschaft.app.dashboard.dto.ActivityFeedPageResponse(List.of(), null));
     }
 }

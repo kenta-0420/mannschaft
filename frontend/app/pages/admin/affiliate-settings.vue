@@ -14,11 +14,15 @@ const PROVIDERS = [
   { label: 'その他', value: 'OTHER' },
 ]
 
+// F09.19.4 §10.6: 実 AdPlacement enum 準拠の 5 値に是正（幽霊値 INLINE_CONTENT / BELOW_HEADER を除去）。
+// 掲載面が未実装の 3 値はラベルに「（掲載面未実装）」を付けて選択可能のまま残す
+// （affiliate-settings は SYSTEM_ADMIN 専用のため将来分の事前設定を許容する）。
 const PLACEMENTS = [
-  { label: 'サイドバー右', value: 'SIDEBAR_RIGHT' },
-  { label: 'バナーフッター', value: 'BANNER_FOOTER' },
-  { label: 'コンテンツ内', value: 'INLINE_CONTENT' },
-  { label: 'ヘッダー下', value: 'BELOW_HEADER' },
+  { label: 'ダッシュボードタイル', value: 'DASHBOARD_TILE' },
+  { label: 'お知らせフィード内', value: 'IN_FEED' },
+  { label: 'サイドバー右（掲載面未実装）', value: 'SIDEBAR_RIGHT' },
+  { label: 'バナーフッター（掲載面未実装）', value: 'BANNER_FOOTER' },
+  { label: 'ヘッダーバナー（掲載面未実装）', value: 'BANNER_HEADER' },
 ]
 
 const configs = ref<AffiliateConfigResponse[]>([])
@@ -31,7 +35,7 @@ const showPreviewDialog = ref(false)
 const defaultForm = (): CreateAffiliateConfigRequest => ({
   provider: 'AMAZON',
   tagId: '',
-  placement: 'SIDEBAR_RIGHT',
+  placement: 'DASHBOARD_TILE',
   description: '',
   bannerImageUrl: '',
   bannerWidth: 300,

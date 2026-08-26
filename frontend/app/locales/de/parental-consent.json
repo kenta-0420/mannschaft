@@ -3,7 +3,7 @@
     "pending_title": "Zustimmung der Eltern erforderlich",
     "pending_description": "Da Sie unter 18 Jahre alt sind, ist die Zustimmung der Eltern erforderlich. Geben Sie die E-Mail-Adresse Ihrer Eltern ein, um eine Einladung zu senden.",
     "invite_email_label": "E-Mail-Adresse des Elternteils",
-    "invite_email_placeholder": "parent@example.com",
+    "invite_email_placeholder": "parent{'@'}example.com",
     "send_invite": "Einladung senden",
     "cancel_invite": "Einladung abbrechen",
     "invite_sent": "Einladungs-E-Mail gesendet",

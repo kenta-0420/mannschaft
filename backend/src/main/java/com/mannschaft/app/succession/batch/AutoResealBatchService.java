@@ -6,6 +6,7 @@ import com.mannschaft.app.succession.repository.SuccessionPreRegistrationReposit
 import com.mannschaft.app.succession.repository.UnsealRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +33,8 @@ public class AutoResealBatchService {
 
     @BatchEndpoint(name = "succession-auto-reseal", description = "封緘解除 72h TTL を 5 分毎にチェックし RE_SEALED へ自動遷移する")
     @Scheduled(cron = "0 */5 * * * *")
+    // 起動間隔は 5 分。72h TTL 超過の封緘解除を RE_SEALED に戻すだけで対象は少数。間隔の 3 倍を上限とする。
+    @SchedulerLock(name = "successionAutoReseal", lockAtLeastFor = "PT30S", lockAtMostFor = "PT15M")
     @Transactional
     public void autoReseal() {
         LocalDateTime now = LocalDateTime.now();

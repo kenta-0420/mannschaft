@@ -1,5 +1,7 @@
 package com.mannschaft.app.auth.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.auth.repository.OAuthAccountRepository;
 import com.mannschaft.app.auth.repository.TwoFactorAuthRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,8 @@ public class AuthAnonymizationEventListener {
      *
      * @param event 退会匿名化イベント
      */
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "止めると退会済み利用者の認証情報・ログイン履歴の個人情報が残存し、退会済みなのに PII が残るという不整合になる")
     @Async("event-pool")
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

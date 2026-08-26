@@ -6,9 +6,12 @@
  * - 既存 dashboard.vue の中身をそのまま内包（要件 3・widget 構成は F02.2 のまま不変）。
  * - 対象3-B: 18ウィジェットを useDashboardWidgets('personal') 経由で DB 永続化（並び替え・表示制御）。
  * - FamilyHub / AdminBusinessAlert は条件付き固定パネル（v-if）として並び替え対象外。
- * - 広告（AmazonAd / RakutenAd）は末尾固定・非表示不可・並び替え対象外。
+ * - WidgetCommandCenter（司令塔「今やること」・ADHD-UX戦役第四陣）は常時固定パネル（v-if なし）
+ *   として挨拶ヘッダー直下・ウィジェットグリッドの上に描画し、並び替え対象外・KEYS 非登録。
+ * - 広告（Spotlight 掲載面）は末尾固定・非表示不可・並び替え対象外。
  * - マイカレンダーは PERSONAL_DATA_WIDGET_KEYS に含めて lg:col-span-2 で横広描画。
  */
+import type { SpotlightItem } from '~/composables/useSpotlightApi'
 const authStore = useAuthStore()
 const teamStore = useTeamStore()
 const orgStore = useOrganizationStore()
@@ -49,12 +52,31 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+  // 広告掲載面は非必須のため loading ゲートとは独立に取得する（失敗してもページを止めない）。
+  void loadSpotlight()
 })
 
 // 個人ダッシュボードウィジェット（DB 永続化・対象3-B）
 const { sortedWidgets, visibleWidgets, isVisible, toggleWidget, reorder } = useDashboardWidgets(
   'personal',
 )
+
+// ── F09.19.4 Spotlight 掲載面（DASHBOARD_TILE・末尾固定 2 枠） ──────────────
+// 親パネルが 1 回だけ count=2 で取得し items[0]→Primary・items[1]→Secondary に配る。
+// PERSONAL スコープのため scopeId は付与しない（有料プランゲート等の判定は BE が行う）。
+// spotlightPrimary/Secondary は v-for 外の固定 order-last 描画であり、
+// KEYS/linkTo には登録しない（結線パリティ規約 project_dashboard_personal_panel_widget_wiring_parity は本 2 枠に非適用）。
+const spotlightApi = useSpotlightApi()
+const spotlightItems = ref<SpotlightItem[]>([])
+// 候補なしは枠ごと非表示: primary=items[0] / secondary=items[1]（存在時のみ描画）
+const spotlightPrimary = computed(() => spotlightItems.value[0])
+const spotlightSecondary = computed(() => spotlightItems.value[1])
+
+async function loadSpotlight() {
+  spotlightItems.value = await spotlightApi.fetchContent('DASHBOARD_TILE', 2, {
+    scopeType: 'PERSONAL',
+  })
+}
 
 // ドラッグ&ドロップ状態
 const dragIndex = ref<number | null>(null)
@@ -107,7 +129,13 @@ const PERSONAL_DATA_WIDGET_KEYS = new Set([
   'my-teams',                    // 所属チーム
   'my-organizations',            // 所属組織
   'favorites',                   // お気に入り
+  'my-timeline',                 // 個人集約タイムライン（所属 team/org 横断）
   'recent-activity',             // 最近のアクティビティ
+  'recruitment-feed',            // Phase2 F03.11 新着募集（WidgetRecruitmentFeed・自前カード）
+  'my-recruitments',             // Phase2 F03.11 参加予定（WidgetMyRecruitments・自前カード）
+  'my-corkboard',                // F09.8.1 マイコルクボード（WidgetMyCorkboard・内容のみ→外枠必要）
+  'village-lobby-digest',        // F17.1 井戸端ダイジェスト（WidgetVillageLobbyDigest・内容のみ→外枠必要）
+  'return-stay-plan',
 ])
 
 function isDataWidget(key: string): boolean {
@@ -134,6 +162,13 @@ function linkTo(widgetKey: string): string | undefined {
     'recent-activity': '/timeline',
   }
   return personalLinks[widgetKey]
+}
+
+/** ナビ型カードのクリック。リンク未定義時は何もしない（'#' への遷移で上部に戻るのを防ぐ）。 */
+function onNavCardClick(widgetKey: string) {
+  if (dragIndex.value !== null) return
+  const to = linkTo(widgetKey)
+  if (to) navigateTo(to)
 }
 
 function onDragStart(index: number, e: DragEvent) {
@@ -195,6 +230,10 @@ function onDragEnd() {
         />
       </div>
 
+      <!-- 固定パネル: 司令塔「今やること」（v-if のまま・並び替え対象外・KEYS非登録） -->
+      <!-- ADHD-UX戦役 第四陣: 挨拶ヘッダー直下・ウィジェットグリッドの上に固定表示する -->
+      <WidgetCommandCenter />
+
       <!-- 条件付き固定パネル: FamilyHub（v-if のまま・並び替え対象外） -->
       <div v-if="hasFamilyTeam" class="mb-4">
         <WidgetFamilyHub />
@@ -226,9 +265,9 @@ function onDragEnd() {
 
         <div
           v-for="(w, index) in visibleWidgets"
-          :key="w.key"
           v-show="w.key !== 'event-dismissal-reminder' || dismissalHasContent"
-          class="group relative cursor-default transition-all"
+          :key="w.key"
+          class="group relative flex h-full flex-col cursor-default transition-all"
           :class="[
             (w.key === 'notices' || w.key === 'my-calendar') ? 'col-span-1 md:col-span-2' : 'col-span-1',
             { 'opacity-40': dragIndex === index },
@@ -264,10 +303,11 @@ function onDragEnd() {
               v-else-if="w.key === 'event-dismissal-reminder'"
               @has-content="dismissalHasContent = $event"
             />
-            <!-- プラットフォームお知らせ -->
-            <WidgetPlatformAnnouncements v-else-if="w.key === 'notices'" />
+            <!-- プラットフォームお知らせ（WidgetNotices に統合済み） -->
+            <WidgetNotices v-else-if="w.key === 'notices'" />
             <!-- 今後の予定 -->
             <WidgetUpcomingEvents v-else-if="w.key === 'upcoming-events'" />
+            <WidgetReturnStayPlan v-else-if="w.key === 'return-stay-plan'" />
             <!-- 個人TODO -->
             <WidgetPersonalTodo v-else-if="w.key === 'personal-todo'" />
             <!-- F02.10: 天気 -->
@@ -290,8 +330,34 @@ function onDragEnd() {
             <WidgetMyOrganizations v-else-if="w.key === 'my-organizations'" />
             <!-- お気に入り -->
             <WidgetFavorites v-else-if="w.key === 'favorites'" />
+            <!-- 個人集約タイムライン（所属 team/org 横断） -->
+            <WidgetMyTimeline v-else-if="w.key === 'my-timeline'" />
             <!-- 最近のアクティビティ -->
             <WidgetRecentActivity v-else-if="w.key === 'recent-activity'" />
+            <!-- Phase2 F03.11: 新着募集 -->
+            <WidgetRecruitmentFeed v-else-if="w.key === 'recruitment-feed'" />
+            <!-- Phase2 F03.11: 参加予定 -->
+            <WidgetMyRecruitments v-else-if="w.key === 'my-recruitments'" />
+            <!-- F09.8.1: マイコルクボード（内容のみ→外枠カードで包む） -->
+            <DashboardWidgetCard
+              v-else-if="w.key === 'my-corkboard'"
+              :title="$t(w.labelKey)"
+              :icon="w.icon"
+              to="/my/corkboard"
+              :scrollable="false"
+            >
+              <WidgetMyCorkboard />
+            </DashboardWidgetCard>
+            <!-- F17.1: 井戸端ダイジェスト（内容のみ→外枠カードで包む） -->
+            <DashboardWidgetCard
+              v-else-if="w.key === 'village-lobby-digest'"
+              :title="$t(w.labelKey)"
+              :icon="w.icon"
+              to="/villages"
+              :scrollable="false"
+            >
+              <WidgetVillageLobbyDigest />
+            </DashboardWidgetCard>
           </template>
 
           <!-- ─── ナビゲーションウィジェット ─── -->
@@ -302,7 +368,7 @@ function onDragEnd() {
             :scrollable="false"
             :is-dragging="dragIndex === index"
             :is-drop-target="dropTargetIndex === index && dragIndex !== index"
-            @click="dragIndex === null && navigateTo(linkTo(w.key) ?? '#')"
+            @click="onNavCardClick(w.key)"
           >
             <!-- ドラッグハンドル（hover 時に表示） -->
             <i
@@ -369,9 +435,21 @@ function onDragEnd() {
           <WidgetAdminBusinessAlert />
         </div>
 
-        <!-- 広告タイル（非表示不可・常に最後・並び替え対象外） -->
-        <WidgetAmazonAd key="amazon-ad" class="order-last" scope-type="personal" />
-        <WidgetRakutenAd key="rakuten-ad" class="order-last" scope-type="personal" />
+        <!-- 広告タイル（Spotlight 掲載面・非表示不可・常に最後・並び替え対象外） -->
+        <!-- 候補なしは枠ごと非表示（items.length=1→Secondary 非描画・0→両方非描画）。スケルトンも確保しない（末尾のため CLS 許容）。 -->
+        <!-- key は placement 値ベース（spotlight-primary/spotlight-secondary）。KEYS/linkTo には登録しない固定描画。 -->
+        <WidgetSpotlightPrimary
+          v-if="spotlightPrimary"
+          key="spotlight-primary"
+          class="order-last"
+          :item="spotlightPrimary"
+        />
+        <WidgetSpotlightSecondary
+          v-if="spotlightSecondary"
+          key="spotlight-secondary"
+          class="order-last"
+          :item="spotlightSecondary"
+        />
       </TransitionGroup>
 
       <!-- チームを探す / チームを作る -->

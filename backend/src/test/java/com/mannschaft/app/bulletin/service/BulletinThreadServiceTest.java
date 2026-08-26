@@ -196,8 +196,8 @@ class BulletinThreadServiceTest {
             BulletinThreadEntity entity = createDefaultThread();
             ThreadResponse response = createThreadResponse();
             Page<BulletinThreadEntity> page = new PageImpl<>(List.of(entity), PageRequest.of(0, 10), 1);
-            given(threadRepository.findByCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
-                    CATEGORY_ID, PageRequest.of(0, 10))).willReturn(page);
+            given(threadRepository.findByScopeTypeAndScopeIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                    SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, PageRequest.of(0, 10))).willReturn(page);
             given(bulletinMapper.toThreadResponse(entity)).willReturn(response);
 
             // When
@@ -207,6 +207,27 @@ class BulletinThreadServiceTest {
             // Then
             assertThat(result.getContent()).hasSize(1);
             verify(accessGuard).checkMembership(USER_ID, SCOPE_TYPE, SCOPE_ID);
+            // カテゴリの帰属検証が呼ばれること（越境 categoryId 差し込みの封鎖）
+            verify(categoryService).findCategoryOrThrow(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID);
+        }
+
+        @Test
+        @DisplayName("カテゴリ指定一覧取得_越境categoryId_CATEGORY_NOT_FOUNDで遮断されスレッド取得に到達しない")
+        void カテゴリ指定一覧取得_越境categoryId_遮断() {
+            // Given: 当該スコープに属さない categoryId は findCategoryOrThrow が 404 を投げる
+            given(categoryService.findCategoryOrThrow(SCOPE_TYPE, SCOPE_ID, CATEGORY_ID))
+                    .willThrow(new BusinessException(BulletinErrorCode.CATEGORY_NOT_FOUND));
+
+            // When & Then
+            assertThatThrownBy(() -> bulletinThreadService.listThreadsByCategory(
+                    SCOPE_TYPE, SCOPE_ID, CATEGORY_ID, USER_ID, PageRequest.of(0, 10)))
+                    .isInstanceOf(BusinessException.class)
+                    .satisfies(ex -> assertThat(((BusinessException) ex).getErrorCode())
+                            .isEqualTo(BulletinErrorCode.CATEGORY_NOT_FOUND));
+            // 遮断後にスレッド取得クエリへ到達していないこと
+            verify(threadRepository, never())
+                    .findByScopeTypeAndScopeIdAndCategoryIdOrderByIsPinnedDescUpdatedAtDesc(
+                            any(), anyLong(), anyLong(), any());
         }
     }
 
@@ -1257,8 +1278,15 @@ class BulletinThreadServiceTest {
     @DisplayName("createThreadGlobal（グローバル作成）")
     class CreateThreadGlobal {
 
+        /**
+         * VILLAGE 作成は村ドメインの主体検証に委譲し、共通ガードの所属判定は<b>呼ばない</b>。
+         *
+         * <p>共通ガード {@link BulletinAccessGuard#checkMembership} は村を判定できず fail-closed で
+         * 拒否するようになったため、村分岐を入れ忘れると村スレッド作成が全滅する。
+         * 「村では共通ガードを呼ばず村検証へ委譲する」という契約を明示的に固定する。</p>
+         */
         @Test
-        @DisplayName("VILLAGE作成_既存createThreadへ委譲_主体検証実行")
+        @DisplayName("VILLAGE作成_共通ガードを呼ばず村ドメインの主体検証へ委譲")
         void 村_作成委譲() {
             given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
             given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
@@ -1268,10 +1296,25 @@ class BulletinThreadServiceTest {
                     VILLAGE_ID, VillageSubjectType.USER, USER_ID);
             bulletinThreadService.createThreadGlobal(ScopeType.VILLAGE, 0L, USER_ID, req);
 
-            // VILLAGE 作成は所属認可 + 作成権限 + 投稿主体検証が走る
-            verify(accessGuard).checkMembership(USER_ID, ScopeType.VILLAGE, 0L);
+            // 村は共通ガードの守備範囲外。呼べば fail-closed で 403 になるため呼んではならない。
+            verify(accessGuard, never()).checkMembership(any(), eq(ScopeType.VILLAGE), any());
+            // 村メンバー判定は村ドメインの主体検証が担う
             verify(postingIdentityService)
                     .validatePostingIdentity(USER_ID, VILLAGE_ID, VillageSubjectType.USER, USER_ID);
+        }
+
+        /** 非村スコープ（TEAM）の作成では従来どおり共通ガードの所属判定が走る（非回帰）。 */
+        @Test
+        @DisplayName("TEAM作成_共通ガードの所属判定が走る（非回帰）")
+        void チーム_作成は共通ガードを通る() {
+            given(threadRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+            given(bulletinMapper.toThreadResponse(any())).willReturn(createThreadResponse());
+
+            CreateThreadRequest req = new CreateThreadRequest(
+                    null, "題名", "本文", "INFO", "COUNT_ONLY", null, null);
+            bulletinThreadService.createThreadGlobal(SCOPE_TYPE, SCOPE_ID, USER_ID, req);
+
+            verify(accessGuard).checkMembership(USER_ID, SCOPE_TYPE, SCOPE_ID);
         }
     }
 
