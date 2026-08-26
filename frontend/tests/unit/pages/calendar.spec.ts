@@ -194,10 +194,10 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
     // 案内はまだ出ていない（保存前）
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
 
-    // 作成フォームの保存完了を模擬する
+    // 作成フォームの保存完了を模擬する（実際に保存されたスコープを saved の引数で渡す）
     const createForm = wrapper.findComponent({ name: 'ScheduleEventForm' })
     expect(createForm.exists()).toBe(true)
-    createForm.vm.$emit('saved')
+    createForm.vm.$emit('saved', { isPersonal: false, scopeType: 'team', scopeId: 't1' })
     await flushPromises()
     await wrapper.vm.$nextTick()
 
@@ -217,12 +217,65 @@ describe('pages/calendar.vue: AC-11b 作成先レイヤー非表示時の案内'
   it('AC-11b: 作成先レイヤーが既に表示されている場合は案内を出さない', async () => {
     const wrapper = await mountCalendarPage()
 
-    // 初期状態は個人・チームAとも表示済み（作成スコープ既定=個人＝表示中）
+    // 初期状態は個人・チームAとも表示済み。個人スコープで保存する
     const createForm = wrapper.findComponent({ name: 'ScheduleEventForm' })
-    createForm.vm.$emit('saved')
+    createForm.vm.$emit('saved', { isPersonal: true, scopeType: 'team', scopeId: '' })
     await flushPromises()
     await wrapper.vm.$nextTick()
 
+    expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
+  })
+
+  // [P2是正・検分三巡目] ページ上部の作成スコープ Select（selectedCreateScope）と、
+  // ScheduleEventForm 内で実際に選ばれ保存されたスコープが食い違う状態を再現する。
+  // 以前は上部の値だけを見ていたため、この経路では案内が一切出なかった（無言で消える）。
+  it('[P2回帰] 上部は「個人」のまま、フォーム内で非表示のチームを選んで保存すると、そのチームの案内が出る', async () => {
+    const wrapper = await mountCalendarPage()
+    const chipFor = (label: string) =>
+      wrapper.findAll('button').find(b => b.text() === label)
+
+    // チームAのレイヤーチップを非表示にする
+    await chipFor('チームA')!.trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(chipFor('チームA')!.classes()).not.toContain('border-primary')
+
+    // 作成スコープ Select は「個人」のまま変更しない（上部とフォーム内の食い違いを作る）
+    expect(wrapper.get<HTMLSelectElement>('[data-testid="create-scope-select"]').element.value).toBe('personal')
+
+    // フォーム内でチームAへ変更して保存した、という結果を saved の引数で再現する
+    const createForm = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    createForm.vm.$emit('saved', { isPersonal: false, scopeType: 'team', scopeId: 't1' })
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    // 上部が「個人」のままでも、実際に保存されたチームAの案内が出る（無言で消えない）
+    const notice = wrapper.get('[data-testid="hidden-layer-notice"]')
+    expect(notice.text()).toContain('チームA')
+  })
+
+  // [P3是正・検分三巡目] 案内が出た後、ユーザーが自分でレイヤーチップから表示に戻した場合、
+  // 「表示する」ボタンを押していなくても案内は消える（既に見えているのに「見えません」と
+  // 言い続けない）。
+  it('[P3回帰] 案内が出た後にレイヤーチップで自分で表示に戻すと、案内は自動的に消える', async () => {
+    const wrapper = await mountCalendarPage()
+    const chipFor = (label: string) =>
+      wrapper.findAll('button').find(b => b.text() === label)
+
+    await chipFor('チームA')!.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    const createForm = wrapper.findComponent({ name: 'ScheduleEventForm' })
+    createForm.vm.$emit('saved', { isPersonal: false, scopeType: 'team', scopeId: 't1' })
+    await flushPromises()
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(true)
+
+    // 「表示する」ボタンではなく、レイヤーチップを自分でクリックして表示に戻す
+    await chipFor('チームA')!.trigger('click')
+    await wrapper.vm.$nextTick()
+
+    expect(chipFor('チームA')!.classes()).toContain('border-primary')
     expect(wrapper.find('[data-testid="hidden-layer-notice"]').exists()).toBe(false)
   })
 })

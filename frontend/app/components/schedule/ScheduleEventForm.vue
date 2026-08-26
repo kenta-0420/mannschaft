@@ -21,9 +21,16 @@ const props = defineProps<{
   scopeOptions?: ScopeOption[]
 }>()
 
+/** 実際に保存されたスコープ（フォーム内でスコープ変更が可能なため、呼び出し側の props とは食い違いうる）。 */
+interface SavedScope {
+  isPersonal: boolean
+  scopeType: 'team' | 'organization'
+  scopeId: string
+}
+
 const emit = defineEmits<{
   'update:visible': [value: boolean]
-  saved: []
+  saved: [scope: SavedScope]
 }>()
 
 // スコープ選択（フォーム内で変更可能）
@@ -547,7 +554,14 @@ async function submit() {
       saveTimeHistory(form.value.startTime, form.value.endTime)
     }
     notification.success(successMsg)
-    emit('saved')
+    // 実際に保存されたスコープを渡す（フォーム内でスコープを変更できるため、呼び出し側が
+    // 開いた時点の props とは食い違いうる。§5.4/AC-11b: 呼び出し側の「どのレイヤーへ作成したか」
+    // 判定はこの値を正とする）。
+    emit('saved', {
+      isPersonal: effectiveScope.value.isPersonal,
+      scopeType: effectiveScope.value.scopeType,
+      scopeId: effectiveScope.value.scopeId,
+    })
     close()
   } catch (error) {
     fieldErrors.value = getFieldErrors(error)

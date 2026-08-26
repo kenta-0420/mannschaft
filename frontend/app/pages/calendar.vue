@@ -256,31 +256,58 @@ const selectedCreateScope = computed(
 // 無く現れない（無言で消える＝P3違反）。作成完了時にだけ判定し、案内＋「表示する」ボタンを出す。
 // 勝手にフィルタを書き換えない（P2）のが AC-11 の結合切りと表裏一体の要件であり、
 // ここでも selectedScopes への代入はボタン押下時（onShowHiddenLayer）のみに限定する。
-const hiddenLayerNotice = ref<{ scopeKey: string; layerLabel: string } | null>(null)
+//
+// [P2是正・検分三巡目] 判定対象は「実際に保存されたスコープ」（ScheduleEventForm の
+// `saved` イベントが返す値）であって、ページ上部の作成スコープ Select（selectedCreateScope）
+// ではない。ScheduleEventForm はフォーム内でもスコープを変更できるため、上部の選択と
+// 実際の保存先が食い違いうる（上部=個人のままフォーム内でチームへ変更する等）。
+// scopeKey だけ ref に保持し、実際に非表示かどうかは computed で毎回 selectedScopes と
+// 突き合わせる（[P3是正] ユーザーがレイヤーチップ等で後から自分で表示に戻したら、
+// selectedScopes に含まれた時点で自動的に案内が消える＝「非表示です」と言い続けない）。
+const hiddenLayerNoticeScopeKey = ref<string | null>(null)
 
-/** 作成スコープに対応する selectedScopes 用キー（PERSONAL_KEY または `${SCOPE_TYPE}:${scopeId}`）。 */
-function createScopeFilterKey(scope: CreateScope): string {
-  return scope.isPersonal ? PERSONAL_KEY : scope.value
+interface SavedScope {
+  isPersonal: boolean
+  scopeType: 'team' | 'organization'
+  scopeId: string
 }
 
-/** 作成ダイアログの保存完了（新規作成のみ・§5.4/AC-11b）。 */
-async function onCreated() {
-  const scope = selectedCreateScope.value
-  const scopeKey = createScopeFilterKey(scope)
+/** 実際に保存されたスコープに対応する selectedScopes 用キー（PERSONAL_KEY または `${SCOPE_TYPE}:${scopeId}`）。 */
+function savedScopeFilterKey(scope: SavedScope): string {
+  if (scope.isPersonal) return PERSONAL_KEY
+  const match = availableScopes.value.find(
+    sc => sc.scopeId === scope.scopeId && sc.scopeType.toLowerCase() === scope.scopeType,
+  )
+  return match?.value ?? `${scope.scopeType.toUpperCase()}:${scope.scopeId}`
+}
+
+/** 案内に出すレイヤー表示名。allScopeOptions（表示フィルタと同じ一覧）から引く。 */
+function scopeLabelForKey(scopeKey: string): string {
+  return allScopeOptions.value.find(o => o.value === scopeKey)?.label ?? scopeKey
+}
+
+// 表示条件は「案内対象のスコープキーが設定されており、かつ現在も非表示」の両方（[P3是正]）。
+const hiddenLayerNotice = computed(() => {
+  const scopeKey = hiddenLayerNoticeScopeKey.value
+  if (!scopeKey || selectedScopes.value.includes(scopeKey)) return null
+  return { scopeKey, layerLabel: scopeLabelForKey(scopeKey) }
+})
+
+/** 作成ダイアログの保存完了（新規作成のみ・§5.4/AC-11b）。実際に保存されたスコープで判定する。 */
+async function onCreated(scope: SavedScope) {
+  const scopeKey = savedScopeFilterKey(scope)
   await refresh()
-  hiddenLayerNotice.value = selectedScopes.value.includes(scopeKey)
-    ? null
-    : { scopeKey, layerLabel: scope.label }
+  hiddenLayerNoticeScopeKey.value = selectedScopes.value.includes(scopeKey) ? null : scopeKey
 }
 
 /** 「表示する」ボタン（AC-11b）: 押されたときだけそのレイヤーを表示状態にする。他は一切変更しない。 */
 function onShowHiddenLayer() {
-  const notice = hiddenLayerNotice.value
-  if (!notice) return
-  if (!selectedScopes.value.includes(notice.scopeKey)) {
-    selectedScopes.value = [...selectedScopes.value, notice.scopeKey]
+  const scopeKey = hiddenLayerNoticeScopeKey.value
+  if (!scopeKey) return
+  if (!selectedScopes.value.includes(scopeKey)) {
+    selectedScopes.value = [...selectedScopes.value, scopeKey]
   }
-  hiddenLayerNotice.value = null
+  hiddenLayerNoticeScopeKey.value = null
 }
 
 
