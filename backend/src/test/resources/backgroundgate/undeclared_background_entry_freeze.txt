@@ -201,6 +201,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.budget.event.BudgetPaymentListen
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.budget.event.BudgetWorkflowListener|2|2
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.chart.event.ChartPurgeEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.chat.event.InquiryChatEventListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.circulation.event.CirculationReminderNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.common.storage.S3ObjectDeleteEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.contact.event.ContactInviteUsedNotificationListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.contact.event.ContactRequestNotificationListener|1|1
@@ -213,6 +214,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.errorreport.event.ErrorReportPur
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.event.listener.EventAdvanceNoticeNotificationListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.event.listener.EventChatChannelListener|2|2
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.event.listener.EventDelegationMembershipListener|1|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.event.listener.EventDismissalNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.favorite.event.FavoriteAnonymizationEventListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.gallery.event.PhotoUploadEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.gallery.event.ThumbnailRegenerateEventListener|1|1
@@ -232,6 +234,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.payment.escrow.MarketChargeCaptu
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.payment.escrow.MembershipPaymentCaptureListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.payment.escrow.RecruitmentCancellationFeeChargeListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.payment.escrow.RecruitmentChargeAuthorizationListener|0|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.payment.event.PaymentAdvanceSettledNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.payment.event.PaymentPurgeEventListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.pointcard.event.PointCardAnonymizationEventListener|0|2
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.pointcard.listener.PointCardOrganizationDeletedListener|1|1
@@ -269,6 +272,7 @@ TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shiftbudget.listener.ShiftBudget
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.shiftbudget.listener.ShiftBudgetConsumptionRecordListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.social.announcement.AnnouncementSyncEventListener|3|3
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.social.event.SocialAnonymizationEventListener|0|1
+TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.social.event.TeamFriendNotificationListener|0|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.survey.listener.SurveyBulletinThreadListener|2|2
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.survey.listener.SurveyPublishNotificationListener|1|1
 TRANSACTIONAL_EVENT_LISTENER|com.mannschaft.app.team.event.TeamOrgAuditEventListener|8|8
