@@ -1,5 +1,7 @@
 package com.mannschaft.app.payment.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -71,6 +73,9 @@ public class PaymentAdvanceSettledNotificationListener {
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.DROP_WHEN_DISABLED,
+            gateKeys = "FEATURE_BILLING_PAYMENT_ENABLED",
+            reason = "決済・課金を閉栓すれば立替金の精算確定そのものが起こらず、この通知は付随通知に過ぎない。再生されず失われても残高・精算記録の整合性は壊れない")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onPaymentAdvanceSettledNotification(PaymentAdvanceSettledNotificationEvent event) {

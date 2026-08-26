@@ -1,5 +1,7 @@
 package com.mannschaft.app.social.event;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.notification.NotificationPriority;
 import com.mannschaft.app.notification.NotificationScopeType;
@@ -75,6 +77,8 @@ public class TeamFriendNotificationListener {
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "チーム間フレンド（フォロー）は棚卸し台帳で beta=コア・gate_key 未発行の常時提供機能であり、付随通知だけを止める停止条件が存在しないため常時実行する")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onTeamFriendNotification(TeamFriendNotificationEvent event) {

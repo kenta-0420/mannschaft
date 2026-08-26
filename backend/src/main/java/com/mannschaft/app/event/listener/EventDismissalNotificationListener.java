@@ -1,5 +1,7 @@
 package com.mannschaft.app.event.listener;
 
+import com.mannschaft.app.common.backgroundgate.BackgroundFeatureMode;
+import com.mannschaft.app.common.backgroundgate.BackgroundFeaturePolicy;
 import com.mannschaft.app.common.i18n.UserLocaleCache;
 import com.mannschaft.app.event.entity.EventEntity;
 import com.mannschaft.app.event.event.EventDismissalNotificationEvent;
@@ -63,6 +65,8 @@ public class EventDismissalNotificationListener {
     private final UserLocaleCache userLocaleCache;
     private final MessageSource messageSource;
 
+    @BackgroundFeaturePolicy(mode = BackgroundFeatureMode.ALWAYS,
+            reason = "予定・行事は棚卸し台帳で beta=コア・gate_key 未発行の常時提供機能であり、解散通知だけを止める停止条件が存在しないため常時実行する")
     @Async("event-pool")
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onEventDismissalNotification(EventDismissalNotificationEvent event) {
