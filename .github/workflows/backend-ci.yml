@@ -115,7 +115,11 @@ jobs:
           # -PexcludeMigrationTests を参照）。
           # マイグレーションテスト本体・build.gradle.kts・本 workflow の変更時も
           # 安全側に倒してフル実行する。
-          if echo "${CHANGED}" | grep -E '^(backend/src/main/resources/db/migration/|backend/src/test/java/.*/migration/|backend/build\.gradle\.kts$|\.github/workflows/backend-ci\.yml$)' > /dev/null; then
+          #
+          # 対象パスの正規表現は .github/scripts/migration-sensitive-paths.regex に
+          # 一本化してある（main側 backend-deploy.yml の detect ジョブも同じファイルを
+          # 参照する。2箇所に同じ正規表現を書くと必ずドリフトするため）。
+          if echo "${CHANGED}" | grep -E -f .github/scripts/migration-sensitive-paths.regex > /dev/null; then
             echo "[INFO] migration 関連の変更を検出 → migrations_changed=true（Flyway 再生テストを実行）"
             echo "migrations_changed=true" >> "$GITHUB_OUTPUT"
           else
