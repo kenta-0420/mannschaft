@@ -1326,6 +1326,16 @@
     "filter": {
       "allTeamsOrgs": "Teams & Organisationen (alle)",
       "selectScope": "Ziel auswählen"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Privat",
+        "unknown": "Weitere Termine",
+        "loadError": {
+          "summary": "Ebenen konnten nicht geladen werden",
+          "detail": "Die Team-/Organisationsfilter sind vorübergehend nicht verfügbar. Termine werden weiterhin angezeigt. Bitte später erneut laden."
+        }
+      }
     }
   },
   "handoff": {

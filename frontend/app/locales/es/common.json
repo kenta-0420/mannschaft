@@ -1326,6 +1326,16 @@
     "filter": {
       "allTeamsOrgs": "Equipos y organizaciones (todos)",
       "selectScope": "Seleccionar destino"
+    },
+    "calendar": {
+      "layer": {
+        "personal": "Personal",
+        "unknown": "Otros eventos",
+        "loadError": {
+          "summary": "Error al cargar las capas",
+          "detail": "Los filtros de equipo/organización no están disponibles temporalmente. Los eventos siguen mostrándose. Vuelve a intentarlo más tarde."
+        }
+      }
     }
   },
   "handoff": {
