@@ -209,6 +209,40 @@ public class VillageAccessGate {
     }
 
     /**
+     * capability トークン（招待トークン等）による村の解決。
+     *
+     * <h3>なぜ可視性判定を迂回する口が要るのか</h3>
+     * <p>非公開(UNLISTED)村への招待は「まだ村人ではない者」が使う。可視性判定を通す
+     * {@link #findVisibleVillage} では非村人は必ず空になり、招待という導線自体が成立しない。
+     * 一方で村ドメインには「村サービスが {@link VillageRepository} を直接叩かない」という
+     * 集約契約（番人 {@code VillageExistenceCheckCentralizationGuardTest}）があり、
+     * 招待サービスが独自にリポジトリを引く逃げ道は塞がれている。よって
+     * <b>「トークンの提示をもって可視性の代わりとする」正規の口</b>をゲート側に一本だけ開ける。</p>
+     *
+     * <h3>呼び出し元の責務</h3>
+     * <p>本メソッドは<b>トークンの有効性を呼び出し元が検証済みであること</b>を前提とする。
+     * 検証前に呼ぶと、村 ID を知っているだけの者に村の実在を教えることになる。</p>
+     *
+     * <h3>なぜ例外を投げ分けないのか</h3>
+     * <p>不在・論理削除済み・凍結済みはいずれも {@link Optional#empty()} に畳んで返す。
+     * ここで「凍結済みです（409）」のような区別を返すと、呼び出し元が畳み忘れた瞬間に
+     * 「その村は実在する」という答えが漏れる。<b>畳むのは呼び出し元の責務</b>であり、
+     * ゲートは招待の語彙（招待が無効、など）を一切持たない。ゲートが招待を知ると
+     * 依存の向きが逆転し、他の capability（引継ぎリンク等）が増えるたびにゲートが太る。</p>
+     *
+     * @param villageId 村 ID（null 可。null は不在として扱う）
+     * @return 稼働中（未削除かつ未凍結）の村。不在・削除済み・凍結済みは {@link Optional#empty()}
+     */
+    public Optional<VillageEntity> findVillageByCapability(UUID villageId) {
+        if (villageId == null) {
+            return Optional.empty();
+        }
+        return villageRepository.findById(villageId)
+                .filter(v -> v.getDeletedAt() == null)
+                .filter(v -> v.getArchivedAt() == null);
+    }
+
+    /**
      * 複数の村について可視性をまとめて判定し、可視なものだけを<b>与えられた順序のまま</b>返す。
      *
      * <h3>なぜ一括版が要るのか</h3>
